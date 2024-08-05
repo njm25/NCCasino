@@ -1,6 +1,7 @@
 package org.nc.nccasino.commands;
 
 import org.bukkit.command.CommandSender;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
@@ -10,9 +11,9 @@ public class CommandExecutor {
 
     private final Map<String, CasinoCommand> commands = new HashMap<>();
 
-    public CommandExecutor() {
+    public CommandExecutor(JavaPlugin plugin) {
         commands.put("help", new HelpCommand());
-        commands.put("create", new CreateCommand());
+        commands.put("create", new CreateCommand(plugin));
     }
 
     public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, @NotNull String[] args) {

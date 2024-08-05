@@ -7,6 +7,7 @@ import io.papermc.paper.plugin.lifecycle.event.LifecycleEventManager;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -27,7 +28,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         LifecycleEventManager<Plugin> manager = this.getLifecycleManager();
 
         // Initialize the HelpCommand instance
-        CommandExecutor commandExecutor = new CommandExecutor();
+        CommandExecutor commandExecutor = new CommandExecutor(this);
 
         manager.registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             final Commands commands = event.registrar();
@@ -69,5 +70,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         event.getPlayer().sendMessage(Component.text("Hello, " + event.getPlayer().getName() + "!"));
+    }
+    public NamespacedKey getKey(String key) {
+        return new NamespacedKey(this, key);
     }
 }
