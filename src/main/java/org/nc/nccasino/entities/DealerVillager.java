@@ -15,15 +15,18 @@ public class DealerVillager {
         this.villager = villager;
         this.uniqueId = UUID.randomUUID(); // Generate a unique ID for this dealer villager
 
-        villager.setAI(true); // Enable AI for rotation but disable movement
+        initializeVillager();
+    }
+
+    private void initializeVillager() {
+        // Customize the villager's properties
+        villager.setAI(true); // Enable AI for rotation
         villager.setInvulnerable(true); // Make the villager invulnerable to all damage
         villager.setCustomName("Dealer Villager"); // Set the custom name
         villager.setCustomNameVisible(true); // Make the custom name visible
         villager.setProfession(Villager.Profession.NONE); // Set profession if needed
         villager.setVillagerLevel(5); // Max level for visual differentiation
-
     }
-
 
     public Villager getVillager() {
         return villager;
@@ -38,10 +41,16 @@ public class DealerVillager {
     }
 
     public static DealerVillager spawn(JavaPlugin plugin, Location location, String name) {
-        // Spawn a new villager entity at the specified location
-        Villager villager = (Villager) location.getWorld().spawnEntity(location, EntityType.VILLAGER);
+        // Adjust the location to center on the block
+        Location centeredLocation = location.getBlock().getLocation().add(0.5, 0.0, 0.5);
+        // Spawn a new villager entity at the centered location
+        Villager villager = (Villager) centeredLocation.getWorld().spawnEntity(centeredLocation, EntityType.VILLAGER);
         DealerVillager dealer = new DealerVillager(villager);
         dealer.setName(name);
+        
+        // Ensure the villager stays at the exact location
+        villager.teleport(centeredLocation);
+
         return dealer;
     }
 }

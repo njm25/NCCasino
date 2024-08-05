@@ -27,6 +27,7 @@ public class CreateCommand implements CasinoCommand {
         // Creating and spawning a dealer villager at the player's location
         DealerVillager dealerVillager = DealerVillager.spawn(plugin, location, "Dealer Villager");
 
+        player.sendMessage("Created Dealer Villager with ID: " + dealerVillager.getUniqueId());
 
         return true;
     }
