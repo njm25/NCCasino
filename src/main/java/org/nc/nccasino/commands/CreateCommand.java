@@ -1,11 +1,10 @@
 package org.nc.nccasino.commands;
 
-import net.kyori.adventure.text.Component;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-public class HelpCommand implements CasinoCommand {
+public class CreateCommand implements CasinoCommand {
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
@@ -14,11 +13,9 @@ public class HelpCommand implements CasinoCommand {
             return true;
         }
 
-        Player player = (Player) sender;
+        sender.sendMessage("Creating Dealer");
 
-        player.sendMessage(Component.text("NCCASINO HELP"));
-        player.sendMessage(Component.text("/ncc create - Spawns Dealer where user is looking"));
-        player.sendMessage(Component.text("/ncc set <game> - Sets Dealer game"));
+        // Logic to create a dealer can go here
 
         return true;
     }
