@@ -28,6 +28,7 @@ public class DealerVillager {
         villager.setCustomNameVisible(true); // Make the custom name visible
         villager.setProfession(Villager.Profession.NONE); // Set profession if needed
         villager.setVillagerLevel(5); // Max level for visual differentiation
+        villager.setSilent(true); // Max level for visual differentiation
 
         // Disable the villager's default pathfinding to prevent movement
        
