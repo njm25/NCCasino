@@ -58,4 +58,3 @@ Once the plugin is loaded on the server, players can use the following commands:
 
 - **/ncc help**: Displays help information for the plugin.
 - **/ncc create**: Spawns a dealer where the player is looking.
-- **/ncc set \<game\>**: Sets dealer game.
