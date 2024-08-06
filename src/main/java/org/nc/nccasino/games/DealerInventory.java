@@ -2,6 +2,7 @@ package org.nc.nccasino.games;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -53,6 +54,11 @@ public class DealerInventory implements InventoryHolder {
     // Method to handle item click, can be overridden by subclasses
     public void handleClick(int slot, Player player) {
         // Default implementation does nothing
+    }
+
+    public void handleClick(int slot, Player player, InventoryClickEvent event) {
+        // Default implementation calls the original method
+        //handleClick(slot, player);
     }
 
     // Add item with a custom name to the inventory
