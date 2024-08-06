@@ -4,17 +4,19 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.entity.Villager;
-
-import java.util.UUID;
-
 import org.bukkit.entity.Entity;
 import org.nc.nccasino.entities.DealerVillager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.nc.nccasino.Nccasino;
+
+import java.util.UUID;
 
 public class DealerInteractListener implements Listener {
 
-    public DealerInteractListener(JavaPlugin plugin) {
-        // Initialization if needed
+    private final Nccasino plugin;
+
+    public DealerInteractListener(Nccasino plugin) {
+        this.plugin = plugin;
     }
 
     @EventHandler
@@ -28,18 +30,17 @@ public class DealerInteractListener implements Listener {
 
             // Check if this villager is a DealerVillager
             if (DealerVillager.isDealerVillager(villager)) {
-                // Perform actions when interacting with the DealerVillager
-                event.getPlayer().sendMessage("You interacted with a Dealer Villager!");
 
                 // Example: Get the unique ID and name
                 UUID uniqueId = DealerVillager.getUniqueId(villager);
                 String dealerName = DealerVillager.getName(villager);
 
-                // Send details to the player
-                event.getPlayer().sendMessage("Dealer ID: " + uniqueId);
-                event.getPlayer().sendMessage("Dealer Name: " + dealerName);
 
-                // Add your custom actions here, such as opening a GUI or starting a trade
+                // Open the dealer's persistent custom inventory
+                DealerVillager.openDealerInventory(villager);
+
+                // Cancel the event to prevent default interactions
+                event.setCancelled(true);
             }
         }
     }

@@ -5,10 +5,10 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Villager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.nc.nccasino.games.DealerInventory;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.NamespacedKey;
-
 import java.util.UUID;
 
 public class DealerVillager {
@@ -88,5 +88,16 @@ public class DealerVillager {
         villager.setCustomName(name);
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         dataContainer.set(NAME_KEY, PersistentDataType.STRING, name);
+    }
+
+    // Static method to open the dealer's custom inventory
+    public static void openDealerInventory(Villager villager) {
+        UUID dealerId = getUniqueId(villager);
+        if (dealerId != null) {
+            DealerInventory dealerInventory = DealerInventory.getOrCreateInventory(dealerId);
+            villager.getWorld().getPlayers().stream()
+                .filter(player -> player.getLocation().distance(villager.getLocation()) < 5) // Check if a player is close
+                .forEach(player -> player.openInventory(dealerInventory.getInventory()));
+        }
     }
 }

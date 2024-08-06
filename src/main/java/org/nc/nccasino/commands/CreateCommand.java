@@ -32,9 +32,7 @@ public class CreateCommand implements CasinoCommand {
 
         // Get the unique ID of the DealerVillager
         UUID uniqueId = DealerVillager.getUniqueId(villager);
-        if (uniqueId != null) {
-            player.sendMessage("Created Dealer Villager with ID: " + uniqueId);
-        } else {
+        if (uniqueId == null) {
             player.sendMessage("Failed to create Dealer Villager.");
         }
 
