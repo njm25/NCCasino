@@ -55,6 +55,9 @@ public class DealerVillager {
         dataContainer.set(NAME_KEY, PersistentDataType.STRING, name);
         dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, "Game Menu"); // Default to Game Menu
 
+        // Initialize the correct inventory type based on the stored game type
+        initializeInventory(villager, uniqueId, name);
+
         // Store the fixed location in the villager's metadata
         new BukkitRunnable() {
             @Override
@@ -69,6 +72,36 @@ public class DealerVillager {
                 }
             }
         }.runTaskTimer(JavaPlugin.getProvidingPlugin(DealerVillager.class), 0L, 20L); // Run every second (20 ticks)
+    }
+
+    // Public method to initialize inventory based on the game type stored in the persistent data
+    public static void initializeInventory(Villager villager, UUID uniqueId, String name) {
+        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+        String gameType = dataContainer.get(GAME_TYPE_KEY, PersistentDataType.STRING);
+
+        if (gameType == null) {
+            gameType = "Game Menu"; // Default if not set
+            dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameType);
+        }
+
+        DealerInventory inventory;
+        switch (gameType) {
+            case "Blackjack":
+                inventory = new BlackjackInventory(uniqueId);
+                name = "Blackjack Dealer";
+                break;
+            case "Roulette":
+                inventory = new RouletteInventory(uniqueId);
+                name = "Roulette Dealer";
+                break;
+            default:
+                inventory = new GameMenuInventory(uniqueId);
+                name = "Game Menu";
+                break;
+        }
+
+        DealerInventory.updateInventory(uniqueId, inventory);
+        setName(villager, name);  // Update the name based on the game type
     }
 
     // Static method to check if a villager is a DealerVillager
