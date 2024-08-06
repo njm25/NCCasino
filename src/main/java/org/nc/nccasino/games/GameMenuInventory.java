@@ -4,6 +4,8 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.entity.Villager;
+import org.nc.nccasino.entities.DealerVillager;
 
 import java.util.UUID;
 
@@ -16,8 +18,8 @@ public class GameMenuInventory extends DealerInventory {
 
     // Initialize default game menu with clickable items
     private void initializeMenu() {
-        addItem(createCustomItem(Material.DIAMOND_BLOCK, "Game 1"), 0);
-        addItem(createCustomItem(Material.EMERALD_BLOCK, "Game 2"), 1);
+        addItem(createCustomItem(Material.DIAMOND_BLOCK, "Blackjack"), 0);
+        addItem(createCustomItem(Material.EMERALD_BLOCK, "Roulette"), 1);
     }
 
     // Create an item stack with a custom display name
@@ -33,16 +35,36 @@ public class GameMenuInventory extends DealerInventory {
 
     @Override
     public void handleClick(int slot, Player player) {
+        // Ensure that we are affecting the correct villager by using the UUID from this inventory
+        Villager villager = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
+                .filter(entity -> entity instanceof Villager)
+                .map(entity -> (Villager) entity)
+                .filter(v -> DealerVillager.isDealerVillager(v) && DealerVillager.getUniqueId(v).equals(this.dealerId))
+                .findFirst().orElse(null);
+
+        if (villager == null) {
+            player.sendMessage("No dealer nearby!");
+            return;
+        }
+
         switch (slot) {
             case 0:
-                player.sendMessage("Game 1 selected");
+                player.sendMessage("Blackjack selected");
+                DealerVillager.switchGame(villager, "Blackjack");
                 break;
             case 1:
-                player.sendMessage("Game 2 selected");
+                player.sendMessage("Roulette selected");
+                DealerVillager.switchGame(villager, "Roulette");
                 break;
             default:
                 // Handle other slots if needed
                 break;
+        }
+
+        // Refresh the inventory to reflect the changes
+        DealerInventory dealerInventory = DealerInventory.getInventory(DealerVillager.getUniqueId(villager));
+        if (dealerInventory != null) {
+            dealerInventory.refresh(player);
         }
     }
 }
