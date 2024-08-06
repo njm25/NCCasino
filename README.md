@@ -2,59 +2,64 @@
 
 ## Requirements
 
-- [Java Development Kit (JDK) 17 or higher](https://www.oracle.com/java/technologies/downloads/)
-- Gradle build tool
+- **Java Development Kit (JDK) 17 or higher**: [Download here](https://www.oracle.com/java/technologies/downloads/)
+- **Gradle build tool**: Included via the Gradle Wrapper (`gradlew`)
 
-## Compiling the Plugin
+## Compiling and Deploying the Plugin on Windows
 
-Follow the instructions below to compile the plugin on Windows and Linux.
+This process uses a batch script to automate compiling and deploying your plugin to a Minecraft server.
 
-### Windows
+### Step 1: Create a Configuration File
 
-1. **Open a Command Prompt**: Navigate to the root directory of the project where the `build.gradle` file is located.
+1. **Create `config.txt`**
 
-2. **Run Gradle Wrapper**: Execute the following command to clean and build the project:
+   - Place a file named `config.txt` in the root directory of your project, alongside the `refreshplugin.bat` script.
 
-   ```bash
-   .\gradlew.bat clean build
-   ```
+   - Add the following lines to `config.txt`, replacing the placeholders with your actual directory paths and filenames:
 
-3. **Locate the JAR File**: After the build process completes, the compiled JAR file will be located in the `build/libs` directory.
+     ```plaintext
+     PROJECT_DIR=C:\Path\To\Your\NCCasino\Project
+     BUILD_DIR=C:\Path\To\Your\NCCasino\Project\build\libs
+     SERVER_DIR=C:\Path\To\Your\Minecraft\Server
+     PLUGIN_NAME=YourPluginName.jar
+     SERVER_JAR=YourServerJarFile.jar
+     ```
 
-### Linux
+   - **Configuration Keys**:
+     - `PROJECT_DIR`: Path to your NCCasino project's root directory.
+     - `BUILD_DIR`: Path where the compiled JAR will be found (e.g., `build/libs`).
+     - `SERVER_DIR`: Path to your Minecraft server directory.
+     - `PLUGIN_NAME`: Name of your plugin's JAR file (e.g., `nccasino-1.0-SNAPSHOT.jar`).
+     - `SERVER_JAR`: Filename of your Minecraft server JAR (e.g., `paper-1.21-124.jar`).
 
-1. **Open a Terminal**: Navigate to the root directory of the project where the `build.gradle` file is located.
+### Step 2: Run the Batch Script
 
-2. **Run Gradle Wrapper**: Execute the following command to clean and build the project:
+2. **Execute `refreshplugin.bat`**
 
-   ```bash
-   ./gradlew clean build
-   ```
+   - The `refreshplugin.bat` script is located in the root directory of your project.
 
-3. **Locate the JAR File**: After the build process completes, the compiled JAR file will be located in the `build/libs` directory.
+   - **To run the script**:
+     - **Double-click** `refreshplugin.bat` in File Explorer.
+     - **Or run it from the command prompt** by navigating to the project directory and entering:
 
-## Deploying the Plugin
+       ```bash
+       refreshplugin.bat
+       ```
 
-1. **Copy the JAR File**: Locate the compiled JAR file in the `build/libs` directory and copy it.
+   - The script will:
+     - Build the project using Gradle.
+     - Replace the old plugin JAR with the newly compiled version in your server's `plugins` directory.
+     - Start the Minecraft server with the updated plugin.
 
-2. **Paste the JAR File into the Plugins Folder**: Navigate to your Minecraft server's `plugins` folder and paste the JAR file there.
+### Notes
 
-3. **Reload the Server**: Restart or reload your Minecraft server to enable the plugin. You can use the following command in the server console to reload the server:
-
-   ```bash
-   reload
-   ```
-
-   **Note**: It's generally recommended to restart the server instead of reloading to ensure stability:
-
-   ```bash
-   stop
-   # Start the server again using your server start script
-   ```
+- **Ensure `config.txt` and `refreshplugin.bat` are in the same directory**.
+- **Verify the paths in `config.txt`** to ensure they are correct for your environment.
+- **Consider backing up your server data** before running the script to prevent data loss during updates.
 
 ## Usage
 
-Once the plugin is loaded on the server, players can use the following commands:
+Once the plugin is deployed, you can use the following commands in-game:
 
-- **/ncc help**: Displays help information for the plugin.
-- **/ncc create**: Spawns a dealer where the player is standing.
+- **`/ncc help`**: Displays help information for the plugin.
+- **`/ncc create`**: Spawns a dealer where the player is standing.
