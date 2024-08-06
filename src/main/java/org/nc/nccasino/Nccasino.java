@@ -16,6 +16,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.StringUtil;
 import org.nc.nccasino.commands.CommandExecutor;
+import org.nc.nccasino.listeners.DealerInteractListener;
 import org.nc.nccasino.listeners.VillagerPositionLockListener;
 
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         // Register event listeners
         LifecycleEventManager<Plugin> manager = this.getLifecycleManager();
         getServer().getPluginManager().registerEvents(new VillagerPositionLockListener(), this);
+        getServer().getPluginManager().registerEvents(new DealerInteractListener(this), this);
         // Initialize the HelpCommand instance
         CommandExecutor commandExecutor = new CommandExecutor(this);
 

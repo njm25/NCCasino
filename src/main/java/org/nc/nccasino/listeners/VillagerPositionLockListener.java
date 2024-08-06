@@ -2,7 +2,6 @@ package org.nc.nccasino.listeners;
 
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
 
 import io.papermc.paper.event.entity.EntityMoveEvent;
 
@@ -22,13 +21,5 @@ public class VillagerPositionLockListener implements Listener {
         }
     }
 
-    @EventHandler
-    public void onVillagerInteract(PlayerInteractEntityEvent event) {
-        if (event.getRightClicked() instanceof Villager villager) {
-            if (villager.getCustomName() != null && villager.getCustomName().equals("Dealer Villager")) {
-                // Cancel interaction if needed to prevent unwanted effects
-                event.setCancelled(true);
-            }
-        }
-    }
+
 }
