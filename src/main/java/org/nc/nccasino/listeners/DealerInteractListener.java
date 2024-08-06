@@ -3,10 +3,12 @@ package org.nc.nccasino.listeners;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 import org.nc.nccasino.entities.DealerVillager;
-import org.bukkit.plugin.java.JavaPlugin;
+import org.nc.nccasino.games.DealerInventory;
 import org.nc.nccasino.Nccasino;
 
 import java.util.UUID;
@@ -30,18 +32,31 @@ public class DealerInteractListener implements Listener {
 
             // Check if this villager is a DealerVillager
             if (DealerVillager.isDealerVillager(villager)) {
+                Player player = event.getPlayer();
 
-                // Example: Get the unique ID and name
-                UUID uniqueId = DealerVillager.getUniqueId(villager);
-                String dealerName = DealerVillager.getName(villager);
+                // Perform actions when interacting with the DealerVillager
+                player.sendMessage("You interacted with a Dealer Villager!");
 
-
-                // Open the dealer's persistent custom inventory
-                DealerVillager.openDealerInventory(villager);
+                // Open the dealer's persistent custom inventory (default to game menu)
+                UUID dealerId = DealerVillager.getUniqueId(villager);
+                DealerInventory dealerInventory = DealerInventory.getOrCreateInventory(dealerId);
+                player.openInventory(dealerInventory.getInventory());
 
                 // Cancel the event to prevent default interactions
                 event.setCancelled(true);
             }
+        }
+    }
+
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        // Check if the inventory belongs to a DealerInventory
+        if (event.getInventory().getHolder() instanceof DealerInventory) {
+            event.setCancelled(true); // Cancel event to prevent taking items
+
+            DealerInventory dealerInventory = (DealerInventory) event.getInventory().getHolder();
+            Player player = (Player) event.getWhoClicked();
+            dealerInventory.handleClick(event.getSlot(), player);
         }
     }
 }
