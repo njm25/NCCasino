@@ -6,11 +6,8 @@ import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.LifecycleEventManager;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.kyori.adventure.text.Component;
-
-import java.util.List;
-import java.util.UUID;
-
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
@@ -25,16 +22,28 @@ import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.listeners.DealerInteractListener;
 import org.nc.nccasino.listeners.VillagerPositionLockListener;
 
+import java.util.List;
+import java.util.UUID;
+
 public final class Nccasino extends JavaPlugin implements Listener {
+
+    private Material currency; // Material used for betting currency
+    private String currencyName; // Display name for the currency
 
     @Override
     public void onEnable() {
+        // Save default config if not present
+        saveDefaultConfig();
+
+        // Load the currency from config
+        loadCurrencyFromConfig();
+
         // Register event listeners
         getServer().getPluginManager().registerEvents(new VillagerPositionLockListener(), this);
         getServer().getPluginManager().registerEvents(new DealerInteractListener(this), this);
         getServer().getPluginManager().registerEvents(this, this);
 
-        // Initialize the HelpCommand instance
+        // Initialize the CommandExecutor instance
         CommandExecutor commandExecutor = new CommandExecutor(this);
 
         // Register the "ncc" command using Paper's command system
@@ -76,6 +85,27 @@ public final class Nccasino extends JavaPlugin implements Listener {
         getLogger().info("Nccasino plugin enabled!");
     }
 
+    // Load the currency material and name from the config file
+    public void loadCurrencyFromConfig() {
+        String currencyMaterialName = getConfig().getString("currency.material", "EMERALD").toUpperCase();
+        currency = Material.matchMaterial(currencyMaterialName);
+
+        if (currency == null) {
+            getLogger().warning("Invalid currency material specified in config. Defaulting to EMERALD.");
+            currency = Material.EMERALD;
+        }
+
+        currencyName = getConfig().getString("currency.name", "Emerald");
+    }
+
+    public Material getCurrency() {
+        return currency;
+    }
+
+    public String getCurrencyName() {
+        return currencyName;
+    }
+
     // Reinitialize dealer villagers on server start
     private void reinitializeDealerVillagers() {
         Bukkit.getWorlds().forEach(world -> {
@@ -85,7 +115,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         // Reinitialize inventory based on stored game type
                         UUID dealerId = DealerVillager.getUniqueId(villager);
                         String name = DealerVillager.getName(villager);
-                        DealerVillager.initializeInventory(villager, dealerId, name);
+                        DealerVillager.initializeInventory(villager, dealerId, name, this); // Pass the plugin instance
                     }
                 }
             }

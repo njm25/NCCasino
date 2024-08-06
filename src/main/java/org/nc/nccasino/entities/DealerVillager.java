@@ -9,6 +9,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.NamespacedKey;
+import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.games.DealerInventory;
 import org.nc.nccasino.games.GameMenuInventory;
 import org.nc.nccasino.games.BlackjackInventory;
@@ -26,67 +27,57 @@ public class DealerVillager {
     private static final NamespacedKey NAME_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_name");
     private static final NamespacedKey GAME_TYPE_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_game_type");
 
-    // Map to store player betting tables associated with each dealer
     private static final Map<UUID, Map<UUID, BettingTable>> dealerBettingTables = new HashMap<>();
 
-    // Method to spawn a DealerVillager at a specific location
     public static Villager spawnDealer(JavaPlugin plugin, Location location, String name) {
-        // Adjust the location to center on the block
         Location centeredLocation = location.getBlock().getLocation().add(0.5, 0.0, 0.5);
-        // Spawn a new villager entity at the centered location
         Villager villager = (Villager) centeredLocation.getWorld().spawnEntity(centeredLocation, EntityType.VILLAGER);
 
-        // Customize the villager's properties
         initializeVillager(villager, centeredLocation, name);
 
         return villager;
     }
 
-    // Method to initialize the dealer villager
     private static void initializeVillager(Villager villager, Location location, String name) {
-        villager.setAI(true); // Allow AI for natural rotation
-        villager.setInvulnerable(true); // Make the villager invulnerable to all damage
-        villager.setCustomName(name); // Set the custom name
-        villager.setCustomNameVisible(true); // Make the custom name visible
-        villager.setProfession(Villager.Profession.NONE); // Set profession if needed
-        villager.setSilent(true); // Silence the villager
+        villager.setAI(true);
+        villager.setInvulnerable(true);
+        villager.setCustomName(name);
+        villager.setCustomNameVisible(true);
+        villager.setProfession(Villager.Profession.NONE);
+        villager.setSilent(true);
 
-        // Generate a unique ID for this dealer villager
         UUID uniqueId = UUID.randomUUID();
 
-        // Tag the villager as a DealerVillager using PersistentDataContainer
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         dataContainer.set(DEALER_KEY, PersistentDataType.BYTE, (byte) 1);
         dataContainer.set(UNIQUE_ID_KEY, PersistentDataType.STRING, uniqueId.toString());
         dataContainer.set(NAME_KEY, PersistentDataType.STRING, name);
-        dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, "Game Menu"); // Default to Game Menu
+        dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, "Game Menu");
 
-        // Initialize the correct inventory type based on the stored game type
-        initializeInventory(villager, uniqueId, name);
+        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
+        initializeInventory(villager, uniqueId, name, plugin);
 
-        // Store the fixed location in the villager's metadata
         new BukkitRunnable() {
             @Override
             public void run() {
                 if (!villager.isValid()) {
-                    this.cancel(); // Stop the task if the villager is no longer valid
+                    this.cancel();
                     return;
                 }
                 Location currentLocation = villager.getLocation();
-                if (currentLocation.distanceSquared(location) > 0.25) { // Check for significant deviation
+                if (currentLocation.distanceSquared(location) > 0.25) {
                     villager.teleport(location.clone().setDirection(currentLocation.getDirection()));
                 }
             }
-        }.runTaskTimer(JavaPlugin.getProvidingPlugin(DealerVillager.class), 0L, 20L); // Run every second (20 ticks)
+        }.runTaskTimer(JavaPlugin.getProvidingPlugin(DealerVillager.class), 0L, 20L);
     }
 
-    // Public method to initialize inventory based on the game type stored in the persistent data
-    public static void initializeInventory(Villager villager, UUID uniqueId, String name) {
+    public static void initializeInventory(Villager villager, UUID uniqueId, String name, Nccasino plugin) {
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String gameType = dataContainer.get(GAME_TYPE_KEY, PersistentDataType.STRING);
 
         if (gameType == null) {
-            gameType = "Game Menu"; // Default if not set
+            gameType = "Game Menu";
             dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameType);
         }
 
@@ -97,7 +88,7 @@ public class DealerVillager {
                 name = "Blackjack Dealer";
                 break;
             case "Roulette":
-                inventory = new RouletteInventory(uniqueId);
+                inventory = new RouletteInventory(uniqueId, plugin);
                 name = "Roulette Dealer";
                 break;
             default:
@@ -107,36 +98,31 @@ public class DealerVillager {
         }
 
         DealerInventory.updateInventory(uniqueId, inventory);
-        setName(villager, name);  // Update the name based on the game type
+        setName(villager, name);
     }
 
-    // Static method to check if a villager is a DealerVillager
     public static boolean isDealerVillager(Villager villager) {
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         return dataContainer.has(DEALER_KEY, PersistentDataType.BYTE);
     }
 
-    // Static method to get the unique ID of a DealerVillager
     public static UUID getUniqueId(Villager villager) {
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String uuidString = dataContainer.get(UNIQUE_ID_KEY, PersistentDataType.STRING);
         return uuidString != null ? UUID.fromString(uuidString) : null;
     }
 
-    // Static method to get the name of a DealerVillager
     public static String getName(Villager villager) {
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         return dataContainer.get(NAME_KEY, PersistentDataType.STRING);
     }
 
-    // Static method to set the name of a DealerVillager
     public static void setName(Villager villager, String name) {
         villager.setCustomName(name);
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         dataContainer.set(NAME_KEY, PersistentDataType.STRING, name);
     }
 
-    // Static method to open the dealer's custom inventory
     public static void openDealerInventory(Villager villager, Player player) {
         UUID dealerId = getUniqueId(villager);
         if (dealerId != null) {
@@ -145,22 +131,21 @@ public class DealerVillager {
         }
     }
 
-    // Static method to switch the dealer's game
     public static void switchGame(Villager villager, String gameName) {
         UUID dealerId = getUniqueId(villager);
         if (dealerId == null) return;
 
+        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
         DealerInventory newInventory;
         String newName;
 
-        // Properly initialize the new inventory based on game selection
         switch (gameName) {
             case "Blackjack":
                 newInventory = new BlackjackInventory(dealerId);
                 newName = "Blackjack Dealer";
                 break;
             case "Roulette":
-                newInventory = new RouletteInventory(dealerId);
+                newInventory = new RouletteInventory(dealerId, plugin);
                 newName = "Roulette Dealer";
                 break;
             default:
@@ -168,7 +153,7 @@ public class DealerVillager {
                 newName = "Game Menu";
                 break;
         }
-        
+
         DealerInventory.updateInventory(dealerId, newInventory);
         setName(villager, newName);
 
@@ -176,25 +161,22 @@ public class DealerVillager {
         dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameName);
     }
 
-    // Adjusted method to create or get a betting table
-    public static BettingTable getOrCreateBettingTable(Villager dealer, Player player) {
+    public static BettingTable createNewBettingTable(Villager dealer, Player player, Nccasino plugin) {
         UUID dealerId = dealer.getUniqueId();
         UUID playerId = player.getUniqueId();
-        
-        // Initialize map for dealer if not present
-        dealerBettingTables.putIfAbsent(dealerId, new HashMap<>());
 
-        // Get the player's betting table, creating a new one if necessary
-        Map<UUID, BettingTable> playerBettingTables = dealerBettingTables.get(dealerId);
-        
-        // Check if the player already has a betting table with this dealer
-        if (!playerBettingTables.containsKey(playerId)) {
-            // Create a new betting table if it does not exist
-            BettingTable newBettingTable = new BettingTable(player, dealer);
-            playerBettingTables.put(playerId, newBettingTable);
+        // Retrieve the existing bets for the player from the RouletteInventory
+        DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
+        Map<Integer, Double> existingBets = new HashMap<>();
+        if (dealerInventory instanceof RouletteInventory) {
+            existingBets = ((RouletteInventory) dealerInventory).getPlayerBets(playerId);
         }
-        
-        return playerBettingTables.get(playerId);
+
+        // Create a new betting table with the existing bets
+        BettingTable newBettingTable = new BettingTable(player, dealer, plugin, existingBets);
+        dealerBettingTables.computeIfAbsent(dealerId, k -> new HashMap<>()).put(playerId, newBettingTable);
+
+        return newBettingTable;
     }
 
     public static void removePlayerBettingTable(Villager dealer, Player player) {
@@ -205,5 +187,4 @@ public class DealerVillager {
             playerTables.remove(playerId);
         }
     }
-
 }

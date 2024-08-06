@@ -14,11 +14,11 @@ public class CommandExecutor {
     public CommandExecutor(JavaPlugin plugin) {
         commands.put("help", new HelpCommand());
         commands.put("create", new CreateCommand(plugin));
+        commands.put("reload", new ReloadCommand(plugin));  // Register the reload command
     }
 
     public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, @NotNull String[] args) {
-
-        if (args.length == 0) { // Sender only typed '/hello' and nothing else
+        if (args.length == 0) { // Sender only typed '/ncc' and nothing else
             sender.sendMessage("Use ncc help for help!");
             return true;
         }

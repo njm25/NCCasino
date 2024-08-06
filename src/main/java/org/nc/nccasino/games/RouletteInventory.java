@@ -7,18 +7,41 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.entity.Villager;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerVillager;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
-public class RouletteInventory extends DealerInventory {
-    private int pageNum; // To track which page is currently active
+public class RouletteInventory extends DealerInventory implements Listener {
+    private int pageNum; // Track the current page number
+    private final Nccasino plugin; // Reference to the main plugin
+    private final Map<UUID, Map<Integer, Double>> playerBets; // Track all players' bets
 
-    public RouletteInventory(UUID dealerId) {
+    public RouletteInventory(UUID dealerId, Nccasino plugin) {
         super(dealerId, 54, "Roulette Start Menu"); // Initialize with 54 slots
+        this.plugin = plugin; // Store the plugin reference
         this.pageNum = 1;
+        this.playerBets = new HashMap<>(); // Initialize player bets storage
+
         initializeStartMenu();
+
+        // Register the event listener for this inventory
+        Bukkit.getPluginManager().registerEvents(this, plugin);
+    }
+
+    public Map<Integer, Double> getPlayerBets(UUID playerId) {
+        return playerBets.getOrDefault(playerId, new HashMap<>());
+    }
+
+    // Clear bets for a specific player
+    public void clearPlayerBets(UUID playerId) {
+        playerBets.remove(playerId);
     }
 
     // Initialize items for the start menu
@@ -49,15 +72,21 @@ public class RouletteInventory extends DealerInventory {
     @Override
     public void refresh(Player player) {
         // Use a delayed task to avoid immediate recursion
-        Bukkit.getScheduler().runTaskLater(Bukkit.getPluginManager().getPlugin("nccasino"), () -> {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
             player.closeInventory();
             player.openInventory(this.inventory);
         }, 1L);
     }
 
     // Handle click events in the roulette inventory
-    public void handleClick(int slot, Player player, InventoryClickEvent event) {
+    @EventHandler
+    public void handleClick(InventoryClickEvent event) {
+        if (event.getInventory().getHolder() != this) return; // Ensure this is the correct inventory
+
+        Player player = (Player) event.getWhoClicked();
         event.setCancelled(true); // Cancel the event to prevent item movement
+
+        int slot = event.getRawSlot();
 
         if (pageNum == 1) { // Start menu logic
             if (slot == 22) { // "Start Roulette" button clicked
@@ -75,7 +104,7 @@ public class RouletteInventory extends DealerInventory {
     private void handleGameMenuClick(int slot, Player player) {
         if (slot == 20) { // "Open Betting Table" button clicked
             // Use a delayed task to open the betting table to avoid recursion
-            Bukkit.getScheduler().runTaskLater(Bukkit.getPluginManager().getPlugin("nccasino"), () -> {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 // Find the dealer associated with the player
                 Villager dealer = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
                         .filter(entity -> entity instanceof Villager)
@@ -84,8 +113,13 @@ public class RouletteInventory extends DealerInventory {
                         .findFirst().orElse(null);
 
                 if (dealer != null) {
-                    // Ensure the betting table is associated with the correct dealer
-                    BettingTable bettingTable = DealerVillager.getOrCreateBettingTable(dealer, player);
+                    // Retrieve existing bets for the player or initialize if none
+                    Map<Integer, Double> bets = playerBets.getOrDefault(player.getUniqueId(), new HashMap<>());
+
+                    // Create a new betting table with the existing bets
+                    BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets);
+
+                    // Open the betting table for the player
                     player.openInventory(bettingTable.getInventory());
                 } else {
                     player.sendMessage("Error: Dealer not found. Unable to open betting table.");
@@ -94,6 +128,20 @@ public class RouletteInventory extends DealerInventory {
         } else if (slot == 24) { // "Leave Game" button clicked
             player.closeInventory();
             player.sendMessage("You have left the game.");
+            // Handle any necessary cleanup
+            clearPlayerBets(player.getUniqueId()); // Remove the player's bets
         }
+    }
+
+    // Clear bets when player closes the inventory directly
+    @EventHandler
+    public void handleInventoryClose(InventoryCloseEvent event) {
+        if (event.getInventory().getHolder() != this) return; // Ensure this is the correct inventory
+        Player player = (Player) event.getPlayer();
+        clearPlayerBets(player.getUniqueId());
+    }
+
+    public void updatePlayerBets(UUID playerId, Map<Integer, Double> bets) {
+        playerBets.put(playerId, bets);
     }
 }
