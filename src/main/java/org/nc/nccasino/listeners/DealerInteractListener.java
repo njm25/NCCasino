@@ -34,8 +34,6 @@ public class DealerInteractListener implements Listener {
             if (DealerVillager.isDealerVillager(villager)) {
                 Player player = event.getPlayer();
 
-                // Perform actions when interacting with the DealerVillager
-                player.sendMessage("You interacted with a Dealer Villager!");
 
                 // Open the dealer's persistent custom inventory (default to game menu)
                 UUID dealerId = DealerVillager.getUniqueId(villager);
