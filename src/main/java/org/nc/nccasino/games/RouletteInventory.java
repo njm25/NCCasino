@@ -1,43 +1,42 @@
 package org.nc.nccasino.games;
 
-
-
-
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
-import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.entity.Villager;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.nc.nccasino.entities.DealerVillager;
 
 import java.util.UUID;
 
 public class RouletteInventory extends DealerInventory {
-private double selectedWager;
-private int pageNum;
-//private final DealerInventory inventory;
-//private final ItemStack[] wagerItems;
-
+    private int pageNum; // To track which page is currently active
 
     public RouletteInventory(UUID dealerId) {
-        super(dealerId, 54, "Roulette Table"); // Using 27 slots as an example
-        initializeRoulette();
+        super(dealerId, 54, "Roulette Start Menu"); // Initialize with 54 slots
+        this.pageNum = 1;
+        initializeStartMenu();
     }
 
-
-
-
-
-
-    // Initialize Roulette-specific inventory items
-    private void initializeRoulette() {
-        addItem(createCustomItem(Material.RED_WOOL, "Start Roulette"), 43);
-        pageNum=1;
-        // Add other Roulette-related items here
+    // Initialize items for the start menu
+    private void initializeStartMenu() {
+        inventory.clear(); // Clear the inventory before setting up the page
+        addItem(createCustomItem(Material.RED_WOOL, "Start Roulette", 1), 22); // Central button
     }
 
-    // Create an item stack with a custom display name
-    private ItemStack createCustomItem(Material material, String name) {
-        ItemStack itemStack = new ItemStack(material);
+    // Set up items for the game menu
+    private void setupGameMenu() {
+        inventory.clear(); // Clear the inventory before setting up the page
+        addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 20); // Betting Table button
+        addItem(createCustomItem(Material.REDSTONE_BLOCK, "LEAVE GAME (Placed Bets may be lost)", 1), 24); // Leave Game button
+    }
+
+    // Create an item stack with a custom display name and stack size
+    private ItemStack createCustomItem(Material material, String name, int amount) {
+        ItemStack itemStack = new ItemStack(material, amount);
         ItemMeta meta = itemStack.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(name);
@@ -45,331 +44,56 @@ private int pageNum;
         }
         return itemStack;
     }
-  /* 
+
+    // Refresh the inventory for the player
     @Override
-    public void handleClick(int slot, Player player) {
-        switch (slot) {
-            case 43:
+    public void refresh(Player player) {
+        // Use a delayed task to avoid immediate recursion
+        Bukkit.getScheduler().runTaskLater(Bukkit.getPluginManager().getPlugin("nccasino"), () -> {
+            player.closeInventory();
+            player.openInventory(this.inventory);
+        }, 1L);
+    }
+
+    // Handle click events in the roulette inventory
+    public void handleClick(int slot, Player player, InventoryClickEvent event) {
+        event.setCancelled(true); // Cancel the event to prevent item movement
+
+        if (pageNum == 1) { // Start menu logic
+            if (slot == 22) { // "Start Roulette" button clicked
                 player.sendMessage("Starting Roulette...");
-                
-                addItem(createCustomItem(Material.RED_WOOL, "1"), 0);
-                addItem(createCustomItem(Material.BLACK_WOOL, "2"), 1);
-                addItem(createCustomItem(Material.RED_WOOL, "3"), 2);
-                addItem(createCustomItem(Material.BLACK_WOOL, "4"), 3);
-                addItem(createCustomItem(Material.RED_WOOL, "5"), 4);
-                addItem(createCustomItem(Material.BLACK_WOOL, "6"), 5);
-                addItem(createCustomItem(Material.RED_WOOL, "7"), 6);
-                addItem(createCustomItem(Material.BLACK_WOOL, "8"), 7);
-                addItem(createCustomItem(Material.RED_WOOL, "9"), 8);
-
-                addItem(createCustomItem(Material.BLACK_WOOL, "10"), 9);
-                addItem(createCustomItem(Material.BLACK_WOOL, "11"), 10);
-                addItem(createCustomItem(Material.RED_WOOL, "12"), 11);
-                addItem(createCustomItem(Material.BLACK_WOOL, "13"), 12);
-                addItem(createCustomItem(Material.RED_WOOL, "14"), 13);
-                addItem(createCustomItem(Material.BLACK_WOOL, "15"), 14);
-                addItem(createCustomItem(Material.RED_WOOL, "16"), 15);
-                addItem(createCustomItem(Material.BLACK_WOOL, "17"), 16);
-                addItem(createCustomItem(Material.RED_WOOL, "18"), 17);
-                addItem(createCustomItem(Material.RED_WOOL, "19"), 18);
-                addItem(createCustomItem(Material.BLACK_WOOL, "20"), 19);
-                addItem(createCustomItem(Material.RED_WOOL, "21"), 20);
-                addItem(createCustomItem(Material.BLACK_WOOL, "22"), 21);
-                addItem(createCustomItem(Material.RED_WOOL, "23"), 22);
-                addItem(createCustomItem(Material.BLACK_WOOL, "24"), 23);
-                addItem(createCustomItem(Material.RED_WOOL, "25"), 24);
-                addItem(createCustomItem(Material.BLACK_WOOL, "26"), 25);
-                addItem(createCustomItem(Material.RED_WOOL, "27"), 26);
-                addItem(createCustomItem(Material.BLACK_WOOL, "28"), 27);
-                addItem(createCustomItem(Material.BLACK_WOOL, "29"), 28);
-                addItem(createCustomItem(Material.RED_WOOL, "30"), 29);
-                addItem(createCustomItem(Material.BLACK_WOOL, "31"), 30);
-                addItem(createCustomItem(Material.RED_WOOL, "32"), 31);
-                addItem(createCustomItem(Material.BLACK_WOOL, "33"), 32);
-                addItem(createCustomItem(Material.RED_WOOL, "34"), 33);
-                addItem(createCustomItem(Material.BLACK_WOOL, "35"), 34);
-                addItem(createCustomItem(Material.RED_WOOL, "36"), 35);
-                addItem(createCustomItem(Material.GREEN_WOOL, "0"), 36);
-                
-
-
-
-
-
-                 //Add logic for starting the Roulette game
-                break;
-            default:
-                // Handle other slots if needed
-                break;
-        }
-    }
-*/
-
-
-    public void handleClick(int slot, Player player,InventoryClickEvent event) {
-        ItemStack clickedItem = event.getCurrentItem();
-        switch(pageNum) {
-
-            case 1:
-            if (slot==43){
-                player.sendMessage("Starting Roulette Case1...");
-                inventory.clear();
-                addItem(createCustomItem(Material.RED_WOOL, "1"), 0);
-                addItem(createCustomItem(Material.BLACK_WOOL, "2"), 1);
-                addItem(createCustomItem(Material.RED_WOOL, "3"), 2);
-                addItem(createCustomItem(Material.BLACK_WOOL, "4"), 3);
-                addItem(createCustomItem(Material.RED_WOOL, "5"), 4);
-                addItem(createCustomItem(Material.BLACK_WOOL, "6"), 5);
-                addItem(createCustomItem(Material.RED_WOOL, "7"), 6);
-                addItem(createCustomItem(Material.BLACK_WOOL, "8"), 7);
-                addItem(createCustomItem(Material.RED_WOOL, "9"), 8);
-    
-                addItem(createCustomItem(Material.BLACK_WOOL, "10"), 9);
-                addItem(createCustomItem(Material.BLACK_WOOL, "11"), 10);
-                addItem(createCustomItem(Material.RED_WOOL, "12"), 11);
-                addItem(createCustomItem(Material.BLACK_WOOL, "13"), 12);
-                addItem(createCustomItem(Material.RED_WOOL, "14"), 13);
-                addItem(createCustomItem(Material.BLACK_WOOL, "15"), 14);
-                addItem(createCustomItem(Material.RED_WOOL, "16"), 15);
-                addItem(createCustomItem(Material.BLACK_WOOL, "17"), 16);
-                addItem(createCustomItem(Material.RED_WOOL, "18"), 17);
-                addItem(createCustomItem(Material.RED_WOOL, "19"), 18);
-                addItem(createCustomItem(Material.BLACK_WOOL, "20"), 19);
-                addItem(createCustomItem(Material.RED_WOOL, "21"), 20);
-                addItem(createCustomItem(Material.BLACK_WOOL, "22"), 21);
-                addItem(createCustomItem(Material.RED_WOOL, "23"), 22);
-                addItem(createCustomItem(Material.BLACK_WOOL, "24"), 23);
-                addItem(createCustomItem(Material.RED_WOOL, "25"), 24);
-                addItem(createCustomItem(Material.BLACK_WOOL, "26"), 25);
-                addItem(createCustomItem(Material.RED_WOOL, "27"), 26);
-                addItem(createCustomItem(Material.BLACK_WOOL, "28"), 27);
-                addItem(createCustomItem(Material.BLACK_WOOL, "29"), 28);
-                addItem(createCustomItem(Material.RED_WOOL, "30"), 29);
-                addItem(createCustomItem(Material.BLACK_WOOL, "31"), 30);
-                addItem(createCustomItem(Material.RED_WOOL, "32"), 31);
-                addItem(createCustomItem(Material.BLACK_WOOL, "33"), 32);
-                addItem(createCustomItem(Material.RED_WOOL, "34"), 33);
-                addItem(createCustomItem(Material.BLACK_WOOL, "35"), 34);
-                addItem(createCustomItem(Material.RED_WOOL, "36"), 35);
-                addItem(createCustomItem(Material.GREEN_WOOL, "0"), 36);
-                addItem(createCustomItem(Material.REDSTONE_BLOCK, "LEAVE GAME (Placed Bets may be lost)"), 45);
-                addItem(createCustomItem(Material.DIAMOND, "1 DIAMOND CHIP"), 47);
-                addItem(createCustomItem(Material.DIAMOND, "5 DIAMOND CHIP"), 48);
-                addItem(createCustomItem(Material.DIAMOND, "10 DIAMOND CHIP"), 49);
-                addItem(createCustomItem(Material.DIAMOND, "25 DIAMOND CHIP"), 50);
-                addItem(createCustomItem(Material.DIAMOND, "50 DIAMOND CHIP"), 51);
-                //addItem(createCustomItem(Material.DIAMOND, "Last Page"), 52);
-                addItem(createCustomItem(Material.ARROW, "Next Page"), 53);
-                pageNum=2;
+                setupGameMenu(); // Switch to game menu
+                pageNum = 2; // Set page number to game menu
+                refresh(player); // Refresh the player's inventory
             }
-
-     
-            case 2:
-            if (slot==53){
-                pageNum=3;
-                inventory.clear();
-                addItem(createCustomItem(Material.RED_WOOL, "21"), 0);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "24"), 1);
-                    addItem(createCustomItem(Material.RED_WOOL, "27"), 2);
-                    addItem(createCustomItem(Material.RED_WOOL, "30"), 3);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "33"), 4);
-                    addItem(createCustomItem(Material.RED_WOOL, "36"), 5);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "20"), 9);
-                    addItem(createCustomItem(Material.RED_WOOL, "23"), 10);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "26"), 11);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "29"), 12);
-                    addItem(createCustomItem(Material.RED_WOOL, "32"), 13);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "35"), 14);
-                    addItem(createCustomItem(Material.RED_WOOL, "19"), 9);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "22"), 10);
-                    addItem(createCustomItem(Material.RED_WOOL, "25"), 11);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "28"), 12);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "31"), 13);
-                    addItem(createCustomItem(Material.RED_WOOL, "34"), 14);
-                    addItem(createCustomItem(Material.REDSTONE_BLOCK, "LEAVE GAME (Placed Bets may be lost)"), 45);
-                    addItem(createCustomItem(Material.DIAMOND, "1 DIAMOND CHIP"), 47);
-                    addItem(createCustomItem(Material.DIAMOND, "5 DIAMOND CHIP"), 48);
-                    addItem(createCustomItem(Material.DIAMOND, "10 DIAMOND CHIP"), 49);
-                    addItem(createCustomItem(Material.DIAMOND, "25 DIAMOND CHIP"), 50);
-                    addItem(createCustomItem(Material.DIAMOND, "50 DIAMOND CHIP"), 51);
-                    addItem(createCustomItem(Material.BOW, "Last Page"), 52);
-    
-                    
-    
-                }
-              
-
-                if (slot >= 47 && slot <= 51) {
-                    if (clickedItem != null && clickedItem.getItemMeta() != null) {
-                        // Set the selected wager amount based on the clicked item's name
-                        String itemName = clickedItem.getItemMeta().getDisplayName();
-                        selectedWager = getWagerAmountFromName(itemName);
-                        player.sendMessage( "Selected wager: " + selectedWager + " Diamonds");
-                    }
-                    return;
-                }
-        
-                // Check if a number was clicked for placing a bet
-                if (slot >= 0 && slot < 37) {
-                    if (clickedItem != null && clickedItem.getItemMeta() != null) {
-                        if (hasEnoughWager(player, selectedWager)) {
-                            // Place the bet and remove the wager from the player's inventory
-                            removeWagerFromInventory(player, selectedWager);
-                            String number = clickedItem.getItemMeta().getDisplayName();
-                            // STORE BET IN PROPER PERSISTENT STRUCTURE, maybe can payout even if player exits menu?
-                            player.sendMessage( "Put "+selectedWager+ " on " + number);
-                        } else {
-                            player.sendMessage("Not enough Diamonds to place this bet.");
-                        }
-                    }
-                }
-            case 3:
-                if(slot==52){
-                    inventory.clear();
-                    addItem(createCustomItem(Material.RED_WOOL, "1"), 0);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "2"), 1);
-                    addItem(createCustomItem(Material.RED_WOOL, "3"), 2);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "4"), 3);
-                    addItem(createCustomItem(Material.RED_WOOL, "5"), 4);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "6"), 5);
-                    addItem(createCustomItem(Material.RED_WOOL, "7"), 6);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "8"), 7);
-                    addItem(createCustomItem(Material.RED_WOOL, "9"), 8);
-        
-                    addItem(createCustomItem(Material.BLACK_WOOL, "10"), 9);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "11"), 10);
-                    addItem(createCustomItem(Material.RED_WOOL, "12"), 11);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "13"), 12);
-                    addItem(createCustomItem(Material.RED_WOOL, "14"), 13);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "15"), 14);
-                    addItem(createCustomItem(Material.RED_WOOL, "16"), 15);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "17"), 16);
-                    addItem(createCustomItem(Material.RED_WOOL, "18"), 17);
-                    addItem(createCustomItem(Material.RED_WOOL, "19"), 18);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "20"), 19);
-                    addItem(createCustomItem(Material.RED_WOOL, "21"), 20);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "22"), 21);
-                    addItem(createCustomItem(Material.RED_WOOL, "23"), 22);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "24"), 23);
-                    addItem(createCustomItem(Material.RED_WOOL, "25"), 24);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "26"), 25);
-                    addItem(createCustomItem(Material.RED_WOOL, "27"), 26);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "28"), 27);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "29"), 28);
-                    addItem(createCustomItem(Material.RED_WOOL, "30"), 29);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "31"), 30);
-                    addItem(createCustomItem(Material.RED_WOOL, "32"), 31);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "33"), 32);
-                    addItem(createCustomItem(Material.RED_WOOL, "34"), 33);
-                    addItem(createCustomItem(Material.BLACK_WOOL, "35"), 34);
-                    addItem(createCustomItem(Material.RED_WOOL, "36"), 35);
-                    addItem(createCustomItem(Material.GREEN_WOOL, "0"), 36);
-                    addItem(createCustomItem(Material.REDSTONE_BLOCK, "LEAVE GAME (Placed Bets may be lost)"), 45);
-                    addItem(createCustomItem(Material.DIAMOND, "1 DIAMOND CHIP"), 47);
-                    addItem(createCustomItem(Material.DIAMOND, "5 DIAMOND CHIP"), 48);
-                    addItem(createCustomItem(Material.DIAMOND, "10 DIAMOND CHIP"), 49);
-                    addItem(createCustomItem(Material.DIAMOND, "25 DIAMOND CHIP"), 50);
-                    addItem(createCustomItem(Material.DIAMOND, "50 DIAMOND CHIP"), 51);
-                    //addItem(createCustomItem(Material.DIAMOND, "Last Page"), 52);
-                    addItem(createCustomItem(Material.ARROW, "Next Page"), 53);
-                    pageNum=2;
-
-
-                }
-
-
-            default:}
-        
-       
-      /*   if (slot==44){
-            player.sendMessage("Starting Roulette...");
-                
-            addItem(createCustomItem(Material.RED_WOOL, "1"), 0);
-            addItem(createCustomItem(Material.BLACK_WOOL, "2"), 1);
-            addItem(createCustomItem(Material.RED_WOOL, "3"), 2);
-            addItem(createCustomItem(Material.BLACK_WOOL, "4"), 3);
-            addItem(createCustomItem(Material.RED_WOOL, "5"), 4);
-            addItem(createCustomItem(Material.BLACK_WOOL, "6"), 5);
-            addItem(createCustomItem(Material.RED_WOOL, "7"), 6);
-            addItem(createCustomItem(Material.BLACK_WOOL, "8"), 7);
-            addItem(createCustomItem(Material.RED_WOOL, "9"), 8);
-
-            addItem(createCustomItem(Material.BLACK_WOOL, "10"), 9);
-            addItem(createCustomItem(Material.BLACK_WOOL, "11"), 10);
-            addItem(createCustomItem(Material.RED_WOOL, "12"), 11);
-            addItem(createCustomItem(Material.BLACK_WOOL, "13"), 12);
-            addItem(createCustomItem(Material.RED_WOOL, "14"), 13);
-            addItem(createCustomItem(Material.BLACK_WOOL, "15"), 14);
-            addItem(createCustomItem(Material.RED_WOOL, "16"), 15);
-            addItem(createCustomItem(Material.BLACK_WOOL, "17"), 16);
-            addItem(createCustomItem(Material.RED_WOOL, "18"), 17);
-            addItem(createCustomItem(Material.RED_WOOL, "19"), 18);
-            addItem(createCustomItem(Material.BLACK_WOOL, "20"), 19);
-            addItem(createCustomItem(Material.RED_WOOL, "21"), 20);
-            addItem(createCustomItem(Material.BLACK_WOOL, "22"), 21);
-            addItem(createCustomItem(Material.RED_WOOL, "23"), 22);
-            addItem(createCustomItem(Material.BLACK_WOOL, "24"), 23);
-            addItem(createCustomItem(Material.RED_WOOL, "25"), 24);
-            addItem(createCustomItem(Material.BLACK_WOOL, "26"), 25);
-            addItem(createCustomItem(Material.RED_WOOL, "27"), 26);
-            addItem(createCustomItem(Material.BLACK_WOOL, "28"), 27);
-            addItem(createCustomItem(Material.BLACK_WOOL, "29"), 28);
-            addItem(createCustomItem(Material.RED_WOOL, "30"), 29);
-            addItem(createCustomItem(Material.BLACK_WOOL, "31"), 30);
-            addItem(createCustomItem(Material.RED_WOOL, "32"), 31);
-            addItem(createCustomItem(Material.BLACK_WOOL, "33"), 32);
-            addItem(createCustomItem(Material.RED_WOOL, "34"), 33);
-            addItem(createCustomItem(Material.BLACK_WOOL, "35"), 34);
-            addItem(createCustomItem(Material.RED_WOOL, "36"), 35);
-            addItem(createCustomItem(Material.GREEN_WOOL, "0"), 36);
-            addItem(createCustomItem(Material.REDSTONE_BLOCK, "LEAVE GAME (Placed Bets may be lost)"), 45);
-            addItem(createCustomItem(Material.DIAMOND, "1 DIAMOND CHIP"), 47);
-            addItem(createCustomItem(Material.DIAMOND, "5 DIAMOND CHIP"), 48);
-            addItem(createCustomItem(Material.DIAMOND, "10 DIAMOND CHIP"), 49);
-            addItem(createCustomItem(Material.DIAMOND, "25 DIAMOND CHIP"), 50);
-            addItem(createCustomItem(Material.DIAMOND, "50 DIAMOND CHIP"), 51);
-            //addItem(createCustomItem(Material.DIAMOND, "Last Page"), 52);
-            addItem(createCustomItem(Material.ARROW, "Next Page"), 53);
-    }*/
-
-            
-
-
-
-
-        
-       
-        
-    }
-
-    private double getWagerAmountFromName(String name) {
-        switch (name) {
-            case "1 DIAMOND CHIP":
-                return 1;
-            case "5 DIAMOND CHIP":
-                return 5;
-            case "10 DIAMOND CHIP":
-                return 10;
-            case "25 DIAMOND CHIP":
-                return 25;
-            case "50 DIAMOND CHIP":
-                return 50;
-            default:
-                return 0;
+        } else if (pageNum == 2) { // Game menu logic
+            handleGameMenuClick(slot, player);
         }
     }
 
-    private boolean hasEnoughWager(Player player, double amount) {
-        int requiredDiamonds = (int) Math.ceil(amount);
-        return player.getInventory().containsAtLeast(new ItemStack(Material.DIAMOND), requiredDiamonds);
-    }
+    // Handle game menu interactions
+    private void handleGameMenuClick(int slot, Player player) {
+        if (slot == 20) { // "Open Betting Table" button clicked
+            // Use a delayed task to open the betting table to avoid recursion
+            Bukkit.getScheduler().runTaskLater(Bukkit.getPluginManager().getPlugin("nccasino"), () -> {
+                // Find the dealer associated with the player
+                Villager dealer = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
+                        .filter(entity -> entity instanceof Villager)
+                        .map(entity -> (Villager) entity)
+                        .filter(DealerVillager::isDealerVillager)
+                        .findFirst().orElse(null);
 
-    private void removeWagerFromInventory(Player player, double amount) {
-        int requiredDiamonds = (int) Math.ceil(amount);
-        if (requiredDiamonds > 0) {
-            player.getInventory().removeItem(new ItemStack(Material.DIAMOND, requiredDiamonds));
-        } else {
-            player.sendMessage("Invalid wager amount: " + amount);
+                if (dealer != null) {
+                    // Ensure the betting table is associated with the correct dealer
+                    BettingTable bettingTable = DealerVillager.getOrCreateBettingTable(dealer, player);
+                    player.openInventory(bettingTable.getInventory());
+                } else {
+                    player.sendMessage("Error: Dealer not found. Unable to open betting table.");
+                }
+            }, 1L);
+        } else if (slot == 24) { // "Leave Game" button clicked
+            player.closeInventory();
+            player.sendMessage("You have left the game.");
         }
     }
 }

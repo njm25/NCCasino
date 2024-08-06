@@ -13,7 +13,10 @@ import org.nc.nccasino.games.DealerInventory;
 import org.nc.nccasino.games.GameMenuInventory;
 import org.nc.nccasino.games.BlackjackInventory;
 import org.nc.nccasino.games.RouletteInventory;
+import org.nc.nccasino.games.BettingTable;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 public class DealerVillager {
@@ -22,6 +25,9 @@ public class DealerVillager {
     private static final NamespacedKey UNIQUE_ID_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_unique_id");
     private static final NamespacedKey NAME_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_name");
     private static final NamespacedKey GAME_TYPE_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_game_type");
+
+    // Map to store player betting tables associated with each dealer
+    private static final Map<UUID, Map<UUID, BettingTable>> dealerBettingTables = new HashMap<>();
 
     // Method to spawn a DealerVillager at a specific location
     public static Villager spawnDealer(JavaPlugin plugin, Location location, String name) {
@@ -139,38 +145,65 @@ public class DealerVillager {
         }
     }
 
-    // Static method to switch the dealer's inventory based on the selected game
+    // Static method to switch the dealer's game
     public static void switchGame(Villager villager, String gameName) {
         UUID dealerId = getUniqueId(villager);
-        if (dealerId != null) {
-            DealerInventory newInventory;
-            String newName;
-            switch (gameName) {
-                case "Blackjack":
-                    newInventory = new BlackjackInventory(dealerId);
-                    newName = "Blackjack Dealer";
-                    break;
-                case "Roulette":
-                    newInventory = new RouletteInventory(dealerId);
-                    newName = "Roulette Dealer";
-                    break;
-                default:
-                    newInventory = new GameMenuInventory(dealerId); // Reset to menu
-                    newName = "Game Menu";
-                    break;
-            }
-            DealerInventory.updateInventory(dealerId, newInventory);  // Update the inventory using the new method
-            setName(villager, newName);
+        if (dealerId == null) return;
 
-            // Persist the selected game type
-            PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
-            dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameName);
+        DealerInventory newInventory;
+        String newName;
+
+        // Properly initialize the new inventory based on game selection
+        switch (gameName) {
+            case "Blackjack":
+                newInventory = new BlackjackInventory(dealerId);
+                newName = "Blackjack Dealer";
+                break;
+            case "Roulette":
+                newInventory = new RouletteInventory(dealerId);
+                newName = "Roulette Dealer";
+                break;
+            default:
+                newInventory = new GameMenuInventory(dealerId);
+                newName = "Game Menu";
+                break;
+        }
+        
+        DealerInventory.updateInventory(dealerId, newInventory);
+        setName(villager, newName);
+
+        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+        dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameName);
+    }
+
+    // Adjusted method to create or get a betting table
+    public static BettingTable getOrCreateBettingTable(Villager dealer, Player player) {
+        UUID dealerId = dealer.getUniqueId();
+        UUID playerId = player.getUniqueId();
+        
+        // Initialize map for dealer if not present
+        dealerBettingTables.putIfAbsent(dealerId, new HashMap<>());
+
+        // Get the player's betting table, creating a new one if necessary
+        Map<UUID, BettingTable> playerBettingTables = dealerBettingTables.get(dealerId);
+        
+        // Check if the player already has a betting table with this dealer
+        if (!playerBettingTables.containsKey(playerId)) {
+            // Create a new betting table if it does not exist
+            BettingTable newBettingTable = new BettingTable(player, dealer);
+            playerBettingTables.put(playerId, newBettingTable);
+        }
+        
+        return playerBettingTables.get(playerId);
+    }
+
+    public static void removePlayerBettingTable(Villager dealer, Player player) {
+        UUID dealerId = dealer.getUniqueId();
+        UUID playerId = player.getUniqueId();
+        Map<UUID, BettingTable> playerTables = dealerBettingTables.get(dealerId);
+        if (playerTables != null) {
+            playerTables.remove(playerId);
         }
     }
 
-    // Static method to get the currently selected game for a DealerVillager
-    public static String getSelectedGame(Villager villager) {
-        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
-        return dataContainer.get(GAME_TYPE_KEY, PersistentDataType.STRING);
-    }
 }

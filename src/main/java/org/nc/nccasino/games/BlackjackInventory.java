@@ -2,6 +2,7 @@ package org.nc.nccasino.games;
 
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -31,16 +32,21 @@ public class BlackjackInventory extends DealerInventory {
         return itemStack;
     }
 
-    @Override
-    public void handleClick(int slot, Player player) {
-        switch (slot) {
-            case 0:
-                player.sendMessage("Starting Blackjack...");
-                // Add logic for starting the Blackjack game
-                break;
-            default:
-                // Handle other slots if needed
-                break;
-        }
+// BlackjackInventory.java
+
+@Override
+public void handleClick(int slot, Player player, InventoryClickEvent event) {
+    event.setCancelled(true); // Ensure the event is cancelled to prevent unintended item movement
+
+    switch (slot) {
+        case 0:
+            player.sendMessage("Starting Blackjack...");
+            // Implement logic to start the Blackjack game
+            break;
+        default:
+            // Handle other slots if needed
+            break;
     }
+}
+
 }

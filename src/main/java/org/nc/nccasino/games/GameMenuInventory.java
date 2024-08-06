@@ -1,10 +1,13 @@
 package org.nc.nccasino.games;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.entity.Villager;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.entities.DealerVillager;
 
 import java.util.UUID;
@@ -32,21 +35,21 @@ public class GameMenuInventory extends DealerInventory {
         }
         return itemStack;
     }
-
     @Override
-    public void handleClick(int slot, Player player) {
-        // Ensure that we are affecting the correct villager by using the UUID from this inventory
+    public void handleClick(int slot, Player player, InventoryClickEvent event) {
+        event.setCancelled(true); // Ensure the event is cancelled to prevent unintended item movement
+
         Villager villager = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
                 .filter(entity -> entity instanceof Villager)
                 .map(entity -> (Villager) entity)
                 .filter(v -> DealerVillager.isDealerVillager(v) && DealerVillager.getUniqueId(v).equals(this.dealerId))
                 .findFirst().orElse(null);
-
+    
         if (villager == null) {
             player.sendMessage("No dealer nearby!");
             return;
         }
-
+    
         switch (slot) {
             case 0:
                 player.sendMessage("Blackjack selected");
@@ -57,14 +60,18 @@ public class GameMenuInventory extends DealerInventory {
                 DealerVillager.switchGame(villager, "Roulette");
                 break;
             default:
-                // Handle other slots if needed
-                break;
+                return; // Exit if no valid slot is clicked
         }
-
+    
         // Refresh the inventory to reflect the changes
         DealerInventory dealerInventory = DealerInventory.getInventory(DealerVillager.getUniqueId(villager));
         if (dealerInventory != null) {
-            dealerInventory.refresh(player);
+            Bukkit.getScheduler().runTaskLater(JavaPlugin.getProvidingPlugin(DealerInventory.class), () -> {
+                player.closeInventory();
+                player.openInventory(dealerInventory.getInventory());
+            }, 1L);
         }
     }
+    
+
 }
