@@ -32,6 +32,7 @@ public class BettingTable implements InventoryHolder, Listener {
 
     private final Map<String, Double> chipValues;
     private final Map<Integer, Double> playerBets; // Map to store the player's bets by slot number
+    private boolean clickAllowed = true; 
 
     public BettingTable(Player player, Villager dealer, Nccasino plugin, Map<Integer, Double> existingBets) {
         this.playerId = player.getUniqueId();
@@ -39,7 +40,7 @@ public class BettingTable implements InventoryHolder, Listener {
         this.plugin = plugin;
         this.inventory = Bukkit.createInventory(this, 54, "Your Betting Table");
         this.pageNum = 1;
-
+        
         this.chipValues = new HashMap<>();
         this.chipValues.put("1 " + plugin.getCurrencyName() + " CHIP", 1.0);
         this.chipValues.put("5 " + plugin.getCurrencyName() + " CHIP", 5.0);
@@ -71,6 +72,7 @@ public class BettingTable implements InventoryHolder, Listener {
             inventory.setItem(i - 1, createCustomItem(Material.valueOf(color + "_WOOL"), "straight up " + i, i));
         }
         inventory.setItem(18, createCustomItem(Material.GREEN_WOOL, "straight up 0", 1));
+        inventory.setItem(36, createCustomItem(Material.TOTEM_OF_UNDYING, "Undo All Bets", 1));
         inventory.setItem(45, createCustomItem(Material.REDSTONE_BLOCK, "LEAVE GAME (Placed Bets may be lost)", 1));
         inventory.setItem(46, createCustomItem(Material.ARROW, "Back to Roulette", 1));
         inventory.setItem(47, createCustomItem(plugin.getCurrency(), "1 " + plugin.getCurrencyName() + " CHIP", 1));
@@ -96,6 +98,8 @@ public class BettingTable implements InventoryHolder, Listener {
             String color = (i % 2 == 0) ? "BLACK" : "RED";
             inventory.setItem(i - 19, createCustomItem(Material.valueOf(color + "_WOOL"), "straight up " + i, i));
         }
+
+        inventory.setItem(36, createCustomItem(Material.TOTEM_OF_UNDYING, "Undo All Bets", 1));
         inventory.setItem(45, createCustomItem(Material.REDSTONE_BLOCK, "LEAVE GAME (Placed Bets may be lost)", 1));
         inventory.setItem(46, createCustomItem(Material.ARROW, "Back to Roulette", 1));
         inventory.setItem(47, createCustomItem(plugin.getCurrency(), "1 " + plugin.getCurrencyName() + " CHIP", 1));
@@ -142,6 +146,18 @@ public class BettingTable implements InventoryHolder, Listener {
 
         Player player = (Player) event.getWhoClicked();
         event.setCancelled(true);
+
+   if (!clickAllowed) {
+            player.sendMessage("Please wait before clicking again!");
+            return;
+        }
+
+        clickAllowed = false; // Block further clicks until task completes
+     
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            clickAllowed = true; // Allow clicks again after 5 ticks (250ms)
+        }, 1L);
+
 
         int slot = event.getRawSlot();
         ItemStack clickedItem = event.getCurrentItem();
@@ -222,6 +238,15 @@ public class BettingTable implements InventoryHolder, Listener {
         }
         return;
     }
+    if (slot == 36) {
+        player.sendMessage("Undoing all bets...");
+        clearAllBetsAndRefund(player);
+        clearAllLore();
+        player.sendMessage("All bets cleared and refunded.");
+        return;
+
+    }
+
 
         if (slot == 45) {
             player.closeInventory();
@@ -231,13 +256,7 @@ public class BettingTable implements InventoryHolder, Listener {
         }
 
         if (slot == 46) {
-            //System.out.println("Retrieved BetsBefSave:");
-/* 
-           playerBets.forEach((number, amount) -> {
-            System.out.println("Number: " + number + ", Amount: " + amount);
-        });*/
 
-         //System.out.println("AttemptedSavePlayerID"+playerId);
             saveBetsToRoulette();
             player.sendMessage("Returning to Roulette...");
             openRouletteInventory(dealer, player);
@@ -245,6 +264,17 @@ public class BettingTable implements InventoryHolder, Listener {
         }
     }
 
+    private void clearAllBetsAndRefund(Player player) {
+        // Refund the player for all bets
+        playerBets.forEach((number, amount) -> {
+            int refundAmount = (int) Math.ceil(amount);
+            player.getInventory().addItem(new ItemStack(plugin.getCurrency(), refundAmount));
+        });
+    
+        // Clear the player's bets
+        playerBets.clear();
+        restoreBets(); // Update the inventory to remove lore information
+    }
     private void restoreBetsForPage(int page) {
         // Iterate over the stored bets and re-apply them to the inventory
         if(page==1&&playerBets.containsKey(-1)){
