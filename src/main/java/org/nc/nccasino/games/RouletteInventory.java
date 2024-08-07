@@ -36,7 +36,23 @@ public class RouletteInventory extends DealerInventory implements Listener {
     }
 
     public Map<Integer, Double> getPlayerBets(UUID playerId) {
-        return playerBets.getOrDefault(playerId, new HashMap<>());
+        return playerBets.getOrDefault(playerId, new HashMap<>()); 
+    }
+
+    public void printPlayerBets(UUID playerId) {
+        // Retrieve the player's bets
+        Map<Integer, Double> bets = getPlayerBets(playerId);
+
+        // Print header message
+        System.out.println("Player Bets for player ID: " + playerId);
+
+        // Loop through each bet and print the details to the console
+        bets.forEach((number, amount) -> {
+            System.out.println("Number: " + number + ", Amount: " + amount);
+        });
+
+        // Print a footer message
+        System.out.println("End of player bets.\n");
     }
 
     // Clear bets for a specific player
@@ -114,8 +130,12 @@ public class RouletteInventory extends DealerInventory implements Listener {
 
                 if (dealer != null) {
                     // Retrieve existing bets for the player or initialize if none
-                    Map<Integer, Double> bets = playerBets.getOrDefault(player.getUniqueId(), new HashMap<>());
-
+                    player.sendMessage("PlayerUniqueId after pressing open betting table"+player.getUniqueId());
+                    Map<Integer, Double> bets = getPlayerBets(player.getUniqueId()); // Use method to retrieve
+                    player.sendMessage("Retrieved Bets:");
+                    bets.forEach((number, amount) -> {
+                        player.sendMessage("Number: " + number + ", Amount: " + amount);
+                    });
                     // Create a new betting table with the existing bets
                     BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets);
 
@@ -136,12 +156,17 @@ public class RouletteInventory extends DealerInventory implements Listener {
     // Clear bets when player closes the inventory directly
     @EventHandler
     public void handleInventoryClose(InventoryCloseEvent event) {
+        
         if (event.getInventory().getHolder() != this) return; // Ensure this is the correct inventory
         Player player = (Player) event.getPlayer();
-        clearPlayerBets(player.getUniqueId());
+        player.sendMessage("This should trigger if player presses esc test");
+        //clearPlayerBets(player.getUniqueId());
     }
 
     public void updatePlayerBets(UUID playerId, Map<Integer, Double> bets) {
         playerBets.put(playerId, bets);
     }
+
+
+
 }
