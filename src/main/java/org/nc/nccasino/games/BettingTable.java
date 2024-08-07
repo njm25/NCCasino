@@ -59,11 +59,13 @@ public class BettingTable implements InventoryHolder, Listener {
 
     private void setupPageOne() {
         inventory.clear();
+        clearAllLore(); // Clear all lore before setting up the page
+    
         for (int i = 1; i <= 18; i++) {
             String color = (i % 2 == 0) ? "BLACK" : "RED";
             inventory.setItem(i - 1, createCustomItem(Material.valueOf(color + "_WOOL"), "Bet on " + i, i));
         }
-        inventory.setItem(27, createCustomItem(Material.GREEN_WOOL, "Bet on 0", 1));
+        inventory.setItem(18, createCustomItem(Material.GREEN_WOOL, "Bet on 0", 1));
         inventory.setItem(45, createCustomItem(Material.REDSTONE_BLOCK, "LEAVE GAME (Placed Bets may be lost)", 1));
         inventory.setItem(46, createCustomItem(Material.ARROW, "Back to Roulette", 1));
         inventory.setItem(47, createCustomItem(plugin.getCurrency(), "1 " + plugin.getCurrencyName() + " CHIP", 1));
@@ -72,13 +74,14 @@ public class BettingTable implements InventoryHolder, Listener {
         inventory.setItem(50, createCustomItem(plugin.getCurrency(), "25 " + plugin.getCurrencyName() + " CHIP", 25));
         inventory.setItem(51, createCustomItem(plugin.getCurrency(), "50 " + plugin.getCurrencyName() + " CHIP", 50));
         inventory.setItem(53, createCustomItem(Material.ARROW, "Next Page", 1));
-
-        // Restore any previous bets on this page
-        restoreBets();
+    
+        restoreBetsForPage(1); // Restore bets for page 1
     }
-
+    
     private void setupPageTwo() {
         inventory.clear();
+        clearAllLore(); // Clear all lore before setting up the page
+    
         for (int i = 19; i <= 36; i++) {
             String color = (i % 2 == 0) ? "BLACK" : "RED";
             inventory.setItem(i - 19, createCustomItem(Material.valueOf(color + "_WOOL"), "Bet on " + i, i));
@@ -91,9 +94,22 @@ public class BettingTable implements InventoryHolder, Listener {
         inventory.setItem(50, createCustomItem(plugin.getCurrency(), "25 " + plugin.getCurrencyName() + " CHIP", 25));
         inventory.setItem(51, createCustomItem(plugin.getCurrency(), "50 " + plugin.getCurrencyName() + " CHIP", 50));
         inventory.setItem(52, createCustomItem(Material.ARROW, "Previous Page", 1));
+    
+        restoreBetsForPage(2); // Restore bets for page 2
+    }
 
-        // Restore any previous bets on this page
-        restoreBets();
+    private void clearAllLore() {
+        // Iterate through each slot in the inventory and clear lore
+        for (int i = 0; i < inventory.getSize(); i++) {
+            ItemStack item = inventory.getItem(i);
+            if (item != null && item.hasItemMeta()) {
+                ItemMeta meta = item.getItemMeta();
+                if (meta.hasLore()) {
+                    meta.setLore(new ArrayList<>()); // Clear the lore
+                    item.setItemMeta(meta);
+                }
+            }
+        }
     }
 
     private ItemStack createCustomItem(Material material, String name, int amount) {
@@ -145,25 +161,28 @@ public class BettingTable implements InventoryHolder, Listener {
             return;
         }
 
-        if (slot >= 0 && slot <= 36) {
-            if (selectedWager > 0) {
-                if (hasEnoughWager(player, selectedWager)) {
-                    removeWagerFromInventory(player, selectedWager);
-                    player.sendMessage("Placed bet on " + itemName + " with " + selectedWager + " " + plugin.getCurrencyName() + "s.");
+       
+    if ((pageNum == 1 && slot >= 0 && slot <= 18) || (pageNum == 2 && slot >= 0 && slot <= 17)) {
+        int actualNum = (pageNum == 1) ? slot  : slot + 18; // Adjust for actual bet slots
+        int actualSlot=(pageNum == 1) ? actualNum  : actualNum-19;
+        if (selectedWager > 0) {
+            if (hasEnoughWager(player, selectedWager)) {
+                removeWagerFromInventory(player, selectedWager);
+                player.sendMessage("Placed bet on " + itemName + " with " + selectedWager + " " + plugin.getCurrencyName() + "s.");
 
-                    // Store the bet
-                    playerBets.put(slot, selectedWager);
+                // Store the bet
+                playerBets.put(actualNum, selectedWager);
 
-                    // Update the lore of the item
-                    updateItemLore(slot, selectedWager);
-                } else {
-                    player.sendMessage("Not enough " + plugin.getCurrencyName() + "s to place this bet.");
-                }
+                // Update the lore of the item
+                updateItemLore(slot, selectedWager);
             } else {
-                player.sendMessage("Please select a wager amount first.");
+                player.sendMessage("Not enough " + plugin.getCurrencyName() + "s to place this bet.");
             }
-            return;
+        } else {
+            player.sendMessage("Please select a wager amount first.");
         }
+        return;
+    }
 
         if (slot == 45) {
             player.closeInventory();
@@ -173,11 +192,22 @@ public class BettingTable implements InventoryHolder, Listener {
         }
 
         if (slot == 46) {
+            saveBetsToRoulette();
             player.sendMessage("Returning to Roulette...");
             openRouletteInventory(dealer, player);
+        
         }
     }
 
+    private void restoreBetsForPage(int page) {
+        // Iterate over the stored bets and re-apply them to the inventory
+        playerBets.forEach((slot, bet) -> {
+            if ((page == 1 && slot >= 0 && slot <= 18) || (page == 2 && slot >= 18 && slot <= 36)) {
+                updateItemLore(slot - (page == 1 ? 0 : 18), bet);
+            }
+        });
+    }
+    
     // Handle closing the betting table to clear bets
     @EventHandler
     public void handleInventoryClose(InventoryCloseEvent event) {
@@ -262,5 +292,15 @@ public class BettingTable implements InventoryHolder, Listener {
 
     public Villager getDealer() {
         return dealer;
+    }
+
+    private void saveBetsToRoulette() {
+        UUID dealerId = DealerVillager.getUniqueId(dealer);
+        DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
+    
+        if (dealerInventory instanceof RouletteInventory) {
+            RouletteInventory rouletteInventory = (RouletteInventory) dealerInventory;
+            rouletteInventory.updatePlayerBets(playerId, playerBets); // Save the player's bets to the roulette inventory
+        }
     }
 }
