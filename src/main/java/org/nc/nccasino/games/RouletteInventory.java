@@ -17,6 +17,7 @@ import org.nc.nccasino.entities.DealerVillager;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class RouletteInventory extends DealerInventory implements Listener {
     private int pageNum; // Track the current page number
@@ -45,14 +46,16 @@ public class RouletteInventory extends DealerInventory implements Listener {
 
         // Print header message
         System.out.println("Player Bets for player ID: " + playerId);
+         AtomicInteger total = new AtomicInteger();
 
         // Loop through each bet and print the details to the console
         bets.forEach((number, amount) -> {
             System.out.println("Number: " + number + ", Amount: " + amount);
+           total.addAndGet(amount.intValue());
         });
 
         // Print a footer message
-        System.out.println("End of player bets.\n");
+        System.out.println("End of player bets-total: "+total.get()+"\n");
     }
 
     // Clear bets for a specific player
@@ -130,13 +133,13 @@ public class RouletteInventory extends DealerInventory implements Listener {
 
                 if (dealer != null) {
                     // Retrieve existing bets for the player or initialize if none
-                    player.sendMessage("PlayerUniqueId after pressing open betting table"+player.getUniqueId());
-                    Map<Integer, Double> bets = getPlayerBets(player.getUniqueId()); // Use method to retrieve
-                    player.sendMessage("Retrieved Bets:");
+                    //player.sendMessage("PlayerUniqueId after pressing open betting table"+player.getUniqueId());
+                    Map<Integer, Double> bets = DealerVillager.retrievePlayerBets(dealer,player); // Use method to retrieve
+                    /*player.sendMessage("Retrieved Bets:");
                     bets.forEach((number, amount) -> {
                         player.sendMessage("Number: " + number + ", Amount: " + amount);
-                    });
-                    // Create a new betting table with the existing bets
+                    });*/
+                    // Create a new bet*ting table with the existing bets
                     BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets);
 
                     // Open the betting table for the player

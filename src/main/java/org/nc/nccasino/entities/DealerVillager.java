@@ -26,6 +26,7 @@ public class DealerVillager {
     private static final NamespacedKey UNIQUE_ID_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_unique_id");
     private static final NamespacedKey NAME_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_name");
     private static final NamespacedKey GAME_TYPE_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_game_type");
+    private static final NamespacedKey BETS_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "player_bets");
 
     private static final Map<UUID, Map<UUID, BettingTable>> dealerBettingTables = new HashMap<>();
 
@@ -164,21 +165,66 @@ public class DealerVillager {
     public static BettingTable createNewBettingTable(Villager dealer, Player player, Nccasino plugin) {
         UUID dealerId = dealer.getUniqueId();
         UUID playerId = player.getUniqueId();
-
+        Map<Integer, Double> existingBets = retrievePlayerBets(dealer, player);
         // Retrieve the existing bets for the player from the RouletteInventory
+
+        /* 
         DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
         Map<Integer, Double> existingBets = new HashMap<>();
         if (dealerInventory instanceof RouletteInventory) {
             existingBets = ((RouletteInventory) dealerInventory).getPlayerBets(playerId);
-        }
+        }*/
 
         // Create a new betting table with the existing bets
+        
         BettingTable newBettingTable = new BettingTable(player, dealer, plugin, existingBets);
         dealerBettingTables.computeIfAbsent(dealerId, k -> new HashMap<>()).put(playerId, newBettingTable);
 
         return newBettingTable;
     }
+    public static Map<Integer, Double> retrievePlayerBets(Villager dealer, Player player) {
+        PersistentDataContainer container = dealer.getPersistentDataContainer();
+        UUID playerId = player.getUniqueId();
+        NamespacedKey key = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), playerId.toString());
 
+        // Attempt to get the stored bets
+        if (container.has(key, PersistentDataType.TAG_CONTAINER)) {
+            PersistentDataContainer playerContainer = container.get(key, PersistentDataType.TAG_CONTAINER);
+            Map<Integer, Double> bets = new HashMap<>();
+
+            for (NamespacedKey betKey : playerContainer.getKeys()) {
+                if (playerContainer.has(betKey, PersistentDataType.DOUBLE)) {
+                    int betNumber = Integer.parseInt(betKey.getKey()); // Use betKey.getKey() to get the key as a String
+                    double amount = playerContainer.get(betKey, PersistentDataType.DOUBLE);
+                    bets.put(betNumber, amount);
+                }
+            }
+            
+
+            return bets;
+        }
+
+        return new HashMap<>();
+    }
+
+    public static void savePlayerBets(Villager dealer, Player player, Map<Integer, Double> bets) {
+        PersistentDataContainer container = dealer.getPersistentDataContainer();
+        UUID playerId = player.getUniqueId();
+        NamespacedKey key = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), playerId.toString());
+
+        // Create a new PDC for the player's bets
+        PersistentDataContainer playerContainer = container.getAdapterContext().newPersistentDataContainer();
+
+        // Save each bet in the container
+        bets.forEach((number, amount) -> {
+            playerContainer.set(new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), number.toString()), PersistentDataType.DOUBLE, amount);
+        });
+
+        // Store the player's bets in the main container
+        container.set(key, PersistentDataType.TAG_CONTAINER, playerContainer);
+    }
+
+    
     public static void removePlayerBettingTable(Villager dealer, Player player) {
         UUID dealerId = dealer.getUniqueId();
         UUID playerId = player.getUniqueId();

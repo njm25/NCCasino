@@ -72,8 +72,7 @@ public class BettingTable implements InventoryHolder, Listener {
             inventory.setItem(i - 1, createCustomItem(Material.valueOf(color + "_WOOL"), "straight up " + i, i));
         }
         inventory.setItem(18, createCustomItem(Material.GREEN_WOOL, "straight up 0", 1));
-        inventory.setItem(36, createCustomItem(Material.TOTEM_OF_UNDYING, "Undo All Bets", 1));
-        inventory.setItem(45, createCustomItem(Material.REDSTONE_BLOCK, "LEAVE GAME (Placed Bets may be lost)", 1));
+        inventory.setItem(45, createCustomItem(Material.TOTEM_OF_UNDYING, "Undo All Bets", 1));
         inventory.setItem(46, createCustomItem(Material.ARROW, "Back to Roulette", 1));
         inventory.setItem(47, createCustomItem(plugin.getCurrency(), "1 " + plugin.getCurrencyName() + " CHIP", 1));
         inventory.setItem(48, createCustomItem(plugin.getCurrency(), "5 " + plugin.getCurrencyName() + " CHIP", 5));
@@ -99,8 +98,7 @@ public class BettingTable implements InventoryHolder, Listener {
             inventory.setItem(i - 19, createCustomItem(Material.valueOf(color + "_WOOL"), "straight up " + i, i));
         }
 
-        inventory.setItem(36, createCustomItem(Material.TOTEM_OF_UNDYING, "Undo All Bets", 1));
-        inventory.setItem(45, createCustomItem(Material.REDSTONE_BLOCK, "LEAVE GAME (Placed Bets may be lost)", 1));
+        inventory.setItem(45, createCustomItem(Material.TOTEM_OF_UNDYING, "Undo All Bets", 1));
         inventory.setItem(46, createCustomItem(Material.ARROW, "Back to Roulette", 1));
         inventory.setItem(47, createCustomItem(plugin.getCurrency(), "1 " + plugin.getCurrencyName() + " CHIP", 1));
         inventory.setItem(48, createCustomItem(plugin.getCurrency(), "5 " + plugin.getCurrencyName() + " CHIP", 5));
@@ -149,15 +147,18 @@ public class BettingTable implements InventoryHolder, Listener {
 
    if (!clickAllowed) {
             player.sendMessage("Please wait before clicking again!");
+           
             return;
+        
+        
         }
+clickAllowed=false;
 
-        clickAllowed = false; // Block further clicks until task completes
-     
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            clickAllowed = true; // Allow clicks again after 5 ticks (250ms)
-        }, 1L);
+            clickAllowed =true; // Allow clicks again after 5 ticks (250ms)
+        }, 5L);
 
+      
 
         int slot = event.getRawSlot();
         ItemStack clickedItem = event.getCurrentItem();
@@ -238,32 +239,435 @@ public class BettingTable implements InventoryHolder, Listener {
         }
         return;
     }
-    if (slot == 36) {
+    if (slot == 45) {
         player.sendMessage("Undoing all bets...");
         clearAllBetsAndRefund(player);
         clearAllLore();
         player.sendMessage("All bets cleared and refunded.");
         return;
 
+    
     }
 
-
+/* 
         if (slot == 45) {
             player.closeInventory();
             player.sendMessage("You have left the game. Bets are closed.");
-            cancelAllBets();
+            //cancelAllBets();
             DealerVillager.removePlayerBettingTable(dealer, player);
-        }
+        }*/
 
         if (slot == 46) {
 
             saveBetsToRoulette();
             player.sendMessage("Returning to Roulette...");
             openRouletteInventory(dealer, player);
-        
+            DealerVillager.savePlayerBets(dealer, player, playerBets);
         }
+        
+    
     }
 
+
+
+    private void clearAllBetsAndRefund(Player player) {
+        // Calculate the total refund amount
+        double totalAmount = playerBets.values().stream().mapToDouble(Double::doubleValue).sum();
+    
+        // Round up to the nearest whole number for refund
+        int totalRefund = (int) Math.ceil(totalAmount);
+    
+        // Log the total refund amount for debugging
+        System.out.println("Total Refund Amount: " + totalRefund);
+    
+        // Calculate the number of full stacks and the remainder
+        int fullStacks = totalRefund / 64;
+        int remainder = totalRefund % 64;
+    
+        // Log stack and remainder calculations
+        System.out.println("Total Full Stacks: " + fullStacks + ", Total Remainder: " + remainder);
+    
+        Material currencyMaterial = plugin.getCurrency();
+    
+        if (currencyMaterial != null) {
+            // Fill partial stacks first
+            int filledStacks = fillPartialStacks(player, totalRefund, currencyMaterial);
+            
+            // Update remaining refund after filling partial stacks
+            int remainingRefund = totalRefund - filledStacks;
+            
+            // Calculate remaining full stacks and remainder
+            fullStacks = remainingRefund / 64;
+            remainder = remainingRefund % 64;
+    
+            // Add remaining full stacks
+            for (int i = 0; i < fullStacks; i++) {
+                HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(new ItemStack(currencyMaterial, 64));
+                if (!leftover.isEmpty()) {
+                    handleLeftoverItems(player, leftover, 64);
+                    break; // Stop adding if inventory is full
+                }
+            }
+    
+            // Add remaining items
+            if (remainder > 0) {
+                HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(new ItemStack(currencyMaterial, remainder));
+                if (!leftover.isEmpty()) {
+                    handleLeftoverItems(player, leftover, remainder);
+                }
+            }
+        } else {
+            System.out.println("Currency material is null. Cannot refund items.");
+            player.sendMessage("Error: Currency material is not set. Unable to refund bets.");
+        }
+    
+        // Clear the player's bets
+        playerBets.clear();
+        restoreBets(); // Update the inventory to remove lore information
+    }
+    
+    private int fillPartialStacks(Player player, int totalRefund, Material currencyMaterial) {
+        // Track the total number of items added by filling partial stacks
+        int totalFilled = 0;
+    
+        // Check and fill any partial stacks in the player's inventory
+        ItemStack[] contents = player.getInventory().getContents();
+        for (ItemStack item : contents) {
+            if (item != null && item.getType() == currencyMaterial && item.getAmount() < 64) {
+                int spaceLeft = 64 - item.getAmount();
+                int amountToFill = Math.min(spaceLeft, totalRefund - totalFilled); // Ensure we don't overfill
+                item.setAmount(item.getAmount() + amountToFill);
+                totalFilled += amountToFill;
+                if (totalFilled >= totalRefund) {
+                    break;
+                }
+            }
+        }
+    
+        return totalFilled; // Return the total amount added by filling partial stacks
+    }
+    
+    private void handleLeftoverItems(Player player, HashMap<Integer, ItemStack> leftover, int refundAmount) {
+        // Notify the player about leftover items
+        int leftoverAmount = leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
+        player.sendMessage("Inventory full. Couldn't refund " + leftoverAmount + " of " + refundAmount + " " + plugin.getCurrency().toString() + "s!");
+    
+        // Log detailed information about leftover items
+        leftover.forEach((slot, itemStack) -> {
+            System.out.println("Leftover Item at Slot " + slot + ": " + itemStack.getType() + " x " + itemStack.getAmount());
+        });
+    }
+    
+
+
+/* 
+    private void clearAllBetsAndRefund(Player player) {
+        // Calculate the total refund amount
+        double totalAmount = playerBets.values().stream().mapToDouble(Double::doubleValue).sum();
+    
+        // Round up to the nearest whole number for refund
+        int totalRefund = (int) Math.ceil(totalAmount);
+    
+        // Log the total refund amount for debugging
+        System.out.println("Total Refund Amount: " + totalRefund);
+    
+        // Calculate the number of full stacks and the remainder
+        int fullStacks = totalRefund / 64;
+        int remainder = totalRefund % 64;
+    
+        // Log stack and remainder calculations
+        System.out.println("Total Full Stacks: " + fullStacks + ", Total Remainder: " + remainder);
+    
+        Material currencyMaterial = plugin.getCurrency();
+    
+        if (currencyMaterial != null) {
+            // Handle partial stack filling
+            fillPartialStacks(player, fullStacks, currencyMaterial);
+    
+            // Add remaining full stacks
+            for (int i = 0; i < fullStacks; i++) {
+                HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(new ItemStack(currencyMaterial, 64));
+                if (!leftover.isEmpty()) {
+                    handleLeftoverItems(player, leftover, 64);
+                    break; // Stop adding if inventory is full
+                }
+            }
+    
+            // Add remaining items
+            if (remainder > 0) {
+                HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(new ItemStack(currencyMaterial, remainder));
+                if (!leftover.isEmpty()) {
+                    handleLeftoverItems(player, leftover, remainder);
+                }
+            }
+        } else {
+            System.out.println("Currency material is null. Cannot refund items.");
+            player.sendMessage("Error: Currency material is not set. Unable to refund bets.");
+        }
+    
+        // Clear the player's bets
+        playerBets.clear();
+        restoreBets(); // Update the inventory to remove lore information
+    }
+    
+    private void fillPartialStacks(Player player, int fullStacks, Material currencyMaterial) {
+        // Check and fill any partial stacks in the player's inventory
+        ItemStack[] contents = player.getInventory().getContents();
+        for (int i = 0; i < contents.length; i++) {
+            ItemStack item = contents[i];
+            if (item != null && item.getType() == currencyMaterial && item.getAmount() < 64) {
+                int spaceLeft = 64 - item.getAmount();
+                int amountToFill = Math.min(fullStacks, spaceLeft);
+                item.setAmount(item.getAmount() + amountToFill);
+                fullStacks -= amountToFill;
+                if (fullStacks <= 0) {
+                    break;
+                }
+            }
+        }
+    }
+    
+    private void handleLeftoverItems(Player player, HashMap<Integer, ItemStack> leftover, int refundAmount) {
+        // Notify the player about leftover items
+        int leftoverAmount = leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
+        player.sendMessage("Inventory full. Couldn't refund " + leftoverAmount + " of " + refundAmount + " " + plugin.getCurrency().toString() + "s!");
+    
+        // Log detailed information about leftover items
+        leftover.forEach((slot, itemStack) -> {
+            System.out.println("Leftover Item at Slot " + slot + ": " + itemStack.getType() + " x " + itemStack.getAmount());
+        });
+    }
+    
+
+
+
+    private void clearAllBetsAndRefund(Player player) {
+        // Calculate the total refund amount
+        double totalAmount = playerBets.values().stream().mapToDouble(Double::doubleValue).sum();
+    
+        // Round up to the nearest whole number for refund
+        int totalRefund = (int) Math.ceil(totalAmount);
+    
+        // Log the total refund amount for debugging
+        System.out.println("Total Refund Amount: " + totalRefund);
+    
+        // Calculate the number of full stacks and the remainder
+        int fullStacks = totalRefund / 64;
+        int remainder = totalRefund % 64;
+    
+        // Log stack and remainder calculations
+        System.out.println("Total Full Stacks: " + fullStacks + ", Total Remainder: " + remainder);
+    
+        Material currencyMaterial = plugin.getCurrency();
+    
+        if (currencyMaterial != null) {
+            ItemStack fullStack = new ItemStack(currencyMaterial, 64);
+    
+            // Add full stacks to the player's inventory
+            for (int i = 0; i < fullStacks; i++) {
+                HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(fullStack);
+                if (!leftover.isEmpty()) {
+                    player.sendMessage("Inventory full. Couldn't refund " + fullStack.getAmount() + " " + currencyMaterial.toString() + "!");
+                    break; // Stop adding if inventory is full
+                }
+            }
+    
+            // Add remaining items to the player's inventory
+            if (remainder > 0) {
+                ItemStack remainingStack = new ItemStack(currencyMaterial, remainder);
+                HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(remainingStack);
+                if (!leftover.isEmpty()) {
+                    player.sendMessage("Inventory full. Couldn't refund " + remainder + " " + currencyMaterial.toString() + "!");
+                }
+            }
+        } else {
+            System.out.println("Currency material is null. Cannot refund items.");
+            player.sendMessage("Error: Currency material is not set. Unable to refund bets.");
+        }
+    
+        // Clear the player's bets
+        playerBets.clear();
+        restoreBets(); // Update the inventory to remove lore information
+    }
+    
+
+
+    private void clearAllBetsAndRefund(Player player) {
+        // Calculate the total refund amount
+        double totalAmount = playerBets.values().stream().mapToDouble(Double::doubleValue).sum();
+        
+        // Round up to the nearest whole number for refund
+        int totalRefund = (int) Math.ceil(totalAmount);
+    
+        // Log the total refund amount for debugging
+        System.out.println("Total Refund Amount: " + totalRefund);
+    
+        // Calculate the number of full stacks and the remainder
+        int fullStacks = totalRefund / 64;
+        int remainder = totalRefund % 64;
+    
+        // Log stack and remainder calculations
+        System.out.println("Total Full Stacks: " + fullStacks + ", Total Remainder: " + remainder);
+    
+        Material currencyMaterial = plugin.getCurrency();
+    
+        if (currencyMaterial != null) {
+            ItemStack fullStack = new ItemStack(currencyMaterial, 64);
+            if (remainder==0){
+
+
+            }
+           else{ ItemStack remainingStack = new ItemStack(currencyMaterial, remainder);}
+    
+            // Add full stacks to the player's inventory
+            for (int i = 0; i < fullStacks; i++) {
+                HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(fullStack);
+                if (!leftover.isEmpty()) {
+                    player.sendMessage("Inventory full. Couldn't refund " + fullStack.getAmount() + " " + currencyMaterial.toString() + "!");
+                    break; // Stop adding if inventory is full
+                }
+            }
+    
+            // Add remaining items to the player's inventory
+            if (remainder > 0) {
+                HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(remainingStack);
+                if (!leftover.isEmpty()) {
+                    player.sendMessage("Inventory full. Couldn't refund " + remainingStack.getAmount() + " " + currencyMaterial.toString() + "!");
+                }
+            }
+        } else {
+            System.out.println("Currency material is null. Cannot refund items.");
+            player.sendMessage("Error: Currency material is not set. Unable to refund bets.");
+        }
+    
+        // Clear the player's bets
+        playerBets.clear();
+        restoreBets(); // Update the inventory to remove lore information
+    }
+    
+
+
+    private void clearAllBetsAndRefund(Player player) {
+        // Refund the player for all bets using stacks of 64
+        double totalAmount = playerBets.values().stream().mapToDouble(Double::doubleValue).sum();
+
+
+        playerBets.forEach((number, amount) -> {
+            // Calculate the refund amount, ensuring it's rounded correctly
+            int refundAmount = (int) Math.ceil(amount); // Correct rounding up to nearest whole number
+            
+            // Log the refund amount for debugging
+            System.out.println("Bet Number: " + number + ", Original Amount: " + amount + ", Refund Amount: " + refundAmount);
+    
+            // Calculate the number of full stacks and the remainder
+            int fullStacks = refundAmount / 64;
+            int remainder = refundAmount % 64;
+    
+            // Log stack and remainder calculations
+            System.out.println("Full Stacks: " + fullStacks + ", Remainder: " + remainder);
+    
+            Material currencyMaterial = plugin.getCurrency();
+            
+            if (currencyMaterial != null) {
+                ItemStack fullStack = new ItemStack(currencyMaterial, 64);
+               // if(remainder!=0) {ItemStack remainingStack = new ItemStack(currencyMaterial, remainder);}
+    
+                // Add full stacks to the player's inventory
+                for (int i = 0; i < fullStacks; i++) {
+                    
+                    HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(fullStack);
+                    System.out.println("1 stack apparantly...");
+                    if (!leftover.isEmpty()) {
+                        player.sendMessage("Inventory full. Couldn't refund " + fullStack.getAmount() + " " + currencyMaterial.toString() + "!");
+                        break; // Stop adding if inventory is full
+                    }
+                }
+    
+                // Add remaining items to the player's inventory
+                if (remainder > 0) {
+                    ItemStack remainingStack = new ItemStack(currencyMaterial, remainder);
+                    HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(remainingStack);
+                    System.out.println("1 remainder apparantly...");
+                    if (!leftover.isEmpty()) {
+                        player.sendMessage("Inventory full. Couldn't refund " + remainder + " " + currencyMaterial.toString() + "!");
+                    }
+                }
+            } else {
+                System.out.println("Currency material is null. Cannot refund items.");
+                player.sendMessage("Error: Currency material is not set. Unable to refund bets.");
+            }
+        });
+    
+        // Clear the player's bets
+        playerBets.clear();
+        restoreBets(); // Update the inventory to remove lore information
+    }
+    
+/* 
+    private void clearAllBetsAndRefund(Player player) {
+        // Refund the player for all bets using stacks of 64
+        playerBets.forEach((number, amount) -> {
+            // Calculate the refund amount, ensuring it's rounded correctly
+            int refundAmount = (int) Math.ceil(amount); // Correct rounding up to nearest whole number
+            
+            // Log the refund amount for debugging
+            System.out.println("Bet Number: " + number + ", Original Amount: " + amount + ", Refund Amount: " + refundAmount);
+    
+            // Calculate the number of full stacks and the remainder
+            int fullStacks = refundAmount / 64;
+            int remainder = refundAmount % 64;
+    
+            // Log stack and remainder calculations
+            System.out.println("Full Stacks: " + fullStacks + ", Remainder: " + remainder);
+    
+            ItemStack fullStack = new ItemStack(plugin.getCurrency(), 64);
+            ItemStack remainingStack = new ItemStack(plugin.getCurrency(), remainder);
+    
+            // Add full stacks to the player's inventory
+            for (int i = 0; i < fullStacks; i++) {
+                player.getInventory().addItem(fullStack);
+            }
+    
+            // Add remaining items to the player's inventory
+            if (remainder > 0) {
+                player.getInventory().addItem(remainingStack);
+            }
+        });
+    
+        // Clear the player's bets
+        playerBets.clear();
+        restoreBets(); // Update the inventory to remove lore information
+    }
+    
+
+
+    private void clearAllBetsAndRefund(Player player) {
+        // Refund the player for all bets using stacks of 64
+        playerBets.forEach((number, amount) -> {
+            int refundAmount = (int) Math.ceil(amount);
+            int fullStacks = refundAmount / 64;
+            int remainder = refundAmount % 64;
+    
+            ItemStack fullStack = new ItemStack(plugin.getCurrency(), 64);
+            ItemStack remainingStack = new ItemStack(plugin.getCurrency(), remainder);
+    
+            // Add full stacks to the player's inventory
+            for (int i = 0; i < fullStacks; i++) {
+                player.getInventory().addItem(fullStack);
+            }
+    
+            // Add remaining items to the player's inventory
+            if (remainder > 0) {
+                player.getInventory().addItem(remainingStack);
+            }
+        });
+    
+        // Clear the player's bets
+        playerBets.clear();
+        restoreBets(); // Update the inventory to remove lore information
+    }
+
+    
     private void clearAllBetsAndRefund(Player player) {
         // Refund the player for all bets
         playerBets.forEach((number, amount) -> {
@@ -275,6 +679,9 @@ public class BettingTable implements InventoryHolder, Listener {
         playerBets.clear();
         restoreBets(); // Update the inventory to remove lore information
     }
+
+*/
+
     private void restoreBetsForPage(int page) {
         // Iterate over the stored bets and re-apply them to the inventory
         if(page==1&&playerBets.containsKey(-1)){
@@ -293,8 +700,11 @@ public class BettingTable implements InventoryHolder, Listener {
     public void handleInventoryClose(InventoryCloseEvent event) {
         if (event.getInventory().getHolder() != this) return;
         Player player = (Player) event.getPlayer();
-        cancelAllBets();
-        player.sendMessage("Exiting Betting Table. All bets cleared.");
+
+        player.sendMessage("Exited betting table. All bets still active, undoable until bets are closed.");
+            DealerVillager.savePlayerBets(dealer, player, playerBets);
+        //cancelAllBets();
+        
     }
 
     private void updateItemLore(int slot, double wager) {
