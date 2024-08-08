@@ -44,13 +44,6 @@ public class DealerInventory implements InventoryHolder {
         return this.inventory;
     }
 
-    // Method to refresh the inventory for a player
-    public void refresh(Player player) {
-        // Close and reopen the inventory to refresh it
-        player.closeInventory();
-        Bukkit.getScheduler().runTaskLater(JavaPlugin.getProvidingPlugin(DealerInventory.class), () -> player.openInventory(this.inventory), 1L);
-    }
-
     // Method to handle item click, can be overridden by subclasses
     public void handleClick(int slot, Player player) {
         // Default implementation does nothing

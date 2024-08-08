@@ -67,7 +67,6 @@ public class GameMenuInventory extends DealerInventory {
         DealerInventory dealerInventory = DealerInventory.getInventory(DealerVillager.getUniqueId(villager));
         if (dealerInventory != null) {
             Bukkit.getScheduler().runTaskLater(JavaPlugin.getProvidingPlugin(DealerInventory.class), () -> {
-                player.closeInventory();
                 player.openInventory(dealerInventory.getInventory());
             }, 1L);
         }

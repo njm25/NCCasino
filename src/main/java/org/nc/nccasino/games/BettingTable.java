@@ -387,7 +387,8 @@ clickAllowed=false;
         if (dealerInventory instanceof RouletteInventory) {
             RouletteInventory rouletteInventory = (RouletteInventory) dealerInventory;
             rouletteInventory.updatePlayerBets(playerId, playerBets); // Update the player's bets in the roulette inventory
-            rouletteInventory.refresh(player);
+            
+            player.openInventory(rouletteInventory.getInventory());
         }else {
             player.sendMessage("Error: Unable to find Roulette inventory.");
             plugin.getLogger().warning("Error: Unable to find Roulette inventory for dealer ID: " + dealerId);

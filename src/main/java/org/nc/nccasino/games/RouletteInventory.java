@@ -76,16 +76,6 @@ public class RouletteInventory extends DealerInventory implements Listener {
         return itemStack;
     }
 
-    // Refresh the inventory for the player
-    @Override
-    public void refresh(Player player) {
-        // Use a delayed task to avoid immediate recursion
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            player.closeInventory();
-            player.openInventory(this.inventory);
-        }, 1L);
-    }
-
     // Handle click events in the roulette inventory
     @EventHandler
     public void handleClick(InventoryClickEvent event) {
@@ -105,7 +95,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
                 player.sendMessage("Starting Roulette...");
                 setupGameMenu(); // Switch to game menu
                 pageNum = 2; // Set page number to game menu
-                refresh(player); // Refresh the player's inventory
+                player.openInventory(this.getInventory());
             }
         } else if (pageNum == 2) { // Game menu logic
             handleGameMenuClick(slot, player);
@@ -119,10 +109,10 @@ public class RouletteInventory extends DealerInventory implements Listener {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 // Find the dealer associated with the player
                 Villager dealer = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                        .filter(entity -> entity instanceof Villager)
-                        .map(entity -> (Villager) entity)
-                        .filter(DealerVillager::isDealerVillager)
-                        .findFirst().orElse(null);
+                .filter(entity -> entity instanceof Villager)
+                .map(entity -> (Villager) entity)
+                .filter(v -> DealerVillager.isDealerVillager(v) && DealerVillager.getUniqueId(v).equals(this.dealerId))
+                .findFirst().orElse(null);
 
                 if (dealer != null) {
                     // Retrieve existing bets for the player or initialize if none
@@ -150,8 +140,6 @@ public class RouletteInventory extends DealerInventory implements Listener {
         
         if (event.getInventory().getHolder() != this) return; // Ensure this is the correct inventory
         Player player = (Player) event.getPlayer();
-        player.sendMessage("This should trigger if player presses esc test");
-        //clearPlayerBets(player.getUniqueId());
     }
 
     public void updatePlayerBets(UUID playerId, Map<Integer, Double> bets) {
