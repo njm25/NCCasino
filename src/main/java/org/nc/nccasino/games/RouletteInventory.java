@@ -20,6 +20,13 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class RouletteInventory extends DealerInventory implements Listener {
+    public enum RouletteGameState {
+        WAITING_FOR_PLAYERS,
+        BETTING,
+        SPINNING,
+        RESULTS
+    }
+
     private int pageNum; // Track the current page number
     private final Nccasino plugin; // Reference to the main plugin
     private final Map<UUID, Map<Integer, Double>> playerBets; // Track all players' bets
@@ -35,6 +42,70 @@ public class RouletteInventory extends DealerInventory implements Listener {
         // Register the event listener for this inventory
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
+    private void setGameState(RouletteGameState newState) {
+        this.gameState = newState;
+        switch (newState) {
+            case WAITING_FOR_PLAYERS:
+                initializeStartMenu();
+                break;
+            case BETTING:
+                startBettingPhase();
+                break;
+            case SPINNING:
+                startSpinningPhase();
+                break;
+            case RESULTS:
+                showResults();
+                break;
+        }
+    }
+
+    private void startBettingPhase() {
+        // Setup betting phase UI
+        setupGameMenu();
+        // Schedule transition to spinning phase
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                setGameState(RouletteGameState.SPINNING);
+            }
+        }.runTaskLater(plugin, 20 * 30); // 30 seconds for betting
+    }
+
+    private void startSpinningPhase() {
+        // Spin the wheel and determine the result
+        int result = spinWheel();
+        // Schedule transition to results phase
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                setGameState(RouletteGameState.RESULTS);
+            }
+        }.runTaskLater(plugin, 20 * 5); // 5 seconds for spinning
+    }
+
+    private void showResults() {
+        // Show results to players
+        // Schedule transition back to waiting for players
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                setGameState(RouletteGameState.WAITING_FOR_PLAYERS);
+            }
+        }.runTaskLater(plugin, 20 * 10); // 10 seconds for showing results
+    }
+
+    private int spinWheel() {
+        // Randomly determine the result of the spin
+        return (int) (Math.random() * 37); // Roulette numbers 0-36
+    }
+
+
+
+
+
+
+
 
     public Map<Integer, Double> getPlayerBets(UUID playerId) {
         return playerBets.getOrDefault(playerId, new HashMap<>()); 
@@ -104,6 +175,10 @@ public class RouletteInventory extends DealerInventory implements Listener {
 
         Player player = (Player) event.getWhoClicked();
         event.setCancelled(true); // Cancel the event to prevent item movement
+
+
+
+        
 
         int slot = event.getRawSlot();
 
