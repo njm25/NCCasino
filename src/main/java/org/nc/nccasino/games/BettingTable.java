@@ -15,7 +15,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerVillager;
 
-import java.security.cert.PolicyQualifierInfo;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -411,19 +410,6 @@ clickAllowed=false;
         } else {
             player.sendMessage("Invalid wager amount: " + amount);
         }
-    }
-
-    private void cancelAllBets() {
-        // Logic to cancel all bets and return wagers to players
-        UUID dealerId = DealerVillager.getUniqueId(dealer);
-        DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
-        if (dealerInventory instanceof RouletteInventory) {
-            RouletteInventory rouletteInventory = (RouletteInventory) dealerInventory;
-            rouletteInventory.clearPlayerBets(playerId); // Remove bets from RouletteInventory
-        }
-        playerBets.clear();
-        // Also, update the inventory to remove lore information
-        restoreBets(); // This will remove lore as bets are now cleared
     }
 
     private void restoreBets() {
