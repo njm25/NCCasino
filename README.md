@@ -18,7 +18,7 @@ This process uses a batch script to automate compiling and deploying your plugin
    - Add the following lines to `config.txt`, replacing the placeholders with your actual directory paths and filenames:
 
      ```plaintext
-     PROJECT_DIR=C:\Path\To\Your\NCCasino
+     PROJECT_DIR=C:\Path\To\Your\Project\
      SERVER_DIR=C:\Path\To\Your\Minecraft\Server
      PLUGIN_NAME=YourPluginName.jar
      SERVER_JAR=YourServerJarFile.jar
