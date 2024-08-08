@@ -20,7 +20,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.commands.CommandExecutor;
 import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.listeners.DealerInteractListener;
-import org.nc.nccasino.listeners.VillagerPositionLockListener;
 
 import java.util.List;
 import java.util.UUID;
@@ -39,7 +38,6 @@ public final class Nccasino extends JavaPlugin implements Listener {
         loadCurrencyFromConfig();
 
         // Register event listeners
-        getServer().getPluginManager().registerEvents(new VillagerPositionLockListener(), this);
         getServer().getPluginManager().registerEvents(new DealerInteractListener(this), this);
         getServer().getPluginManager().registerEvents(this, this);
 

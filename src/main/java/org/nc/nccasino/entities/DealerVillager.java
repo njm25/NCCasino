@@ -9,6 +9,8 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.NamespacedKey;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.games.DealerInventory;
 import org.nc.nccasino.games.GameMenuInventory;
@@ -50,6 +52,10 @@ public class DealerVillager {
 
         UUID uniqueId = UUID.randomUUID();
 
+        AttributeInstance movementSpeedAttribute = villager.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED);
+            movementSpeedAttribute.setBaseValue(0.0);
+        
+
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         dataContainer.set(DEALER_KEY, PersistentDataType.BYTE, (byte) 1);
         dataContainer.set(UNIQUE_ID_KEY, PersistentDataType.STRING, uniqueId.toString());
@@ -68,7 +74,7 @@ public class DealerVillager {
                     return;
                 }
                 Location currentLocation = villager.getLocation();
-                if (currentLocation.distanceSquared(location) > 0.25) {
+                if (currentLocation.distanceSquared(location) > 0.1) {
                     villager.teleport(location.clone().setDirection(currentLocation.getDirection()));
                 }
             }
