@@ -122,11 +122,6 @@ public final class Nccasino extends JavaPlugin implements Listener {
         });
     }
 
-    @EventHandler
-    public void onPlayerJoin(PlayerJoinEvent event) {
-        event.getPlayer().sendMessage(Component.text("Hello, " + event.getPlayer().getName() + "!"));
-    }
-
     // Utility method to create NamespacedKey instances
     public NamespacedKey getKey(String key) {
         return new NamespacedKey(this, key);

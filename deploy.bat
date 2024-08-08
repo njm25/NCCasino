@@ -13,7 +13,7 @@ REM Build the project using Gradle
 call .\gradlew.bat clean build || exit /b
 
 REM Navigate to the build output directory
-cd "%BUILD_DIR%" || exit /b
+cd "%PROJECT_DIR%\build\libs" || exit /b
 
 REM Delete the old plugin JAR from the server plugins directory
 del "%SERVER_DIR%\plugins\%PLUGIN_NAME%" || exit /b
