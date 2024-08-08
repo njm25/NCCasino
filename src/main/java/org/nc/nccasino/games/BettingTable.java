@@ -78,10 +78,14 @@ public class BettingTable implements InventoryHolder, Listener {
         inventory.setItem(46, createCustomItem(Material.ARROW, "Back to Roulette", 1));
 
         int slot = 47;
-        for (Map.Entry<String, Double> entry : chipValues.entrySet()) {
+        List<Map.Entry<String, Double>> sortedEntries = new ArrayList<>(chipValues.entrySet());
+        sortedEntries.sort(Map.Entry.comparingByValue());
+        
+        for (Map.Entry<String, Double> entry : sortedEntries) {
             inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
             slot++;
         }
+        
 
         inventory.setItem(53, createCustomItem(Material.ARROW, "Next Page", 1));
 
@@ -101,10 +105,14 @@ public class BettingTable implements InventoryHolder, Listener {
         inventory.setItem(46, createCustomItem(Material.ARROW, "Back to Roulette", 1));
 
         int slot = 47;
-        for (Map.Entry<String, Double> entry : chipValues.entrySet()) {
+        List<Map.Entry<String, Double>> sortedEntries = new ArrayList<>(chipValues.entrySet());
+        sortedEntries.sort(Map.Entry.comparingByValue());
+        
+        for (Map.Entry<String, Double> entry : sortedEntries) {
             inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
             slot++;
         }
+        
 
         inventory.setItem(52, createCustomItem(Material.ARROW, "Previous Page", 1));
 
