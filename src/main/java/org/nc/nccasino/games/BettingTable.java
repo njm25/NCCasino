@@ -97,7 +97,7 @@ public class BettingTable implements InventoryHolder, Listener {
     private void addStraightUpBetsPageOne() {
         // Positions based on standard roulette layout
         int[] numbersPageOne = {1,3, 6, 9, 12, 15, 18,21,24, 0, 2, 5, 8, 11, 14, 17,20,23,1, 1, 4, 7, 10, 13, 16, 19, 22};
-        String[] colorsPageOne = {"BLUE","RED", "BLACK", "RED", "RED","BLACK", "RED","RED", "BLACK", "GREEN", "BLACK", "RED", "BLACK","BLACK", "RED", "BLACK","BLACK", "RED","BLUE", "RED","BLACK","RED","BLACK","BLACK","RED", "RED", "BLACK"};
+        String[] colorsPageOne = {"BLUE","RED", "BLACK", "RED", "RED","BLACK", "RED","RED", "BLACK", "LIME", "BLACK", "RED", "BLACK","BLACK", "RED", "BLACK","BLACK", "RED","BLUE", "RED","BLACK","RED","BLACK","BLACK","RED", "RED", "BLACK"};
 
         for (int i = 0; i < 27; i++) {
             if(!(i==0||i==18)){
@@ -118,27 +118,27 @@ public class BettingTable implements InventoryHolder, Listener {
        }
 
        // Adding row bets
-       inventory.setItem(8, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Top Row-2:1", 1));
-       inventory.setItem(17, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Middle Row-2:1", 1));
-       inventory.setItem(26, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Bottom Row-2:1", 1));
+       inventory.setItem(8, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Top Row-2:1", 1));
+       inventory.setItem(17, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Middle Row-2:1", 1));
+       inventory.setItem(26, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Bottom Row-2:1", 1));
     }
 
     private void addDozensAndOtherBetsPageOne() {
 
-        inventory.setItem(28, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "1st Dozen", 1));
-        inventory.setItem(29, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "1st Dozen", 1));
-        inventory.setItem(30, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "1st Dozen", 1));
-        inventory.setItem(31, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "1st Dozen", 1));
-        inventory.setItem(32, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "2nd Dozen", 1));
-        inventory.setItem(33, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "2nd Dozen", 1));
-        inventory.setItem(34, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "2nd Dozen", 1));
-        inventory.setItem(35, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "2nd Dozen", 1));
+        inventory.setItem(28, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1st Dozen", 1));
+        inventory.setItem(29, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1st Dozen", 1));
+        inventory.setItem(30, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1st Dozen", 1));
+        inventory.setItem(31, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1st Dozen", 1));
+        inventory.setItem(32, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen", 1));
+        inventory.setItem(33, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen", 1));
+        inventory.setItem(34, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen", 1));
+        inventory.setItem(35, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen", 1));
 
         // Adding other bets
-        inventory.setItem(37, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "1-18", 1));
-        inventory.setItem(38, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "1-18", 1));
-        inventory.setItem(39, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Even", 1));
-        inventory.setItem(40, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Even", 1));
+        inventory.setItem(37, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1-18", 1));
+        inventory.setItem(38, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1-18", 1));
+        inventory.setItem(39, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Even", 1));
+        inventory.setItem(40, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Even", 1));
         inventory.setItem(41, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red", 1));
         inventory.setItem(42, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red", 1));
         inventory.setItem(43, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Black", 1));
@@ -147,31 +147,39 @@ public class BettingTable implements InventoryHolder, Listener {
 
     private void addDozensAndOtherBetsPageTwo() {
         // Adding dozens
-        inventory.setItem(27, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "2nd Dozen", 1));
-        inventory.setItem(28, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "2nd Dozen", 1));
-        inventory.setItem(29, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "2nd Dozen", 1));
-        inventory.setItem(30, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "2nd Dozen", 1));
-        inventory.setItem(31, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "3rd Dozen", 1));
-        inventory.setItem(32, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "3rd Dozen", 1));
-        inventory.setItem(33, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "3rd Dozen", 1));
-        inventory.setItem(34, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "3rd Dozen", 1));
+        inventory.setItem(27, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen", 1));
+        inventory.setItem(28, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen", 1));
+        inventory.setItem(29, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen", 1));
+        inventory.setItem(30, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen", 1));
+        inventory.setItem(31, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "3rd Dozen", 1));
+        inventory.setItem(32, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "3rd Dozen", 1));
+        inventory.setItem(33, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "3rd Dozen", 1));
+        inventory.setItem(34, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "3rd Dozen", 1));
 
         // Adding other bets
         inventory.setItem(36, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red", 1));
         inventory.setItem(37, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red", 1));
         inventory.setItem(38, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Black", 1));
         inventory.setItem(39, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Black", 1));
-        inventory.setItem(40, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Odd", 1));
-        inventory.setItem(41, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Odd", 1));
-        inventory.setItem(42, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "19-36", 1));
-        inventory.setItem(43, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "19-36", 1));
+        inventory.setItem(40, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Odd", 1));
+        inventory.setItem(41, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Odd", 1));
+        inventory.setItem(42, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "19-36", 1));
+        inventory.setItem(43, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "19-36", 1));
     }
 
     private void addCommonComponents() {
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
         inventory.setItem(46, createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Undo Last Bet", 1));
-        inventory.setItem(52, createCustomItem(Material.MUSIC_DISC_PIGSTEP, "Back to Roulette", 1));
        
+        ItemStack discItem = new ItemStack(Material.MUSIC_DISC_PIGSTEP, 1);
+        ItemMeta discMeta = discItem.getItemMeta();
+        if (discMeta != null) {
+            discMeta.setDisplayName("Back to Roulette");
+            discMeta.setLore(new ArrayList<>()); // Clear any existing lore
+            discItem.setItemMeta(discMeta);
+        }
+        inventory.setItem(52, discItem);
+
         int slot = 47;
         List<Map.Entry<String, Double>> sortedEntries = new ArrayList<>(chipValues.entrySet());
         sortedEntries.sort(Map.Entry.comparingByValue());
