@@ -59,6 +59,7 @@ public class BettingTable implements InventoryHolder, Listener {
             double chipValue = nccasino.getChipValue(internalName, i);
             this.chipValues.put(chipName, chipValue);
         }
+        
     }
 
     private void initializeTable() {
@@ -69,41 +70,108 @@ public class BettingTable implements InventoryHolder, Listener {
         inventory.clear();
         clearAllLore(); // Clear all lore before setting up the page
 
-        for (int i = 1; i <= 18; i++) {
-            String color = (i % 2 == 0) ? "BLACK" : "RED";
-            inventory.setItem(i - 1, createCustomItem(Material.valueOf(color + "_WOOL"), "straight up " + i, i));
-        }
-        inventory.setItem(18, createCustomItem(Material.GREEN_WOOL, "straight up 0", 1));
-        inventory.setItem(45, createCustomItem(Material.TOTEM_OF_UNDYING, "Undo All Bets", 1));
-        inventory.setItem(46, createCustomItem(Material.ARROW, "Back to Roulette", 1));
+        // Setting up straight-up bets
+        addStraightUpBetsPageOne();
 
-        int slot = 47;
-        List<Map.Entry<String, Double>> sortedEntries = new ArrayList<>(chipValues.entrySet());
-        sortedEntries.sort(Map.Entry.comparingByValue());
-        
-        for (Map.Entry<String, Double> entry : sortedEntries) {
-            inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
-            slot++;
-        }
-        
+        // Setting up dozens and other bets
+        addDozensAndOtherBetsPageOne();
 
-        inventory.setItem(53, createCustomItem(Material.ARROW, "Next Page", 1));
-
-        restoreBetsForPage(1); // Restore bets for page 1
+        // Adding common components
+        addCommonComponents();
     }
 
     private void setupPageTwo() {
         inventory.clear();
         clearAllLore(); // Clear all lore before setting up the page
 
-        for (int i = 19; i <= 36; i++) {
-            String color = (i % 2 == 0) ? "BLACK" : "RED";
-            inventory.setItem(i - 19, createCustomItem(Material.valueOf(color + "_WOOL"), "straight up " + i, i));
-        }
+        // Setting up straight-up bets
+        addStraightUpBetsPageTwo();
 
-        inventory.setItem(45, createCustomItem(Material.TOTEM_OF_UNDYING, "Undo All Bets", 1));
-        inventory.setItem(46, createCustomItem(Material.ARROW, "Back to Roulette", 1));
+        // Setting up dozens and other bets
+        addDozensAndOtherBetsPageTwo();
 
+        // Adding common components
+        addCommonComponents();
+    }
+
+    private void addStraightUpBetsPageOne() {
+        // Positions based on standard roulette layout
+        int[] numbersPageOne = {1,3, 6, 9, 12, 15, 18,21,24, 0, 2, 5, 8, 11, 14, 17,20,23,1, 1, 4, 7, 10, 13, 16, 19, 22};
+        String[] colorsPageOne = {"BLUE","RED", "BLACK", "RED", "RED","BLACK", "RED","RED", "BLACK", "GREEN", "BLACK", "RED", "BLACK","BLACK", "RED", "BLACK","BLACK", "RED","BLUE", "RED","BLACK","RED","BLACK","BLACK","RED", "RED", "BLACK"};
+
+        for (int i = 0; i < 27; i++) {
+            if(!(i==0||i==18)){
+            if(numbersPageOne[i]==0){
+                inventory.setItem(i, createCustomItem(Material.valueOf(colorsPageOne[i] + "_STAINED_GLASS_PANE"), "straight up " + numbersPageOne[i], 1));
+            }    
+            else inventory.setItem(i, createCustomItem(Material.valueOf(colorsPageOne[i] + "_STAINED_GLASS_PANE"), "straight up " + numbersPageOne[i], numbersPageOne[i]));
+        }}
+    }
+
+    private void addStraightUpBetsPageTwo() {
+       // Positions based on standard roulette layout
+       int[] numbersPageTwo = {15, 18, 21, 24, 27, 30, 33, 36, 3,14, 17, 20, 23, 26, 29, 32, 35,2, 13, 16, 19, 22, 25, 28, 31, 34,1};
+       String[] colorsPageTwo = {"BLACK", "RED", "RED", "BLACK", "RED", "RED", "BLACK", "RED","GREEN", "RED", "BLACK", "BLACK", "RED", "BLACK","BLACK", "RED", "BLACK", "GREEN","BLACK", "RED","RED", "BLACK", "RED", "BLACK","BLACK", "RED","GREEN"};
+
+       for (int i = 0; i < numbersPageTwo.length; i++) {
+          if(!(i==8||i==17||i==26)) inventory.setItem(i, createCustomItem(Material.valueOf(colorsPageTwo[i] + "_STAINED_GLASS_PANE"), "straight up " + numbersPageTwo[i], numbersPageTwo[i]));
+       }
+
+       // Adding row bets
+       inventory.setItem(8, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Top Row-2:1", 1));
+       inventory.setItem(17, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Middle Row-2:1", 1));
+       inventory.setItem(26, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Bottom Row-2:1", 1));
+    }
+
+    private void addDozensAndOtherBetsPageOne() {
+
+        inventory.setItem(28, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "1st Dozen", 1));
+        inventory.setItem(29, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "1st Dozen", 1));
+        inventory.setItem(30, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "1st Dozen", 1));
+        inventory.setItem(31, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "1st Dozen", 1));
+        inventory.setItem(32, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "2nd Dozen", 1));
+        inventory.setItem(33, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "2nd Dozen", 1));
+        inventory.setItem(34, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "2nd Dozen", 1));
+        inventory.setItem(35, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "2nd Dozen", 1));
+
+        // Adding other bets
+        inventory.setItem(37, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "1-18", 1));
+        inventory.setItem(38, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "1-18", 1));
+        inventory.setItem(39, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Even", 1));
+        inventory.setItem(40, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Even", 1));
+        inventory.setItem(41, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red", 1));
+        inventory.setItem(42, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red", 1));
+        inventory.setItem(43, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Black", 1));
+        inventory.setItem(44, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Black", 1));
+    }
+
+    private void addDozensAndOtherBetsPageTwo() {
+        // Adding dozens
+        inventory.setItem(27, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "2nd Dozen", 1));
+        inventory.setItem(28, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "2nd Dozen", 1));
+        inventory.setItem(29, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "2nd Dozen", 1));
+        inventory.setItem(30, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "2nd Dozen", 1));
+        inventory.setItem(31, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "3rd Dozen", 1));
+        inventory.setItem(32, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "3rd Dozen", 1));
+        inventory.setItem(33, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "3rd Dozen", 1));
+        inventory.setItem(34, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "3rd Dozen", 1));
+
+        // Adding other bets
+        inventory.setItem(36, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red", 1));
+        inventory.setItem(37, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red", 1));
+        inventory.setItem(38, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Black", 1));
+        inventory.setItem(39, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Black", 1));
+        inventory.setItem(40, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Odd", 1));
+        inventory.setItem(41, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Odd", 1));
+        inventory.setItem(42, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "19-36", 1));
+        inventory.setItem(43, createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "19-36", 1));
+    }
+
+    private void addCommonComponents() {
+        inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
+        inventory.setItem(46, createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Undo Last Bet", 1));
+        inventory.setItem(52, createCustomItem(Material.MUSIC_DISC_PIGSTEP, "Back to Roulette", 1));
+       
         int slot = 47;
         List<Map.Entry<String, Double>> sortedEntries = new ArrayList<>(chipValues.entrySet());
         sortedEntries.sort(Map.Entry.comparingByValue());
@@ -112,12 +180,11 @@ public class BettingTable implements InventoryHolder, Listener {
             inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
             slot++;
         }
-        
-
-        inventory.setItem(52, createCustomItem(Material.ARROW, "Previous Page", 1));
-
-        restoreBetsForPage(2); // Restore bets for page 2
+       
+        inventory.setItem(53, createCustomItem(Material.ARROW, "Switch Page", 1));
     }
+
+
 
     private void clearAllLore() {
         for (int i = 0; i < inventory.getSize(); i++) {
@@ -173,7 +240,7 @@ public class BettingTable implements InventoryHolder, Listener {
             setupPageTwo();
             pageNum = 2;
             return;
-        } else if (pageNum == 2 && slot == 52) {
+        } else if (pageNum == 2 && slot == 53) {
             setupPageOne();
             pageNum = 1;
             return;
@@ -233,7 +300,7 @@ public class BettingTable implements InventoryHolder, Listener {
             return;
         }
 
-        if (slot == 46) {
+        if (slot == 52) {
             saveBetsToRoulette();
             player.sendMessage("Returning to Roulette...");
             openRouletteInventory(dealer, player);
