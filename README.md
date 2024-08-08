@@ -19,7 +19,6 @@ This process uses a batch script to automate compiling and deploying your plugin
 
      ```plaintext
      PROJECT_DIR=C:\Path\To\Your\NCCasino
-     BUILD_DIR=C:\Path\To\Your\NCCasino\build\libs
      SERVER_DIR=C:\Path\To\Your\Minecraft\Server
      PLUGIN_NAME=YourPluginName.jar
      SERVER_JAR=YourServerJarFile.jar
@@ -27,7 +26,6 @@ This process uses a batch script to automate compiling and deploying your plugin
 
    - **Configuration Keys**:
      - `PROJECT_DIR`: Path to your NCCasino project's root directory.
-     - `BUILD_DIR`: Path where the compiled JAR will be found (e.g., `build/libs`).
      - `SERVER_DIR`: Path to your Minecraft server directory.
      - `PLUGIN_NAME`: Name of your plugin's JAR file (e.g., `nccasino-1.0-SNAPSHOT.jar`).
      - `SERVER_JAR`: Filename of your Minecraft server JAR (e.g., `paper-1.21-124.jar`).
