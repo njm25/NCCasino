@@ -7,6 +7,7 @@ import org.bukkit.entity.Villager;
 import org.nc.nccasino.entities.DealerVillager;
 import org.jetbrains.annotations.NotNull;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.nc.nccasino.Nccasino;
 
 import java.util.UUID;
 
@@ -24,17 +25,21 @@ public class CreateCommand implements CasinoCommand {
             return true;
         }
 
+        if (args.length < 2) {
+            sender.sendMessage("Usage: /ncc create <name>");
+            return true;
+        }
+
         Player player = (Player) sender;
         Location location = player.getLocation();
+        String internalName = args[1];
 
-        // Creating and spawning a dealer villager at the player's location
-        Villager villager = DealerVillager.spawnDealer(plugin, location, "Dealer Villager");
+        // Store the dealer configuration with default values
+        Nccasino nccasino = (Nccasino) plugin;
+        nccasino.saveDefaultDealerConfig(internalName);
 
-        // Get the unique ID of the DealerVillager
-        UUID uniqueId = DealerVillager.getUniqueId(villager);
-        if (uniqueId == null) {
-            player.sendMessage("Failed to create Dealer Villager.");
-        }
+        DealerVillager.spawnDealer(plugin, location, "Dealer Villager", internalName);
+
 
         return true;
     }

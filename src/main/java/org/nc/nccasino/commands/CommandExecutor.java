@@ -3,6 +3,7 @@ package org.nc.nccasino.commands;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
+import org.nc.nccasino.Nccasino;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,7 +15,8 @@ public class CommandExecutor {
     public CommandExecutor(JavaPlugin plugin) {
         commands.put("help", new HelpCommand());
         commands.put("create", new CreateCommand(plugin));
-        commands.put("reload", new ReloadCommand(plugin));  // Register the reload command
+        commands.put("reload", new ReloadCommand(plugin));
+        commands.put("list", new ListDealersCommand((Nccasino) plugin)); // Register the new list command
     }
 
     public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, @NotNull String[] args) {

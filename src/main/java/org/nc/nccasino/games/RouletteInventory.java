@@ -17,10 +17,8 @@ import org.nc.nccasino.entities.DealerVillager;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class RouletteInventory extends DealerInventory implements Listener {
-  
 
     private int pageNum; // Track the current page number
     private final Nccasino plugin; // Reference to the main plugin
@@ -38,14 +36,9 @@ public class RouletteInventory extends DealerInventory implements Listener {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
-
-   
-
     public Map<Integer, Double> getPlayerBets(UUID playerId) {
-        return playerBets.getOrDefault(playerId, new HashMap<>()); 
+        return playerBets.getOrDefault(playerId, new HashMap<>());
     }
-
- 
 
     // Clear bets for a specific player
     public void clearPlayerBets(UUID playerId) {
@@ -84,10 +77,6 @@ public class RouletteInventory extends DealerInventory implements Listener {
         Player player = (Player) event.getWhoClicked();
         event.setCancelled(true); // Cancel the event to prevent item movement
 
-
-
-
-
         int slot = event.getRawSlot();
 
         if (pageNum == 1) { // Start menu logic
@@ -109,16 +98,18 @@ public class RouletteInventory extends DealerInventory implements Listener {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 // Find the dealer associated with the player
                 Villager dealer = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                .filter(entity -> entity instanceof Villager)
-                .map(entity -> (Villager) entity)
-                .filter(v -> DealerVillager.isDealerVillager(v) && DealerVillager.getUniqueId(v).equals(this.dealerId))
-                .findFirst().orElse(null);
+                        .filter(entity -> entity instanceof Villager)
+                        .map(entity -> (Villager) entity)
+                        .filter(v -> DealerVillager.isDealerVillager(v) && DealerVillager.getUniqueId(v).equals(this.dealerId))
+                        .findFirst().orElse(null);
 
                 if (dealer != null) {
                     // Retrieve existing bets for the player or initialize if none
-                    Map<Integer, Double> bets = DealerVillager.retrievePlayerBets(dealer,player); // Use method to retrieve
-                    // Create a new bet*ting table with the existing bets
-                    BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets);
+                    Map<Integer, Double> bets = DealerVillager.retrievePlayerBets(dealer, player); // Use method to retrieve
+                    // Get the internal name of the dealer
+                    String internalName = DealerVillager.getInternalName(dealer);
+                    // Create a new betting table with the existing bets and internal name
+                    BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets, internalName);
 
                     // Open the betting table for the player
                     player.openInventory(bettingTable.getInventory());
@@ -137,7 +128,6 @@ public class RouletteInventory extends DealerInventory implements Listener {
     // Clear bets when player closes the inventory directly
     @EventHandler
     public void handleInventoryClose(InventoryCloseEvent event) {
-        
         if (event.getInventory().getHolder() != this) return; // Ensure this is the correct inventory
         Player player = (Player) event.getPlayer();
     }
@@ -145,7 +135,4 @@ public class RouletteInventory extends DealerInventory implements Listener {
     public void updatePlayerBets(UUID playerId, Map<Integer, Double> bets) {
         playerBets.put(playerId, bets);
     }
-
-
-
 }

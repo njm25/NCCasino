@@ -17,7 +17,9 @@ public class HelpCommand implements CasinoCommand {
         Player player = (Player) sender;
 
         player.sendMessage(Component.text("NCCASINO HELP"));
-        player.sendMessage(Component.text("/ncc create - Spawns Dealer where user is standing"));
+        player.sendMessage(Component.text("/ncc create <name> - Spawns Dealer where user is standing"));
+        player.sendMessage(Component.text("/ncc list (page) - Lists the dealers"));
+        player.sendMessage(Component.text("/ncc reload - Reloads the config"));
 
         return true;
     }

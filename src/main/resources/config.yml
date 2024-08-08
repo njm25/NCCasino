@@ -1,3 +1,0 @@
-currency:
-  material: "EMERALD"  # The material used as currency (e.g., "DIAMOND", "GOLD_INGOT", "IRON_INGOT")
-  name: "Emerald"     # The display name for the currency

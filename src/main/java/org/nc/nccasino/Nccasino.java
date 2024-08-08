@@ -131,4 +131,45 @@ public final class Nccasino extends JavaPlugin implements Listener {
     public NamespacedKey getKey(String key) {
         return new NamespacedKey(this, key);
     }
+
+    public void saveDefaultDealerConfig(String internalName) {
+        String path = "dealers." + internalName;
+
+        if (!getConfig().contains(path)) {
+            getConfig().set(path + ".currency.material", "EMERALD");
+            getConfig().set(path + ".currency.name", "Emerald");
+            getConfig().set(path + ".chip-sizes.size1", 1);
+            getConfig().set(path + ".chip-sizes.size2", 5);
+            getConfig().set(path + ".chip-sizes.size3", 10);
+            getConfig().set(path + ".chip-sizes.size4", 25);
+            getConfig().set(path + ".chip-sizes.size5", 50);
+            saveConfig();
+        }
+    }
+
+    public Material getCurrency(String internalName) {
+        String materialName = getConfig().getString("dealers." + internalName + ".currency.material", "EMERALD").toUpperCase();
+        return Material.matchMaterial(materialName);
+    }
+
+    public String getCurrencyName(String internalName) {
+        return getConfig().getString("dealers." + internalName + ".currency.name", "Emerald");
+    }
+
+    public double getChipValue(String internalName, int index) {
+        return getConfig().getDouble("dealers." + internalName + ".chip-sizes.size" + index, 0);
+    }
+
+    public String getChipName(String internalName, int index) {
+        double value = getChipValue(internalName, index);
+        return (int) value + " " + getCurrencyName(internalName);
+    }
+
+    // Method to reinitialize dealer configurations
+    public void reinitializeDealerConfigurations() {
+        // Logic to reinitialize dealer configurations if needed
+        // This can be customized as per the plugin's requirements
+        getLogger().info("Reinitializing dealer configurations...");
+        reinitializeDealerVillagers();
+    }
 }
