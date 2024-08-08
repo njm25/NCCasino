@@ -13,7 +13,7 @@ This process uses a batch script to automate compiling and deploying your plugin
 
 1. **Create `config.txt`**
 
-   - Place a file named `config.txt` in the root directory of your project, alongside the `refreshplugin.bat` script.
+   - Place a file named `config.txt` in the root directory of your project, alongside the `deploy.bat` script.
 
    - Add the following lines to `config.txt`, replacing the placeholders with your actual directory paths and filenames:
 
@@ -34,16 +34,16 @@ This process uses a batch script to automate compiling and deploying your plugin
 
 ### Step 2: Run the Batch Script
 
-2. **Execute `refreshplugin.bat`**
+2. **Execute `deploy.bat`**
 
-   - The `refreshplugin.bat` script is located in the root directory of your project.
+   - The `deploy.bat` script is located in the root directory of your project.
 
    - **To run the script**:
-     - **Double-click** `refreshplugin.bat` in File Explorer.
+     - **Double-click** `deploy.bat` in File Explorer.
      - **Or run it from the command prompt** by navigating to the project directory and entering:
 
        ```bash
-       refreshplugin.bat
+       deploy.bat
        ```
 
    - The script will:
@@ -53,7 +53,7 @@ This process uses a batch script to automate compiling and deploying your plugin
 
 ### Notes
 
-- **Ensure `config.txt` and `refreshplugin.bat` are in the same directory**.
+- **Ensure `config.txt` and `deploy.bat` are in the same directory**.
 - **Verify the paths in `config.txt`** to ensure they are correct for your environment.
 - **Consider backing up your server data** before running the script to prevent data loss during updates.
 
