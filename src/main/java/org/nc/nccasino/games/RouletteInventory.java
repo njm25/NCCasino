@@ -20,12 +20,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class RouletteInventory extends DealerInventory implements Listener {
-    public enum RouletteGameState {
-        WAITING_FOR_PLAYERS,
-        BETTING,
-        SPINNING,
-        RESULTS
-    }
+  
 
     private int pageNum; // Track the current page number
     private final Nccasino plugin; // Reference to the main plugin
@@ -50,23 +45,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
         return playerBets.getOrDefault(playerId, new HashMap<>()); 
     }
 
-    public void printPlayerBets(UUID playerId) {
-        // Retrieve the player's bets
-        Map<Integer, Double> bets = getPlayerBets(playerId);
-
-        // Print header message
-        System.out.println("Player Bets for player ID: " + playerId);
-         AtomicInteger total = new AtomicInteger();
-
-        // Loop through each bet and print the details to the console
-        bets.forEach((number, amount) -> {
-            System.out.println("Number: " + number + ", Amount: " + amount);
-           total.addAndGet(amount.intValue());
-        });
-
-        // Print a footer message
-        System.out.println("End of player bets-total: "+total.get()+"\n");
-    }
+ 
 
     // Clear bets for a specific player
     public void clearPlayerBets(UUID playerId) {
@@ -140,19 +119,14 @@ public class RouletteInventory extends DealerInventory implements Listener {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 // Find the dealer associated with the player
                 Villager dealer = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                .filter(entity -> entity instanceof Villager)
-                .map(entity -> (Villager) entity)
-                .filter(v -> DealerVillager.isDealerVillager(v) && DealerVillager.getUniqueId(v).equals(this.dealerId))
-                .findFirst().orElse(null);
+                        .filter(entity -> entity instanceof Villager)
+                        .map(entity -> (Villager) entity)
+                        .filter(DealerVillager::isDealerVillager)
+                        .findFirst().orElse(null);
 
                 if (dealer != null) {
                     // Retrieve existing bets for the player or initialize if none
-                    //player.sendMessage("PlayerUniqueId after pressing open betting table"+player.getUniqueId());
                     Map<Integer, Double> bets = DealerVillager.retrievePlayerBets(dealer,player); // Use method to retrieve
-                    /*player.sendMessage("Retrieved Bets:");
-                    bets.forEach((number, amount) -> {
-                        player.sendMessage("Number: " + number + ", Amount: " + amount);
-                    });*/
                     // Create a new bet*ting table with the existing bets
                     BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets);
 

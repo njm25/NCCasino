@@ -60,10 +60,7 @@ public class BettingTable implements InventoryHolder, Listener {
     }
 
     private void setupPageOne() {
-       /*  System.out.println("ppg1");
-        playerBets.forEach((number, amount) -> {
-            System.out.println("Number: " + number + ", Amount: " + amount);
-        });*/
+   
         inventory.clear();
         clearAllLore(); // Clear all lore before setting up the page
     
@@ -85,11 +82,7 @@ public class BettingTable implements InventoryHolder, Listener {
     }
     
     private void setupPageTwo() {
-        /* 
-        System.out.println("pg2");
-        playerBets.forEach((number, amount) -> {
-            System.out.println("Number: " + number + ", Amount: " + amount);
-        });*/
+  
         inventory.clear();
         clearAllLore(); // Clear all lore before setting up the page
     
@@ -204,13 +197,12 @@ clickAllowed=false;
                 if (pageNum==1 && slot==18){
                    
                         if (playerBets.containsKey(-1)) {
-                            //System.out.println("0 bet key found");
+
                             double currentBet = playerBets.get(-1);
                             double newBet = currentBet + selectedWager;
                             playerBets.put(-1, newBet);
                             updateItemLore(slot, newBet);}
                     else{
-                        //System.out.println("0 bet no key found");
                         playerBets.put(-1, selectedWager);
                         updateItemLore(slot, selectedWager);
                     }
@@ -218,11 +210,9 @@ clickAllowed=false;
                 else {
 
                     if(playerBets.containsKey(actualNum)){
-                       // System.out.println("non0 bet key found");
                     playerBets.replace(actualNum, playerBets.get(actualNum)+selectedWager);
                     updateItemLore(actualSlot,playerBets.get(actualNum));}
                     else{
-                        //System.out.println("non0 bet no key found");
                     playerBets.put(actualNum, selectedWager);
                     updateItemLore(actualSlot, selectedWager);
                     }
@@ -249,13 +239,6 @@ clickAllowed=false;
     
     }
 
-/* 
-        if (slot == 45) {
-            player.closeInventory();
-            player.sendMessage("You have left the game. Bets are closed.");
-            //cancelAllBets();
-            DealerVillager.removePlayerBettingTable(dealer, player);
-        }*/
 
         if (slot == 46) {
 
@@ -405,8 +388,6 @@ clickAllowed=false;
         if (dealerInventory instanceof RouletteInventory) {
             RouletteInventory rouletteInventory = (RouletteInventory) dealerInventory;
             rouletteInventory.updatePlayerBets(playerId, playerBets); // Update the player's bets in the roulette inventory
-           // System.out.println("Thisisinopenrouletteinventory");
-           // rouletteInventory.printPlayerBets(playerId);
             rouletteInventory.refresh(player);
         }else {
             player.sendMessage("Error: Unable to find Roulette inventory.");
@@ -476,8 +457,7 @@ clickAllowed=false;
 
        
             rouletteInventory.updatePlayerBets(playerId, playerBets); // Save the player's bets to the roulette inventory
-           // System.out.println("Thisisinsavebetsto roulette");
-            rouletteInventory.printPlayerBets(playerId);
+       
         }
         else {
             plugin.getLogger().warning("Failed to save bets: Roulette inventory not found.");
