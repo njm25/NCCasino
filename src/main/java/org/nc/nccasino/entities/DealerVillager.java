@@ -166,16 +166,7 @@ public class DealerVillager {
         UUID dealerId = dealer.getUniqueId();
         UUID playerId = player.getUniqueId();
         Map<Integer, Double> existingBets = retrievePlayerBets(dealer, player);
-        // Retrieve the existing bets for the player from the RouletteInventory
 
-        /* 
-        DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
-        Map<Integer, Double> existingBets = new HashMap<>();
-        if (dealerInventory instanceof RouletteInventory) {
-            existingBets = ((RouletteInventory) dealerInventory).getPlayerBets(playerId);
-        }*/
-
-        // Create a new betting table with the existing bets
         
         BettingTable newBettingTable = new BettingTable(player, dealer, plugin, existingBets);
         dealerBettingTables.computeIfAbsent(dealerId, k -> new HashMap<>()).put(playerId, newBettingTable);
