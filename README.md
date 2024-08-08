@@ -63,5 +63,5 @@ Once the plugin is deployed, you can use the following commands in-game:
 
 - **`/ncc help`**: Displays help information for the plugin.
 - **`/ncc create <name>`**: Spawns a dealer where the player is standing.
-- **`/ncc list \(page\)`**: Lists the dealers.
+- **`/ncc list (page)`**: Lists the dealers.
 - **`/ncc reload`**: Reloads the config.
