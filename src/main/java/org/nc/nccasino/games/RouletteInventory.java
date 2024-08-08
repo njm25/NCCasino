@@ -140,10 +140,10 @@ public class RouletteInventory extends DealerInventory implements Listener {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 // Find the dealer associated with the player
                 Villager dealer = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                        .filter(entity -> entity instanceof Villager)
-                        .map(entity -> (Villager) entity)
-                        .filter(DealerVillager::isDealerVillager)
-                        .findFirst().orElse(null);
+                .filter(entity -> entity instanceof Villager)
+                .map(entity -> (Villager) entity)
+                .filter(v -> DealerVillager.isDealerVillager(v) && DealerVillager.getUniqueId(v).equals(this.dealerId))
+                .findFirst().orElse(null);
 
                 if (dealer != null) {
                     // Retrieve existing bets for the player or initialize if none
