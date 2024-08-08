@@ -18,6 +18,11 @@ public class CommandExecutor {
     }
 
     public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, @NotNull String[] args) {
+        if (!sender.hasPermission("nccasino.use")) { // Check if the sender has the required permission
+            sender.sendMessage("You do not have permission to use this command.");
+            return true;
+        }
+
         if (args.length == 0) { // Sender only typed '/ncc' and nothing else
             sender.sendMessage("Use ncc help for help!");
             return true;
