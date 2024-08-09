@@ -15,19 +15,19 @@ done < config.txt
 cd "$PROJECT_DIR" || exit 1
 
 # Build the project using Gradle
-./gradlew clean build || exit 1
+sudo ./gradlew clean build || exit 1
 
 # Navigate to the build output directory
 cd "$PROJECT_DIR/build/libs" || exit 1
 
 # Delete the old plugin JAR from the server plugins directory
-rm -f "$SERVER_DIR/plugins/$PLUGIN_NAME" || exit 1
+sudo rm -f "$SERVER_DIR/plugins/$PLUGIN_NAME" || exit 1
 
 # Copy the new plugin JAR to the server plugins directory
-cp -f "$PLUGIN_NAME" "$SERVER_DIR/plugins/" || exit 1
+sudo cp -f "$PLUGIN_NAME" "$SERVER_DIR/plugins/" || exit 1
 
 # Navigate to the server directory
 cd "$SERVER_DIR" || exit 1
 
 # Start the Minecraft server
-java -Xms2G -Xmx2G -jar "$SERVER_JAR" --nogui || exit 1
+sudo java -Xms2G -Xmx2G -jar "$SERVER_JAR" --nogui || exit 1
