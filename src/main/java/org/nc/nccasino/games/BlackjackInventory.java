@@ -26,7 +26,7 @@ public class BlackjackInventory extends DealerInventory implements Listener {
     private boolean gameStarted; // Track whether the game has started
     private boolean gameActive; // Track whether the game is active
     private double selectedWager; // Track the selected wager
-    private boolean clickAllowed; // To prevent fast clicks
+    private final Map<UUID, Boolean> clickAllowed = new HashMap<>(); // Track click state per player
     private int countdownTaskId; // Task ID for the countdown timer
     private UUID currentPlayerId; // Track the current player
     private Iterator<UUID> playerIterator; // Iterator for player turns
@@ -34,7 +34,9 @@ public class BlackjackInventory extends DealerInventory implements Listener {
     private final Map<UUID, Boolean> playerDone = new HashMap<>(); // Track whether the player is done (stood or busted)
     private final Map<UUID, List<ItemStack>> playerHands = new HashMap<>();
     private final List<ItemStack> dealerHand = new ArrayList<>();
-    
+    private final Map<UUID, Double> selectedWagers = new HashMap<>();
+    private final Object turnLock = new Object(); // Lock object for turn actionsactions
+    private final Map<UUID, Boolean> playerTurnActive = new HashMap<>();
 private Deck deck; // Declare the deck as a class variable
 
     public BlackjackInventory(UUID dealerId, Nccasino plugin, String internalName) {
@@ -48,12 +50,11 @@ private Deck deck; // Declare the deck as a class variable
         this.playerBets = new HashMap<>(); // Initialize player bets storage
         this.lastBetAmounts = new HashMap<>(); // Initialize last bet amounts storage
         this.selectedWager = 0; // Initialize selected wager
-        this.clickAllowed = true; // Allow clicking initially
         this.countdownTaskId = -1; // Initialize countdown task ID
-        this.deck = new Deck(1);
+        this.deck = new Deck(1); // Initialize the deck
         loadChipValuesFromConfig(); // Load chip values from config
         initializeStartMenu(); // Initialize the start menu
-
+        
         Bukkit.getPluginManager().registerEvents(this, plugin); // Register events
     }
 
@@ -167,166 +168,219 @@ private ItemStack createPlayerHeadItem(Player player, int stackSize) {
     return playerHead;
 }
 
-
 @Override
 public void handleClick(int slot, Player player, InventoryClickEvent event) {
     event.setCancelled(true); // Ensure the event is cancelled to prevent unintended item movement
 
-    if (!clickAllowed) {
-        player.sendMessage("Please wait before clicking again!");
-        return;
-    }
-    clickAllowed = false;
-    Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed = true, 5L); // Delay for click handling
+    UUID playerId = player.getUniqueId();
 
-    if (!gameStarted) { // Handle clicks in the start menu
-        if (slot == 22) { // Start Blackjack button clicked
-            player.sendMessage("Starting Blackjack...");
-            gameStarted = true; // Set game started flag
-            initializeGameMenu(); // Switch to game menu
-            player.openInventory(this.getInventory());
-        }
-    } else if (gameActive) { // Game is active, handle player actions
-        if (player.getUniqueId().equals(currentPlayerId)) {
-            handlePlayerAction(player, slot);
-        } else if (slot == 53) { // Handle leave chair
-            handleLeaveChairDuringGame(player);
-        } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots
-            player.sendMessage("You cannot place or undo bets in an active game.");
-        }
-    } else { // Handle clicks in the game menu before the game starts
-        if (slot >= 9 && slot <= 27 && slot % 9 == 0) { // Chair slots (9, 18, 27)
-            handleChairClick(slot, player);
-        } else if (slot == 53) { // Leave chair
-            handleLeaveChair(player);
-        } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots (10, 19, 28)
-            handleBetClick(slot, player);
-        } else if (slot >= 47 && slot <= 51) { // Chip selection
-            handleChipSelection(player, event.getCurrentItem());
-        } else {
-            switch (slot) {
-                case 45:
-                    handleUndoAllBets(player);
-                    break;
-                case 46:
-                    handleUndoLastBet(player);
-                    break;
-                default:
-                    // Handle other slots if needed
-                    break;
+    if (clickAllowed.getOrDefault(playerId, true)) {
+        clickAllowed.put(playerId, false); // Set click allowed to false for this player
+        Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L); // Delay for click handling
+
+        if (!gameStarted) { // Handle clicks in the start menu
+            if (slot == 22) { // Start Blackjack button clicked
+                player.sendMessage("Starting Blackjack...");
+                gameStarted = true; // Set game started flag
+                initializeGameMenu(); // Switch to game menu
+                player.openInventory(this.getInventory());
+            }
+        } else if (gameActive) { // Game is active, handle player actions
+            if (playerId.equals(currentPlayerId)) {
+                handlePlayerAction(player, slot);
+            } else if (slot == 53) { // Handle leave chair
+                handleLeaveChairDuringGame(player);
+            } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots
+                player.sendMessage("You cannot place or undo bets in an active game.");
+            }
+        } else { // Handle clicks in the game menu before the game starts
+            if (slot >= 9 && slot <= 27 && slot % 9 == 0) { // Chair slots (9, 18, 27)
+                handleChairClick(slot, player);
+            } else if (slot == 53) { // Leave chair
+                handleLeaveChair(player);
+            } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots (10, 19, 28)
+                handleBetClick(slot, player);
+            } else if (slot >= 47 && slot <= 51) { // Chip selection
+                handleChipSelection(player, event.getCurrentItem());
+            } else {
+                switch (slot) {
+                    case 45:
+                        handleUndoAllBets(player);
+                        break;
+                    case 46:
+                        handleUndoLastBet(player);
+                        break;
+                    default:
+                        // Handle other slots if needed
+                        break;
+                }
             }
         }
+    } else {
+        player.sendMessage("Please wait before clicking again!");
     }
 }
+
+
 
 private void handlePlayerAction(Player player, int slot) {
-    switch (slot) {
-        case 36: // Hit
-            handleHit(player);
-            break;
-        case 37: // Stand
-            handleStand(player);
-            break;
-        case 38: // Double Down
-            handleDoubleDown(player);
-            break;
-        case 40: // Insurance
-            handleInsurance(player);
-            break;
-        default:
-            player.sendMessage("Invalid action. Choose Hit, Stand, Double Down, or Insurance.");
-    }
-}
-private void handleHit(Player player) {
-    UUID playerId = player.getUniqueId();
-    int seatSlot = playerSeats.get(playerId);
-    int cardCount = playerCardCounts.getOrDefault(playerId, 2); // Default to 2 because of the initial 2 cards dealt
-    int nextCardSlot = seatSlot + 2 + cardCount; // Calculate the next slot based on the number of cards
+    synchronized (turnLock) {
+        UUID playerId = player.getUniqueId();
 
-    Card newCard = deck.dealCard();
-    scheduleCardDealingWithDelay(nextCardSlot, newCard, 20L, playerId); // Deal the card with a delay
-
-    cardCount++; // Increment the card count
-    playerCardCounts.put(playerId, cardCount); // Update the card count
-
-    // Delay the hand value calculation to ensure the card is fully added to the player's hand
-    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        int handValue = calculateHandValue(playerHands.get(playerId));
-        System.out.println("User's hand value: " + handValue);
-
-        if (handValue > 21) {
-            playerDone.put(playerId, true); // Mark the player as done
-            player.sendMessage("Bust! Your turn is over.");
-            startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
-        } else {
-            allowPlayerActions(player); // Continue player's turn with delay
+        // Allow the player to leave during their turn
+        if (slot == 53) {
+            handleLeaveChairDuringGame(player);
+            return;
         }
-    }, 40L); // The delay should be enough to ensure that the card has been added
-}
 
+        // Check if the player's turn is still active
+        if (!playerTurnActive.getOrDefault(playerId, false)) {
+            player.sendMessage("Your turn is over, you can't take any more actions.");
+            return;
+        }
 
+        // Disable further actions until the current one is processed
+        playerTurnActive.put(playerId, false);
 
-
-private int calculatePlayerCardSum(UUID playerId) {
-    int seatSlot = playerSeats.get(playerId);
-    int cardCount = playerCardCounts.getOrDefault(playerId, 2); // Get the number of cards the player has
-
-    int cardSum = 0;
-    for (int i = 0; i < cardCount; i++) {
-        cardSum += getCardValue(inventory.getItem(seatSlot + 2 + i)); // Sum the values of all cards
+        switch (slot) {
+            case 36: // Hit
+                handleHit(player);
+                break;
+            case 37: // Stand
+                handleStand(player);
+                break;
+            case 38: // Double Down
+                handleDoubleDown(player);
+                break;
+            case 40: // Insurance
+                handleInsurance(player);
+                break;
+            default:
+                player.sendMessage("Invalid action. Choose Hit, Stand, Double Down, or Insurance.");
+                playerTurnActive.put(playerId, true); // Re-enable actions if the action was invalid
+        }
     }
-    return cardSum;
 }
+
+
+private void handleHit(Player player) {
+    synchronized (turnLock) {
+        UUID playerId = player.getUniqueId();
+        int seatSlot = playerSeats.get(playerId);
+        int cardCount = playerCardCounts.getOrDefault(playerId, 2); // Default to 2 because of the initial 2 cards dealt
+        int nextCardSlot = seatSlot + 2 + cardCount; // Calculate the next slot based on the number of cards
+
+        Card newCard = deck.dealCard();
+        scheduleCardDealingWithDelay(nextCardSlot, newCard, 20L, playerId); // Deal the card with a delay
+
+        cardCount++; // Increment the card count
+        playerCardCounts.put(playerId, cardCount); // Update the card count
+
+        // Delay the hand value calculation to ensure the card is fully added to the player's hand
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            int handValue = calculateHandValue(playerHands.get(playerId));
+            System.out.println("User's hand value: " + handValue);
+
+            if (handValue == 21) {
+                player.sendMessage("21! Your turn is over!");
+                
+                playerTurnActive.put(playerId, false); // Deactivate the player's turn
+                startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
+            } else if (handValue > 21) {
+                playerDone.put(playerId, true); // Mark the player as done
+                playerTurnActive.put(playerId, false); // Deactivate the player's turn
+                player.sendMessage("Bust! Your turn is over.");
+                startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
+            } else {
+                playerTurnActive.put(playerId, true); // Allow more actions since the player hasn't busted
+                allowPlayerActions(player); // Continue player's turn with delay
+            }
+        }, 40L); // The delay should be enough to ensure that the card has been added
+    }
+}
+
+
+
+
+
+
 private void handleStand(Player player) {
-    UUID playerId = player.getUniqueId();
-    playerDone.put(playerId, true); // Mark the player as done
-    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        player.sendMessage("You chose to stand.");
-        startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
-    }, 20L);
+    synchronized (turnLock) {
+        UUID playerId = player.getUniqueId();
+        playerDone.put(playerId, true); // Mark the player as done
+        playerTurnActive.put(playerId, false); // Deactivate the player's turn
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            player.sendMessage("You chose to stand.");
+            startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
+        }, 20L);
+    }
 }
+
+
 
 private void startNextPlayerTurnWithDelay(long delay) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> startNextPlayerTurn(), delay);
 }
+
 private void handleDoubleDown(Player player) {
-    UUID playerId = player.getUniqueId();
-    double currentBet = playerBets.get(playerId).values().stream().mapToDouble(Double::doubleValue).sum();
+    synchronized (turnLock) {
+        UUID playerId = player.getUniqueId();
+        double currentBet = playerBets.get(playerId).values().stream().mapToDouble(Double::doubleValue).sum();
 
-    if (!hasEnoughWager(player, currentBet)) {
-        player.sendMessage("You don't have enough funds to double down.");
-        allowPlayerActions(player); // Continue player's turn
-        return;
+        if (!hasEnoughWager(player, currentBet)) {
+            player.sendMessage("You don't have enough funds to double down.");
+            playerTurnActive.put(playerId, true); // Allow more actions since the double down failed
+            allowPlayerActions(player); // Continue player's turn
+            return;
+        }
+
+        // Remove the additional wager from the player's inventory
+        removeWagerFromInventory(player, currentBet);
+
+        // Double the bet amount in the player's bets
+        playerBets.get(playerId).replaceAll((k, v) -> v * 2);
+
+        // Update the lore to reflect the doubled bet
+        for (Map.Entry<Integer, Double> entry : playerBets.get(playerId).entrySet()) {
+            int slot = entry.getKey();
+            double updatedBet = entry.getValue();
+            updateItemLore(slot, updatedBet);
+        }
+
+        // After doubling down, the player gets exactly one more card
+        handleHit(player);
+        playerTurnActive.put(playerId, false); // Deactivate the player's turn after doubling down
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            player.sendMessage("You doubled down. Your turn is over.");
+
+            startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
+        }, 20L);
     }
-
-    removeWagerFromInventory(player, currentBet);
-    playerBets.get(playerId).replaceAll((k, v) -> v * 2); // Double the bet
-
-    handleHit(player);
-    player.sendMessage("You doubled down. Your turn is over.");
-    startNextPlayerTurn();
 }
 
 private void handleInsurance(Player player) {
-    UUID playerId = player.getUniqueId();
-    double currentBet = playerBets.get(playerId).values().stream().mapToDouble(Double::doubleValue).sum();
-    double insuranceBet = currentBet / 2;
+    synchronized (turnLock) {
+        UUID playerId = player.getUniqueId();
+        double currentBet = playerBets.get(playerId).values().stream().mapToDouble(Double::doubleValue).sum();
+        double insuranceBet = currentBet / 2;
 
-    if (!hasEnoughWager(player, insuranceBet)) {
-        player.sendMessage("You don't have enough funds for insurance.");
+        if (!hasEnoughWager(player, insuranceBet)) {
+            player.sendMessage("You don't have enough funds for insurance.");
+            allowPlayerActions(player); // Continue player's turn
+            return;
+        }
+
+        if (inventory.getItem(2) != null && inventory.getItem(2).getItemMeta().getDisplayName().contains("ACE")) {
+            removeWagerFromInventory(player, insuranceBet);
+            player.sendMessage("Insurance taken. If the dealer has Blackjack, you'll be protected.");
+        } else {
+            player.sendMessage("Insurance is only available if the dealer shows an Ace.");
+        }
+
         allowPlayerActions(player); // Continue player's turn
-        return;
     }
-
-    if (inventory.getItem(2) != null && inventory.getItem(2).getItemMeta().getDisplayName().contains("Ace")) {
-        removeWagerFromInventory(player, insuranceBet);
-        player.sendMessage("Insurance taken. If the dealer has Blackjack, you'll be protected.");
-    } else {
-        player.sendMessage("Insurance is only available if the dealer shows an Ace.");
-    }
-
-    allowPlayerActions(player); // Continue player's turn
 }
+
     // Handle chair click
     private void handleChairClick(int slot, Player player) {
         UUID playerId = player.getUniqueId();
@@ -355,12 +409,47 @@ private void handleLeaveChair(Player player) {
         return;
     }
 
+    int chairSlot = playerSeats.remove(playerId);
+
+    // Reset the chair to its original state
+    inventory.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, "Click to sit here"));
+
     // If the timer is still running, undo all bets
     if (countdownTaskId != -1 && !gameActive) {
         handleUndoAllBets(player);
+        player.sendMessage("You have left the chair and all bets have been refunded.");
+    } else {
+        removePlayerData(playerId);
+        player.sendMessage("You have left the chair. Bets cannot be refunded during an active game.");
+    }
+
+    // Check if all players have left the game
+    if (playerSeats.isEmpty()) {
+        cancelGame();
+    }
+}
+
+
+
+// Handle leave chair during an active game
+private void handleLeaveChairDuringGame(Player player) {
+    UUID playerId = player.getUniqueId();
+
+    if (!playerSeats.containsKey(playerId)) {
+        player.sendMessage("You are not sitting in any chair.");
+        return;
+    }
+
+    // If it's the player's turn, end their turn immediately
+    if (playerId.equals(currentPlayerId)) {
+        playerDone.put(playerId, true); // Mark the player as done
+        startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
     }
 
     int chairSlot = playerSeats.remove(playerId);
+
+    // Remove all the player's associated data
+    removePlayerData(playerId);
 
     // Reset the chair to its original state
     inventory.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, "Click to sit here"));
@@ -377,23 +466,44 @@ private void handleLeaveChair(Player player) {
         cancelGame();
     }
 }
+private void removePlayerData(UUID playerId) {
+    // Retrieve the player's seat slot
+    int seatSlot = playerSeats.getOrDefault(playerId, -1);
 
+    // If the player has a valid seat slot
+    if (seatSlot != -1) {
+        // Clear the player's cards from the table
+        List<ItemStack> hand = playerHands.get(playerId);
+        if (hand != null) {
+            for (int i = 0; i < hand.size(); i++) {
+                inventory.setItem(seatSlot + 2 + i, new ItemStack(Material.AIR)); // Clear each card slot in the player's row
+            }
+        }
 
-// Handle leave chair during an active game
-private void handleLeaveChairDuringGame(Player player) {
-    UUID playerId = player.getUniqueId();
+        // Remove the player's head from the seat
+        inventory.setItem(seatSlot, createCustomItem(Material.OAK_STAIRS, "Click to sit here"));
 
-    if (!playerSeats.containsKey(playerId)) {
-        player.sendMessage("You are not sitting in any chair.");
-        return;
+        // Remove player's data from tracking maps
+        playerHands.remove(playerId);
+        playerCardCounts.remove(playerId);
+        playerTurnActive.remove(playerId);
+        playerDone.remove(playerId);
+
+        // Remove player's bets and related lore
+        clearPlayerBetLore(playerId);
+        clearPlayerBets(playerId);
+
+        // Remove player from seat map
+        playerSeats.remove(playerId);
+
+        // Ensure player is removed from active turns
+        if (playerIterator != null) {
+            List<UUID> remainingPlayers = new ArrayList<>();
+            playerIterator.forEachRemaining(remainingPlayers::add);
+            remainingPlayers.remove(playerId);
+            playerIterator = remainingPlayers.iterator();
+        }
     }
-
-    int chairSlot = playerSeats.remove(playerId);
-
-    // Reset the chair to its original state
-    inventory.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, "Click to sit here"));
-
-    player.sendMessage("You have left the chair. Bets cannot be refunded during an active game.");
 
     // Check if all players have left the game
     if (playerSeats.isEmpty()) {
@@ -401,25 +511,40 @@ private void handleLeaveChairDuringGame(Player player) {
     }
 }
 
+
+
+
     // Handle chip selection
     private void handleChipSelection(Player player, ItemStack clickedItem) {
         if (clickedItem == null || clickedItem.getItemMeta() == null) {
             return;
         }
-
+    
+        UUID playerId = player.getUniqueId();
         String itemName = clickedItem.getItemMeta().getDisplayName();
-        selectedWager = chipValues.getOrDefault(itemName, 0.0);
-
+        double selectedWager = chipValues.getOrDefault(itemName, 0.0);
+    
         if (selectedWager > 0) {
-            player.sendMessage("Selected wager: " + selectedWager + " " + plugin.getCurrencyName(internalName) + "s");
+            selectedWagers.put(playerId, selectedWager);
+            player.sendMessage("You selected a wager of: " + selectedWager + " " + plugin.getCurrencyName(internalName) + "s.");
         } else {
             player.sendMessage("Invalid wager amount selected.");
         }
     }
-
+    
+    private void clearPlayerBetLore(UUID playerId) {
+        Map<Integer, Double> bets = playerBets.get(playerId);
+        if (bets != null) {
+            for (int slot : bets.keySet()) {
+                updateItemLore(slot, 0); // Clear the lore
+            }
+        }
+    }
+    
     // Handle bet click
     private void handleBetClick(int slot, Player player) {
         UUID playerId = player.getUniqueId();
+        double selectedWager = getSelectedWager(player.getUniqueId());
     
         // Ensure the player is sitting before placing a bet
         if (!playerSeats.containsKey(playerId)) {
@@ -456,6 +581,7 @@ private void handleLeaveChairDuringGame(Player player) {
             player.sendMessage("Not enough " + plugin.getCurrencyName(internalName) + "s to place this bet, or wager not selected.");
         }
     }
+    
 
     private void handleUndoAllBets(Player player) {
         if (gameActive) {
@@ -469,20 +595,23 @@ private void handleLeaveChairDuringGame(Player player) {
         if (bets != null && !bets.isEmpty()) {
             double totalRefund = bets.values().stream().mapToDouble(Double::doubleValue).sum();
             addWagerToInventory(player, totalRefund);
+            clearPlayerBetLore(playerId);  // Clear lore for items related to this player
             playerBets.remove(playerId);
             lastBetAmounts.remove(playerId);
-            clearAllLore();  // Clear lore for all items in the inventory
-            player.sendMessage("All bets undone and refunded.");
-            
-            // Check if there are no bets left
+            player.sendMessage("All your bets have been undone and refunded.");
+    
+            // Check if there are no bets left for any player
             if (playerBets.isEmpty()) {
-                stopCountdownTimer(); // Stop the timer if no bets are left
+                stopCountdownTimer(); // Stop the timer if no bets are left for any player
             }
         } else {
             player.sendMessage("You have no bets to undo.");
         }
     }
-
+    
+    private double getSelectedWager(UUID playerId) {
+        return selectedWagers.getOrDefault(playerId, 0.0);
+    }
     private void stopCountdownTimer() {
         if (countdownTaskId != -1) {
             Bukkit.getScheduler().cancelTask(countdownTaskId);
@@ -518,15 +647,15 @@ private void handleLeaveChairDuringGame(Player player) {
                         updateItemLore(slot, newBet);
                     } else {
                         bets.remove(slot);
-                        updateItemLore(slot, 0);
+                        updateItemLore(slot, 0);  // Clear the lore if the bet is removed
                     }
     
                     addWagerToInventory(player, lastBet);
-                    player.sendMessage("Last bet of " + lastBet + " " + plugin.getCurrencyName(internalName) + "s undone and refunded.");
-                    
-                    // Check if there are no bets left
-                    if (playerBets.isEmpty()) {
-                        stopCountdownTimer(); // Stop the timer if no bets are left
+                    player.sendMessage("Your last bet of " + lastBet + " " + plugin.getCurrencyName(internalName) + "s has been undone and refunded.");
+    
+                    // Check if there are no bets left for any player
+                    if (bets.isEmpty()) {
+                        stopCountdownTimer(); // Stop the timer if no bets are left for any player
                     }
                     return;
                 }
@@ -535,6 +664,9 @@ private void handleLeaveChairDuringGame(Player player) {
             player.sendMessage("You have no bets to undo.");
         }
     }
+    
+    
+    
 
     private void updateItemLore(int slot, double wager) {
         ItemStack item = inventory.getItem(slot);
@@ -552,6 +684,7 @@ private void handleLeaveChairDuringGame(Player player) {
             }
         }
     }
+    
 
     private boolean hasEnoughWager(Player player, double amount) {
         int requiredAmount = (int) Math.ceil(amount);
@@ -661,13 +794,17 @@ private void activateGame() {
 }
 
 
-
 private void dealInitialCards() {
     int delay = 0;
 
     // First round of dealing (one card to each player)
     for (int i = 0; i < 2; i++) { // Repeat for two rounds
-        for (UUID playerId : playerSeats.keySet()) {
+        for (UUID playerId : new ArrayList<>(playerSeats.keySet())) {
+            if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty()) {
+                // Skip this player if they haven't placed any bets
+                continue;
+            }
+
             int seatSlot = playerSeats.get(playerId);
             scheduleCardDealing(seatSlot + 2 + i, deck.dealCard(), delay, playerId); // First and second card
             delay += 20; // 1-second delay between card deals
@@ -683,35 +820,82 @@ private void dealInitialCards() {
         delay += 20;
     }
 
-    // Initialize the iterator for player turns
-    playerIterator = playerSeats.keySet().iterator();
-    startNextPlayerTurn();
+    // Check for initial blackjack right after dealing cards
+    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        for (UUID playerId : playerSeats.keySet()) {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null) {
+                int handValue = calculateHandValue(playerHands.get(playerId));
+                if (handValue == 21) {
+                    player.sendMessage("Blackjack! Your turn is automatically skipped.");
+                    playerDone.put(playerId, true); // Mark the player as done
+                    playerTurnActive.put(playerId, false); // Deactivate the player's turn
+                }
+            }
+        }
+
+        // Initialize playerIterator to start turns after dealing cards
+        playerIterator = playerSeats.keySet().stream()
+            .filter(playerId -> playerBets.containsKey(playerId) && !playerBets.get(playerId).isEmpty() && !playerDone.getOrDefault(playerId, false))
+            .iterator();
+
+        startNextPlayerTurn();
+    }, delay + 20L); // Delay slightly longer to allow cards to be fully dealt
 }
+
+
 private void startNextPlayerTurn() {
+    // Initialize playerIterator if it's null or the previous iteration has ended
+    if (playerIterator == null || !playerIterator.hasNext()) {
+        // Create a new iterator with players who have active bets and are not done
+        playerIterator = playerSeats.keySet().stream()
+            .filter(playerId -> playerBets.containsKey(playerId) && !playerBets.get(playerId).isEmpty() && !playerDone.getOrDefault(playerId, false))
+            .iterator();
+    }
+
+    // Now proceed with the turn if there are players left
     while (playerIterator.hasNext()) {
         currentPlayerId = playerIterator.next();
         if (!playerDone.getOrDefault(currentPlayerId, false)) { // Skip players who are done
             Player currentPlayer = Bukkit.getPlayer(currentPlayerId);
 
+            // Check if the player's hand value is 21
+            int handValue = calculateHandValue(playerHands.get(currentPlayerId));
+            if (handValue == 21) {
+                playerDone.put(currentPlayerId, true); // Mark the player as done
+                playerTurnActive.put(currentPlayerId, false); // Deactivate the player's turn
+                startNextPlayerTurnWithDelay(20L); // Start the next player's turn with delay
+                return; // Skip to the next player
+            }
+
             // Update lever to show current player's turn
             updateLeverDisplayName(currentPlayer.getName() + "'s Turn");
+
+            // Set player's turn as active
+            playerTurnActive.put(currentPlayerId, true);
 
             // Allow the player to take actions (Hit, Stand, Double Down, Insurance)
             allowPlayerActions(currentPlayer);
             return;
         }
     }
+
     // No more players left, proceed to the dealer's turn
     startDealerTurn();
 }
 
 
+
+
+
+
 private void allowPlayerActions(Player player) {
     // Enable relevant slots for actions
-    setClickAllowed(true); // Allow player to click
+    clickAllowed.putIfAbsent(player.getUniqueId(), true);
 
     player.sendMessage("It's your turn! Choose an action: Hit, Stand, Double Down, or Insurance.");
 }
+
 
 private void updateLeverDisplayName(String displayName) {
     ItemStack lever = inventory.getItem(1);
@@ -777,14 +961,6 @@ private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long
     }
 }
 
-private void revealDealerCard() {
-    ItemStack hiddenCard = inventory.getItem(3);
-    if (hiddenCard != null && hiddenCard.getType() == Material.WHITE_STAINED_GLASS_PANE) {
-        // Assuming the first card was hidden and is now being revealed
-        Card revealedCard = deck.dealCard(); // Reveal the actual card
-        dealCardToPlayer(3, revealedCard, null); // Replace the hidden card with the revealed card
-    }
-}
 private void scheduleCardDealingWithDelay(int slot, Card card, long delay, UUID playerId) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
         dealCardToPlayer(slot, card, playerId);
@@ -797,9 +973,10 @@ private void scheduleCardDealingWithDelay(int slot, Card card, long delay, UUID 
 }
 
 
-private void setClickAllowed(boolean allowed) {
-    this.clickAllowed = allowed;
+private void setClickAllowed(UUID playerId, boolean allowed) {
+    clickAllowed.put(playerId, allowed);
 }
+
 
 private void refundBet(Player player, Map<Integer, Double> bets) {
     if (bets != null) {
@@ -808,46 +985,77 @@ private void refundBet(Player player, Map<Integer, Double> bets) {
         player.sendMessage("Your bet of " + totalBet + " " + plugin.getCurrencyName(internalName) + " has been refunded.");
     }
 }
-private void payOut(Player player, Map<Integer, Double> bets) {
-    if (bets != null) {
-        double totalBet = bets.values().stream().mapToDouble(Double::doubleValue).sum();
-        double payout = totalBet * 2; // Assuming a 1:1 payout for a win
-        addWagerToInventory(player, payout);
-        player.sendMessage("Congratulations! You won " + payout + " " + plugin.getCurrencyName(internalName) + ".");
-    }
-}
 
 private void finishGame() {
     int dealerCardSum = calculateHandValue(dealerHand);
+    boolean dealerBusted = dealerCardSum > 21;
+
+    // Animate dealer head if they bust
+    if (dealerBusted) {
+        animateLosingHead(0, Material.TNT, Material.CREEPER_HEAD, "Dealer");
+    }
 
     for (UUID playerId : playerSeats.keySet()) {
+        if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty()) {
+            continue; // Skip players without bets
+        }
+
         Player player = Bukkit.getPlayer(playerId);
         int playerCardSum = calculateHandValue(playerHands.get(playerId));
 
         Map<Integer, Double> bets = playerBets.get(playerId);
 
         // Check if the player has a blackjack (Ace + 10-value card) and only has 2 cards
-        boolean isBlackjack = playerCardSum == 21 && playerHands.get(playerId).size() == 2 
-                              && hasAceAndTenValueCard(playerHands.get(playerId));
+        boolean isBlackjack = playerCardSum == 21 && playerHands.get(playerId).size() == 2
+                && hasAceAndTenValueCard(playerHands.get(playerId));
 
         if (isBlackjack) {
             player.sendMessage("Blackjack! You won with a pure 21.");
             payOut(player, bets, 2.5); // Pay out 2.5x for a blackjack
         } else if (playerCardSum > 21) {
             player.sendMessage("You busted and lost your bet.");
-        } else if (dealerCardSum > 21 || playerCardSum > dealerCardSum) {
+            animateLosingHead(playerSeats.get(playerId), Material.TNT, Material.PLAYER_HEAD, player.getName()); // Animate losing player head
+        } else if (dealerBusted || playerCardSum > dealerCardSum) {
             player.sendMessage("You won! Collect your winnings.");
             payOut(player, bets, 2.0); // Regular win pays out 2x
         } else if (playerCardSum < dealerCardSum) {
             player.sendMessage("You lost this round.");
+            animateLosingHead(playerSeats.get(playerId), Material.TNT, Material.PLAYER_HEAD, player.getName()); // Animate losing player head
         } else {
             player.sendMessage("It's a tie! Your bet is returned.");
             refundBet(player, bets);
         }
     }
 
+    // Reset game for the next round
     resetGame();
 }
+
+private void animateLosingHead(int slot, Material losingMaterial, Material originalMaterial, String name) {
+    // Change the head to TNT
+    ItemStack tntHead = new ItemStack(losingMaterial);
+    ItemMeta tntMeta = tntHead.getItemMeta();
+    if (tntMeta != null) {
+        tntMeta.setDisplayName(name);
+        tntHead.setItemMeta(tntMeta);
+    }
+    inventory.setItem(slot, tntHead);
+
+    // Schedule reverting back to the original head after 1 second (20 ticks)
+    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        ItemStack originalHead = new ItemStack(originalMaterial);
+        ItemMeta originalMeta = originalHead.getItemMeta();
+        if (originalMeta != null) {
+            originalMeta.setDisplayName(name);
+            originalHead.setItemMeta(originalMeta);
+        }
+        inventory.setItem(slot, originalHead);
+
+    }, 20L); // 20L = 1 second
+}
+
+
+
 private void payOut(Player player, Map<Integer, Double> bets, double multiplier) {
     if (bets != null) {
         double totalBet = bets.values().stream().mapToDouble(Double::doubleValue).sum();
@@ -948,12 +1156,14 @@ private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId) 
     }, delay);
 }
 
-
 private void updatePlayerHead(UUID playerId) {
+    if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty()) {
+        return; // Skip updating if the player hasn't placed a bet
+    }
+    
     List<ItemStack> hand = playerHands.get(playerId);
     int handValue = calculateHandValue(hand);
-
-
+    
     int seatSlot = playerSeats.get(playerId);
     updateHeadLore(seatSlot, handValue, Bukkit.getPlayer(playerId).getName());
 }
@@ -966,7 +1176,7 @@ private void updateDealerHead() {
 
 private void updateHeadLore(int slot, int cardValue, String name) {
     ItemStack headItem = inventory.getItem(slot);
-    if (headItem != null && headItem.getType() == Material.PLAYER_HEAD || headItem.getType() == Material.CREEPER_HEAD) {
+    if (headItem != null && (headItem.getType() == Material.PLAYER_HEAD || headItem.getType() == Material.CREEPER_HEAD)) {
         ItemMeta meta = headItem.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(name);
@@ -1101,23 +1311,23 @@ private int getCardValueStackSize(Card card) {
             Bukkit.getScheduler().cancelTask(countdownTaskId); // Cancel the countdown if it's running
             countdownTaskId = -1;
         }
-
     }
-    @EventHandler
-    public void handleInventoryClose(InventoryCloseEvent event) {
-        if (event.getInventory().getHolder() != this) return;
-    
-        Player player = (Player) event.getPlayer();
-    
-        // Handle leave based on the current game state
-        if (!gameActive) {
-            handleUndoAllBets(player);
-            handleLeaveChair(player);
-        } else if (gameActive) {
-            handleLeaveChairDuringGame(player);
+
+        @EventHandler
+        public void handleInventoryClose(InventoryCloseEvent event) {
+            if (event.getInventory().getHolder() != this) return;
+        
+            Player player = (Player) event.getPlayer();
+            UUID playerId = player.getUniqueId();
+        
+            if (!gameActive) {
+                handleUndoAllBets(player);
+                handleLeaveChair(player);
+            } else {
+                handleLeaveChairDuringGame(player);
+            }
         }
-    }
-
+        
 
     
 }
