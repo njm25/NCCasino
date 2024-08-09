@@ -53,8 +53,7 @@ public class DealerVillager {
         UUID uniqueId = UUID.randomUUID();
 
         AttributeInstance movementSpeedAttribute = villager.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED);
-            movementSpeedAttribute.setBaseValue(0.0);
-        
+        movementSpeedAttribute.setBaseValue(0.0);
 
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         dataContainer.set(DEALER_KEY, PersistentDataType.BYTE, (byte) 1);
@@ -94,7 +93,7 @@ public class DealerVillager {
         DealerInventory inventory;
         switch (gameType) {
             case "Blackjack":
-                inventory = new BlackjackInventory(uniqueId);
+inventory = new BlackjackInventory(uniqueId, plugin, internalName);
                 name = "Blackjack Dealer";
                 break;
             case "Roulette":
@@ -153,10 +152,12 @@ public class DealerVillager {
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
         DealerInventory newInventory;
         String newName;
-
+        
+        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+        String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
         switch (gameName) {
             case "Blackjack":
-                newInventory = new BlackjackInventory(dealerId);
+                newInventory = new BlackjackInventory(dealerId, plugin, internalName);
                 newName = "Blackjack Dealer";
                 break;
             case "Roulette":
@@ -172,7 +173,6 @@ public class DealerVillager {
         DealerInventory.updateInventory(dealerId, newInventory);
         setName(villager, newName);
 
-        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameName);
     }
 
