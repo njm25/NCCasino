@@ -1,9 +1,10 @@
 package org.nc.nccasino.commands;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.Location;
-import org.bukkit.entity.Villager;
 import org.nc.nccasino.entities.DealerVillager;
 import org.jetbrains.annotations.NotNull;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -19,12 +20,15 @@ public class CreateCommand implements CasinoCommand {
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage("This command can only be used by players.");
+            sender.sendMessage(Component.text("This command can only be used by players.")
+                    .color(NamedTextColor.RED));
             return true;
         }
 
         if (args.length < 2) {
-            sender.sendMessage("Usage: /ncc create <name>");
+            sender.sendMessage(Component.text("Usage: /ncc create ")
+                    .color(NamedTextColor.AQUA)
+                    .append(Component.text("<name>").color(NamedTextColor.YELLOW)));
             return true;
         }
 
@@ -34,7 +38,8 @@ public class CreateCommand implements CasinoCommand {
         // Check if the internal name already exists
         Nccasino nccasino = (Nccasino) plugin;
         if (nccasino.getConfig().contains("dealers." + internalName)) {
-            sender.sendMessage("A dealer with the internal name '" + internalName + "' already exists.");
+            sender.sendMessage(Component.text("A dealer with the internal name '" + internalName + "' already exists.")
+                    .color(NamedTextColor.RED));
             return true;
         }
 
@@ -45,7 +50,8 @@ public class CreateCommand implements CasinoCommand {
         Location location = player.getLocation();
         DealerVillager.spawnDealer(plugin, location, "Dealer Villager", internalName);
 
-        sender.sendMessage("Dealer with internal name '" + internalName + "' has been created.");
+        sender.sendMessage(Component.text("Dealer with internal name '" + internalName + "' has been created.")
+                .color(NamedTextColor.GREEN));
 
         return true;
     }
