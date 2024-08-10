@@ -290,17 +290,15 @@ private void handleHit(Player player) {
                 player.sendMessage("Bust! Your turn is over.");
 
 
-                if (!playerDone.get(playerId)) { // If the player isn't already marked as done
                 playerDone.put(playerId, true); // Mark the player as done
                 playerTurnActive.put(playerId, false); // Deactivate the player's turn
                 startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
-            } 
+           
             } else {
-                if (!playerDone.get(playerId))  // If the player isn't already marked as done
-                {
+                
                     playerTurnActive.put(playerId, true); // Allow more actions since the player hasn't busted
                     allowPlayerActions(player); // Continue player's turn with delay
-                }
+               
             }
         }, 40L); // The delay should be enough to ensure that the card has been added
     }
@@ -884,7 +882,9 @@ private void allowPlayerActions(Player player) {
     // Enable relevant slots for actions
     clickAllowed.putIfAbsent(player.getUniqueId(), true);
 
-    player.sendMessage("It's your turn!");
+    if (!playerTurnActive.getOrDefault(player.getUniqueId(), false))  // If the player isn't already marked as done
+                {
+    player.sendMessage("It's your turn!");}
 }
 
 
