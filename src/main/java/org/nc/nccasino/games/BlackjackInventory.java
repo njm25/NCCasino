@@ -2,6 +2,7 @@ package org.nc.nccasino.games;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -1298,6 +1299,46 @@ private int getCardValueStackSize(Card card) {
 }
 
 
+public void delete() {
+    // Stop any ongoing game operations
+    cancelGame();
+
+    // Close the inventory for all players currently viewing it
+    for (HumanEntity entity : new ArrayList<>(inventory.getViewers())) {
+        if (entity instanceof Player) {
+            Player player = (Player) entity;
+            player.closeInventory();
+        }
+    }
+
+    // Clear all player data and bets
+    clearPlayerBets(null);
+    playerSeats.clear();
+    playerHands.clear();
+    playerCardCounts.clear();
+    playerTurnActive.clear();
+    playerDone.clear();
+    selectedWagers.clear();
+    lastBetAmounts.clear();
+
+    // Remove any scheduled tasks related to this game
+    if (countdownTaskId != -1) {
+        Bukkit.getScheduler().cancelTask(countdownTaskId);
+    }
+
+    // Unregister events related to this inventory
+    InventoryClickEvent.getHandlerList().unregister(this);
+    InventoryCloseEvent.getHandlerList().unregister(this);
+
+    // Clear the inventory itself
+    inventory.clear();
+
+    // Remove the inventory from the static map
+    DealerInventory.inventories.remove(dealerId);
+
+    // Mark this inventory as deleted
+    inventory = null;
+}
 
 
     // Cancel the game and reset the board with all items and options

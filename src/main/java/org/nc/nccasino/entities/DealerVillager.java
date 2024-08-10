@@ -1,5 +1,7 @@
 package org.nc.nccasino.entities;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -17,10 +19,12 @@ import org.nc.nccasino.games.GameMenuInventory;
 import org.nc.nccasino.games.BlackjackInventory;
 import org.nc.nccasino.games.RouletteInventory;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 public class DealerVillager {
-
+ public static final Map<UUID, DealerVillager> dealers = new HashMap<>();
     private static final NamespacedKey DEALER_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_villager");
     private static final NamespacedKey UNIQUE_ID_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_unique_id");
     private static final NamespacedKey NAME_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_name");
@@ -35,6 +39,7 @@ public class DealerVillager {
 
         return villager;
     }
+
     private static void initializeVillager(Villager villager, Location location, String name, String internalName) {
         villager.setAI(true);
         villager.setInvulnerable(true);
@@ -72,7 +77,6 @@ public class DealerVillager {
             }
         }.runTaskTimer(JavaPlugin.getProvidingPlugin(DealerVillager.class), 0L, 20L);
     }
-
 
     public static void initializeInventory(Villager villager, UUID uniqueId, String name, Nccasino plugin) {
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
@@ -115,6 +119,7 @@ public class DealerVillager {
         return uuidString != null ? UUID.fromString(uuidString) : null;
     }
 
+
     public static String getName(Villager villager) {
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         return dataContainer.get(NAME_KEY, PersistentDataType.STRING);
@@ -139,7 +144,7 @@ public class DealerVillager {
         }
     }
 
-    public static void switchGame(Villager villager, String gameName) {
+    public static void switchGame(Villager villager, String gameName, Player player) {
         UUID dealerId = getUniqueId(villager);
         if (dealerId == null) return;
     
@@ -149,7 +154,7 @@ public class DealerVillager {
     
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
-        
+    
         // Determine the appropriate inventory and name based on the game type
         switch (gameName) {
             case "Blackjack":
@@ -177,6 +182,69 @@ public class DealerVillager {
         // Update the configuration with the new game type
         plugin.getConfig().set("dealers." + internalName + ".game", gameName);
         plugin.saveConfig();  // Save the configuration to persist changes
+    
+        // Send styled message only to the player who switched the game
+        player.sendMessage(Component.text("Dealer '")
+                .color(NamedTextColor.GREEN)
+                .append(Component.text(internalName).color(NamedTextColor.YELLOW))
+                .append(Component.text("' has been set to ").color(NamedTextColor.GREEN))
+                .append(Component.text(gameName).color(NamedTextColor.YELLOW))
+                .append(Component.text(".").color(NamedTextColor.GREEN)));
     }
     
+    public static void registerDealer(UUID dealerId, DealerVillager dealer) {
+        dealers.put(dealerId, dealer);
+    }
+
+    public static void removeDealerFromMap(UUID dealerId) {
+        dealers.remove(dealerId);
+    }
+    private static void deleteAllPersistentData(PersistentDataContainer container) {
+        for (NamespacedKey key : container.getKeys()) {
+            container.remove(key);
+        }
+    }
+
+    public static void removeDealer(Villager villager) {
+        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+        UUID dealerId = getUniqueId(villager);
+
+        if (dealerId == null) {
+            return; // No dealer ID, nothing to clean up
+        }
+
+        // Get internal name
+        String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
+
+        // Specifically remove and delete the dealer's managed inventory
+        DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
+        if (dealerInventory != null) {
+            dealerInventory.delete(); // Delete the inventory entirely
+        }
+
+        // Remove dealer's entry from the configuration
+        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
+        if (internalName != null) {
+            plugin.getConfig().set("dealers." + internalName, null);
+            plugin.saveConfig();
+        }
+
+        // Recursively delete all persistent data related to the dealer
+        deleteAllPersistentData(dataContainer);
+
+        // Broadcast a message indicating the dealer has been removed
+
+        // Remove the villager entity from the game world
+        villager.remove();
+    }
+    private final Villager villager;
+
+    public DealerVillager(Villager villager) {
+        this.villager = villager;
+        dealers.put(villager.getUniqueId(), this);
+    }
+
+    public Villager getVillager() {
+        return villager;
+    }
 }

@@ -14,8 +14,8 @@ import java.util.UUID;
 
 public class DealerInventory implements InventoryHolder {
 
-    private static final Map<UUID, DealerInventory> inventories = new HashMap<>();
-    protected final Inventory inventory;
+    protected static final Map<UUID, DealerInventory> inventories = new HashMap<>();
+    protected Inventory inventory;
     protected final UUID dealerId;
 
     // Protected constructor to allow subclassing
@@ -23,12 +23,19 @@ public class DealerInventory implements InventoryHolder {
         this.dealerId = dealerId;
         this.inventory = Bukkit.createInventory(this, size, title);
     }
-
+    public static void removeInventory(UUID dealerId) {
+        inventories.remove(dealerId);
+    }
     // Factory method to create or get existing inventory (defaults to game menu)
     public static DealerInventory getOrCreateInventory(UUID dealerId) {
         return inventories.computeIfAbsent(dealerId, id -> new GameMenuInventory(id));
     }
+    public void delete() {
+        inventories.remove(dealerId);
 
+        this.inventory.clear();
+
+    }
     // Method to get a dealer inventory if it exists
     public static DealerInventory getInventory(UUID dealerId) {
         return inventories.get(dealerId);

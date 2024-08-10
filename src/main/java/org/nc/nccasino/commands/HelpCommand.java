@@ -24,14 +24,19 @@ public class HelpCommand implements CasinoCommand {
         player.sendMessage(Component.text("/ncc create ")
                 .color(NamedTextColor.AQUA)
                 .append(Component.text("<name>").color(NamedTextColor.YELLOW))
-                .append(Component.text(" - Spawns Dealer where user is standing").color(NamedTextColor.AQUA)));
+                .append(Component.text(" - Spawns dealer where user is standing").color(NamedTextColor.AQUA)));
         player.sendMessage(Component.text("/ncc list ")
                 .color(NamedTextColor.AQUA)
                 .append(Component.text("(page)").color(NamedTextColor.YELLOW))
                 .append(Component.text(" - Lists the dealers").color(NamedTextColor.AQUA)));
+                
+        player.sendMessage(Component.text("/ncc delete ")
+        .color(NamedTextColor.AQUA)
+        .append(Component.text("<name>").color(NamedTextColor.YELLOW))
+        .append(Component.text(" - Deletes the specified dealer").color(NamedTextColor.AQUA)));
+
         player.sendMessage(Component.text("/ncc reload - Reloads the config")
                 .color(NamedTextColor.AQUA));
-
         return true;
     }
 }

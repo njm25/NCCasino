@@ -52,12 +52,10 @@ public class GameMenuInventory extends DealerInventory {
     
         switch (slot) {
             case 0:
-                player.sendMessage("Blackjack selected");
-                DealerVillager.switchGame(villager, "Blackjack");
+                DealerVillager.switchGame(villager, "Blackjack",player);
                 break;
             case 1:
-                player.sendMessage("Roulette selected");
-                DealerVillager.switchGame(villager, "Roulette");
+                DealerVillager.switchGame(villager, "Roulette",player);
                 break;
             default:
                 return; // Exit if no valid slot is clicked
