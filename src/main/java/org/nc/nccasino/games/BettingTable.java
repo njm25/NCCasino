@@ -1,9 +1,14 @@
 package org.nc.nccasino.games;
 
+import org.nc.nccasino.entities.DealerVillager;
+
+import org.nc.nccasino.games.Pair;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
+
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -13,13 +18,8 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.entities.DealerVillager;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class BettingTable implements InventoryHolder, Listener {
     private final Inventory inventory;
@@ -31,10 +31,10 @@ public class BettingTable implements InventoryHolder, Listener {
     private int pageNum;
 
     private final Map<String, Double> chipValues;
-    private final Map<Integer, Double> playerBets; // Map to store the player's bets by slot number
+    private final Stack<Pair<String, Integer>> betStack;
     private boolean clickAllowed = true;
 
-    public BettingTable(Player player, Villager dealer, Nccasino plugin, Map<Integer, Double> existingBets, String internalName) {
+    public BettingTable(Player player, Villager dealer, Nccasino plugin, Stack<Pair<String, Integer>> existingBets, String internalName) {
         this.playerId = player.getUniqueId();
         this.dealer = dealer;
         this.plugin = plugin;
@@ -45,7 +45,7 @@ public class BettingTable implements InventoryHolder, Listener {
         this.chipValues = new HashMap<>();
         loadChipValuesFromConfig();
 
-        this.playerBets = new HashMap<>(existingBets); // Initialize with existing bets
+        this.betStack = existingBets != null ? existingBets : new Stack<>();
 
         initializeTable();
 
@@ -59,7 +59,6 @@ public class BettingTable implements InventoryHolder, Listener {
             double chipValue = nccasino.getChipValue(internalName, i);
             this.chipValues.put(chipName, chipValue);
         }
-        
     }
 
     private void initializeTable() {
@@ -68,63 +67,58 @@ public class BettingTable implements InventoryHolder, Listener {
 
     private void setupPageOne() {
         inventory.clear();
-        clearAllLore(); // Clear all lore before setting up the page
-
-        // Setting up straight-up bets
+        clearAllLore(); 
+       
         addStraightUpBetsPageOne();
-
-        // Setting up dozens and other bets
         addDozensAndOtherBetsPageOne();
-
-        // Adding common components
         addCommonComponents();
+        updateAllLore();
+       //   restoreBetsForPage(1);
     }
 
     private void setupPageTwo() {
         inventory.clear();
-        clearAllLore(); // Clear all lore before setting up the page
+        clearAllLore(); 
 
-        // Setting up straight-up bets
+        updateAllLore();
         addStraightUpBetsPageTwo();
-
-        // Setting up dozens and other bets
         addDozensAndOtherBetsPageTwo();
-
-        // Adding common components
         addCommonComponents();
+        updateAllLore();
+      //  restoreBetsForPage(2);
     }
 
     private void addStraightUpBetsPageOne() {
-        // Positions based on standard roulette layout
-        int[] numbersPageOne = {1,3, 6, 9, 12, 15, 18,21,24, 0, 2, 5, 8, 11, 14, 17,20,23,1, 1, 4, 7, 10, 13, 16, 19, 22};
-        String[] colorsPageOne = {"BLUE","RED", "BLACK", "RED", "RED","BLACK", "RED","RED", "BLACK", "LIME", "BLACK", "RED", "BLACK","BLACK", "RED", "BLACK","BLACK", "RED","BLUE", "RED","BLACK","RED","BLACK","BLACK","RED", "RED", "BLACK"};
+        int[] numbersPageOne = {1, 3, 6, 9, 12, 15, 18, 21, 24, 0, 2, 5, 8, 11, 14, 17, 20, 23, 1, 1, 4, 7, 10, 13, 16, 19, 22};
+        String[] colorsPageOne = {"BLUE", "RED", "BLACK", "RED", "RED", "BLACK", "RED", "RED", "BLACK", "LIME", "BLACK", "RED", "BLACK", "BLACK", "RED", "BLACK", "BLACK", "RED", "BLUE", "RED", "BLACK", "RED", "BLACK", "BLACK", "RED", "RED", "BLACK"};
 
         for (int i = 0; i < 27; i++) {
-            if(!(i==0||i==18)){
-            if(numbersPageOne[i]==0){
-                inventory.setItem(i, createCustomItem(Material.valueOf(colorsPageOne[i] + "_STAINED_GLASS_PANE"), "straight up " + numbersPageOne[i], 1));
-            }    
-            else inventory.setItem(i, createCustomItem(Material.valueOf(colorsPageOne[i] + "_STAINED_GLASS_PANE"), "straight up " + numbersPageOne[i], numbersPageOne[i]));
-        }}
+            if (!(i == 0 || i == 18)) {
+                if (numbersPageOne[i] == 0) {
+                    inventory.setItem(i, createCustomItem(Material.valueOf(colorsPageOne[i] + "_STAINED_GLASS_PANE"), "straight up " + numbersPageOne[i], 1));
+                } else {
+                    inventory.setItem(i, createCustomItem(Material.valueOf(colorsPageOne[i] + "_STAINED_GLASS_PANE"), "straight up " + numbersPageOne[i], numbersPageOne[i]));
+                }
+            }
+        }
     }
 
     private void addStraightUpBetsPageTwo() {
-       // Positions based on standard roulette layout
-       int[] numbersPageTwo = {15, 18, 21, 24, 27, 30, 33, 36, 3,14, 17, 20, 23, 26, 29, 32, 35,2, 13, 16, 19, 22, 25, 28, 31, 34,1};
-       String[] colorsPageTwo = {"BLACK", "RED", "RED", "BLACK", "RED", "RED", "BLACK", "RED","GREEN", "RED", "BLACK", "BLACK", "RED", "BLACK","BLACK", "RED", "BLACK", "GREEN","BLACK", "RED","RED", "BLACK", "RED", "BLACK","BLACK", "RED","GREEN"};
+        int[] numbersPageTwo = {15, 18, 21, 24, 27, 30, 33, 36, 3, 14, 17, 20, 23, 26, 29, 32, 35, 2, 13, 16, 19, 22, 25, 28, 31, 34, 1};
+        String[] colorsPageTwo = {"BLACK", "RED", "RED", "BLACK", "RED", "RED", "BLACK", "RED", "GREEN", "RED", "BLACK", "BLACK", "RED", "BLACK", "BLACK", "RED", "BLACK", "GREEN", "BLACK", "RED", "RED", "BLACK", "RED", "BLACK", "BLACK", "RED", "GREEN"};
 
-       for (int i = 0; i < numbersPageTwo.length; i++) {
-          if(!(i==8||i==17||i==26)) inventory.setItem(i, createCustomItem(Material.valueOf(colorsPageTwo[i] + "_STAINED_GLASS_PANE"), "straight up " + numbersPageTwo[i], numbersPageTwo[i]));
-       }
+        for (int i = 0; i < numbersPageTwo.length; i++) {
+            if (!(i == 8 || i == 17 || i == 26)) {
+                inventory.setItem(i, createCustomItem(Material.valueOf(colorsPageTwo[i] + "_STAINED_GLASS_PANE"), "straight up " + numbersPageTwo[i], numbersPageTwo[i]));
+            }
+        }
 
-       // Adding row bets
-       inventory.setItem(8, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Top Row-2:1", 1));
-       inventory.setItem(17, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Middle Row-2:1", 1));
-       inventory.setItem(26, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Bottom Row-2:1", 1));
+        inventory.setItem(8, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Top Row-2:1", 1));
+        inventory.setItem(17, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Middle Row-2:1", 1));
+        inventory.setItem(26, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Bottom Row-2:1", 1));
     }
 
     private void addDozensAndOtherBetsPageOne() {
-
         inventory.setItem(28, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1st Dozen", 1));
         inventory.setItem(29, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1st Dozen", 1));
         inventory.setItem(30, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1st Dozen", 1));
@@ -134,7 +128,6 @@ public class BettingTable implements InventoryHolder, Listener {
         inventory.setItem(34, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen", 1));
         inventory.setItem(35, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen", 1));
 
-        // Adding other bets
         inventory.setItem(37, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1-18", 1));
         inventory.setItem(38, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1-18", 1));
         inventory.setItem(39, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Even", 1));
@@ -146,7 +139,6 @@ public class BettingTable implements InventoryHolder, Listener {
     }
 
     private void addDozensAndOtherBetsPageTwo() {
-        // Adding dozens
         inventory.setItem(27, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen", 1));
         inventory.setItem(28, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen", 1));
         inventory.setItem(29, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen", 1));
@@ -156,7 +148,6 @@ public class BettingTable implements InventoryHolder, Listener {
         inventory.setItem(33, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "3rd Dozen", 1));
         inventory.setItem(34, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "3rd Dozen", 1));
 
-        // Adding other bets
         inventory.setItem(36, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red", 1));
         inventory.setItem(37, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red", 1));
         inventory.setItem(38, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Black", 1));
@@ -170,12 +161,12 @@ public class BettingTable implements InventoryHolder, Listener {
     private void addCommonComponents() {
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
         inventory.setItem(46, createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Undo Last Bet", 1));
-       
+
         ItemStack discItem = new ItemStack(Material.MUSIC_DISC_PIGSTEP, 1);
         ItemMeta discMeta = discItem.getItemMeta();
         if (discMeta != null) {
             discMeta.setDisplayName("Back to Roulette");
-            discMeta.setLore(new ArrayList<>()); // Clear any existing lore
+            discMeta.setLore(new ArrayList<>());
             discItem.setItemMeta(discMeta);
         }
         inventory.setItem(52, discItem);
@@ -183,16 +174,48 @@ public class BettingTable implements InventoryHolder, Listener {
         int slot = 47;
         List<Map.Entry<String, Double>> sortedEntries = new ArrayList<>(chipValues.entrySet());
         sortedEntries.sort(Map.Entry.comparingByValue());
-        
+
         for (Map.Entry<String, Double> entry : sortedEntries) {
             inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
             slot++;
         }
-       
+
         inventory.setItem(53, createCustomItem(Material.ARROW, "Switch Page", 1));
     }
-
-
+    private void updateAllLore() {
+        // Map to store the total bet for each bet type
+        Map<String, Integer> betTotals = new HashMap<>();
+    
+        // Iterate through the bet stack and sum the totals for each bet type
+        for (Pair<String, Integer> bet : betStack) {
+            betTotals.put(bet.getFirst(), betTotals.getOrDefault(bet.getFirst(), 0) + bet.getSecond());
+        }
+    
+        // Iterate over all possible slots for both pages and update the lore
+        for (int slot = 0; slot < inventory.getSize(); slot++) {
+            ItemStack item = inventory.getItem(slot);
+            if (item != null && item.hasItemMeta()) {
+                String itemName = item.getItemMeta().getDisplayName();
+                if (betTotals.containsKey(itemName)) {
+                    updateItemLore(slot, betTotals.get(itemName));
+                } else {
+                    // If no bets remain for this item, clear the lore
+                    clearItemLore(slot);
+                }
+            }
+        }
+    }
+    
+    private void clearItemLore(int slot) {
+        ItemStack item = inventory.getItem(slot);
+        if (item != null && item.hasItemMeta()) {
+            ItemMeta meta = item.getItemMeta();
+            if (meta.hasLore()) {
+                meta.setLore(new ArrayList<>());
+                item.setItemMeta(meta);
+            }
+        }
+    }
 
     private void clearAllLore() {
         for (int i = 0; i < inventory.getSize(); i++) {
@@ -263,34 +286,15 @@ public class BettingTable implements InventoryHolder, Listener {
             }
             return;
         }
-
-        if ((pageNum == 1 && slot >= 0 && slot <= 18) || (pageNum == 2 && slot >= 0 && slot <= 17)) {
-            int actualNum = (pageNum == 1) ? slot : slot + 18;
-            int actualSlot = (pageNum == 1) ? actualNum : slot;
+        if ((pageNum == 1 && isValidSlotPage1(slot)) || (pageNum == 2 && isValidSlotPage2(slot))) {
             if (selectedWager > 0) {
                 if (hasEnoughWager(player, selectedWager)) {
                     removeWagerFromInventory(player, selectedWager);
                     player.sendMessage("Placed bet on " + itemName + " with " + selectedWager + " " + plugin.getCurrencyName(internalName) + "s.");
-
-                    if (pageNum == 1 && slot == 18) {
-                        if (playerBets.containsKey(-1)) {
-                            double currentBet = playerBets.get(-1);
-                            double newBet = currentBet + selectedWager;
-                            playerBets.put(-1, newBet);
-                            updateItemLore(slot, newBet);
-                        } else {
-                            playerBets.put(-1, selectedWager);
-                            updateItemLore(slot, selectedWager);
-                        }
-                    } else {
-                        if (playerBets.containsKey(actualNum)) {
-                            playerBets.replace(actualNum, playerBets.get(actualNum) + selectedWager);
-                            updateItemLore(actualSlot, playerBets.get(actualNum));
-                        } else {
-                            playerBets.put(actualNum, selectedWager);
-                            updateItemLore(actualSlot, selectedWager);
-                        }
-                    }
+    
+                    betStack.push(new Pair<>(itemName, (int) selectedWager));
+                    updateAllLore();
+                  //  updateAllRelatedSlots(slot, itemName);
                 } else {
                     player.sendMessage("Not enough " + plugin.getCurrencyName(internalName) + "s to place this bet.");
                 }
@@ -299,12 +303,22 @@ public class BettingTable implements InventoryHolder, Listener {
             }
             return;
         }
-
         if (slot == 45) {
             player.sendMessage("Undoing all bets...");
             clearAllBetsAndRefund(player);
             clearAllLore();
+            updateAllLore();
             player.sendMessage("All bets cleared and refunded.");
+            return;
+        }
+
+        if (slot == 46) {
+            player.sendMessage("Undoing last bet...");
+            if (!betStack.isEmpty()) {
+                Pair<String, Integer> lastBet = betStack.pop();
+                refundWagerToInventory(player, lastBet.getSecond());
+                updateAllLore();
+            }
             return;
         }
 
@@ -312,27 +326,44 @@ public class BettingTable implements InventoryHolder, Listener {
             saveBetsToRoulette();
             player.sendMessage("Returning to Roulette...");
             openRouletteInventory(dealer, player);
-            DealerVillager.savePlayerBets(dealer, player, playerBets);
         }
     }
+/* 
+    private void updateAllRelatedSlots(int slot, String itemName) {
+        for(int i=0;i<44;i++){
+
+
+        }
+        if (pageNum == 1) {
+            // Logic to update all related slots on page 1
+        } else if (pageNum == 2) {
+            // Logic to update all related slots on page 2
+        }
+    }
+*/
+
+// Check if the slot is valid for page 1
+private boolean isValidSlotPage1(int slot) {
+    return (slot >= 1 && slot <= 17) || (slot >= 19 && slot <= 26) || (slot >= 28 && slot <= 35) || (slot >= 37 && slot <= 44);
+}
+
+// Check if the slot is valid for page 2
+private boolean isValidSlotPage2(int slot) {
+    return (slot >= 0 && slot <= 34) || (slot >= 36 && slot <= 43);
+}
 
     private void clearAllBetsAndRefund(Player player) {
-        double totalAmount = playerBets.values().stream().mapToDouble(Double::doubleValue).sum();
-        int totalRefund = (int) Math.ceil(totalAmount);
+        int totalRefund = betStack.stream().mapToInt(Pair::getSecond).sum();
+        refundWagerToInventory(player, totalRefund);
+        betStack.clear();
+    }
 
-        int fullStacks = totalRefund / 64;
-        int remainder = totalRefund % 64;
-
+    private void refundWagerToInventory(Player player, int amount) {
+        int fullStacks = amount / 64;
+        int remainder = amount % 64;
         Material currencyMaterial = plugin.getCurrency(internalName);
 
         if (currencyMaterial != null) {
-            int filledStacks = fillPartialStacks(player, totalRefund, currencyMaterial);
-
-            int remainingRefund = totalRefund - filledStacks;
-
-            fullStacks = remainingRefund / 64;
-            remainder = remainingRefund % 64;
-
             for (int i = 0; i < fullStacks; i++) {
                 HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(new ItemStack(currencyMaterial, 64));
                 if (!leftover.isEmpty()) {
@@ -350,28 +381,6 @@ public class BettingTable implements InventoryHolder, Listener {
         } else {
             player.sendMessage("Error: Currency material is not set. Unable to refund bets.");
         }
-
-        playerBets.clear();
-        restoreBets(); // Update the inventory to remove lore information
-    }
-
-    private int fillPartialStacks(Player player, int totalRefund, Material currencyMaterial) {
-        int totalFilled = 0;
-
-        ItemStack[] contents = player.getInventory().getContents();
-        for (ItemStack item : contents) {
-            if (item != null && item.getType() == currencyMaterial && item.getAmount() < 64) {
-                int spaceLeft = 64 - item.getAmount();
-                int amountToFill = Math.min(spaceLeft, totalRefund - totalFilled);
-                item.setAmount(item.getAmount() + amountToFill);
-                totalFilled += amountToFill;
-                if (totalFilled >= totalRefund) {
-                    break;
-                }
-            }
-        }
-
-        return totalFilled;
     }
 
     private void handleLeftoverItems(Player player, HashMap<Integer, ItemStack> leftover, int refundAmount) {
@@ -383,51 +392,23 @@ public class BettingTable implements InventoryHolder, Listener {
         });
     }
 
-    private void restoreBetsForPage(int page) {
-        if (page == 1 && playerBets.containsKey(-1)) {
-            updateItemLore(18, playerBets.get(-1));
-        }
-        playerBets.forEach((slot, bet) -> {
-            if ((page == 1 && slot >= 0 && slot <= 17) || (page == 2 && slot >= 18 && slot <= 36)) {
-                updateItemLore(slot - (page == 1 ? 0 : 18), bet);
-            }
-        });
-    }
-
     @EventHandler
     public void handleInventoryClose(InventoryCloseEvent event) {
         if (event.getInventory().getHolder() != this) return;
         Player player = (Player) event.getPlayer();
-
-        player.sendMessage("Exited betting table. All bets still active, undoable until bets are closed.");
-        DealerVillager.savePlayerBets(dealer, player, playerBets);
+        saveBetsToRoulette();
     }
 
-    private void updateItemLore(int slot, double wager) {
+    private void updateItemLore(int slot, int totalBet) {
         ItemStack item = inventory.getItem(slot);
         if (item != null) {
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
                 List<String> lore = new ArrayList<>();
-                lore.add("Current Bet: " + wager + " " + plugin.getCurrencyName(internalName));
+                lore.add("Current Bet: " + totalBet + " " + plugin.getCurrencyName(internalName));
                 meta.setLore(lore);
                 item.setItemMeta(meta);
             }
-        }
-    }
-
-    private void openRouletteInventory(Villager dealer, Player player) {
-        UUID dealerId = DealerVillager.getUniqueId(dealer);
-        DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
-
-        if (dealerInventory instanceof RouletteInventory) {
-            RouletteInventory rouletteInventory = (RouletteInventory) dealerInventory;
-            rouletteInventory.updatePlayerBets(playerId, playerBets);
-
-            player.openInventory(rouletteInventory.getInventory());
-        } else {
-            player.sendMessage("Error: Unable to find Roulette inventory.");
-            plugin.getLogger().warning("Error: Unable to find Roulette inventory for dealer ID: " + dealerId);
         }
     }
 
@@ -449,25 +430,18 @@ public class BettingTable implements InventoryHolder, Listener {
         }
     }
 
-    private void restoreBets() {
-        playerBets.forEach(this::updateItemLore);
-    }
+    private void openRouletteInventory(Villager dealer, Player player) {
+        UUID dealerId = DealerVillager.getUniqueId(dealer);
+        DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
 
-    public Map<Integer, Double> getPlayerBets() {
-        return playerBets;
-    }
-
-    @Override
-    public Inventory getInventory() {
-        return this.inventory;
-    }
-
-    public UUID getPlayerId() {
-        return playerId;
-    }
-
-    public Villager getDealer() {
-        return dealer;
+        if (dealerInventory instanceof RouletteInventory) {
+            RouletteInventory rouletteInventory = (RouletteInventory) dealerInventory;
+            rouletteInventory.updatePlayerBets(playerId, betStack);
+            player.openInventory(rouletteInventory.getInventory());
+        } else {
+            player.sendMessage("Error: Unable to find Roulette inventory.");
+            plugin.getLogger().warning("Error: Unable to find Roulette inventory for dealer ID: " + dealerId);
+        }
     }
 
     private void saveBetsToRoulette() {
@@ -476,9 +450,14 @@ public class BettingTable implements InventoryHolder, Listener {
 
         if (dealerInventory instanceof RouletteInventory) {
             RouletteInventory rouletteInventory = (RouletteInventory) dealerInventory;
-            rouletteInventory.updatePlayerBets(playerId, playerBets);
+            rouletteInventory.updatePlayerBets(playerId, betStack);
         } else {
             plugin.getLogger().warning("Failed to save bets: Roulette inventory not found.");
         }
+    }
+
+    @Override
+    public Inventory getInventory() {
+        return this.inventory;
     }
 }
