@@ -112,6 +112,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         UUID dealerId = DealerVillager.getUniqueId(villager);
                         String name = DealerVillager.getName(villager);
                         DealerVillager.initializeInventory(villager, dealerId, name, this); // Pass the plugin instance
+
+                        // Update game type from config
+                        String internalName = DealerVillager.getInternalName(villager);
+                        String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
+                        DealerVillager.switchGame(villager, gameType);
                     }
                 }
             }
@@ -122,11 +127,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
     public NamespacedKey getKey(String key) {
         return new NamespacedKey(this, key);
     }
-
     public void saveDefaultDealerConfig(String internalName) {
         String path = "dealers." + internalName;
 
         if (!getConfig().contains(path)) {
+            
+            getConfig().set(path + ".game", "Menu"); // Default game type
             getConfig().set(path + ".currency.material", "EMERALD");
             getConfig().set(path + ".currency.name", "Emerald");
             getConfig().set(path + ".chip-sizes.size1", 1);

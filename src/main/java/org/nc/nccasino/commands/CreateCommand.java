@@ -9,8 +9,6 @@ import org.jetbrains.annotations.NotNull;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.Nccasino;
 
-import java.util.UUID;
-
 public class CreateCommand implements CasinoCommand {
     private final JavaPlugin plugin;
 
@@ -31,15 +29,23 @@ public class CreateCommand implements CasinoCommand {
         }
 
         Player player = (Player) sender;
-        Location location = player.getLocation();
         String internalName = args[1];
 
-        // Store the dealer configuration with default values
+        // Check if the internal name already exists
         Nccasino nccasino = (Nccasino) plugin;
+        if (nccasino.getConfig().contains("dealers." + internalName)) {
+            sender.sendMessage("A dealer with the internal name '" + internalName + "' already exists.");
+            return true;
+        }
+
+        // Store the dealer configuration with default values
         nccasino.saveDefaultDealerConfig(internalName);
 
+        // Spawn the dealer
+        Location location = player.getLocation();
         DealerVillager.spawnDealer(plugin, location, "Dealer Villager", internalName);
 
+        sender.sendMessage("Dealer with internal name '" + internalName + "' has been created.");
 
         return true;
     }

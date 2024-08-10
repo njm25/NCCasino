@@ -35,7 +35,6 @@ public class DealerVillager {
 
         return villager;
     }
-
     private static void initializeVillager(Villager villager, Location location, String name, String internalName) {
         villager.setAI(true);
         villager.setInvulnerable(true);
@@ -53,7 +52,7 @@ public class DealerVillager {
         dataContainer.set(DEALER_KEY, PersistentDataType.BYTE, (byte) 1);
         dataContainer.set(UNIQUE_ID_KEY, PersistentDataType.STRING, uniqueId.toString());
         dataContainer.set(NAME_KEY, PersistentDataType.STRING, name);
-        dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, "Game Menu");
+        dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, "Menu"); // Default game type
         dataContainer.set(INTERNAL_NAME_KEY, PersistentDataType.STRING, internalName);
 
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
@@ -73,6 +72,7 @@ public class DealerVillager {
             }
         }.runTaskTimer(JavaPlugin.getProvidingPlugin(DealerVillager.class), 0L, 20L);
     }
+
 
     public static void initializeInventory(Villager villager, UUID uniqueId, String name, Nccasino plugin) {
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
@@ -142,13 +142,15 @@ public class DealerVillager {
     public static void switchGame(Villager villager, String gameName) {
         UUID dealerId = getUniqueId(villager);
         if (dealerId == null) return;
-
+    
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
         DealerInventory newInventory;
         String newName;
-
+    
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
+        
+        // Determine the appropriate inventory and name based on the game type
         switch (gameName) {
             case "Blackjack":
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);
@@ -161,12 +163,20 @@ public class DealerVillager {
             default:
                 newInventory = new GameMenuInventory(dealerId);
                 newName = "Game Menu";
+                gameName = "Menu"; // Ensure gameName is "Menu" if it doesn't match other cases
                 break;
         }
-
+    
+        // Update the inventory and the villager's name
         DealerInventory.updateInventory(dealerId, newInventory);
         setName(villager, newName);
-
+    
+        // Update the villager's game type in the persistent data container
         dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameName);
+    
+        // Update the configuration with the new game type
+        plugin.getConfig().set("dealers." + internalName + ".game", gameName);
+        plugin.saveConfig();  // Save the configuration to persist changes
     }
+    
 }
