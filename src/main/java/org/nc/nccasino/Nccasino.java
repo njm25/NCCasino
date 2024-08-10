@@ -106,38 +106,26 @@ public final class Nccasino extends JavaPlugin implements Listener {
         return currencyName;
     }
 
-// Reinitialize dealer villagers on server start
-private void reinitializeDealerVillagers() {
-    Bukkit.getWorlds().forEach(world -> {
-        for (Entity entity : world.getEntities()) {
-            if (entity instanceof Villager villager) {
-                if (DealerVillager.isDealerVillager(villager)) {
-                    // Reinitialize inventory based on stored game type
-                    UUID dealerId = DealerVillager.getUniqueId(villager);
-                    String name = DealerVillager.getName(villager);
-                    String internalName = DealerVillager.getInternalName(villager);
+    // Reinitialize dealer villagers on server start
+    private void reinitializeDealerVillagers() {
+        Bukkit.getWorlds().forEach(world -> {
+            for (Entity entity : world.getEntities()) {
+                if (entity instanceof Villager villager) {
+                    if (DealerVillager.isDealerVillager(villager)) {
+                        // Reinitialize inventory based on stored game type
+                        UUID dealerId = DealerVillager.getUniqueId(villager);
+                        String name = DealerVillager.getName(villager);
+                        DealerVillager.initializeInventory(villager, dealerId, name, this); // Pass the plugin instance
 
-                    // Update game type from config
-                    String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
-
-                    // Initialize the inventory with the correct game type
-                    switch (gameType) {
-                        case "Blackjack":
-                            DealerVillager.initializeInventory(villager, dealerId, "Blackjack Dealer", this);
-                            break;
-                        case "Roulette":
-                            DealerVillager.initializeInventory(villager, dealerId, "Roulette Dealer", this);
-                            break;
-                        default:
-                            DealerVillager.initializeInventory(villager, dealerId, "Game Menu", this);
-                            break;
+                        // Update game type from config
+                        String internalName = DealerVillager.getInternalName(villager);
+                        String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
+                        DealerVillager.updateGameType(villager, gameType);
                     }
                 }
             }
-        }
-    });
-}
-
+        });
+    }
 
     // Utility method to create NamespacedKey instances
     public NamespacedKey getKey(String key) {

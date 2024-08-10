@@ -102,8 +102,8 @@ private Deck deck; // Declare the deck as a class variable
         addItem(createCustomItem(Material.DIAMOND_SWORD, "Hit"), 36); // Hit
         addItem(createCustomItem(Material.SHIELD, "Stand"), 37); // Stand
         addItem(createCustomItem(Material.PAPER, "Double Down"), 38); // Double Down
-        addItem(createCustomItem(Material.SHEARS, "Split"), 39); // Split
-        addItem(createCustomItem(Material.TOTEM_OF_UNDYING, "Insurance"), 40); // Insurance
+        //addItem(createCustomItem(Material.SHEARS, "Split"), 39); // Split
+        //addItem(createCustomItem(Material.TOTEM_OF_UNDYING, "Insurance"), 40); // Insurance
 
         // Add undo options and chip denominations
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
@@ -253,11 +253,11 @@ private void handlePlayerAction(Player player, int slot) {
             case 38: // Double Down
                 handleDoubleDown(player);
                 break;
-            case 40: // Insurance
-                handleInsurance(player);
-                break;
+            //case 40: // Insurance
+              //  handleInsurance(player);
+                //break;
             default:
-                player.sendMessage("Invalid action. Choose Hit, Stand, Double Down, or Insurance.");
+                player.sendMessage("Invalid action. ");
                 playerTurnActive.put(playerId, true); // Re-enable actions if the action was invalid
         }
     }
@@ -280,7 +280,6 @@ private void handleHit(Player player) {
         // Delay the hand value calculation to ensure the card is fully added to the player's hand
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             int handValue = calculateHandValue(playerHands.get(playerId));
-            System.out.println("User's hand value: " + handValue);
 
             if (handValue == 21) {
                 player.sendMessage("21! Your turn is over!");
@@ -288,13 +287,20 @@ private void handleHit(Player player) {
                 playerTurnActive.put(playerId, false); // Deactivate the player's turn
                 startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
             } else if (handValue > 21) {
+                player.sendMessage("Bust! Your turn is over.");
+
+
+                if (!playerDone.get(playerId)) { // If the player isn't already marked as done
                 playerDone.put(playerId, true); // Mark the player as done
                 playerTurnActive.put(playerId, false); // Deactivate the player's turn
-                player.sendMessage("Bust! Your turn is over.");
                 startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
+            } 
             } else {
-                playerTurnActive.put(playerId, true); // Allow more actions since the player hasn't busted
-                allowPlayerActions(player); // Continue player's turn with delay
+                if (!playerDone.get(playerId))  // If the player isn't already marked as done
+                {
+                    playerTurnActive.put(playerId, true); // Allow more actions since the player hasn't busted
+                    allowPlayerActions(player); // Continue player's turn with delay
+                }
             }
         }, 40L); // The delay should be enough to ensure that the card has been added
     }
@@ -329,7 +335,7 @@ private void handleDoubleDown(Player player) {
         double currentBet = playerBets.get(playerId).values().stream().mapToDouble(Double::doubleValue).sum();
 
         if (!hasEnoughWager(player, currentBet)) {
-            player.sendMessage("You don't have enough funds to double down.");
+            player.sendMessage("Not enough funds.");
             playerTurnActive.put(playerId, true); // Allow more actions since the double down failed
             allowPlayerActions(player); // Continue player's turn
             return;
@@ -350,6 +356,8 @@ private void handleDoubleDown(Player player) {
 
         // After doubling down, the player gets exactly one more card
         handleHit(player);
+        
+        playerDone.put(playerId, true); // Mark the player as done
         playerTurnActive.put(playerId, false); // Deactivate the player's turn after doubling down
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             player.sendMessage("You doubled down. Your turn is over.");
@@ -366,16 +374,14 @@ private void handleInsurance(Player player) {
         double insuranceBet = currentBet / 2;
 
         if (!hasEnoughWager(player, insuranceBet)) {
-            player.sendMessage("You don't have enough funds for insurance.");
+            player.sendMessage("Not enough funds.");
             allowPlayerActions(player); // Continue player's turn
             return;
         }
 
         if (inventory.getItem(2) != null && inventory.getItem(2).getItemMeta().getDisplayName().contains("ACE")) {
             removeWagerFromInventory(player, insuranceBet);
-            player.sendMessage("Insurance taken. If the dealer has Blackjack, you'll be protected.");
-        } else {
-            player.sendMessage("Insurance is only available if the dealer shows an Ace.");
+            player.sendMessage("Insurance taken. ");
         }
 
         allowPlayerActions(player); // Continue player's turn
@@ -397,7 +403,6 @@ private void handleInsurance(Player player) {
 
         // Track the player's seat
         playerSeats.put(playerId, slot);
-        player.sendMessage("You are now sitting in the chair.");
     }
     
 
@@ -406,7 +411,6 @@ private void handleLeaveChair(Player player) {
     UUID playerId = player.getUniqueId();
 
     if (!playerSeats.containsKey(playerId)) {
-        player.sendMessage("You are not sitting in any chair.");
         return;
     }
 
@@ -418,10 +422,8 @@ private void handleLeaveChair(Player player) {
     // If the timer is still running, undo all bets
     if (countdownTaskId != -1 && !gameActive) {
         handleUndoAllBets(player);
-        player.sendMessage("You have left the chair and all bets have been refunded.");
     } else {
         removePlayerData(playerId);
-        player.sendMessage("You have left the chair. Bets cannot be refunded during an active game.");
     }
 
     // Check if all players have left the game
@@ -437,7 +439,6 @@ private void handleLeaveChairDuringGame(Player player) {
     UUID playerId = player.getUniqueId();
 
     if (!playerSeats.containsKey(playerId)) {
-        player.sendMessage("You are not sitting in any chair.");
         return;
     }
 
@@ -454,13 +455,6 @@ private void handleLeaveChairDuringGame(Player player) {
 
     // Reset the chair to its original state
     inventory.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, "Click to sit here"));
-
-    // Message player depending on whether the game is active
-    if (gameActive) {
-        player.sendMessage("You have left the chair. Bets cannot be refunded during an active game.");
-    } else {
-        player.sendMessage("You have left the chair and all bets have been refunded.");
-    }
 
     // Check if all players have left the game
     if (playerSeats.isEmpty()) {
@@ -605,8 +599,6 @@ private void removePlayerData(UUID playerId) {
             if (playerBets.isEmpty()) {
                 stopCountdownTimer(); // Stop the timer if no bets are left for any player
             }
-        } else {
-            player.sendMessage("You have no bets to undo.");
         }
     }
     
@@ -661,8 +653,6 @@ private void removePlayerData(UUID playerId) {
                     return;
                 }
             }
-        } else {
-            player.sendMessage("You have no bets to undo.");
         }
     }
     
@@ -894,7 +884,7 @@ private void allowPlayerActions(Player player) {
     // Enable relevant slots for actions
     clickAllowed.putIfAbsent(player.getUniqueId(), true);
 
-    player.sendMessage("It's your turn! Choose an action: Hit, Stand, Double Down, or Insurance.");
+    player.sendMessage("It's your turn!");
 }
 
 
@@ -991,10 +981,7 @@ private void finishGame() {
     int dealerCardSum = calculateHandValue(dealerHand);
     boolean dealerBusted = dealerCardSum > 21;
 
-    // Animate dealer head if they bust
-    if (dealerBusted) {
-        animateLosingHead(0, Material.TNT, Material.CREEPER_HEAD, "Dealer");
-    }
+    
 
     for (UUID playerId : playerSeats.keySet()) {
         if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty()) {
@@ -1015,13 +1002,11 @@ private void finishGame() {
             payOut(player, bets, 2.5); // Pay out 2.5x for a blackjack
         } else if (playerCardSum > 21) {
             player.sendMessage("You busted and lost your bet.");
-            animateLosingHead(playerSeats.get(playerId), Material.TNT, Material.PLAYER_HEAD, player.getName()); // Animate losing player head
         } else if (dealerBusted || playerCardSum > dealerCardSum) {
             player.sendMessage("You won! Collect your winnings.");
             payOut(player, bets, 2.0); // Regular win pays out 2x
         } else if (playerCardSum < dealerCardSum) {
             player.sendMessage("You lost this round.");
-            animateLosingHead(playerSeats.get(playerId), Material.TNT, Material.PLAYER_HEAD, player.getName()); // Animate losing player head
         } else {
             player.sendMessage("It's a tie! Your bet is returned.");
             refundBet(player, bets);
@@ -1030,29 +1015,6 @@ private void finishGame() {
 
     // Reset game for the next round
     resetGame();
-}
-
-private void animateLosingHead(int slot, Material losingMaterial, Material originalMaterial, String name) {
-    // Change the head to TNT
-    ItemStack tntHead = new ItemStack(losingMaterial);
-    ItemMeta tntMeta = tntHead.getItemMeta();
-    if (tntMeta != null) {
-        tntMeta.setDisplayName(name);
-        tntHead.setItemMeta(tntMeta);
-    }
-    inventory.setItem(slot, tntHead);
-
-    // Schedule reverting back to the original head after 1 second (20 ticks)
-    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        ItemStack originalHead = new ItemStack(originalMaterial);
-        ItemMeta originalMeta = originalHead.getItemMeta();
-        if (originalMeta != null) {
-            originalMeta.setDisplayName(name);
-            originalHead.setItemMeta(originalMeta);
-        }
-        inventory.setItem(slot, originalHead);
-
-    }, 20L); // 20L = 1 second
 }
 
 
