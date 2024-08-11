@@ -1,7 +1,3 @@
-Let's refine this further with your feedback:
-
----
-
 # NCCasino Plugin for Minecraft
 
 ## Overview
