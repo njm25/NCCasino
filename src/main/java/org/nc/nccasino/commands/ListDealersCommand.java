@@ -34,12 +34,17 @@ public class ListDealersCommand implements CasinoCommand {
             List<String> dealerNames = new ArrayList<>(plugin.getConfig().getConfigurationSection("dealers").getKeys(false));
             int totalPages = (int) Math.ceil((double) dealerNames.size() / DEALERS_PER_PAGE);
 
-            if (page < 1 || page > totalPages) {
-                sender.sendMessage(Component.text("Invalid page number. Showing page 1.")
+            if (totalPages == 0) {
+                sender.sendMessage(Component.text("No dealers found.")
                         .color(NamedTextColor.RED));
-                page = 1;
+                return true;
             }
 
+            if (page < 0 || page > totalPages) {
+                sender.sendMessage(Component.text("Page does not exist.")
+                        .color(NamedTextColor.RED));
+                return true;
+            }
             int start = (page - 1) * DEALERS_PER_PAGE;
             int end = Math.min(start + DEALERS_PER_PAGE, dealerNames.size());
 
@@ -53,7 +58,7 @@ public class ListDealersCommand implements CasinoCommand {
                         .append(Component.text(" [" + gameType + "]").color(NamedTextColor.YELLOW)));
             }
         } else {
-            sender.sendMessage(Component.text("No dealers found in the configuration.")
+            sender.sendMessage(Component.text("No dealers found.")
                     .color(NamedTextColor.RED));
         }
 
