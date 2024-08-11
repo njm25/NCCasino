@@ -7,7 +7,7 @@ NCCasino is a Minecraft plugin built on Bukkit/Paper, bringing popular casino ga
 ## Features
 
 - **Blackjack**: The classic card game where players try to beat the dealer.
-- **Roulette**: A game of chance with bets on where the ball lands on a spinning wheel (under development).
+- **Roulette**: A game of chance with bets on where the ball lands on a spinning wheel.
 - **Dealer Configuration**: Customize game type, currency, and chip denominations via the configuration file.
 - **Inventory GUI**: All interactions are managed through a user-friendly inventory interface.
 
