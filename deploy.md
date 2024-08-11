@@ -75,11 +75,3 @@ This process uses a script to automate compiling and deploying your plugin to a 
 - **Verify the paths in `config.txt`** to ensure they are correct for your environment.
 - **Consider backing up your server data** before running the script to prevent data loss during updates.
 
-## Usage
-
-Once the plugin is deployed, you can use the following commands in-game:
-
-- **`/ncc help`**: Displays help information for the plugin.
-- **`/ncc create <name>`**: Spawns a dealer where the player is standing.
-- **`/ncc list (page)`**: Lists the dealers.
-- **`/ncc reload`**: Reloads the config.
