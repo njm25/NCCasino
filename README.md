@@ -2,7 +2,7 @@
 
 ## Overview
 
-NCCasino is a Minecraft plugin built on Bukkit/Paper, bringing popular casino games like Blackjack and Roulette to minecraft servers. The plugin is still under active development.
+NCCasino is a Minecraft plugin built on Bukkit/Paper, bringing popular casino games like Blackjack and Roulette to minecraft servers. The plugin is still under active development. Join the official discord (here)[https://discord.gg/PaN3Dd4pD8]
 
 ## Features
 
