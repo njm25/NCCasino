@@ -80,7 +80,7 @@ public class BettingTable implements InventoryHolder, Listener {
         addDozensAndOtherBetsPageOne();
         addCommonComponents();
         updateAllLore();
-       //   restoreBetsForPage(1);
+       
     }
 
     private void setupPageTwo() {
@@ -92,7 +92,7 @@ public class BettingTable implements InventoryHolder, Listener {
         addDozensAndOtherBetsPageTwo();
         addCommonComponents();
         updateAllLore();
-      //  restoreBetsForPage(2);
+     
     }
 
     private void addStraightUpBetsPageOne() {
@@ -316,87 +316,98 @@ public class BettingTable implements InventoryHolder, Listener {
     }
     
 
-
-
-
-    public void processSpinResult(int result,Stack<Pair<String, Integer>> dastack) {
+    public void processSpinResult(int result, Stack<Pair<String, Integer>> dastack) {
         Player player = Bukkit.getPlayer(playerId);
         if (player != null) {
             int totalWinnings = 0;
+            int totalLosses = 0;
+            Map<String, Integer> winningsMap = new HashMap<>();
+    
             while (!dastack.isEmpty()) {
                 Pair<String, Integer> bet = dastack.pop();
                 String betType = bet.getFirst();
                 int wager = bet.getSecond();
-
-                if (betType.equalsIgnoreCase("straight up " + result+" - 35:1")) {
-                    totalWinnings += wager * 36;
-                    player.sendMessage("You won " + (wager * 35) + " on " + betType + "!");
-                } 
-                     else if (betType.equalsIgnoreCase(getColumn(result) +"row - 2:1"  )) {
-                        // Column bet: 2:1 payout
-                        totalWinnings += wager * 3;
-                        player.sendMessage("You won " + (wager * 2) + " on " + betType + "!");
-                    } else if (betType.equalsIgnoreCase(getDozen(result)+"Dozen - 2:1" )) { ////switch to .contains dozen, then substring[0,1]
-                        // Dozen bet: 2:1 payout
-                        totalWinnings += wager * 3;
-                        player.sendMessage("You won " + (wager * 2) + " on " + betType + "!");
-                    } else if (betType.equalsIgnoreCase("Red - 1:1") && isRed(result)) {
-                        // Red bet: 1:1 payout
-                        totalWinnings += wager * 2;
-                        player.sendMessage("You won " + wager + " on Red!");
-                    } else if (betType.equalsIgnoreCase("Black - 1:1") && isBlack(result)) {
-                        // Black bet: 1:1 payout
-                        totalWinnings += wager * 2;
-                        player.sendMessage("You won " + wager + " on Black!");
-                    } else if (betType.equalsIgnoreCase(getOddEven(result))) {
-                        // Odd/Even bet: 1:1 payout
-                        totalWinnings += wager * 2;
-                        player.sendMessage("You won " + wager + " on " + betType + "!");
-                    } else if (betType.equals("1-18 - 1:1")&&(1<=result&&result<=18)) {
-                            totalWinnings += wager * 2;
-                            player.sendMessage("You won " + wager + " on " + betType + "!");
-                     
-                    }
-                    else if (betType.equals("19-36 - 1:1")&&(19<=result&&result<=36)) {
-                       
-                            totalWinnings += wager * 2;
-                            player.sendMessage("You won " + wager + " on " + betType + "!");
-
-                    
-                    }
-                    
-                    
-                    
-                else {
-                        player.sendMessage("You lost " + wager + " on " + betType + ".");
-                    }
-                }
-        
-                // Refund winnings to player
-                if (totalWinnings > 0) {
-                    refundWagerToInventory(player, totalWinnings);
-                    player.sendMessage("Total winnings: " + totalWinnings + " " + plugin.getCurrencyName(internalName) + "s.");
-                } else {
-                    player.sendMessage("No winnings this time.");
-                }
-                initializeTable();
-                updateAllLore(); // Update the table to reflect the processed bets
-            }
-        }
-
-   
     
-    private boolean isStreetWin(int result, String betType) {
-        // Example: "street 1-3" should match results 1, 2, or 3
-        String[] streetNumbers = betType.replace("street ", "").split("-");
-        for (String number : streetNumbers) {
-            if (Integer.parseInt(number) == result) {
-                return true;
+                if (betType.equalsIgnoreCase("straight up " + result + " - 35:1")) {
+                    int winnings = wager * 36;
+                    winningsMap.put("Straight Up " + result, winningsMap.getOrDefault("Straight Up " + result, 0) + winnings);
+                    totalWinnings += winnings;
+                } else if (betType.equalsIgnoreCase(getColumn(result) + "row - 2:1")) {
+                    int winnings = wager * 3;
+                    winningsMap.put(getColumn(result) + " Row", winningsMap.getOrDefault(getColumn(result) + " Row", 0) + winnings);
+                    totalWinnings += winnings;
+                } else if (betType.equalsIgnoreCase(getDozen(result) + "Dozen - 2:1")) {
+                    int winnings = wager * 3;
+                    winningsMap.put(getDozen(result) + " Dozen", winningsMap.getOrDefault(getDozen(result) + " Dozen", 0) + winnings);
+                    totalWinnings += winnings;
+                } else if (betType.equalsIgnoreCase("Red - 1:1") && isRed(result)) {
+                    int winnings = wager * 2;
+                    winningsMap.put("Red", winningsMap.getOrDefault("Red", 0) + winnings);
+                    totalWinnings += winnings;
+                } else if (betType.equalsIgnoreCase("Black - 1:1") && isBlack(result)) {
+                    int winnings = wager * 2;
+                    winningsMap.put("Black", winningsMap.getOrDefault("Black", 0) + winnings);
+                    totalWinnings += winnings;
+                } else if (betType.equalsIgnoreCase(getOddEven(result))) {
+                    int winnings = wager * 2;
+                    winningsMap.put(getOddEven(result), winningsMap.getOrDefault(getOddEven(result), 0) + winnings);
+                    totalWinnings += winnings;
+                } else if (betType.equals("1-18 - 1:1") && (1 <= result && result <= 18)) {
+                    int winnings = wager * 2;
+                    winningsMap.put("1-18", winningsMap.getOrDefault("1-18", 0) + winnings);
+                    totalWinnings += winnings;
+                } else if (betType.equals("19-36 - 1:1") && (19 <= result && result <= 36)) {
+                    int winnings = wager * 2;
+                    winningsMap.put("19-36", winningsMap.getOrDefault("19-36", 0) + winnings);
+                    totalWinnings += winnings;
+                } else {
+                    totalLosses += wager;
+                }
             }
+    
+            // Announce losses
+            if (totalLosses > 0 && winningsMap.isEmpty()) {
+                                player.sendMessage("Lost "+ totalLosses +" "+ plugin.getCurrencyName(internalName)+"s, donated to a good cause :)");
+            }
+            else if (totalLosses == 0 && winningsMap.isEmpty()) {
+                player.sendMessage("No wins no losses. huh?!");
+
+            }
+            else if (totalLosses == 0&& !winningsMap.isEmpty()) {
+            
+                player.sendMessage("Wow, no losses! I applaud you.");
+            }else{
+
+                player.sendMessage("Lost "+ totalLosses +" "+ plugin.getCurrencyName(internalName)+"s, but u won sum uwu");
+            }
+
+            // Announce winnings for each bet type
+         
+            for (Map.Entry<String, Integer> entry : winningsMap.entrySet()) {
+                player.sendMessage("You won " + entry.getValue() + " on " + entry.getKey() + "!");
+            }
+    
+            // Announce total winnings and profit
+            int profit = totalWinnings - totalLosses;
+            if (totalWinnings > 0) {
+                refundWagerToInventory(player, totalWinnings);
+                player.sendMessage("Total winnings: " + totalWinnings + " " + plugin.getCurrencyName(internalName) + "s.");
+               
+               if(profit>0){
+                player.sendMessage("Result: +" + profit + " " + plugin.getCurrencyName(internalName) + "s.");
+               }else{player.sendMessage("Result: " + profit + " " + plugin.getCurrencyName(internalName) + "s.");}
+
+            } else {
+                player.sendMessage("No winnings this time.");
+            }
+    
+            initializeTable();
+            updateAllLore(); // Update the table to reflect the processed bets
         }
-        return false;
     }
     
+
+
     private String getColumn(int result) {
         // Determine the column of the result (1st, 2nd, 3rd)
         if (result % 3 == 1) {
@@ -447,15 +458,7 @@ public class BettingTable implements InventoryHolder, Listener {
         return (result % 2 == 0) ? "even - 1:1" : "odd - 1:1";
     }
     
-    private String getHighLow(int result) {
-        if (result >= 1 && result <= 18) {
-            return "low";
-        } else if (result >= 19 && result <= 36) {
-            return "high";
-        }
-        return "none";
-    }
-    
+
 
     @EventHandler
     public void handleClick(InventoryClickEvent event) {
@@ -632,7 +635,15 @@ private boolean isValidSlotPage2(int slot) {
     public void handleInventoryClose(InventoryCloseEvent event) {
         if (event.getInventory().getHolder() != this) return;
         Player player = (Player) event.getPlayer();
-        saveBetsToRoulette(player);  // Replace the incorrect method call
+       
+        if (!betStack.isEmpty()){
+            rouletteInventory.updatePlayerBets(player.getUniqueId(),betStack,player);
+
+        }
+        else{
+            rouletteInventory.removeFromBets(player.getUniqueId());
+
+        }
     }
 
     private void updateItemLore(int slot, int totalBet) {
@@ -650,8 +661,6 @@ private boolean isValidSlotPage2(int slot) {
 
     private void initializeTestStack(){
         testStack=new Stack<>();
-        //testStack=new HashMap<>();
-    
        testStack.push(new Pair<>("straight up 0 - 35:1", 5));
        testStack.push(new Pair<>("straight up 0 - 35:1", 1));
        testStack.push(new Pair<>("straight up 0 - 35:1", 5));
@@ -667,9 +676,7 @@ private boolean isValidSlotPage2(int slot) {
        testStack.push(new Pair<>("straight up 0 - 35:1", 1));
        testStack.push(new Pair<>("straight up 0 - 35:1", 1));
        testStack.push(new Pair<>("straight up 0 - 35:1", 1));
-       testStack.push(new Pair<>("straight up 0 - 35:1", 1));
-
-        
+       testStack.push(new Pair<>("straight up 0 - 35:1", 1)); 
     }
 
     private double getWagerAmountFromName(String name) {
