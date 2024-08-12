@@ -95,7 +95,7 @@ public class DealerVillager {
                 name = "Blackjack Dealer";
                 break;
             case "Roulette":
-                inventory = new RouletteInventory(uniqueId, plugin);
+                inventory = new RouletteInventory(uniqueId, plugin, internalName);
                 name = "Roulette Dealer";
                 break;
             default:
@@ -151,19 +151,22 @@ public class DealerVillager {
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
         DealerInventory newInventory;
         String newName;
+        int defaultTimer = 0; // Initialize the default timer variable
     
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
     
-        // Determine the appropriate inventory and name based on the game type
+        // Determine the appropriate inventory, name, and timer based on the game type
         switch (gameName) {
             case "Blackjack":
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);
                 newName = "Blackjack Dealer";
+                defaultTimer = 10; // Default timer for Blackjack
                 break;
             case "Roulette":
-                newInventory = new RouletteInventory(dealerId, plugin);
+                newInventory = new RouletteInventory(dealerId, plugin, internalName);
                 newName = "Roulette Dealer";
+                defaultTimer = 30; // Default timer for Roulette
                 break;
             default:
                 newInventory = new GameMenuInventory(dealerId);
@@ -176,11 +179,12 @@ public class DealerVillager {
         DealerInventory.updateInventory(dealerId, newInventory);
         setName(villager, newName);
     
-        // Update the villager's game type in the persistent data container
+        // Update the villager's game type and timer in the persistent data container
         dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameName);
     
-        // Update the configuration with the new game type
+        // Update the configuration with the new game type and timer
         plugin.getConfig().set("dealers." + internalName + ".game", gameName);
+        plugin.getConfig().set("dealers." + internalName + ".timer", defaultTimer);
         plugin.saveConfig();  // Save the configuration to persist changes
     
         // Send styled message only to the player who switched the game
@@ -189,28 +193,34 @@ public class DealerVillager {
                 .append(Component.text(internalName).color(NamedTextColor.YELLOW))
                 .append(Component.text("' has been set to ").color(NamedTextColor.GREEN))
                 .append(Component.text(gameName).color(NamedTextColor.YELLOW))
+                .append(Component.text(" with a default timer of ").color(NamedTextColor.GREEN))
+                .append(Component.text(defaultTimer + " seconds").color(NamedTextColor.YELLOW))
                 .append(Component.text(".").color(NamedTextColor.GREEN)));
     }
-    public static void updateGameType(Villager villager, String gameName) {
+    
+    public static void updateGameType(Villager villager, String gameName, int timer) {
         UUID dealerId = getUniqueId(villager);
         if (dealerId == null) return;
     
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
         DealerInventory newInventory;
         String newName;
+        int defaultTimer = 0; // Initialize the default timer variable
     
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
     
-        // Determine the appropriate inventory and name based on the game type
+        // Determine the appropriate inventory, name, and timer based on the game type
         switch (gameName) {
             case "Blackjack":
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);
                 newName = "Blackjack Dealer";
+                defaultTimer = 10; // Default timer for Blackjack
                 break;
             case "Roulette":
-                newInventory = new RouletteInventory(dealerId, plugin);
+                newInventory = new RouletteInventory(dealerId, plugin, internalName);
                 newName = "Roulette Dealer";
+                defaultTimer = 30; // Default timer for Roulette
                 break;
             default:
                 newInventory = new GameMenuInventory(dealerId);
@@ -223,11 +233,12 @@ public class DealerVillager {
         DealerInventory.updateInventory(dealerId, newInventory);
         setName(villager, newName);
     
-        // Update the villager's game type in the persistent data container
+        // Update the villager's game type and timer in the persistent data container
         dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameName);
     
-        // Update the configuration with the new game type
+        // Update the configuration with the new game type and timer
         plugin.getConfig().set("dealers." + internalName + ".game", gameName);
+        plugin.getConfig().set("dealers." + internalName + ".timer", timer);
         plugin.saveConfig();  // Save the configuration to persist changes
     }
     
