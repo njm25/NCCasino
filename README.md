@@ -32,6 +32,7 @@ Customize dealers in the YAML configuration file. Adjust game type, currency mat
 dealers:
   myDealer:
     game: Blackjack
+    timer: 10
     currency:
       material: EMERALD
       name: Emerald
