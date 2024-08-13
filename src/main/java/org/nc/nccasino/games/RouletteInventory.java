@@ -339,7 +339,7 @@ private void updateItemLoreForBet(String betType, int totalBet) {
                         } else if (isBlack(result)) {
                             addItem(createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "HOLY CRAP A BLACK " + result, result), i);
                         } else {
-                            addItem(createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "HOLY CRAP A " + result, result), i);
+                            addItem(createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "HOLY CRAP A " + result, 1), i);
                         }
                     }
     

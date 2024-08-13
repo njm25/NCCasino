@@ -16,8 +16,11 @@ import org.bukkit.attribute.AttributeInstance;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.games.DealerInventory;
 import org.nc.nccasino.games.GameMenuInventory;
+import org.nc.nccasino.games.MinesInventory;
 import org.nc.nccasino.games.BlackjackInventory;
 import org.nc.nccasino.games.RouletteInventory;
+import org.nc.nccasino.games.DragonInventory;
+import org.nc.nccasino.games.RailInventory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -98,6 +101,21 @@ public class DealerVillager {
                 inventory = new RouletteInventory(uniqueId, plugin);
                 name = "Roulette Dealer";
                 break;
+            case "Mines(Beta)":
+                inventory = new MinesInventory(uniqueId, plugin);
+                name = "Mines Dealer";
+                break;
+             case "Dragon Dodger(Beta)":
+             inventory = new DragonInventory(uniqueId, plugin);
+             name = "Dragon Dodger Dealer";
+             break;
+                //DealerVillager.switchGame(villager, "Dragon Climb",player);
+                //break;
+            case "Rail Runner(Beta)":
+            inventory = new RailInventory(uniqueId, plugin);
+            name = "Rail Runner Dealer";
+               // DealerVillager.switchGame(villager, "Rail Runner",player);
+                break;
             default:
                 inventory = new GameMenuInventory(uniqueId);
                 name = "Game Menu";
@@ -165,6 +183,18 @@ public class DealerVillager {
                 newInventory = new RouletteInventory(dealerId, plugin);
                 newName = "Roulette Dealer";
                 break;
+            case "Mines(Beta)":
+                newInventory = new MinesInventory(dealerId, plugin);
+                newName = "Mines Dealer";
+            break;
+            case "Dragon Climb(Beta)":
+            newInventory = new DragonInventory(dealerId, plugin);
+            newName = "Dragon Climb";
+        break;
+        case "Rail Runner(Beta)":
+        newInventory = new RailInventory(dealerId, plugin);
+        newName = "Rail Runner";
+    break;
             default:
                 newInventory = new GameMenuInventory(dealerId);
                 newName = "Game Menu";
@@ -212,6 +242,18 @@ public class DealerVillager {
                 newInventory = new RouletteInventory(dealerId, plugin);
                 newName = "Roulette Dealer";
                 break;
+         case "Mines(Beta)":
+                newInventory = new MinesInventory(dealerId, plugin);
+                newName = "Mines Dealer";
+                break;
+                case "Dragon Climb":
+                newInventory = new DragonInventory(dealerId, plugin);
+                newName = "Dragon Climb Dealer";
+            break;
+        case "Rail Runner(Beta)":
+        newInventory = new RailInventory(dealerId, plugin);
+         newName = "Rail Runner Dealer(Beta)";
+                break;  
             default:
                 newInventory = new GameMenuInventory(dealerId);
                 newName = "Game Menu";
@@ -257,7 +299,22 @@ public class DealerVillager {
 
         // Specifically remove and delete the dealer's managed inventory
         DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
+      
+
         if (dealerInventory != null) {
+
+            if(dealerInventory instanceof BlackjackInventory){
+
+            }else if (dealerInventory instanceof RouletteInventory){
+    
+            }else if (dealerInventory instanceof MinesInventory){
+    
+            }else if (dealerInventory instanceof DragonInventory){
+    
+            }else if (dealerInventory instanceof RailInventory){
+            }
+
+
             dealerInventory.delete(); // Delete the inventory entirely
         }
 

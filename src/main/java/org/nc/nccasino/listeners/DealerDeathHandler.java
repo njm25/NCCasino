@@ -44,6 +44,7 @@ public class DealerDeathHandler implements Listener {
                     plugin.saveConfig();
                 }
 
+                
                 // Get the player who killed the villager, if applicable
                 if (event.getEntity().getKiller() instanceof Player killer) {
                     // Send the removal message to the killer
