@@ -13,6 +13,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.entities.DealerVillager;
 
 import java.util.*;
 
@@ -726,8 +727,8 @@ private void removePlayerData(UUID playerId) {
     // Start the countdown timer and display it with a stack of levers
     private void startCountdownTimer() {
         countdownTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
-            int countdown = 10;
-
+            
+            int countdown =  plugin.getTimer(internalName);
             @Override
             public void run() {
                 if (countdown > 0) {

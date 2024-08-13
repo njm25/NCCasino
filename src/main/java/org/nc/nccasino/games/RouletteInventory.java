@@ -39,13 +39,14 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private boolean betsClosed = false;
     private int bettingTimeSeconds = 30;
 
-    public RouletteInventory(UUID dealerId, Nccasino plugin) {
+    public RouletteInventory(UUID dealerId, Nccasino plugin, String internalName) {
         //super(dealerId, 54, "Wheel - Dealer: " + DealerVillager.getInternalName((Villager) Bukkit.getEntity(dealerId)));
         super(dealerId, 54, "Roulette Wheel");
         this.plugin = plugin;
         this.pageNum = 1;
         this.Bets = new HashMap<>();
         this.Tables=new HashMap<>();
+        this.bettingTimeSeconds =  plugin.getTimer(internalName);
         initializeStartMenu();
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }

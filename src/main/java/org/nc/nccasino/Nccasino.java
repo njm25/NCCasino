@@ -120,7 +120,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         // Update game type from config
                         String internalName = DealerVillager.getInternalName(villager);
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
-                        DealerVillager.updateGameType(villager, gameType);
+                        int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
+                        DealerVillager.updateGameType(villager, gameType, timer);
                     }
                 }
             }
@@ -137,6 +138,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         if (!getConfig().contains(path)) {
             
             getConfig().set(path + ".game", "Menu"); // Default game type
+            getConfig().set(path + ".timer", 0); // Default timer
             getConfig().set(path + ".currency.material", "EMERALD");
             getConfig().set(path + ".currency.name", "Emerald");
             getConfig().set(path + ".chip-sizes.size1", 1);
@@ -165,7 +167,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
         double value = getChipValue(internalName, index);
         return (int) value + " " + getCurrencyName(internalName);
     }
-
+    public int getTimer(String internalName) {
+        return getConfig().getInt("dealers." + internalName + ".timer", 0);
+    }
     // Method to reinitialize dealer configurations
     public void reinitializeDealerConfigurations() {
         // Logic to reinitialize dealer configurations if needed
