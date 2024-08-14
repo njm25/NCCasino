@@ -173,7 +173,7 @@ public class DealerVillager {
     
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
-    
+       
         // Determine the appropriate inventory, name, and timer based on the game type
         switch (gameName) {
             case "Blackjack":
@@ -182,6 +182,7 @@ public class DealerVillager {
                 defaultTimer = 10; // Default timer for Blackjack
                 break;
             case "Roulette":
+
                 newInventory = new RouletteInventory(dealerId, plugin, internalName);
                 newName = "Roulette Dealer";
                 defaultTimer = 30; // Default timer for Roulette
@@ -235,7 +236,7 @@ public class DealerVillager {
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
         DealerInventory newInventory;
         String newName;
-        int defaultTimer = 0; // Initialize the default timer variable
+        
     
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
@@ -245,12 +246,10 @@ public class DealerVillager {
             case "Blackjack":
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);
                 newName = "Blackjack Dealer";
-                defaultTimer = 10; // Default timer for Blackjack
                 break;
             case "Roulette":
                 newInventory = new RouletteInventory(dealerId, plugin, internalName);
                 newName = "Roulette Dealer";
-                defaultTimer = 30; // Default timer for Roulette
                 break;
          case "Mines(Beta)":
                 newInventory = new MinesInventory(dealerId, plugin);

@@ -38,6 +38,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private int bettingCountdownTaskId = -1;
     private boolean betsClosed = false;
     private int bettingTimeSeconds = 30;
+    private String internalName;
 
     public RouletteInventory(UUID dealerId, Nccasino plugin, String internalName) {
         //super(dealerId, 54, "Wheel - Dealer: " + DealerVillager.getInternalName((Villager) Bukkit.getEntity(dealerId)));
@@ -46,7 +47,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
         this.pageNum = 1;
         this.Bets = new HashMap<>();
         this.Tables=new HashMap<>();
-        this.bettingTimeSeconds =  plugin.getTimer(internalName);
+        this.internalName= internalName;
         initializeStartMenu();
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
@@ -60,6 +61,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
             Bukkit.getScheduler().cancelTask(bettingCountdownTaskId);
         }
         addItem(createCustomItem(Material.RED_WOOL, "Start Roulette", 1), 22);
+
     }
 
     
@@ -76,6 +78,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
         if (pageNum == 1) {
             if (slot == 22) {
                // player.sendMessage("Starting Roulette...");
+              this.bettingTimeSeconds =  plugin.getTimer(internalName);
                 setupGameMenu();
                 pageNum = 2;
                 player.openInventory(this.getInventory());
@@ -131,13 +134,19 @@ public class RouletteInventory extends DealerInventory implements Listener {
         }
 
         else if (slot==50){
-            if(bettingTimeSeconds>5) bettingTimeSeconds--;
+            if(bettingTimeSeconds>5) 
+            
+            
+            bettingTimeSeconds--;
+            plugin.getConfig().set("dealers." + internalName + ".timer", bettingTimeSeconds);
+            plugin.saveConfig();  // Save the configuration to persist changes
             addItem(createCustomItem(Material.CLOCK, "-1s Betting Timer (Will take effect next round)",bettingTimeSeconds),50);
             addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds),51);
         }
         
         else if (slot==51){
             if(bettingTimeSeconds<64) bettingTimeSeconds++;
+            plugin.getConfig().set("dealers." + internalName + ".timer", bettingTimeSeconds);
             addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)",bettingTimeSeconds),50);
             addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds),51);
         }
@@ -243,9 +252,13 @@ private void updateItemLoreForBet(String betType, int totalBet) {
 
         inventory.clear();
 
+if(bettingTimeSeconds==0){
+    addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)",1),50);
+    addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", 1),51);
+}
+    else{    addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)",bettingTimeSeconds),50);
+        addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds),51);}
 
-        addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)",bettingTimeSeconds),50);
-        addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds),51);
           addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1),52);
         addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 53); // Add an exit button
      
