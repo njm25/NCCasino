@@ -224,8 +224,6 @@ public class DealerVillager {
                 .append(Component.text(internalName).color(NamedTextColor.YELLOW))
                 .append(Component.text("' has been set to ").color(NamedTextColor.GREEN))
                 .append(Component.text(gameName).color(NamedTextColor.YELLOW))
-                .append(Component.text(" with a default timer of ").color(NamedTextColor.GREEN))
-                .append(Component.text(defaultTimer + " seconds").color(NamedTextColor.YELLOW))
                 .append(Component.text(".").color(NamedTextColor.GREEN)));
     }
     

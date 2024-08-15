@@ -29,7 +29,7 @@ public class GameMenuInventory extends DealerInventory {
     }
 
     // Create an item stack with a custom display name
-    private ItemStack createCustomItem(Material material, String name) {
+    public ItemStack createCustomItem(Material material, String name) {
         ItemStack itemStack = new ItemStack(material);
         ItemMeta meta = itemStack.getItemMeta();
         if (meta != null) {

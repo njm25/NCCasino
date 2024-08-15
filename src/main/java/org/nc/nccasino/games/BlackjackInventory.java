@@ -124,7 +124,7 @@ private Deck deck; // Declare the deck as a class variable
     }
 
     // Create an item stack with a custom display name
-    private ItemStack createCustomItem(Material material, String name) {
+    public ItemStack createCustomItem(Material material, String name) {
         ItemStack itemStack = new ItemStack(material);
         setCustomItemMeta(itemStack, name);
         return itemStack;
