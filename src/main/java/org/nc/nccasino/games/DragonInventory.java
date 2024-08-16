@@ -1,58 +1,35 @@
 package org.nc.nccasino.games;
 
 import org.nc.nccasino.entities.DealerVillager;
-import org.nc.nccasino.games.DealerInventory;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryView;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.games.MinesTable;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 import java.util.UUID;
-import java.util.List;
-import java.util.ArrayList;
 
 public class DragonInventory extends DealerInventory implements Listener {
- private final Map<Player,DragonTable>Tables;
-   private final Nccasino plugin;
-   
-   
+    private final Map<Player, DragonTable> Tables;
+    private final Nccasino plugin;
+
     public DragonInventory(UUID dealerId, Nccasino plugin) {
         super(dealerId, 54, "Mines Start Menu");
         this.plugin = plugin;
-        this.Tables=new HashMap<>();
+        this.Tables = new HashMap<>();
         initializeStartMenu();
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
-    // Initialize items for the start menu
+    // Initialize items for the start menu using the inherited method
     private void initializeStartMenu() {
         inventory.clear();
-        addItem(createCustomItem(Material.BLACK_WOOL, "Start Dragon Climb", 1), 22);
-    }
-
-    
-    private ItemStack createCustomItem(Material material, String name, int amount) {
-        ItemStack itemStack = new ItemStack(material, amount);
-        ItemMeta meta = itemStack.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(name);
-            itemStack.setItemMeta(meta);
-        }
-        return itemStack;
+        addItem(createCustomItem(Material.BLACK_WOOL, "Start Dragon Climb"), 22);
     }
 
     @EventHandler
@@ -64,16 +41,12 @@ public class DragonInventory extends DealerInventory implements Listener {
 
         int slot = event.getRawSlot();
 
-
-            if (slot == 22) {
- 
-                setupGameMenu(player);
-
-            }
-      
+        if (slot == 22) {
+            setupGameMenu(player);
+        }
     }
 
-    // Set up items for the game menu
+    // Set up items for the game menu using the inherited method
     private void setupGameMenu(Player player) {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             Villager dealer = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
@@ -81,19 +54,13 @@ public class DragonInventory extends DealerInventory implements Listener {
                     .map(entity -> (Villager) entity)
                     .filter(v -> DealerVillager.isDealerVillager(v) && DealerVillager.getUniqueId(v).equals(this.dealerId))
                     .findFirst().orElse(null);
-            if (dealer != null) { 
-                String internalName = DealerVillager.getInternalName(dealer);
-              
-                DragonTable dragonTable = new DragonTable(player, dealer, plugin, internalName, this);
+            if (dealer != null) {
+                DragonTable dragonTable = new DragonTable(player, dealer, plugin, DealerVillager.getInternalName(dealer), this);
                 Tables.put(player, dragonTable);
                 player.openInventory(dragonTable.getInventory());
             } else {
                 player.sendMessage("Error: Dealer not found. Unable to open mines table.");
             }
         }, 1L);
-
-
-
     }
-
 }
