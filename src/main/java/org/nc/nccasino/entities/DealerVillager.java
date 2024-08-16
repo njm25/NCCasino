@@ -85,13 +85,14 @@ public class DealerVillager {
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String gameType = dataContainer.get(GAME_TYPE_KEY, PersistentDataType.STRING);
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
-
+    
         if (gameType == null) {
-            gameType = "Game Menu";
+            gameType = "Game Menu"; // Set to default Game Menu only if the game type is null
             dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameType);
         }
-
-        DealerInventory inventory;
+    
+        // Ensure the game type is not overridden with the menu if a valid game type is already set
+        DealerInventory inventory = null;
         switch (gameType) {
             case "Blackjack":
                 inventory = new BlackjackInventory(uniqueId, plugin, internalName);
@@ -101,27 +102,28 @@ public class DealerVillager {
                 inventory = new RouletteInventory(uniqueId, plugin, internalName);
                 name = "Roulette Dealer";
                 break;
-            case "Mines(Beta)":
+            case "Mines":
                 inventory = new MinesInventory(uniqueId, plugin);
                 name = "Mines Dealer";
                 break;
-             case "Dragon Dodger(Beta)":
-             inventory = new DragonInventory(uniqueId, plugin);
-             name = "Dragon Dodger Dealer";
-             break;
-                //DealerVillager.switchGame(villager, "Dragon Climb",player);
-                //break;
-            case "Rail Runner(Beta)":
-            inventory = new RailInventory(uniqueId, plugin);
-            name = "Rail Runner Dealer";
-               // DealerVillager.switchGame(villager, "Rail Runner",player);
+            case "Dragon Dodger":
+                inventory = new DragonInventory(uniqueId, plugin);
+                name = "Dragon Dodger Dealer";
+                break;
+            case "Rail Runner":
+                inventory = new RailInventory(uniqueId, plugin);
+                name = "Rail Runner Dealer";
                 break;
             default:
-                inventory = new GameMenuInventory(uniqueId);
-                name = "Game Menu";
+                // Only fall back to the menu if no valid game type is set
+                if (inventory == null) {
+                    inventory = new GameMenuInventory(uniqueId);
+                    name = "Game Menu";
+                }
                 break;
         }
-
+    
+        // Assign the correct inventory and set the villager's name
         DealerInventory.updateInventory(uniqueId, inventory);
         setName(villager, name);
     }
@@ -169,62 +171,65 @@ public class DealerVillager {
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
         DealerInventory newInventory;
         String newName;
-        int defaultTimer = 0; // Initialize the default timer variable
+        int defaultTimer = 0;
     
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
-       
-        // Determine the appropriate inventory, name, and timer based on the game type
-        switch (gameName) {
-            case "Blackjack":
-                newInventory = new BlackjackInventory(dealerId, plugin, internalName);
-                newName = "Blackjack Dealer";
-                defaultTimer = 10; // Default timer for Blackjack
-                break;
-            case "Roulette":
-
-                newInventory = new RouletteInventory(dealerId, plugin, internalName);
-                newName = "Roulette Dealer";
-                defaultTimer = 30; // Default timer for Roulette
-                break;
-            case "Mines(Beta)":
-                newInventory = new MinesInventory(dealerId, plugin);
-                newName = "Mines Dealer";
-            break;
-            case "Dragon Climb(Beta)":
-            newInventory = new DragonInventory(dealerId, plugin);
-            newName = "Dragon Climb";
-        break;
-        case "Rail Runner(Beta)":
-        newInventory = new RailInventory(dealerId, plugin);
-        newName = "Rail Runner";
-    break;
-            default:
-                newInventory = new GameMenuInventory(dealerId);
-                newName = "Game Menu";
-                gameName = "Menu"; // Ensure gameName is "Menu" if it doesn't match other cases
-                break;
+    
+        // Check if the game type is actually changing
+        String currentGameType = dataContainer.get(GAME_TYPE_KEY, PersistentDataType.STRING);
+        if (!gameName.equals(currentGameType)) {
+            // Switch to the correct inventory and name
+            switch (gameName) {
+                case "Blackjack":
+                    newInventory = new BlackjackInventory(dealerId, plugin, internalName);
+                    newName = "Blackjack Dealer";
+                    defaultTimer = 10;
+                    break;
+                case "Roulette":
+                    newInventory = new RouletteInventory(dealerId, plugin, internalName);
+                    newName = "Roulette Dealer";
+                    defaultTimer = 30;
+                    break;
+                case "Mines":
+                    newInventory = new MinesInventory(dealerId, plugin);
+                    newName = "Mines Dealer";
+                    break;
+                case "Dragon Climb":
+                    newInventory = new DragonInventory(dealerId, plugin);
+                    newName = "Dragon Climb Dealer";
+                    break;
+                case "Rail Runner":
+                    newInventory = new RailInventory(dealerId, plugin);
+                    newName = "Rail Runner Dealer";
+                    break;
+                default:
+                    newInventory = new GameMenuInventory(dealerId);
+                    newName = "Game Menu";
+                    gameName = "Menu";
+                    break;
+            }
+    
+            // Save the updated game type and timer to the config
+            plugin.getConfig().set("dealers." + internalName + ".game", gameName);
+            plugin.getConfig().set("dealers." + internalName + ".timer", defaultTimer);
+            plugin.saveConfig();
+    
+            // Update the inventory and name
+            DealerInventory.updateInventory(dealerId, newInventory);
+            setName(villager, newName);
+    
+            // Notify the player of the change
+            player.sendMessage(Component.text("Dealer '")
+                    .color(NamedTextColor.GREEN)
+                    .append(Component.text(internalName).color(NamedTextColor.YELLOW))
+                    .append(Component.text("' has been set to ").color(NamedTextColor.GREEN))
+                    .append(Component.text(gameName).color(NamedTextColor.YELLOW))
+                    .append(Component.text(".").color(NamedTextColor.GREEN)));
+        } else {
+            player.sendMessage(Component.text("The game is already set to " + gameName + ".")
+                    .color(NamedTextColor.RED));
         }
-    
-        // Update the inventory and the villager's name
-        DealerInventory.updateInventory(dealerId, newInventory);
-        setName(villager, newName);
-    
-        // Update the villager's game type and timer in the persistent data container
-        dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameName);
-    
-        // Update the configuration with the new game type and timer
-        plugin.getConfig().set("dealers." + internalName + ".game", gameName);
-        plugin.getConfig().set("dealers." + internalName + ".timer", defaultTimer);
-        plugin.saveConfig();  // Save the configuration to persist changes
-    
-        // Send styled message only to the player who switched the game
-        player.sendMessage(Component.text("Dealer '")
-                .color(NamedTextColor.GREEN)
-                .append(Component.text(internalName).color(NamedTextColor.YELLOW))
-                .append(Component.text("' has been set to ").color(NamedTextColor.GREEN))
-                .append(Component.text(gameName).color(NamedTextColor.YELLOW))
-                .append(Component.text(".").color(NamedTextColor.GREEN)));
     }
     
     public static void updateGameType(Villager villager, String gameName, int timer) {
@@ -249,7 +254,7 @@ public class DealerVillager {
                 newInventory = new RouletteInventory(dealerId, plugin, internalName);
                 newName = "Roulette Dealer";
                 break;
-         case "Mines(Beta)":
+         case "Mines":
                 newInventory = new MinesInventory(dealerId, plugin);
                 newName = "Mines Dealer";
                 break;
@@ -257,9 +262,9 @@ public class DealerVillager {
                 newInventory = new DragonInventory(dealerId, plugin);
                 newName = "Dragon Climb Dealer";
             break;
-        case "Rail Runner(Beta)":
+        case "Rail Runner":
         newInventory = new RailInventory(dealerId, plugin);
-         newName = "Rail Runner Dealer(Beta)";
+         newName = "Rail Runner Dealer";
                 break;  
             default:
                 newInventory = new GameMenuInventory(dealerId);

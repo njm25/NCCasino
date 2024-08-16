@@ -2,12 +2,12 @@ package org.nc.nccasino.games;
 
 import org.nc.nccasino.entities.DealerVillager;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.inventory.Inventory;
 import org.nc.nccasino.Nccasino;
 
 import java.util.HashMap;
@@ -15,11 +15,12 @@ import java.util.Map;
 import java.util.UUID;
 
 public class DragonInventory extends DealerInventory implements Listener {
-    private final Map<Player, DragonTable> Tables;
+    private final Map<UUID, DragonTable> Tables;  // Use UUID instead of Player
     private final Nccasino plugin;
+    private final Map<UUID, Boolean> interactionLocks = new HashMap<>();  // Locking mechanism to prevent double triggers
 
     public DragonInventory(UUID dealerId, Nccasino plugin) {
-        super(dealerId, 54, "Mines Start Menu");
+        super(dealerId, 54, "Dragon Climb");
         this.plugin = plugin;
         this.Tables = new HashMap<>();
         initializeStartMenu();
@@ -29,38 +30,71 @@ public class DragonInventory extends DealerInventory implements Listener {
     // Initialize items for the start menu using the inherited method
     private void initializeStartMenu() {
         inventory.clear();
-        addItem(createCustomItem(Material.BLACK_WOOL, "Start Dragon Climb"), 22);
     }
 
     @EventHandler
-    public void handleClick(InventoryClickEvent event) {
-        if (event.getInventory().getHolder() != this) return;
+    public void handlePlayerInteract(PlayerInteractEntityEvent event) {
+        if (!(event.getRightClicked() instanceof Villager)) return;
 
-        Player player = (Player) event.getWhoClicked();
-        event.setCancelled(true);
+        Villager villager = (Villager) event.getRightClicked();
+        Player player = event.getPlayer();
+        UUID playerId = player.getUniqueId();
 
-        int slot = event.getRawSlot();
+        // Prevent double triggering with a temporary lock
+        if (interactionLocks.getOrDefault(playerId, false)) {
+            return;  // Interaction is locked
+        }
+        interactionLocks.put(playerId, true);
 
-        if (slot == 22) {
+        // Check if the villager is the dealer and the game is Dragon Climb
+        if (DealerVillager.isDealerVillager(villager) && DealerVillager.getUniqueId(villager).equals(this.dealerId)) {
+            openGameInventory(player);
+        }
+
+        // Unlock interaction after handling
+        Bukkit.getScheduler().runTaskLater(plugin, () -> interactionLocks.put(playerId, false), 1L);
+    }
+
+    // Method to handle opening the game inventory and setting up the game if necessary
+    private void openGameInventory(Player player) {
+        UUID playerId = player.getUniqueId();
+
+        // Check if the player already has a table, if not, set up the game
+        if (!Tables.containsKey(playerId)) {
             setupGameMenu(player);
+        } else {
+            // If the game is already active, just open the existing inventory
+            player.openInventory(Tables.get(playerId).getInventory());
         }
     }
 
-    // Set up items for the game menu using the inherited method
     private void setupGameMenu(Player player) {
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            Villager dealer = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                    .filter(entity -> entity instanceof Villager)
-                    .map(entity -> (Villager) entity)
-                    .filter(v -> DealerVillager.isDealerVillager(v) && DealerVillager.getUniqueId(v).equals(this.dealerId))
-                    .findFirst().orElse(null);
-            if (dealer != null) {
-                DragonTable dragonTable = new DragonTable(player, dealer, plugin, DealerVillager.getInternalName(dealer), this);
-                Tables.put(player, dragonTable);
-                player.openInventory(dragonTable.getInventory());
-            } else {
-                player.sendMessage("Error: Dealer not found. Unable to open mines table.");
-            }
-        }, 1L);
+        UUID playerId = player.getUniqueId();  // Use the player's UUID
+
+        // Avoid opening multiple tables
+        if (!Tables.containsKey(playerId)) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                Villager dealer = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
+                        .filter(entity -> entity instanceof Villager)
+                        .map(entity -> (Villager) entity)
+                        .filter(v -> DealerVillager.isDealerVillager(v) && DealerVillager.getUniqueId(v).equals(this.dealerId))
+                        .findFirst().orElse(null);
+                if (dealer != null) {
+                    DragonTable dragonTable = new DragonTable(player, dealer, plugin, DealerVillager.getInternalName(dealer), this);
+                    Tables.put(playerId, dragonTable);  // Use the player's UUID as the key
+                    player.openInventory(dragonTable.getInventory());
+                } else {
+                    player.sendMessage("Error: Dealer not found. Unable to open Dragon Climb table.");
+                }
+            }, 1L);
+        } else {
+            player.openInventory(Tables.get(playerId).getInventory());
+        }
+    }
+
+    // Remove the player's table from the Tables map
+    public void removeTable(UUID playerId) {
+        Tables.remove(playerId);  // Remove by UUID
+        interactionLocks.remove(playerId);  // Clear interaction lock on removal
     }
 }

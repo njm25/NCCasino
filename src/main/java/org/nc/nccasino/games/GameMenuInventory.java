@@ -23,9 +23,9 @@ public class GameMenuInventory extends DealerInventory {
     private void initializeMenu() {
         addItem(createCustomItem(Material.DIAMOND_BLOCK, "Blackjack"), 0);
         addItem(createCustomItem(Material.EMERALD_BLOCK, "Roulette"), 1);
-        addItem(createCustomItem(Material.TNT, "Mines(Beta)"), 2);
-        addItem(createCustomItem(Material.DRAGON_HEAD, "Dragon Climb(Beta)"), 3);
-        addItem(createCustomItem(Material.RAIL, "Rail Runner(Beta)"), 4);
+        addItem(createCustomItem(Material.TNT, "Mines"), 2);
+        addItem(createCustomItem(Material.DRAGON_HEAD, "Dragon Climb"), 3);
+        addItem(createCustomItem(Material.RAIL, "Rail Runner"), 4);
     }
 
     // Create an item stack with a custom display name
@@ -61,13 +61,13 @@ public class GameMenuInventory extends DealerInventory {
                 DealerVillager.switchGame(villager, "Roulette",player);
                 break;
             case 2:
-                DealerVillager.switchGame(villager, "Mines(Beta)",player);
+                DealerVillager.switchGame(villager, "Mines",player);
                 break;
                 case 3:
-                DealerVillager.switchGame(villager, "Dragon Climb(Beta)",player);
+                DealerVillager.switchGame(villager, "Dragon Climb",player);
                 break;
                 case 4:
-                DealerVillager.switchGame(villager, "Rail Runner(Beta)",player);
+                DealerVillager.switchGame(villager, "Rail Runner",player);
                 break;
             default:
                 return; // Exit if no valid slot is clicked
