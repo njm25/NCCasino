@@ -84,6 +84,7 @@ public class DragonTable implements InventoryHolder, Listener {
         // Add a single betting option - Paper labeled "Click here to place bet" in slot 52
         inventory.setItem(52, createCustomItem(Material.PAPER, "Click here to place bet", 1));
     }
+
     @EventHandler
     public void handleClick(InventoryClickEvent event) {
         if (!(event.getInventory().getHolder() instanceof DragonTable)) return;
@@ -121,6 +122,9 @@ public class DragonTable implements InventoryHolder, Listener {
     
                     player.sendMessage("Placed bet of " + selectedWager + " " + plugin.getCurrencyName(internalName) +
                             ". Total bet is now: " + newBetAmount);
+
+                    // Show "Start Game" lever if bet is greater than 0
+                    updateStartGameLever(newBetAmount > 0);
                 } else {
                     player.sendMessage("Not enough " + plugin.getCurrencyName(internalName) + "s to place this bet.");
                 }
@@ -147,6 +151,7 @@ public class DragonTable implements InventoryHolder, Listener {
             refundAllBets(player);
             currentBets.clear();
             updateBetLore(52, 0);  // Reset the lore on the bet option after clearing bets
+            updateStartGameLever(false); // Hide "Start Game" lever
             player.sendMessage("All bets cleared and refunded.");
             return;
         }
@@ -160,6 +165,7 @@ public class DragonTable implements InventoryHolder, Listener {
     
                 refundBet(player, (int) lastBet);
                 updateBetLore(52, newBetAmount);
+                updateStartGameLever(newBetAmount > 0);  // Update "Start Game" lever based on new bet amount
     
                 player.sendMessage("Undoing last bet of " + lastBet + " " + plugin.getCurrencyName(internalName) +
                         ". Total bet is now: " + newBetAmount);
@@ -169,7 +175,6 @@ public class DragonTable implements InventoryHolder, Listener {
             return;
         }
     }
-    
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
@@ -261,5 +266,13 @@ public class DragonTable implements InventoryHolder, Listener {
             itemStack.setItemMeta(meta);
         }
         return itemStack;
+    }
+
+    private void updateStartGameLever(boolean showLever) {
+        if (showLever) {
+            inventory.setItem(53, createCustomItem(Material.LEVER, "Start Game", 1));
+        } else {
+            inventory.setItem(53, null); // Remove the lever if the total bet is 0
+        }
     }
 }
