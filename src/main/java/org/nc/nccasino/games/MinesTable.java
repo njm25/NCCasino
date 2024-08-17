@@ -50,11 +50,22 @@ public class MinesTable implements InventoryHolder, Listener {
         player.openInventory(inventory);
 
         // Start the block animation right after the inventory is opened
-        startBlockAnimation(player, () -> {
-            if (!animationCompleted.getOrDefault(player, false)) {
-                initializeTable();
-            }
-        });
+
+
+           Bukkit.getScheduler().runTaskLater(plugin, () -> {
+      
+            startBlockAnimation(player, () -> {
+                if (!animationCompleted.getOrDefault(player, false)) {
+                    initializeTable();
+                }
+            });
+
+
+
+                        }, 2L); 
+
+
+       
 
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
@@ -96,21 +107,17 @@ public class MinesTable implements InventoryHolder, Listener {
     @EventHandler
     public void handleClick(InventoryClickEvent event) {
         if (!(event.getInventory().getHolder() instanceof MinesTable)) return;
-    
         event.setCancelled(true);  // Prevent default click actions, including picking up items
-    
         Player player = (Player) event.getWhoClicked();
         int slot = event.getRawSlot();
-    
         if (animationTasks.containsKey(player) && event.getCurrentItem() != null) {
             finished=true;
             Bukkit.getScheduler().cancelTask(animationTasks.get(player));
             animationTasks.remove(player);
             animationCompleted.put(player, true);  // Mark animation as completed/skipped
             initializeTable();
+            return;
         }
-
-
         // Preventing item pickup and drag
         if (event.getClickedInventory() != inventory) return;
     
@@ -213,15 +220,20 @@ public class MinesTable implements InventoryHolder, Listener {
     public void handleInventoryClose(InventoryCloseEvent event) {
         if (event.getInventory().getHolder() != this) return;
         Player player = (Player) event.getPlayer();
+if(player.getOpenInventory()!=null){
+    if (animationTasks.containsKey(player)) {
+       // System.out.println("CloseInv?");
+        Bukkit.getScheduler().cancelTask(animationTasks.get(player));
+        animationTasks.remove(player);
+        animationCompleted.remove(player);
+    }
 
+
+}
 
         //save any games that have been start?
         // Cancel any ongoing animation if the player closes the inventory
-        if (animationTasks.containsKey(player)) {
-            Bukkit.getScheduler().cancelTask(animationTasks.get(player));
-            animationTasks.remove(player);
-            animationCompleted.remove(player);
-        }
+       
     }
 
 
@@ -296,67 +308,80 @@ public class MinesTable implements InventoryHolder, Listener {
     }
 
 */
-    // Animation: Move a block across the screen
-    private void startBlockAnimation(Player player, Runnable onAnimationComplete) {
- 
-        animationCompleted.put(player, false);  // Reset the animation completed flag
+private void startBlockAnimation(Player player, Runnable onAnimationComplete) {
+    animationCompleted.put(player, false);  // Reset the animation completed flag
+   
+    // Ensure that no duplicate animations are started
+    if (animationTasks.containsKey(player)) {
+        return;
+    }
+    
+    int[][] full = new int[][]{
+        {0,0,0,0,0,0,0,0,0,     1,0,0,0,1,0,1,1,1,1,1,0,1,0,0,0,1,0,1,1,1,1,0,0,1,1,1,1, 0,0,0,0,0,0,  1,0,0,0,1,0,0,1,1,1,0,0,0,1,1,1,0,0,0,1,1,1,0,0,0,1,1,1,1,0,1,1,1,1,1,0,1,0,0,0,1,0,0,1,1,1,0,0,},
+        {0,0,0,0,0,0,0,0,0,     1,1,0,1,1,0,0,0,1,0,0,0,1,1,0,0,1,0,1,0,0,0,0,1,0,0,0,0, 0,0,0,0,0,0,  1,1,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,1,0,1,0,0,0,1,0,},
+        {0,0,0,0,0,0,0,0,0,     1,0,1,0,1,0,0,0,1,0,0,0,1,0,1,0,1,0,1,1,1,1,0,0,1,1,1,0, 0,1,1,1,1,0,  1,0,1,0,1,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,1,1,1,0,0,0,0,1,0,0,0,1,0,1,0,1,0,1,0,0,0,1,0,},
+        {0,0,0,0,0,0,0,0,0,     1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,1,1,0,1,0,0,0,0,0,0,0,0,1, 0,1,1,1,1,0,  1,0,0,1,1,0,1,0,0,0,0,0,1,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,1,1,0,1,0,0,0,1,0,},
+        {0,0,0,0,0,0,0,0,0,     1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,1, 0,0,0,0,0,0,  1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,1,0,0,0,1,0,},
+        {0,0,0,0,0,0,0,0,0,     1,0,0,0,1,0,1,1,1,1,1,0,1,0,0,0,1,0,1,1,1,1,0,1,1,1,1,0, 0,0,0,0,0,0,  1,0,0,0,1,0,0,1,1,1,0,0,0,1,1,1,0,0,1,0,0,0,1,0,1,1,1,1,0,0,1,1,1,1,1,0,1,0,0,0,1,0,0,1,1,1,0,0,}
+    };
+
+    final int[] taskId = new int[1];
+    final int initialRowShift =0;  // Adjust this to change the starting shift, should ensure "CASI" is visible
+
+    taskId[0] = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+        private int rowShift = -initialRowShift;  // Start with a negative shift to position the first visible letter correctly
         
-        // Ensure that no duplicate animations are started
-        if (animationTasks.containsKey(player)) {
-        
-            return;
-        }
+        @Override
+        public void run() {
+            if (finished) {
+                Bukkit.getScheduler().cancelTask(taskId[0]);
+                animationTasks.remove(player);
+                //System.out.println("Finished apparatnelty");
+                return;
+            }
 
-        // Create a new animation task
-        final int[] taskId = new int[1];
-        taskId[0] = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
-            private int currentSlot = 0;
-            
-            @Override   
-            public void run() {
-                if(finished==false){
-                animationTasks.put(player, 1);}
-                else{
-                    return;
-                   
-                }
-                // Ensure that the player is still viewing the correct inventory
-                if (player.getOpenInventory().getTopInventory().getHolder() != MinesTable.this) {
-                    Bukkit.getScheduler().cancelTask(taskId[0]);
-                    animationTasks.remove(player);
-                    return;
-                }
+            // Clear the inventory before drawing the next frame
+            inventory.clear();
 
-        
+            // Draw the current frame
+            for (int row = 0; row < 6; row++) {
+                for (int col = 0; col < 9; col++) {
+                    int arrayIndex = col + rowShift;
+                    if (arrayIndex >= 0 && arrayIndex < full[row].length) { // Prevent out of bounds and ensure we're within array limits
+                        int blockType = full[row][arrayIndex];
+                        Material material = (blockType == 1) ? Material.RED_STAINED_GLASS_PANE : Material.BLACK_STAINED_GLASS_PANE;
 
-                // Ensure the slot number is within the bounds of the inventory (0-8 for the first row)
-                if (currentSlot < 9) {
-
-                    /* 
-                    // Clear the previous slot
-                    if (currentSlot > 0) {
-                        inventory.setItem(currentSlot - 1, new ItemStack(Material.AIR));
-                    }*/
-
-                    // Set the dirt block with "CLICK TO SKIP" label in the current slot
-                    inventory.setItem(currentSlot, createCustomItem(Material.DIRT, "CLICK TO SKIP", 1));
-                    
-                    currentSlot++;
-                } else {
-                    // Stop the animation once it reaches the end
-                 
-                    Bukkit.getScheduler().cancelTask(taskId[0]);
-                    animationTasks.remove(player);
-                    onAnimationComplete.run();  // Execute the next action after the animation completes
+                        int slot = row * 9 + col; // calculate slot in inventory grid
+                        inventory.setItem(slot, createCustomItem(material, "CLICK TO SKIP", 1));
+                    }
                 }
             }
-        }, 0L, 5L).getTaskId();
 
-        // Store the task ID so it can be canceled later
-        animationTasks.put(player, 1);
+            // Shift the display for the next frame
+            rowShift++;
+
+            // Adjust this condition to allow for the entire "CASINO MINES" text to be shown
+            if (rowShift >= full[0].length) { // Stop when the entire string has moved through
+                Bukkit.getScheduler().cancelTask(taskId[0]);
+                animationTasks.remove(player);
+                onAnimationComplete.run();  // Execute the next action after the animation completes
+            }
+        }
+    }, 0L, 1L).getTaskId();  // Adjust tick speed if needed
+
+    // Store the task ID so it can be canceled later
+    int temp=taskId[0];
+    //System.out.println("put");
+    animationTasks.put(player, 1);
+}
 
 
-    }
+
+
+
+
+
+
 }
 
          

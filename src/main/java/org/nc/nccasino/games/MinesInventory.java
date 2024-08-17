@@ -24,7 +24,7 @@ import java.util.UUID;
 public class MinesInventory extends DealerInventory implements Listener {
     private final Map<Player, MinesTable> Tables;
     private final Nccasino plugin;
-
+    private Boolean first=true;
 
     public MinesInventory(UUID dealerId, Nccasino plugin) {
         super(dealerId, 54, "Mines Start Menu");
@@ -96,7 +96,7 @@ public class MinesInventory extends DealerInventory implements Listener {
 
 
         
-        System.out.println("Here1");
+     
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             Villager dealer = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
                     .filter(entity -> entity instanceof Villager)
