@@ -489,6 +489,13 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
             {0,0,0,0},
             {0,1,0,0}
         });
+        letterMap.put('@', new int[][]{
+            {0,1,1,1,1,0,0,0},
+            {1,0,0,0,0,1,0,0},
+            {1,0,0,1,0,1,0,0},
+            {1,0,1,0,1,1,0,0},
+            {1,0,0,1,0,0,0,1},
+            {0,1,1,1,1,1,1,0}
         });
         letterMap.put('A', new int[][]{
             {0,1,1,1,0},
@@ -555,12 +562,11 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
             {1,0,0,0,1}
         });
         letterMap.put('I', new int[][]{
-            {0,1,1,1,0},
+            {1,1,1,1,1},
             {0,0,1,0,0},
             {0,0,1,0,0},
             {0,0,1,0,0},
             {0,0,1,0,0},
-            {0,1,1,1,0}
             {1,1,1,1,1}
         });
         letterMap.put('J', new int[][]{
@@ -739,6 +745,13 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
             {0,0,0},
             {1,1,1}
         });
+        letterMap.put('`', new int[][]{
+            {1,1,0},
+            {0,0,1},
+            {0,0,0},
+            {0,0,0},
+            {0,0,0},
+            {0,0,0}
         });
         letterMap.put('a', new int[][]{
             {0,0,0,0,0},
@@ -774,11 +787,10 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
         });
         letterMap.put('e', new int[][]{
             {0,0,0,0},
-            {1,1,1,1},
+            {0,1,1,0},
             {1,0,0,1},
             {1,1,1,1},
             {1,0,0,0},
-            {1,1,1,1}
             {0,1,1,1}
         });
         letterMap.put('f', new int[][]{
@@ -798,6 +810,7 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
             {1,1,1,0}
         });
         letterMap.put('h', new int[][]{
+            {1,0,0,0},
             {1,0,0,0},
             {1,0,0,0},
             {1,1,1,0},
@@ -893,7 +906,6 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
             {1,1,1,0}
         });
         letterMap.put('t', new int[][]{
-            {0,0,0},
             {0,1,0},
             {1,1,1},
             {0,1,0},
