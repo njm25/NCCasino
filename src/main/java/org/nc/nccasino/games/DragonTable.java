@@ -52,11 +52,7 @@ public class DragonTable implements InventoryHolder, Listener {
         loadChipValuesFromConfig();
        // initializeTable();
 
-        startBlockAnimation(player, () -> {
-            if (!animationCompleted.getOrDefault(player, false)) {
-                initializeTable();
-            }
-        });
+       startAnimation(player);
 
 
         // Register the event listener only once, and check if it's already registered
@@ -64,6 +60,34 @@ public class DragonTable implements InventoryHolder, Listener {
             Bukkit.getPluginManager().registerEvents(this, plugin);
             listenerRegistered = true;
         }
+    }
+
+
+    private void startAnimation(Player player) {
+        // Retrieve the animation message from the config for the current dealer
+        String animationMessage = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
+    
+        // Delaying the animation inventory opening to ensure it displays properly
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // Pass the animation message from the config
+            AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
+            player.openInventory(animationTable.getInventory());
+    
+            // Start animation and pass a callback to return to MinesTable after animation completes
+            animationTable.animateMessage(player, this::afterAnimationComplete);
+        }, 1L); // Delay by 1 tick to ensure smooth opening of inventory
+    }
+
+    private void afterAnimationComplete() {
+        // Add a slight delay to ensure smooth transition from the animation to the MinesTable
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            initializeTable();
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null) {
+                player.openInventory(inventory);
+                Bukkit.getPluginManager().registerEvents(this, plugin); // Register event listeners after the table opens
+            }
+        }, 1L); // Delay by 1 tick to ensure clean transition between inventories
     }
 
     private void loadChipValuesFromConfig() {
