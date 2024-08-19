@@ -14,34 +14,40 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.games.DealerInventory;
-import org.nc.nccasino.games.GameMenuInventory;
-import org.nc.nccasino.games.MinesInventory;
-import org.nc.nccasino.games.BlackjackInventory;
-import org.nc.nccasino.games.RouletteInventory;
-import org.nc.nccasino.games.DragonInventory;
-import org.nc.nccasino.games.RailInventory;
+import org.nc.nccasino.games.*;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 public class DealerVillager {
- public static final Map<UUID, DealerVillager> dealers = new HashMap<>();
+    public static final Map<UUID, DealerVillager> dealers = new HashMap<>();
     private static final NamespacedKey DEALER_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_villager");
     private static final NamespacedKey UNIQUE_ID_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_unique_id");
     private static final NamespacedKey NAME_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_name");
     private static final NamespacedKey GAME_TYPE_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_game_type");
     private static final NamespacedKey INTERNAL_NAME_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "internal_name");
-
+    private static final NamespacedKey ANIMATION_MESSAGE_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "animation_message");
+  
     public static Villager spawnDealer(JavaPlugin plugin, Location location, String name, String internalName) {
         Location centeredLocation = location.getBlock().getLocation().add(0.5, 0.0, 0.5);
         Villager villager = (Villager) centeredLocation.getWorld().spawnEntity(centeredLocation, EntityType.VILLAGER);
-
+    
+        // Initialize the dealer villager with proper data
         initializeVillager(villager, centeredLocation, name, internalName);
-
+    
+        // Update the configuration with the default values for this dealer
+        Nccasino nccasino = (Nccasino) plugin;
+    
+        // Ensure the correct order of config entries
+        nccasino.getConfig().set("dealers." + internalName + ".game", "Menu");
+        nccasino.getConfig().set("dealers." + internalName + ".timer", 0);
+        nccasino.getConfig().set("dealers." + internalName + ".animation-message", "Menu"); // Set the animation message to default
+        nccasino.saveConfig();  // Immediately save the configuration after setting the values
+    
         return villager;
     }
+    
 
     private static void initializeVillager(Villager villager, Location location, String name, String internalName) {
         villager.setAI(true);
@@ -62,6 +68,7 @@ public class DealerVillager {
         dataContainer.set(NAME_KEY, PersistentDataType.STRING, name);
         dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, "Menu"); // Default game type
         dataContainer.set(INTERNAL_NAME_KEY, PersistentDataType.STRING, internalName);
+        dataContainer.set(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING, "Menu"); // Default animation message is the game name
 
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
         initializeInventory(villager, uniqueId, name, plugin);
@@ -85,13 +92,16 @@ public class DealerVillager {
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String gameType = dataContainer.get(GAME_TYPE_KEY, PersistentDataType.STRING);
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
-    
+
         if (gameType == null) {
             gameType = "Game Menu"; // Set to default Game Menu only if the game type is null
             dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameType);
         }
-    
-        // Ensure the game type is not overridden with the menu if a valid game type is already set
+  // Set the default animation message to the game type if not already set
+  String animationMessage = dataContainer.get(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING);
+  if (animationMessage == null) {
+      dataContainer.set(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING, gameType);
+  }
         DealerInventory inventory = null;
         switch (gameType) {
             case "Blackjack":
@@ -115,17 +125,17 @@ public class DealerVillager {
                 name = "Rail Runner Dealer";
                 break;
             default:
-                // Only fall back to the menu if no valid game type is set
                 if (inventory == null) {
                     inventory = new GameMenuInventory(uniqueId);
                     name = "Game Menu";
                 }
                 break;
         }
-    
-        // Assign the correct inventory and set the villager's name
+
         DealerInventory.updateInventory(uniqueId, inventory);
         setName(villager, name);
+
+      
     }
 
     public static boolean isDealerVillager(Villager villager) {
@@ -138,7 +148,6 @@ public class DealerVillager {
         String uuidString = dataContainer.get(UNIQUE_ID_KEY, PersistentDataType.STRING);
         return uuidString != null ? UUID.fromString(uuidString) : null;
     }
-
 
     public static String getName(Villager villager) {
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
@@ -154,6 +163,16 @@ public class DealerVillager {
     public static String getInternalName(Villager villager) {
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         return dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
+    }
+
+    public static String getAnimationMessage(Villager villager) {
+        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+        return dataContainer.get(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING);
+    }
+
+    public static void setAnimationMessage(Villager villager, String animationMessage) {
+        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+        dataContainer.set(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING, animationMessage);
     }
 
     public static void openDealerInventory(Villager villager, Player player) {
@@ -176,10 +195,8 @@ public class DealerVillager {
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
     
-        // Check if the game type is actually changing
         String currentGameType = dataContainer.get(GAME_TYPE_KEY, PersistentDataType.STRING);
         if (!gameName.equals(currentGameType)) {
-            // Switch to the correct inventory and name
             switch (gameName) {
                 case "Blackjack":
                     newInventory = new BlackjackInventory(dealerId, plugin, internalName);
@@ -210,16 +227,16 @@ public class DealerVillager {
                     break;
             }
     
-            // Save the updated game type and timer to the config
+            // Update the config and ensure correct hierarchy
             plugin.getConfig().set("dealers." + internalName + ".game", gameName);
             plugin.getConfig().set("dealers." + internalName + ".timer", defaultTimer);
+            plugin.getConfig().set("dealers." + internalName + ".animation-message", gameName); // Ensure the animation message is properly set
             plugin.saveConfig();
     
-            // Update the inventory and name
             DealerInventory.updateInventory(dealerId, newInventory);
             setName(villager, newName);
+            setAnimationMessage(villager, gameName); // Update the animation message to match the game type
     
-            // Notify the player of the change
             player.sendMessage(Component.text("Dealer '")
                     .color(NamedTextColor.GREEN)
                     .append(Component.text(internalName).color(NamedTextColor.YELLOW))
@@ -231,20 +248,17 @@ public class DealerVillager {
                     .color(NamedTextColor.RED));
         }
     }
-    
-    public static void updateGameType(Villager villager, String gameName, int timer) {
+    public static void updateGameType(Villager villager, String gameName, int timer, String anmsg) {
         UUID dealerId = getUniqueId(villager);
         if (dealerId == null) return;
-    
+
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
         DealerInventory newInventory;
         String newName;
-        
-    
+
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
-    
-        // Determine the appropriate inventory, name, and timer based on the game type
+
         switch (gameName) {
             case "Blackjack":
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);
@@ -254,38 +268,67 @@ public class DealerVillager {
                 newInventory = new RouletteInventory(dealerId, plugin, internalName);
                 newName = "Roulette Dealer";
                 break;
-         case "Mines":
+            case "Mines":
                 newInventory = new MinesInventory(dealerId, plugin);
                 newName = "Mines Dealer";
                 break;
-                case "Dragon Climb":
+            case "Dragon Climb":
                 newInventory = new DragonInventory(dealerId, plugin);
                 newName = "Dragon Climb Dealer";
-            break;
-        case "Rail Runner":
-        newInventory = new RailInventory(dealerId, plugin);
-         newName = "Rail Runner Dealer";
-                break;  
+                break;
+            case "Rail Runner":
+                newInventory = new RailInventory(dealerId, plugin);
+                newName = "Rail Runner Dealer";
+                break;
             default:
                 newInventory = new GameMenuInventory(dealerId);
                 newName = "Game Menu";
-                gameName = "Menu"; // Ensure gameName is "Menu" if it doesn't match other cases
+                gameName = "Menu";
                 break;
         }
-    
-        // Update the inventory and the villager's name
+
         DealerInventory.updateInventory(dealerId, newInventory);
         setName(villager, newName);
-    
-        // Update the villager's game type and timer in the persistent data container
+
+        // Update the game type and animation message
         dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameName);
-    
-        // Update the configuration with the new game type and timer
+        dataContainer.set(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING, gameName); // Set animation message to game name by default
+
         plugin.getConfig().set("dealers." + internalName + ".game", gameName);
         plugin.getConfig().set("dealers." + internalName + ".timer", timer);
-        plugin.saveConfig();  // Save the configuration to persist changes
+        plugin.getConfig().set("dealers." + internalName + ".animation-message", anmsg); // Set animation message to game name by default
+        plugin.saveConfig();
     }
-    
+
+    public static void removeDealer(Villager villager) {
+        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+        UUID dealerId = getUniqueId(villager);
+
+        if (dealerId == null) return;
+
+        String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
+
+        DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
+        if (dealerInventory != null) {
+            dealerInventory.delete();
+        }
+
+        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
+        if (internalName != null) {
+            plugin.getConfig().set("dealers." + internalName, null);
+            plugin.saveConfig();
+        }
+
+        deleteAllPersistentData(dataContainer);
+        villager.remove();
+    }
+
+    private static void deleteAllPersistentData(PersistentDataContainer container) {
+        for (NamespacedKey key : container.getKeys()) {
+            container.remove(key);
+        }
+    }
+
     public static void registerDealer(UUID dealerId, DealerVillager dealer) {
         dealers.put(dealerId, dealer);
     }
@@ -293,59 +336,7 @@ public class DealerVillager {
     public static void removeDealerFromMap(UUID dealerId) {
         dealers.remove(dealerId);
     }
-    private static void deleteAllPersistentData(PersistentDataContainer container) {
-        for (NamespacedKey key : container.getKeys()) {
-            container.remove(key);
-        }
-    }
 
-    public static void removeDealer(Villager villager) {
-        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
-        UUID dealerId = getUniqueId(villager);
-
-        if (dealerId == null) {
-            return; // No dealer ID, nothing to clean up
-        }
-
-        // Get internal name
-        String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
-
-        // Specifically remove and delete the dealer's managed inventory
-        DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
-      
-
-        if (dealerInventory != null) {
-
-            if(dealerInventory instanceof BlackjackInventory){
-
-            }else if (dealerInventory instanceof RouletteInventory){
-    
-            }else if (dealerInventory instanceof MinesInventory){
-    
-            }else if (dealerInventory instanceof DragonInventory){
-    
-            }else if (dealerInventory instanceof RailInventory){
-            }
-
-
-            dealerInventory.delete(); // Delete the inventory entirely
-        }
-
-        // Remove dealer's entry from the configuration
-        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
-        if (internalName != null) {
-            plugin.getConfig().set("dealers." + internalName, null);
-            plugin.saveConfig();
-        }
-
-        // Recursively delete all persistent data related to the dealer
-        deleteAllPersistentData(dataContainer);
-
-        // Broadcast a message indicating the dealer has been removed
-
-        // Remove the villager entity from the game world
-        villager.remove();
-    }
     private final Villager villager;
 
     public DealerVillager(Villager villager) {

@@ -121,7 +121,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         String internalName = DealerVillager.getInternalName(villager);
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
-                        DealerVillager.updateGameType(villager, gameType, timer);
+                        String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
+                        DealerVillager.updateGameType(villager, gameType, timer, anmsg);
                     }
                 }
             }

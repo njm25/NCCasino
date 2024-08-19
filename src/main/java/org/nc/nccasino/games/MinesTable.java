@@ -52,13 +52,17 @@ public class MinesTable implements InventoryHolder, Listener {
     }
 
     private void startAnimation(Player player) {
+        // Retrieve the animation message from the config for the current dealer
+        String animationMessage = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
+    
         // Delaying the animation inventory opening to ensure it displays properly
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            AnimationTable animationTable = new AnimationTable(player, plugin, "CASINO MINES", 0);
+            // Pass the animation message from the config
+            AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
             player.openInventory(animationTable.getInventory());
-
+    
             // Start animation and pass a callback to return to MinesTable after animation completes
-            animationTable.animateMessage(player, this::afterAnimationComplete, "CASINO MINES");
+            animationTable.animateMessage(player, this::afterAnimationComplete);
         }, 1L); // Delay by 1 tick to ensure smooth opening of inventory
     }
 

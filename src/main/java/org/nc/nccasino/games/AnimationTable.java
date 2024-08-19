@@ -28,8 +28,230 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
     private final Map<UUID, Boolean> animationStopped; // Track if animation is already stopped
     private final Map<UUID, Runnable> animationCallbacks;
 
+    private static final Map<Character, int[][]> letterMap = new HashMap<>();
+
+    static {
+        // Full alphabet using 6x5 grids for each letter
+        letterMap.put('A', new int[][]{
+            {0,1,1,1,0},
+            {1,0,0,0,1},
+            {1,1,1,1,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1}
+        });
+        letterMap.put('B', new int[][]{
+            {1,1,1,1,0},
+            {1,0,0,0,1},
+            {1,1,1,1,0},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,1,1,1,0}
+        });
+        letterMap.put('C', new int[][]{
+            {0,1,1,1,1},
+            {1,0,0,0,0},
+            {1,0,0,0,0},
+            {1,0,0,0,0},
+            {1,0,0,0,0},
+            {0,1,1,1,1}
+        });
+        letterMap.put('D', new int[][]{
+            {1,1,1,1,0},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,1,1,1,0}
+        });
+        letterMap.put('E', new int[][]{
+            {1,1,1,1,1},
+            {1,0,0,0,0},
+            {1,1,1,1,0},
+            {1,0,0,0,0},
+            {1,0,0,0,0},
+            {1,1,1,1,1}
+        });
+        letterMap.put('F', new int[][]{
+            {1,1,1,1,1},
+            {1,0,0,0,0},
+            {1,1,1,1,0},
+            {1,0,0,0,0},
+            {1,0,0,0,0},
+            {1,0,0,0,0}
+        });
+        letterMap.put('G', new int[][]{
+            {0,1,1,1,1},
+            {1,0,0,0,0},
+            {1,0,0,1,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {0,1,1,1,1}
+        });
+        letterMap.put('H', new int[][]{
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,1,1,1,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1}
+        });
+        letterMap.put('I', new int[][]{
+            {0,1,1,1,0},
+            {0,0,1,0,0},
+            {0,0,1,0,0},
+            {0,0,1,0,0},
+            {0,0,1,0,0},
+            {0,1,1,1,0}
+        });
+        letterMap.put('J', new int[][]{
+            {0,0,0,0,1},
+            {0,0,0,0,1},
+            {0,0,0,0,1},
+            {0,0,0,0,1},
+            {1,0,0,0,1},
+            {0,1,1,1,0}
+        });
+        letterMap.put('K', new int[][]{
+            {1,0,0,0,1},
+            {1,0,0,1,0},
+            {1,1,1,0,0},
+            {1,0,0,1,0},
+            {1,0,0,0,1},
+            {1,0,0,0,1}
+        });
+        letterMap.put('L', new int[][]{
+            {1,0,0,0,0},
+            {1,0,0,0,0},
+            {1,0,0,0,0},
+            {1,0,0,0,0},
+            {1,0,0,0,0},
+            {1,1,1,1,1}
+        });
+        letterMap.put('M', new int[][]{
+            {1,0,0,0,1},
+            {1,1,0,1,1},
+            {1,0,1,0,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1}
+        });
+        letterMap.put('N', new int[][]{
+            {1,0,0,0,1},
+            {1,1,0,0,1},
+            {1,0,1,0,1},
+            {1,0,0,1,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1}
+        });
+        letterMap.put('O', new int[][]{
+            {0,1,1,1,0},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {0,1,1,1,0}
+        });
+        letterMap.put('P', new int[][]{
+            {1,1,1,1,0},
+            {1,0,0,0,1},
+            {1,1,1,1,0},
+            {1,0,0,0,0},
+            {1,0,0,0,0},
+            {1,0,0,0,0}
+        });
+        letterMap.put('Q', new int[][]{
+            {0,1,1,1,0},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,0,1,0,1},
+            {1,0,0,1,0},
+            {0,1,1,0,1}
+        });
+        letterMap.put('R', new int[][]{
+            {1,1,1,1,0},
+            {1,0,0,0,1},
+            {1,1,1,1,0},
+            {1,0,1,0,0},
+            {1,0,0,1,0},
+            {1,0,0,0,1}
+        });
+        letterMap.put('S', new int[][]{
+            {0,1,1,1,1},
+            {1,0,0,0,0},
+            {0,1,1,1,0},
+            {0,0,0,0,1},
+            {0,0,0,0,1},
+            {1,1,1,1,0}
+        });
+        letterMap.put('T', new int[][]{
+            {1,1,1,1,1},
+            {0,0,1,0,0},
+            {0,0,1,0,0},
+            {0,0,1,0,0},
+            {0,0,1,0,0},
+            {0,0,1,0,0}
+        });
+        letterMap.put('U', new int[][]{
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {0,1,1,1,0}
+        });
+        letterMap.put('V', new int[][]{
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {0,1,0,1,0},
+            {0,0,1,0,0}
+        });
+        letterMap.put('W', new int[][]{
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,0,0,0,1},
+            {1,0,1,0,1},
+            {1,1,0,1,1},
+            {1,0,0,0,1}
+        });
+        letterMap.put('X', new int[][]{
+            {1,0,0,0,1},
+            {0,1,0,1,0},
+            {0,0,1,0,0},
+            {0,0,1,0,0},
+            {0,1,0,1,0},
+            {1,0,0,0,1}
+        });
+        letterMap.put('Y', new int[][]{
+            {1,0,0,0,1},
+            {0,1,0,1,0},
+            {0,0,1,0,0},
+            {0,0,1,0,0},
+            {0,0,1,0,0},
+            {0,0,1,0,0}
+        });
+        letterMap.put('Z', new int[][]{
+            {1,1,1,1,1},
+            {0,0,0,0,1},
+            {0,0,0,1,0},
+            {0,0,1,0,0},
+            {0,1,0,0,0},
+            {1,1,1,1,1}
+        });
+        letterMap.put(' ', new int[][]{
+            {0,0},
+            {0,0},
+            {0,0},
+            {0,0},
+            {0,0},
+            {0,0}
+        });
+    }
+
     public AnimationTable(Player player, Nccasino plugin, String animationMessage, int index) {
-        super(player.getUniqueId(), 54, "Animation Table");  // Use player's UUID as dealerId or customize as needed
+        super(player.getUniqueId(), 54, "Animation Table");
 
         this.playerId = player.getUniqueId();
         this.plugin = plugin;
@@ -39,7 +261,7 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
         this.animationCompleted = new HashMap<>();
         this.clickAllowed = new HashMap<>();
         this.animationCallbacks = new HashMap<>();
-        this.animationStopped = new HashMap<>(); // Track animation stop state
+        this.animationStopped = new HashMap<>();
 
         // Register the event listener
         Bukkit.getPluginManager().registerEvents(this, plugin);
@@ -50,22 +272,114 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
         return inventory;
     }
 
-    void animateMessage(Player player, Runnable onAnimationComplete, String printmsg) {
+    void animateMessage(Player player, Runnable onAnimationComplete) {
         UUID playerUUID = player.getUniqueId();
         animationCallbacks.put(playerUUID, onAnimationComplete);
-        animationStopped.put(playerUUID, false); // Reset stop state
-        animationCompleted.put(playerUUID, false);  // Reset completion state
-        clickAllowed.put(playerUUID, true); // Allow clicks by default
+        animationStopped.put(playerUUID, false);
+        animationCompleted.put(playerUUID, false);
+        clickAllowed.put(playerUUID, true);
 
-        int[][] fullt = new int[][]{
-            {0,0,0,0,0,0,0,0,0,   0,1,1,1,0,0,1,1,1,1,0,0,0,1,1,1,0,0,1,1,1,0,0,0,1,1,1,1,0,1,1,1,1,0,0,1,1,1,0,0,1,0,0,0,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1,0,0,1,0,1,0,0,0,0,1,0,0,0,1,0,1,0,0,0,1,0,0,1,1,1,0,0,1,1,1,1,0,0,0,1,1,1,0,0,1,1,1,1,0,0,0,1,1,1,1,0,1,1,1,1,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,1,0,0,0,1,0,1,1,1,1,0                        },
-            {0,0,0,0,0,0,0,0,0,   1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,1,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,1,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0,1,0,0,1,0,1,0,0,1,0,0,0,0,1,1,0,1,1,0,1,1,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,1,0,0,0,1,0,0,0,0,1,0                        },
-            {0,0,0,0,0,0,0,0,0,   1,0,0,0,1,0,1,1,1,1,1,0,1,0,0,0,0,0,1,0,0,0,1,0,1,1,1,1,0,1,1,1,0,0,1,0,0,0,0,0,1,1,1,1,1,0,0,0,1,0,0,0,0,0,0,1,0,0,1,1,0,0,0,1,0,0,0,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,0,1,1,1,0,0,0,0,1,0,0,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,0,1,0,1,0,0,0,0,1,0,0                        },
-            {0,0,0,0,0,0,0,0,0,   1,1,1,1,1,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,0,1,0,0,0,0,1,0,0,1,1,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0,1,0,0,1,1,0,0,0,1,0,0,0,0,1,0,0,0,1,0,1,0,0,1,1,0,1,0,0,0,1,0,1,1,1,1,0,0,1,0,0,0,1,0,1,1,1,1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,1,0,1,0,0,0,1,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0                        },
-            {0,0,0,0,0,0,0,0,0,   1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,1,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,1,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,1,0,0,1,0,1,0,0,1,0,0,0,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,0,0,0,1,1,1,0,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,1,0,1,0,0,0,1,0,1,0,1,0,0,0,0,1,0,0,0,1,0,0,0,0                       },
-            {0,0,0,0,0,0,0,0,0,   1,0,0,0,1,0,1,1,1,1,0,0,0,1,1,1,0,0,1,1,1,0,0,0,1,1,1,1,0,1,0,0,0,0,0,1,1,1,0,0,1,0,0,0,1,0,1,1,1,1,1,0,0,1,1,0,0,0,1,0,0,1,0,1,1,1,1,0,1,0,0,0,1,0,1,0,0,0,1,0,0,1,1,1,0,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,1,0,1,1,1,1,0,0,0,0,1,0,0,0,1,1,1,1,1,0,0,0,1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0,0,0,1,1,1,1,0                        }
-        };
+        int[][] fullt = parseMessage(animationMessage);
         startBlockAnimation(player, onAnimationComplete, fullt);
+    }
+    private int[][] parseMessage(String message) {
+        // Convert message to uppercase to handle lowercase letters
+        message = message.toUpperCase();
+    
+        // Calculate total width needed, including padding for the front and back
+        int totalColumns = 0;
+        for (char c : message.toCharArray()) {
+            if (letterMap.containsKey(c)) {
+                totalColumns += letterMap.get(c)[0].length + 1; // +1 for spacing between letters
+            }
+        }
+        totalColumns -= 1; // Remove the last space after the final letter
+        totalColumns += 2 * (letterMap.get(' ')[0].length + 1); // Add padding to front and back
+    
+        // Create the full array with padding
+        int[][] parsedMessage = new int[6][totalColumns];
+        int columnOffset = letterMap.get(' ')[0].length + 1; // Start with front padding
+    
+        // Add the letters to the array
+        for (char c : message.toCharArray()) {
+            if (!letterMap.containsKey(c)) continue;
+    
+            int[][] letter = letterMap.get(c);
+            for (int row = 0; row < letter.length; row++) {
+                System.arraycopy(letter[row], 0, parsedMessage[row], columnOffset, letter[row].length);
+            }
+            columnOffset += letter[0].length + 1; // Move to the next letter's position
+        }
+    
+        // No need to add back padding explicitly, as the space is already accounted for in totalColumns
+    
+        return parsedMessage;
+    }
+    
+
+    private void startBlockAnimation(Player player, Runnable onAnimationComplete, int[][] printmsg) {
+        UUID playerUUID = player.getUniqueId();
+        animationCompleted.put(playerUUID, false);
+
+        // Ensure that no duplicate animations are started
+        if (animationTasks.containsKey(playerUUID) || animationStopped.get(playerUUID)) {
+            return;
+        }
+
+        final int[] taskId = new int[1];
+        final int initialRowShift = 0; 
+
+        taskId[0] = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+            private int rowShift = -initialRowShift;
+
+            @Override
+            public void run() {
+                if (animationStopped.get(playerUUID)) {
+                    Bukkit.getScheduler().cancelTask(taskId[0]);
+                    animationTasks.remove(playerUUID);
+                    return;
+                }
+
+                // Clear the inventory before drawing the next frame
+                inventory.clear();
+
+                if (printmsg == null || printmsg.length == 0 || printmsg[0].length == 0) {
+                    Bukkit.getScheduler().cancelTask(taskId[0]);
+                    animationTasks.remove(playerUUID);
+                    return;
+                }
+
+                // Draw the current frame
+                for (int row = 0; row < 6; row++) {
+                    if (row >= printmsg.length) break;
+
+                    for (int col = 0; col < 9; col++) {
+                        int arrayIndex = col + rowShift;
+
+                        if (arrayIndex >= 0 && arrayIndex < printmsg[row].length) {
+                            int blockType = printmsg[row][arrayIndex];
+                            Material material = (blockType == 1) ? Material.RED_STAINED_GLASS_PANE : Material.BLACK_STAINED_GLASS_PANE;
+
+                            int slot = row * 9 + col;
+                            inventory.setItem(slot, createCustomItem(material, "CLICK TO SKIP", 1));
+                        }
+                    }
+                }
+
+                // Shift the display for the next frame
+                rowShift++;
+
+                if (rowShift >= printmsg[0].length) {
+                    Bukkit.getScheduler().cancelTask(taskId[0]);
+                    animationTasks.remove(playerUUID);
+                    if (!animationStopped.get(playerUUID)) {
+                        animationCallbacks.get(playerUUID).run();
+                    }
+                }
+            }
+        }, 0L, 2L).getTaskId(); 
+
+        animationTasks.put(playerUUID, taskId[0]);
     }
 
     private ItemStack createCustomItem(Material material, String name, int amount) {
@@ -78,80 +392,9 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
         return itemStack;
     }
 
-    private void startBlockAnimation(Player player, Runnable onAnimationComplete, int[][] printmsg) {
-        UUID playerUUID = player.getUniqueId();
-        animationCompleted.put(playerUUID, false);  // Reset the animation completed flag
-
-        // Ensure that no duplicate animations are started
-        if (animationTasks.containsKey(playerUUID) || animationStopped.get(playerUUID)) {
-            return;
-        }
-
-        final int[] taskId = new int[1];
-        final int initialRowShift = 0;  // Adjust this to change the starting shift
-
-        taskId[0] = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
-            private int rowShift = -initialRowShift;  // Start with a negative shift
-
-            @Override
-public void run() {
-    if (animationStopped.get(playerUUID)) {
-        Bukkit.getScheduler().cancelTask(taskId[0]);
-        animationTasks.remove(playerUUID);
-        return;
-    }
-
-    // Clear the inventory before drawing the next frame
-    inventory.clear();
-
-    // Check that printmsg is not null and has content
-    if (printmsg == null || printmsg.length == 0 || printmsg[0].length == 0) {
-        Bukkit.getScheduler().cancelTask(taskId[0]);
-        animationTasks.remove(playerUUID);
-        return;
-    }
-
-    // Draw the current frame
-    for (int row = 0; row < 6; row++) {
-        // Ensure row is within bounds
-        if (row >= printmsg.length) break;
-
-        for (int col = 0; col < 9; col++) {
-            int arrayIndex = col + rowShift;
-
-            // Ensure arrayIndex is within bounds
-            if (arrayIndex >= 0 && arrayIndex < printmsg[row].length) {
-                int blockType = printmsg[row][arrayIndex]; // Safe access now
-                Material material = (blockType == 1) ? Material.RED_STAINED_GLASS_PANE : Material.BLACK_STAINED_GLASS_PANE;
-
-                int slot = row * 9 + col; // Calculate slot in inventory grid
-                inventory.setItem(slot, createCustomItem(material, "CLICK TO SKIP", 1));
-            }
-        }
-    }
-
-    // Shift the display for the next frame
-    rowShift++;
-
-    // Stop when the entire string has moved through
-    if (rowShift >= printmsg[0].length) {
-        Bukkit.getScheduler().cancelTask(taskId[0]);
-        animationTasks.remove(playerUUID);
-        if (!animationStopped.get(playerUUID)) {
-            animationCallbacks.get(playerUUID).run();  // Execute the next action after animation completes
-        }
-    }
-}
-
-        }, 0L, 2L).getTaskId(); // Increase tick delay between animations to slow it down
-
-        // Store the task ID so it can be canceled later
-        animationTasks.put(playerUUID, 1);
-    }
-
     private void stopAnimation(Player player) {
         UUID playerUUID = player.getUniqueId();
-        clickAllowed.put(playerUUID, false); // Disable further clicks
+        clickAllowed.put(playerUUID, false);
 
         if (animationTasks.containsKey(playerUUID)) {
             int taskId = animationTasks.get(playerUUID);
@@ -160,11 +403,10 @@ public void run() {
         }
 
         if (!animationStopped.get(playerUUID)) {
-            animationStopped.put(playerUUID, true); // Mark animation as stopped
-            animationCallbacks.get(playerUUID).run(); // Complete the animation callback
+            animationStopped.put(playerUUID, true);
+            animationCallbacks.get(playerUUID).run();
         }
 
-        // Unregister event listeners for this player
         InventoryClickEvent.getHandlerList().unregister(this);
         InventoryCloseEvent.getHandlerList().unregister(this);
     }
@@ -174,14 +416,13 @@ public void run() {
         Player player = (Player) event.getWhoClicked();
         UUID playerUUID = player.getUniqueId();
 
-        if (!playerUUID.equals(playerId)) return; // Ensure the event is for the correct player
+        if (!playerUUID.equals(playerId)) return;
         if (event.getInventory().getHolder() != this) return;
 
-        event.setCancelled(true); // Cancel the default behavior
+        event.setCancelled(true);
 
-        // Stop the animation only if click is allowed
         if (clickAllowed.getOrDefault(playerUUID, false) && !animationStopped.get(playerUUID)) {
-            stopAnimation(player); // Mark the animation as finished and open the game table
+            stopAnimation(player);
         }
     }
 
@@ -190,12 +431,11 @@ public void run() {
         Player player = (Player) event.getPlayer();
         UUID playerUUID = player.getUniqueId();
 
-        if (!playerUUID.equals(playerId)) return; // Ensure the event is for the correct player
+        if (!playerUUID.equals(playerId)) return;
         if (event.getInventory().getHolder() != this) return;
 
-        // Stop animation only if the inventory is closed intentionally
         if (event.getReason() == InventoryCloseEvent.Reason.PLAYER) {
-            stopAnimation(player); // Stop the animation if the inventory is closed
+            stopAnimation(player);
         }
     }
 }
