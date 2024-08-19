@@ -67,16 +67,17 @@ public class MinesTable implements InventoryHolder, Listener {
     }
 
     private void afterAnimationComplete() {
-        // Add a slight delay to ensure smooth transition from the animation to the MinesTable
+        // Add a slight delay to ensure smooth transition from the animation to the table
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             initializeTable();
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
                 player.openInventory(inventory);
-                Bukkit.getPluginManager().registerEvents(this, plugin); // Register event listeners after the table opens
+                // No need to register the listener here since it's handled in the constructor
             }
         }, 1L); // Delay by 1 tick to ensure clean transition between inventories
     }
+    
 
     private void loadChipValuesFromConfig() {
         // Load chip values from the config
