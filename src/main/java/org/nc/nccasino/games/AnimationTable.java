@@ -147,7 +147,7 @@ public void run() {
         }, 0L, 2L).getTaskId(); // Increase tick delay between animations to slow it down
 
         // Store the task ID so it can be canceled later
-        animationTasks.put(playerUUID, taskId[0]);
+        animationTasks.put(playerUUID, 1);
     }
 
     private void stopAnimation(Player player) {
