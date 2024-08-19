@@ -42,32 +42,36 @@ public class MinesTable implements InventoryHolder, Listener {
         this.internalName = internalName;
         this.minesInventory = minesInventory;
         this.inventory = Bukkit.createInventory(this, 54, "Mines");
-        this.chipValues = new LinkedHashMap<>(); 
+        this.chipValues = new LinkedHashMap<>();
         this.animationTasks = new HashMap<>();
         this.animationCompleted = new HashMap<>();
         loadChipValuesFromConfig();
-        // Open the inventory for the player
-        player.openInventory(inventory);
 
-        // Start the block animation right after the inventory is opened
+        // Start the animation first, then return to this table once animation completes
+        startAnimation(player);
+    }
 
+    private void startAnimation(Player player) {
+        // Delaying the animation inventory opening to ensure it displays properly
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            AnimationTable animationTable = new AnimationTable(player, plugin, "CASINO MINES", 0);
+            player.openInventory(animationTable.getInventory());
 
-           Bukkit.getScheduler().runTaskLater(plugin, () -> {
-      
-            startBlockAnimation(player, () -> {
-                if (!animationCompleted.getOrDefault(player, false)) {
-                    initializeTable();
-                }
-            });
+            // Start animation and pass a callback to return to MinesTable after animation completes
+            animationTable.animateMessage(player, this::afterAnimationComplete, "CASINO MINES");
+        }, 1L); // Delay by 1 tick to ensure smooth opening of inventory
+    }
 
-
-
-                        }, 2L); 
-
-
-       
-
-        Bukkit.getPluginManager().registerEvents(this, plugin);
+    private void afterAnimationComplete() {
+        // Add a slight delay to ensure smooth transition from the animation to the MinesTable
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            initializeTable();
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null) {
+                player.openInventory(inventory);
+                Bukkit.getPluginManager().registerEvents(this, plugin); // Register event listeners after the table opens
+            }
+        }, 1L); // Delay by 1 tick to ensure clean transition between inventories
     }
 
     private void loadChipValuesFromConfig() {
