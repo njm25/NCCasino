@@ -49,6 +49,8 @@ public class MinesTable implements InventoryHolder, Listener {
 
         // Start the animation first, then return to this table once animation completes
         startAnimation(player);
+
+        Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
     private void startAnimation(Player player) {

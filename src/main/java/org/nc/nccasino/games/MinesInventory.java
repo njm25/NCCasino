@@ -9,9 +9,7 @@ import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
-import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
@@ -24,15 +22,14 @@ import java.util.UUID;
 public class MinesInventory extends DealerInventory implements Listener {
     private final Map<Player, MinesTable> Tables;
     private final Nccasino plugin;
-    private Boolean first=true;
+
+
 
     public MinesInventory(UUID dealerId, Nccasino plugin) {
         super(dealerId, 54, "Mines Start Menu");
         this.plugin = plugin;
         this.Tables = new HashMap<>();
-      
-       // initializeStartMenu();
-        Bukkit.getPluginManager().registerEvents(this, plugin);
+            Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
     // Initialize items for the start menu
