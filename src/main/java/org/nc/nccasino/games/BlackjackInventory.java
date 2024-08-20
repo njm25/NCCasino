@@ -883,9 +883,7 @@ private void allowPlayerActions(Player player) {
     // Enable relevant slots for actions
     clickAllowed.putIfAbsent(player.getUniqueId(), true);
 
-    if (!playerTurnActive.getOrDefault(player.getUniqueId(), false))  // If the player isn't already marked as done
-                {
-    player.sendMessage("It's your turn!");}
+    player.sendMessage("It's your turn!");
 }
 
 
