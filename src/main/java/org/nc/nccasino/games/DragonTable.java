@@ -31,8 +31,6 @@ public class DragonTable implements InventoryHolder, Listener {
     private final Map<String, Double> chipValues;
     private boolean clickAllowed = true;
     private final Map<UUID, Double> currentBets = new HashMap<>();
-    private boolean listenerRegistered = false; // Track if the listener has been registered
-    private Boolean finished=false;
 
     private final Map<Player, Integer> animationTasks;
    
@@ -56,10 +54,9 @@ public class DragonTable implements InventoryHolder, Listener {
 
 
         // Register the event listener only once, and check if it's already registered
-        if (!listenerRegistered) {
+      
             Bukkit.getPluginManager().registerEvents(this, plugin);
-            listenerRegistered = true;
-        }
+      
     }
 
 
@@ -137,7 +134,6 @@ public class DragonTable implements InventoryHolder, Listener {
 
         
         if (animationTasks.containsKey(player) && event.getCurrentItem() != null) {
-            finished=true;
             Bukkit.getScheduler().cancelTask(animationTasks.get(player));
             animationTasks.remove(player);
             animationCompleted.put(player, true);  // Mark animation as completed/skipped
@@ -307,11 +303,6 @@ public class DragonTable implements InventoryHolder, Listener {
         currentBets.clear();
         betStack.clear();
 
-        // Unregister the event listener when the game ends to prevent memory leaks
-        if (listenerRegistered) {
-            HandlerList.unregisterAll(this);
-            listenerRegistered = false;
-        }
     }
 
     @Override
@@ -337,66 +328,6 @@ public class DragonTable implements InventoryHolder, Listener {
         }
     }
 
-    private void startBlockAnimation(Player player, Runnable onAnimationComplete) {
- 
-        animationCompleted.put(player, false);  // Reset the animation completed flag
-        
-        // Ensure that no duplicate animations are started
-        if (animationTasks.containsKey(player)) {
-        
-            return;
-        }
-
-        // Create a new animation task
-        final int[] taskId = new int[1];
-        taskId[0] = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
-            private int currentSlot = 0;
-            
-            @Override   
-            public void run() {
-                if(finished==false){
-                animationTasks.put(player, 1);}
-                else{
-                    return;
-                   
-                }
-                // Ensure that the player is still viewing the correct inventory
-                if (player.getOpenInventory().getTopInventory().getHolder() != DragonTable.this) {
-                    Bukkit.getScheduler().cancelTask(taskId[0]);
-                    animationTasks.remove(player);
-                    return;
-                }
-
-        
-
-                // Ensure the slot number is within the bounds of the inventory (0-8 for the first row)
-                if (currentSlot < 9) {
-
-                    /* 
-                    // Clear the previous slot
-                    if (currentSlot > 0) {
-                        inventory.setItem(currentSlot - 1, new ItemStack(Material.AIR));
-                    }*/
-
-                    // Set the dirt block with "CLICK TO SKIP" label in the current slot
-                    inventory.setItem(currentSlot, createCustomItem(Material.DIRT, "CLICK TO SKIP", 1));
-                    
-                    currentSlot++;
-                } else {
-                    // Stop the animation once it reaches the end
-                 
-                    Bukkit.getScheduler().cancelTask(taskId[0]);
-                    animationTasks.remove(player);
-                    onAnimationComplete.run();  // Execute the next action after the animation completes
-                }
-            }
-        }, 0L, 5L).getTaskId();
-
-        // Store the task ID so it can be canceled later
-        animationTasks.put(player, 1);
-
-
-    }
 
 
 }
