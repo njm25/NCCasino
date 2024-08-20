@@ -14,32 +14,55 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.games.MinesTable;
+import org.bukkit.event.HandlerList;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 public class MinesInventory extends DealerInventory implements Listener {
-    private final Map<Player, MinesTable> Tables;
+    private final Map<UUID, MinesTable> Tables;
     private final Nccasino plugin;
-
+    private final Map<UUID, Boolean> interactionLocks = new HashMap<>();
 
 
     public MinesInventory(UUID dealerId, Nccasino plugin) {
+        
         super(dealerId, 54, "Mines Start Menu");
+   
         this.plugin = plugin;
         this.Tables = new HashMap<>();
-            Bukkit.getPluginManager().registerEvents(this, plugin);
+        registerListener();
+        plugin.addInventory(dealerId, this);
     }
 
+    private void registerListener() {
+        Bukkit.getPluginManager().registerEvents(this, plugin);
+    }
+
+    private void unregisterListener() {
+
+        HandlerList.unregisterAll(this);
+
+    }
+
+    @Override
+    public void delete() {
+
+        super.delete();
+        unregisterListener();  // Unregister listener when deleting the inventory
+    }
     // Initialize items for the start menu
     private void initializeStartMenu() {
        // inventory.clear();
        // addItem(createCustomItem(Material.GREEN_WOOL, "Start Mines", 1), 22);
+      
     }
+
 
     @EventHandler
     public void handlePlayerInteract(PlayerInteractEntityEvent event) {
+
         if (!(event.getRightClicked() instanceof Villager)) return;
 
         Villager villager = (Villager) event.getRightClicked();
@@ -104,7 +127,7 @@ public class MinesInventory extends DealerInventory implements Listener {
                 String internalName = DealerVillager.getInternalName(dealer);
 
                 MinesTable minesTable = new MinesTable(player, dealer, plugin, internalName, this);
-                Tables.put(player, minesTable);
+                Tables.put(player.getUniqueId(), minesTable);
                 player.openInventory(minesTable.getInventory());
             } else {
                 player.sendMessage("Error: Dealer not found. Unable to open mines table.");
@@ -113,4 +136,9 @@ public class MinesInventory extends DealerInventory implements Listener {
     }
 
   
+    public void removeTable(UUID playerId) {
+        Tables.remove(playerId);  // Remove by UUID
+        interactionLocks.remove(playerId);  // Clear interaction lock on removal
+    }
+
 }

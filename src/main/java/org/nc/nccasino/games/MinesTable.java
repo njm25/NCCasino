@@ -29,11 +29,11 @@ public class MinesTable implements InventoryHolder, Listener {
     private final Map<Player, Integer> animationTasks;
     private final Map<String, Double> chipValues;
     private final Map<Player, Boolean> animationCompleted;
-    private Boolean finished=false;
+    private final Stack<Pair<String, Integer>> betStack;
     private Boolean clickAllowed=true;
     private double selectedWager;
     private final Map<UUID, Double> currentBets = new HashMap<>();
-
+    private Boolean closeFlag=false;
     public MinesTable(Player player, Villager dealer, Nccasino plugin, String internalName, MinesInventory minesInventory) {
         this.playerId = player.getUniqueId();
         this.dealerId = dealer.getUniqueId();
@@ -41,22 +41,26 @@ public class MinesTable implements InventoryHolder, Listener {
         this.plugin = plugin;
         this.internalName = internalName;
         this.minesInventory = minesInventory;
+        this.betStack = new Stack<>();
         this.inventory = Bukkit.createInventory(this, 54, "Mines");
         this.chipValues = new LinkedHashMap<>();
         this.animationTasks = new HashMap<>();
         this.animationCompleted = new HashMap<>();
         loadChipValuesFromConfig();
-
+    
         // Start the animation first, then return to this table once animation completes
         startAnimation(player);
 
+        registerListener();
+    }
+
+    private void registerListener() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
     private void startAnimation(Player player) {
         // Retrieve the animation message from the config for the current dealer
         String animationMessage = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
-    
         // Delaying the animation inventory opening to ensure it displays properly
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             // Pass the animation message from the config
@@ -71,6 +75,7 @@ public class MinesTable implements InventoryHolder, Listener {
     private void afterAnimationComplete() {
         // Add a slight delay to ensure smooth transition from the animation to the table
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            closeFlag=true;
             initializeTable();
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
@@ -110,8 +115,6 @@ public class MinesTable implements InventoryHolder, Listener {
 
         // Add a single betting option - Paper labeled "Click here to place bet" in slot 52
         inventory.setItem(52, createCustomItem(Material.PAPER, "Click here to place bet", 1));
-    
- 
     }
 
 
@@ -122,7 +125,6 @@ public class MinesTable implements InventoryHolder, Listener {
         Player player = (Player) event.getWhoClicked();
         int slot = event.getRawSlot();
         if (animationTasks.containsKey(player) && event.getCurrentItem() != null) {
-            finished=true;
             Bukkit.getScheduler().cancelTask(animationTasks.get(player));
             animationTasks.remove(player);
             animationCompleted.put(player, true);  // Mark animation as completed/skipped
@@ -157,6 +159,9 @@ public class MinesTable implements InventoryHolder, Listener {
     
                     player.sendMessage("Placed bet of " + selectedWager + " " + plugin.getCurrencyName(internalName) +
                             ". Total bet is now: " + newBetAmount);
+
+                    // Show "Start Game" lever if bet is greater than 0
+                    updateStartGameLever(newBetAmount > 0);
                 } else {
                     player.sendMessage("Not enough " + plugin.getCurrencyName(internalName) + "s to place this bet.");
                 }
@@ -183,6 +188,7 @@ public class MinesTable implements InventoryHolder, Listener {
             refundAllBets(player);
             currentBets.clear();
             updateBetLore(52, 0);  // Reset the lore on the bet option after clearing bets
+            updateStartGameLever(false); // Hide "Start Game" lever
             player.sendMessage("All bets cleared and refunded.");
             return;
         }
@@ -196,6 +202,7 @@ public class MinesTable implements InventoryHolder, Listener {
     
                 refundBet(player, (int) lastBet);
                 updateBetLore(52, newBetAmount);
+                updateStartGameLever(newBetAmount > 0);  // Update "Start Game" lever based on new bet amount
     
                 player.sendMessage("Undoing last bet of " + lastBet + " " + plugin.getCurrencyName(internalName) +
                         ". Total bet is now: " + newBetAmount);
@@ -206,10 +213,60 @@ public class MinesTable implements InventoryHolder, Listener {
         }
     }
 
+    private void updateStartGameLever(boolean showLever) {
+        if (showLever) {
+            inventory.setItem(53, createCustomItem(Material.LEVER, "Start Game", 1));
+        } else {
+            inventory.setItem(53, null); // Remove the lever if the total bet is 0
+        }
+    }
 
 
+// Handle inventory close event
+@EventHandler
+public void onInventoryClose(InventoryCloseEvent event) {
 
+    if (event.getInventory().getHolder() != this) return;
+    if (event.getInventory().getHolder() instanceof MinesTable && event.getPlayer().getUniqueId().equals(playerId)&&closeFlag) {
+        endGame();  // Call the end game logic when the inventory is closed
+    }
 
+    Player player = (Player) event.getPlayer();
+
+    if(player.getOpenInventory()!=null){
+        if (animationTasks.containsKey(player)) {
+            Bukkit.getScheduler().cancelTask(animationTasks.get(player));
+            animationTasks.remove(player);
+            animationCompleted.remove(player);
+        }
+    }
+  
+}
+
+    private void endGame() {
+        Player player = Bukkit.getPlayer(playerId);
+        if (player != null) {
+            refundAllBets(player);  // Refund any remaining bets
+        }
+
+        // Notify minesInventory to remove the player's table
+        minesInventory.removeTable(playerId);
+
+        cleanup();  // Clean up game state
+    }
+
+    // Method to unregister event listener
+    private void unregisterListener() {
+        HandlerList.unregisterAll(this);
+    }
+
+    // Clean up method to unregister listeners and clear data
+    private void cleanup() {
+        unregisterListener(); 
+        currentBets.clear();
+        betStack.clear();
+
+    }
 
 
     private ItemStack createCustomItem(Material material, String name, int amount) {
@@ -224,27 +281,6 @@ public class MinesTable implements InventoryHolder, Listener {
 
     public Inventory getInventory() {
         return inventory;
-    }
-
-    // Handle inventory close event
-    @EventHandler
-    public void handleInventoryClose(InventoryCloseEvent event) {
-        if (event.getInventory().getHolder() != this) return;
-        Player player = (Player) event.getPlayer();
-if(player.getOpenInventory()!=null){
-    if (animationTasks.containsKey(player)) {
-       // System.out.println("CloseInv?");
-        Bukkit.getScheduler().cancelTask(animationTasks.get(player));
-        animationTasks.remove(player);
-        animationCompleted.remove(player);
-    }
-
-
-}
-
-        //save any games that have been start?
-        // Cancel any ongoing animation if the player closes the inventory
-       
     }
 
 
@@ -292,105 +328,6 @@ if(player.getOpenInventory()!=null){
             player.getInventory().addItem(new ItemStack(currencyMaterial, remainder));
         }
     }
-
-    private void endGame() {
-        Player player = Bukkit.getPlayer(playerId);
-        if (player != null) {
-            player.sendMessage("Game over. Thank you for playing!");
-            refundAllBets(player);  // Refund any remaining bets
-        }
-
-        // Notify DragonInventory to remove the player's table
-        //minesInventory.removeTable(playerId);
-
-        //cleanup();  // Clean up game state
-    }
-/* 
-    // Clean up method to unregister listeners and clear data
-    private void cleanup() {
-        currentBets.clear();
-        betStack.clear();
-
-        // Unregister the event listener when the game ends to prevent memory leaks
-        if (listenerRegistered) {
-            HandlerList.unregisterAll(this);
-            listenerRegistered = false;
-        }
-    }
-
-*/
-private void startBlockAnimation(Player player, Runnable onAnimationComplete) {
-    animationCompleted.put(player, false);  // Reset the animation completed flag
-   
-    // Ensure that no duplicate animations are started
-    if (animationTasks.containsKey(player)) {
-        return;
-    }
-    
-    int[][] full = new int[][]{
-        {0,0,0,0,0,0,0,0,0,     1,0,0,0,1,0,1,1,1,1,1,0,1,0,0,0,1,0,1,1,1,1,0,0,1,1,1,1, 0,0,0,0,0,0,  1,0,0,0,1,0,0,1,1,1,0,0,0,1,1,1,0,0,0,1,1,1,0,0,0,1,1,1,1,0,1,1,1,1,1,0,1,0,0,0,1,0,0,1,1,1,0,0,},
-        {0,0,0,0,0,0,0,0,0,     1,1,0,1,1,0,0,0,1,0,0,0,1,1,0,0,1,0,1,0,0,0,0,1,0,0,0,0, 0,0,0,0,0,0,  1,1,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,0,0,0,0,1,0,0,0,1,1,0,0,1,0,1,0,0,0,1,0,},
-        {0,0,0,0,0,0,0,0,0,     1,0,1,0,1,0,0,0,1,0,0,0,1,0,1,0,1,0,1,1,1,1,0,0,1,1,1,0, 0,1,1,1,1,0,  1,0,1,0,1,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,1,1,1,0,0,0,0,1,0,0,0,1,0,1,0,1,0,1,0,0,0,1,0,},
-        {0,0,0,0,0,0,0,0,0,     1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,1,1,0,1,0,0,0,0,0,0,0,0,1, 0,1,1,1,1,0,  1,0,0,1,1,0,1,0,0,0,0,0,1,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,1,1,0,1,0,0,0,1,0,},
-        {0,0,0,0,0,0,0,0,0,     1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,1, 0,0,0,0,0,0,  1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,1,0,0,0,1,0,},
-        {0,0,0,0,0,0,0,0,0,     1,0,0,0,1,0,1,1,1,1,1,0,1,0,0,0,1,0,1,1,1,1,0,1,1,1,1,0, 0,0,0,0,0,0,  1,0,0,0,1,0,0,1,1,1,0,0,0,1,1,1,0,0,1,0,0,0,1,0,1,1,1,1,0,0,1,1,1,1,1,0,1,0,0,0,1,0,0,1,1,1,0,0,}
-    };
-
-    final int[] taskId = new int[1];
-    final int initialRowShift =0;  // Adjust this to change the starting shift, should ensure "CASI" is visible
-
-    taskId[0] = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
-        private int rowShift = -initialRowShift;  // Start with a negative shift to position the first visible letter correctly
-        
-        @Override
-        public void run() {
-            if (finished) {
-                Bukkit.getScheduler().cancelTask(taskId[0]);
-                animationTasks.remove(player);
-                //System.out.println("Finished apparatnelty");
-                return;
-            }
-
-            // Clear the inventory before drawing the next frame
-            inventory.clear();
-
-            // Draw the current frame
-            for (int row = 0; row < 6; row++) {
-                for (int col = 0; col < 9; col++) {
-                    int arrayIndex = col + rowShift;
-                    if (arrayIndex >= 0 && arrayIndex < full[row].length) { // Prevent out of bounds and ensure we're within array limits
-                        int blockType = full[row][arrayIndex];
-                        Material material = (blockType == 1) ? Material.RED_STAINED_GLASS_PANE : Material.BLACK_STAINED_GLASS_PANE;
-
-                        int slot = row * 9 + col; // calculate slot in inventory grid
-                        inventory.setItem(slot, createCustomItem(material, "CLICK TO SKIP", 1));
-                    }
-                }
-            }
-
-            // Shift the display for the next frame
-            rowShift++;
-
-            // Adjust this condition to allow for the entire "CASINO MINES" text to be shown
-            if (rowShift >= full[0].length) { // Stop when the entire string has moved through
-                Bukkit.getScheduler().cancelTask(taskId[0]);
-                animationTasks.remove(player);
-                onAnimationComplete.run();  // Execute the next action after the animation completes
-            }
-        }
-    }, 0L, 1L).getTaskId();  // Adjust tick speed if needed
-
-    // Store the task ID so it can be canceled later
-    int temp=taskId[0];
-    //System.out.println("put");
-    animationTasks.put(player, 1);
-}
-
-
-
-
-
-
 
 
 }

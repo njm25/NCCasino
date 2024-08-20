@@ -5,6 +5,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.Inventory;
@@ -21,12 +22,29 @@ public class DragonInventory extends DealerInventory implements Listener {
 
     public DragonInventory(UUID dealerId, Nccasino plugin) {
         super(dealerId, 54, "Dragon Climb");
+
         this.plugin = plugin;
         this.Tables = new HashMap<>();
         initializeStartMenu();
+        registerListener();
+        plugin.addInventory(dealerId, this);
+    }
+
+    private void registerListener() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
+    private void unregisterListener() {
+
+        HandlerList.unregisterAll(this);
+     
+    }
+
+    @Override
+    public void delete() {
+        super.delete();
+        unregisterListener();  // Unregister listener when deleting the inventory
+    }
     // Initialize items for the start menu using the inherited method
     private void initializeStartMenu() {
         inventory.clear();

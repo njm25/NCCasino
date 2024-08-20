@@ -18,7 +18,7 @@ import java.util.UUID;
 
 public class DealerInventory implements InventoryHolder {
 
-    protected static final Map<UUID, DealerInventory> inventories = new HashMap<>();
+    public static final Map<UUID, DealerInventory> inventories = new HashMap<>();
     protected Inventory inventory;
     protected final UUID dealerId;
 

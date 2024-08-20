@@ -13,15 +13,19 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.commands.CommandExecutor;
 import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.games.DealerInventory;
 import org.nc.nccasino.listeners.DealerDeathHandler;
 import org.nc.nccasino.listeners.DealerInteractListener;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -30,7 +34,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
     private final NamespacedKey INTERNAL_NAME_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(Nccasino.class), "internal_name");
     private Material currency; // Material used for betting currency
     private String currencyName; // Display name for the currency
-
+    public Map<UUID,DealerInventory> inventories=new HashMap<>();
     @Override
     public void onEnable() {
         // Save default config if not present
@@ -84,7 +88,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
         getLogger().info("Nccasino plugin enabled!");
     }
+    public void addInventory(UUID villagerId,DealerInventory inv){
 
+        inventories.putIfAbsent(villagerId,inv);
+
+    }
     // Load the currency material and name from the config file
     public void loadCurrencyFromConfig() {
         String currencyMaterialName = getConfig().getString("currency.material", "EMERALD").toUpperCase();
@@ -106,8 +114,47 @@ public final class Nccasino extends JavaPlugin implements Listener {
         return currencyName;
     }
 
-    // Reinitialize dealer villagers on server start
-    private void reinitializeDealerVillagers() {
+
+private void reinitializeDealerVillagers() {
+   
+
+    Bukkit.getWorlds().forEach(world -> {
+        for (Entity entity : world.getEntities()) {
+            if (entity instanceof Villager villager) {
+                if (DealerVillager.isDealerVillager(villager)) {
+                    UUID dealerId = DealerVillager.getUniqueId(villager);
+                    String internalName = DealerVillager.getInternalName(villager);
+                    
+                    // Ensure that the dealer's game type and other data are updated correctly
+                    String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
+                    int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
+                    String animationMessage = getConfig().getString("dealers." + internalName + ".animation-message");
+                    
+                    // Update dealer's game and inventory based on the stored config
+                    
+                    DealerVillager.updateGameType(villager, gameType, timer, animationMessage);
+                    
+                    // Optionally reset any additional state that could be causing the issues
+                    DealerVillager.setName(villager, gameType + " Dealer");
+                    DealerVillager.setAnimationMessage(villager, animationMessage);
+                }
+            }
+        }
+    });
+}
+    private void reloadDealerVillagers() {
+ // Collect the dealer IDs to delete in a separate list
+    List<UUID> dealerIdsToDelete = new ArrayList<>(DealerInventory.inventories.keySet());
+    
+    // Delete the inventories after collecting the keys
+    for (UUID dealerId : dealerIdsToDelete) {
+        DealerInventory inventory = DealerInventory.inventories.get(dealerId);
+        if (inventory != null) {
+            inventory.delete();
+        }
+    }
+
+        //DealerInventory.inventories.values().forEach(DealerInventory::delete);
         Bukkit.getWorlds().forEach(world -> {
             for (Entity entity : world.getEntities()) {
                 if (entity instanceof Villager villager) {
@@ -115,7 +162,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         // Reinitialize inventory based on stored game type
                         UUID dealerId = DealerVillager.getUniqueId(villager);
                         String name = DealerVillager.getName(villager);
-                        DealerVillager.initializeInventory(villager, dealerId, name, this); // Pass the plugin instance
+                        //DealerVillager.initializeInventory(villager, dealerId, name, this); // Pass the plugin instance
 
                         // Update game type from config
                         String internalName = DealerVillager.getInternalName(villager);
@@ -128,6 +175,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
             }
         });
     }
+
+     
 
     // Utility method to create NamespacedKey instances
     public NamespacedKey getKey(String key) {
@@ -178,7 +227,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
         getLogger().info("Reinitializing dealer configurations...");
         reinitializeDealerVillagers();
     }
-
+    public void reloadDealerConfigurations() {
+        // Logic to reinitialize dealer configurations if needed
+        // This can be customized as per the plugin's requirements
+        getLogger().info("Reloading dealer configurations...");
+        reloadDealerVillagers();
+    }
 
 
     public Villager getDealerByInternalName(String internalName) {

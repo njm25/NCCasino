@@ -35,6 +35,7 @@ public class DragonTable implements InventoryHolder, Listener {
     private final Map<Player, Integer> animationTasks;
    
     private final Map<Player, Boolean> animationCompleted;
+    private Boolean closeFlag=false;
 
     public DragonTable(Player player, Villager dealer, Nccasino plugin, String internalName, DragonInventory dragonInventory) {
         this.playerId = player.getUniqueId();
@@ -55,10 +56,13 @@ public class DragonTable implements InventoryHolder, Listener {
 
         // Register the event listener only once, and check if it's already registered
       
-            Bukkit.getPluginManager().registerEvents(this, plugin);
+        registerListener();
       
     }
 
+    private void registerListener() {
+        Bukkit.getPluginManager().registerEvents(this, plugin);
+    }
 
     private void startAnimation(Player player) {
         // Retrieve the animation message from the config for the current dealer
@@ -78,6 +82,7 @@ public class DragonTable implements InventoryHolder, Listener {
     private void afterAnimationComplete() {
         // Add a slight delay to ensure smooth transition from the animation to the table
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            closeFlag=true;
             initializeTable();
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
@@ -224,11 +229,12 @@ public class DragonTable implements InventoryHolder, Listener {
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
-        if (event.getInventory().getHolder() instanceof DragonTable && event.getPlayer().getUniqueId().equals(playerId)) {
+        if (event.getInventory().getHolder() != this) return;
+        if (event.getInventory().getHolder() instanceof DragonTable && event.getPlayer().getUniqueId().equals(playerId)&&closeFlag) {
             endGame();  // Call the end game logic when the inventory is closed
         }
 
-        if (event.getInventory().getHolder() != this) return;
+       
         Player player = (Player) event.getPlayer();
 
 
@@ -239,6 +245,32 @@ public class DragonTable implements InventoryHolder, Listener {
             animationTasks.remove(player);
             animationCompleted.remove(player);
         }
+
+
+    }
+
+    private void endGame() {
+        Player player = Bukkit.getPlayer(playerId);
+        if (player != null) {
+            refundAllBets(player);  // Refund any remaining bets
+        }
+
+        // Notify DragonInventory to remove the player's table
+        dragonInventory.removeTable(playerId);
+
+        cleanup();  // Clean up game state
+    }
+
+    // Clean up method to unregister listeners and clear data
+    private void cleanup() {
+        unregisterListener(); 
+        currentBets.clear();
+        betStack.clear();
+
+    }
+      // Method to unregister event listener
+      private void unregisterListener() {
+        HandlerList.unregisterAll(this);
     }
 
     private void updateBetLore(int slot, double totalBet) {
@@ -286,24 +318,7 @@ public class DragonTable implements InventoryHolder, Listener {
         }
     }
 
-    private void endGame() {
-        Player player = Bukkit.getPlayer(playerId);
-        if (player != null) {
-            refundAllBets(player);  // Refund any remaining bets
-        }
-
-        // Notify DragonInventory to remove the player's table
-        dragonInventory.removeTable(playerId);
-
-        cleanup();  // Clean up game state
-    }
-
-    // Clean up method to unregister listeners and clear data
-    private void cleanup() {
-        currentBets.clear();
-        betStack.clear();
-
-    }
+    
 
     @Override
     public Inventory getInventory() {
