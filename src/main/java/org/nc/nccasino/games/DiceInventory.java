@@ -11,33 +11,30 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.games.MinesTable;
+import org.nc.nccasino.games.DiceTable;
 import org.bukkit.event.HandlerList;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class MinesInventory extends DealerInventory implements Listener {
-    private final Map<UUID, MinesTable> Tables;
+public class DiceInventory extends DealerInventory implements Listener {
+    private final Map<UUID, DiceTable> Tables;
     private final Nccasino plugin;
     private final Map<UUID, Boolean> interactionLocks = new HashMap<>();
     private Boolean firstopen=true;
 
-    public MinesInventory(UUID dealerId, Nccasino plugin) {
+    public DiceInventory(UUID dealerId, Nccasino plugin) {
         
-        super(dealerId, 54, "Mines Start Menu");
+        super(dealerId, 54, "Dice Start Menu");
    
         this.plugin = plugin;
         this.Tables = new HashMap<>();
         registerListener();
         plugin.addInventory(dealerId, this);
-        
     }
 
     private void registerListener() {
@@ -59,16 +56,10 @@ public class MinesInventory extends DealerInventory implements Listener {
     // Initialize items for the start menu
     private void initializeStartMenu() {
        // inventory.clear();
-       // addItem(createCustomItem(Material.GREEN_WOOL, "Start Mines", 1), 22);
+       // addItem(createCustomItem(Material.GREEN_WOOL, "Start Dice", 1), 22);
       
     }
-    @EventHandler
-    public void handleInventoryOpen(InventoryOpenEvent event){
-            if(firstopen){
-                firstopen=false;
-                setupGameMenu((Player)event.getPlayer()); 
-            }
-    }
+
 
     @EventHandler
     public void handlePlayerInteract(PlayerInteractEntityEvent event) {
@@ -79,17 +70,19 @@ public class MinesInventory extends DealerInventory implements Listener {
         Player player = event.getPlayer();
 
         if (DealerVillager.isDealerVillager(villager) && DealerVillager.getUniqueId(villager).equals(this.dealerId)) {
-            // Open the MinesTable for the player
+            // Open the DiceTable for the player
             setupGameMenu(player);
         }
     }
 
-      private boolean isActivePlayer(Player player) {
-        InventoryView openInventoryView = player.getOpenInventory();
-        Inventory topInventory = openInventoryView.getTopInventory();
-        return (topInventory.getHolder() == this);
+ @EventHandler
+    public void handleInventoryOpen(InventoryOpenEvent event){
+            if(firstopen){
+                firstopen=false;
+                setupGameMenu((Player)event.getPlayer()); 
+            }
     }
-
+    
     private ItemStack createCustomItem(Material material, String name, int amount) {
         ItemStack itemStack = new ItemStack(material, amount);
         ItemMeta meta = itemStack.getItemMeta();
@@ -141,11 +134,11 @@ public class MinesInventory extends DealerInventory implements Listener {
             if (dealer != null) {
                 String internalName = DealerVillager.getInternalName(dealer);
 
-                MinesTable minesTable = new MinesTable(player, dealer, plugin, internalName, this);
-                Tables.put(player.getUniqueId(), minesTable);
-                player.openInventory(minesTable.getInventory());
+                DiceTable diceTable = new DiceTable(player, dealer, plugin, internalName, this);
+                Tables.put(player.getUniqueId(), diceTable);
+                player.openInventory(diceTable.getInventory());
             } else {
-                player.sendMessage("Error: Dealer not found. Unable to open mines table.");
+                player.sendMessage("Error: Dealer not found. Unable to open Dice table.");
             }
         }, 1L);
     }

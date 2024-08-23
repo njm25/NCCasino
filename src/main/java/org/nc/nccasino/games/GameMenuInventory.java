@@ -26,6 +26,13 @@ public class GameMenuInventory extends DealerInventory {
         addItem(createCustomItem(Material.TNT, "Mines"), 2);
         addItem(createCustomItem(Material.DRAGON_HEAD, "Dragon Climb"), 3);
         addItem(createCustomItem(Material.RAIL, "Rail Runner"), 4);
+        addItem(createCustomItem(Material.RED_MUSHROOM_BLOCK, "Dice"), 5);
+        /* 
+           addItem(createCustomItem(Material.ELYTRA, "Digital Baccarat"),6);
+        addItem(createCustomItem(Material.NETHERITE_UPGRADE_SMITHING_TEMPLATE, "Higher or Lower"), 7);
+        addItem(createCustomItem(Material.EMERALD, "Keno"), 8);
+        addItem(createCustomItem(Material.NAUTILUS_SHELL, "Bandit Wheel"), 9);*/
+
     }
 
     // Create an item stack with a custom display name
@@ -63,12 +70,29 @@ public class GameMenuInventory extends DealerInventory {
             case 2:
                 DealerVillager.switchGame(villager, "Mines",player);
                 break;
-                case 3:
+            case 3:
                 DealerVillager.switchGame(villager, "Dragon Climb",player);
                 break;
-                case 4:
+            case 4:
                 DealerVillager.switchGame(villager, "Rail Runner",player);
                 break;
+            case 5:
+                DealerVillager.switchGame(villager, "Dice",player);
+                break;
+            case 6:
+                DealerVillager.switchGame(villager, "Digital Bacarrat",player);
+                break;
+            case 7:
+                DealerVillager.switchGame(villager, "Higher or Lower",player);
+                break;
+         
+            case 8:
+                DealerVillager.switchGame(villager, "Keno",player);
+                break;
+            case 9:
+                DealerVillager.switchGame(villager, "Bandit Camp Wheel",player);
+                break;
+
             default:
                 return; // Exit if no valid slot is clicked
         }

@@ -124,6 +124,33 @@ public class DealerVillager {
                 inventory = new RailInventory(uniqueId, plugin);
                 name = "Rail Runner Dealer";
                 break;
+            case "Dice":
+                inventory = new DiceInventory(uniqueId, plugin);
+                name = "Dice Dealer";
+                break;
+                /*         
+            case "Digital Baccarat":
+                inventory = new DigitalBaccaratInventory(uniqueId, plugin);
+                name = "Digital Baccarat Dealer";
+                break;
+            case "Higher or Lower":
+                inventory = new HigherOrLowerInventory(uniqueId, plugin);
+                name = "Higher or Lower Dealer";
+                break;
+                case "Keno":
+                inventory = new KenoInventory(uniqueId, plugin);
+                name = "Keno Dealer";
+                break;
+                case "Bandit Wheel":
+                inventory = new BanditWheelInventory(uniqueId, plugin);
+                name = "Bandit Wheel Dealer";
+                break;
+                case "Rail Runner":
+                inventory = new RailInventory(uniqueId, plugin);
+                name = "Rail Runner Dealer";
+                break;
+            
+ */
             default:
                 if (inventory == null) {
                     inventory = new GameMenuInventory(uniqueId);
@@ -220,6 +247,10 @@ public class DealerVillager {
                     newInventory = new RailInventory(dealerId, plugin);
                     newName = "Rail Runner Dealer";
                     break;
+                case "Dice":
+                    newInventory = new DiceInventory(dealerId, plugin);
+                    newName = "Dice Dealer";
+                    break;    
                 default:
                     newInventory = new GameMenuInventory(dealerId);
                     newName = "Game Menu";
@@ -280,6 +311,10 @@ public class DealerVillager {
                 newInventory = new RailInventory(dealerId, plugin);
                 newName = "Rail Runner Dealer";
                 break;
+            case "Dice":
+                newInventory = new DiceInventory(dealerId, plugin);
+                newName = "Dice Dealer";
+                break;     
             default:
                 newInventory = new GameMenuInventory(dealerId);
                 newName = "Game Menu";

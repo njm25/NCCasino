@@ -9,6 +9,7 @@ import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -26,7 +27,7 @@ public class RailInventory extends DealerInventory implements Listener {
     private final Map<UUID, RailTable> Tables;
     private final Nccasino plugin;
     private final Map<UUID, Boolean> interactionLocks = new HashMap<>();
-
+    private Boolean firstopen=true;
 
     public RailInventory(UUID dealerId, Nccasino plugin) {
         
@@ -74,6 +75,14 @@ public class RailInventory extends DealerInventory implements Listener {
             // Open the RailTable for the player
             setupGameMenu(player);
         }
+    }
+
+ @EventHandler
+    public void handleInventoryOpen(InventoryOpenEvent event){
+            if(firstopen){
+                firstopen=false;
+                setupGameMenu((Player)event.getPlayer()); 
+            }
     }
 
 

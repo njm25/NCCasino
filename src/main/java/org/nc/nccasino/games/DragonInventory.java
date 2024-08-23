@@ -7,6 +7,7 @@ import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.Inventory;
 import org.nc.nccasino.Nccasino;
@@ -19,7 +20,7 @@ public class DragonInventory extends DealerInventory implements Listener {
     private final Map<UUID, DragonTable> Tables;  // Use UUID instead of Player
     private final Nccasino plugin;
     private final Map<UUID, Boolean> interactionLocks = new HashMap<>();  // Locking mechanism to prevent double triggers
-
+    private Boolean firstopen=true;
     public DragonInventory(UUID dealerId, Nccasino plugin) {
         super(dealerId, 54, "Dragon Climb");
 
@@ -48,6 +49,14 @@ public class DragonInventory extends DealerInventory implements Listener {
     // Initialize items for the start menu using the inherited method
     private void initializeStartMenu() {
         inventory.clear();
+    }
+
+     @EventHandler
+    public void handleInventoryOpen(InventoryOpenEvent event){
+            if(firstopen){
+                firstopen=false;
+                setupGameMenu((Player)event.getPlayer()); 
+            }
     }
 
     @EventHandler
