@@ -113,6 +113,10 @@ public class RouletteInventory extends DealerInventory implements Listener {
 
       @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event){
+        Player player=(Player)event.getPlayer();
+        if(player.getInventory() !=null){
+        if(player.getInventory() instanceof RouletteInventory){
+
             if(firstopen){
                 firstopen=false;
                 this.bettingTimeSeconds =  plugin.getTimer(internalName);
@@ -120,6 +124,11 @@ public class RouletteInventory extends DealerInventory implements Listener {
                 startAnimation((Player)event.getPlayer());
                 //setupGameMenu((Player)event.getPlayer()); 
             }
+        }
+}
+else{
+//should not hit
+}
     }
 
     @EventHandler
