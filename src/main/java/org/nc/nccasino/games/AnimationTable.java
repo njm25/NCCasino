@@ -65,6 +65,9 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
         startBlockAnimation(player, onAnimationComplete, fullt);
     }
     private int[][] parseMessage(String message) {
+        if(message==null){
+            message="Error";
+        }
         // Convert message to uppercase to handle lowercase letters
         //message = message.toUpperCase();
     
