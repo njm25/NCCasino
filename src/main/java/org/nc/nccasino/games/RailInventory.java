@@ -77,12 +77,14 @@ public class RailInventory extends DealerInventory implements Listener {
         }
     }
 
- @EventHandler
+    @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event){
+        if(((Player)event.getPlayer()).getInventory() instanceof RailInventory){
             if(firstopen){
                 firstopen=false;
                 setupGameMenu((Player)event.getPlayer()); 
             }
+        }
     }
 
 

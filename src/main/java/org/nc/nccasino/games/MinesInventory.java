@@ -64,10 +64,12 @@ public class MinesInventory extends DealerInventory implements Listener {
     }
     @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event){
+        if(((Player)event.getPlayer()).getInventory() instanceof MinesInventory){
             if(firstopen){
                 firstopen=false;
                 setupGameMenu((Player)event.getPlayer()); 
             }
+        }
     }
 
     @EventHandler

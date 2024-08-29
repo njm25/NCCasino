@@ -75,12 +75,14 @@ public class DiceInventory extends DealerInventory implements Listener {
         }
     }
 
- @EventHandler
+    @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event){
+        if(((Player)event.getPlayer()).getInventory() instanceof DiceInventory){
             if(firstopen){
                 firstopen=false;
                 setupGameMenu((Player)event.getPlayer()); 
             }
+        }
     }
     
     private ItemStack createCustomItem(Material material, String name, int amount) {

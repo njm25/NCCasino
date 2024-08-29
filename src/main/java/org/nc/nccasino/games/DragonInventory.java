@@ -51,14 +51,15 @@ public class DragonInventory extends DealerInventory implements Listener {
         inventory.clear();
     }
 
-     @EventHandler
+    @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event){
+        if(((Player)event.getPlayer()).getInventory() instanceof DragonInventory){
             if(firstopen){
                 firstopen=false;
                 setupGameMenu((Player)event.getPlayer()); 
             }
+        }
     }
-
     @EventHandler
     public void handlePlayerInteract(PlayerInteractEntityEvent event) {
         if (!(event.getRightClicked() instanceof Villager)) return;
