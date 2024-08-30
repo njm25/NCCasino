@@ -11,10 +11,12 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.NamespacedKey;
@@ -43,6 +45,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private String internalName;
     private Boolean closeFlag=false;
     private Boolean firstopen=true;
+    private Boolean firstFin=true;
     public RouletteInventory(UUID dealerId, Nccasino plugin, String internalName) {
         //super(dealerId, 54, "Wheel - Dealer: " + DealerVillager.getInternalName((Villager) Bukkit.getEntity(dealerId)));
         super(dealerId, 54, "Roulette Wheel");
@@ -52,10 +55,34 @@ public class RouletteInventory extends DealerInventory implements Listener {
         this.Tables=new HashMap<>();
         this.activeAnimations=new HashMap<>();
         this.internalName= internalName;
-        initializeStartMenu();
+        //initializeStartMenu();
+        //Bukkit.getPluginManager().registerEvents(this, plugin);
+
+
+
+        registerListener();
+       plugin.addInventory(dealerId, this);
+    }
+
+
+private void registerListener() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
+    private void unregisterListener() {
+
+        HandlerList.unregisterAll(this);
+
+    }
+
+    @Override
+    public void delete() {
+
+        super.delete();
+        unregisterListener();  // Unregister listener when deleting the inventory
+    }
+
+/* 
     // Initialize items for the start menu
     private void initializeStartMenu() {
         inventory.clear();
@@ -67,7 +94,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
         addItem(createCustomItem(Material.RED_WOOL, "Start Roulette", 1), 22);
 
     }
-
+*/
     private void startAnimation(Player player) {
         // Retrieve the animation message from the config for the current dealer
         String animationMessage = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
@@ -83,53 +110,65 @@ public class RouletteInventory extends DealerInventory implements Listener {
         }, 1L); // Delay by 1 tick to ensure smooth opening of inventory
     }
     
-
- /* 
-    private void startAnimation(Player player) {
-        // Retrieve the animation message from the config for the current dealer
-        String animationMessage = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
-        // Delaying the animation inventory opening to ensure it displays properly
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            // Pass the animation message from the config
-            activeAnimations.put(player, 1);
-            AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
-            player.openInventory(animationTable.getInventory());
-    
-            // Start animation and pass a callback to return to MinesTable after animation completes
-            animationTable.animateMessage(player, this::afterAnimationComplete(player));
-        }, 1L); // Delay by 1 tick to ensure smooth opening of inventory
-    }
-*/
     private void afterAnimationComplete(Player player) {
         // Add a slight delay to ensure smooth transition from the animation to the table
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             closeFlag=true;
             if (player != null) {
+                if(firstFin){
+firstFin=false;
+                    this.bettingTimeSeconds =  plugin.getTimer(internalName);
+                    startBettingTimer();
+
+                }
+
                 player.openInventory(this.getInventory());
                 // No need to register the listener here since it's handled in the constructor
             }
         }, 1L); // Delay by 1 tick to ensure clean transition between inventories
     }
-/* 
+ 
+
+ @EventHandler
+    public void handlePlayerInteract(PlayerInteractEntityEvent event) {
+       // System.out.println("Gothere1");
+        if (!(event.getRightClicked() instanceof Villager)) return;
+       // System.out.println("Gothere2");
+        Villager villager = (Villager) event.getRightClicked();
+        Player player = event.getPlayer();
+
+        if (DealerVillager.isDealerVillager(villager) && DealerVillager.getUniqueId(villager).equals(this.dealerId)) {
+           // System.out.println("Gothere4");
+            startAnimation((Player)event.getPlayer());
+            /* 
+            if(firstopen){
+                System.out.println("Gothere5firstopen");
+                firstopen=false;
+                //setupGameMenu((Player)event.getPlayer()); 
+            }*/
+
+
+            // Open the MinesTable for the player
+         
+        }
+    }
+
+   
       @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event){
+    
         Player player=(Player)event.getPlayer();
         if(player.getInventory() !=null){
-        if(player.getInventory()==this){
-
-            if(firstopen){
-                firstopen=false;
-                this.bettingTimeSeconds =  plugin.getTimer(internalName);
-                startBettingTimer();
-                startAnimation((Player)event.getPlayer());
-                //setupGameMenu((Player)event.getPlayer()); 
-            }
-        }
-}
-else{
-//should not hit
-}
-    }*/
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if(player.getOpenInventory().getTopInventory()== this.getInventory()){
+                    if(firstopen){
+                        firstopen=false;
+                        startAnimation((Player)event.getPlayer());
+                    }
+                }
+            }, 2L);    
+    }
+    }
 
     @EventHandler
     public void handleClick(InventoryClickEvent event) {
@@ -300,7 +339,8 @@ private void updateItemLoreForBet(String betType, int totalBet) {
 
     private void resetToStartState() {
         Tables.clear();
-        firstopen=true;
+        //firstopen=true;
+        firstFin=true;
         //initializeStartMenu();
         //pageNum = 1;
     }

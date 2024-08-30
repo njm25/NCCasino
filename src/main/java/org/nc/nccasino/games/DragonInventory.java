@@ -53,6 +53,7 @@ public class DragonInventory extends DealerInventory implements Listener {
 
      @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event){
+    
             if(firstopen){
                 firstopen=false;
                 setupGameMenu((Player)event.getPlayer()); 
