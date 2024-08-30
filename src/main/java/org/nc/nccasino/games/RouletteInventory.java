@@ -139,7 +139,8 @@ firstFin=false;
 
         if (DealerVillager.isDealerVillager(villager) && DealerVillager.getUniqueId(villager).equals(this.dealerId)) {
            // System.out.println("Gothere4");
-            startAnimation((Player)event.getPlayer());
+           if(!firstopen){
+            startAnimation((Player)event.getPlayer());}
             /* 
             if(firstopen){
                 System.out.println("Gothere5firstopen");

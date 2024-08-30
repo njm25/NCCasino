@@ -78,8 +78,8 @@ private void registerListener() {
         Villager villager = (Villager) event.getRightClicked();
         Player player = event.getPlayer();
         if (DealerVillager.isDealerVillager(villager) && DealerVillager.getUniqueId(villager).equals(this.dealerId)) {
-
-            startAnimation(player);
+            if(!firstopen){
+            startAnimation(player);}
         }
     }
 
