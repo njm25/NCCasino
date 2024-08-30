@@ -110,12 +110,12 @@ public class RouletteInventory extends DealerInventory implements Listener {
             }
         }, 1L); // Delay by 1 tick to ensure clean transition between inventories
     }
-
+/* 
       @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event){
         Player player=(Player)event.getPlayer();
         if(player.getInventory() !=null){
-        if(player.getInventory() instanceof RouletteInventory){
+        if(player.getInventory()==this){
 
             if(firstopen){
                 firstopen=false;
@@ -129,7 +129,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
 else{
 //should not hit
 }
-    }
+    }*/
 
     @EventHandler
     public void handleClick(InventoryClickEvent event) {
