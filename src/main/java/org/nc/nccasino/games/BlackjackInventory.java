@@ -4,10 +4,14 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -40,6 +44,9 @@ public class BlackjackInventory extends DealerInventory implements Listener {
     private final Object turnLock = new Object(); // Lock object for turn actionsactions
     private final Map<UUID, Boolean> playerTurnActive = new HashMap<>();
 private Deck deck; // Declare the deck as a class variable
+private Boolean firstopen=true;
+private Boolean firstFin=true;
+
 
     public BlackjackInventory(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, 54, "Blackjack Table"); // Using 54 slots for start menu
@@ -55,10 +62,74 @@ private Deck deck; // Declare the deck as a class variable
         this.countdownTaskId = -1; // Initialize countdown task ID
         this.deck = new Deck(1); // Initialize the deck
         loadChipValuesFromConfig(); // Load chip values from config
-        initializeStartMenu(); // Initialize the start menu
+        // Initialize the start menu
         
-        Bukkit.getPluginManager().registerEvents(this, plugin); // Register events
+       registerListener();
+       plugin.addInventory(dealerId, this);
     }
+
+private void registerListener() {
+        Bukkit.getPluginManager().registerEvents(this, plugin);
+    }
+
+ @EventHandler
+    public void handlePlayerInteract(PlayerInteractEntityEvent event) {
+        if (!(event.getRightClicked() instanceof Villager)) return;
+        Villager villager = (Villager) event.getRightClicked();
+        Player player = event.getPlayer();
+        if (DealerVillager.isDealerVillager(villager) && DealerVillager.getUniqueId(villager).equals(this.dealerId)) {
+
+            startAnimation(player);
+        }
+    }
+
+      @EventHandler
+    public void handleInventoryOpen(InventoryOpenEvent event){
+        Player player=(Player)event.getPlayer();
+        if(player.getInventory() !=null){
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if(player.getOpenInventory().getTopInventory()== this.getInventory()){
+                    if(firstopen){
+                        firstopen=false;
+                        startAnimation((Player)event.getPlayer());
+                    }
+                }
+            }, 2L);    
+    }
+    }
+
+    private void startAnimation(Player player) {
+        // Retrieve the animation message from the config for the current dealer
+        String animationMessage = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
+        // Delaying the animation inventory opening to ensure it displays properly
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // Pass the animation message from the config
+           
+            AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
+            player.openInventory(animationTable.getInventory());
+    
+            // Start animation and pass a callback to return to MinesTable after animation completes
+            animationTable.animateMessage(player, () -> afterAnimationComplete(player)); // Wrap the method call in a lambda
+        }, 1L); // Delay by 1 tick to ensure smooth opening of inventory
+    }
+    
+    private void afterAnimationComplete(Player player) {
+        // Add a slight delay to ensure smooth transition from the animation to the table
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+           
+            if (player != null) {
+                if(firstFin){
+            firstFin=false;
+            initializeGameMenu();
+
+                }
+
+                player.openInventory(this.getInventory());
+                // No need to register the listener here since it's handled in the constructor
+            }
+        }, 1L); // Delay by 1 tick to ensure clean transition between inventories
+    }
+ 
 
     // Load chip values from the plugin config
     private void loadChipValuesFromConfig() {
@@ -153,7 +224,6 @@ private Deck deck; // Declare the deck as a class variable
         }
     }
 
-    // Create a player head item stack with the player's actual head
 // Create a player head item stack with the player's actual head and stack size
 private ItemStack createPlayerHeadItem(Player player, int stackSize) {
     if (stackSize <= 0) {
@@ -179,7 +249,7 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
     if (clickAllowed.getOrDefault(playerId, true)) {
         clickAllowed.put(playerId, false); // Set click allowed to false for this player
         Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L); // Delay for click handling
-
+        /* 
         if (!gameStarted) { // Handle clicks in the start menu
             if (slot == 22) { // Start Blackjack button clicked
                 player.sendMessage("Starting Blackjack...");
@@ -187,7 +257,9 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
                 initializeGameMenu(); // Switch to game menu
                 player.openInventory(this.getInventory());
             }
-        } else if (gameActive) { // Game is active, handle player actions
+        } else */
+        
+        if (gameActive) { // Game is active, handle player actions
             if (playerId.equals(currentPlayerId)) {
                 handlePlayerAction(player, slot);
             } else if (slot == 53) { // Handle leave chair
@@ -222,8 +294,6 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
         player.sendMessage("Please wait before clicking again!");
     }
 }
-
-
 
 private void handlePlayerAction(Player player, int slot) {
     synchronized (turnLock) {
@@ -263,7 +333,6 @@ private void handlePlayerAction(Player player, int slot) {
         }
     }
 }
-
 
 private void handleHit(Player player) {
     synchronized (turnLock) {
@@ -305,11 +374,6 @@ private void handleHit(Player player) {
     }
 }
 
-
-
-
-
-
 private void handleStand(Player player) {
     synchronized (turnLock) {
         UUID playerId = player.getUniqueId();
@@ -321,8 +385,6 @@ private void handleStand(Player player) {
         }, 20L);
     }
 }
-
-
 
 private void startNextPlayerTurnWithDelay(long delay) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> startNextPlayerTurn(), delay);
@@ -431,8 +493,6 @@ private void handleLeaveChair(Player player) {
     }
 }
 
-
-
 // Handle leave chair during an active game
 private void handleLeaveChairDuringGame(Player player) {
     UUID playerId = player.getUniqueId();
@@ -460,6 +520,7 @@ private void handleLeaveChairDuringGame(Player player) {
         cancelGame();
     }
 }
+
 private void removePlayerData(UUID playerId) {
     // Retrieve the player's seat slot
     int seatSlot = playerSeats.getOrDefault(playerId, -1);
@@ -504,9 +565,6 @@ private void removePlayerData(UUID playerId) {
         cancelGame();
     }
 }
-
-
-
 
     // Handle chip selection
     private void handleChipSelection(Player player, ItemStack clickedItem) {
@@ -575,7 +633,6 @@ private void removePlayerData(UUID playerId) {
             player.sendMessage("Not enough " + plugin.getCurrencyName(internalName) + "s to place this bet, or wager not selected.");
         }
     }
-    
 
     private void handleUndoAllBets(Player player) {
         if (gameActive) {
@@ -604,6 +661,7 @@ private void removePlayerData(UUID playerId) {
     private double getSelectedWager(UUID playerId) {
         return selectedWagers.getOrDefault(playerId, 0.0);
     }
+
     private void stopCountdownTimer() {
         if (countdownTaskId != -1) {
             Bukkit.getScheduler().cancelTask(countdownTaskId);
@@ -613,6 +671,7 @@ private void removePlayerData(UUID playerId) {
             inventory.setItem(1, createCustomItem(Material.LEVER, "Game Info"));
         }
     }
+
     // Handle undo last bet
     private void handleUndoLastBet(Player player) {
         if (gameActive) {
@@ -655,9 +714,6 @@ private void removePlayerData(UUID playerId) {
         }
     }
     
-    
-    
-
     private void updateItemLore(int slot, double wager) {
         ItemStack item = inventory.getItem(slot);
         if (item != null) {
@@ -675,7 +731,6 @@ private void removePlayerData(UUID playerId) {
         }
     }
     
-
     private boolean hasEnoughWager(Player player, double amount) {
         int requiredAmount = (int) Math.ceil(amount);
         return player.getInventory().containsAtLeast(new ItemStack(plugin.getCurrency(internalName)), requiredAmount);
@@ -743,9 +798,6 @@ private void removePlayerData(UUID playerId) {
     }
 
     // Activate the game and set the dealer's turn
-// Activate the game and set the dealer's turn
-// Activate the game and set the dealer's turn
-// Activate the game and set the dealer's turn
 private void activateGame() {
     gameActive = true; // Mark the game as active
 
@@ -874,11 +926,6 @@ private void startNextPlayerTurn() {
     startDealerTurn();
 }
 
-
-
-
-
-
 private void allowPlayerActions(Player player) {
     // Enable relevant slots for actions
     clickAllowed.putIfAbsent(player.getUniqueId(), true);
@@ -897,6 +944,7 @@ private void updateLeverDisplayName(String displayName) {
         }
     }
 }
+
 private void startDealerTurn() {
     // Check if all players have busted
     boolean allPlayersBusted = true;
@@ -907,12 +955,10 @@ private void startDealerTurn() {
             break;
         }
     }
-
     if (allPlayersBusted) {
         finishGame(); // Directly finish the game if all players are busted
         return;
     }
-
     updateLeverDisplayName("Dealer's Turn");
 
     // Reveal the dealer's hidden card with delay
@@ -932,6 +978,7 @@ private void revealDealerCardWithDelay(long delay) {
         }
     }, delay);
 }
+
 private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long delay) {
     final int[] mutableDealerCardSum = {dealerCardSum}; // Wrap the dealerCardSum in an array to make it mutable
 
@@ -979,9 +1026,6 @@ private void refundBet(Player player, Map<Integer, Double> bets) {
 private void finishGame() {
     int dealerCardSum = calculateHandValue(dealerHand);
     boolean dealerBusted = dealerCardSum > 21;
-
-    
-
     for (UUID playerId : playerSeats.keySet()) {
         if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty()) {
             continue; // Skip players without bets
@@ -1016,8 +1060,6 @@ private void finishGame() {
     resetGame();
 }
 
-
-
 private void payOut(Player player, Map<Integer, Double> bets, double multiplier) {
     if (bets != null) {
         double totalBet = bets.values().stream().mapToDouble(Double::doubleValue).sum();
@@ -1026,6 +1068,7 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
         player.sendMessage("Congratulations! You won " + payout + " " + plugin.getCurrencyName(internalName) + ".");
     }
 }
+
 // Utility method to check if the hand has an Ace and a 10-value card
 private boolean hasAceAndTenValueCard(List<ItemStack> hand) {
     boolean hasAce = false;
@@ -1078,8 +1121,6 @@ private void resetGame() {
 
 }
 
-
-
 private int calculateHandValue(List<ItemStack> hand) {
     int totalValue = 0;
     int acesCount = 0;
@@ -1104,8 +1145,6 @@ private int calculateHandValue(List<ItemStack> hand) {
 
     return totalValue;
 }
-
-
 
 private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -1206,9 +1245,6 @@ private int getCardValue(ItemStack cardItem) {
     return value;
 }
 
-
-
-
 private void scheduleHiddenCardDealing(int slot, int delay) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
         Material material = Material.WHITE_STAINED_GLASS_PANE; // Hidden card is now white
@@ -1221,6 +1257,7 @@ private void scheduleHiddenCardDealing(int slot, int delay) {
         inventory.setItem(slot, hiddenCard);
     }, delay);
 }
+
 private void dealCardToPlayer(int slot, Card card, UUID playerId) {
     // No changes needed here; the deck will reshuffle automatically if it's empty.
     Material material = (card.getSuit() == Suit.HEARTS || card.getSuit() == Suit.DIAMONDS) ? Material.RED_STAINED_GLASS_PANE : Material.BLACK_STAINED_GLASS_PANE;
@@ -1288,13 +1325,10 @@ public void delete() {
     }
 
     // Unregister events related to this inventory
-    InventoryClickEvent.getHandlerList().unregister(this);
-    InventoryCloseEvent.getHandlerList().unregister(this);
-
+    HandlerList.unregisterAll(this);
     // Clear the inventory itself
     inventory.clear();
 
-    // Remove the inventory from the static map
     DealerInventory.inventories.remove(dealerId);
 
     // Mark this inventory as deleted
@@ -1320,7 +1354,7 @@ public void delete() {
             if (event.getInventory().getHolder() != this) return;
         
             Player player = (Player) event.getPlayer();
-            UUID playerId = player.getUniqueId();
+
         
             if (!gameActive) {
                 handleUndoAllBets(player);
