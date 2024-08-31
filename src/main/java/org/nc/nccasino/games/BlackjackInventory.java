@@ -1287,10 +1287,14 @@ private void dealCardToPlayer(int slot, Card card, UUID playerId) {
 private int getCardValueStackSize(Card card) {
     switch (card.getRank()) {
         case ACE:
-        case JACK:
-        case QUEEN:
-        case KING:
             return 1;
+        case JACK:
+        return 10;
+        case QUEEN:
+        return 10;
+        case KING:
+        return 10;
+           
         default:
             return card.getRank().ordinal() + 2; // +2 because ordinal starts from 0, and 2 is the lowest card rank
     }
