@@ -56,6 +56,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private int wheelOffset = 0;
     private int ballPosition = 8; // Start at top-right quadrant
     private int currentQuadrant = 1; // 1=Top-Right, 2=Top-Left, 3=Bottom-Left, 4=Bottom-Right
+    private int ballFrameCounter=0;
 
     // Quadrant-specific slot mappings for main and extra slots
     private final Map<Integer, int[]> extraSlotsMapTopRight = new HashMap<>();
@@ -415,57 +416,116 @@ public class RouletteInventory extends DealerInventory implements Listener {
             startSpinAnimation(activePlayers);
         }
     }
-
+    
+    
     private void startSpinAnimation(List<Player> activePlayers) {
         frameCounter = 0;
-
-        final int fastSpinDuration = 60; 
-        final int gradualSlowDuration = 180;
-        final int extendedSlowSpins = 80;
-        final long fastSpeed = 1L;
-        final long slowSpeed = 15L;
-        
-        spinTaskId = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+    
+        // Initialize the decorative slots for the wheel
+        initializeDecorativeSlots();
+    
+        final int totalSpinFrames = 300; // Total frames to spin for the wheel
+        final long initialWheelSpeed = 1L; // Start the wheel with a very fast speed (1 tick per update)
+        final long maxWheelSlowSpeed = 15L; // Slowest speed for the wheel (30 ticks per frame)
+        final int fastSpinPhaseFrames = 100; // Number of frames for the fast spin phase
+        long[] currentWheelDelay = {initialWheelSpeed}; // Mutable delay for the wheel
+    
+        Runnable spinTask = new Runnable() {
             @Override
             public void run() {
-                updateWheel(frameCounter);
-                frameCounter++;
-        
-                if (frameCounter == 60) {
-                    startBallMovement();
-                }
-        
-                if (frameCounter < fastSpinDuration) {
-                } else if (frameCounter < fastSpinDuration + gradualSlowDuration) {
-                    long newDelay;
-                    
-                    if (frameCounter < fastSpinDuration + gradualSlowDuration * 0.3) {
-                        newDelay = 2L;
+                if (frameCounter < totalSpinFrames) {
+                    // Update wheel position based on frame count
+                    updateWheel(frameCounter);
+    
+                    // Fast spin phase: maintain 1 tick delay for the first 100 frames
+                    if (frameCounter < fastSpinPhaseFrames) {
+                        currentWheelDelay[0] = 1L;
                     } else {
-                        newDelay = (long) Math.min(slowSpeed, 2L + (frameCounter - fastSpinDuration - gradualSlowDuration * 0.3) / 25);
+                        // Slow spin phase: gradually increase the delay up to maxWheelSlowSpeed
+                        int framesSinceSlowPhaseStart = frameCounter - fastSpinPhaseFrames;
+                        double slowPhaseProgress = (double) framesSinceSlowPhaseStart / (totalSpinFrames - fastSpinPhaseFrames);
+    
+                        // Gradually increase delay from 1L to 30L
+                        currentWheelDelay[0] = (long) (1L + slowPhaseProgress * (maxWheelSlowSpeed - 1L));
                     }
-
-                    Bukkit.getScheduler().cancelTask(spinTaskId);
-                    spinTaskId = Bukkit.getScheduler().runTaskTimer(plugin, this, newDelay, newDelay).getTaskId();
-                } else if (frameCounter < fastSpinDuration + gradualSlowDuration + extendedSlowSpins) {
+    
+                    System.out.println("Current delay: " + currentWheelDelay[0]);
+    
+                    // Schedule the next spin with the updated delay
+                    Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, this, currentWheelDelay[0]);
+    
+                    frameCounter++;
                 } else {
-                    Bukkit.getScheduler().cancelTask(spinTaskId);
+                    System.out.println("Spin ended");
                 }
             }
-        }, 0L, fastSpeed).getTaskId();
+        };
+    
+        // Start the first task immediately
+        Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, spinTask, 0L);
+    
+        // Start ball movement shortly after the wheel starts spinning
+        Bukkit.getScheduler().runTaskLater(plugin, this::startBallMovement, 20L); // Delay by 20 ticks to match the wheel's fast spin phase
     }
+    
+    
+    
+    
+    
+    
+    
+    private void startBallMovement() {
+        ballPosition = 8; // Start at the initial ball position
+        currentQuadrant = 1; // Start in the first quadrant
+    
+        final int totalBallFrames = 400; // Total frames to move the ball
+        final long initialBallSpeed = 5L; // Start the ball with a moderate speed
+        final long maxBallSlowSpeed = 40L; // Slowest speed for the ball (40 ticks per frame)
+        long[] currentBallDelay = {initialBallSpeed}; // Mutable delay for the ball
+        int[] ballFrameCounter = {0}; // Use an array to allow modification inside the anonymous class
+    
+        // Move the ball independently from the wheel
+        ballTaskId = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+            @Override
+            public void run() {
+                updateBallPosition(); // Move the ball for each frame
+                ballFrameCounter[0]++;
+    
+                // Gradually increase the delay for the ball
+                if (currentBallDelay[0] < maxBallSlowSpeed) {
+                    currentBallDelay[0] = Math.min(maxBallSlowSpeed, currentBallDelay[0] + 2L); // Slower increase than the wheel
+                }
+    
+                // Stop the ball when it reaches the total number of frames
+                if (ballFrameCounter[0] >= totalBallFrames) {
+                    Bukkit.getScheduler().cancelTask(ballTaskId);
+                }
+            }
+        }, 0L, currentBallDelay[0]).getTaskId(); // Start with the initial ball delay
+    }
+    
+    
+    
 
+    
+    
     private void updateWheel(int frame) {
-        final int currentOffset = (wheelOffset - frame + wheelLayout.size()) % wheelLayout.size();
-        
+        // Calculate the current global offset
+        int currentOffset = (wheelOffset + frame) % wheelLayout.size();
+    
+        // Update all quadrants to reflect the global wheel position
+        updateQuadrantDisplay(currentOffset);
+    }
+    
+    private void updateQuadrantDisplay(int globalOffset) {
         Map<Integer, int[]> currentExtraSlotsMap = getCurrentExtraSlotsMap();
     
         for (Map.Entry<Integer, int[]> entry : currentExtraSlotsMap.entrySet()) {
             int mainSlot = entry.getKey();
             int[] extras = entry.getValue();
     
-            // Ensure each mainSlot has a unique number
-            int wheelPosition = (currentOffset + getMainSlotIndex(mainSlot) + wheelLayout.size()) % wheelLayout.size();
+            // Calculate the wheel position based on the global offset
+            int wheelPosition = (globalOffset + getMainSlotIndex(mainSlot)) % wheelLayout.size();
             int number = wheelLayout.get(wheelPosition);
     
             // Assign the main slot and extra slots
@@ -481,86 +541,189 @@ public class RouletteInventory extends DealerInventory implements Listener {
     }
     
 
-    private void startBallMovement() {
-        ballPosition = 8;
-        currentQuadrant = 1;
-        
-        ballTaskId = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
-            @Override
-            public void run() {
-                updateBallPosition();
-                
-                if (isQuadrantBoundary(ballPosition)) {
-                    switchQuadrant();
-                }
-            }
-        }, 20L, 5L).getTaskId();
+
+    
+
+
+private void switchQuadrant() {
+    // Cycle between quadrants: 1 -> 2 -> 3 -> 4 (top-right -> top-left -> bottom-left -> bottom-right)
+    currentQuadrant = (currentQuadrant % 4) + 1;
+
+    initializeDecorativeSlotsForQuadrant(currentQuadrant);
+
+    switch (currentQuadrant) {
+        case 1:
+            ballPosition = 8; // Top-right quadrant starts from slot 8
+            break;
+        case 2:
+            ballPosition = 17; // Top-left quadrant starts from slot 17
+            break;
+        case 3:
+            ballPosition = 45; // Bottom-left quadrant starts from slot 45
+            break;
+        case 4:
+            ballPosition = 45; // Bottom-right quadrant starts from slot 45
+            break;
+        default:
+            throw new IllegalArgumentException("Invalid quadrant index: " + currentQuadrant);
     }
-    private void switchQuadrant() {
-        currentQuadrant = (currentQuadrant % 4) + 1; // Cycle between 1 and 4 (quadrants)
-        
-        switch (currentQuadrant) {
-            case 1:
-                openTopRightQuadrant();
-                break;
-            case 2:
-                openTopLeftQuadrant();
-                break;
-            case 3:
-                openBottomLeftQuadrant();
-                break;
-            case 4:
-                openBottomRightQuadrant();
-                break;
-            default:
-                throw new IllegalStateException("Invalid quadrant: " + currentQuadrant);
-        }
+}
+
+
+private void initializeDecorativeSlotsForQuadrant(int quadrant) {
+    switch (quadrant) {
+        case 1:
+            // Quadrant 1: Brown slots (0-17, 26), Green slots (36-42, 45-52)
+            fillDecorativeSlots(new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 26}, Material.BROWN_STAINED_GLASS_PANE);
+            fillDecorativeSlots(new int[]{36, 37, 38, 39, 40, 41, 42, 45, 46, 47, 48, 49, 50, 51, 52}, Material.GREEN_STAINED_GLASS_PANE);
+            break;
+        case 2:
+            // Quadrant 2: Brown slots (0-18), Green slots (38-44, 46-53)
+            fillDecorativeSlots(new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18}, Material.BROWN_STAINED_GLASS_PANE);
+            fillDecorativeSlots(new int[]{38, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53}, Material.GREEN_STAINED_GLASS_PANE);
+            break;
+        case 3:
+            // Quadrant 3: Brown slots (27, 36-53), Green slots (1-8, 11-17)
+            fillDecorativeSlots(new int[]{27, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53}, Material.BROWN_STAINED_GLASS_PANE);
+            fillDecorativeSlots(new int[]{1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17}, Material.GREEN_STAINED_GLASS_PANE);
+            break;
+        case 4:
+            // Quadrant 4: Brown slots (35-53), Green slots (0-7, 9-15)
+            fillDecorativeSlots(new int[]{35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53}, Material.BROWN_STAINED_GLASS_PANE);
+            fillDecorativeSlots(new int[]{0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15}, Material.GREEN_STAINED_GLASS_PANE);
+            break;
+        default:
+            throw new IllegalArgumentException("Invalid quadrant index: " + quadrant);
     }
-    
-    
-    private void updateBallPosition() {
-        if (currentQuadrant == 1) {
-            if (ballPosition > 0) {
-                ballPosition--;
-            } else {
-                switchQuadrant();
-            }
-        } else if (currentQuadrant == 2) {
-            if (ballPosition > 9) {
-                ballPosition--;
-            } else {
-                switchQuadrant();
-            }
-        } else if (currentQuadrant == 3) {
-            if (ballPosition < 44) {
-                ballPosition++;
-            } else {
-                switchQuadrant();
-            }
-        } else if (currentQuadrant == 4) {
-            if (ballPosition < 53) {
-                ballPosition++;
-            } else {
-                ballPosition = 8;
-                switchQuadrant();
-            }
-        }
-    
-        updateInventoryWithBall();
+}
+
+
+private void updateBallPosition() {
+    // Switch to the new quadrant if the ball reaches the boundary
+    if (isQuadrantBoundary(ballPosition)) {
+        switchQuadrant(); // This will also refresh the decorations and numbers for the new quadrant
     }
 
-    private boolean isQuadrantBoundary(int ballPosition) {
-        if (currentQuadrant == 1 && ballPosition == 0) {
-            return true;
-        } else if (currentQuadrant == 2 && ballPosition == 9) {
-            return true;
-        } else if (currentQuadrant == 3 && ballPosition == 45) {
-            return true;
-        } else if (currentQuadrant == 4 && ballPosition == 53) {
-            return true;
-        }
-        return false;
+    switch (currentQuadrant) {
+        case 1: // Top-right quadrant
+            if (ballPosition > 0) {
+                ballPosition--;
+            }
+            break;
+        case 2: // Top-left quadrant
+            if (ballPosition > 9) {
+                ballPosition--;
+            }
+            break;
+        case 3: // Bottom-left quadrant
+            if (ballPosition < 53) {
+                ballPosition++;
+            }
+            break;
+        case 4: // Bottom-right quadrant
+            if (ballPosition < 53) {
+                ballPosition++;
+            }
+            break;
     }
+
+    updateInventoryWithBall(); // Move the ball and restore the previous decoration
+}
+
+
+private boolean isQuadrantBoundary(int ballPosition) {
+    switch (currentQuadrant) {
+        case 1: return ballPosition == 0; // Boundary for top-right quadrant
+        case 2: return ballPosition == 9; // Boundary for top-left quadrant
+        case 3: return ballPosition == 53; // Boundary for bottom-left quadrant
+        case 4: return ballPosition == 53; // Boundary for bottom-right quadrant
+        default: return false;
+    }
+}
+
+private void updateInventoryWithBall() {
+    // Clear previous ball position
+    for (int i = 0; i < 54; i++) {
+        ItemStack item = inventory.getItem(i);
+        if (item != null && item.getType() == Material.HEART_OF_THE_SEA) {
+            // Restore the original decorative slot (green/brown stained glass)
+            restoreDecorativeSlot(i);
+        }
+    }
+
+    // Place ball in new position
+    ItemStack ball = new ItemStack(Material.HEART_OF_THE_SEA);
+    ItemMeta meta = ball.getItemMeta();
+    meta.setDisplayName("Ball");
+    ball.setItemMeta(meta);
+    inventory.setItem(ballPosition, ball);
+}
+
+// Restore the appropriate decorative slot (green or brown glass pane)
+private void restoreDecorativeSlot(int slot) {
+    Material material = getDecorativeMaterialForSlot(slot);
+    ItemStack item = new ItemStack(material);
+    ItemMeta meta = item.getItemMeta();
+    meta.setDisplayName(material == Material.BROWN_STAINED_GLASS_PANE ? "Outer Rim" : "Inside Rim");
+    item.setItemMeta(meta);
+    inventory.setItem(slot, item);
+}
+
+private void initializeDecorativeSlots() {
+ 
+        // Regular coloring for Quadrant 1 (subsequent updates)
+        fillDecorativeSlots(new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 26}, Material.BROWN_STAINED_GLASS_PANE);
+        fillDecorativeSlots(new int[]{36, 37, 38, 39, 40, 41, 42, 45, 46, 47, 48, 49, 50, 51, 52}, Material.GREEN_STAINED_GLASS_PANE);
+
+    
+}
+
+
+
+
+private void resetSlotColors() {
+    fillDecorativeSlots(new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 26}, Material.BROWN_STAINED_GLASS_PANE);
+    fillDecorativeSlots(new int[]{36, 37, 38, 39, 40, 41, 42, 45, 46, 47, 48, 49, 50, 51, 52}, Material.GREEN_STAINED_GLASS_PANE);
+
+    // Log slot information
+   System.out.println("First frame slot reset done.");
+}
+
+
+
+
+
+
+private void fillDecorativeSlots(int[] slots, Material material) {
+    for (int slot : slots) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName(material == Material.BROWN_STAINED_GLASS_PANE ? "Outer Rim" : "Inside Rim");
+        item.setItemMeta(meta);
+        inventory.setItem(slot, item);
+    }
+}
+
+private Material getDecorativeMaterialForSlot(int slot) {
+    // Adjusted logic for bottom-left and bottom-right quadrants to ensure the correct color trail
+    if (isInRange(slot, new int[]{0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15}) || 
+        isInRange(slot, new int[]{35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53})) {
+        return Material.BROWN_STAINED_GLASS_PANE;
+    } else if (isInRange(slot, new int[]{36, 37, 38, 39, 40, 41, 42, 45, 46, 47, 48, 49, 50, 51, 52})) {
+        return Material.GREEN_STAINED_GLASS_PANE;
+    }
+
+    // Default to brown if no match
+    return Material.BROWN_STAINED_GLASS_PANE;
+}
+
+private boolean isInRange(int slot, int[] validSlots) {
+    for (int validSlot : validSlots) {
+        if (slot == validSlot) return true;
+    }
+    return false;
+}
+
 
     private Map<Integer, int[]> getCurrentExtraSlotsMap() {
         switch (currentQuadrant) {
@@ -643,30 +806,19 @@ public class RouletteInventory extends DealerInventory implements Listener {
     
     private Map<Integer, int[]> getExtraSlotsMapForQuadrant(int quadrantIndex) {
         switch (quadrantIndex) {
-            case 0: return extraSlotsMapTopRight;
-            case 1: return extraSlotsMapTopLeft;
-            case 2: return extraSlotsMapBottomLeft;
-            case 3: return extraSlotsMapBottomRight;
-            default: throw new IllegalArgumentException("Invalid quadrant index");
+            case 1: return extraSlotsMapTopRight;
+            case 2: return extraSlotsMapTopLeft;
+            case 3: return extraSlotsMapBottomLeft;
+            case 4: return extraSlotsMapBottomRight;
+            default:
+                throw new IllegalArgumentException("Invalid quadrant index: " + quadrantIndex);
         }
     }
+    
     
     
 
-    private void updateInventoryWithBall() {
-        for (int i = 0; i < 54; i++) {
-            ItemStack item = inventory.getItem(i);
-            if (item != null && item.getType() == Material.SNOWBALL) {
-                inventory.setItem(i, null);
-            }
-        }
-    
-        ItemStack ball = new ItemStack(Material.SNOWBALL);
-        ItemMeta meta = ball.getItemMeta();
-        meta.setDisplayName("Ball");
-        ball.setItemMeta(meta);
-        inventory.setItem(ballPosition, ball);
-    }
+
 
     private int getMainSlotIndex(int mainSlot) {
         return wheelLayout.indexOf(getNumberForSlot(mainSlot, currentQuadrant));
@@ -692,7 +844,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
 
     private Material getMaterialForNumber(int number) {
         if (number == 0) {
-            return Material.GREEN_STAINED_GLASS_PANE;
+            return Material.LIME_STAINED_GLASS_PANE;
         } else if (isRed(number)) {
             return Material.RED_STAINED_GLASS_PANE;
         } else {
