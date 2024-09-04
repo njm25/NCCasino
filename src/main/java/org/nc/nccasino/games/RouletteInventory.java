@@ -43,7 +43,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private final Map<Player, BettingTable> Tables;
     private Map<Player, Integer> activeAnimations;
     private static final NamespacedKey BETS_KEY = new NamespacedKey(Nccasino.getPlugin(Nccasino.class), "bets");
-
+    private int frameCounter;
     private int bettingCountdownTaskId = -1;
     private boolean betsClosed = false;
     private int bettingTimeSeconds = 10;
@@ -51,12 +51,17 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private Boolean closeFlag = false;
     private Boolean firstopen = true;
     private Boolean firstFin = true;
-
-    // The offset to track wheel rotation
+    private int spinTaskId;
+    private int ballTaskId;
     private int wheelOffset = 0;
+    private int ballPosition = 8; // Start at top-right quadrant
+    private int currentQuadrant = 1; // 1=Top-Right, 2=Top-Left, 3=Bottom-Left, 4=Bottom-Right
 
-    // Mapping of main slots to their extra slots
-    private final Map<Integer, int[]> extraSlotsMap = new HashMap<>();
+    // Quadrant-specific slot mappings for main and extra slots
+    private final Map<Integer, int[]> extraSlotsMapTopRight = new HashMap<>();
+    private final Map<Integer, int[]> extraSlotsMapTopLeft = new HashMap<>();
+    private final Map<Integer, int[]> extraSlotsMapBottomLeft = new HashMap<>();
+    private final Map<Integer, int[]> extraSlotsMapBottomRight = new HashMap<>();
 
     public RouletteInventory(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, 54, "Roulette Wheel");
@@ -67,28 +72,55 @@ public class RouletteInventory extends DealerInventory implements Listener {
         this.activeAnimations = new HashMap<>();
         this.internalName = internalName;
 
-        // Initialize extra slots for top-right quadrant
-        initializeExtraSlotsForTopRight();
-
+        initializeExtraSlots();
         registerListener();
         plugin.addInventory(dealerId, this);
     }
 
-    private void initializeExtraSlotsForTopRight() {
-        // Define main slots for the top-right quadrant
-        int[] mainSlots = {27, 28, 29, 30, 31, 32, 33, 43, 53};
-        // Define corresponding extra slots for each main slot
-        // Adjust these based on your inventory layout
-        extraSlotsMap.put(27, new int[]{18});
-        extraSlotsMap.put(28, new int[]{19});
-        extraSlotsMap.put(29, new int[]{20});
-        extraSlotsMap.put(30, new int[]{21});
-        extraSlotsMap.put(31, new int[]{22});
-        extraSlotsMap.put(32, new int[]{23});
-        extraSlotsMap.put(33, new int[]{24, 25});
-        extraSlotsMap.put(43, new int[]{34, 35});
-        extraSlotsMap.put(53, new int[]{44});
-        // Add more if necessary
+    private void initializeExtraSlots() {
+        // Top-right quadrant main and extra slots
+        extraSlotsMapTopRight.put(27, new int[]{18});
+        extraSlotsMapTopRight.put(28, new int[]{19});
+        extraSlotsMapTopRight.put(29, new int[]{20});
+        extraSlotsMapTopRight.put(30, new int[]{21});
+        extraSlotsMapTopRight.put(31, new int[]{22});
+        extraSlotsMapTopRight.put(32, new int[]{23});
+        extraSlotsMapTopRight.put(33, new int[]{24, 25});
+        extraSlotsMapTopRight.put(43, new int[]{34, 35});
+        extraSlotsMapTopRight.put(53, new int[]{44});
+
+        // Top-left quadrant main and extra slots
+        extraSlotsMapTopLeft.put(45, new int[]{36});
+        extraSlotsMapTopLeft.put(37, new int[]{27, 28});
+        extraSlotsMapTopLeft.put(29, new int[]{19, 20});
+        extraSlotsMapTopLeft.put(30, new int[]{21});
+        extraSlotsMapTopLeft.put(31, new int[]{22});
+        extraSlotsMapTopLeft.put(32, new int[]{23});
+        extraSlotsMapTopLeft.put(33, new int[]{24});
+        extraSlotsMapTopLeft.put(34, new int[]{25});
+        extraSlotsMapTopLeft.put(35, new int[]{26});
+
+        // Bottom-left quadrant main and extra slots
+        extraSlotsMapBottomLeft.put(0, new int[]{9});
+        extraSlotsMapBottomLeft.put(10, new int[]{18, 19});
+        extraSlotsMapBottomLeft.put(20, new int[]{28, 29});
+        extraSlotsMapBottomLeft.put(21, new int[]{30});
+        extraSlotsMapBottomLeft.put(22, new int[]{31});
+        extraSlotsMapBottomLeft.put(23, new int[]{32});
+        extraSlotsMapBottomLeft.put(24, new int[]{33});
+        extraSlotsMapBottomLeft.put(25, new int[]{34});
+        extraSlotsMapBottomLeft.put(26, new int[]{35});
+
+        // Bottom-right quadrant main and extra slots
+        extraSlotsMapBottomRight.put(18, new int[]{27});
+        extraSlotsMapBottomRight.put(19, new int[]{28});
+        extraSlotsMapBottomRight.put(20, new int[]{29});
+        extraSlotsMapBottomRight.put(21, new int[]{30});
+        extraSlotsMapBottomRight.put(22, new int[]{31});
+        extraSlotsMapBottomRight.put(23, new int[]{32});
+        extraSlotsMapBottomRight.put(24, new int[]{33, 34});
+        extraSlotsMapBottomRight.put(16, new int[]{25, 26});
+        extraSlotsMapBottomRight.put(8, new int[]{17});
     }
 
     private void registerListener() {
@@ -385,46 +417,63 @@ public class RouletteInventory extends DealerInventory implements Listener {
     }
 
     private void startSpinAnimation(List<Player> activePlayers) {
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            int spinRevolutions = 5 + new Random().nextInt(5) - 2; // Between 3 to 7 revolutions
-            int totalPositions = spinRevolutions * wheelLayout.size();
-            long delayBetweenFrames = 2L; // Ticks between each frame
+        frameCounter = 0;
 
-            for (int i = 0; i < totalPositions; i++) {
-                final int currentOffset = (wheelOffset - i + wheelLayout.size()) % wheelLayout.size();
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    updateWheel(currentOffset);
-                }, (i * delayBetweenFrames) * 2);
+        final int fastSpinDuration = 60; 
+        final int gradualSlowDuration = 180;
+        final int extendedSlowSpins = 80;
+        final long fastSpeed = 1L;
+        final long slowSpeed = 15L;
+        
+        spinTaskId = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+            @Override
+            public void run() {
+                updateWheel(frameCounter);
+                frameCounter++;
+        
+                if (frameCounter == 60) {
+                    startBallMovement();
+                }
+        
+                if (frameCounter < fastSpinDuration) {
+                } else if (frameCounter < fastSpinDuration + gradualSlowDuration) {
+                    long newDelay;
+                    
+                    if (frameCounter < fastSpinDuration + gradualSlowDuration * 0.3) {
+                        newDelay = 2L;
+                    } else {
+                        newDelay = (long) Math.min(slowSpeed, 2L + (frameCounter - fastSpinDuration - gradualSlowDuration * 0.3) / 25);
+                    }
+
+                    Bukkit.getScheduler().cancelTask(spinTaskId);
+                    spinTaskId = Bukkit.getScheduler().runTaskTimer(plugin, this, newDelay, newDelay).getTaskId();
+                } else if (frameCounter < fastSpinDuration + gradualSlowDuration + extendedSlowSpins) {
+                } else {
+                    Bukkit.getScheduler().cancelTask(spinTaskId);
+                }
             }
-            wheelOffset = (wheelOffset - totalPositions + wheelLayout.size()) % wheelLayout.size();
-        }, 20L); // Start 1 second after bets are closed
+        }, 0L, fastSpeed).getTaskId();
     }
 
-    /**
-     * Updates the wheel display based on the current offset.
-     * This method updates both main slots and their corresponding extra slots.
-     *
-     * @param offset The current offset for the wheel rotation.
-     */
-    private void updateWheel(int offset) {
-        for (Map.Entry<Integer, int[]> entry : extraSlotsMap.entrySet()) {
+    private void updateWheel(int frame) {
+        final int currentOffset = (wheelOffset - frame + wheelLayout.size()) % wheelLayout.size();
+        
+        Map<Integer, int[]> currentExtraSlotsMap = getCurrentExtraSlotsMap();
+    
+        for (Map.Entry<Integer, int[]> entry : currentExtraSlotsMap.entrySet()) {
             int mainSlot = entry.getKey();
             int[] extras = entry.getValue();
     
-            // Calculate the wheel position and number for this slot
-            int wheelPosition = (offset + getMainSlotIndex(mainSlot) + wheelLayout.size()) % wheelLayout.size();
+            // Ensure each mainSlot has a unique number
+            int wheelPosition = (currentOffset + getMainSlotIndex(mainSlot) + wheelLayout.size()) % wheelLayout.size();
             int number = wheelLayout.get(wheelPosition);
     
-            // Create the ItemStack with stack size based on the number for the main slot
+            // Assign the main slot and extra slots
             ItemStack mainItem = createCustomItem(getMaterialForNumber(number), "Number: " + number, (number == 0) ? 1 : number);
-    
-            // Update the main slot
             inventory.setItem(mainSlot, mainItem);
     
-            // Create a separate ItemStack for extra slots with stack size of 1
+            // Set unique numbers for the extra slots
             ItemStack extraItem = createCustomItem(getMaterialForNumber(number), "Number: " + number, 1);
-    
-            // Update the extra slots
             for (int extraSlot : extras) {
                 inventory.setItem(extraSlot, extraItem);
             }
@@ -432,38 +481,215 @@ public class RouletteInventory extends DealerInventory implements Listener {
     }
     
 
-    /**
-     * Retrieves the index of the main slot in the wheel layout.
-     *
-     * @param mainSlot The main slot number.
-     * @return The index in the wheel layout list.
-     */
+    private void startBallMovement() {
+        ballPosition = 8;
+        currentQuadrant = 1;
+        
+        ballTaskId = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+            @Override
+            public void run() {
+                updateBallPosition();
+                
+                if (isQuadrantBoundary(ballPosition)) {
+                    switchQuadrant();
+                }
+            }
+        }, 20L, 5L).getTaskId();
+    }
+    private void switchQuadrant() {
+        currentQuadrant = (currentQuadrant % 4) + 1; // Cycle between 1 and 4 (quadrants)
+        
+        switch (currentQuadrant) {
+            case 1:
+                openTopRightQuadrant();
+                break;
+            case 2:
+                openTopLeftQuadrant();
+                break;
+            case 3:
+                openBottomLeftQuadrant();
+                break;
+            case 4:
+                openBottomRightQuadrant();
+                break;
+            default:
+                throw new IllegalStateException("Invalid quadrant: " + currentQuadrant);
+        }
+    }
+    
+    
+    private void updateBallPosition() {
+        if (currentQuadrant == 1) {
+            if (ballPosition > 0) {
+                ballPosition--;
+            } else {
+                switchQuadrant();
+            }
+        } else if (currentQuadrant == 2) {
+            if (ballPosition > 9) {
+                ballPosition--;
+            } else {
+                switchQuadrant();
+            }
+        } else if (currentQuadrant == 3) {
+            if (ballPosition < 44) {
+                ballPosition++;
+            } else {
+                switchQuadrant();
+            }
+        } else if (currentQuadrant == 4) {
+            if (ballPosition < 53) {
+                ballPosition++;
+            } else {
+                ballPosition = 8;
+                switchQuadrant();
+            }
+        }
+    
+        updateInventoryWithBall();
+    }
+
+    private boolean isQuadrantBoundary(int ballPosition) {
+        if (currentQuadrant == 1 && ballPosition == 0) {
+            return true;
+        } else if (currentQuadrant == 2 && ballPosition == 9) {
+            return true;
+        } else if (currentQuadrant == 3 && ballPosition == 45) {
+            return true;
+        } else if (currentQuadrant == 4 && ballPosition == 53) {
+            return true;
+        }
+        return false;
+    }
+
+    private Map<Integer, int[]> getCurrentExtraSlotsMap() {
+        switch (currentQuadrant) {
+            case 1: return extraSlotsMapTopRight;
+            case 2: return extraSlotsMapTopLeft;
+            case 3: return extraSlotsMapBottomLeft;
+            case 4: return extraSlotsMapBottomRight;
+            default: return extraSlotsMapTopRight;
+        }
+    }
+
+    private void openTopRightQuadrant() {
+        displayQuadrant(0);
+    }
+    
+    private void openTopLeftQuadrant() {
+        displayQuadrant(1);
+    }
+    
+    private void openBottomLeftQuadrant() {
+        displayQuadrant(2);
+    }
+    
+    private void openBottomRightQuadrant() {
+        displayQuadrant(3);
+    }
+    
+    private void displayQuadrant(int quadrantIndex) {
+        int[] quadrantSlots;
+        int startPosition;
+    
+        // Define slot ranges for each quadrant
+        switch (quadrantIndex) {
+            case 0: // Top-Right Quadrant
+                quadrantSlots = new int[]{8, 7, 6, 5, 4, 3, 2, 1, 0}; 
+                startPosition = (wheelOffset + 27) % 37; // Start from the 27th global position
+                break;
+            case 1: // Top-Left Quadrant
+                quadrantSlots = new int[]{17, 16, 15, 14, 13, 12, 11, 10, 9};
+                startPosition = (wheelOffset + 18) % 37; // Start from the 18th global position
+                break;
+            case 2: // Bottom-Left Quadrant
+                quadrantSlots = new int[]{26, 25, 24, 23, 22, 21, 20, 19, 18};
+                startPosition = (wheelOffset + 9) % 37; // Start from the 9th global position
+                break;
+            case 3: // Bottom-Right Quadrant
+                quadrantSlots = new int[]{35, 34, 33, 32, 31, 30, 29, 28, 27};
+                startPosition = wheelOffset; // Start from the 0th global position
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid quadrant index");
+        }
+    
+        // Loop through each slot in the quadrant and assign a unique number
+        for (int i = 0; i < quadrantSlots.length; i++) {
+            int wheelPosition = (startPosition + i) % 37; // Ensure the position wraps around if needed
+            int number = wheelLayout.get(wheelPosition); // Get the number from the global wheel layout
+    
+            // Create the item with the correct number and place it in the quadrant slot
+            ItemStack item = createCustomItem(getMaterialForNumber(number), "Number: " + number, (number == 0) ? 1 : number);
+            inventory.setItem(quadrantSlots[i], item);
+    
+            // Handle the extra slots associated with the main number slot
+            handleExtraSlots(quadrantSlots[i], number, quadrantIndex);
+        }
+    }
+    
+    private void handleExtraSlots(int mainSlot, int number, int quadrantIndex) {
+        Map<Integer, int[]> currentExtraSlotsMap = getExtraSlotsMapForQuadrant(quadrantIndex);
+        
+        if (currentExtraSlotsMap.containsKey(mainSlot)) {
+            int[] extraSlots = currentExtraSlotsMap.get(mainSlot);
+            ItemStack extraItem = createCustomItem(getMaterialForNumber(number), "Number: " + number, 1);
+            
+            for (int extraSlot : extraSlots) {
+                inventory.setItem(extraSlot, extraItem);
+            }
+        }
+    }
+    
+    private Map<Integer, int[]> getExtraSlotsMapForQuadrant(int quadrantIndex) {
+        switch (quadrantIndex) {
+            case 0: return extraSlotsMapTopRight;
+            case 1: return extraSlotsMapTopLeft;
+            case 2: return extraSlotsMapBottomLeft;
+            case 3: return extraSlotsMapBottomRight;
+            default: throw new IllegalArgumentException("Invalid quadrant index");
+        }
+    }
+    
+    
+
+    private void updateInventoryWithBall() {
+        for (int i = 0; i < 54; i++) {
+            ItemStack item = inventory.getItem(i);
+            if (item != null && item.getType() == Material.SNOWBALL) {
+                inventory.setItem(i, null);
+            }
+        }
+    
+        ItemStack ball = new ItemStack(Material.SNOWBALL);
+        ItemMeta meta = ball.getItemMeta();
+        meta.setDisplayName("Ball");
+        ball.setItemMeta(meta);
+        inventory.setItem(ballPosition, ball);
+    }
+
     private int getMainSlotIndex(int mainSlot) {
-        // Assuming main slots are sequential in the wheel layout.
-        // Modify this method if the mapping is different.
-        return wheelLayout.indexOf(getNumberForSlot(mainSlot));
+        return wheelLayout.indexOf(getNumberForSlot(mainSlot, currentQuadrant));
     }
 
-    /**
-     * Maps a main slot to its corresponding number in the wheel layout.
-     *
-     * @param mainSlot The main slot number.
-     * @return The number at that slot.
-     */
-    private int getNumberForSlot(int mainSlot) {
-        // This mapping depends on how your wheel is represented.
-        // Adjust this method to correctly map slot numbers to wheelLayout indices.
-        int slotIndex = Arrays.asList(27, 28, 29, 30, 31, 32, 33, 43, 53).indexOf(mainSlot);
-        if (slotIndex == -1) return 0; // Default or handle error
-        return wheelLayout.get((wheelOffset + slotIndex) % wheelLayout.size());
+    private int getNumberForSlot(int mainSlot, int quadrant) {
+        // Get the extra slot mapping for the current quadrant
+        Map<Integer, int[]> currentExtraSlotsMap = getExtraSlotsMapForQuadrant(quadrant);
+    
+        if (currentExtraSlotsMap.containsKey(mainSlot)) {
+            // Calculate the wheel position based on the main slot and current quadrant
+            int mainSlotIndex = currentExtraSlotsMap.keySet().stream().toList().indexOf(mainSlot);
+            
+            if (mainSlotIndex != -1) {
+                // Calculate the offset for the wheel layout
+                int wheelPosition = (wheelOffset + mainSlotIndex) % wheelLayout.size();
+                return wheelLayout.get(wheelPosition);
+            }
+        }
+        return 0; // Default fallback in case the slot doesn't match
     }
+    
 
-    /**
-     * Determines the material based on the number's color.
-     *
-     * @param number The roulette number.
-     * @return The corresponding Material.
-     */
     private Material getMaterialForNumber(int number) {
         if (number == 0) {
             return Material.GREEN_STAINED_GLASS_PANE;
@@ -474,12 +700,6 @@ public class RouletteInventory extends DealerInventory implements Listener {
         }
     }
 
-    /**
-     * Checks if a number is red based on standard roulette colors.
-     *
-     * @param number The roulette number.
-     * @return True if red, else false.
-     */
     private boolean isRed(int number) {
         int[] redNumbers = {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36};
         for (int n : redNumbers) {
@@ -490,9 +710,6 @@ public class RouletteInventory extends DealerInventory implements Listener {
         return false;
     }
 
-    /**
-     * Resets the game state for the next spin.
-     */
     private void resetGameForNextSpin() {
         betsClosed = false;
         for (BettingTable bettingTable : Tables.values()) {
@@ -500,13 +717,6 @@ public class RouletteInventory extends DealerInventory implements Listener {
         }
     }
 
-    /**
-     * Updates the player's bets in the internal map.
-     *
-     * @param playerId The player's UUID.
-     * @param bets     The stack of bets.
-     * @param player   The Player instance.
-     */
     public void updatePlayerBets(UUID playerId, Stack<Pair<String, Integer>> bets, Player player) {
         if (bets == null) {
             bets = new Stack<>();
