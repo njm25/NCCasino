@@ -207,57 +207,185 @@ public class RouletteInventory extends DealerInventory implements Listener {
         startBettingTimer();
     }
 
-    private void handleGameMenuClick(int slot, Player player) {
-        if (slot == 52) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                Villager dealer = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                        .filter(entity -> entity instanceof Villager)
-                        .map(entity -> (Villager) entity)
-                        .filter(v -> DealerVillager.isDealerVillager(v) && DealerVillager.getUniqueId(v).equals(this.dealerId))
-                        .findFirst().orElse(null);
-                if (dealer != null) {
-                    Stack<Pair<String, Integer>> bets = getPlayerBets(player.getUniqueId());
-                    String internalName = DealerVillager.getInternalName(dealer);
-                    BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets, internalName, this);
-                    Tables.put(player, bettingTable);
-                    player.openInventory(bettingTable.getInventory());
-                } else {
-                    player.sendMessage("Error: Dealer not found. Unable to open betting table.");
-                }
-            }, 1L);
-        } else if (slot == 53) {
-            BettingTable bt = Tables.get(player);
-            if (bt != null) {
-                bt.clearAllBetsAndRefund(player);
-            }
-            player.closeInventory();
-            player.sendMessage("You have left the game.");
 
-            Tables.remove(player);
-            removeAllBets(player.getUniqueId());
-
-            if (Tables.isEmpty()) {
-                resetToStartState();
+private void handleGameMenuClick(int slot, Player player) {
+    switch (currentQuadrant) {
+        case 1: // Top-right quadrant (initial view)
+            switch (slot) {
+                case 46: // -1 Betting Timer
+                    adjustBettingTimer(-1,1);
+                    break;
+                case 47: // +1 Betting Timer
+                    adjustBettingTimer(1,1);
+                    break;
+                case 48: // Open Betting Table
+                    openBettingTable(player);
+                    break;
+                case 49: // View Betting Info
+                    showBettingInfo(player);
+                    break;
+                case 50: // Exit
+                    exitGame(player);
+                    break;
+                default:
+                    // Handle any other cases if needed
+                    break;
             }
-        } else if (slot == 50) {
-            if (bettingTimeSeconds > 5)
-                bettingTimeSeconds--;
-            plugin.getConfig().set("dealers." + internalName + ".timer", bettingTimeSeconds);
-            plugin.saveConfig();
-            updateTimerItems();
-        } else if (slot == 51) {
-            if (bettingTimeSeconds < 64) bettingTimeSeconds++;
-            plugin.getConfig().set("dealers." + internalName + ".timer", bettingTimeSeconds);
-            plugin.saveConfig();
-            updateTimerItems();
+            break;
+
+        case 2: // Top-left quadrant
+            switch (slot) {
+                case 49: // -1 Betting Timer
+                    adjustBettingTimer(-1,2);
+                    break;
+                case 50: // +1 Betting Timer
+                    adjustBettingTimer(1,2);
+                    break;
+                case 51: // Open Betting Table
+                    openBettingTable(player);
+                    break;
+                case 52: // View Betting Info
+                    showBettingInfo(player);
+                    break;
+                case 53: // Exit
+                    exitGame(player);
+                    break;
+                default:
+                    // Handle other slots
+                    break;
+            }
+            break;
+
+        case 3: // Bottom-left quadrant
+            switch (slot) {
+                case 4: // -1 Betting Timer
+                    adjustBettingTimer(-1,3);
+                    break;
+                case 5: // +1 Betting Timer
+                    adjustBettingTimer(1,3);
+                    break;
+                case 6: // Open Betting Table
+                    openBettingTable(player);
+                    break;
+                case 7: // View Betting Info
+                    showBettingInfo(player);
+                    break;
+                case 8: // Exit
+                    exitGame(player);
+                    break;
+                default:
+                    // Handle other slots
+                    break;
+            }
+            break;
+
+        case 4: // Bottom-right quadrant
+            switch (slot) {
+                case 0: // -1 Betting Timer
+                    adjustBettingTimer(-1,4);
+                    break;
+                case 1: // +1 Betting Timer
+                    adjustBettingTimer(1,4);
+                    break;
+                case 2: // Open Betting Table
+                    openBettingTable(player);
+                    break;
+                case 3: // View Betting Info
+                    showBettingInfo(player);
+                    break;
+                case 4: // Exit
+                    exitGame(player);
+                    break;
+                default:
+                    // Handle other slots
+                    break;
+            }
+            break;
+
+        default:
+            // Handle invalid quadrants if needed
+            break;
+    }
+}
+
+private void adjustBettingTimer(int adjustment,int quad) {
+    if ((bettingTimeSeconds > 5 || adjustment > 0) && (bettingTimeSeconds < 64 || adjustment < 0)) {
+        bettingTimeSeconds += adjustment;
+        plugin.getConfig().set("dealers." + internalName + ".timer", bettingTimeSeconds);
+        plugin.saveConfig();
+        updateTimerItems(quad,bettingTimeSeconds);
+    }
+}
+
+private void openBettingTable(Player player) {
+    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        Villager dealer = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
+            .filter(entity -> entity instanceof Villager)
+            .map(entity -> (Villager) entity)
+            .filter(v -> DealerVillager.isDealerVillager(v) && DealerVillager.getUniqueId(v).equals(this.dealerId))
+            .findFirst().orElse(null);
+        if (dealer != null) {
+            Stack<Pair<String, Integer>> bets = getPlayerBets(player.getUniqueId());
+            String internalName = DealerVillager.getInternalName(dealer);
+            BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets, internalName, this);
+            Tables.put(player, bettingTable);
+            player.openInventory(bettingTable.getInventory());
+        } else {
+            player.sendMessage("Error: Dealer not found. Unable to open betting table.");
         }
-    }
+    }, 1L);
+}
 
-    private void updateTimerItems() {
-        addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 50);
-        addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 51);
+private void exitGame(Player player) {
+    BettingTable bt = Tables.get(player);
+    if (bt != null) {
+        bt.clearAllBetsAndRefund(player);
     }
+    player.closeInventory();
+    player.sendMessage("You have left the game.");
+    Tables.remove(player);
+    removeAllBets(player.getUniqueId());
 
+    if (Tables.isEmpty()) {
+        resetToStartState();
+    }
+}
+
+private void showBettingInfo(Player player) {
+    // Logic to show current bets or other information to the player
+    player.sendMessage("Your current bets are...");
+}
+
+
+
+private void updateTimerItems(int quadrant, int time) {
+    switch (quadrant) {
+        case 1: // Top-right quadrant
+            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", time), 46);
+            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", time), 47);
+            break;
+
+        case 2: // Top-left quadrant
+            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", time), 50);
+            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", time), 51);
+            break;
+
+        case 3: // Bottom-left quadrant
+            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", time), 5);
+            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", time), 6);
+            break;
+
+        case 4: // Bottom-right quadrant
+            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", time), 1);
+            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", time), 2);
+            break;
+
+        default:
+            break;
+    }
+}
+
+   
     public void addBet(UUID playerId, String betType, int wager) {
         Bets.computeIfAbsent(playerId, k -> new Stack<>()).add(new Pair<>(betType, wager));
         updateAllLore(playerId);
@@ -336,39 +464,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
         bettingTimeSeconds = set;
     }
 
-    private void startBettingTimer() {
-        if (bettingCountdownTaskId != -1) {
-            Bukkit.getScheduler().cancelTask(bettingCountdownTaskId);
-        }
-
-        inventory.clear();
-
-        // Initialize menu items
-        addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 50);
-        addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 51);
-        addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 52);
-        addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 53);
-
-        betsClosed = false;
-        bettingCountdownTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
-            int countdown = bettingTimeSeconds;
-
-            @Override
-            public void run() {
-                if (countdown > 0) {
-                    for (BettingTable bettingTable : Tables.values()) {
-                        bettingTable.updateCountdown(countdown, betsClosed);
-                    }
-                    addItem(createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown + " SECONDS!", 1), 45);
-                    countdown--;
-                } else {
-                    handleBetClosure();
-                    Bukkit.getScheduler().cancelTask(bettingCountdownTaskId);
-                    bettingCountdownTaskId = -1;
-                }
-            }
-        }, 0L, 20L);
-    }
+    
 
     private boolean isActivePlayer(Player player) {
         InventoryView openInventoryView = player.getOpenInventory();
@@ -411,13 +507,16 @@ public class RouletteInventory extends DealerInventory implements Listener {
                     player.sendMessage("Bets Locked!");
                 }
             }
+            startBallMovement();
 
+            // Transition wheel to slower spin after bets close
             // Update to spinning ball and wheel
             startSpinAnimation(activePlayers);
         }
     }
     
-    
+
+
     private void startSpinAnimation(List<Player> activePlayers) {
         frameCounter = 0;
     
@@ -468,46 +567,177 @@ public class RouletteInventory extends DealerInventory implements Listener {
         // Start ball movement shortly after the wheel starts spinning
         Bukkit.getScheduler().runTaskLater(plugin, this::startBallMovement, 20L); // Delay by 20 ticks to match the wheel's fast spin phase
     }
+
+
+
+private void startBettingTimer() {
+    if (bettingCountdownTaskId != -1) {
+        Bukkit.getScheduler().cancelTask(bettingCountdownTaskId);
+    }
+
+    // Start the slow spin as soon as the betting phase begins
+    startSlowSpinAnimation(10L); // Start the wheel spinning at 10 ticks per frame
+
+    betsClosed = false;
+
+    // Initialize the menu buttons in their proper quadrant locations
+    updateMenuButtonsForQuadrant(currentQuadrant);
+
+    bettingCountdownTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+        int countdown = bettingTimeSeconds;
+
+        @Override
+        public void run() {
+            if (countdown > 0) {
+                for (BettingTable bettingTable : Tables.values()) {
+                    bettingTable.updateCountdown(countdown, betsClosed);
+                }
+
+                // Update the timer item in the appropriate slot based on the current quadrant
+                int countdownSlot = getCountdownSlotForQuadrant(currentQuadrant);
+                ItemStack countdownItem = createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown + " SECONDS!", 1);
+                inventory.setItem(countdownSlot, countdownItem);  // Update the item in the correct slot
+                
+                countdown--;
+            } else {
+                // When bets close, remove the menu buttons
+                clearMenuButtonsForQuadrant(currentQuadrant);
+
+                // Start ball movement after bets are closed
+                handleBetClosure();
+                Bukkit.getScheduler().cancelTask(bettingCountdownTaskId);
+                bettingCountdownTaskId = -1;
+            }
+        }
+    }, 0L, 20L);
+}
+
+
+// Determine the correct slot for the countdown based on the quadrant
+private int getCountdownSlotForQuadrant(int quadrant) {
+    switch (quadrant) {
+        case 1: // Top-right quadrant
+            return 45;
+        case 2: // Top-left quadrant
+            return 49;  // You can change this to match your design
+        case 3: // Bottom-left quadrant
+            return 4;
+        case 4: // Bottom-right quadrant
+            return 0;
+        default:
+            return 45;  // Default to top-right
+    }
+}
+
+// Update the menu buttons for the given quadrant
+private void updateMenuButtonsForQuadrant(int quadrant) {
+    switch (quadrant) {
+        case 1: // Top-right quadrant
+            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 46);
+            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 47);
+            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 48);
+            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 49);
+            break;
+        case 2: // Top-left quadrant
+            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 50);
+            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 51);
+            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 52);
+            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 53);
+            break;
+        case 3: // Bottom-left quadrant
+            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 5);
+            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 6);
+            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 7);
+            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 8);
+            break;
+        case 4: // Bottom-right quadrant
+            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 1);
+            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 2);
+            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 3);
+            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 4);
+            break;
+    }
+}
+
+// Remove the menu buttons when bets are closed
+private void clearMenuButtonsForQuadrant(int quadrant) {
+    switch (quadrant) {
+        case 1: // Top-right quadrant
+            clearSlots(50, 53);
+            break;
+        case 2: // Top-left quadrant
+            clearSlots(49, 52);
+            break;
+        case 3: // Bottom-left quadrant
+            clearSlots(4, 7);
+            break;
+        case 4: // Bottom-right quadrant
+            clearSlots(0, 3);
+            break;
+    }
+}
+
+    // Clear a range of slots
+private void clearSlots(int fromSlot, int toSlot) {
+    for (int i = fromSlot; i <= toSlot; i++) {
+        inventory.setItem(i, null);  // Set the slot to null to clear it
+    }
+}
+
+
+
+    /**
+     * Start the slow wheel spin animation when the inventory first opens.
+     */
+    private void startSlowSpinAnimation(long initialSpeed) {
+        frameCounter = 0;
     
-    
-    
-    
-    
-    
-    
-    private void startBallMovement() {
-        ballPosition = 8; // Start at the initial ball position
-        currentQuadrant = 1; // Start in the first quadrant
-    
-        final int totalBallFrames = 400; // Total frames to move the ball
-        final long initialBallSpeed = 5L; // Start the ball with a moderate speed
-        final long maxBallSlowSpeed = 40L; // Slowest speed for the ball (40 ticks per frame)
-        long[] currentBallDelay = {initialBallSpeed}; // Mutable delay for the ball
-        int[] ballFrameCounter = {0}; // Use an array to allow modification inside the anonymous class
-    
-        // Move the ball independently from the wheel
-        ballTaskId = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+        Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
             @Override
             public void run() {
-                updateBallPosition(); // Move the ball for each frame
-                ballFrameCounter[0]++;
-    
-                // Gradually increase the delay for the ball
-                if (currentBallDelay[0] < maxBallSlowSpeed) {
-                    currentBallDelay[0] = Math.min(maxBallSlowSpeed, currentBallDelay[0] + 2L); // Slower increase than the wheel
-                }
-    
-                // Stop the ball when it reaches the total number of frames
-                if (ballFrameCounter[0] >= totalBallFrames) {
-                    Bukkit.getScheduler().cancelTask(ballTaskId);
+                if (betsClosed) {
+                    Bukkit.getScheduler().cancelTask(spinTaskId);  // Stop slow spin when bets are closed
+                } else {
+                    updateWheelView(initialSpeed);
+                    frameCounter++;
                 }
             }
-        }, 0L, currentBallDelay[0]).getTaskId(); // Start with the initial ball delay
+        }, 0L, initialSpeed);  // Initial slow speed
     }
     
+    /**
+     * Update the wheel view with the current frame. This is for both slow and fast spins.
+     */
+    private void updateWheelView(long speed) {
+        int currentOffset = (wheelOffset + frameCounter) % wheelLayout.size();
+        updateQuadrantDisplay(currentOffset);
+    }
     
+   
     
 
+    /**
+     * Start the ball movement when the wheel speed reaches 4 ticks per frame.
+     */
+    private void startBallMovement() {
+        ballPosition = 8;
+        currentQuadrant = 1;
+        
+        final long initialBallSpeed = 5L;  // Ball starts at a moderate speed
+        long[] currentBallDelay = {initialBallSpeed};
+    
+        ballTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+            @Override
+            public void run() {
+                updateBallPosition();
+                
+                // Gradually slow the ball
+                if (currentBallDelay[0] < 40L) {
+                    currentBallDelay[0] += 2L;  // Increase delay for ball movement
+                }
+            }
+        }, 0L, currentBallDelay[0]);
+    }
     
     
     private void updateWheel(int frame) {
@@ -680,21 +910,6 @@ private void initializeDecorativeSlots() {
 }
 
 
-
-
-private void resetSlotColors() {
-    fillDecorativeSlots(new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 26}, Material.BROWN_STAINED_GLASS_PANE);
-    fillDecorativeSlots(new int[]{36, 37, 38, 39, 40, 41, 42, 45, 46, 47, 48, 49, 50, 51, 52}, Material.GREEN_STAINED_GLASS_PANE);
-
-    // Log slot information
-   System.out.println("First frame slot reset done.");
-}
-
-
-
-
-
-
 private void fillDecorativeSlots(int[] slots, Material material) {
     for (int slot : slots) {
         ItemStack item = new ItemStack(material);
@@ -736,22 +951,7 @@ private boolean isInRange(int slot, int[] validSlots) {
         }
     }
 
-    private void openTopRightQuadrant() {
-        displayQuadrant(0);
-    }
-    
-    private void openTopLeftQuadrant() {
-        displayQuadrant(1);
-    }
-    
-    private void openBottomLeftQuadrant() {
-        displayQuadrant(2);
-    }
-    
-    private void openBottomRightQuadrant() {
-        displayQuadrant(3);
-    }
-    
+   
     private void displayQuadrant(int quadrantIndex) {
         int[] quadrantSlots;
         int startPosition;
