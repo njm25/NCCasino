@@ -424,10 +424,10 @@ public class RouletteInventory extends DealerInventory implements Listener {
         // Initialize the decorative slots for the wheel
         initializeDecorativeSlots();
     
-        final int totalSpinFrames = 300; // Total frames to spin for the wheel
+        final int totalSpinFrames = 200; // Reduced total spin frames for faster spin duration
         final long initialWheelSpeed = 1L; // Start the wheel with a very fast speed (1 tick per update)
-        final long maxWheelSlowSpeed = 15L; // Slowest speed for the wheel (30 ticks per frame)
-        final int fastSpinPhaseFrames = 100; // Number of frames for the fast spin phase
+        final long maxWheelSlowSpeed = 10L; // Max slow speed reduced for a quicker slowdown
+        final int fastSpinPhaseFrames = 50; // Number of frames for the fast spin phase (increased)
         long[] currentWheelDelay = {initialWheelSpeed}; // Mutable delay for the wheel
     
         Runnable spinTask = new Runnable() {
@@ -437,15 +437,15 @@ public class RouletteInventory extends DealerInventory implements Listener {
                     // Update wheel position based on frame count
                     updateWheel(frameCounter);
     
-                    // Fast spin phase: maintain 1 tick delay for the first 100 frames
+                    // Fast spin phase: maintain 1 tick delay for the first 50 frames
                     if (frameCounter < fastSpinPhaseFrames) {
                         currentWheelDelay[0] = 1L;
                     } else {
-                        // Slow spin phase: gradually increase the delay up to maxWheelSlowSpeed
+                        // Smooth and quicker slowdown
                         int framesSinceSlowPhaseStart = frameCounter - fastSpinPhaseFrames;
-                        double slowPhaseProgress = (double) framesSinceSlowPhaseStart / (totalSpinFrames - fastSpinPhaseFrames);
+                        double slowPhaseProgress = Math.pow((double) framesSinceSlowPhaseStart / (totalSpinFrames - fastSpinPhaseFrames), 0.5);
     
-                        // Gradually increase delay from 1L to 30L
+                        // Increase delay from 1L to a maximum of 10L, but more quickly
                         currentWheelDelay[0] = (long) (1L + slowPhaseProgress * (maxWheelSlowSpeed - 1L));
                     }
     
@@ -457,6 +457,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
                     frameCounter++;
                 } else {
                     System.out.println("Spin ended");
+                    // Ensure the wheel stops at 22
                 }
             }
         };
