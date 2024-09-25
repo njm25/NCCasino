@@ -2,6 +2,7 @@ package org.nc.nccasino.games;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
@@ -30,13 +31,12 @@ public class MinesTable implements InventoryHolder, Listener {
     private final Map<Player, Integer> animationTasks;
     private final Map<String, Double> chipValues;
     private final Map<Player, Boolean> animationCompleted;
-    private final Stack<Pair<String, Integer>> betStack;
     private Boolean clickAllowed = true;
     private double selectedWager;
     private final Map<UUID, Double> currentBets = new HashMap<>();
     private Boolean closeFlag = false;
 
-    // New fields for game state management
+    // Game state management
     private enum GameState {
         PLACING_WAGER,
         WAITING_TO_START,
@@ -48,14 +48,16 @@ public class MinesTable implements InventoryHolder, Listener {
     private int gridSize = 5;
     private int totalTiles = gridSize * gridSize;
     private int minesCount = 3; // default number of mines is 3
-    private boolean[][] mineGrid;
-    private boolean[][] revealedGrid;
+    private boolean[][] mineGrid;      // [5][5]
+    private boolean[][] revealedGrid;  // [5][5]
     private int safePicks;
     private boolean gameOver;
     private boolean wagerPlaced = false;
     private boolean minesSelected = true; // Default to true since default minesCount is set
     private double wager;
     private double previousWager = 0.0; // New field to store previous wager
+    private boolean[][] fireGrid; // [6][9] To track which tiles are on fire
+    private final List<Integer> scheduledTasks = new ArrayList<>();
 
     // Adjusted fields for grid mapping
     private final int[] gridSlots = {
@@ -78,7 +80,6 @@ public class MinesTable implements InventoryHolder, Listener {
         this.plugin = plugin;
         this.internalName = internalName;
         this.minesInventory = minesInventory;
-        this.betStack = new Stack<>();
         this.inventory = Bukkit.createInventory(this, 54, "Mines");
         this.chipValues = new LinkedHashMap<>();
         this.animationTasks = new HashMap<>();
@@ -156,30 +157,58 @@ public class MinesTable implements InventoryHolder, Listener {
 
     private void initializeWagerPlacement() {
         inventory.clear();
-
+    
+        // Set the rainbow sides (red, orange, yellow, lime, blue)
+        setRainbowBorders();
+    
         // Add wager options (chips)
         addWagerOptions();
-
+    
         // Add mine count selection options
         addMineSelectionOptions();
-
-        // Add placeholder items
+    
+        // Fill remaining slots with placeholders
         for (int i = 0; i < inventory.getSize(); i++) {
             if (inventory.getItem(i) == null) {
                 inventory.setItem(i, createCustomItem(Material.GRAY_STAINED_GLASS_PANE, " ", 1));
             }
         }
-
+    
         // Add "Start Game" lever if mines are selected (which they are by default)
         if (minesSelected) {
             updateStartGameLever(true);
         } else {
             updateStartGameLever(false);
         }
-
+    
         // Add undo buttons
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
         inventory.setItem(46, createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Undo Last Bet", 1));
+    }
+    
+    // Method to set rainbow border colors
+    private void setRainbowBorders() {
+        // Red Glass Pane for slots 0-1, 7-8
+        setGlassPane(Material.RED_STAINED_GLASS_PANE, new int[]{0, 1, 7, 8});
+    
+        // Orange Glass Pane for slots 9-10, 16-17
+        setGlassPane(Material.ORANGE_STAINED_GLASS_PANE, new int[]{9, 10, 16, 17});
+    
+        // Yellow Glass Pane for slots 18-19, 25-26
+        setGlassPane(Material.YELLOW_STAINED_GLASS_PANE, new int[]{18, 19, 25, 26});
+    
+        // Lime Glass Pane for slots 27-28, 34-35
+        setGlassPane(Material.LIME_STAINED_GLASS_PANE, new int[]{27, 28, 34, 35});
+    
+        // Blue Glass Pane for slots 36-37, 43-44
+        setGlassPane(Material.LIGHT_BLUE_STAINED_GLASS_PANE, new int[]{36, 37, 43, 44});
+    }
+    
+    // Utility method to place stained glass panes in specific slots
+    private void setGlassPane(Material material, int[] slots) {
+        for (int slot : slots) {
+            inventory.setItem(slot, createCustomItem(material, " ", 1));
+        }
     }
 
     private void addWagerOptions() {
@@ -221,7 +250,7 @@ public class MinesTable implements InventoryHolder, Listener {
             if (mineCountOption <= 24) {
                 if (mineCountOption == minesCount) {
                     // Selected mine count, show stack of red glass panes
-                    ItemStack selectedMineOption = createCustomItem(Material.RED_STAINED_GLASS_PANE, "Mines: " + mineCountOption, mineCountOption);
+                    ItemStack selectedMineOption = createCustomItem(Material.WHITE_STAINED_GLASS_PANE, "Mines: " + mineCountOption, mineCountOption);
                     inventory.setItem(slot, selectedMineOption);
                     selectedMineSlot = slot;
                 } else {
@@ -235,11 +264,11 @@ public class MinesTable implements InventoryHolder, Listener {
 
     private void initializeGameGrid() {
         inventory.clear();
-
-        // Use GRAY_STAINED_GLASS_PANE for hidden tiles
+        setRainbowBorders();
+        setGlassPane(Material.PURPLE_STAINED_GLASS_PANE, new int[]{45,46,47,48,50,51,52,53});
         for (int i = 0; i < gridSlots.length; i++) {
             int slot = gridSlots[i];
-            ItemStack tile = createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Hidden", 1);
+            ItemStack tile = createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Hidden", 1);
             inventory.setItem(slot, tile);
         }
 
@@ -364,7 +393,7 @@ public class MinesTable implements InventoryHolder, Listener {
                         selectedMineSlot = slot;
 
                         // Change the selected slot to stack of red glass panes
-                        ItemStack selectedMineOption = createCustomItem(Material.RED_STAINED_GLASS_PANE, "Mines: " + minesCount, minesCount);
+                        ItemStack selectedMineOption = createCustomItem(Material.WHITE_STAINED_GLASS_PANE, "Mines: " + minesCount, minesCount);
                         inventory.setItem(slot, selectedMineOption);
 
                         // Update "Start Game" lever visibility
@@ -380,7 +409,7 @@ public class MinesTable implements InventoryHolder, Listener {
         }
 
         if (itemName.equals("Start Game") && slot == 53) {
-            // Start the game regardless of wager amount
+            // Start the game
             if (minesSelected) {
                 if (wager > 0) {
                     startGame();
@@ -425,11 +454,12 @@ public class MinesTable implements InventoryHolder, Listener {
     }
 
     private void startGame() {
-        this.mineGrid = new boolean[gridSize][gridSize];
-        this.revealedGrid = new boolean[gridSize][gridSize];
+        this.mineGrid = new boolean[gridSize][gridSize];       // [5][5]
+        this.revealedGrid = new boolean[gridSize][gridSize];   // [5][5]
         this.safePicks = 0;
         this.gameState = GameState.PLAYING;
         this.gameOver = false;
+        this.fireGrid = new boolean[6][9];  // [6 rows][9 columns] for the full inventory grid
 
         // Place mines randomly
         placeMines();
@@ -463,37 +493,43 @@ public class MinesTable implements InventoryHolder, Listener {
             player.sendMessage("Game over.");
             return;
         }
-
+    
         if (revealedGrid[x][y]) {
             player.sendMessage("Tile already revealed.");
             return;
         }
-
+    
         if (mineGrid[x][y]) {
             // Player hits a mine
             revealedGrid[x][y] = true;
             updateTile(x, y, true); // Reveal the clicked mine
-
-            // Animation: Turn all tiles to TNT, then reveal what was underneath
-            Bukkit.getScheduler().runTaskLater(plugin, this::revealAllMinesAnimation, 20L); // Delay 1 second
+    
+            // Change the cash-out button to a barrier immediately
+            updateCashOutToBarrier();
+    
+            // Start the new animation sequence
+            startMineHitAnimation(x, y); // Pass the coordinates of the mine hit
+    
+            // Trigger a visual explosion at the player's location without causing damage
+            player.getWorld().createExplosion(player.getLocation(), 0F, false, false); // Creates explosion, no damage or block break
+    
             gameOver = true;
             gameState = GameState.GAME_OVER;
             player.sendMessage("You hit a mine!");
         } else {
-            // Safe tile
+            // Safe tile logic
             revealedGrid[x][y] = true;
             safePicks++;
             updateTile(x, y, false);
-
+    
             // Update potential winnings on the Cash Out button
             ItemStack cashOutButton = inventory.getItem(49);
             if (cashOutButton != null) {
                 updateCashOutLore(cashOutButton);
             }
-
-            // Short message to the player
+    
             player.sendMessage("Safe pick!");
-
+    
             // Optionally check if all safe tiles are revealed
             if (safePicks == (totalTiles - minesCount)) {
                 player.sendMessage("All safe tiles cleared!");
@@ -501,102 +537,123 @@ public class MinesTable implements InventoryHolder, Listener {
             }
         }
     }
-
+    
+    private void updateCashOutToBarrier() {
+        ItemStack barrierItem = createCustomItem(Material.BARRIER, "Game Over", 1);
+        inventory.setItem(49, barrierItem);
+    }
+    
     private void updateTile(int x, int y, boolean isMine) {
         int index = y * gridSize + x;
         int slot = gridSlots[index];
         ItemStack tile;
         if (isMine) {
-            tile = createCustomItem(Material.RED_STAINED_GLASS_PANE, "Mine", 1);
+            tile = createCustomItem(Material.TNT, "Mine", 1); 
         } else {
-            tile = createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Safe", 1); // Use LIME_STAINED_GLASS_PANE for uncovered tiles
+            tile = createCustomItem(Material.EMERALD, "Safe", 1);
         }
         inventory.setItem(slot, tile);
     }
 
-    private void revealAllMinesAnimation() {
-        // Turn all unrevealed tiles into TNT
-        for (int y = 0; y < gridSize; y++) {
-            for (int x = 0; x < gridSize; x++) {
-                if (!revealedGrid[x][y]) {
-                    updateTileToTNT(x, y);
-                }
-            }
-        }
+    private void startMineHitAnimation(int mineX, int mineY) {
+        // Convert mineX and mineY to inventory coordinates
+        int centerSlot = gridSlots[mineY * gridSize + mineX];
+        int centerX = centerSlot % 9;
+        int centerY = centerSlot / 9;
 
-        // After a delay, reveal what was underneath
+        // Step 1: After a short delay, reveal all tiles
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            for (int y = 0; y < gridSize; y++) {
-                for (int x = 0; x < gridSize; x++) {
-                    if (!revealedGrid[x][y]) {
-                        if (mineGrid[x][y]) {
-                            updateTile(x, y, true);
-                        } else {
-                            updateTile(x, y, false);
+            revealAllTiles();
+
+            // Step 2: After another short delay, change the clicked mine tile to fire
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                setTileToFire(centerX, centerY);
+
+                // Step 3: Start spreading the fire from the hit mine
+                spreadFireFrom(centerX, centerY, 1);
+
+            }, 10L); // Reduced delay for faster fire spread (0.25 seconds)
+        }, 5L); // Reduced delay before revealing all tiles (0.25 seconds)
+    }
+
+    private void setTileToFire(int x, int y) {
+        int index = y * 9 + x;
+        if (index >= 0 && index < inventory.getSize()) {
+            setTileAtSlot(index, Material.BLAZE_POWDER, "Burning");
+            fireGrid[y][x] = true; // Mark the tile as on fire
+    
+            // After a quick delay, turn the tile into smoke (wind charge/bone meal)
+            BukkitTask smokeTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                setTileAtSlot(index, Material.BONE_MEAL, "Smoke");
+    
+                // After a slower delay, turn the tile into air (empty)
+                BukkitTask airTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    setTileAtSlot(index, Material.AIR, "");
+                }, 20L); // Smoke lingers for 1 second (20 ticks) before disappearing
+                scheduledTasks.add(airTask.getTaskId()); // Add air task ID to the list
+    
+            }, 5L); // Smoke appears after 0.25 seconds
+            scheduledTasks.add(smokeTask.getTaskId()); // Add smoke task ID to the list
+        }
+    }
+    
+
+    private void setTileAtSlot(int slot, Material material, String name) {
+        ItemStack tile = createCustomItem(material, name, 1);
+        inventory.setItem(slot, tile);
+    }
+
+    private void spreadFireFrom(int centerX, int centerY, int currentRadius) {
+        // Fire spreads quickly with minimal delay
+        BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            boolean anyTilesSetOnFire = false;
+    
+            for (int y = 0; y < 6; y++) { // 6 rows
+                for (int x = 0; x < 9; x++) { // 9 columns
+                    int distance = Math.max(Math.abs(centerX - x), Math.abs(centerY - y));
+                    if (distance == currentRadius && !fireGrid[y][x]) { // If tile is not on fire
+                        int index = y * 9 + x;
+                        if (index >= 0 && index < inventory.getSize()) {
+                            // Set the tile to fire
+                            setTileAtSlot(index, Material.BLAZE_POWDER, "Burning");
+                            fireGrid[y][x] = true; // Mark as on fire
+                            anyTilesSetOnFire = true;
+    
+                            // After a quick delay, turn the tile into smoke (wind charge/bone meal)
+                            BukkitTask smokeTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                setTileAtSlot(index, Material.BONE_MEAL, "Smoke");
+    
+                                // After a slower delay, turn the tile into air (empty)
+                                BukkitTask airTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                    setTileAtSlot(index, Material.AIR, "");
+                                }, 20L); // Smoke lingers for 1 second (20 ticks) before disappearing
+                                scheduledTasks.add(airTask.getTaskId()); // Add air task ID to the list
+    
+                            }, 5L); // Smoke appears after 0.25 seconds
+                            scheduledTasks.add(smokeTask.getTaskId()); // Add smoke task ID to the list
                         }
                     }
                 }
             }
-
-            // Reset the game after a delay
-            Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 60L); // Wait 3 seconds before resetting
-
-        }, 40L); // Wait 2 seconds before revealing what's underneath
-    }
-
-    private void updateTileToTNT(int x, int y) {
-        int index = y * gridSize + x;
-        int slot = gridSlots[index];
-        ItemStack tile = createCustomItem(Material.TNT, "Mine", 1);
-        inventory.setItem(slot, tile);
-    }
-
-    private void cashOut() {
-        if (gameOver) {
-            player.sendMessage("Game over.");
-            return;
-        }
-
-        // Animation: Turn all unrevealed tiles green, then reveal what's underneath
-        turnAllUnrevealedTilesGreen();
-
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            revealAllTiles();
-            // Give the winnings to the player only if winnings are greater than zero
-            double payoutMultiplier = calculatePayoutMultiplier(safePicks);
-            double winnings = wager * payoutMultiplier;
-            winnings = Math.round(winnings * 100.0) / 100.0; // Round to 2 decimal places
-            player.sendMessage("Cashed out: " + winnings);
-
-            if (winnings > 0) {
-                giveWinningsToPlayer(winnings);
+    
+            if (anyTilesSetOnFire) {
+                // Continue spreading fire to the next ring
+                spreadFireFrom(centerX, centerY, currentRadius + 1);
+            } else {
+                // After all tiles are on fire and smoke fades, reset the game
+                BukkitTask resetTask = Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 5L);
+                scheduledTasks.add(resetTask.getTaskId()); // Add reset task ID to the list
             }
-
-            gameOver = true;
-            gameState = GameState.GAME_OVER;
-
-            // Reset the game after a delay
-            Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 60L); // Wait 3 seconds before resetting
-
-        }, 40L); // Wait 2 seconds before revealing what's underneath
+    
+        }, 3L); // Fire spreads quickly (1 tick delay between rings)
+        scheduledTasks.add(task.getTaskId()); // Add the task ID to the list
     }
-
-    private void turnAllUnrevealedTilesGreen() {
-        for (int y = 0; y < gridSize; y++) {
-            for (int x = 0; x < gridSize; x++) {
-                if (!revealedGrid[x][y]) {
-                    int index = y * gridSize + x;
-                    int slot = gridSlots[index];
-                    ItemStack tile = createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Safe", 1);
-                    inventory.setItem(slot, tile);
-                }
-            }
-        }
-    }
-
+    
+    
+    
     private void revealAllTiles() {
-        for (int y = 0; y < gridSize; y++) {
-            for (int x = 0; x < gridSize; x++) {
+        for (int y = 0; y < gridSize; y++) { // 5 rows
+            for (int x = 0; x < gridSize; x++) { // 5 columns
                 if (!revealedGrid[x][y]) {
                     if (mineGrid[x][y]) {
                         updateTile(x, y, true);
@@ -608,29 +665,122 @@ public class MinesTable implements InventoryHolder, Listener {
         }
     }
 
+    private void cashOut() {
+        if (gameOver) {
+            player.sendMessage("Game over.");
+            return;
+        }
+    
+        // Step 1: Reveal all tiles (mines and safes)
+        revealAllTiles();
+    
+        // Step 2: Start emerald expansion from the cash-out button (slot 49)
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            startEmeraldExpansion(49); // Slot 49 is the cash-out button position
+            player.sendMessage("Cashing out...");
+    
+            // Give the winnings to the player only if winnings are greater than zero
+            double payoutMultiplier = calculatePayoutMultiplier(safePicks);
+            double winnings = wager * payoutMultiplier;
+            winnings = Math.round(winnings * 100.0) / 100.0; // Round to 2 decimal places
+            player.sendMessage("Cashed out: " + winnings);
+    
+            if (winnings > 0) {
+                giveWinningsToPlayer(winnings);
+            }
+    
+            gameOver = true;
+            gameState = GameState.GAME_OVER;
+    
+            // Reset the game after a delay
+            Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 20L); // Wait 5 seconds before resetting
+    
+        }, 10L); // Wait 2 seconds before starting the emerald expansion
+    }
+    
+    // Step 2: Emerald expansion animation from the cash-out button (slot 49)
+    private void startEmeraldExpansion(int centerSlot) {
+        int centerX = centerSlot % 9;
+        int centerY = centerSlot / 9;
+        spreadEmeraldsFrom(centerX, centerY, 1); // Start with a radius of 1
+    }
+    
+    private void spreadEmeraldsFrom(int centerX, int centerY, int currentRadius) {
+        // Expansion of emeralds from the center
+        BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            boolean anyTilesSetToEmerald = false;
+    
+            for (int y = 0; y < 6; y++) { // 6 rows
+                for (int x = 0; x < 9; x++) { // 9 columns
+                    int distance = Math.max(Math.abs(centerX - x), Math.abs(centerY - y));
+                    if (distance == currentRadius) {
+                        int index = y * 9 + x;
+                        if (index >= 0 && index < inventory.getSize()) {
+                            // Overwrite every tile with an emerald
+                            setTileAtSlot(index, Material.EMERALD, "MMMMMoney!!");
+                            anyTilesSetToEmerald = true;
+                        }
+                    }
+                }
+            }
+    
+            if (anyTilesSetToEmerald) {
+                // Continue expanding if any tiles were set to emerald
+                spreadEmeraldsFrom(centerX, centerY, currentRadius + 1);
+            }
+    
+        }, 3L); // Delay of 0.5 seconds between each expansion ring
+    }
+    
+    
+    private boolean isMineOrRevealed(int slot) {
+        // Check if the slot is already revealed or is a mine
+        int gridIndex = gridSlotList.indexOf(slot);
+        if (gridIndex == -1) return false;
+    
+        int x = gridIndex % gridSize;
+        int y = gridIndex / gridSize;
+    
+        return mineGrid[x][y] || revealedGrid[x][y]; // If it's a mine or already revealed, skip it
+    }
+    
+
+    private void turnAllUnrevealedTilesGreen() {
+        for (int y = 0; y < gridSize; y++) { // 5 rows
+            for (int x = 0; x < gridSize; x++) { // 5 columns
+                if (!revealedGrid[x][y]) {
+                    updateTile(x, y, false);
+                }
+            }
+        }
+    }
+
     private void resetGame() {
+        // Cancel any ongoing tasks
+        for (int taskId : scheduledTasks) {
+            Bukkit.getScheduler().cancelTask(taskId);
+        }
+        scheduledTasks.clear(); // Clear the list after canceling all tasks
+    
         // Reset game variables
         this.gameOver = false;
         this.safePicks = 0;
         this.wagerPlaced = false;
         this.gameState = GameState.PLACING_WAGER;
-
+    
         // Note: The number of mines remains the same as last game
-        // Inform the player of the current number of mines
         player.sendMessage("# of mines: " + minesCount + ".");
-
+    
         // Try to set the wager to the previous amount
         if (previousWager > 0) {
             if (hasEnoughCurrency(player, (int) previousWager)) {
                 removeWagerFromInventory(player, (int) previousWager);
                 wager = previousWager;
                 currentBets.put(player.getUniqueId(), wager);
-                // Update the lore of the item in slot 52 with the cumulative bet amount
                 updateBetLore(52, wager);
                 player.sendMessage("Bet placed: " + wager);
                 wagerPlaced = true;
             } else {
-                // Player doesn't have enough currency, reset wager
                 player.sendMessage("Not enough currency for previous bet. Wager reset to 0.");
                 wager = 0;
                 currentBets.remove(player.getUniqueId());
@@ -638,10 +788,11 @@ public class MinesTable implements InventoryHolder, Listener {
                 wagerPlaced = false;
             }
         }
-
+    
         // Re-initialize the table
         initializeTable();
     }
+    
 
     private double calculatePayoutMultiplier(int picks) {
         double probability = 1.0;
@@ -756,7 +907,6 @@ public class MinesTable implements InventoryHolder, Listener {
     // Clean up method to unregister listeners and clear data
     private void cleanup() {
         unregisterListener();
-        betStack.clear();
     }
 
     @Override
