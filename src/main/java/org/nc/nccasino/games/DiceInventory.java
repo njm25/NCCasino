@@ -60,6 +60,21 @@ public class DiceInventory extends DealerInventory implements Listener {
       
     }
 
+    @EventHandler
+    public void handleInventoryOpen(InventoryOpenEvent event){
+    
+        Player player=(Player)event.getPlayer();
+        if(player.getInventory() !=null){
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if(player.getOpenInventory().getTopInventory()== this.getInventory()){
+                    if(firstopen){
+                        firstopen=false;
+                        setupGameMenu(player);
+                    }
+                }
+            }, 2L);    
+    }
+    }
 
     @EventHandler
     public void handlePlayerInteract(PlayerInteractEntityEvent event) {
@@ -75,16 +90,7 @@ public class DiceInventory extends DealerInventory implements Listener {
         }
     }
 
-    @EventHandler
-    public void handleInventoryOpen(InventoryOpenEvent event){
-        if(((Player)event.getPlayer()).getInventory() instanceof DiceInventory){
-            if(firstopen){
-                firstopen=false;
-                setupGameMenu((Player)event.getPlayer()); 
-            }
-        }
-    }
-    
+
     private ItemStack createCustomItem(Material material, String name, int amount) {
         ItemStack itemStack = new ItemStack(material, amount);
         ItemMeta meta = itemStack.getItemMeta();

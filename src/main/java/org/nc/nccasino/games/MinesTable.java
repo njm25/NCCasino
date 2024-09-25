@@ -688,9 +688,17 @@ public class MinesTable implements InventoryHolder, Listener {
             startEmeraldExpansion(49); // Slot 49 is the cash-out button position
             player.sendMessage("Cashing out...");
     
-            // Give the winnings to the player only if winnings are greater than zero
-            double payoutMultiplier = calculatePayoutMultiplier(safePicks);
-            double winnings = wager * payoutMultiplier;
+            double winnings;
+    
+            // If no tiles were clicked, return the exact wager
+            if (safePicks == 0) {
+                winnings = wager; // No multiplier, return exact wager
+            } else {
+                // Give the winnings to the player with payout multiplier applied
+                double payoutMultiplier = calculatePayoutMultiplier(safePicks);
+                winnings = wager * payoutMultiplier;
+            }
+    
             winnings = Math.round(winnings * 100.0) / 100.0; // Round to 2 decimal places
             player.sendMessage("Cashed out: " + winnings);
     
@@ -707,6 +715,44 @@ public class MinesTable implements InventoryHolder, Listener {
         }, 10L); // Wait 2 seconds before starting the emerald expansion
     }
     
+    
+
+    private void closeCashOut() {
+        if (gameOver) {
+            player.sendMessage("Game over.");
+            return;
+        }
+     
+        // Step 2: Start emerald expansion from the cash-out button (slot 49)
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // Slot 49 is the cash-out button position
+            player.sendMessage("Cashing out...");
+            double winnings;
+    
+            // If no tiles were clicked, return the exact wager
+            if (safePicks == 0) {
+                winnings = wager; // No multiplier, return exact wager
+            } else {
+                // Give the winnings to the player with payout multiplier applied
+                double payoutMultiplier = calculatePayoutMultiplier(safePicks);
+                winnings = wager * payoutMultiplier;
+            }
+            winnings = Math.round(winnings * 100.0) / 100.0; // Round to 2 decimal places
+            player.sendMessage("Cashed out: " + winnings);
+    
+            if (winnings > 0) {
+                giveWinningsToPlayer(winnings);
+            }
+    
+            gameOver = true;
+            gameState = GameState.GAME_OVER;
+    
+            //check if properly closed?
+        }, 10L); // Wait 2 seconds before starting the emerald expansion
+
+       
+    }
+
     // Step 2: Emerald expansion animation from the cash-out button (slot 49)
     private void startEmeraldExpansion(int centerSlot) {
         int centerX = centerSlot % 9;
@@ -815,11 +861,18 @@ public class MinesTable implements InventoryHolder, Listener {
         for (int i = 0; i < picks; i++) {
             probability *= (double) (totalTiles - minesCount - i) / (totalTiles - i);
         }
-
-        double houseEdge = 0.005; // Fixed house edge at 0.5%
-        double payoutMultiplier = ((1.0 - houseEdge) / probability);
+    
+        // Calculate a dynamic house edge based on the rounding factor
+        double baseEdge = 0.005; // Base house edge (0.5%)
+        double roundingCompensation = 0.005; // Adjust this based on rounding impact
+    
+        double effectiveEdge = baseEdge - roundingCompensation; // Adjust the house edge to make it fairer
+        effectiveEdge = Math.max(0, effectiveEdge); // Ensure house edge doesn't go negative
+    
+        double payoutMultiplier = ((1.0 - effectiveEdge) / probability);
         return payoutMultiplier;
     }
+    
 
     private void updateBetLore(int slot, double totalBet) {
         ItemStack item = inventory.getItem(slot);
@@ -905,15 +958,18 @@ public class MinesTable implements InventoryHolder, Listener {
 
     private void endGame() {
         if (player != null) {
-            refundAllBets(player);  // Refund any remaining bets
+            if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
+                refundAllBets(player);  // Refund any remaining bets
+            }
             currentBets.remove(player.getUniqueId());
         }
-
+    
         // Notify minesInventory to remove the player's table
         minesInventory.removeTable(playerId);
-
+    
         cleanup();  // Clean up game state
     }
+    
 
     // Method to unregister event listener
     private void unregisterListener() {
@@ -935,6 +991,9 @@ public class MinesTable implements InventoryHolder, Listener {
     public void onInventoryClose(InventoryCloseEvent event) {
         if (event.getInventory().getHolder() != this) return;
         if (event.getInventory().getHolder() instanceof MinesTable && event.getPlayer().getUniqueId().equals(playerId) && closeFlag) {
+            if (gameState == GameState.PLAYING) {
+                closeCashOut();  // Automatically cash out the player
+            }
             endGame();  // Call the end game logic when the inventory is closed
         }
     }

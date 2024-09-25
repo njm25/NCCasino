@@ -53,13 +53,21 @@ public class DragonInventory extends DealerInventory implements Listener {
 
     @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event){
-        if(((Player)event.getPlayer()).getInventory() instanceof DragonInventory){
-            if(firstopen){
-                firstopen=false;
-                setupGameMenu((Player)event.getPlayer()); 
-            }
-        }
+    
+        Player player=(Player)event.getPlayer();
+        if(player.getInventory() !=null){
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if(player.getOpenInventory().getTopInventory()== this.getInventory()){
+                    if(firstopen){
+                        firstopen=false;
+                        setupGameMenu(player);
+                    }
+                }
+            }, 2L);    
     }
+    }
+
+  
     @EventHandler
     public void handlePlayerInteract(PlayerInteractEntityEvent event) {
         if (!(event.getRightClicked() instanceof Villager)) return;
