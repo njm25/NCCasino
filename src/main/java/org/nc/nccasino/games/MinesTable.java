@@ -58,6 +58,7 @@ public class MinesTable implements InventoryHolder, Listener {
     private double previousWager = 0.0; // New field to store previous wager
     private boolean[][] fireGrid; // [6][9] To track which tiles are on fire
     private final List<Integer> scheduledTasks = new ArrayList<>();
+    private boolean rebetEnabled = true; 
 
     // Adjusted fields for grid mapping
     private final int[] gridSlots = {
@@ -173,7 +174,8 @@ public class MinesTable implements InventoryHolder, Listener {
                 inventory.setItem(i, createCustomItem(Material.GRAY_STAINED_GLASS_PANE, " ", 1));
             }
         }
-    
+        updateRebetToggle();
+
         // Add "Start Game" lever if mines are selected (which they are by default)
         if (minesSelected) {
             updateStartGameLever(true);
@@ -186,6 +188,13 @@ public class MinesTable implements InventoryHolder, Listener {
         inventory.setItem(46, createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Undo Last Bet", 1));
     }
     
+   // Method to toggle rebet on/off
+   private void updateRebetToggle() {
+    Material material = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
+    String name = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
+    inventory.setItem(44, createCustomItem(material, name, 1));  // Slot 48
+}
+
     // Method to set rainbow border colors
     private void setRainbowBorders() {
         // Red Glass Pane for slots 0-1, 7-8
@@ -293,14 +302,13 @@ public class MinesTable implements InventoryHolder, Listener {
     @EventHandler
     public void handleClick(InventoryClickEvent event) {
         if (!(event.getInventory().getHolder() instanceof MinesTable)) return;
-        event.setCancelled(true);  // Prevent default click actions, including picking up items
+        event.setCancelled(true);  // Prevent default click actions
 
         if (!event.getWhoClicked().getUniqueId().equals(playerId)) return;
 
         int slot = event.getRawSlot();
         ItemStack clickedItem = event.getCurrentItem();
 
-        // Preventing item pickup and drag
         if (event.getClickedInventory() != inventory) return;
 
         // Handle fast click prevention
@@ -310,7 +318,7 @@ public class MinesTable implements InventoryHolder, Listener {
         }
 
         clickAllowed = false;
-        Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed = true, 5L);  // 5 ticks delay for fast click prevention
+        Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed = true, 5L);  // 5 ticks delay
 
         if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
             handleWagerPlacement(clickedItem, slot);
@@ -324,6 +332,13 @@ public class MinesTable implements InventoryHolder, Listener {
             } else if (clickedItem != null && clickedItem.getType() == Material.EMERALD) {
                 cashOut();
             }
+        }
+
+        // Handle rebet toggle
+        if (slot == 44) {
+            rebetEnabled = !rebetEnabled;
+            player.sendMessage(rebetEnabled ? "Rebet is now ON." : "Rebet is now OFF.");
+            updateRebetToggle();
         }
     }
 
@@ -488,55 +503,49 @@ public class MinesTable implements InventoryHolder, Listener {
         }
     }
 
-    private void handleTileSelection(int x, int y) {
-        if (gameOver) {
-            player.sendMessage("Game over.");
-            return;
-        }
+   private void handleTileSelection(int x, int y) {
+    if (gameOver) {
+        player.sendMessage("Game over.");
+        return;
+    }
+
+    if (revealedGrid[x][y]) {
+        player.sendMessage("Tile already revealed.");
+        return;
+    }
+
+    if (mineGrid[x][y]) {
+   // Change the cash-out button to a barrier immediately
+   updateCashOutToBarrier();
     
-        if (revealedGrid[x][y]) {
-            player.sendMessage("Tile already revealed.");
-            return;
-        }
-    
-        if (mineGrid[x][y]) {
-            // Player hits a mine
-            revealedGrid[x][y] = true;
-            updateTile(x, y, true); // Reveal the clicked mine
-    
-            // Change the cash-out button to a barrier immediately
-            updateCashOutToBarrier();
-    
-            // Start the new animation sequence
-            startMineHitAnimation(x, y); // Pass the coordinates of the mine hit
-    
-            // Trigger a visual explosion at the player's location without causing damage
-            player.getWorld().createExplosion(player.getLocation(), 0F, false, false); // Creates explosion, no damage or block break
-    
-            gameOver = true;
-            gameState = GameState.GAME_OVER;
-            player.sendMessage("You hit a mine!");
-        } else {
-            // Safe tile logic
-            revealedGrid[x][y] = true;
-            safePicks++;
-            updateTile(x, y, false);
-    
-            // Update potential winnings on the Cash Out button
-            ItemStack cashOutButton = inventory.getItem(49);
-            if (cashOutButton != null) {
-                updateCashOutLore(cashOutButton);
-            }
-    
-            player.sendMessage("Safe pick!");
-    
-            // Optionally check if all safe tiles are revealed
-            if (safePicks == (totalTiles - minesCount)) {
-                player.sendMessage("All safe tiles cleared!");
-                cashOut();
-            }
+   // Start the new animation sequence
+   startMineHitAnimation(x, y); // Pass the coordinates of the mine hit
+
+   // Trigger a visual explosion at the player's location without causing damage
+   player.getWorld().createExplosion(player.getLocation(), 0F, false, false); // Creates explosion, no damage or block break
+
+   gameOver = true;
+   gameState = GameState.GAME_OVER;
+   player.sendMessage("You hit a mine!");
+    } else {
+        // Safe tile clicked
+        revealedGrid[x][y] = true;
+        safePicks++;
+        updateTile(x, y, false);  // Reveal a safe tile
+
+        // Optionally update cash out button with updated potential winnings
+        updateCashOutLore(inventory.getItem(49));
+
+        player.sendMessage("Safe pick!");
+
+        // Optionally check if the game is won (all safe tiles cleared)
+        if (safePicks == (totalTiles - minesCount)) {
+            player.sendMessage("All safe tiles cleared!");
+            cashOut();  // End game and cash out the player
         }
     }
+}
+
     
     private void updateCashOutToBarrier() {
         ItemStack barrierItem = createCustomItem(Material.BARRIER, "Game Over", 1);
@@ -755,30 +764,31 @@ public class MinesTable implements InventoryHolder, Listener {
         }
     }
 
+    
     private void resetGame() {
-        // Cancel any ongoing tasks
+        // Cancel ongoing tasks
         for (int taskId : scheduledTasks) {
             Bukkit.getScheduler().cancelTask(taskId);
         }
-        scheduledTasks.clear(); // Clear the list after canceling all tasks
-    
+        scheduledTasks.clear();
+
         // Reset game variables
         this.gameOver = false;
         this.safePicks = 0;
         this.wagerPlaced = false;
         this.gameState = GameState.PLACING_WAGER;
-    
-        // Note: The number of mines remains the same as last game
+
+        // Keep the number of mines the same
         player.sendMessage("# of mines: " + minesCount + ".");
-    
-        // Try to set the wager to the previous amount
-        if (previousWager > 0) {
+
+        // Handle rebet logic
+        if (rebetEnabled && previousWager > 0) {
             if (hasEnoughCurrency(player, (int) previousWager)) {
                 removeWagerFromInventory(player, (int) previousWager);
                 wager = previousWager;
                 currentBets.put(player.getUniqueId(), wager);
                 updateBetLore(52, wager);
-                player.sendMessage("Bet placed: " + wager);
+                player.sendMessage("Rebet placed: " + wager);
                 wagerPlaced = true;
             } else {
                 player.sendMessage("Not enough currency for previous bet. Wager reset to 0.");
@@ -787,8 +797,14 @@ public class MinesTable implements InventoryHolder, Listener {
                 updateBetLore(52, wager);
                 wagerPlaced = false;
             }
+        } else {
+            player.sendMessage("Rebet is off. Wager reset to 0.");
+            wager = 0;
+            currentBets.remove(player.getUniqueId());
+            updateBetLore(52, wager);
+            wagerPlaced = false;
         }
-    
+
         // Re-initialize the table
         initializeTable();
     }
