@@ -62,6 +62,7 @@ public class MinesInventory extends DealerInventory implements Listener {
        // addItem(createCustomItem(Material.GREEN_WOOL, "Start Mines", 1), 22);
       
     }
+    /* 
     @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event){
         if(((Player)event.getPlayer()).getInventory() instanceof MinesInventory){
@@ -70,6 +71,22 @@ public class MinesInventory extends DealerInventory implements Listener {
                 setupGameMenu((Player)event.getPlayer()); 
             }
         }
+    }
+*/
+    @EventHandler
+    public void handleInventoryOpen(InventoryOpenEvent event){
+    
+        Player player=(Player)event.getPlayer();
+        if(player.getInventory() !=null){
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if(player.getOpenInventory().getTopInventory()== this.getInventory()){
+                    if(firstopen){
+                        firstopen=false;
+                        setupGameMenu(player);
+                    }
+                }
+            }, 2L);    
+    }
     }
 
     @EventHandler
