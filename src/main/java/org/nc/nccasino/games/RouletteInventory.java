@@ -238,7 +238,7 @@ firstFin=false;
                 resetToStartState();
             }
         }
-
+/* 
         else if (slot==50){
             if(bettingTimeSeconds>5) 
             
@@ -246,16 +246,16 @@ firstFin=false;
             bettingTimeSeconds--;
             plugin.getConfig().set("dealers." + internalName + ".timer", bettingTimeSeconds);
             plugin.saveConfig();  // Save the configuration to persist changes
-            addItem(createCustomItem(Material.CLOCK, "-1s Betting Timer (Will take effect next round)",bettingTimeSeconds),50);
-            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds),51);
+            //addItem(createCustomItem(Material.CLOCK, "-1s Betting Timer (Will take effect next round)",bettingTimeSeconds),50);
+            //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds),51);
         }
         
         else if (slot==51){
             if(bettingTimeSeconds<64) bettingTimeSeconds++;
             plugin.getConfig().set("dealers." + internalName + ".timer", bettingTimeSeconds);
-            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)",bettingTimeSeconds),50);
-            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds),51);
-        }
+            //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)",bettingTimeSeconds),50);
+            //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds),51);
+        }*/
     }
 
 
@@ -361,11 +361,12 @@ private void updateItemLoreForBet(String betType, int totalBet) {
         inventory.clear();
 
 if(bettingTimeSeconds==0){
-    addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)",1),50);
-    addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", 1),51);
+    //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)",1),50);
+    //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", 1),51);
 }
-    else{    addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)",bettingTimeSeconds),50);
-        addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds),51);}
+    else{    //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)",bettingTimeSeconds),50);
+        //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds),51);
+        }
 
           addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1),52);
         addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 53); // Add an exit button
