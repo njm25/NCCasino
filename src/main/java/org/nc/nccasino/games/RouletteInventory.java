@@ -57,6 +57,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private int ballPosition = 8; // Start at top-right quadrant
     private int currentQuadrant = 1; // 1=Top-Right, 2=Top-Left, 3=Bottom-Left, 4=Bottom-Right
     private int ballFrameCounter=0;
+    private boolean ballMovementStarted = false;
 
     // Quadrant-specific slot mappings for main and extra slots
     private final Map<Integer, int[]> extraSlotsMapTopRight = new HashMap<>();
@@ -156,6 +157,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
                 if (firstFin) {
                     firstFin = false;
                     this.bettingTimeSeconds = plugin.getTimer(internalName);
+                    bettingTimeSeconds=10;//remove this
                     startBettingTimer();
                 }
 
@@ -523,10 +525,10 @@ private void updateTimerItems(int quadrant, int time) {
         // Initialize the decorative slots for the wheel
         initializeDecorativeSlots();
     
-        final int totalSpinFrames = 200; // Reduced total spin frames for faster spin duration
-        final long initialWheelSpeed = 1L; // Start the wheel with a very fast speed (1 tick per update)
-        final long maxWheelSlowSpeed = 10L; // Max slow speed reduced for a quicker slowdown
-        final int fastSpinPhaseFrames = 50; // Number of frames for the fast spin phase (increased)
+        final int totalSpinFrames = 200; // Total number of frames for the spin
+        final long initialWheelSpeed = 5L; // Start the wheel with a slower speed (5 ticks per update)
+        final long maxWheelSlowSpeed = 20L; // Increase max slow speed for a longer slowdown
+        final int spinAccelerationFrames = 50; // Number of frames for the wheel to accelerate
         long[] currentWheelDelay = {initialWheelSpeed}; // Mutable delay for the wheel
     
         Runnable spinTask = new Runnable() {
@@ -536,19 +538,17 @@ private void updateTimerItems(int quadrant, int time) {
                     // Update wheel position based on frame count
                     updateWheel(frameCounter);
     
-                    // Fast spin phase: maintain 1 tick delay for the first 50 frames
-                    if (frameCounter < fastSpinPhaseFrames) {
-                        currentWheelDelay[0] = 1L;
+                    if (frameCounter < spinAccelerationFrames) {
+                        // Gradually accelerate the wheel
+                        double accelerationProgress = (double) frameCounter / spinAccelerationFrames;
+                        currentWheelDelay[0] = (long) (initialWheelSpeed - accelerationProgress * (initialWheelSpeed - 1L));
+                        if (currentWheelDelay[0] < 1L) currentWheelDelay[0] = 1L;
                     } else {
-                        // Smooth and quicker slowdown
-                        int framesSinceSlowPhaseStart = frameCounter - fastSpinPhaseFrames;
-                        double slowPhaseProgress = Math.pow((double) framesSinceSlowPhaseStart / (totalSpinFrames - fastSpinPhaseFrames), 0.5);
-    
-                        // Increase delay from 1L to a maximum of 10L, but more quickly
-                        currentWheelDelay[0] = (long) (1L + slowPhaseProgress * (maxWheelSlowSpeed - 1L));
+                        // Gradually slow down the wheel
+                        int framesSinceDecelerationStart = frameCounter - spinAccelerationFrames;
+                        double decelerationProgress = (double) framesSinceDecelerationStart / (totalSpinFrames - spinAccelerationFrames);
+                        currentWheelDelay[0] = (long) (1L + decelerationProgress * (maxWheelSlowSpeed - 1L));
                     }
-    
-                    System.out.println("Current delay: " + currentWheelDelay[0]);
     
                     // Schedule the next spin with the updated delay
                     Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, this, currentWheelDelay[0]);
@@ -556,7 +556,7 @@ private void updateTimerItems(int quadrant, int time) {
                     frameCounter++;
                 } else {
                     System.out.println("Spin ended");
-                    // Ensure the wheel stops at 22
+                    // Proceed to the next stage or display the result
                 }
             }
         };
@@ -565,10 +565,36 @@ private void updateTimerItems(int quadrant, int time) {
         Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, spinTask, 0L);
     
         // Start ball movement shortly after the wheel starts spinning
-        Bukkit.getScheduler().runTaskLater(plugin, this::startBallMovement, 20L); // Delay by 20 ticks to match the wheel's fast spin phase
+        Bukkit.getScheduler().runTaskLater(plugin, this::startBallMovement, 20L); // Adjust delay as needed
+    }
+    
+
+    private void startBallMovement() {
+    if (ballMovementStarted) {
+        return; // If ball movement has already started, do not trigger it again
     }
 
+    ballMovementStarted = true; // Set the flag to true as the ball movement is starting
+    ballPosition = 8;
+    currentQuadrant = 1;
+    //System.out.println("startb");
+    
+    final long initialBallSpeed = 1L;  // Ball starts at a moderate speed
+    long[] currentBallDelay = {initialBallSpeed};
 
+    ballTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+        @Override
+        public void run() {
+            updateBallPosition();
+
+            // Gradually slow the ball
+            if (currentBallDelay[0] < 40L) {
+                currentBallDelay[0] += 1L;  // Increase delay for ball movement
+            }
+            System.out.println("bob:"+currentBallDelay[0]);
+        }
+    }, 0L, currentBallDelay[0]);
+}
 
 private void startBettingTimer() {
     if (bettingCountdownTaskId != -1) {
@@ -685,91 +711,105 @@ private void clearSlots(int fromSlot, int toSlot) {
 }
 
 
+private void startSlowSpinAnimation(long initialSpeed) {
+    frameCounter = 0;
 
-    /**
-     * Start the slow wheel spin animation when the inventory first opens.
-     */
-    private void startSlowSpinAnimation(long initialSpeed) {
-        frameCounter = 0;
-    
-        Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
-            @Override
-            public void run() {
-                if (betsClosed) {
-                    Bukkit.getScheduler().cancelTask(spinTaskId);  // Stop slow spin when bets are closed
-                } else {
-                    updateWheelView(initialSpeed);
-                    frameCounter++;
-                }
+    spinTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+        @Override
+        public void run() {
+            if (betsClosed) {
+                Bukkit.getScheduler().cancelTask(spinTaskId);  // Stop slow spin when bets are closed
+            } else {
+                updateWheelView(initialSpeed);
+                frameCounter++;  // Increment frameCounter for clockwise rotation
             }
-        }, 0L, initialSpeed);  // Initial slow speed
-    }
-    
+        }
+    }, 0L, initialSpeed);  // Initial slow speed
+}
+
     /**
      * Update the wheel view with the current frame. This is for both slow and fast spins.
      */
     private void updateWheelView(long speed) {
-        int currentOffset = (wheelOffset + frameCounter) % wheelLayout.size();
+        int currentOffset = Math.floorMod(wheelOffset - frameCounter, wheelLayout.size());
         updateQuadrantDisplay(currentOffset);
     }
+    
+    
+  
+    
+
+   
+    
+    private void updateWheel(int frame) {
+        int currentOffset = Math.floorMod(wheelOffset - frame, wheelLayout.size());
+        updateQuadrantDisplay(currentOffset);
+    }
+    
+    
     
    
     
-
-    /**
-     * Start the ball movement when the wheel speed reaches 4 ticks per frame.
-     */
-    private void startBallMovement() {
-        ballPosition = 8;
-        currentQuadrant = 1;
-        
-        final long initialBallSpeed = 5L;  // Ball starts at a moderate speed
-        long[] currentBallDelay = {initialBallSpeed};
-    
-        ballTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
-            @Override
-            public void run() {
-                updateBallPosition();
-                
-                // Gradually slow the ball
-                if (currentBallDelay[0] < 40L) {
-                    currentBallDelay[0] += 2L;  // Increase delay for ball movement
-                }
-            }
-        }, 0L, currentBallDelay[0]);
-    }
-    
-    
-    private void updateWheel(int frame) {
-        // Calculate the current global offset
-        int currentOffset = (wheelOffset + frame) % wheelLayout.size();
-    
-        // Update all quadrants to reflect the global wheel position
-        updateQuadrantDisplay(currentOffset);
-    }
     
     private void updateQuadrantDisplay(int globalOffset) {
-        Map<Integer, int[]> currentExtraSlotsMap = getCurrentExtraSlotsMap();
+        int[] quadrantSlots;
+        int startPosition;
+        Map<Integer, int[]> currentExtraSlotsMap;
     
-        for (Map.Entry<Integer, int[]> entry : currentExtraSlotsMap.entrySet()) {
-            int mainSlot = entry.getKey();
-            int[] extras = entry.getValue();
+        // Define the correct slot ranges and starting positions for each quadrant
+        switch (currentQuadrant) {
+            case 1: // Top-Right Quadrant
+                quadrantSlots = new int[]{27, 28, 29, 30, 31, 32, 33, 43, 53};
+                startPosition = Math.floorMod(globalOffset + 27, wheelLayout.size());
+                currentExtraSlotsMap = extraSlotsMapTopRight;
+                break;
+            case 2: // Top-Left Quadrant
+                quadrantSlots = new int[]{45, 37, 29, 30, 31, 32, 33, 34, 35};
+                startPosition = Math.floorMod(globalOffset + 18, wheelLayout.size());
+                currentExtraSlotsMap = extraSlotsMapTopLeft;
+                break;
+            case 3: // Bottom-Left Quadrant
+                quadrantSlots = new int[]{0, 10, 20, 21, 22, 23, 24, 25, 26};
+                startPosition = Math.floorMod(globalOffset + 9, wheelLayout.size());
+                currentExtraSlotsMap = extraSlotsMapBottomLeft;
+                break;
+            case 4: // Bottom-Right Quadrant
+                quadrantSlots = new int[]{18, 19, 20, 21, 22, 23, 24, 16, 8};
+                startPosition = Math.floorMod(globalOffset, wheelLayout.size());
+                currentExtraSlotsMap = extraSlotsMapBottomRight;
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid quadrant index");
+        }
     
-            // Calculate the wheel position based on the global offset
-            int wheelPosition = (globalOffset + getMainSlotIndex(mainSlot)) % wheelLayout.size();
+        // Loop through each slot in the quadrant and assign the correct number
+        for (int i = 0; i < quadrantSlots.length; i++) {
+            int wheelPosition;
+            if (currentQuadrant == 1 || currentQuadrant == 2) {
+                // For quadrants 1 and 2, add i to startPosition
+                wheelPosition = Math.floorMod(startPosition + i, wheelLayout.size());
+            } else {
+                // For quadrants 3 and 4, subtract i from startPosition
+                wheelPosition = Math.floorMod(startPosition - i, wheelLayout.size());
+            }
             int number = wheelLayout.get(wheelPosition);
     
-            // Assign the main slot and extra slots
-            ItemStack mainItem = createCustomItem(getMaterialForNumber(number), "Number: " + number, (number == 0) ? 1 : number);
-            inventory.setItem(mainSlot, mainItem);
+            // Create the item with the correct number and place it in the quadrant slot
+            ItemStack item = createCustomItem(getMaterialForNumber(number), "Number: " + number, (number == 0) ? 1 : number);
+            inventory.setItem(quadrantSlots[i], item);
     
-            // Set unique numbers for the extra slots
-            ItemStack extraItem = createCustomItem(getMaterialForNumber(number), "Number: " + number, 1);
-            for (int extraSlot : extras) {
-                inventory.setItem(extraSlot, extraItem);
+            // Handle the extra slots associated with the main number slot
+            if (currentExtraSlotsMap.containsKey(quadrantSlots[i])) {
+                int[] extraSlots = currentExtraSlotsMap.get(quadrantSlots[i]);
+                ItemStack extraItem = createCustomItem(getMaterialForNumber(number), "Number: " + number, 1);
+                for (int extraSlot : extraSlots) {
+                    inventory.setItem(extraSlot, extraItem);
+                }
             }
         }
     }
+    
+    
     
 
 
@@ -779,7 +819,7 @@ private void clearSlots(int fromSlot, int toSlot) {
 private void switchQuadrant() {
     // Cycle between quadrants: 1 -> 2 -> 3 -> 4 (top-right -> top-left -> bottom-left -> bottom-right)
     currentQuadrant = (currentQuadrant % 4) + 1;
-
+    //System.out.println("CurrQuad:"+currentQuadrant);
     initializeDecorativeSlotsForQuadrant(currentQuadrant);
 
     switch (currentQuadrant) {
@@ -787,7 +827,7 @@ private void switchQuadrant() {
             ballPosition = 8; // Top-right quadrant starts from slot 8
             break;
         case 2:
-            ballPosition = 17; // Top-left quadrant starts from slot 17
+            ballPosition = 8; // Top-left quadrant starts from slot 17
             break;
         case 3:
             ballPosition = 45; // Bottom-left quadrant starts from slot 45
@@ -804,21 +844,25 @@ private void switchQuadrant() {
 private void initializeDecorativeSlotsForQuadrant(int quadrant) {
     switch (quadrant) {
         case 1:
+            //System.out.println("dec1");
             // Quadrant 1: Brown slots (0-17, 26), Green slots (36-42, 45-52)
             fillDecorativeSlots(new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 26}, Material.BROWN_STAINED_GLASS_PANE);
             fillDecorativeSlots(new int[]{36, 37, 38, 39, 40, 41, 42, 45, 46, 47, 48, 49, 50, 51, 52}, Material.GREEN_STAINED_GLASS_PANE);
             break;
         case 2:
+        //System.out.println("dec2");
             // Quadrant 2: Brown slots (0-18), Green slots (38-44, 46-53)
             fillDecorativeSlots(new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18}, Material.BROWN_STAINED_GLASS_PANE);
             fillDecorativeSlots(new int[]{38, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53}, Material.GREEN_STAINED_GLASS_PANE);
             break;
         case 3:
+        //System.out.println("dec3");
             // Quadrant 3: Brown slots (27, 36-53), Green slots (1-8, 11-17)
             fillDecorativeSlots(new int[]{27, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53}, Material.BROWN_STAINED_GLASS_PANE);
             fillDecorativeSlots(new int[]{1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17}, Material.GREEN_STAINED_GLASS_PANE);
             break;
         case 4:
+        //System.out.println("dec4");
             // Quadrant 4: Brown slots (35-53), Green slots (0-7, 9-15)
             fillDecorativeSlots(new int[]{35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53}, Material.BROWN_STAINED_GLASS_PANE);
             fillDecorativeSlots(new int[]{0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15}, Material.GREEN_STAINED_GLASS_PANE);
@@ -838,22 +882,30 @@ private void updateBallPosition() {
     switch (currentQuadrant) {
         case 1: // Top-right quadrant
             if (ballPosition > 0) {
+                //System.out.println("Quad1b: "+ballPosition);
                 ballPosition--;
+                //System.out.println("Quad1a: "+ballPosition);
             }
             break;
         case 2: // Top-left quadrant
-            if (ballPosition > 9) {
+            if (ballPosition > 0) {
+                //System.out.println("Quad2b: "+ballPosition);
                 ballPosition--;
+                //System.out.println("Quad2a: "+ballPosition);
             }
             break;
         case 3: // Bottom-left quadrant
             if (ballPosition < 53) {
+                //System.out.println("Quad3b: "+ballPosition);
                 ballPosition++;
+                //System.out.println("Quad3a: "+ballPosition);
             }
             break;
         case 4: // Bottom-right quadrant
             if (ballPosition < 53) {
+                //System.out.println("Quad3b: "+ballPosition);
                 ballPosition++;
+                //System.out.println("Quad3a: "+ballPosition);
             }
             break;
     }
@@ -865,7 +917,7 @@ private void updateBallPosition() {
 private boolean isQuadrantBoundary(int ballPosition) {
     switch (currentQuadrant) {
         case 1: return ballPosition == 0; // Boundary for top-right quadrant
-        case 2: return ballPosition == 9; // Boundary for top-left quadrant
+        case 2: return ballPosition == 0; // Boundary for top-left quadrant
         case 3: return ballPosition == 53; // Boundary for bottom-left quadrant
         case 4: return ballPosition == 53; // Boundary for bottom-right quadrant
         default: return false;
@@ -876,14 +928,14 @@ private void updateInventoryWithBall() {
     // Clear previous ball position
     for (int i = 0; i < 54; i++) {
         ItemStack item = inventory.getItem(i);
-        if (item != null && item.getType() == Material.HEART_OF_THE_SEA) {
+        if (item != null && item.getType() == Material.ENDER_PEARL) {
             // Restore the original decorative slot (green/brown stained glass)
             restoreDecorativeSlot(i);
         }
     }
 
     // Place ball in new position
-    ItemStack ball = new ItemStack(Material.HEART_OF_THE_SEA);
+    ItemStack ball = new ItemStack(Material.ENDER_PEARL);
     ItemMeta meta = ball.getItemMeta();
     meta.setDisplayName("Ball");
     ball.setItemMeta(meta);
