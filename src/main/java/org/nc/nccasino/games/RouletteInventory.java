@@ -58,6 +58,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private int currentQuadrant = 1; // 1=Top-Right, 2=Top-Left, 3=Bottom-Left, 4=Bottom-Right
     private int ballFrameCounter=0;
     private boolean ballMovementStarted = false;
+    private boolean spinAnimationOver = false;
 
     // Quadrant-specific slot mappings for main and extra slots
     private final Map<Integer, int[]> extraSlotsMapTopRight = new HashMap<>();
@@ -509,100 +510,22 @@ private void updateTimerItems(int quadrant, int time) {
                     player.sendMessage("Bets Locked!");
                 }
             }
-            startBallMovement();
 
+           
+            Bukkit.getScheduler().runTaskLater(plugin, () -> startBallMovement(false), 55L);
             // Transition wheel to slower spin after bets close
             // Update to spinning ball and wheel
             startSpinAnimation(activePlayers);
         }
     }
     
-
-
-    private void startSpinAnimation(List<Player> activePlayers) {
-        frameCounter = 0;
-    
-        // Initialize the decorative slots for the wheel
-        initializeDecorativeSlots();
-    
-        final int totalSpinFrames = 200; // Total number of frames for the spin
-        final long initialWheelSpeed = 5L; // Start the wheel with a slower speed (5 ticks per update)
-        final long maxWheelSlowSpeed = 20L; // Increase max slow speed for a longer slowdown
-        final int spinAccelerationFrames = 50; // Number of frames for the wheel to accelerate
-        long[] currentWheelDelay = {initialWheelSpeed}; // Mutable delay for the wheel
-    
-        Runnable spinTask = new Runnable() {
-            @Override
-            public void run() {
-                if (frameCounter < totalSpinFrames) {
-                    // Update wheel position based on frame count
-                    updateWheel(frameCounter);
-    
-                    if (frameCounter < spinAccelerationFrames) {
-                        // Gradually accelerate the wheel
-                        double accelerationProgress = (double) frameCounter / spinAccelerationFrames;
-                        currentWheelDelay[0] = (long) (initialWheelSpeed - accelerationProgress * (initialWheelSpeed - 1L));
-                        if (currentWheelDelay[0] < 1L) currentWheelDelay[0] = 1L;
-                    } else {
-                        // Gradually slow down the wheel
-                        int framesSinceDecelerationStart = frameCounter - spinAccelerationFrames;
-                        double decelerationProgress = (double) framesSinceDecelerationStart / (totalSpinFrames - spinAccelerationFrames);
-                        currentWheelDelay[0] = (long) (1L + decelerationProgress * (maxWheelSlowSpeed - 1L));
-                    }
-    
-                    // Schedule the next spin with the updated delay
-                    Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, this, currentWheelDelay[0]);
-    
-                    frameCounter++;
-                } else {
-                    System.out.println("Spin ended");
-                    // Proceed to the next stage or display the result
-                }
-            }
-        };
-    
-        // Start the first task immediately
-        Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, spinTask, 0L);
-    
-        // Start ball movement shortly after the wheel starts spinning
-        Bukkit.getScheduler().runTaskLater(plugin, this::startBallMovement, 20L); // Adjust delay as needed
-    }
-    
-
-    private void startBallMovement() {
-    if (ballMovementStarted) {
-        return; // If ball movement has already started, do not trigger it again
-    }
-
-    ballMovementStarted = true; // Set the flag to true as the ball movement is starting
-    ballPosition = 8;
-    currentQuadrant = 1;
-    //System.out.println("startb");
-    
-    final long initialBallSpeed = 1L;  // Ball starts at a moderate speed
-    long[] currentBallDelay = {initialBallSpeed};
-
-    ballTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
-        @Override
-        public void run() {
-            updateBallPosition();
-
-            // Gradually slow the ball
-            if (currentBallDelay[0] < 40L) {
-                currentBallDelay[0] += 1L;  // Increase delay for ball movement
-            }
-            System.out.println("bob:"+currentBallDelay[0]);
-        }
-    }, 0L, currentBallDelay[0]);
-}
-
 private void startBettingTimer() {
     if (bettingCountdownTaskId != -1) {
         Bukkit.getScheduler().cancelTask(bettingCountdownTaskId);
     }
 
     // Start the slow spin as soon as the betting phase begins
-    startSlowSpinAnimation(10L); // Start the wheel spinning at 10 ticks per frame
+    startSlowSpinAnimation(6L); // Start the wheel spinning at 10 ticks per frame
 
     betsClosed = false;
 
@@ -638,7 +561,102 @@ private void startBettingTimer() {
     }, 0L, 20L);
 }
 
+private void startSlowSpinAnimation(long initialSpeed) {
+    frameCounter = 0;
+    int spinDirection = -1; // Set counter-clockwise
 
+    spinTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+        @Override
+        public void run() {
+            if (betsClosed) {
+                Bukkit.getScheduler().cancelTask(spinTaskId); // Stop slow spin when bets are closed
+            } else {
+                updateWheelView(frameCounter * spinDirection); // Adjust direction here
+                frameCounter++; // Increment frameCounter for the next position
+            }
+        }
+    }, 0L, initialSpeed); // Initial slow speed
+}
+
+private void startSpinAnimation(List<Player> activePlayers) {
+    frameCounter = 0;
+    boolean reverseDirection = (frameCounter + 1) % 2 == 0;
+    int spinDirection = reverseDirection ? -1 : 1;
+
+    final int totalSpinFrames = 600;
+    final long initialWheelSpeed = 1L;
+    final long minWheelSpeed = 6L; // Minimum delay (6L) once reached
+    final int spinAccelerationFrames = 20;
+    final int spinDecelerationFrames = 300;
+    long[] currentWheelDelay = {initialWheelSpeed};
+
+    Runnable spinTask = new Runnable() {
+        @Override
+        public void run() {
+            if (!spinAnimationOver) {
+                updateWheel(frameCounter * spinDirection);
+
+                if (frameCounter < spinAccelerationFrames) {
+                    // Acceleration phase
+                    double accelerationProgress = (double) frameCounter / spinAccelerationFrames;
+                    currentWheelDelay[0] = (long) Math.max(0.75, initialWheelSpeed - (accelerationProgress * 0.5));
+                } else if (frameCounter >= totalSpinFrames - spinDecelerationFrames) {
+                    // Deceleration phase: limit delay to minimum of 6L once reached
+                    int framesSinceDecelerationStart = frameCounter - (totalSpinFrames - spinDecelerationFrames);
+                    double decelerationProgress = Math.pow((double) framesSinceDecelerationStart / spinDecelerationFrames, 2);
+                    currentWheelDelay[0] = Math.min(6L, 1L + (long) (decelerationProgress * (minWheelSpeed - 1L)));
+                }
+
+                //System.out.println("Current Speed: " + currentWheelDelay[0]);
+                Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, this, currentWheelDelay[0]);
+                frameCounter++;
+            } 
+            /* 
+            else {
+                Bukkit.getScheduler().runTaskLater(plugin, () -> startBallMovement(!reverseDirection), 10L);
+            }*/
+        }
+    };
+
+    Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, spinTask, 0L);
+}
+
+
+
+    private void startBallMovement(boolean reverseDirection) {
+        if (ballMovementStarted) return;
+        ballMovementStarted = true;
+        ballPosition = 8;
+        currentQuadrant = 1;
+        
+        int ballSpinDirection = reverseDirection ? -1 : 1; // Opposite direction of the inner wheel
+        final long initialBallSpeed = 2L;
+        long[] currentBallDelay = {initialBallSpeed};
+    
+        ballTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+            @Override
+            public void run() {
+                updateBallPosition(ballSpinDirection); // Spin in the opposite direction of the wheel
+                if (currentBallDelay[0] < 40L) {
+                    currentBallDelay[0] += 1L;
+                }
+            }
+        }, 0L, currentBallDelay[0]);
+    }
+    
+
+
+
+private void updateWheelView(long frameOffset) {
+    int currentOffset = Math.floorMod(wheelOffset - (int) frameOffset, wheelLayout.size());
+    updateQuadrantDisplay(currentOffset);
+}
+
+    private void updateWheel(int frame) {
+        int currentOffset = Math.floorMod(wheelOffset - frame, wheelLayout.size());
+        updateQuadrantDisplay(currentOffset);
+    }
+    
 // Determine the correct slot for the countdown based on the quadrant
 private int getCountdownSlotForQuadrant(int quadrant) {
     switch (quadrant) {
@@ -711,41 +729,6 @@ private void clearSlots(int fromSlot, int toSlot) {
 }
 
 
-private void startSlowSpinAnimation(long initialSpeed) {
-    frameCounter = 0;
-
-    spinTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
-        @Override
-        public void run() {
-            if (betsClosed) {
-                Bukkit.getScheduler().cancelTask(spinTaskId);  // Stop slow spin when bets are closed
-            } else {
-                updateWheelView(initialSpeed);
-                frameCounter++;  // Increment frameCounter for clockwise rotation
-            }
-        }
-    }, 0L, initialSpeed);  // Initial slow speed
-}
-
-    /**
-     * Update the wheel view with the current frame. This is for both slow and fast spins.
-     */
-    private void updateWheelView(long speed) {
-        int currentOffset = Math.floorMod(wheelOffset - frameCounter, wheelLayout.size());
-        updateQuadrantDisplay(currentOffset);
-    }
-    
-    
-  
-    
-
-   
-    
-    private void updateWheel(int frame) {
-        int currentOffset = Math.floorMod(wheelOffset - frame, wheelLayout.size());
-        updateQuadrantDisplay(currentOffset);
-    }
-    
     
     
    
@@ -873,45 +856,36 @@ private void initializeDecorativeSlotsForQuadrant(int quadrant) {
 }
 
 
-private void updateBallPosition() {
+private void updateBallPosition(int direction) {
     // Switch to the new quadrant if the ball reaches the boundary
     if (isQuadrantBoundary(ballPosition)) {
-        switchQuadrant(); // This will also refresh the decorations and numbers for the new quadrant
+        switchQuadrant(); // Refresh decorations and numbers for the new quadrant
     }
 
+    // Update the ball position based on the direction and the current quadrant
     switch (currentQuadrant) {
         case 1: // Top-right quadrant
-            if (ballPosition > 0) {
-                //System.out.println("Quad1b: "+ballPosition);
-                ballPosition--;
-                //System.out.println("Quad1a: "+ballPosition);
-            }
-            break;
         case 2: // Top-left quadrant
-            if (ballPosition > 0) {
-                //System.out.println("Quad2b: "+ballPosition);
-                ballPosition--;
-                //System.out.println("Quad2a: "+ballPosition);
+            if (direction > 0 && ballPosition > 0) {
+                ballPosition--; // Move backward
+            } else if (direction < 0 && ballPosition < 53) {
+                ballPosition++; // Move forward
             }
             break;
+
         case 3: // Bottom-left quadrant
-            if (ballPosition < 53) {
-                //System.out.println("Quad3b: "+ballPosition);
-                ballPosition++;
-                //System.out.println("Quad3a: "+ballPosition);
-            }
-            break;
         case 4: // Bottom-right quadrant
-            if (ballPosition < 53) {
-                //System.out.println("Quad3b: "+ballPosition);
-                ballPosition++;
-                //System.out.println("Quad3a: "+ballPosition);
+            if (direction > 0 && ballPosition < 53) {
+                ballPosition++; // Move forward
+            } else if (direction < 0 && ballPosition > 0) {
+                ballPosition--; // Move backward
             }
             break;
     }
 
-    updateInventoryWithBall(); // Move the ball and restore the previous decoration
+    updateInventoryWithBall(); // Update the inventory to reflect the ball's new position
 }
+
 
 
 private boolean isQuadrantBoundary(int ballPosition) {
