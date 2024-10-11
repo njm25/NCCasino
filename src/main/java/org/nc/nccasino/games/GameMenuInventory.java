@@ -15,7 +15,7 @@ import java.util.UUID;
 public class GameMenuInventory extends DealerInventory {
 
     public GameMenuInventory(UUID dealerId) {
-        super(dealerId, 9, "Game Menu");
+        super(dealerId, 18, "Game Menu");
         initializeMenu();
     }
 
@@ -24,14 +24,14 @@ public class GameMenuInventory extends DealerInventory {
         addItem(createCustomItem(Material.DIAMOND_BLOCK, "Blackjack"), 0);
         addItem(createCustomItem(Material.EMERALD_BLOCK, "Roulette"), 1);
         addItem(createCustomItem(Material.TNT, "Mines"), 2);
-        //addItem(createCustomItem(Material.DRAGON_HEAD, "Dragon Climb"), 3);
-        //addItem(createCustomItem(Material.RAIL, "Rail Runner"), 4);
-        //addItem(createCustomItem(Material.RED_MUSHROOM_BLOCK, "Dice"), 5);
-        /* 
+        addItem(createCustomItem(Material.DRAGON_HEAD, "Dragon Climb"), 3);
+        addItem(createCustomItem(Material.RAIL, "Rail Runner"), 4);
+        addItem(createCustomItem(Material.RED_MUSHROOM_BLOCK, "Dice"), 5);
+        
            addItem(createCustomItem(Material.ELYTRA, "Digital Baccarat"),6);
         addItem(createCustomItem(Material.NETHERITE_UPGRADE_SMITHING_TEMPLATE, "Higher or Lower"), 7);
         addItem(createCustomItem(Material.EMERALD, "Keno"), 8);
-        addItem(createCustomItem(Material.NAUTILUS_SHELL, "Bandit Wheel"), 9);*/
+        addItem(createCustomItem(Material.NAUTILUS_SHELL, "Bandit Wheel"), 9);
 
     }
 
@@ -70,7 +70,6 @@ public class GameMenuInventory extends DealerInventory {
             case 2:
                 DealerVillager.switchGame(villager, "Mines",player);
                 break;
-                /*
             case 3:
                 DealerVillager.switchGame(villager, "Dragon Climb",player);
                 break;
@@ -93,7 +92,7 @@ public class GameMenuInventory extends DealerInventory {
             case 9:
                 DealerVillager.switchGame(villager, "Bandit Camp Wheel",player);
                 break;
- */
+ 
             default:
                 return; // Exit if no valid slot is clicked
         }
