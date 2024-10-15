@@ -76,12 +76,12 @@ private final Map<Integer, List<Integer>> tracksTopLeft = new HashMap<>();
 private final Map<Integer, List<Integer>> tracksBottomLeft = new HashMap<>();
 private final Map<Integer, List<Integer>> tracksBottomRight = new HashMap<>();
 // Ball movement spin ranges per track (in spins)
-private final double track1MinSpins = 2.5;
-private final double track1MaxSpins = 4.5;
+private final double track1MinSpins = 2;
+private final double track1MaxSpins = 3.5;
 private final double track2MinSpins = 1.5;
-private final double track2MaxSpins = 6.5;
-private final double track3MinSpins = 0.5;
-private final double track3MaxSpins = 1.0;
+private final double track2MaxSpins = 4.5;
+private final double track3MinSpins = 0.1;
+private final double track3MaxSpins = 0.3;
 private final double track4MinSpins = 0.5;
 private final double track4MaxSpins = 1.0;
 private int slotsPerSpinTrack1;
@@ -732,16 +732,9 @@ private void startBallMovement(boolean reverseDirection) {
     moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
 }
 
-
-
-
-// Implement moveBall method
 private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slotsMovedTotal, int totalSlotsToMove, int ballAccelerationSlots, int ballDecelerationSlots) {
-    if (!ballMovementStarted) {
-        return;
-    }
+    if (!ballMovementStarted) return;
 
-    // If we are switching quadrants, wait until the switch is complete
     if (isSwitchingQuadrant) {
         Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
             moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
@@ -751,82 +744,75 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
 
     Map<Integer, List<Integer>> currentTracks = getTracksForCurrentQuadrant();
     List<Integer> currentTrackSlots = currentTracks.get(ballCurrentTrack);
+    if (currentTrackSlots == null || currentTrackSlots.isEmpty()) return;
 
-    if (currentTrackSlots == null || currentTrackSlots.isEmpty()) {
-        return; // No slots in this track
-    }
-
-    // Before moving the ball, check if the next move would require switching quadrants
     int nextIndex = (ballCurrentIndex + ballSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
     int nextSlot = currentTrackSlots.get(nextIndex);
 
     if (isQuadrantBoundary(nextSlot)) {
-        //System.out.println("Nextslot:"+ nextSlot+" and currquad: "+currentQuadrant);
-        // Need to switch quadrants
         isSwitchingQuadrant = true;
 
-        // Remove ball from current slot
-        if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
-            inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
-        }
+        // Show ball in the final slot of the current track
+        updateBallPosition(ballSpinDirection);
 
-        // Schedule quadrant switch with delay
+        // Schedule delay for ball to disappear, then switch quadrant view
         Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-            // Hide the ball for a frame
+            // Remove ball from current slot
+            if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
+                inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
+            }
+
+            // Delay to simulate ball going off-screen before quadrant switch
             Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-                // Switch quadrant
                 switchQuadrant();
 
-                // Set isSwitchingQuadrant to false after switching quadrants
-                isSwitchingQuadrant = false;
+                // Delay to simulate ball still off-screen after quadrant switch
+                Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+                    ballCurrentIndex = getStartingIndexForNewQuadrant();
+                    updateBallPosition(ballSpinDirection);
 
-                // Continue moving the ball
-                moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
-            }, 2L); // Delay before switching quadrant
-        }, 2L); // Initial delay before hiding the ball
-
+                    isSwitchingQuadrant = false;
+                    moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
+                }, 2L); // Delay after switching quadrants
+            }, 2L); // Delay before switching quadrants
+        }, 2L); // Delay before ball disappears
         return;
     }
 
-    // Proceed to move the ball
+    // Normal ball movement if not at boundary
     updateBallPosition(ballSpinDirection);
+    slotsMovedTotal[0]++;
 
-    slotsMovedTotal[0]++; // Use array element for incrementation
-
-    // Adjust delay for acceleration and deceleration
-    if (slotsMovedTotal[0] < ballAccelerationSlots) {
-        // Acceleration phase
-        double accelerationProgress = (double) slotsMovedTotal[0] / ballAccelerationSlots;
-        currentBallDelay[0] = (long) Math.max(1L, INITIAL_BALL_SPEED - (accelerationProgress * 0.5));
-    } else if (slotsMovedTotal[0] >= totalSlotsToMove - ballDecelerationSlots) {
-        // Deceleration phase
-        int slotsSinceDecelerationStart = slotsMovedTotal[0] - (totalSlotsToMove - ballDecelerationSlots);
-        double decelerationProgress = Math.pow((double) slotsSinceDecelerationStart / ballDecelerationSlots, 2);
-        currentBallDelay[0] = Math.min(6L, 1L + (long) (decelerationProgress * (MIN_BALL_SPEED - 1L)));
-    }
-
-    // Decrement slots to move in current track
+    adjustBallSpeed(currentBallDelay, slotsMovedTotal[0], ballAccelerationSlots, totalSlotsToMove, ballDecelerationSlots);
+    
     slotsToMovePerTrack[trackSequenceIndex]--;
 
     if (slotsToMovePerTrack[trackSequenceIndex] <= 0) {
-        // Move to next track
         trackSequenceIndex++;
         if (trackSequenceIndex < trackSequence.length) {
             ballCurrentTrack = trackSequence[trackSequenceIndex];
-            // Reset ballCurrentIndex to ensure smooth transition between tracks
             ballCurrentIndex = 0;
         } else {
-            // Ball movement finished
             ballMovementStarted = false;
             handleWinningNumber();
             return;
         }
     }
 
-    // Schedule next moveBall call
     Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
         moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
     }, currentBallDelay[0]);
+}
+
+private void adjustBallSpeed(long[] currentBallDelay, int slotsMoved, int ballAccelerationSlots, int totalSlots, int ballDecelerationSlots) {
+    if (slotsMoved < ballAccelerationSlots) {
+        double accelerationProgress = (double) slotsMoved / ballAccelerationSlots;
+        currentBallDelay[0] = (long) Math.max(1L, INITIAL_BALL_SPEED - (accelerationProgress * 0.5));
+    } else if (slotsMoved >= totalSlots - ballDecelerationSlots) {
+        int slotsSinceDecelerationStart = slotsMoved - (totalSlots - ballDecelerationSlots);
+        double decelerationProgress = Math.pow((double) slotsSinceDecelerationStart / ballDecelerationSlots, 2);
+        currentBallDelay[0] = Math.min(6L, 1L + (long) (decelerationProgress * (MIN_BALL_SPEED - 1L)));
+    }
 }
 
 
