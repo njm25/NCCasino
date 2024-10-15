@@ -126,28 +126,28 @@ private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
         // Existing track initialization code...
     
         // Quadrant 1 (Top-Right)
-        tracksTopRight.put(1, Arrays.asList(8, 7, 6, 5, 4, 3, 2, 1, 0));
-        tracksTopRight.put(2, Arrays.asList(16, 15, 14, 13, 12, 11, 10, 9));
-        tracksTopRight.put(3, Arrays.asList(25, 24, 23, 22, 21, 20, 19, 18, 17));
-        tracksTopRight.put(4, Arrays.asList(34, 33, 32, 31, 30, 29, 28, 27, 26));
+        tracksTopRight.put(1, Arrays.asList(17, 7, 6, 5, 4, 3, 2, 1, 0));
+        tracksTopRight.put(2, Arrays.asList(26, 16, 15, 14, 13, 12, 11, 10, 9));
+        tracksTopRight.put(3, Arrays.asList(44,34, 24,23, 22, 21, 20, 19, 18));
+        tracksTopRight.put(4, Arrays.asList(53,43, 33, 32, 31, 30, 29, 28, 27));
     
         // Quadrant 2 (Top-Left)
-        tracksTopLeft.put(1, Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8));
-        tracksTopLeft.put(2, Arrays.asList(9, 10, 11, 12, 13, 14, 15, 16, 17));
-        tracksTopLeft.put(3, Arrays.asList(18, 19, 20, 21, 22, 23, 24, 25, 26));
-        tracksTopLeft.put(4, Arrays.asList(27, 28, 29, 30, 31, 32, 33, 34, 35));
+        tracksTopLeft.put(1, Arrays.asList(9, 1, 2, 3, 4, 5, 6, 7, 8));
+        tracksTopLeft.put(2, Arrays.asList(18, 10, 11, 12, 13, 14, 15, 16, 17));
+        tracksTopLeft.put(3, Arrays.asList(36, 28, 20, 21, 22, 23, 24, 25, 26));
+        tracksTopLeft.put(4, Arrays.asList(45,37,29, 30, 31, 32, 33, 34, 35));
     
         // Quadrant 3 (Bottom-Left)
-        tracksBottomLeft.put(1, Arrays.asList(45, 46, 47, 48, 49, 50, 51, 52, 53));
-        tracksBottomLeft.put(2, Arrays.asList(36, 37, 38, 39, 40, 41, 42, 43, 44));
-        tracksBottomLeft.put(3, Arrays.asList(27, 28, 29, 30, 31, 32, 33, 34, 35));
-        tracksBottomLeft.put(4, Arrays.asList(18, 19, 20, 21, 22, 23, 24, 25, 26));
+        tracksBottomLeft.put(1, Arrays.asList(36, 46, 47, 48, 49, 50, 51, 52, 53));
+        tracksBottomLeft.put(2, Arrays.asList(27, 37, 38, 39, 40, 41, 42, 43, 44));
+        tracksBottomLeft.put(3, Arrays.asList(9,19, 29, 30, 31, 32, 33, 34, 35));
+        tracksBottomLeft.put(4, Arrays.asList(0,10, 20, 21, 22, 23, 24, 25, 26));
     
         // Quadrant 4 (Bottom-Right)
-        tracksBottomRight.put(1, Arrays.asList(53, 52, 51, 50, 49, 48, 47, 46, 45));
-        tracksBottomRight.put(2, Arrays.asList(44, 43, 42, 41, 40, 39, 38, 37, 36));
-        tracksBottomRight.put(3, Arrays.asList(35, 34, 33, 32, 31, 30, 29, 28, 27));
-        tracksBottomRight.put(4, Arrays.asList(26, 25, 24, 23, 22, 21, 20, 19, 18));
+        tracksBottomRight.put(1, Arrays.asList(44, 52, 51, 50, 49, 48, 47, 46, 45));
+        tracksBottomRight.put(2, Arrays.asList(35, 43, 42, 41, 40, 39, 38, 37, 36));
+        tracksBottomRight.put(3, Arrays.asList(17,25, 33, 32, 31, 30, 29, 28, 27));
+        tracksBottomRight.put(4, Arrays.asList(8, 16, 24, 23, 22, 21, 20, 19, 18));
     
         // Calculate total slots per spin per track
         slotsPerSpinTrack1 = tracksTopRight.get(1).size() + tracksTopLeft.get(1).size() + tracksBottomLeft.get(1).size() + tracksBottomRight.get(1).size();
@@ -726,6 +726,7 @@ private void startBallMovement(boolean reverseDirection) {
     final int ballAccelerationSlots = totalSlotsToMove / 4;
     final int ballDecelerationSlots = totalSlotsToMove / 2;
     long[] currentBallDelay = {INITIAL_BALL_SPEED};
+    
     int[] slotsMovedTotal = {0}; // Wrap in array to allow modification
 
     // Start moving the ball
@@ -742,7 +743,8 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
         return;
     }
 
-    Map<Integer, List<Integer>> currentTracks = getTracksForCurrentQuadrant();
+    long[] tempBallDelay = {1L};
+     Map<Integer, List<Integer>> currentTracks = getTracksForCurrentQuadrant();
     List<Integer> currentTrackSlots = currentTracks.get(ballCurrentTrack);
     if (currentTrackSlots == null || currentTrackSlots.isEmpty()) return;
 
@@ -761,6 +763,48 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
             if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
                 inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
             }
+            int nextquadnow=0;
+            if (wheelSpinDirection == -1) { // Clockwise
+                nextquadnow = (currentQuadrant % 4) + 1; // Move to next quadrant in order
+            } else { // Counterclockwise
+                nextquadnow = (currentQuadrant == 1) ? 4 : currentQuadrant - 1; // Move to previous quadrant
+            }
+            switch (currentQuadrant) {
+                case 1:
+                    if(nextquadnow==4){
+                    tempBallDelay[0]=6L;    
+                    }
+                    else{
+                    tempBallDelay[0]=2L;    
+                    }
+                    break;
+                case 2:
+                if(nextquadnow==3){
+                    tempBallDelay[0]=6L;    
+                    }
+                    else{
+                    tempBallDelay[0]=2L;    
+                    }
+                    break;
+                case 3:
+                if(nextquadnow==2){
+                    tempBallDelay[0]=6L;    
+                    }
+                    else{
+                    tempBallDelay[0]=2L;    
+                    }
+                    break;
+                case 4:
+                if(nextquadnow==1){
+                    tempBallDelay[0]=6L;    
+                    }
+                    else{
+                    tempBallDelay[0]=2L;    
+                    }
+                    break;
+                default:
+                    break;
+            }
 
             // Delay to simulate ball going off-screen before quadrant switch
             Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
@@ -773,9 +817,9 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
 
                     isSwitchingQuadrant = false;
                     moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
-                }, 2L); // Delay after switching quadrants
-            }, 2L); // Delay before switching quadrants
-        }, 2L); // Delay before ball disappears
+                }, tempBallDelay[0]); // Delay after switching quadrants
+            }, tempBallDelay[0]); // Delay before switching quadrants
+        }, 1L); // Delay before ball disappears
         return;
     }
 
