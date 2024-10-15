@@ -63,6 +63,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
     // Add these variables at the class level
 private static final long INITIAL_BALL_SPEED = 1L;
 private static final long MIN_BALL_SPEED = 6L;
+private int protectedSlot = -1; // Initialize to an invalid slot
 
     // Quadrant-specific slot mappings for main and extra slots
     private final Map<Integer, int[]> extraSlotsMapTopRight = new HashMap<>();
@@ -76,14 +77,14 @@ private final Map<Integer, List<Integer>> tracksTopLeft = new HashMap<>();
 private final Map<Integer, List<Integer>> tracksBottomLeft = new HashMap<>();
 private final Map<Integer, List<Integer>> tracksBottomRight = new HashMap<>();
 // Ball movement spin ranges per track (in spins)
-private final double track1MinSpins = 2;
-private final double track1MaxSpins = 3.5;
+private final double track1MinSpins = 1;
+private final double track1MaxSpins = 1.5;
 private final double track2MinSpins = 1.5;
-private final double track2MaxSpins = 4.5;
-private final double track3MinSpins = 0.1;
-private final double track3MaxSpins = 0.3;
-private final double track4MinSpins = 0.5;
-private final double track4MaxSpins = 1.0;
+private final double track2MaxSpins = 2;
+private final double track3MinSpins = 1/12.0;
+private final double track3MaxSpins = 1/12.0;
+private final double track4MinSpins = 1/9.0;
+private final double track4MaxSpins =1/9.0;
 private int slotsPerSpinTrack1;
 private int slotsPerSpinTrack2;
 private int slotsPerSpinTrack3;
@@ -677,7 +678,8 @@ private void startSpinAnimation(List<Player> activePlayers) {
                     double decelerationProgress = Math.pow((double) framesSinceDecelerationStart / spinDecelerationFrames, 2);
                     currentWheelDelay[0] = Math.min(6L, 1L + (long) (decelerationProgress * (minWheelSpeed - 1L)));
                 }
-
+                
+                
                 //System.out.println("Current Speed: " + currentWheelDelay[0]);
                 Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, this, currentWheelDelay[0]);
                 frameCounter++;
@@ -819,7 +821,7 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
                     moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
                 }, tempBallDelay[0]); // Delay after switching quadrants
             }, tempBallDelay[0]); // Delay before switching quadrants
-        }, 1L); // Delay before ball disappears
+        }, 3L); // Delay before ball disappears
         return;
     }
 
@@ -879,7 +881,7 @@ private void updateBallPosition(int ballSpinDirection) {
     ballCurrentIndex = (ballCurrentIndex + ballSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
 
     int nextSlot = currentTrackSlots.get(ballCurrentIndex);
-    //System.out.println("New ball position: slot " + nextSlot);
+    System.out.println("New ball position: slot " + nextSlot +"ballprevi:"+ballPreviousSlot+"track: "+trackSequenceIndex);
 
     // Store the current item in the slot, then set the ball item
     if (!originalSlotItems.containsKey(nextSlot)) {
@@ -954,17 +956,14 @@ private boolean isQuadrantBoundary(int slot) {
             throw new IllegalArgumentException("Invalid quadrant index: " + currentQuadrant);
     }
 }
-
+private boolean finalpicked;
+private int winningNumber;
 private void handleWinningNumber() {
     // Get the number corresponding to the final slot
-    int winningNumber = getNumberForSlot(ballPreviousSlot, currentQuadrant);
+    winningNumber = getNumberForSlot(ballPreviousSlot, currentQuadrant);
+    finalpicked=true;
+   //System.out.println("Got: "+winningNumber);
 
-    // Announce the winning number
-    for (Player player : Tables.keySet()) {
-        player.sendMessage("The winning number is: " + winningNumber);
-        // Handle payouts based on bets
-        // Implement your payout logic here
-    }
 
     // Reset for the next round
     resetGameForNextSpin();
@@ -1011,6 +1010,8 @@ private void updateWheelView(long frameOffset) {
     private void updateWheel(int frame) {
         int currentOffset = Math.floorMod(wheelOffset - frame, wheelLayout.size());
         updateQuadrantDisplay(currentOffset);
+      
+        
        // System.out.println("Tracker (Position of 0): " + (currentOffset + wheelLayout.size() - wheelLayout.indexOf(0)) % wheelLayout.size());
     }
     
@@ -1116,7 +1117,7 @@ private void clearSlots(int fromSlot, int toSlot) {
             default:
                 throw new IllegalArgumentException("Invalid quadrant index");
         }
-    
+     
         // Loop through each slot in the quadrant and assign the correct number
         for (int i = 0; i < quadrantSlots.length; i++) {
             int wheelPosition;
@@ -1128,17 +1129,28 @@ private void clearSlots(int fromSlot, int toSlot) {
                 wheelPosition = Math.floorMod(startPosition - i, wheelLayout.size());
             }
             int number = wheelLayout.get(wheelPosition);
-    
+            if(number==winningNumber){
+            //System.out.println(number+" | "+winningNumber);
+        }
             // Create the item with the correct number and place it in the quadrant slot
             ItemStack item = createCustomItem(getMaterialForNumber(number), "Number: " + number, (number == 0) ? 1 : number);
             inventory.setItem(quadrantSlots[i], item);
     
             // Handle the extra slots associated with the main number slot
             if (currentExtraSlotsMap.containsKey(quadrantSlots[i])) {
+               
                 int[] extraSlots = currentExtraSlotsMap.get(quadrantSlots[i]);
                 ItemStack extraItem = createCustomItem(getMaterialForNumber(number), "Number: " + number, 1);
                 for (int extraSlot : extraSlots) {
-                    inventory.setItem(extraSlot, extraItem);
+                    if(finalpicked&& number==winningNumber&&extraSlot==extraSlots[0]){
+                            
+     ItemStack ballItem = new ItemStack(Material.ENDER_PEARL);
+     ItemMeta meta = ballItem.getItemMeta();
+    meta.setDisplayName("Ball");
+    ballItem.setItemMeta(meta);
+    inventory.setItem(extraSlot, ballItem);
+                    }
+                    else{inventory.setItem(extraSlot, extraItem);}
                 }
             }
         }
@@ -1266,21 +1278,33 @@ private void fillDecorativeSlots(int[] slots, Material material) {
     
 
     private int getNumberForSlot(int mainSlot, int quadrant) {
-        // Get the extra slot mapping for the current quadrant
-        Map<Integer, int[]> currentExtraSlotsMap = getExtraSlotsMapForQuadrant(quadrant);
+        int basePosition;
     
-        if (currentExtraSlotsMap.containsKey(mainSlot)) {
-            // Calculate the wheel position based on the main slot and current quadrant
-            int mainSlotIndex = currentExtraSlotsMap.keySet().stream().toList().indexOf(mainSlot);
-            
-            if (mainSlotIndex != -1) {
-                // Calculate the offset for the wheel layout
-                int wheelPosition = (wheelOffset + mainSlotIndex) % wheelLayout.size();
-                return wheelLayout.get(wheelPosition);
-            }
+        // Determine base starting position offset for each quadrant
+        switch (quadrant) {
+            case 1: // Top-Right Quadrant
+                basePosition = wheelOffset + 27;
+                break;
+            case 2: // Top-Left Quadrant
+                basePosition = wheelOffset + 18;
+                break;
+            case 3: // Bottom-Left Quadrant
+                basePosition = wheelOffset + 9;
+                break;
+            case 4: // Bottom-Right Quadrant
+                basePosition = wheelOffset;
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid quadrant index");
         }
-        return 0; // Default fallback in case the slot doesn't match
+    
+        // Calculate the index in the wheel layout
+        int layoutIndex = (basePosition + wheelLayout.indexOf(mainSlot)) % wheelLayout.size();
+        
+        // Fetch and return the winning number
+        return wheelLayout.get(layoutIndex);
     }
+    
     
 
     private Material getMaterialForNumber(int number) {
