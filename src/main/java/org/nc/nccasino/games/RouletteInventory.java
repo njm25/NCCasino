@@ -59,12 +59,12 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private boolean ballMovementStarted = false;
     private boolean spinAnimationOver = false;
     private int ballSpinDirection;
-
+    private boolean foundfirstquadrant =false;
     // Add these variables at the class level
 private static final long INITIAL_BALL_SPEED = 1L;
 private static final long MIN_BALL_SPEED = 6L;
 private int protectedSlot = -1; // Initialize to an invalid slot
-
+private boolean fin=false;
     // Quadrant-specific slot mappings for main and extra slots
     private final Map<Integer, int[]> extraSlotsMapTopRight = new HashMap<>();
     private final Map<Integer, int[]> extraSlotsMapTopLeft = new HashMap<>();
@@ -81,8 +81,8 @@ private final double track1MinSpins = 1;
 private final double track1MaxSpins = 1.5;
 private final double track2MinSpins = 1.5;
 private final double track2MaxSpins = 2;
-private final double track3MinSpins = 1/18.0;
-private final double track3MaxSpins = 1/18.0;
+private final double track3MinSpins = 1/36.0;
+private final double track3MaxSpins = 1/36.0;
 private final double track4MinSpins = 1/18.0;
 private final double track4MaxSpins =1/18.0;
 private int slotsPerSpinTrack1;
@@ -98,13 +98,19 @@ private int maxSlotsTrack3;
 private int minSlotsTrack4;
 private int maxSlotsTrack4;
 private int[] slotsToMovePerTrack = new int[5]; // 5 tracks in the sequence
-private final int[] trackSequence = {1, 2, 3, 4, 3};
+private final int[] trackSequence = {1, 2, 3/*, 4, 3*/};
 private int trackSequenceIndex = 0;
 private int ballCurrentTrack;
 private int ballCurrentIndex;
 private int ballPreviousSlot = -1;
 private boolean isSwitchingQuadrant = false;
+private boolean finalpicked;
+private int winningNumber;
+private boolean firsthit=false;
+private boolean flip2=true;
+private boolean flip4=true;
 private int wheelSpinDirection = 1; // 1 for clockwise, -1 for counter-clockwise
+private boolean flag2=false;
 /////////////////////////////////////////////////////////////////////////////////////////
 private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
 
@@ -745,6 +751,8 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
         return;
     }
 
+
+    
     long[] tempBallDelay = {1L};
      Map<Integer, List<Integer>> currentTracks = getTracksForCurrentQuadrant();
     List<Integer> currentTrackSlots = currentTracks.get(ballCurrentTrack);
@@ -752,6 +760,11 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
 
     int nextIndex = (ballCurrentIndex + ballSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
     int nextSlot = currentTrackSlots.get(nextIndex);
+
+    if (ballCurrentTrack == 3) {
+        int number = getNumberForSlot(nextSlot, currentQuadrant);
+        System.out.println("Ball landed on Track 3 slot with number: " + number);
+    }
 
     if (isQuadrantBoundary(nextSlot)) {
         isSwitchingQuadrant = true;
@@ -841,6 +854,7 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
         } else {
             ballMovementStarted = false;
             handleWinningNumber();
+            System.out.println("WHen it hitcurrquad:"+currentQuadrant+" Ballcurr"+ballCurrentIndex+"|"+ballSpinDirection+"|"+currentBallDelay+"|"+ slotsMovedTotal+"|"+ totalSlotsToMove+"|"+ ballAccelerationSlots+"|"+ ballDecelerationSlots);
             return;
         }
     }
@@ -928,6 +942,12 @@ private int getStartingIndexForNewQuaadrant() {
         return 0;}
     }
 
+private void switchStayToQuadrant(int quad){
+    currentQuadrant=quad;
+    initializeDecorativeSlotsForQuadrant(currentQuadrant);
+
+}
+
 
 private void switchQuadrant() {
     if (wheelSpinDirection == -1) { // Clockwise
@@ -939,8 +959,7 @@ private void switchQuadrant() {
     initializeDecorativeSlotsForQuadrant(currentQuadrant);
     ballCurrentIndex = getStartingIndexForNewQuadrant();
 }
-private boolean flip2=true;
-private boolean flip4=true;
+
 private void switchQauadrant() {
     if (wheelSpinDirection == 1) { // Clockwise
         currentQuadrant = (currentQuadrant % 4) + 1; // Move to next quadrant in order
@@ -1006,10 +1025,9 @@ private boolean isQuadrantBoundary(int slot) {
     }
 }
 
-private boolean finalpicked;
-private int winningNumber;
-private boolean firsthit=false;
+
 private void handleWinningNumber() {
+    System.out.println("Hit handwinningnumber"+ballPreviousSlot+"|"+currentQuadrant+"|"+getNumberForSlot(ballPreviousSlot, currentQuadrant));
     // Get the number corresponding to the final slot
     winningNumber = getNumberForSlot(ballPreviousSlot, currentQuadrant);
     finalpicked=true;
@@ -1169,9 +1187,10 @@ private void clearSlots(int fromSlot, int toSlot) {
             default:
                 throw new IllegalArgumentException("Invalid quadrant index");
         }
-     
+        boolean flag=false;
         // Loop through each slot in the quadrant and assign the correct number
         for (int i = 0; i < quadrantSlots.length; i++) {
+                
             int wheelPosition;
             if (currentQuadrant == 1 || currentQuadrant == 2) {
                 // For quadrants 1 and 2, add i to startPosition
@@ -1181,7 +1200,11 @@ private void clearSlots(int fromSlot, int toSlot) {
                 wheelPosition = Math.floorMod(startPosition - i, wheelLayout.size());
             }
             int number = wheelLayout.get(wheelPosition);
-            if(number==winningNumber){
+            
+            if(number==winningNumber&&finalpicked&&!foundfirstquadrant){
+                flag=true;
+                flag2=true;
+
             //System.out.println(number+" | "+winningNumber);
         }
             // Create the item with the correct number and place it in the quadrant slot
@@ -1195,9 +1218,20 @@ private void clearSlots(int fromSlot, int toSlot) {
                 ItemStack extraItem = createCustomItem(getMaterialForNumber(number), "Number: " + number, 1);
                 boolean first=true;
                 for (int extraSlot : extraSlots) {
+                    
+                    if(finalpicked&&!foundfirstquadrant&&extraSlot==extraSlots[0]&& number==winningNumber&&flag2){
+                        System.out.println("Wow, hit once!");
+                        ItemStack ballItem = new ItemStack(Material.ENDER_PEARL);
+                        ItemMeta meta = ballItem.getItemMeta();
+                       meta.setDisplayName("Ball");
+                       ballItem.setItemMeta(meta);
+                       inventory.setItem(extraSlot, ballItem);
+                       flag2=false;
+                    }
+
 
                     if(finalpicked&& number==winningNumber&&extraSlot==extraSlots[0]&&first){
-
+foundfirstquadrant=true;
 long[] tempBallDelay ={1L};
 
 if(isQuadrantBBoundary(extraSlot)){
@@ -1259,7 +1293,7 @@ if(isQuadrantBBoundary(extraSlot)){
 
         // Delay to simulate ball going off-screen before quadrant switch
         Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-            System.out.println("QUadswitch"+currentQuadrant);
+            //System.out.println("QUadswitch"+currentQuadrant);
             switchQauadrant();
             
             // Delay to simulate ball still off-screen after quadrant switch
@@ -1289,8 +1323,70 @@ else{
                 }
             }
         }
+        if(finalpicked&&flag==false&!fin){
+            int targetquad;
+            targetquad=findWinningNumberQuadrant(winningNumber);
+
+            System.out.println("winnum: "+winningNumber+ " in quad: "+targetquad+" but atquad"+currentQuadrant);
+            if(currentQuadrant!=targetquad){
+        switchStayToQuadrant(targetquad);
+             updateQuadrantDisplay(globalOffset);
+
+            }
+     
+            fin=true;
+
+            /* 
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+       fin=true;
+            }, 18L);*/
+     
+          //  System.out.println("Went through whole quad and no winner");
+        }
+
+
     }
-   
+  
+    
+    private int findWinningNumberQuadrant(int winningNumber) {
+        // Calculate the global offset where the winning number is located
+        int winningIndex = wheelLayout.indexOf(winningNumber);
+        
+        // Define the boundaries for each quadrant based on global offset positions
+        int topRightStart = (wheelOffset + 27) % wheelLayout.size();
+        int topLeftStart = (wheelOffset + 18) % wheelLayout.size();
+        int bottomLeftStart = (wheelOffset + 9) % wheelLayout.size();
+        int bottomRightStart = wheelOffset;
+    
+        // Calculate end positions for each quadrant to create a range
+        int topRightEnd = (topRightStart + 9) % wheelLayout.size();
+        int topLeftEnd = (topLeftStart + 9) % wheelLayout.size();
+        int bottomLeftEnd = (bottomLeftStart + 9) % wheelLayout.size();
+        int bottomRightEnd = (bottomRightStart + 9) % wheelLayout.size();
+        
+        // Check in which quadrant the winning number's index falls into
+        if (isIndexInRange(winningIndex, topRightStart, topRightEnd)) {
+            return 1; // Top-Right Quadrant
+        } else if (isIndexInRange(winningIndex, topLeftStart, topLeftEnd)) {
+            return 2; // Top-Left Quadrant
+        } else if (isIndexInRange(winningIndex, bottomLeftStart, bottomLeftEnd)) {
+            return 3; // Bottom-Left Quadrant
+        } else if (isIndexInRange(winningIndex, bottomRightStart, bottomRightEnd)) {
+            return 4; // Bottom-Right Quadrant
+        } else {
+            throw new IllegalStateException("Winning number does not appear in any valid quadrant.");
+        }
+    }
+    
+    // Helper method to determine if an index falls within a circular range
+    private boolean isIndexInRange(int index, int start, int end) {
+        if (start <= end) {
+            return index >= start && index <= end;
+        } else {
+            return index >= start || index <= end;
+        }
+    }
+    
     
 private boolean isQuadrantBBoundary(int slot) {
     switch (currentQuadrant) {
