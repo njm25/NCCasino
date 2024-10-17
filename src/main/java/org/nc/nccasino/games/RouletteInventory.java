@@ -63,9 +63,8 @@ public class RouletteInventory extends DealerInventory implements Listener {
     // Add these variables at the class level
 private static final long INITIAL_BALL_SPEED = 1L;
 private static final long MIN_BALL_SPEED = 6L;
-private int protectedSlot = -1; // Initialize to an invalid slot
-private boolean fin=false;
-    // Quadrant-specific slot mappings for main and extra slots
+
+// Quadrant-specific slot mappings for main and extra slots
     private final Map<Integer, int[]> extraSlotsMapTopRight = new HashMap<>();
     private final Map<Integer, int[]> extraSlotsMapTopLeft = new HashMap<>();
     private final Map<Integer, int[]> extraSlotsMapBottomLeft = new HashMap<>();
@@ -700,12 +699,6 @@ private void startSpinAnimation(List<Player> activePlayers) {
     Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, spinTask, 0L);
 }
 
-
-
-
-
-
-
 private void startBallMovement(boolean reverseDirection) {
     if (ballMovementStarted) return;
     ballMovementStarted = true;
@@ -751,8 +744,6 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
         return;
     }
 
-
-    
     long[] tempBallDelay = {1L};
      Map<Integer, List<Integer>> currentTracks = getTracksForCurrentQuadrant();
     List<Integer> currentTrackSlots = currentTracks.get(ballCurrentTrack);
@@ -760,11 +751,6 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
 
     int nextIndex = (ballCurrentIndex + ballSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
     int nextSlot = currentTrackSlots.get(nextIndex);
-
-    if (ballCurrentTrack == 3) {
-        int number = getNumberForSlot(nextSlot, currentQuadrant);
-        System.out.println("Ball landed on Track 3 slot with number: " + number);
-    }
 
     if (isQuadrantBoundary(nextSlot)) {
         isSwitchingQuadrant = true;
@@ -852,37 +838,23 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
             ballCurrentTrack = trackSequence[trackSequenceIndex];
 
             int adjustment;
-if (currentBallDelay[0] == 1L) {
-    adjustment = 2;
-    System.out.println("Speed 1L, adjustment = 3 and nexslo"+nextSlot);
-} else {
-    adjustment = 1;
-    System.out.println("Other speed, adjustment = 1 and nexslo"+nextSlot);
-}
+    if (currentBallDelay[0] == 1L) {
+        adjustment = 2;
+        System.out.println("Speed 1L, adjustment = 2 and nexslo"+nextSlot);
+        } 
+    else {
+        adjustment = 1;
+        System.out.println("Other speed, adjustment = 1 and nexslo"+nextSlot);
+        }
 
-// Adjust ballCurrentIndex properly
-                            ballCurrentIndex = (ballCurrentIndex - adjustment * wheelSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
+    ballCurrentIndex = (ballCurrentIndex - adjustment * wheelSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
 
-        System.out.println("Adjusted ballCurrentIndex: " + ballCurrentIndex);
-
-            /* 
-            if(currentBallDelay[0]==1L){
-                ballCurrentIndex =  Math.min(ballCurrentIndex-3*wheelSpinDirection,8);
-                System.out.println("1:"+(ballCurrentIndex-3*wheelSpinDirection));
-            }
-            else if(currentBallDelay[0]==2L){
-                ballCurrentIndex =  Math.min(ballCurrentIndex-2*wheelSpinDirection,8);
-                System.out.println("2:"+ballCurrentIndex);
-
-            }
-            else{
-            ballCurrentIndex =  Math.min(ballCurrentIndex-wheelSpinDirection,8);}
-            System.out.println("3:"+(ballCurrentIndex-wheelSpinDirection));*/
+    System.out.println("Adjusted ballCurrentIndex: " + ballCurrentIndex);
 
         } else {
             ballMovementStarted = false;
             handleWinningNumber();
-            System.out.println("WHen it hitcurrquad:"+currentQuadrant+" Ballcurr"+ballCurrentIndex+"|"+ballSpinDirection+"|"+currentBallDelay+"|"+ slotsMovedTotal+"|"+ totalSlotsToMove+"|"+ ballAccelerationSlots+"|"+ ballDecelerationSlots);
+            //System.out.println("WHen it hitcurrquad:"+currentQuadrant+" Ballcurr"+ballCurrentIndex+"|"+ballSpinDirection+"|"+currentBallDelay+"|"+ slotsMovedTotal+"|"+ totalSlotsToMove+"|"+ ballAccelerationSlots+"|"+ ballDecelerationSlots);
             return;
         }
     }
@@ -970,14 +942,6 @@ private int getStartingIndexForNewQuaadrant() {
         return 0;}
     }
 
-private void switchStayToQuadrant(int quad){
-    currentQuadrant=quad;
-    //inventory.clear();
-    initializeDecorativeSlotsForQuadrant(currentQuadrant);
-
-}
-
-
 private void switchQuadrant() {
     if (wheelSpinDirection == -1) { // Clockwise
         currentQuadrant = (currentQuadrant % 4) + 1; // Move to next quadrant in order
@@ -1003,8 +967,6 @@ private void switchQauadrant() {
           else{
               flip2=true;
           }
-
-        
         }
         if(currentQuadrant==4){
             flip2=true;
@@ -1017,7 +979,6 @@ private void switchQauadrant() {
         }
         }
     }
-
     initializeDecorativeSlotsForQuadrant(currentQuadrant);
     ballCurrentIndex = getStartingIndexForNewQuaadrant();
 }
@@ -1056,18 +1017,27 @@ private boolean isQuadrantBoundary(int slot) {
 
 
 private void handleWinningNumber() {
-    System.out.println("Hit handwinningnumber"+ballPreviousSlot+"|"+currentQuadrant+"|"+getNumberForSlot(ballPreviousSlot, currentQuadrant));
+    //System.out.println("Hit handwinningnumber"+ballPreviousSlot+"|"+currentQuadrant+"|"+getNumberForSlot(ballPreviousSlot, currentQuadrant));
     // Get the number corresponding to the final slot
     winningNumber = getNumberForSlot(ballPreviousSlot, currentQuadrant);
     finalpicked=true;
     firsthit=true;
-   //System.out.println("Got: "+winningNumber);
+   
 
 
     // Reset for the next round
     resetGameForNextSpin();
 }
 
+private int getNumberForSlot(int mainSlot, int quadrant) {
+    Integer number = slotToNumber.get(mainSlot);
+    if (number != null) {
+        return number;
+    } else {
+        System.out.println("Error: No number associated with slot " + mainSlot + " in quadrant " + quadrant);
+        return -1;
+    }
+}  
    
 
 private Map<Integer, List<Integer>> getTracksForCurrentQuadrant() {
@@ -1102,16 +1072,12 @@ private Map<Integer, List<Integer>> reverseTrack(Map<Integer, List<Integer>> tra
 private void updateWheelView(long frameOffset) {
     int currentOffset = Math.floorMod(wheelOffset - (int) frameOffset, wheelLayout.size());
     updateQuadrantDisplay(currentOffset);
-      //  System.out.println("Tracker (Position of 0): " + (currentOffset + wheelLayout.size() - wheelLayout.indexOf(0)) % wheelLayout.size()); // Output the Tracker value
     
 }
 
     private void updateWheel(int frame) {
         int currentOffset = Math.floorMod(wheelOffset - frame, wheelLayout.size());
         updateQuadrantDisplay(currentOffset);
-      
-        
-       // System.out.println("Tracker (Position of 0): " + (currentOffset + wheelLayout.size() - wheelLayout.indexOf(0)) % wheelLayout.size());
     }
     
 // Determine the correct slot for the countdown based on the quadrant
@@ -1185,12 +1151,13 @@ private void clearSlots(int fromSlot, int toSlot) {
     }
 }
 
+private Map<Integer, Integer> slotToNumber = new HashMap<>();
 
     private void updateQuadrantDisplay(int globalOffset) {
         int[] quadrantSlots;
         int startPosition;
         Map<Integer, int[]> currentExtraSlotsMap;
-    
+        slotToNumber.clear();
         // Define the correct slot ranges and starting positions for each quadrant
         switch (currentQuadrant) {
             case 1: // Top-Right Quadrant
@@ -1219,41 +1186,6 @@ private void clearSlots(int fromSlot, int toSlot) {
         boolean flag=false;
         boolean newflag=false;
 
-if(finalpicked&&!foundfirstquadrant){
-    
-    for (int i = 0; i < quadrantSlots.length; i++) {
-     
-        int wheelPosition;
-        if (currentQuadrant == 1 || currentQuadrant == 2) {
-            // For quadrants 1 and 2, add i to startPosition
-            wheelPosition = Math.floorMod(startPosition + i, wheelLayout.size());
-        } else {
-            // For quadrants 3 and 4, subtract i from startPosition
-            wheelPosition = Math.floorMod(startPosition - i, wheelLayout.size());
-        }
-        int number = wheelLayout.get(wheelPosition);
-        if(number==winningNumber){newflag=true;}
-        
-}
-if(!newflag){
-    int targetquad;
-    targetquad=findWinningNumberQuadrant(winningNumber,globalOffset);
-
-    System.out.println("2winnum: "+winningNumber+ " in quad: "+targetquad+" but atquad"+currentQuadrant);
-    if(currentQuadrant!=targetquad){
-switchStayToQuadrant(targetquad);
-         //updateBallPosition(ballSpinDirection);
-        
-
-     updateQuadrantDisplay(globalOffset);
-return;
-    }
-}
-
-
-
-}
-
         // Loop through each slot in the quadrant and assign the correct number
         for (int i = 0; i < quadrantSlots.length; i++) {
                 
@@ -1270,9 +1202,7 @@ return;
             if(number==winningNumber&&finalpicked&&!foundfirstquadrant){
                 flag=true;
                 flag2=true;
-
-            //System.out.println(number+" | "+winningNumber);
-        }
+            }
             // Create the item with the correct number and place it in the quadrant slot
             ItemStack item = createCustomItem(getMaterialForNumber(number), "Number: " + number, (number == 0) ? 1 : number);
             inventory.setItem(quadrantSlots[i], item);
@@ -1285,136 +1215,93 @@ return;
                 boolean first=true;
                 for (int extraSlot : extraSlots) {
                     
-
-
-                    if(finalpicked&&!foundfirstquadrant&&extraSlot==extraSlots[0]&& number==winningNumber&&flag2){
-                        System.out.println("Wow, hit once!");
-                        ItemStack ballItem = new ItemStack(Material.ENDER_PEARL);
-                        ItemMeta meta = ballItem.getItemMeta();
-                       meta.setDisplayName("Ball");
-                       ballItem.setItemMeta(meta);
-                       inventory.setItem(extraSlot, ballItem);
-                       flag2=false;
-                    }
-
+                    slotToNumber.put(extraSlot, number);
 
                     if(finalpicked&& number==winningNumber&&extraSlot==extraSlots[0]&&first){
-foundfirstquadrant=true;
-long[] tempBallDelay ={1L};
+                        foundfirstquadrant=true;
+                        long[] tempBallDelay ={1L};
+                        if(isQuadrantBBoundary(extraSlot)){
 
-if(isQuadrantBBoundary(extraSlot)){
-    //System.out.println("thinksboundary "+extraSlot);
-    ItemStack ballItem = new ItemStack(Material.ENDER_PEARL);
-    ItemMeta meta = ballItem.getItemMeta();
-   meta.setDisplayName("Ball");
-   ballItem.setItemMeta(meta);
-   inventory.setItem(extraSlot, ballItem);
-   //System.out.println("regular"+extraSlot);
+                        ItemStack ballItem = new ItemStack(Material.ENDER_PEARL);
+                        ItemMeta meta = ballItem.getItemMeta();
+                        meta.setDisplayName("Ball");
+                        ballItem.setItemMeta(meta);
+                        inventory.setItem(extraSlot, ballItem);
+                            Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+                                // Remove ball from current slot
+                                if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
+                                    inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
+                                }
+                                int nextquadnow=0;
+                                if (wheelSpinDirection == -1) { // Clockwise
+                                    nextquadnow = (currentQuadrant % 4) + 1; // Move to next quadrant in order
+                                } else { // Counterclockwise
+                                    nextquadnow = (currentQuadrant == 1) ? 4 : currentQuadrant - 1; // Move to previous quadrant
+                                }
+                                switch (currentQuadrant) {
+                                    case 1:
+                                        if(nextquadnow==4){
+                                        tempBallDelay[0]=6L;    
+                                        }
+                                        else{
+                                        tempBallDelay[0]=2L;    
+                                        }
+                                        break;
+                                    case 2:
+                                    if(nextquadnow==3){
+                                        tempBallDelay[0]=6L;    
+                                        }
+                                        else{
+                                        tempBallDelay[0]=2L;    
+                                        }
+                                        break;
+                                    case 3:
+                                    if(nextquadnow==2){
+                                        tempBallDelay[0]=6L;    
+                                        }
+                                        else{
+                                        tempBallDelay[0]=2L;    
+                                        }
+                                        break;
+                                    case 4:
+                                    if(nextquadnow==1){
+                                        tempBallDelay[0]=6L;    
+                                        }
+                                        else{
+                                        tempBallDelay[0]=2L;    
+                                        }
+                                        break;
+                                    default:
+                                        break;
+                                }
+                            
+                                // Delay to simulate ball going off-screen before quadrant switch
+                                Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
 
-    Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-        // Remove ball from current slot
-        if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
-            inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
-        }
-        int nextquadnow=0;
-        if (wheelSpinDirection == -1) { // Clockwise
-            nextquadnow = (currentQuadrant % 4) + 1; // Move to next quadrant in order
-        } else { // Counterclockwise
-            nextquadnow = (currentQuadrant == 1) ? 4 : currentQuadrant - 1; // Move to previous quadrant
-        }
-        switch (currentQuadrant) {
-            case 1:
-                if(nextquadnow==4){
-                tempBallDelay[0]=6L;    
-                }
-                else{
-                tempBallDelay[0]=2L;    
-                }
-                break;
-            case 2:
-            if(nextquadnow==3){
-                tempBallDelay[0]=6L;    
-                }
-                else{
-                tempBallDelay[0]=2L;    
-                }
-                break;
-            case 3:
-            if(nextquadnow==2){
-                tempBallDelay[0]=6L;    
-                }
-                else{
-                tempBallDelay[0]=2L;    
-                }
-                break;
-            case 4:
-            if(nextquadnow==1){
-                tempBallDelay[0]=6L;    
-                }
-                else{
-                tempBallDelay[0]=2L;    
-                }
-                break;
-            default:
-                break;
-        }
+                                    switchQauadrant();
 
-        // Delay to simulate ball going off-screen before quadrant switch
-        Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-            //System.out.println("QUadswitch"+currentQuadrant);
-            switchQauadrant();
-            
-            // Delay to simulate ball still off-screen after quadrant switch
-            Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-                //ballCurrentIndex = getStartingIndexForNewQuadrant();
-               // System.out.println("Qballcurrindex"+ballCurrentIndex);
-                //updateBallPosition(ballSpinDirection);
-               //inventory.setItem((ballCurrentIndex), ballItem);
-                //isSwitchingQuadrant = false;
-               // moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
-            }, 2L); // Delay after switching quadrants
-        }, 2L); // Delay before switching quadrants
-    }, 3L); // Delay before ball disappears
-}
-else{
-    ItemStack ballItem = new ItemStack(Material.ENDER_PEARL);
-    ItemMeta meta = ballItem.getItemMeta();
-   meta.setDisplayName("Ball");
-   ballItem.setItemMeta(meta);
-   inventory.setItem(extraSlot, ballItem);
-   //System.out.println("regular"+extraSlot);
-}
+                                    // Delay to simulate ball still off-screen after quadrant switch
+                                    Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+                                       //?something goes here?
+                                    }, 2L); // Delay after switching quadrants
+                                }, 2L); // Delay before switching quadrants
+                            }, 3L); // Delay before ball disappears 
+                            }
+                            else{
+                            ItemStack ballItem = new ItemStack(Material.ENDER_PEARL);
+                            ItemMeta meta = ballItem.getItemMeta();
+                            meta.setDisplayName("Ball");
+                            ballItem.setItemMeta(meta);
+                            inventory.setItem(extraSlot, ballItem);
+                            
+                            }
 
-                        
+                   
                     }
                     else{inventory.setItem(extraSlot, extraItem);}
                 }
             }
         }
-
-        /* 
-        if(finalpicked&&flag==false&!fin){
-            int targetquad;
-            targetquad=findWinningNumberQuadrant(winningNumber,globalOffset);
-
-            System.out.println("winnum: "+winningNumber+ " in quad: "+targetquad+" but atquad"+currentQuadrant);
-            if(currentQuadrant!=targetquad){
-        switchStayToQuadrant(targetquad);
-             updateQuadrantDisplay(globalOffset);
-
-            }
-     
-            fin=true;
-
-             
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-       fin=true;
-            }, 18L);
-     
-          //  System.out.println("Went through whole quad and no winner");
-        }*/
-
-
     }
   
     private int findWinningNumberQuadrant(int winningNumber, int globalOffset) {
@@ -1578,7 +1465,7 @@ private void fillDecorativeSlots(int[] slots, Material material) {
         }
     }
     
-
+/*
     private int getNumberForSlot(int mainSlot, int quadrant) {
         int basePosition;
     
@@ -1607,7 +1494,7 @@ private void fillDecorativeSlots(int[] slots, Material material) {
         return wheelLayout.get(layoutIndex);
     }
     
-    
+     */
 
     private Material getMaterialForNumber(int number) {
         if (number == 0) {
