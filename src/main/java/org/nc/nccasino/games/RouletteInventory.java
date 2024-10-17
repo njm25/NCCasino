@@ -549,11 +549,14 @@ private void updateTimerItems(int quadrant, int time) {
         Inventory topInventory = openInventoryView.getTopInventory();
         return (topInventory.getHolder() == this || topInventory.getHolder() instanceof BettingTable);
     }
-
+    private Map<UUID,Stack<Pair<String, Integer>>> newtry=new HashMap();
+    private List<Player> playersWithBets = new ArrayList<>();
     private void handleBetClosure() {
+        newtry.clear();
         betsClosed = true;
         List<Player> activePlayers = new ArrayList<>();
-        List<Player> playersWithBets = new ArrayList<>();
+        playersWithBets.clear();
+        //List<Player> playersWithBets = new ArrayList<>();
 
         for (Player player : Bukkit.getServer().getOnlinePlayers()) {
             InventoryView openInventory = player.getOpenInventory();
@@ -571,9 +574,13 @@ private void updateTimerItems(int quadrant, int time) {
             if (player != null && player.isOnline()) {
                 Stack<Pair<String, Integer>> playerBets = getPlayerBets(player.getUniqueId());
                 if (!playerBets.isEmpty()) {
+                    newtry.put(player.getUniqueId(), (Stack<Pair<String, Integer>>) playerBets.clone());
+                    System.out.println("got4"+playerBets);
                     activePlayers.add(player);
                     playersWithBets.add(player);
+                    Bets.put(player.getUniqueId(), playerBets);
                 }
+                
             }
         }
 
@@ -750,8 +757,9 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
     if (currentTrackSlots == null || currentTrackSlots.isEmpty()) return;
 
     int nextIndex = (ballCurrentIndex + ballSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
+   
     int nextSlot = currentTrackSlots.get(nextIndex);
-
+ //System.out.println("Nextind:"+nextIndex+"+nextSlot:"+nextSlot);
     if (isQuadrantBoundary(nextSlot)) {
         isSwitchingQuadrant = true;
 
@@ -837,7 +845,8 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
         if (trackSequenceIndex < trackSequence.length) {
             ballCurrentTrack = trackSequence[trackSequenceIndex];
 
-            int adjustment;
+            int adjustment=1;
+/*
     if (currentBallDelay[0] == 1L) {
         adjustment = 2;
         System.out.println("Speed 1L, adjustment = 2 and nexslo"+nextSlot);
@@ -846,10 +855,11 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
         adjustment = 1;
         System.out.println("Other speed, adjustment = 1 and nexslo"+nextSlot);
         }
+        System.out.println("bef: " + ballCurrentIndex);
+        */
+    ballCurrentIndex = (ballCurrentIndex + adjustment * wheelSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
 
-    ballCurrentIndex = (ballCurrentIndex - adjustment * wheelSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
-
-    System.out.println("Adjusted ballCurrentIndex: " + ballCurrentIndex);
+    //System.out.println("Adjusted ballCurrentIndex: " + ballCurrentIndex);
 
         } else {
             ballMovementStarted = false;
@@ -1016,17 +1026,119 @@ private boolean isQuadrantBoundary(int slot) {
 }
 
 
+
+
+private void handleWinningNumber() {
+    // Get the number corresponding to the final slot
+    winningNumber = getNumberForSlot(ballPreviousSlot, currentQuadrant);
+    finalpicked = true;
+    firsthit = true;
+
+    // Loop over players who have placed bets
+    for (Player player : playersWithBets) {
+        if (player.isOnline()) {
+            System.out.println("Processing bets for player: " + player.getName());
+
+            // Schedule the processing to run after a delay
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                BettingTable bettingTable = Tables.get(player);
+                if (bettingTable != null) {
+                    // Get the bet stack directly from the BettingTable
+                    Stack<Pair<String, Integer>> playerBets =newtry.get(player.getUniqueId());
+  System.out.println("Later"+playerBets);
+                    if (!playerBets.isEmpty()) {
+                        System.out.println("Processing bets for " + player.getName());
+
+                        // Notify the player of the winning number
+                        if (isRed(winningNumber)) {
+                            player.sendMessage("Hit Red " + winningNumber + "!");
+                        } else if (isBlack(winningNumber)) {
+                            player.sendMessage("Hit Black " + winningNumber + "!");
+                        } else {
+                            player.sendMessage("Hit " + winningNumber + ", WOW!");
+                        }
+
+                        // Process the bets
+                        bettingTable.processSpinResult(winningNumber, playerBets);
+
+                        // Reopen the betting table if the player is viewing the roulette wheel
+                        InventoryView openInventory = player.getOpenInventory();
+                        if (openInventory != null && openInventory.getTopInventory().getHolder() instanceof RouletteInventory) {
+                            player.openInventory(bettingTable.getInventory());
+                        }
+                    } else {
+                        System.out.println(player.getName() + " has no bets to process.");
+                    }
+                } else {
+                    System.out.println("No betting table found for player: " + player.getName());
+                }
+            }, 30L);
+        }
+    }
+
+    // Reset for the next round
+    resetGameForNextSpin();
+}
+
+/* 
 private void handleWinningNumber() {
     //System.out.println("Hit handwinningnumber"+ballPreviousSlot+"|"+currentQuadrant+"|"+getNumberForSlot(ballPreviousSlot, currentQuadrant));
     // Get the number corresponding to the final slot
     winningNumber = getNumberForSlot(ballPreviousSlot, currentQuadrant);
     finalpicked=true;
     firsthit=true;
-   
+    for (Player player : playersWithBets) {
+        if (player.isOnline()) {
+            System.out.println("hit");
+
+
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                for (Player tplayer : Tables.keySet()) {
+                    Stack<Pair<String, Integer>> playerBets = getPlayerBets(tplayer.getUniqueId());
+                    System.out.println("hit22");
+                    if (!playerBets.isEmpty()) {
+                        System.out.println("hit1");
+                        if (isRed(winningNumber)) {
+                            tplayer.sendMessage("Hit Red " + winningNumber + "!");
+                        } else if (isBlack(winningNumber)) {
+                            tplayer.sendMessage("Hit Black " + winningNumber + "!");
+                        } else {
+                            tplayer.sendMessage("Hit " + winningNumber + ", WOW!");
+                        }
+
+                        BettingTable bettingTable = Tables.get(tplayer);
+                        if (bettingTable != null) {
+                            System.out.println("hit2");
+                            bettingTable.processSpinResult(winningNumber, playerBets);
+
+                            InventoryView openInventory = tplayer.getOpenInventory();
+                            if (openInventory != null && openInventory.getTopInventory().getHolder() instanceof RouletteInventory) {
+                                tplayer.openInventory(bettingTable.getInventory());
+                            }
+                        }
+                    }
+                }
+            }, 30L);
+
+
+
+
+        }
+    }
 
 
     // Reset for the next round
     resetGameForNextSpin();
+}
+*/
+private boolean isBlack(int result) {
+    int[] blackNumbers = {2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35};
+    for (int num : blackNumbers) {
+        if (num == result) {
+            return true;
+        }
+    }
+    return false;
 }
 
 private int getNumberForSlot(int mainSlot, int quadrant) {
@@ -1151,7 +1263,16 @@ private void clearSlots(int fromSlot, int toSlot) {
     }
 }
 
+
+
 private Map<Integer, Integer> slotToNumber = new HashMap<>();
+
+
+private void switchStayToQuadrant(int quad){
+    currentQuadrant=quad;
+    //inventory.clear();
+    initializeDecorativeSlotsForQuadrant(currentQuadrant);
+}
 
     private void updateQuadrantDisplay(int globalOffset) {
         int[] quadrantSlots;
@@ -1185,6 +1306,33 @@ private Map<Integer, Integer> slotToNumber = new HashMap<>();
         }
         boolean flag=false;
         boolean newflag=false;
+
+
+        if(finalpicked&&!foundfirstquadrant){
+    
+            for (int i = 0; i < quadrantSlots.length; i++) {
+             
+                int wheelPosition;
+                if (currentQuadrant == 1 || currentQuadrant == 2) {
+                    // For quadrants 1 and 2, add i to startPosition
+                    wheelPosition = Math.floorMod(startPosition + i, wheelLayout.size());
+                } else {
+                    // For quadrants 3 and 4, subtract i from startPosition
+                    wheelPosition = Math.floorMod(startPosition - i, wheelLayout.size());
+                }
+                int number = wheelLayout.get(wheelPosition);
+                if(number==winningNumber){newflag=true;}
+                
+        }
+        if(!newflag){
+            int targetquad;
+            targetquad=findWinningNumberQuadrant(winningNumber,globalOffset);
+            //System.out.println("2winnum: "+winningNumber+ " in quad: "+targetquad+" but atquad"+currentQuadrant);
+            if(currentQuadrant!=targetquad){
+        switchStayToQuadrant(targetquad);}
+            }
+        }
+
 
         // Loop through each slot in the quadrant and assign the correct number
         for (int i = 0; i < quadrantSlots.length; i++) {

@@ -310,7 +310,7 @@ public class BettingTable implements InventoryHolder, Listener {
 
     }
 
-    private Stack<Pair<String, Integer>> getBetStack() {
+    public Stack<Pair<String, Integer>> getBetStack() {
         Stack<Pair<String, Integer>> bets = rouletteInventory.getPlayerBets(playerId);
         return (bets != null) ? bets : new Stack<>();
     }
