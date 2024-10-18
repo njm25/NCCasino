@@ -37,8 +37,9 @@ public class BettingTable implements InventoryHolder, Listener {
     private Stack<Pair<String, Integer>> testStack;
     private boolean clickAllowed = true;
     private boolean betsClosed=false;
-
-    public BettingTable(Player player, Villager dealer, Nccasino plugin, Stack<Pair<String, Integer>> existingBets, String internalName,RouletteInventory rouletteInventory) {
+    private int countdown1=30;
+    public BettingTable(Player player, Villager dealer, Nccasino plugin, Stack<Pair<String, Integer>> existingBets, String internalName,RouletteInventory rouletteInventory,int countdown) {
+        this.countdown1=countdown;
         this.playerId = player.getUniqueId();
         this.dealerId = DealerVillager.getUniqueId(dealer);
         this.dealer = dealer;
@@ -74,25 +75,50 @@ public class BettingTable implements InventoryHolder, Listener {
 
     private void setupPageOne() {
         inventory.clear();
-        clearAllLore(); 
-       
+        clearAllLore();
+                // Directly update the clock item before other items
+        updateClockItem(countdown1, betsClosed);
+        
         addStraightUpBetsPageOne();
         addDozensAndOtherBetsPageOne();
         addCommonComponents();
         updateAllLore();
-       
+        
+        // Force update inventory again after setting everything
+        Bukkit.getPlayer(playerId).updateInventory();
     }
-
+    
     private void setupPageTwo() {
         inventory.clear();
-        clearAllLore(); 
-
-        updateAllLore();
+        clearAllLore();
+        
+        // Directly update the clock item before other items
+        updateClockItem(countdown1, betsClosed);
+        
         addStraightUpBetsPageTwo();
         addDozensAndOtherBetsPageTwo();
         addCommonComponents();
         updateAllLore();
-     
+        
+        // Force update inventory again after setting everything
+        Bukkit.getPlayer(playerId).updateInventory();
+    }
+    
+    // Create a separate method for updating the clock item
+    private void updateClockItem(int countdown, boolean betsClosed) {
+        if (betsClosed) {
+            if (pageNum == 1) {
+                inventory.setItem(0, createCustomItem(Material.CLOCK, "BETS CLOSED", 1));
+            } else {
+                inventory.setItem(44, createCustomItem(Material.CLOCK, "BETS CLOSED", 1));
+            }
+        } else if (countdown > 0) {
+            if (pageNum == 1) {
+                inventory.setItem(0, createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown1 + " SECONDS!", countdown1));
+            } else {
+                inventory.setItem(44, createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown1 + " SECONDS!", countdown1));
+            }
+        }
     }
 
     private void addStraightUpBetsPageOne() {
@@ -268,6 +294,7 @@ public class BettingTable implements InventoryHolder, Listener {
     }
     
     public void updateCountdown(int countdown, boolean betsClosed) {
+     countdown1=countdown;
         this.betsClosed = betsClosed; // Update the betsClosed flag
         if(betsClosed){
          // Mimic a screen going over the whole betting table
@@ -281,14 +308,14 @@ public class BettingTable implements InventoryHolder, Listener {
 
                       }
                            }
-                        }, 20L); // Adjust the delay as necessary // Example delay
+                        }, 10L); // Adjust the delay as necessary // Example delay
 
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                       Player player = Bukkit.getPlayer(playerId);
 
                       
                          openRouletteInventory(dealer,player);
-                }, 50L); // Adjust the delay as necessary // Example delay
+                }, 25L); // Adjust the delay as necessary // Example delay
         }
         if (countdown > 0) {
             if (pageNum == 1) {
@@ -307,6 +334,7 @@ public class BettingTable implements InventoryHolder, Listener {
             }
         
         }
+       
 
     }
 
@@ -491,10 +519,12 @@ public class BettingTable implements InventoryHolder, Listener {
         if (pageNum == 1 && slot == 53) {
             setupPageTwo();
             pageNum = 2;
+            updateClockItem(countdown1, betsClosed);
             return;
         } else if (pageNum == 2 && slot == 53) {
             setupPageOne();
             pageNum = 1;
+            updateClockItem(countdown1, betsClosed);
             return;
         }
 

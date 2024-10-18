@@ -48,6 +48,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private int bettingCountdownTaskId = -1;
     private boolean betsClosed = false;
     private int bettingTimeSeconds = 10;
+    private int globalCountdown=bettingTimeSeconds;
     private String internalName;
     private Boolean closeFlag = false;
     private Boolean firstopen = true;
@@ -304,19 +305,22 @@ private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
 
 
 private void handleGameMenuClick(int slot, Player player) {
+    if(!betsClosed){
     switch (currentQuadrant) {
         case 1: // Top-right quadrant (initial view)
             switch (slot) {
+                /* 
                 case 46: // -1 Betting Timer
                     adjustBettingTimer(-1,1);
                     break;
                 case 47: // +1 Betting Timer
                     adjustBettingTimer(1,1);
                     break;
-                case 48: // Open Betting Table
+*/
+                case 46: // Open Betting Table
                     openBettingTable(player);
                     break;
-                case 49: // View Betting Info
+                case 47: // View Betting Info
                     exitGame(player);
                     break;
                 default:
@@ -326,16 +330,19 @@ private void handleGameMenuClick(int slot, Player player) {
 
         case 2: // Top-left quadrant
             switch (slot) {
+ /* 
                 case 49: // -1 Betting Timer
                     adjustBettingTimer(-1,2);
                     break;
                 case 50: // +1 Betting Timer
                     adjustBettingTimer(1,2);
                     break;
-                case 51: // Open Betting Table
+ */
+
+                case 49: // Open Betting Table
                     openBettingTable(player);
                     break;
-                case 52: // Exit
+                case 50: // Exit
                     exitGame(player);
                     break;
                 default:
@@ -346,16 +353,19 @@ private void handleGameMenuClick(int slot, Player player) {
 
         case 3: // Bottom-left quadrant
             switch (slot) {
+ /* 
                 case 4: // -1 Betting Timer
                     adjustBettingTimer(-1,3);
                     break;
                 case 5: // +1 Betting Timer
                     adjustBettingTimer(1,3);
                     break;
-                case 6: // Open Betting Table
+*/
+
+                case 4: // Open Betting Table
                     openBettingTable(player);
                     break;
-                case 7: // Exit
+                case 5: // Exit
                     exitGame(player);
                     break;
                 default:
@@ -366,16 +376,18 @@ private void handleGameMenuClick(int slot, Player player) {
 
         case 4: // Bottom-right quadrant
             switch (slot) {
+ /* 
                 case 0: // -1 Betting Timer
                     adjustBettingTimer(-1,4);
                     break;
                 case 1: // +1 Betting Timer
                     adjustBettingTimer(1,4);
                     break;
-                case 2: // Open Betting Table
+*/
+                case 0: // Open Betting Table
                     openBettingTable(player);
                     break;
-                case 3: // Exit
+                case 1: // Exit
                     exitGame(player);
                     break;
                 default:
@@ -388,6 +400,7 @@ private void handleGameMenuClick(int slot, Player player) {
             // Handle invalid quadrants if needed
             break;
     }
+}
 }
 
 private void adjustBettingTimer(int adjustment,int quad) {
@@ -409,7 +422,7 @@ private void openBettingTable(Player player) {
         if (dealer != null) {
             Stack<Pair<String, Integer>> bets = getPlayerBets(player.getUniqueId());
             String internalName = DealerVillager.getInternalName(dealer);
-            BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets, internalName, this);
+            BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets, internalName, this,globalCountdown);
             Tables.put(player, bettingTable);
             player.openInventory(bettingTable.getInventory());
         } else {
@@ -594,7 +607,7 @@ private void updateTimerItems(int quadrant, int time) {
             }
 
            
-            Bukkit.getScheduler().runTaskLater(plugin, () -> startBallMovement(false), 55L);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> startBallMovement(false), 60L);
             // Transition wheel to slower spin after bets close
             // Update to spinning ball and wheel
             startSpinAnimation(activePlayers);
@@ -616,7 +629,7 @@ private void startBettingTimer() {
 
     bettingCountdownTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
         int countdown = bettingTimeSeconds;
-
+        
         @Override
         public void run() {
             if (countdown > 0) {
@@ -626,15 +639,26 @@ private void startBettingTimer() {
 
                 // Update the timer item in the appropriate slot based on the current quadrant
                 int countdownSlot = getCountdownSlotForQuadrant(currentQuadrant);
-                ItemStack countdownItem = createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown + " SECONDS!", 1);
+                ItemStack countdownItem = createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown + " SECONDS!", countdown);
                 inventory.setItem(countdownSlot, countdownItem);  // Update the item in the correct slot
                 
                 countdown--;
-            } else {
-                // When bets close, remove the menu buttons
+                globalCountdown=countdown;
+            } else if (countdown == 0) {
+                globalCountdown=countdown;
+                betsClosed = true;
+
+                for (BettingTable bettingTable : Tables.values()) {
+                    bettingTable.updateCountdown(countdown, betsClosed);
+                }
+
+                int countdownSlot = getCountdownSlotForQuadrant(currentQuadrant);
+                ItemStack countdownItem = createCustomItem(Material.CLOCK, "BETS CLOSED", 1);
+                inventory.setItem(countdownSlot, countdownItem);
+
                 clearMenuButtonsForQuadrant(currentQuadrant);
                 initializeDecorativeSlotsForQuadrant(currentQuadrant);
-                // Start ball movement after bets are closed
+
                 handleBetClosure();
                 Bukkit.getScheduler().cancelTask(bettingCountdownTaskId);
                 bettingCountdownTaskId = -1;
@@ -1037,7 +1061,7 @@ private void handleWinningNumber() {
     // Loop over players who have placed bets
     for (Player player : playersWithBets) {
         if (player.isOnline()) {
-            System.out.println("Processing bets for player: " + player.getName());
+           // System.out.println("Processing bets for player: " + player.getName());
 
             // Schedule the processing to run after a delay
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -1045,7 +1069,7 @@ private void handleWinningNumber() {
                 if (bettingTable != null) {
                     // Get the bet stack directly from the BettingTable
                     Stack<Pair<String, Integer>> playerBets =newtry.get(player.getUniqueId());
-  System.out.println("Later"+playerBets);
+  
                     if (!playerBets.isEmpty()) {
                         System.out.println("Processing bets for " + player.getName());
 
@@ -1060,12 +1084,16 @@ private void handleWinningNumber() {
 
                         // Process the bets
                         bettingTable.processSpinResult(winningNumber, playerBets);
-
+/* 
                         // Reopen the betting table if the player is viewing the roulette wheel
                         InventoryView openInventory = player.getOpenInventory();
                         if (openInventory != null && openInventory.getTopInventory().getHolder() instanceof RouletteInventory) {
+
                             player.openInventory(bettingTable.getInventory());
                         }
+*/
+
+
                     } else {
                         System.out.println(player.getName() + " has no bets to process.");
                     }
@@ -1212,28 +1240,28 @@ private int getCountdownSlotForQuadrant(int quadrant) {
 private void updateMenuButtonsForQuadrant(int quadrant) {
     switch (quadrant) {
         case 1: // Top-right quadrant
-            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 46);
-            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 47);
-            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 48);
-            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 49);
+            //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 46);
+            //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 47);
+            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 46);
+            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 47);
             break;
         case 2: // Top-left quadrant
-            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 50);
-            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 51);
-            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 52);
-            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 53);
+            //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 50);
+            //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 51);
+            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 50);
+            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 51);
             break;
         case 3: // Bottom-left quadrant
-            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 5);
-            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 6);
-            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 7);
-            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 8);
+           // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 5);
+           // addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 6);
+            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 5);
+            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 6);
             break;
         case 4: // Bottom-right quadrant
-            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 1);
-            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 2);
-            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 3);
-            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 4);
+           // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 1);
+            //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 2);
+            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 1);
+            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 2);
             break;
     }
 }
