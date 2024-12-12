@@ -564,8 +564,10 @@ private void updateTimerItems(int quadrant, int time) {
         Inventory topInventory = openInventoryView.getTopInventory();
         return (topInventory.getHolder() == this || topInventory.getHolder() instanceof BettingTable);
     }
+
     private Map<UUID,Stack<Pair<String, Integer>>> newtry=new HashMap();
     private List<Player> playersWithBets = new ArrayList<>();
+
     private void handleBetClosure() {
         newtry.clear();
         betsClosed = true;
@@ -648,6 +650,32 @@ private void startBettingTimer() {
                 
                 countdown--;
                 globalCountdown=countdown;
+                   switch (currentQuadrant) {
+        case 1: // Top-right quadrant
+            //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 46);
+            //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 47);
+            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 46);
+            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 47);
+            break;
+        case 2: // Top-left quadrant
+            //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 50);
+            //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 51);
+            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 52);
+            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 53);
+            break;
+        case 3: // Bottom-left quadrant
+           // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 5);
+           // addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 6);
+            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 7);
+            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 8);
+            break;
+        case 4: // Bottom-right quadrant
+           // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 1);
+            //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 2);
+            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 1);
+            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 2);
+            break;
+    }
             } else if (countdown == 0) {
                 globalCountdown=countdown;
                 betsClosed = true;
@@ -1174,57 +1202,6 @@ private void prepareNextRound() {
 }
 
 
-/* 
-private void handleWinningNumber() {
-    //System.out.println("Hit handwinningnumber"+ballPreviousSlot+"|"+currentQuadrant+"|"+getNumberForSlot(ballPreviousSlot, currentQuadrant));
-    // Get the number corresponding to the final slot
-    winningNumber = getNumberForSlot(ballPreviousSlot, currentQuadrant);
-    finalpicked=true;
-    firsthit=true;
-    for (Player player : playersWithBets) {
-        if (player.isOnline()) {
-            System.out.println("hit");
-
-
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                for (Player tplayer : Tables.keySet()) {
-                    Stack<Pair<String, Integer>> playerBets = getPlayerBets(tplayer.getUniqueId());
-                    System.out.println("hit22");
-                    if (!playerBets.isEmpty()) {
-                        System.out.println("hit1");
-                        if (isRed(winningNumber)) {
-                            tplayer.sendMessage("Hit Red " + winningNumber + "!");
-                        } else if (isBlack(winningNumber)) {
-                            tplayer.sendMessage("Hit Black " + winningNumber + "!");
-                        } else {
-                            tplayer.sendMessage("Hit " + winningNumber + ", WOW!");
-                        }
-
-                        BettingTable bettingTable = Tables.get(tplayer);
-                        if (bettingTable != null) {
-                            System.out.println("hit2");
-                            bettingTable.processSpinResult(winningNumber, playerBets);
-
-                            InventoryView openInventory = tplayer.getOpenInventory();
-                            if (openInventory != null && openInventory.getTopInventory().getHolder() instanceof RouletteInventory) {
-                                tplayer.openInventory(bettingTable.getInventory());
-                            }
-                        }
-                    }
-                }
-            }, 30L);
-
-
-
-
-        }
-    }
-
-
-    // Reset for the next round
-    resetGameForNextSpin();
-}
-*/
 private boolean isBlack(int result) {
     int[] blackNumbers = {2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35};
     for (int num : blackNumbers) {
@@ -1278,6 +1255,7 @@ private Map<Integer, List<Integer>> reverseTrack(Map<Integer, List<Integer>> tra
 private void updateWheelView(long frameOffset) {
     int currentOffset = Math.floorMod(wheelOffset - (int) frameOffset, wheelLayout.size());
     updateQuadrantDisplay(currentOffset);
+    
     
 }
 
