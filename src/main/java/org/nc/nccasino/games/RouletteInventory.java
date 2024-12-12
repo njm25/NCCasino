@@ -113,6 +113,8 @@ private boolean flip2=true;
 private boolean flip4=true;
 private int wheelSpinDirection = 1; // 1 for clockwise, -1 for counter-clockwise
 private boolean flag2=false;
+private int lastDisplayedOffset = 0;
+
 /////////////////////////////////////////////////////////////////////////////////////////
 private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
 
@@ -717,6 +719,7 @@ private void startSlowSpinAnimation(long initialSpeed) {
         @Override
         public void run() {
             //System.out.println("slow"+frameCounter);
+            
             if (betsClosed) {
                 Bukkit.getScheduler().cancelTask(spinTaskId); // Stop slow spin when bets are closed
             } else {
@@ -1152,7 +1155,7 @@ private void handleWinningNumber() {
 
     // Reset for the next round
     //resetGameForNextSpin();
-    Bukkit.getScheduler().runTaskLater(plugin, this::prepareNextRound, 60L);
+    Bukkit.getScheduler().runTaskLater(plugin, this::prepareNextRound, 75L);
 }
 
 private void prepareNextRound() {
@@ -1189,12 +1192,15 @@ private void prepareNextRound() {
   if (spinTaskId != -1) {
         Bukkit.getScheduler().cancelTask(spinTaskId);
     }
+    //wheelOffset = currentOffset;
+
     if (fastSpinTaskId != -1) {
         Bukkit.getScheduler().cancelTask(fastSpinTaskId);
     }
     if (bfastSpinTaskId != -1) {
         Bukkit.getScheduler().cancelTask(bfastSpinTaskId);
     }
+    wheelOffset = lastDisplayedOffset;
     // Start the betting timer again, which also resets bets and shows menu buttons
     startBettingTimer();
 
@@ -1255,13 +1261,13 @@ private Map<Integer, List<Integer>> reverseTrack(Map<Integer, List<Integer>> tra
 private void updateWheelView(long frameOffset) {
     int currentOffset = Math.floorMod(wheelOffset - (int) frameOffset, wheelLayout.size());
     updateQuadrantDisplay(currentOffset);
-    
-    
+    lastDisplayedOffset = currentOffset;
 }
 
     private void updateWheel(int frame) {
         int currentOffset = Math.floorMod(wheelOffset - frame, wheelLayout.size());
         updateQuadrantDisplay(currentOffset);
+        lastDisplayedOffset = currentOffset;
     }
     
 // Determine the correct slot for the countdown based on the quadrant
