@@ -47,7 +47,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private int frameCounter;
     private int bettingCountdownTaskId = -1;
     private boolean betsClosed = false;
-    private int bettingTimeSeconds = 10;
+    private int bettingTimeSeconds = 25;
     private int globalCountdown=bettingTimeSeconds;
     private String internalName;
     private Boolean closeFlag = false;
@@ -255,7 +255,6 @@ private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
                 if (firstFin) {
                     firstFin = false;
                     this.bettingTimeSeconds = plugin.getTimer(internalName);
-                    bettingTimeSeconds=10;//remove this
                     startBettingTimer();
                 }
 
@@ -832,6 +831,7 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
     int nextIndex = (ballCurrentIndex + ballSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
    
     int nextSlot = currentTrackSlots.get(nextIndex);
+    
  //System.out.println("Nextind:"+nextIndex+"+nextSlot:"+nextSlot);
     if (isQuadrantBoundary(nextSlot)) {
         isSwitchingQuadrant = true;
