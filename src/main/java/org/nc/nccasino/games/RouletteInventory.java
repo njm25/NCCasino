@@ -54,6 +54,8 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private Boolean firstopen = true;
     private Boolean firstFin = true;
     private int spinTaskId;
+    private int fastSpinTaskId;
+    private int bfastSpinTaskId;
     private int ballTaskId;
     private int wheelOffset = 0;
     private int currentQuadrant = 1; // 1=Top-Right, 2=Top-Left, 3=Bottom-Left, 4=Bottom-Right
@@ -339,10 +341,10 @@ private void handleGameMenuClick(int slot, Player player) {
                     break;
  */
 
-                case 49: // Open Betting Table
+                case 52: // Open Betting Table
                     openBettingTable(player);
                     break;
-                case 50: // Exit
+                case 53: // Exit
                     exitGame(player);
                     break;
                 default:
@@ -362,10 +364,10 @@ private void handleGameMenuClick(int slot, Player player) {
                     break;
 */
 
-                case 4: // Open Betting Table
+                case 7: // Open Betting Table
                     openBettingTable(player);
                     break;
-                case 5: // Exit
+                case 8: // Exit
                     exitGame(player);
                     break;
                 default:
@@ -384,10 +386,10 @@ private void handleGameMenuClick(int slot, Player player) {
                     adjustBettingTimer(1,4);
                     break;
 */
-                case 0: // Open Betting Table
+                case 1: // Open Betting Table
                     openBettingTable(player);
                     break;
-                case 1: // Exit
+                case 2: // Exit
                     exitGame(player);
                     break;
                 default:
@@ -588,7 +590,7 @@ private void updateTimerItems(int quadrant, int time) {
                 Stack<Pair<String, Integer>> playerBets = getPlayerBets(player.getUniqueId());
                 if (!playerBets.isEmpty()) {
                     newtry.put(player.getUniqueId(), (Stack<Pair<String, Integer>>) playerBets.clone());
-                    System.out.println("got4"+playerBets);
+                   // System.out.println("got4"+playerBets);
                     activePlayers.add(player);
                     playersWithBets.add(player);
                     Bets.put(player.getUniqueId(), playerBets);
@@ -615,6 +617,7 @@ private void updateTimerItems(int quadrant, int time) {
     }
     
 private void startBettingTimer() {
+
     if (bettingCountdownTaskId != -1) {
         Bukkit.getScheduler().cancelTask(bettingCountdownTaskId);
     }
@@ -632,6 +635,7 @@ private void startBettingTimer() {
         
         @Override
         public void run() {
+            //System.out.println("timer"+countdown);
             if (countdown > 0) {
                 for (BettingTable bettingTable : Tables.values()) {
                     bettingTable.updateCountdown(countdown, betsClosed);
@@ -669,13 +673,22 @@ private void startBettingTimer() {
 
 private void startSlowSpinAnimation(long initialSpeed) {
     frameCounter = 0;
-    int spinDirection = -1; // Set counter-clockwise
+    int spinDirection = wheelSpinDirection; // Set counter-clockwise
 
     initializeDecorativeSlotsForQuadrant(currentQuadrant);
+
+    if (fastSpinTaskId != -1) {
+        Bukkit.getScheduler().cancelTask(fastSpinTaskId);
+    }
+    if (bfastSpinTaskId != -1) {
+        Bukkit.getScheduler().cancelTask(bfastSpinTaskId);
+    }
+
 
     spinTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
         @Override
         public void run() {
+            //System.out.println("slow"+frameCounter);
             if (betsClosed) {
                 Bukkit.getScheduler().cancelTask(spinTaskId); // Stop slow spin when bets are closed
             } else {
@@ -687,6 +700,10 @@ private void startSlowSpinAnimation(long initialSpeed) {
 }
 
 private void startSpinAnimation(List<Player> activePlayers) {
+    if (spinTaskId != -1) {
+        Bukkit.getScheduler().cancelTask(spinTaskId);
+    }
+
     frameCounter = 0;
     boolean reverseDirection = (frameCounter + 1) % 2 == 0;
     int spinDirection = reverseDirection ? -1 : 1;
@@ -701,6 +718,7 @@ private void startSpinAnimation(List<Player> activePlayers) {
     Runnable spinTask = new Runnable() {
         @Override
         public void run() {
+           //System.out.println("sSA"+frameCounter);
             if (!spinAnimationOver) {
                 updateWheel(frameCounter * spinDirection);
 
@@ -717,7 +735,7 @@ private void startSpinAnimation(List<Player> activePlayers) {
                 
                 
                 //System.out.println("Current Speed: " + currentWheelDelay[0]);
-                Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, this, currentWheelDelay[0]);
+                bfastSpinTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, this, currentWheelDelay[0]);
                 frameCounter++;
             } 
             /* 
@@ -727,7 +745,7 @@ private void startSpinAnimation(List<Player> activePlayers) {
         }
     };
 
-    Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, spinTask, 0L);
+    fastSpinTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, spinTask, 0L);
 }
 
 private void startBallMovement(boolean reverseDirection) {
@@ -1105,8 +1123,56 @@ private void handleWinningNumber() {
     }
 
     // Reset for the next round
-    resetGameForNextSpin();
+    //resetGameForNextSpin();
+    Bukkit.getScheduler().runTaskLater(plugin, this::prepareNextRound, 60L);
 }
+
+private void prepareNextRound() {
+
+    betsClosed = false;
+    for (BettingTable bettingTable : Tables.values()) {
+        bettingTable.resetBets();
+    }
+
+    // Remove the ball from the slot if present
+    if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
+        inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
+    }
+
+    // Stop any spinning tasks related to the previous round
+    // For example, if spinTaskId or ballTaskId were ongoing:
+    // Bukkit.getScheduler().cancelTask(spinTaskId);
+    // (Ensure that your code tracks and cancels these tasks if needed)
+
+    // Reset movement and state variables
+    ballMovementStarted = false;
+    spinAnimationOver = false;
+    finalpicked = false;
+    firsthit = false;
+    trackSequenceIndex = 0;
+    ballCurrentTrack = 0;
+    ballCurrentIndex = 0;
+    ballPreviousSlot = -1;
+    //countdown=bettingTimeSeconds;
+    //globalCountdown=countdown
+
+    // Optionally reverse the wheel direction to add variety
+    wheelSpinDirection *= -1;
+  if (spinTaskId != -1) {
+        Bukkit.getScheduler().cancelTask(spinTaskId);
+    }
+    if (fastSpinTaskId != -1) {
+        Bukkit.getScheduler().cancelTask(fastSpinTaskId);
+    }
+    if (bfastSpinTaskId != -1) {
+        Bukkit.getScheduler().cancelTask(bfastSpinTaskId);
+    }
+    // Start the betting timer again, which also resets bets and shows menu buttons
+    startBettingTimer();
+
+  
+}
+
 
 /* 
 private void handleWinningNumber() {
@@ -1226,9 +1292,9 @@ private int getCountdownSlotForQuadrant(int quadrant) {
         case 1: // Top-right quadrant
             return 45;
         case 2: // Top-left quadrant
-            return 49;  // You can change this to match your design
+            return 51;  // You can change this to match your design
         case 3: // Bottom-left quadrant
-            return 4;
+            return 6;
         case 4: // Bottom-right quadrant
             return 0;
         default:
@@ -1248,14 +1314,14 @@ private void updateMenuButtonsForQuadrant(int quadrant) {
         case 2: // Top-left quadrant
             //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 50);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 51);
-            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 50);
-            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 51);
+            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 52);
+            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 53);
             break;
         case 3: // Bottom-left quadrant
            // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 5);
            // addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 6);
-            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 5);
-            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 6);
+            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 7);
+            addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 8);
             break;
         case 4: // Bottom-right quadrant
            // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 1);
