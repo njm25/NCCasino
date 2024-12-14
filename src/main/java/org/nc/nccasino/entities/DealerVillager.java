@@ -59,9 +59,6 @@ public class DealerVillager {
 
         UUID uniqueId = UUID.randomUUID();
 
-        AttributeInstance movementSpeedAttribute = villager.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED);
-        movementSpeedAttribute.setBaseValue(0.0);
-
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         dataContainer.set(DEALER_KEY, PersistentDataType.BYTE, (byte) 1);
         dataContainer.set(UNIQUE_ID_KEY, PersistentDataType.STRING, uniqueId.toString());
