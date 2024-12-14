@@ -1,6 +1,8 @@
 package org.nc.nccasino.games;
 
 import org.nc.nccasino.entities.DealerVillager;
+
+
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -1162,7 +1164,7 @@ private void prepareNextRound() {
 
     betsClosed = false;
     for (BettingTable bettingTable : Tables.values()) {
-        bettingTable.resetBets();
+        bettingTable.resetTable();
     }
 
     // Remove the ball from the slot if present

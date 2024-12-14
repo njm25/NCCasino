@@ -269,6 +269,11 @@ public class BettingTable implements InventoryHolder, Listener {
         updateAllLore(); // Reinitialize the betting table
     }
     
+    public void resetTable() {
+        clearAllLore(); // Clear lore after the round
+        updateAllLore(); // Reinitialize the betting table
+    }
+    
 
     
     private ItemStack createCustomItem(Material material, String name, int amount) {
