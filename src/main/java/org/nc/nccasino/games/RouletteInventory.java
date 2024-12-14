@@ -402,6 +402,25 @@ private void handleGameMenuClick(int slot, Player player) {
         default:
             // Handle invalid quadrants if needed
             break;
+        }
+/* 
+        else if (slot==50){
+            if(bettingTimeSeconds>5) 
+            
+            
+            bettingTimeSeconds--;
+            plugin.getConfig().set("dealers." + internalName + ".timer", bettingTimeSeconds);
+            plugin.saveConfig();  // Save the configuration to persist changes
+            //addItem(createCustomItem(Material.CLOCK, "-1s Betting Timer (Will take effect next round)",bettingTimeSeconds),50);
+            //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds),51);
+        }
+        
+        else if (slot==51){
+            if(bettingTimeSeconds<64) bettingTimeSeconds++;
+            plugin.getConfig().set("dealers." + internalName + ".timer", bettingTimeSeconds);
+            //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)",bettingTimeSeconds),50);
+            //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds),51);
+        }*/
     }
 }
 }
@@ -559,6 +578,55 @@ private void updateTimerItems(int quadrant, int time) {
     }
 
     
+    private void setTimer(int set){
+        bettingTimeSeconds=set;
+    }
+
+    
+    private void startBettingTimer() {
+
+        if (bettingCountdownTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(bettingCountdownTaskId);
+        }
+
+        inventory.clear();
+
+if(bettingTimeSeconds==0){
+    //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)",1),50);
+    //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", 1),51);
+}
+    else{    //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)",bettingTimeSeconds),50);
+        //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds),51);
+        }
+
+          addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1),52);
+        addItem(createCustomItem(Material.BARRIER, "EXIT (Refund and Exit)", 1), 53); // Add an exit button
+     
+        betsClosed = false;
+        bettingCountdownTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+            int countdown = bettingTimeSeconds;
+
+            @Override
+            public void run() {
+                if (countdown > 0) {
+                    for (BettingTable bettingTable : Tables.values()) {
+                        bettingTable.updateCountdown(countdown, betsClosed);
+                    }
+                    addItem(createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown + " SECONDS!", countdown), 45);
+                    countdown--;
+                } else {
+                
+                    
+
+
+                    handleBetClosure();
+                    Bukkit.getScheduler().cancelTask(bettingCountdownTaskId);
+                    bettingCountdownTaskId = -1;
+                    
+                }
+            }
+        }, 0L, 20L); // Run every second
+    }
 
     private boolean isActivePlayer(Player player) {
         InventoryView openInventoryView = player.getOpenInventory();

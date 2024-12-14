@@ -237,16 +237,18 @@ private void reinitializeDealerVillagers() {
 
 
     public Villager getDealerByInternalName(String internalName) {
-        for (Entity entity : Bukkit.getWorld("world").getEntities()) { // Replace "world" with your actual world name or dynamically retrieve it
-            if (entity instanceof Villager) {
-                Villager villager = (Villager) entity;
-                PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
-                String storedInternalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
-                if (internalName.equals(storedInternalName)) {
-                    return villager;
-                }
+        for (var world : Bukkit.getWorlds()) {
+    for (Entity entity : world.getEntities()) {
+        if (entity instanceof Villager) {
+            Villager villager = (Villager) entity;
+            PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+            String storedInternalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
+            if (internalName.equals(storedInternalName)) {
+                return villager;
             }
         }
+    }
+}
         return null;
     }
 
