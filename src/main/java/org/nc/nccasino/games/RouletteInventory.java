@@ -1122,7 +1122,7 @@ private void handleWinningNumber() {
                     Stack<Pair<String, Integer>> playerBets =newtry.get(player.getUniqueId());
   
                     if (!playerBets.isEmpty()) {
-                        System.out.println("Processing bets for " + player.getName());
+                        //System.out.println("Processing bets for " + player.getName());
 
                         // Notify the player of the winning number
                         if (isRed(winningNumber)) {
