@@ -270,6 +270,7 @@ public class BettingTable implements InventoryHolder, Listener {
     }
     
     public void resetTable() {
+        betStack.clear();
         clearAllLore(); // Clear lore after the round
         updateAllLore(); // Reinitialize the betting table
     }
