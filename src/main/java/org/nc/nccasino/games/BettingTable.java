@@ -298,11 +298,14 @@ public class BettingTable implements InventoryHolder, Listener {
             plugin.getLogger().warning("RouletteInventory is null or player is null, cannot send final bets.");
         }
     }
-    
+    private boolean countflag=false;
     public void updateCountdown(int countdown, boolean betsClosed) {
+
      countdown1=countdown;
+
         this.betsClosed = betsClosed; // Update the betsClosed flag
-        if(betsClosed){
+        if(betsClosed&&!countflag){
+            countflag=true;
          // Mimic a screen going over the whole betting table
               Bukkit.getScheduler().runTaskLater(plugin, () -> {
                for (int i = 0; i < inventory.getSize(); i++) {
@@ -317,6 +320,7 @@ public class BettingTable implements InventoryHolder, Listener {
                         }, 10L); // Adjust the delay as necessary // Example delay
 
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                System.out.println("Hit at "+countdown);
                       Player player = Bukkit.getPlayer(playerId);
 
                       
@@ -351,6 +355,7 @@ public class BettingTable implements InventoryHolder, Listener {
     
 
     public void processSpinResult(int result, Stack<Pair<String, Integer>> dastack) {
+        countflag=false;
         Player player = Bukkit.getPlayer(playerId);
         if (player != null) {
             int totalWinnings = 0;
