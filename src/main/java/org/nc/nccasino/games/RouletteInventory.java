@@ -43,7 +43,7 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private int pageNum;
     private final Nccasino plugin;
     private final Map<UUID, Stack<Pair<String, Integer>>> Bets;
-    private final Map<Player, BettingTable> Tables;
+    public final Map<Player, BettingTable> Tables;
     private Map<Player, Integer> activeAnimations;
     private static final NamespacedKey BETS_KEY = new NamespacedKey(Nccasino.getPlugin(Nccasino.class), "bets");
     private int frameCounter;
@@ -568,7 +568,7 @@ private void updateTimerItems(int quadrant, int time) {
         return (topInventory.getHolder() == this || topInventory.getHolder() instanceof BettingTable);
     }
 
-    private Map<UUID,Stack<Pair<String, Integer>>> newtry=new HashMap();
+    public Map<UUID,Stack<Pair<String, Integer>>> newtry=new HashMap();
     private List<Player> playersWithBets = new ArrayList<>();
 
     private void handleBetClosure() {
@@ -605,9 +605,11 @@ private void updateTimerItems(int quadrant, int time) {
         }
 
         if (playersWithBets.isEmpty() && activePlayers.isEmpty()) {
+            System.out.println("Gets here");
             resetToStartState();
         } else {
             for (Player player : playersWithBets) {
+                //System.out.println(player.name());
                 if (player.isOnline()) {
                     player.sendMessage("Bets Locked!");
                 }
@@ -1112,7 +1114,7 @@ private void handleWinningNumber() {
     // Loop over players who have placed bets
     for (Player player : playersWithBets) {
         if (player.isOnline()) {
-           // System.out.println("Processing bets for player: " + player.getName());
+           System.out.println("Processing bets for player: " + player.getName());
 
             // Schedule the processing to run after a delay
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
