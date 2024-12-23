@@ -584,7 +584,7 @@ private void updateTimerItems(int quadrant, int time) {
                 activePlayers.add(player);
             }
         }
-
+        //System.out.println("Tables"+Tables);  
         for (Player player : Tables.keySet()) {
             InventoryView openInventory = player.getOpenInventory();
             if (openInventory != null && (openInventory.getTopInventory().getHolder() == this || openInventory.getTopInventory().getHolder() == Tables.get(player))) {
@@ -593,21 +593,27 @@ private void updateTimerItems(int quadrant, int time) {
 
             if (player != null && player.isOnline()) {
                 Stack<Pair<String, Integer>> playerBets = getPlayerBets(player.getUniqueId());
+                //System.out.println("got52"+playerBets);
                 if (!playerBets.isEmpty()) {
                     newtry.put(player.getUniqueId(), (Stack<Pair<String, Integer>>) playerBets.clone());
-                   // System.out.println("got4"+playerBets);
+                  // System.out.println("got4"+playerBets);
                     activePlayers.add(player);
                     playersWithBets.add(player);
                     Bets.put(player.getUniqueId(), playerBets);
+                    //System.out.println("Bets"+activePlayers);            
+                    //System.out.println("Acplay"+Bets);     
+                    //System.out.println("PlayWiB"+playersWithBets);         
+                
                 }
                 
             }
         }
 
         if (playersWithBets.isEmpty() && activePlayers.isEmpty()) {
-            System.out.println("Gets here");
+            //System.out.println("Gets here");
             resetToStartState();
         } else {
+            //System.out.println("Gets hereeee"+playersWithBets.isEmpty()+activePlayers.isEmpty());
             for (Player player : playersWithBets) {
                 //System.out.println(player.name());
                 if (player.isOnline()) {
@@ -1114,7 +1120,7 @@ private void handleWinningNumber() {
     // Loop over players who have placed bets
     for (Player player : playersWithBets) {
         if (player.isOnline()) {
-           System.out.println("Processing bets for player: " + player.getName());
+           //System.out.println("Processing bets for player: " + player.getName());
 
             // Schedule the processing to run after a delay
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -1148,10 +1154,10 @@ private void handleWinningNumber() {
 
 
                     } else {
-                        System.out.println(player.getName() + " has no bets to process.");
+                        plugin.getLogger().warning(player.getName() + " has no bets to process.");
                     }
                 } else {
-                    System.out.println("No betting table found for player: " + player.getName());
+                    plugin.getLogger().warning("No betting table found for player: " + player.getName());
                 }
             }, 30L);
         }
@@ -1227,7 +1233,7 @@ private int getNumberForSlot(int mainSlot, int quadrant) {
     if (number != null) {
         return number;
     } else {
-        System.out.println("Error: No number associated with slot " + mainSlot + " in quadrant " + quadrant);
+        plugin.getLogger().warning("Error: No number associated with slot " + mainSlot + " in quadrant " + quadrant);
         return -1;
     }
 }  

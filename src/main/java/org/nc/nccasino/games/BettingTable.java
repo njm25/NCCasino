@@ -320,7 +320,7 @@ public class BettingTable implements InventoryHolder, Listener {
                         }, 10L); // Adjust the delay as necessary // Example delay
 
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                System.out.println("Hit at "+countdown);
+                //System.out.println("Hit at "+countdown);
                       Player player = Bukkit.getPlayer(playerId);
 
                       
@@ -555,7 +555,9 @@ public class BettingTable implements InventoryHolder, Listener {
                     player.sendMessage("Placed bet on " + itemName + " with " + selectedWager + " " + plugin.getCurrencyName(internalName) + "s.");
    
                     betStack.push(new Pair<>(itemName, (int) selectedWager));
+                    
                     complicatedDifficultHiddenSecretBackdoor(betStack);
+                    rouletteInventory.updatePlayerBets(playerId, betStack, player);
                     updateAllLore();
                   //  updateAllRelatedSlots(slot, itemName);
                 } else {
