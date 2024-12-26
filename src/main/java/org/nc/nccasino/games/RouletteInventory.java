@@ -584,7 +584,7 @@ private void updateTimerItems(int quadrant, int time) {
                 activePlayers.add(player);
             }
         }
-        //System.out.println("Tables"+Tables);  
+      
         for (Player player : Tables.keySet()) {
             InventoryView openInventory = player.getOpenInventory();
             if (openInventory != null && (openInventory.getTopInventory().getHolder() == this || openInventory.getTopInventory().getHolder() == Tables.get(player))) {
@@ -593,16 +593,12 @@ private void updateTimerItems(int quadrant, int time) {
 
             if (player != null && player.isOnline()) {
                 Stack<Pair<String, Integer>> playerBets = getPlayerBets(player.getUniqueId());
-                //System.out.println("got52"+playerBets);
                 if (!playerBets.isEmpty()) {
                     newtry.put(player.getUniqueId(), (Stack<Pair<String, Integer>>) playerBets.clone());
-                  // System.out.println("got4"+playerBets);
                     activePlayers.add(player);
                     playersWithBets.add(player);
                     Bets.put(player.getUniqueId(), playerBets);
-                    //System.out.println("Bets"+activePlayers);            
-                    //System.out.println("Acplay"+Bets);     
-                    //System.out.println("PlayWiB"+playersWithBets);         
+                 
                 
                 }
                 
@@ -648,7 +644,6 @@ private void startBettingTimer() {
         
         @Override
         public void run() {
-            //System.out.println("timer"+countdown);
             if (countdown > 0) {
                 for (BettingTable bettingTable : Tables.values()) {
                     bettingTable.updateCountdown(countdown, betsClosed);
@@ -727,7 +722,6 @@ private void startSlowSpinAnimation(long initialSpeed) {
     spinTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
         @Override
         public void run() {
-            //System.out.println("slow"+frameCounter);
             
             if (betsClosed) {
                 Bukkit.getScheduler().cancelTask(spinTaskId); // Stop slow spin when bets are closed
@@ -758,7 +752,6 @@ private void startSpinAnimation(List<Player> activePlayers) {
     Runnable spinTask = new Runnable() {
         @Override
         public void run() {
-           //System.out.println("sSA"+frameCounter);
             if (!spinAnimationOver) {
                 updateWheel(frameCounter * spinDirection);
 
@@ -774,7 +767,6 @@ private void startSpinAnimation(List<Player> activePlayers) {
                 }
                 
                 
-                //System.out.println("Current Speed: " + currentWheelDelay[0]);
                 bfastSpinTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, this, currentWheelDelay[0]);
                 frameCounter++;
             } 
@@ -842,7 +834,6 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
    
     int nextSlot = currentTrackSlots.get(nextIndex);
     
- //System.out.println("Nextind:"+nextIndex+"+nextSlot:"+nextSlot);
     if (isQuadrantBoundary(nextSlot)) {
         isSwitchingQuadrant = true;
 
@@ -929,25 +920,13 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
             ballCurrentTrack = trackSequence[trackSequenceIndex];
 
             int adjustment=1;
-/*
-    if (currentBallDelay[0] == 1L) {
-        adjustment = 2;
-        System.out.println("Speed 1L, adjustment = 2 and nexslo"+nextSlot);
-        } 
-    else {
-        adjustment = 1;
-        System.out.println("Other speed, adjustment = 1 and nexslo"+nextSlot);
-        }
-        System.out.println("bef: " + ballCurrentIndex);
-        */
     ballCurrentIndex = (ballCurrentIndex + adjustment * wheelSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
 
-    //System.out.println("Adjusted ballCurrentIndex: " + ballCurrentIndex);
+
 
         } else {
             ballMovementStarted = false;
             handleWinningNumber();
-            //System.out.println("WHen it hitcurrquad:"+currentQuadrant+" Ballcurr"+ballCurrentIndex+"|"+ballSpinDirection+"|"+currentBallDelay+"|"+ slotsMovedTotal+"|"+ totalSlotsToMove+"|"+ ballAccelerationSlots+"|"+ ballDecelerationSlots);
             return;
         }
     }
@@ -971,7 +950,6 @@ private void adjustBallSpeed(long[] currentBallDelay, int slotsMoved, int ballAc
 
 
 private void updateBallPosition(int ballSpinDirection) {
-    //System.out.println("Updating ball position...");
     Map<Integer, List<Integer>> currentTracks = getTracksForCurrentQuadrant();
     List<Integer> currentTrackSlots = currentTracks.get(ballCurrentTrack);
 
@@ -1025,7 +1003,6 @@ private int getStartingIndexForNewQuaadrant() {
     if (currentTrackSlots == null || currentTrackSlots.isEmpty()) {
         return 0;
     }
-    //System.out.println("idfk"+wheelSpinDirection+"+and: "+(currentTrackSlots.size()-1));
     // Determine the correct starting index based on the ball's spin direction
     if (wheelSpinDirection == -1&&currentQuadrant==4) { // Counterclockwise
         return 0;
@@ -1415,7 +1392,6 @@ private void switchStayToQuadrant(int quad){
         if(!newflag){
             int targetquad;
             targetquad=findWinningNumberQuadrant(winningNumber,globalOffset);
-            //System.out.println("2winnum: "+winningNumber+ " in quad: "+targetquad+" but atquad"+currentQuadrant);
             if(currentQuadrant!=targetquad){
         switchStayToQuadrant(targetquad);}
             }
@@ -1584,25 +1560,21 @@ private boolean isQuadrantBBoundary(int slot) {
 private void initializeDecorativeSlotsForQuadrant(int quadrant) {
     switch (quadrant) {
         case 1:
-            //System.out.println("dec1");
             // Quadrant 1: Brown slots (0-17, 26), Green slots (36-42, 45-52)
             fillDecorativeSlots(new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 26}, Material.BROWN_STAINED_GLASS_PANE);
             fillDecorativeSlots(new int[]{36, 37, 38, 39, 40, 41, 42, 45, 46, 47, 48, 49, 50, 51, 52}, Material.GREEN_STAINED_GLASS_PANE);
             break;
         case 2:
-        //System.out.println("dec2");
             // Quadrant 2: Brown slots (0-18), Green slots (38-44, 46-53)
             fillDecorativeSlots(new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18}, Material.BROWN_STAINED_GLASS_PANE);
             fillDecorativeSlots(new int[]{38, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53}, Material.GREEN_STAINED_GLASS_PANE);
             break;
         case 3:
-        //System.out.println("dec3");
             // Quadrant 3: Brown slots (27, 36-53), Green slots (1-8, 11-17)
             fillDecorativeSlots(new int[]{27, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53}, Material.BROWN_STAINED_GLASS_PANE);
             fillDecorativeSlots(new int[]{1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17}, Material.GREEN_STAINED_GLASS_PANE);
             break;
         case 4:
-        //System.out.println("dec4");
             // Quadrant 4: Brown slots (35-53), Green slots (0-7, 9-15)
             fillDecorativeSlots(new int[]{35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53}, Material.BROWN_STAINED_GLASS_PANE);
             fillDecorativeSlots(new int[]{0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15}, Material.GREEN_STAINED_GLASS_PANE);
@@ -1622,115 +1594,6 @@ private void fillDecorativeSlots(int[] slots, Material material) {
         inventory.setItem(slot, item);
     }
 }
-
-
-
-
-    private Map<Integer, int[]> getCurrentExtraSlotsMap() {
-        switch (currentQuadrant) {
-            case 1: return extraSlotsMapTopRight;
-            case 2: return extraSlotsMapTopLeft;
-            case 3: return extraSlotsMapBottomLeft;
-            case 4: return extraSlotsMapBottomRight;
-            default: return extraSlotsMapTopRight;
-        }
-    }
-
-   
-    private void displayQuadrant(int quadrantIndex) {
-        int[] quadrantSlots;
-        int startPosition;
-    
-        // Define slot ranges for each quadrant
-        switch (quadrantIndex) {
-            case 0: // Top-Right Quadrant
-                quadrantSlots = new int[]{8, 7, 6, 5, 4, 3, 2, 1, 0}; 
-                startPosition = (wheelOffset + 27) % 37; // Start from the 27th global position
-                break;
-            case 1: // Top-Left Quadrant
-                quadrantSlots = new int[]{17, 16, 15, 14, 13, 12, 11, 10, 9};
-                startPosition = (wheelOffset + 18) % 37; // Start from the 18th global position
-                break;
-            case 2: // Bottom-Left Quadrant
-                quadrantSlots = new int[]{26, 25, 24, 23, 22, 21, 20, 19, 18};
-                startPosition = (wheelOffset + 9) % 37; // Start from the 9th global position
-                break;
-            case 3: // Bottom-Right Quadrant
-                quadrantSlots = new int[]{35, 34, 33, 32, 31, 30, 29, 28, 27};
-                startPosition = wheelOffset; // Start from the 0th global position
-                break;
-            default:
-                throw new IllegalArgumentException("Invalid quadrant index");
-        }
-    
-        // Loop through each slot in the quadrant and assign a unique number
-        for (int i = 0; i < quadrantSlots.length; i++) {
-            int wheelPosition = (startPosition + i) % 37; // Ensure the position wraps around if needed
-            int number = wheelLayout.get(wheelPosition); // Get the number from the global wheel layout
-    
-            // Create the item with the correct number and place it in the quadrant slot
-            ItemStack item = createCustomItem(getMaterialForNumber(number), "Number: " + number, (number == 0) ? 1 : number);
-            inventory.setItem(quadrantSlots[i], item);
-    
-            // Handle the extra slots associated with the main number slot
-            handleExtraSlots(quadrantSlots[i], number, quadrantIndex);
-        }
-    }
-    
-    private void handleExtraSlots(int mainSlot, int number, int quadrantIndex) {
-        Map<Integer, int[]> currentExtraSlotsMap = getExtraSlotsMapForQuadrant(quadrantIndex);
-        
-        if (currentExtraSlotsMap.containsKey(mainSlot)) {
-            int[] extraSlots = currentExtraSlotsMap.get(mainSlot);
-            ItemStack extraItem = createCustomItem(getMaterialForNumber(number), "Number: " + number, 1);
-            
-            for (int extraSlot : extraSlots) {
-                inventory.setItem(extraSlot, extraItem);
-            }
-        }
-    }
-    
-    private Map<Integer, int[]> getExtraSlotsMapForQuadrant(int quadrantIndex) {
-        switch (quadrantIndex) {
-            case 1: return extraSlotsMapTopRight;
-            case 2: return extraSlotsMapTopLeft;
-            case 3: return extraSlotsMapBottomLeft;
-            case 4: return extraSlotsMapBottomRight;
-            default:
-                throw new IllegalArgumentException("Invalid quadrant index: " + quadrantIndex);
-        }
-    }
-    
-/*
-    private int getNumberForSlot(int mainSlot, int quadrant) {
-        int basePosition;
-    
-        // Determine base starting position offset for each quadrant
-        switch (quadrant) {
-            case 1: // Top-Right Quadrant
-                basePosition = wheelOffset + 27;
-                break;
-            case 2: // Top-Left Quadrant
-                basePosition = wheelOffset + 18;
-                break;
-            case 3: // Bottom-Left Quadrant
-                basePosition = wheelOffset + 9;
-                break;
-            case 4: // Bottom-Right Quadrant
-                basePosition = wheelOffset;
-                break;
-            default:
-                throw new IllegalArgumentException("Invalid quadrant index");
-        }
-    
-        // Calculate the index in the wheel layout
-        int layoutIndex = (basePosition + wheelLayout.indexOf(mainSlot)) % wheelLayout.size();
-        
-        // Fetch and return the winning number
-        return wheelLayout.get(layoutIndex);
-    }
-    
-     */
 
     private Material getMaterialForNumber(int number) {
         if (number == 0) {
