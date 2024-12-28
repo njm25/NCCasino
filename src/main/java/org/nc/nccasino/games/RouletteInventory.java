@@ -1416,14 +1416,14 @@ private void switchStayToQuadrant(int quad){
                 flag2=true;
             }
             // Create the item with the correct number and place it in the quadrant slot
-            ItemStack item = createCustomItem(getMaterialForNumber(number), "Number: " + number, (number == 0) ? 1 : number);
+            ItemStack item = createCustomItem(getMaterialForNumber(number),  ""+number, (number == 0) ? 1 : number);
             inventory.setItem(quadrantSlots[i], item);
     
             // Handle the extra slots associated with the main number slot
             if (currentExtraSlotsMap.containsKey(quadrantSlots[i])) {
                
                 int[] extraSlots = currentExtraSlotsMap.get(quadrantSlots[i]);
-                ItemStack extraItem = createCustomItem(getMaterialForNumber(number), "Number: " + number, 1);
+                ItemStack extraItem = createCustomItem(getMaterialForNumber(number), ""+number, 1);
                 boolean first=true;
                 for (int extraSlot : extraSlots) {
                     

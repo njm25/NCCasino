@@ -128,9 +128,9 @@ public class BettingTable implements InventoryHolder, Listener {
         for (int i = 0; i < 27; i++) {
             if (!(i == 0 || i == 18)) {
                 if (numbersPageOne[i] == 0) {
-                    inventory.setItem(i, createCustomItem(Material.valueOf(colorsPageOne[i] + "_STAINED_GLASS_PANE"), "straight up " + numbersPageOne[i]+" - 35:1", 1));
+                    inventory.setItem(i, createCustomItem(Material.valueOf(colorsPageOne[i] + "_STAINED_GLASS_PANE"), numbersPageOne[i]+" - 35:1", 1));
                 } else {
-                    inventory.setItem(i, createCustomItem(Material.valueOf(colorsPageOne[i] + "_STAINED_GLASS_PANE"), "straight up " + numbersPageOne[i]+" - 35:1", numbersPageOne[i]));
+                    inventory.setItem(i, createCustomItem(Material.valueOf(colorsPageOne[i] + "_STAINED_GLASS_PANE"), numbersPageOne[i]+" - 35:1", numbersPageOne[i]));
                 }
             }
         }
@@ -142,7 +142,7 @@ public class BettingTable implements InventoryHolder, Listener {
 
         for (int i = 0; i < numbersPageTwo.length; i++) {
             if (!(i == 8 || i == 17 || i == 26)) {
-                inventory.setItem(i, createCustomItem(Material.valueOf(colorsPageTwo[i] + "_STAINED_GLASS_PANE"), "straight up " + numbersPageTwo[i]+" - 35:1", numbersPageTwo[i]));
+                inventory.setItem(i, createCustomItem(Material.valueOf(colorsPageTwo[i] + "_STAINED_GLASS_PANE"), numbersPageTwo[i]+" - 35:1", numbersPageTwo[i]));
             }
         }
 
@@ -367,7 +367,7 @@ public class BettingTable implements InventoryHolder, Listener {
                 String betType = bet.getFirst();
                 int wager = bet.getSecond();
     
-                if (betType.equalsIgnoreCase("straight up " + result + " - 35:1")) {
+                if (betType.equalsIgnoreCase("result" +  " - 35:1")) {
                     int winnings = wager * 36;
                     winningsMap.put("Straight Up " + result, winningsMap.getOrDefault("Straight Up " + result, 0) + winnings);
                     totalWinnings += winnings;
@@ -542,7 +542,10 @@ public class BettingTable implements InventoryHolder, Listener {
         if (slot >= 47 && slot <= 51) {
             selectedWager = getWagerAmountFromName(itemName);
             if (selectedWager > 0) {
-                player.sendMessage("Selected wager: " + selectedWager + " " + plugin.getCurrencyName(internalName) + "s");
+                if(selectedWager==1){
+                    player.sendMessage("Wager: " + (int) selectedWager + " " + plugin.getCurrencyName(internalName) + "");
+                }
+                else{player.sendMessage("Wager: " + (int) selectedWager + " " + plugin.getCurrencyName(internalName) + "s");}
             } else {
                 player.sendMessage("Invalid wager amount selected.");
             }
@@ -552,7 +555,7 @@ public class BettingTable implements InventoryHolder, Listener {
             if (selectedWager > 0) {
                 if (hasEnoughWager(player, selectedWager)) {
                     removeWagerFromInventory(player, selectedWager);
-                    player.sendMessage("Placed bet on " + itemName + " with " + selectedWager + " " + plugin.getCurrencyName(internalName) + "s.");
+                    player.sendMessage("Put " + (int)selectedWager + " on " + itemName + "." );
    
                     betStack.push(new Pair<>(itemName, (int) selectedWager));
                     
@@ -561,35 +564,44 @@ public class BettingTable implements InventoryHolder, Listener {
                     updateAllLore();
                   //  updateAllRelatedSlots(slot, itemName);
                 } else {
-                    player.sendMessage("Not enough " + plugin.getCurrencyName(internalName) + "s to place this bet.");
+                    player.sendMessage("Not enough " + plugin.getCurrencyName(internalName) + "s to place this bet");
                 }
             } else {
-                player.sendMessage("Please select a wager amount first.");
+                player.sendMessage("Please select a wager amount first");
             }
             return;
         }
         if (slot == 45) {
-            player.sendMessage("Undoing all bets...");
+           // player.sendMessage("Undoing all bets...");
+           if (!betStack.isEmpty()) {
             clearAllBetsAndRefund(player);
             clearAllLore();
             updateAllLore();
-            player.sendMessage("All bets cleared and refunded.");
+            player.sendMessage("All bets undone");
+        }
+        else{
+            player.sendMessage("No bets to undo");
+        }
             return;
         }
 
         if (slot == 46) {
-            player.sendMessage("Undoing last bet...");
+           // player.sendMessage("Undoing last bet...");
             if (!betStack.isEmpty()) {
                 Pair<String, Integer> lastBet = betStack.pop();
                 refundWagerToInventory(player, lastBet.getSecond());
                 updateAllLore();
+                player.sendMessage("Last bet undone");
+            }
+            else{
+                player.sendMessage("No bets to undo");
             }
             return;
         }
 
         if (slot == 52) {
             saveBetsToRoulette(player);
-            player.sendMessage("Returning to Roulette...");
+            //player.sendMessage("Returning to Roulette...");
             UUID dealerId = DealerVillager.getUniqueId(dealer);
             DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
             
@@ -704,22 +716,22 @@ private boolean isValidSlotPage2(int slot) {
 
     private void initializeTestStack(){
         testStack=new Stack<>();
-       testStack.push(new Pair<>("straight up 0 - 35:1", 5));
-       testStack.push(new Pair<>("straight up 0 - 35:1", 1));
-       testStack.push(new Pair<>("straight up 0 - 35:1", 5));
-       testStack.push(new Pair<>("straight up 0 - 35:1", 1));
-       testStack.push(new Pair<>("straight up 0 - 35:1", 10));
-       testStack.push(new Pair<>("straight up 0 - 35:1", 1));
-       testStack.push(new Pair<>("straight up 0 - 35:1", 10));
-       testStack.push(new Pair<>("straight up 0 - 35:1", 1));
+       testStack.push(new Pair<>("0 - 35:1", 5));
+       testStack.push(new Pair<>("0 - 35:1", 1));
+       testStack.push(new Pair<>("0 - 35:1", 5));
+       testStack.push(new Pair<>("0 - 35:1", 1));
+       testStack.push(new Pair<>("0 - 35:1", 10));
+       testStack.push(new Pair<>("0 - 35:1", 1));
+       testStack.push(new Pair<>("0 - 35:1", 10));
+       testStack.push(new Pair<>("0 - 35:1", 1));
        testStack.push(new Pair<>("Middle Row - 2:1", 5));
-       testStack.push(new Pair<>("straight up 0 - 35:1", 1));
-       testStack.push(new Pair<>("straight up 0 - 35:1", 1));
+       testStack.push(new Pair<>("0 - 35:1", 1));
+       testStack.push(new Pair<>("0 - 35:1", 1));
        testStack.push(new Pair<>("Bottom Row - 2:1", 5));
-       testStack.push(new Pair<>("straight up 0 - 35:1", 1));
-       testStack.push(new Pair<>("straight up 0 - 35:1", 1));
-       testStack.push(new Pair<>("straight up 0 - 35:1", 1));
-       testStack.push(new Pair<>("straight up 0 - 35:1", 1)); 
+       testStack.push(new Pair<>("0 - 35:1", 1));
+       testStack.push(new Pair<>("0 - 35:1", 1));
+       testStack.push(new Pair<>("0 - 35:1", 1));
+       testStack.push(new Pair<>("0 - 35:1", 1)); 
     }
 
     private double getWagerAmountFromName(String name) {
@@ -750,7 +762,7 @@ private boolean isValidSlotPage2(int slot) {
             rouletteInventory.updatePlayerBets(playerId, betStack,player);
             player.openInventory(rouletteInventory.getInventory());
         } else {
-            player.sendMessage("Error: Unable to find Roulette inventory.");
+            //player.sendMessage("Error: Unable to find Roulette inventory.");
             plugin.getLogger().warning("Error: Unable to find Roulette inventory for dealer ID: " + dealerId);
         }
     }
