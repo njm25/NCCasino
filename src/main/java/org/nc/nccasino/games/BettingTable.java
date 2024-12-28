@@ -15,6 +15,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
@@ -290,6 +291,7 @@ public class BettingTable implements InventoryHolder, Listener {
         }
         return itemStack;
     }
+    
     public void sendFinalBetsToRoulette() {
         Player player = Bukkit.getPlayer(playerId);
         if (rouletteInventory != null && player != null) {
@@ -298,6 +300,7 @@ public class BettingTable implements InventoryHolder, Listener {
             plugin.getLogger().warning("RouletteInventory is null or player is null, cannot send final bets.");
         }
     }
+
     private boolean countflag=false;
     public void updateCountdown(int countdown, boolean betsClosed) {
 
@@ -324,7 +327,18 @@ public class BettingTable implements InventoryHolder, Listener {
                       Player player = Bukkit.getPlayer(playerId);
 
                       
-                         openRouletteInventory(dealer,player);
+                        if (player != null) {
+            // Grab the top inventory
+            InventoryView openView = player.getOpenInventory();
+            Inventory topInv = openView != null ? openView.getTopInventory() : null;
+
+            // Check if they are STILL viewing this BettingTable
+            if (topInv != null && topInv.getHolder() == this) {
+                // Force them over to the roulette wheel
+                openRouletteInventory(dealer, player);
+            }
+      
+        }
                 }, 25L); // Adjust the delay as necessary // Example delay
         }
         if (countdown > 0) {
@@ -567,7 +581,7 @@ public class BettingTable implements InventoryHolder, Listener {
                     player.sendMessage("Not enough " + plugin.getCurrencyName(internalName) + "s to place this bet");
                 }
             } else {
-                player.sendMessage("Please select a wager amount first");
+                player.sendMessage("No wager selected");
             }
             return;
         }

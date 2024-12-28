@@ -613,7 +613,7 @@ private void updateTimerItems(int quadrant, int time) {
             for (Player player : playersWithBets) {
                 //System.out.println(player.name());
                 if (player.isOnline()) {
-                    player.sendMessage("Bets Locked!");
+                    player.sendMessage("Bets locked, spinning!");
                 }
             }
 
