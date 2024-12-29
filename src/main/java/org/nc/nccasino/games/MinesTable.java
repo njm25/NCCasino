@@ -2,6 +2,8 @@ package org.nc.nccasino.games;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
@@ -523,6 +525,7 @@ public class MinesTable implements InventoryHolder, Listener {
 
    // Trigger a visual explosion at the player's location without causing damage
    player.getWorld().createExplosion(player.getLocation(), 0F, false, false); // Creates explosion, no damage or block break
+    player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
 
    gameOver = true;
    gameState = GameState.GAME_OVER;
@@ -682,7 +685,9 @@ public class MinesTable implements InventoryHolder, Listener {
     
         // Step 1: Reveal all tiles (mines and safes)
         revealAllTiles();
-    
+        player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
+        player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+
         // Step 2: Start emerald expansion from the cash-out button (slot 49)
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             startEmeraldExpansion(49); // Slot 49 is the cash-out button position
