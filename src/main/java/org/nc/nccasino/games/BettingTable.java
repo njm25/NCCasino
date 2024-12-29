@@ -366,120 +366,185 @@ public class BettingTable implements InventoryHolder, Listener {
         Stack<Pair<String, Integer>> bets = rouletteInventory.getPlayerBets(playerId);
         return (bets != null) ? bets : new Stack<>();
     }
-    
 
     public void processSpinResult(int result, Stack<Pair<String, Integer>> dastack) {
-        countflag=false;
         Player player = Bukkit.getPlayer(playerId);
-        if (player != null) {
-            int totalWinnings = 0;
-            int totalLosses = 0;
-            Map<String, Integer> winningsMap = new HashMap<>();
+        if (player == null) return;
     
-            while (!dastack.isEmpty()) {
-                Pair<String, Integer> bet = dastack.pop();
-                String betType = bet.getFirst();
-                int wager = bet.getSecond();
-    
-                if (betType.equalsIgnoreCase("result" +  " - 35:1")) {
-                    int winnings = wager * 36;
-                    winningsMap.put("Straight Up " + result, winningsMap.getOrDefault("Straight Up " + result, 0) + winnings);
-                    totalWinnings += winnings;
-                } else if (betType.equalsIgnoreCase(getColumn(result) + "row - 2:1")) {
-                    int winnings = wager * 3;
-                    winningsMap.put(getColumn(result) + " Row", winningsMap.getOrDefault(getColumn(result) + " Row", 0) + winnings);
-                    totalWinnings += winnings;
-                } else if (betType.equalsIgnoreCase(getDozen(result) + "Dozen - 2:1")) {
-                    int winnings = wager * 3;
-                    winningsMap.put(getDozen(result) + " Dozen", winningsMap.getOrDefault(getDozen(result) + " Dozen", 0) + winnings);
-                    totalWinnings += winnings;
-                } else if (betType.equalsIgnoreCase("Red - 1:1") && isRed(result)) {
-                    int winnings = wager * 2;
-                    winningsMap.put("Red", winningsMap.getOrDefault("Red", 0) + winnings);
-                    totalWinnings += winnings;
-                } else if (betType.equalsIgnoreCase("Black - 1:1") && isBlack(result)) {
-                    int winnings = wager * 2;
-                    winningsMap.put("Black", winningsMap.getOrDefault("Black", 0) + winnings);
-                    totalWinnings += winnings;
-                } else if (betType.equalsIgnoreCase(getOddEven(result))) {
-                    int winnings = wager * 2;
-                    winningsMap.put(getOddEven(result), winningsMap.getOrDefault(getOddEven(result), 0) + winnings);
-                    totalWinnings += winnings;
-                } else if (betType.equals("1-18 - 1:1") && (1 <= result && result <= 18)) {
-                    int winnings = wager * 2;
-                    winningsMap.put("1-18", winningsMap.getOrDefault("1-18", 0) + winnings);
-                    totalWinnings += winnings;
-                } else if (betType.equals("19-36 - 1:1") && (19 <= result && result <= 36)) {
-                    int winnings = wager * 2;
-                    winningsMap.put("19-36", winningsMap.getOrDefault("19-36", 0) + winnings);
-                    totalWinnings += winnings;
-                } else {
-                    totalLosses += wager;
-                }
-            }
-    
-            // Announce losses
-            if (totalLosses > 0 && winningsMap.isEmpty()) {
-                                player.sendMessage("Lost "+ totalLosses +" "+ plugin.getCurrencyName(internalName)+"s, donated to a good cause :)");
-            }
-            else if (totalLosses == 0 && winningsMap.isEmpty()) {
-                player.sendMessage("No wins no losses. huh?!");
-
-            }
-            else if (totalLosses == 0&& !winningsMap.isEmpty()) {
-            
-                player.sendMessage("Wow, no losses! I applaud you.");
-            }else{
-
-                player.sendMessage("Lost "+ totalLosses +" "+ plugin.getCurrencyName(internalName)+"s, but u won sum uwu");
-            }
-
-            // Announce winnings for each bet type
-         
-            for (Map.Entry<String, Integer> entry : winningsMap.entrySet()) {
-                player.sendMessage("You won " + entry.getValue() + " on " + entry.getKey() + "!");
-            }
-    
-            // Announce total winnings and profit
-            int profit = totalWinnings - totalLosses;
-            if (totalWinnings > 0) {
-                refundWagerToInventory(player, totalWinnings);
-                player.sendMessage("Total winnings: " + totalWinnings + " " + plugin.getCurrencyName(internalName) + "s.");
-               
-               if(profit>0){
-                player.sendMessage("Result: +" + profit + " " + plugin.getCurrencyName(internalName) + "s.");
-               }else{player.sendMessage("Result: " + profit + " " + plugin.getCurrencyName(internalName) + "s.");}
-
-            } else {
-                player.sendMessage("No winnings this time.");
-            }
-    
-            initializeTable();
-            updateAllLore(); // Update the table to reflect the processed bets
+        // We'll group categories into a data structure
+        class BetCategory {
+            int totalWager = 0;
+            int totalPayout = 0;
         }
+        Map<String, BetCategory> categoryMap = new LinkedHashMap<>();
+    
+        int overallWager = 0;
+        int overallPayout = 0;
+    
+        // Process each bet
+        while (!dastack.isEmpty()) {
+            Pair<String, Integer> bet = dastack.pop();
+            String betType = bet.getFirst();
+            int wager = bet.getSecond();
+    
+            // 1) Determine the category from betType
+            String categoryName = parseCategory(betType);
+    
+            // 2) Create or get BetCategory
+            BetCategory cat = categoryMap.computeIfAbsent(categoryName, k -> new BetCategory());
+            cat.totalWager += wager;
+            overallWager += wager;
+    
+            // 3) Calculate payout for this specific bet
+            int payout = 0;
+
+            // Straight Up
+            if (betType.equalsIgnoreCase("straight up " + result + " - 35:1")
+                || betType.equalsIgnoreCase(result + " - 35:1")) { 
+                // E.g. "17 - 35:1" or "straight up 17 - 35:1"
+                payout = wager * 36;
+            }
+            // Dozens
+        // Rows
+else if (betType.contains("row - 2:1")) {
+    // we already have `getColumn(result)` returning "Top", "Middle", or "Bottom".
+    String columnForResult = getColumn(result); // e.g. "Bottom"
+    
+    // betType might be "Bottom Row - 2:1", or "Top Row - 2:1", etc.
+    // Compare ignoring case
+    if (betType.toLowerCase().contains(columnForResult.toLowerCase() + " row")) {
+        payout = wager * 3;
+    }
+}
+
+// Dozens
+else if (betType.contains("dozen - 2:1")) {
+    // we have `getDozen(result)` returning "1st", "2nd", or "3rd"
+    String dozenForResult = getDozen(result); // e.g. "2nd"
+    
+    // betType might be "2nd Dozen - 2:1", or "3rd Dozen - 2:1"
+    if (betType.toLowerCase().contains(dozenForResult.toLowerCase() + " dozen")) {
+        payout = wager * 3;
+    }
+}
+
+            // Red/Black
+            else if (betType.equalsIgnoreCase("red - 1:1") && isRed(result)) {
+                payout = wager * 2;
+            }
+            else if (betType.equalsIgnoreCase("black - 1:1") && isBlack(result)) {
+                payout = wager * 2;
+            }
+            // Odd/Even
+            else if (betType.equalsIgnoreCase(getOddEven(result))) {
+                // "Even - 1:1" or "Odd - 1:1"
+                payout = wager * 2;
+            }
+            // 1-18, 19-36
+            else if (betType.equals("1-18 - 1:1") && (1 <= result && result <= 18)) {
+                payout = wager * 2;
+            }
+            else if (betType.equals("19-36 - 1:1") && (19 <= result && result <= 36)) {
+                payout = wager * 2;
+            }
+            // Otherwise lost
+            // payout = 0 by default
+            
+            cat.totalPayout += payout;
+            overallPayout += payout;
+        }
+    
+        // We’ll handle the final totals now
+        int netProfit = overallPayout - overallWager;
+    
+        // If there's a payout, give it
+        if (overallPayout > 0) {
+            refundWagerToInventory(player, overallPayout);
+        }
+    
+        // Build a condensed text output
+        StringBuilder msg = new StringBuilder();
+        msg.append("§e----- Spin Results -----\n");
+        msg.append(String.format("%-14s %6s %6s\n", "Category", "Wager", "Payout"));
+        // Make a divider line that matches these widths (16 + 6 + 7 chars, plus 2 separators)
+        //msg.append("-----------------+--------+--------\n");
+        
+    
+        for (Map.Entry<String, BetCategory> entry : categoryMap.entrySet()) {
+            BetCategory cat = entry.getValue();
+            if (cat.totalWager > 0) {
+                msg.append(String.format("%-14s %6d %6d\n", 
+                entry.getKey(), 
+                cat.totalWager, 
+                cat.totalPayout)
+  );
+            }
+        }
+        msg.append("\n");
+    
+        // Summaries
+        if (overallWager == 0) {
+            msg.append("§cNo bets were placed.\n");
+        } else if (overallPayout == 0) {
+            msg.append("§cNo winning bets. Lost ")
+               .append(overallWager).append(" total.\n");
+        } else {
+            msg.append("§aTotal Wager: ").append(overallWager).append("\n");
+            msg.append("§aTotal Payout: ").append(overallPayout).append("\n");
+            msg.append("§a§lProfit: ").append(netProfit >= 0 ? "+" : "")
+               .append(netProfit).append("\n");
+        }
+    
+        // Send message
+        Bukkit.getScheduler().runTaskLater(plugin, () ->  player.sendMessage(msg.toString()), 20L);
+
+        Bukkit.getScheduler().runTaskLater(plugin, () ->  initializeTable(), 25L);
+        Bukkit.getScheduler().runTaskLater(plugin, () ->  updateAllLore(), 25L);
+        // Reinitialize table after the round
+    
     }
     
 
+    private String parseCategory(String betType) {
+        // Example rules (adjust to your actual naming):
+        betType = betType.toLowerCase();
+    
+        if (betType.contains("dozen")) {
+            return "Dozens";
+        } else if (betType.contains("row")) {
+            return "Rows";
+        } else if (betType.contains("red") || betType.contains("black")) {
+            return "Colors";
+        } else if (betType.contains("odd") || betType.contains("even")) {
+            return "Odd/Even";
+        } else if (betType.contains("1-18") || betType.contains("19-36")) {
+            return "High/Low";
+        }
+    
+        // Fallback if something doesn't match
+        return "Straight Up";
+    }
+    
 
     private String getColumn(int result) {
         // Determine the column of the result (1st, 2nd, 3rd)
         if (result % 3 == 1) {
-            return "Bottom ";
+            return "Bottom";
         } else if (result % 3 == 2) {
-            return "Middle ";
+            return "Middle";
         } else {
-            return "Top ";
+            return "Top";
         }
     }
     
     private String getDozen(int result) {
         // Determine the dozen of the result (1st, 2nd, 3rd)
         if (result >= 1 && result <= 12) {
-            return "1st ";
+            return "1st";
         } else if (result >= 13 && result <= 24) {
-            return "2nd ";
+            return "2nd";
         } else {
-            return "3rd ";
+            return "3rd";
         }
     }
     
@@ -508,7 +573,7 @@ public class BettingTable implements InventoryHolder, Listener {
         if (result == 0) {
             return "none"; // No odd/even for 0
         }
-        return (result % 2 == 0) ? "even - 1:1" : "odd - 1:1";
+        return (result % 2 == 0) ? "Even - 1:1" : "Odd - 1:1";
     }
     
 
@@ -521,12 +586,12 @@ public class BettingTable implements InventoryHolder, Listener {
         event.setCancelled(true);
 
         if (betsClosed) {
-            player.sendMessage("Bets are closed!");
+            player.sendMessage("§d§lBets are closed!");
             return;
         }
 
         if (!clickAllowed) {
-            player.sendMessage("Please wait before clicking again!");
+            player.sendMessage("§cPlease wait before clicking again!");
             return;
         }
         clickAllowed = false;
@@ -557,11 +622,11 @@ public class BettingTable implements InventoryHolder, Listener {
             selectedWager = getWagerAmountFromName(itemName);
             if (selectedWager > 0) {
                 if(selectedWager==1){
-                    player.sendMessage("Wager: " + (int) selectedWager + " " + plugin.getCurrencyName(internalName) + "");
+                    player.sendMessage("§bWager: " + (int) selectedWager + " " + plugin.getCurrencyName(internalName) + "");
                 }
-                else{player.sendMessage("Wager: " + (int) selectedWager + " " + plugin.getCurrencyName(internalName) + "s");}
+                else{player.sendMessage("§bWager: " + (int) selectedWager + " " + plugin.getCurrencyName(internalName) + "s");}
             } else {
-                player.sendMessage("Invalid wager amount selected.");
+                player.sendMessage("§cInvalid wager amount selected.");
             }
             return;
         }
@@ -569,7 +634,7 @@ public class BettingTable implements InventoryHolder, Listener {
             if (selectedWager > 0) {
                 if (hasEnoughWager(player, selectedWager)) {
                     removeWagerFromInventory(player, selectedWager);
-                    player.sendMessage("Put " + (int)selectedWager + " on " + itemName + "." );
+                    player.sendMessage("§6Put " + (int)selectedWager + " on " + itemName);
    
                     betStack.push(new Pair<>(itemName, (int) selectedWager));
                     
@@ -578,10 +643,10 @@ public class BettingTable implements InventoryHolder, Listener {
                     updateAllLore();
                   //  updateAllRelatedSlots(slot, itemName);
                 } else {
-                    player.sendMessage("Not enough " + plugin.getCurrencyName(internalName) + "s to place this bet");
+                    player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName) + "s to place this bet");
                 }
             } else {
-                player.sendMessage("No wager selected");
+                player.sendMessage("§cNo wager selected");
             }
             return;
         }

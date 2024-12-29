@@ -431,7 +431,7 @@ private void openBettingTable(Player player) {
             Tables.put(player, bettingTable);
             player.openInventory(bettingTable.getInventory());
         } else {
-            player.sendMessage("Error: Dealer not found. Unable to open betting table.");
+            player.sendMessage("§cError: Dealer not found. Unable to open betting table.");
         }
     }, 1L);
 }
@@ -442,7 +442,7 @@ private void exitGame(Player player) {
         bt.clearAllBetsAndRefund(player);
     }
     player.closeInventory();
-    player.sendMessage("You have left the game.");
+    player.sendMessage("§cYou have left the game.");
     Tables.remove(player);
     removeAllBets(player.getUniqueId());
 
@@ -613,7 +613,7 @@ private void updateTimerItems(int quadrant, int time) {
             for (Player player : playersWithBets) {
                 //System.out.println(player.name());
                 if (player.isOnline()) {
-                    player.sendMessage("Bets locked, spinning!");
+                    player.sendMessage("§dBets locked, spinning!");
                 }
             }
 
@@ -1111,11 +1111,11 @@ private void handleWinningNumber() {
 
                         // Notify the player of the winning number
                         if (isRed(winningNumber)) {
-                            player.sendMessage("Hit Red " + winningNumber + "!");
+                            player.sendMessage("§cHit Red " + winningNumber + "!");
                         } else if (isBlack(winningNumber)) {
-                            player.sendMessage("Hit Black " + winningNumber + "!");
+                            player.sendMessage("§fHit Black " + winningNumber + "!");
                         } else {
-                            player.sendMessage("Hit " + winningNumber + ", WOW!");
+                            player.sendMessage("§aHit Green " + winningNumber + ", WOW!");
                         }
 
                         // Process the bets
