@@ -6,6 +6,8 @@ import org.nc.nccasino.games.Pair;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 
@@ -489,12 +491,21 @@ else if (betType.contains("dozen - 2:1")) {
             msg.append("§cNo winning bets. Lost ")
                .append(overallWager).append(" total.\n");
         } else {
+           
             msg.append("§aTotal Wager: ").append(overallWager).append("\n");
             msg.append("§aTotal Payout: ").append(overallPayout).append("\n");
             msg.append("§a§lProfit: ").append(netProfit >= 0 ? "+" : "")
-               .append(netProfit).append("\n");
+             .append(netProfit).append("\n");
+            if (netProfit>0){
+                player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
+                player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+
+            }
+            else{
+                player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 1.0f, 1.0f);
+              
         }
-    
+        }
         // Send message
         Bukkit.getScheduler().runTaskLater(plugin, () ->  player.sendMessage(msg.toString()), 20L);
 
