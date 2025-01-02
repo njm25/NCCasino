@@ -164,7 +164,7 @@ public class MinesInventory extends DealerInventory implements Listener {
                 Tables.put(player.getUniqueId(), minesTable);
                 player.openInventory(minesTable.getInventory());
             } else {
-                player.sendMessage("Error: Dealer not found. Unable to open mines table.");
+                player.sendMessage("§cError: Dealer not found. Unable to open mines table.");
             }
         }, 1L);
     }

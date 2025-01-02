@@ -468,9 +468,6 @@ else if (betType.contains("dozen - 2:1")) {
         StringBuilder msg = new StringBuilder();
         msg.append("§e----- Spin Results -----\n");
         msg.append(String.format("%-14s %6s %6s\n", "Category", "Wager", "Payout"));
-        // Make a divider line that matches these widths (16 + 6 + 7 chars, plus 2 separators)
-        //msg.append("-----------------+--------+--------\n");
-        
     
         for (Map.Entry<String, BetCategory> entry : categoryMap.entrySet()) {
             BetCategory cat = entry.getValue();
@@ -499,9 +496,12 @@ else if (betType.contains("dozen - 2:1")) {
             if (netProfit>0){
                 player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
                 player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-
+                msg.append("§a§lProfit: ").append(netProfit >= 0 ? "+" : "")
+                .append(netProfit).append("\n");
             }
             else{
+                msg.append("§c§lProfit: ").append(netProfit >= 0 ? "+" : "")
+             .append(netProfit).append("\n");
                 player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 1.0f, 1.0f);
               
         }
