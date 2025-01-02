@@ -484,9 +484,11 @@ else if (betType.contains("dozen - 2:1")) {
         // Summaries
         if (overallWager == 0) {
             msg.append("§cNo bets were placed.\n");
+            player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 1.0f, 1.0f);
         } else if (overallPayout == 0) {
             msg.append("§cNo winning bets. Lost ")
                .append(overallWager).append(" total.\n");
+               player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 1.0f, 1.0f);
         } else {
            
             msg.append("§aTotal Wager: ").append(overallWager).append("\n");
@@ -667,10 +669,10 @@ else if (betType.contains("dozen - 2:1")) {
             clearAllBetsAndRefund(player);
             clearAllLore();
             updateAllLore();
-            player.sendMessage("All bets undone");
+            player.sendMessage("§dAll bets undone");
         }
         else{
-            player.sendMessage("No bets to undo");
+            player.sendMessage("§cNo bets to undo");
         }
             return;
         }
@@ -681,10 +683,10 @@ else if (betType.contains("dozen - 2:1")) {
                 Pair<String, Integer> lastBet = betStack.pop();
                 refundWagerToInventory(player, lastBet.getSecond());
                 updateAllLore();
-                player.sendMessage("Last bet undone");
+                player.sendMessage("§dLast bet undone");
             }
             else{
-                player.sendMessage("No bets to undo");
+                player.sendMessage("§cNo bets to undo");
             }
             return;
         }
@@ -769,7 +771,7 @@ private boolean isValidSlotPage2(int slot) {
 
     private void handleLeftoverItems(Player player, HashMap<Integer, ItemStack> leftover, int refundAmount) {
         int leftoverAmount = leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-        player.sendMessage("Inventory full. Couldn't refund " + leftoverAmount + " of " + refundAmount + " " + plugin.getCurrencyName(internalName) + "s!");
+        player.sendMessage("§cInventory full. Couldn't refund " + leftoverAmount + " of " + refundAmount + " " + plugin.getCurrencyName(internalName) + "s!");
 
         leftover.forEach((slot, itemStack) -> {
             plugin.getLogger().warning("Leftover Item at Slot " + slot + ": " + itemStack.getType() + " x " + itemStack.getAmount());
@@ -838,7 +840,7 @@ private boolean isValidSlotPage2(int slot) {
         if (requiredAmount > 0) {
             player.getInventory().removeItem(new ItemStack(plugin.getCurrency(internalName), requiredAmount));
         } else {
-            player.sendMessage("Invalid wager amount: " + amount);
+            player.sendMessage("§cInvalid wager amount: " + amount);
         }
     }
 
