@@ -23,12 +23,17 @@ import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.games.DealerInventory;
 import org.nc.nccasino.listeners.DealerDeathHandler;
 import org.nc.nccasino.listeners.DealerInteractListener;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.EventHandler;
+
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+
 
 public final class Nccasino extends JavaPlugin implements Listener {
     private final NamespacedKey INTERNAL_NAME_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(Nccasino.class), "internal_name");
@@ -82,12 +87,24 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 List.of("ncc")
             );
         });
-
+        
         // Reinitialize dealer villagers on server start
-        reinitializeDealerVillagers();
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+           // reinitializeDealerVillagers();
+            getLogger().info("Nccasino plugin enabled!");
+        }, 300L);
 
-        getLogger().info("Nccasino plugin enabled!");
+      
     }
+
+    @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        getLogger().info("Player joined: " + event.getPlayer().getName());
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            reinitializeDealerVillagers();
+        }, 20L); // Small delay to ensure entities are fully initialized
+    }
+
     public void addInventory(UUID villagerId,DealerInventory inv){
 
         inventories.putIfAbsent(villagerId,inv);
@@ -116,7 +133,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
 
 private void reinitializeDealerVillagers() {
-   
+    getLogger().info("Entered reinitializeDealerVillagers.");
+
 
     Bukkit.getWorlds().forEach(world -> {
         for (Entity entity : world.getEntities()) {
