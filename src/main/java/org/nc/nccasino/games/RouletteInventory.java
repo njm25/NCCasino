@@ -225,6 +225,8 @@ private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
         extraSlotsMapBottomRight.put(8, new int[]{17});
     }
 
+   
+
     private void registerListener() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
@@ -236,7 +238,35 @@ private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
     @Override
     public void delete() {
         super.delete();
+        if (spinTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(spinTaskId);
+            spinTaskId = -1;
+        }
+        if (fastSpinTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(fastSpinTaskId);
+            fastSpinTaskId = -1;
+        }
+        if (bfastSpinTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(bfastSpinTaskId);
+            bfastSpinTaskId = -1;
+        }
+        if (ballTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(ballTaskId);
+            ballTaskId = -1;
+        }
+        if (bettingCountdownTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(bettingCountdownTaskId);
+            bettingCountdownTaskId = -1;
+        }
+    
+        // Also clear any data references if you like
+        Bets.clear();
+        Tables.clear();
+        playersWithBets.clear();
+        newtry.clear(); 
+        activeAnimations.clear();
         unregisterListener();
+        
     }
 
     private void startAnimation(Player player) {
