@@ -7,6 +7,7 @@ import io.papermc.paper.plugin.lifecycle.event.LifecycleEventManager;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
@@ -88,6 +89,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
             );
         });
         
+        Bukkit.getScheduler().runTaskLater(this, this::loadDealerVillagers, 10L);
+
+
         // Reinitialize dealer villagers on server start
         Bukkit.getScheduler().runTaskLater(this, () -> {
            // reinitializeDealerVillagers();
@@ -97,13 +101,38 @@ public final class Nccasino extends JavaPlugin implements Listener {
       
     }
 
-    @EventHandler
-    public void onPlayerJoin(PlayerJoinEvent event) {
-        getLogger().info("Player joined: " + event.getPlayer().getName());
-        Bukkit.getScheduler().runTaskLater(this, () -> {
-            reinitializeDealerVillagers();
-        }, 20L); // Small delay to ensure entities are fully initialized
-    }
+    private void loadDealerVillagers() {
+    getLogger().info("Loading and force-loading DealerVillagers...");
+
+    // Iterate over stored dealers in the config
+    getConfig().getConfigurationSection("dealers").getKeys(false).forEach(internalName -> {
+        String path = "dealers." + internalName;
+        int chunkX = getConfig().getInt(path + ".chunkX");
+        int chunkZ = getConfig().getInt(path + ".chunkZ");
+        String worldName = getConfig().getString(path + ".world");
+        double x = getConfig().getDouble(path + ".x");
+        double y = getConfig().getDouble(path + ".y");
+        double z = getConfig().getDouble(path + ".z");
+
+        var world = Bukkit.getWorld(worldName);
+        if (world == null) {
+            getLogger().warning("World " + worldName + " not found for DealerVillager " + internalName);
+            return;
+        }
+
+        // Force load the chunk
+        world.setChunkForceLoaded(chunkX, chunkZ, true);
+        getLogger().info("Force-loaded chunk [" + chunkX + ", " + chunkZ + "] in world " + worldName);
+
+        // Reinitialize DealerVillager
+        var location = new Location(world, x, y, z);
+        DealerVillager.spawnDealer(this, location, "Dealer Villager", internalName);
+    });
+
+    getLogger().info("DealerVillagers loaded successfully.");
+}
+
+   
 
     public void addInventory(UUID villagerId,DealerInventory inv){
 
