@@ -52,6 +52,17 @@ if (nccasino.getConfig().contains("dealers." + internalName)) {
         Location location = player.getLocation();
         DealerVillager.spawnDealer(plugin, location, "Dealer Villager", internalName);
 
+   // Save dealer location and chunk data
+   var chunk = location.getChunk();
+   String path = "dealers." + internalName;
+   nccasino.getConfig().set(path + ".world", location.getWorld().getName());
+   nccasino.getConfig().set(path + ".chunkX", chunk.getX());
+   nccasino.getConfig().set(path + ".chunkZ", chunk.getZ());
+   nccasino.getConfig().set(path + ".x", location.getX());
+   nccasino.getConfig().set(path + ".y", location.getY());
+   nccasino.getConfig().set(path + ".z", location.getZ());
+   nccasino.saveConfig();
+
         sender.sendMessage(Component.text("Dealer with internal name '")
         .color(NamedTextColor.GREEN)
         .append(Component.text(internalName).color(NamedTextColor.YELLOW))
