@@ -88,17 +88,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 List.of("ncc")
             );
         });
-        
-        Bukkit.getScheduler().runTaskLater(this, this::loadDealerVillagers, 10L);
-
-
-        // Reinitialize dealer villagers on server start
-        Bukkit.getScheduler().runTaskLater(this, () -> {
-           // reinitializeDealerVillagers();
-            getLogger().info("Nccasino plugin enabled!");
-        }, 300L);
-
-      
+        loadDealerVillagers();
     }
 
     private void loadDealerVillagers() {
@@ -110,10 +100,6 @@ public final class Nccasino extends JavaPlugin implements Listener {
         int chunkX = getConfig().getInt(path + ".chunkX");
         int chunkZ = getConfig().getInt(path + ".chunkZ");
         String worldName = getConfig().getString(path + ".world");
-        double x = getConfig().getDouble(path + ".x");
-        double y = getConfig().getDouble(path + ".y");
-        double z = getConfig().getDouble(path + ".z");
-
         var world = Bukkit.getWorld(worldName);
         if (world == null) {
             getLogger().warning("World " + worldName + " not found for DealerVillager " + internalName);
@@ -121,15 +107,26 @@ public final class Nccasino extends JavaPlugin implements Listener {
         }
 
         // Force load the chunk
+        if(!world.isChunkForceLoaded(chunkX, chunkZ));
         world.setChunkForceLoaded(chunkX, chunkZ, true);
-        getLogger().info("Force-loaded chunk [" + chunkX + ", " + chunkZ + "] in world " + worldName);
-
-        // Reinitialize DealerVillager
-        var location = new Location(world, x, y, z);
-        DealerVillager.spawnDealer(this, location, "Dealer Villager", internalName);
+        //getLogger().info("Force-loaded chunk [" + chunkX + ", " + chunkZ + "] in world " + worldName);
     });
 
-    getLogger().info("DealerVillagers loaded successfully.");
+    Bukkit.getWorlds().forEach(world -> {
+        for (Entity entity : world.getEntities()) {
+            if (entity instanceof Villager villager) {
+                if (DealerVillager.isDealerVillager(villager)) {
+                    // Update game type from config
+                    String internalName = DealerVillager.getInternalName(villager);
+                    String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
+                    int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
+                    String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
+                    DealerVillager.updateGameType(villager, gameType, timer, anmsg);
+                }
+            }
+        }
+    });
+    getLogger().info("Nccasino plugin enabled!");
 }
 
    
@@ -163,8 +160,6 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
 private void reinitializeDealerVillagers() {
     getLogger().info("Entered reinitializeDealerVillagers.");
-
-
     Bukkit.getWorlds().forEach(world -> {
         for (Entity entity : world.getEntities()) {
             if (entity instanceof Villager villager) {
@@ -190,27 +185,21 @@ private void reinitializeDealerVillagers() {
     });
 }
     private void reloadDealerVillagers() {
- // Collect the dealer IDs to delete in a separate list
-    List<UUID> dealerIdsToDelete = new ArrayList<>(DealerInventory.inventories.keySet());
+        // Collect the dealer IDs to delete in a separate list
+        List<UUID> dealerIdsToDelete = new ArrayList<>(DealerInventory.inventories.keySet());
     
-    // Delete the inventories after collecting the keys
-    for (UUID dealerId : dealerIdsToDelete) {
-        DealerInventory inventory = DealerInventory.inventories.get(dealerId);
-        if (inventory != null) {
-            inventory.delete();
+        // Delete the inventories after collecting the keys
+        for (UUID dealerId : dealerIdsToDelete) {
+            DealerInventory inventory = DealerInventory.inventories.get(dealerId);
+            if (inventory != null) {
+                inventory.delete();
+            }
         }
-    }
 
-        //DealerInventory.inventories.values().forEach(DealerInventory::delete);
         Bukkit.getWorlds().forEach(world -> {
             for (Entity entity : world.getEntities()) {
                 if (entity instanceof Villager villager) {
                     if (DealerVillager.isDealerVillager(villager)) {
-                        // Reinitialize inventory based on stored game type
-                        UUID dealerId = DealerVillager.getUniqueId(villager);
-                        String name = DealerVillager.getName(villager);
-                        //DealerVillager.initializeInventory(villager, dealerId, name, this); // Pass the plugin instance
-
                         // Update game type from config
                         String internalName = DealerVillager.getInternalName(villager);
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
