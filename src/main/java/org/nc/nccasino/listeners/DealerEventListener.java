@@ -15,6 +15,10 @@ public class DealerEventListener implements Listener {
     public void onEntityDamage(EntityDamageEvent event) {
         if (event.getEntity() instanceof Villager villager) {
             if (DealerVillager.isDealerVillager(villager)) {
+                if (event.getCause() == EntityDamageEvent.DamageCause.VOID||event.getCause() == EntityDamageEvent.DamageCause.KILL) {
+                    // Let it die from /kill
+                    return;
+                }
                 event.setCancelled(true);
                 
             }
