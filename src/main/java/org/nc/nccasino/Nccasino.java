@@ -86,14 +86,34 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         })
                     )
 
-                    // Subcommand: /ncc list
                     .then(Commands.literal("list")
+                    // Case 1: No "page" argument -> default to page 1
+                    .executes(ctx -> {
+                        CommandSender sender = ctx.getSource().getSender();
+                        // In your CommandExecutor logic, you'll handle "list" with no page argument
+                        // e.g. default to page 1
+                        commandExecutor.execute(sender, "ncc", new String[]{"list"});
+                        return Command.SINGLE_SUCCESS;
+                    })
+                    
+                    // Case 2: User provided an integer page argument
+                    .then(Commands.argument("page", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 50))
+                        // Provide some suggestions, for example pages 1..10
+                        .suggests((context, builder) -> {
+                            for (int i = 1; i <= 10; i++) {
+                                builder.suggest(i);
+                            }
+                            return builder.buildFuture();
+                        })
                         .executes(ctx -> {
                             CommandSender sender = ctx.getSource().getSender();
-                            commandExecutor.execute(sender, "ncc", new String[]{"list"});
+                            int page = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "page");
+                            // Pass that page number to your CommandExecutor
+                            commandExecutor.execute(sender, "ncc", new String[]{"list", String.valueOf(page)});
                             return Command.SINGLE_SUCCESS;
                         })
                     )
+                )
 
                     // Subcommand: /ncc create <internalName>
                     .then(Commands.literal("create")
