@@ -185,6 +185,7 @@ public class MinesTable implements InventoryHolder, Listener {
             updateStartGameLever(false);
         }
     
+        inventory.setItem(36, createCustomItem(Material.SPRUCE_DOOR, "Refund/Exit", 1));
         // Add undo buttons
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
         inventory.setItem(46, createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Undo Last Bet", 1));
@@ -336,8 +337,15 @@ public class MinesTable implements InventoryHolder, Listener {
             }
         }
 
+           // Handle Exit Button (Slot 36)
+    if (slot == 36 && clickedItem != null && clickedItem.getType() == Material.SPRUCE_DOOR) {
+        player.sendMessage("§cExiting the game...");
+        endGame(); // End the game and clean up resources
+        player.closeInventory(); // Close the inventory
+        return;
+    }
         // Handle rebet toggle
-        if (slot == 44) {
+        if (slot == 44&& clickedItem != null && clickedItem.getType() ==Material.RED_WOOL||clickedItem.getType() ==Material.GREEN_WOOL) {
             rebetEnabled = !rebetEnabled;
             player.sendMessage(rebetEnabled ? "§aRebet is now ON." : "§cRebet is now OFF.");
             updateRebetToggle();
@@ -793,29 +801,6 @@ public class MinesTable implements InventoryHolder, Listener {
         }, 3L); // Delay of 0.5 seconds between each expansion ring
     }
     
-    
-    private boolean isMineOrRevealed(int slot) {
-        // Check if the slot is already revealed or is a mine
-        int gridIndex = gridSlotList.indexOf(slot);
-        if (gridIndex == -1) return false;
-    
-        int x = gridIndex % gridSize;
-        int y = gridIndex / gridSize;
-    
-        return mineGrid[x][y] || revealedGrid[x][y]; // If it's a mine or already revealed, skip it
-    }
-    
-
-    private void turnAllUnrevealedTilesGreen() {
-        for (int y = 0; y < gridSize; y++) { // 5 rows
-            for (int x = 0; x < gridSize; x++) { // 5 columns
-                if (!revealedGrid[x][y]) {
-                    updateTile(x, y, false);
-                }
-            }
-        }
-    }
-
     
     private void resetGame() {
         // Cancel ongoing tasks

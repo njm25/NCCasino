@@ -45,34 +45,18 @@ public class MinesInventory extends DealerInventory implements Listener {
     }
 
     private void unregisterListener() {
-
         HandlerList.unregisterAll(this);
-
     }
 
     @Override
     public void delete() {
 
         super.delete();
+        Tables.clear();
+        interactionLocks.clear();
         unregisterListener();  // Unregister listener when deleting the inventory
     }
-    // Initialize items for the start menu
-    private void initializeStartMenu() {
-       // inventory.clear();
-       // addItem(createCustomItem(Material.GREEN_WOOL, "Start Mines", 1), 22);
-      
-    }
-    /* 
-    @EventHandler
-    public void handleInventoryOpen(InventoryOpenEvent event){
-        if(((Player)event.getPlayer()).getInventory() instanceof MinesInventory){
-            if(firstopen){
-                firstopen=false;
-                setupGameMenu((Player)event.getPlayer()); 
-            }
-        }
-    }
-*/
+   
     @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event){
     
@@ -103,54 +87,16 @@ public class MinesInventory extends DealerInventory implements Listener {
         }
     }
 
-      private boolean isActivePlayer(Player player) {
-        InventoryView openInventoryView = player.getOpenInventory();
-        Inventory topInventory = openInventoryView.getTopInventory();
-        return (topInventory.getHolder() == this);
-    }
-
-    private ItemStack createCustomItem(Material material, String name, int amount) {
-        ItemStack itemStack = new ItemStack(material, amount);
-        ItemMeta meta = itemStack.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(name);
-            itemStack.setItemMeta(meta);
-        }
-        return itemStack;
-    }
-
     @EventHandler
     public void handleClick(InventoryClickEvent event) {
         if (event.getInventory().getHolder() != this) return;
         Player player = (Player) event.getWhoClicked();
         event.setCancelled(true);
         int slot = event.getRawSlot();
-
-        // setupGameMenu(player);
-        /*  // If the player clicks to skip the animation
-        if (animationTasks.containsKey(player)) {
-            Bukkit.getScheduler().cancelTask(animationTasks.get(player));
-            animationTasks.remove(player);
-            animationCompleted.put(player, true);  // Mark animation as completed/skipped
-            setupGameMenu(player);
-        } else if (slot == 22) {
-           
-            // Start the animation if the player clicks the Start button
-          
-            startBlockAnimation(player, () -> {
-                if (!animationCompleted.getOrDefault(player, false)) {
-                    setupGameMenu(player);
-                }
-            }); 
-        }*/
     }                                                                                                                      
   
-    // Set up items for the game menu
+    // Immediately have player open local mines table
     private void setupGameMenu(Player player) {
-
-
-        
-     
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             Villager dealer = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
                     .filter(entity -> entity instanceof Villager)
