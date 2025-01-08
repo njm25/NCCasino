@@ -86,34 +86,47 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         })
                     )
 
-                    .then(Commands.literal("list")
-                    // Case 1: No "page" argument -> default to page 1
-                    .executes(ctx -> {
-                        CommandSender sender = ctx.getSource().getSender();
-                        // In your CommandExecutor logic, you'll handle "list" with no page argument
-                        // e.g. default to page 1
-                        commandExecutor.execute(sender, "ncc", new String[]{"list"});
-                        return Command.SINGLE_SUCCESS;
-                    })
-                    
-                    // Case 2: User provided an integer page argument
-                    .then(Commands.argument("page", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 50))
-                        // Provide some suggestions, for example pages 1..10
-                        .suggests((context, builder) -> {
-                            for (int i = 1; i <= 10; i++) {
+                      // /ncc list [page]
+                .then(Commands.literal("list")
+                // Case 1: No page argument -> default page 1
+                .executes(ctx -> {
+                    CommandSender sender = ctx.getSource().getSender();
+                    // calls "list" with no page in your CommandExecutor
+                    commandExecutor.execute(sender, "ncc", new String[]{"list"});
+                    return Command.SINGLE_SUCCESS;
+                })
+                // Case 2: user provides integer page argument
+                .then(Commands.argument("page", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
+                    .suggests((context, builder) -> {
+                        // Dynamically calculate total pages
+                        if (getConfig().contains("dealers")) {
+                            // number of dealers
+                            int totalDealers = getConfig().getConfigurationSection("dealers").getKeys(false).size();
+                            int dealersPerPage = 6; // from your ListDealersCommand
+                            int totalPages = (int) Math.ceil((double) totalDealers / dealersPerPage);
+
+                            if (totalPages < 1) {
+                                totalPages = 1; // at least 1 page
+                            }
+
+                            for (int i = 1; i <= totalPages; i++) {
                                 builder.suggest(i);
                             }
-                            return builder.buildFuture();
-                        })
-                        .executes(ctx -> {
-                            CommandSender sender = ctx.getSource().getSender();
-                            int page = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "page");
-                            // Pass that page number to your CommandExecutor
-                            commandExecutor.execute(sender, "ncc", new String[]{"list", String.valueOf(page)});
-                            return Command.SINGLE_SUCCESS;
-                        })
-                    )
+                        } else {
+                            // No dealers => just suggest page 1
+                            builder.suggest(1);
+                        }
+                        return builder.buildFuture();
+                    })
+                    .executes(ctx -> {
+                        CommandSender sender = ctx.getSource().getSender();
+                        int page = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "page");
+                        // call "list" with that page
+                        commandExecutor.execute(sender, "ncc", new String[]{"list", String.valueOf(page)});
+                        return Command.SINGLE_SUCCESS;
+                    })
                 )
+            )
 
                     // Subcommand: /ncc create <internalName>
                     .then(Commands.literal("create")
@@ -129,15 +142,24 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
                     // Subcommand: /ncc delete <internalName>
                     .then(Commands.literal("delete")
-                        .then(Commands.argument("internalName", StringArgumentType.word())
-                            .executes(ctx -> {
-                                CommandSender sender = ctx.getSource().getSender();
-                                String internalName = StringArgumentType.getString(ctx, "internalName");
-                                commandExecutor.execute(sender, "ncc", new String[]{"delete", internalName});
-                                return Command.SINGLE_SUCCESS;
-                            })
-                        )
+                    .then(Commands.argument("internalName", StringArgumentType.word())
+                        .suggests((context, builder) -> {
+                            // Suggest all dealers from config
+                            if (getConfig().contains("dealers")) {
+                                for (String dealerName : getConfig().getConfigurationSection("dealers").getKeys(false)) {
+                                    builder.suggest(dealerName);
+                                }
+                            }
+                            return builder.buildFuture();
+                        })
+                        .executes(ctx -> {
+                            CommandSender sender = ctx.getSource().getSender();
+                            String internalName = StringArgumentType.getString(ctx, "internalName");
+                            commandExecutor.execute(sender, "ncc", new String[]{"delete", internalName});
+                            return Command.SINGLE_SUCCESS;
+                        })
                     )
+                )
 
                     // Default execution if no subcommand is provided: /ncc
                     .executes(ctx -> {
