@@ -7,7 +7,6 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.NamespacedKey;
@@ -55,7 +54,9 @@ public class DealerVillager {
         villager.setCustomName(name);
         villager.setCustomNameVisible(true);
         villager.setProfession(Villager.Profession.NONE);
+        villager.setGravity(false);
         villager.setSilent(true);
+        villager.setCollidable(false);
 
         UUID uniqueId = UUID.randomUUID();
 
@@ -74,19 +75,6 @@ public class DealerVillager {
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
         initializeInventory(villager, uniqueId, name, plugin);
 
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (!villager.isValid()) {
-                    this.cancel();
-                    return;
-                }
-                Location currentLocation = villager.getLocation();
-                if (currentLocation.distanceSquared(location) > 0.1) {
-                    villager.teleport(location.clone().setDirection(currentLocation.getDirection()));
-                }
-            }
-        }.runTaskTimer(JavaPlugin.getProvidingPlugin(DealerVillager.class), 0L, 20L);
     }
 
     public static void initializeInventory(Villager villager, UUID uniqueId, String name, Nccasino plugin) {
