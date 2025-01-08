@@ -23,6 +23,7 @@ import org.nc.nccasino.commands.CommandExecutor;
 import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.games.DealerInventory;
 import org.nc.nccasino.listeners.DealerDeathHandler;
+import org.nc.nccasino.listeners.DealerEventListener;
 import org.nc.nccasino.listeners.DealerInteractListener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.EventHandler;
@@ -53,6 +54,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new DealerInteractListener(this), this);
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new DealerDeathHandler(this), this);
+         getServer().getPluginManager().registerEvents(new DealerEventListener(), this);
+
         // Initialize the CommandExecutor instance
         CommandExecutor commandExecutor = new CommandExecutor(this);
 
@@ -116,6 +119,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
             if (entity instanceof Villager villager) {
                 if (DealerVillager.isDealerVillager(villager)) {
                     // Update game type from config
+                    villager.setCollidable(false);
                     String internalName = DealerVillager.getInternalName(villager);
                     String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                     int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
