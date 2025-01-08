@@ -92,7 +92,6 @@ public final class Nccasino extends JavaPlugin implements Listener {
     }
 
     private void loadDealerVillagers() {
-    getLogger().info("Loading and force-loading DealerVillagers...");
 
     // Iterate over stored dealers in the config
     getConfig().getConfigurationSection("dealers").getKeys(false).forEach(internalName -> {
