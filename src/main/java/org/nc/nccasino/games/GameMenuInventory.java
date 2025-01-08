@@ -24,7 +24,7 @@ public class GameMenuInventory extends DealerInventory {
         addItem(createCustomItem(Material.DIAMOND_BLOCK, "Blackjack"), 0);
         addItem(createCustomItem(Material.EMERALD_BLOCK, "Roulette"), 1);
         addItem(createCustomItem(Material.TNT, "Mines"), 2);
-        //addItem(createCustomItem(Material.DRAGON_HEAD, "Dragon Climb"), 3);
+        addItem(createCustomItem(Material.DRAGON_HEAD, "Dragon Climb"), 3);
         //addItem(createCustomItem(Material.RAIL, "Rail Runner"), 4);
         //addItem(createCustomItem(Material.RED_MUSHROOM_BLOCK, "Dice"), 5);
         /* 
@@ -70,10 +70,11 @@ public class GameMenuInventory extends DealerInventory {
             case 2:
                 DealerVillager.switchGame(villager, "Mines",player);
                 break;
-                /*
+                
             case 3:
                 DealerVillager.switchGame(villager, "Dragon Climb",player);
                 break;
+                /* 
             case 4:
                 DealerVillager.switchGame(villager, "Rail Runner",player);
                 break;
