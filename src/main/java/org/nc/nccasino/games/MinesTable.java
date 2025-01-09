@@ -401,7 +401,7 @@ private final Deque<Double> betStack = new ArrayDeque<>();
                     updateBetLore(52, totalBet);
                     //player.playSound(player.getLocation(), Sound.BLOCK_FROGLIGHT_HIT, 1.0f, 1.0f); old sound
                     player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, 1.0f, 1.0f); 
-                    player.sendMessage("§aBet placed: " + newBetAmount);
+                   // player.sendMessage("§aBet placed: " + newBetAmount);
 
                     wager = newBetAmount;
                     wagerPlaced = true;
@@ -482,7 +482,7 @@ private final Deque<Double> betStack = new ArrayDeque<>();
             player.sendMessage("§dAll bets undone.");
             refundAllBets(player);
             betStack.clear();
-            player.playSound(player.getLocation(), Sound.AMBIENT_BASALT_DELTAS_MOOD, 1.0f, 1.0f);
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, 1.0f, 1.0f);
             updateBetLore(52, 0);  // Reset the lore on the bet option after clearing bets
             wager = 0;
             wagerPlaced = false;
@@ -895,7 +895,6 @@ for (int i = 0; i < 3; i++) {
         if (rebetEnabled && previousWager > 0) {
             if (hasEnoughCurrency(player, (int) previousWager)) {
                 removeWagerFromInventory(player, (int) previousWager);
-               //wager = previousWager;
                 betStack.push(previousWager);
                 updateBetLore(52, previousWager);
                 player.sendMessage("§dRebet placed: " +previousWager);
