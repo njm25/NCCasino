@@ -140,12 +140,36 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         )
                     )
 
-                    // Subcommand: /ncc delete <internalName>
                     .then(Commands.literal("delete")
-                    .then(Commands.argument("internalName", StringArgumentType.word())
+
+                    // ----------------------------------------------------------------
+                    // Case 1: /ncc delete *
+                    // A dedicated literal node for "*" (no quotes needed).
+                    .then(Commands.literal("*")
+                        .executes(ctx -> {
+                            CommandSender sender = ctx.getSource().getSender();
+                            // Here we call CommandExecutor with "delete *"
+                            commandExecutor.execute(sender, "ncc", new String[]{"delete", "*"});
+                            return Command.SINGLE_SUCCESS;
+                        })
+                    )
+                
+                    // ----------------------------------------------------------------
+                    // Case 2: /ncc delete <target>
+                    // A single argument node that suggests either:
+                    //  - "No dealers to delete" if none exist
+                    //  - Each dealer name if they do
+                    .then(Commands.argument("target", StringArgumentType.word())
                         .suggests((context, builder) -> {
-                            // Suggest all dealers from config
-                            if (getConfig().contains("dealers")) {
+                            // 1) If no dealers exist
+                            if (!getConfig().contains("dealers")
+                                || getConfig().getConfigurationSection("dealers").getKeys(false).isEmpty()) {
+                                
+                                // Only suggestion is a placeholder
+                                builder.suggest("No dealers to delete");
+                            } 
+                            else {
+                                // 2) Otherwise, suggest each dealer name
                                 for (String dealerName : getConfig().getConfigurationSection("dealers").getKeys(false)) {
                                     builder.suggest(dealerName);
                                 }
@@ -154,13 +178,13 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         })
                         .executes(ctx -> {
                             CommandSender sender = ctx.getSource().getSender();
-                            String internalName = StringArgumentType.getString(ctx, "internalName");
-                            commandExecutor.execute(sender, "ncc", new String[]{"delete", internalName});
+                            String target = StringArgumentType.getString(ctx, "target");
+                            // Now dispatch to your CommandExecutor
+                            commandExecutor.execute(sender, "ncc", new String[]{"delete", target});
                             return Command.SINGLE_SUCCESS;
                         })
                     )
                 )
-
                     // Default execution if no subcommand is provided: /ncc
                     .executes(ctx -> {
                         CommandSender sender = ctx.getSource().getSender();
@@ -303,8 +327,6 @@ private void reinitializeDealerVillagers() {
             }
         });
     }
-
-     
 
     // Utility method to create NamespacedKey instances
     public NamespacedKey getKey(String key) {
