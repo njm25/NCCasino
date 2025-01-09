@@ -35,7 +35,10 @@ public class MinesTable implements InventoryHolder, Listener {
     private final Map<Player, Boolean> animationCompleted;
     private Boolean clickAllowed = true;
     private double selectedWager;
-    private final Map<UUID, Double> currentBets = new HashMap<>();
+    //private final Map<UUID, Double> currentBets = new HashMap<>();
+    // A list of chip increments for each player, so we know the exact bet increments they placed
+private final Deque<Double> betStack = new ArrayDeque<>();
+
     private Boolean closeFlag = false;
 
     // Game state management
@@ -233,9 +236,11 @@ public class MinesTable implements InventoryHolder, Listener {
 
         // Add a single betting option - Paper labeled "Click here to place bet" in slot 52
         inventory.setItem(52, createCustomItem(Material.PAPER, "Click here to place bet", 1));
-
+        double currentBet=0;
+        for(double t:betStack){
+            currentBet+=t;
+        }
         // If there is a current bet, update the lore
-        double currentBet = currentBets.getOrDefault(player.getUniqueId(), 0.0);
         if (currentBet > 0) {
             updateBetLore(52, currentBet);
         }
@@ -369,27 +374,30 @@ public class MinesTable implements InventoryHolder, Listener {
             if (selectedWager > 0) {
                 // Check if the player has enough currency to place the bet
                 if (hasEnoughCurrency(player, (int) selectedWager)) {
-                    double newBetAmount = currentBets.getOrDefault(player.getUniqueId(), 0.0) + selectedWager;
-                    currentBets.put(player.getUniqueId(), newBetAmount);
-
+                    double newBetAmount = selectedWager;
+                    betStack.push(newBetAmount);
                     // Deduct currency from player inventory
                     removeWagerFromInventory(player, (int) selectedWager);
-
+                    double totalBet = 0;
+                    for (double t : betStack) {
+                     totalBet += t;
+                    }
                     // Update the lore of the item in slot 52 with the cumulative bet amount
-                    updateBetLore(52, newBetAmount);
+                    updateBetLore(52, totalBet);
                     player.playSound(player.getLocation(), Sound.BLOCK_FROGLIGHT_HIT, 1.0f, 1.0f);
                     player.sendMessage("§aBet placed: " + newBetAmount);
 
                     wager = newBetAmount;
                     wagerPlaced = true;
-
                     // Update "Start Game" lever visibility
                     updateStartGameLever(true);
                 } else {
                     player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName) + "s.");
+                    //player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f); ERROR
                 }
             } else {
                 player.sendMessage("§cSelect a wager amount first.");
+                //player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f); ERROR
             }
             return;
         }
@@ -454,32 +462,39 @@ public class MinesTable implements InventoryHolder, Listener {
 
         // Undo all bets
         if (slot == 45) {
+            if(!betStack.isEmpty()){
             player.sendMessage("§dAll bets undone.");
             refundAllBets(player);
-            currentBets.remove(player.getUniqueId());
+            betStack.clear();
             player.playSound(player.getLocation(), Sound.AMBIENT_BASALT_DELTAS_MOOD, 1.0f, 1.0f);
             updateBetLore(52, 0);  // Reset the lore on the bet option after clearing bets
             wager = 0;
             wagerPlaced = false;
-            return;
+            return;}
+            else{
+                player.sendMessage("§cNo bets to undo.");
+                //player.playSound(player.getLocation(), Sound.AMBIENT_BASALT_DELTAS_MOOD, 1.0f, 1.0f); error sound
+            }
         }
 
         // Undo last bet
         if (slot == 46) {
-            if (currentBets.containsKey(player.getUniqueId()) && selectedWager > 0) {
-                double newBetAmount = currentBets.get(player.getUniqueId()) - selectedWager;
-                if (newBetAmount < 0) newBetAmount = 0;
-                currentBets.put(player.getUniqueId(), newBetAmount);
-
-                refundBet(player, (int) selectedWager);
-                updateBetLore(52, newBetAmount);
-                wager = newBetAmount;
-                wagerPlaced = newBetAmount > 0;
-               player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f);
+            if (!betStack.isEmpty()) {
+                double indBet=betStack.pop();
+                refundBet(player, (int) indBet);
+                double totalBet=0;
+                for(double t:betStack){
+                    totalBet+=t;
+                }
+                if (totalBet < 0) totalBet = 0;
+                updateBetLore(52, totalBet);
+                wagerPlaced = totalBet > 0;
+                player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f);//switch, too similar to xp
                 player.sendMessage("§dLast bet undone.");
-                player.sendMessage("§dNew total: " + newBetAmount);
+                player.sendMessage("§dNew total: " + totalBet);
             } else {
                 player.sendMessage("§cNo bets to undo.");
+                //player.playSound(player.getLocation(), Sound.AMBIENT_BASALT_DELTAS_MOOD, 1.0f, 1.0f); error sound
             }
             return;
         }
@@ -857,7 +872,7 @@ for (int i = 0; i < 3; i++) {
             if (hasEnoughCurrency(player, (int) previousWager)) {
                 removeWagerFromInventory(player, (int) previousWager);
                 wager = previousWager;
-                currentBets.put(player.getUniqueId(), wager);
+                betStack.push(wager);
                 updateBetLore(52, wager);
                 player.sendMessage("§dRebet placed: " + wager);
                 wagerPlaced = true;
@@ -865,7 +880,7 @@ for (int i = 0; i < 3; i++) {
                 player.sendMessage("§c2 broke 4 rebet.");
                  player.sendMessage("§cWager reset to 0.");
                 wager = 0;
-                currentBets.remove(player.getUniqueId());
+                betStack.clear();
                 updateBetLore(52, wager);
                 wagerPlaced = false;
             }
@@ -873,7 +888,7 @@ for (int i = 0; i < 3; i++) {
             player.sendMessage("§dRebet is off. ");
             player.sendMessage("§dWager reset to 0.");
             wager = 0;
-            currentBets.remove(player.getUniqueId());
+            betStack.clear();
             updateBetLore(52, wager);
             wagerPlaced = false;
         }
@@ -938,8 +953,11 @@ for (int i = 0; i < 3; i++) {
     }
 
     private void refundAllBets(Player player) {
-        double totalRefund = currentBets.getOrDefault(player.getUniqueId(), 0.0);
-        refundBet(player, (int) totalRefund);
+        double totalBet=0;
+        for(double t:betStack){
+            totalBet+=t;
+        }
+        refundBet(player, (int) totalBet);
     }
 
     private void refundBet(Player player, int amount) {
@@ -988,7 +1006,7 @@ for (int i = 0; i < 3; i++) {
             if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
                 refundAllBets(player);  // Refund any remaining bets
             }
-            currentBets.remove(player.getUniqueId());
+            betStack.clear();
         }
     
         // Notify minesInventory to remove the player's table
