@@ -297,7 +297,11 @@ private final Deque<Double> betStack = new ArrayDeque<>();
 
     private void updateCashOutLore(ItemStack cashOutButton) {
         double payoutMultiplier = calculatePayoutMultiplier(safePicks);
-        double potentialWinnings = wager * payoutMultiplier;
+        double totalBet = 0;
+        for (double t : betStack) {
+         totalBet += t;
+        }
+        double potentialWinnings = totalBet * payoutMultiplier;
         potentialWinnings = Math.round(potentialWinnings * 100.0) / 100.0;
 
         ItemMeta meta = cashOutButton.getItemMeta();
@@ -321,6 +325,7 @@ private final Deque<Double> betStack = new ArrayDeque<>();
 
         // Handle fast click prevention
         if (!clickAllowed) {
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
             player.sendMessage("§cPlease wait before clicking again!");
             return;
         }
@@ -345,6 +350,7 @@ private final Deque<Double> betStack = new ArrayDeque<>();
            // Handle Exit Button (Slot 36)
     if (slot == 36 && clickedItem != null && clickedItem.getType() == Material.SPRUCE_DOOR) {
         player.sendMessage("§cExiting the game...");
+        player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN, 1.0f, 1.0f);
         endGame(); // End the game and clean up resources
         player.closeInventory(); // Close the inventory
         return;
@@ -352,6 +358,14 @@ private final Deque<Double> betStack = new ArrayDeque<>();
         // Handle rebet toggle
         if (slot == 44&& clickedItem != null && clickedItem.getType() ==Material.RED_WOOL||clickedItem.getType() ==Material.GREEN_WOOL) {
             rebetEnabled = !rebetEnabled;
+            if(clickedItem.getType() ==Material.RED_WOOL){
+                player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_PREPARE_MIRROR, 1.0f, 1.0f);
+            }
+            else{
+                player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_CAST_SPELL, 1.0f, 1.0f);  
+            }
+           
+
             //player.sendMessage(rebetEnabled ? "§aRebet is now ON." : "§cRebet is now OFF.");
             updateRebetToggle();
         }
@@ -364,6 +378,7 @@ private final Deque<Double> betStack = new ArrayDeque<>();
 
         if (slot >= 47 && slot <= 51) {
             // Handle currency chips (slots 47-51)
+            player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, 1.0f, 1.0f);  
             selectedWager = chipValues.getOrDefault(itemName, 0.0);
             player.sendMessage("§aWager: " + selectedWager + " " + plugin.getCurrencyName(internalName));
             return;
@@ -384,7 +399,8 @@ private final Deque<Double> betStack = new ArrayDeque<>();
                     }
                     // Update the lore of the item in slot 52 with the cumulative bet amount
                     updateBetLore(52, totalBet);
-                    player.playSound(player.getLocation(), Sound.BLOCK_FROGLIGHT_HIT, 1.0f, 1.0f);
+                    //player.playSound(player.getLocation(), Sound.BLOCK_FROGLIGHT_HIT, 1.0f, 1.0f); old sound
+                    player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, 1.0f, 1.0f); 
                     player.sendMessage("§aBet placed: " + newBetAmount);
 
                     wager = newBetAmount;
@@ -393,11 +409,11 @@ private final Deque<Double> betStack = new ArrayDeque<>();
                     updateStartGameLever(true);
                 } else {
                     player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName) + "s.");
-                    //player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f); ERROR
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
                 }
             } else {
                 player.sendMessage("§cSelect a wager amount first.");
-                //player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f); ERROR
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
             }
             return;
         }
@@ -433,29 +449,29 @@ private final Deque<Double> betStack = new ArrayDeque<>();
                         updateStartGameLever(true);
                     } else {
                         player.sendMessage("§cInvalid number of mines.");
-                         //player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f); ERROR
+                        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
                     }
                 } catch (NumberFormatException e) {
                     player.sendMessage("§cError parsing number of mines.");
-                     //player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f); ERROR
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
                 }
             }
             return;
         }
 
         if (itemName.equals("Start Game") && slot == 53) {
-            // Start the game
+            // Start the gamet
             if (minesSelected) {
                 if (wager > 0) {
-                    player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f);
+                    player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1.0f, 1.0f);
                     startGame();
                 } else {
                     player.sendMessage("§cPlace a wager first.");
-                    //player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f); ERROR
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
                 }
             } else {
                 player.sendMessage("§cSelect number of mines.");
-                //player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f); ERROR
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
             }
             return;
         }
@@ -473,7 +489,7 @@ private final Deque<Double> betStack = new ArrayDeque<>();
             return;}
             else{
                 player.sendMessage("§cNo bets to undo.");
-                //player.playSound(player.getLocation(), Sound.AMBIENT_BASALT_DELTAS_MOOD, 1.0f, 1.0f); error sound
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
             }
         }
 
@@ -489,12 +505,13 @@ private final Deque<Double> betStack = new ArrayDeque<>();
                 if (totalBet < 0) totalBet = 0;
                 updateBetLore(52, totalBet);
                 wagerPlaced = totalBet > 0;
-                player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f);//switch, too similar to xp
+                player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
+                player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);//switch, too similar to xp
                 player.sendMessage("§dLast bet undone.");
                 player.sendMessage("§dNew total: " + totalBet);
             } else {
                 player.sendMessage("§cNo bets to undo.");
-                //player.playSound(player.getLocation(), Sound.AMBIENT_BASALT_DELTAS_MOOD, 1.0f, 1.0f); error sound
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
             }
             return;
         }
@@ -514,11 +531,15 @@ private final Deque<Double> betStack = new ArrayDeque<>();
         // Initialize the game grid in the inventory
         initializeTable(); // This will call initializeGameGrid
 
+        double totalBet = 0;
+        for (double t : betStack) {
+         totalBet += t;
+        }
         // Send message to the player indicating the game has started with the wager amount
-        player.sendMessage(wager + "$ game started");
+        player.sendMessage(totalBet + "$ game started");
 
         // Set previous wager
-        previousWager = wager;
+        previousWager = totalBet;
     }
 
     private void placeMines() {
@@ -752,14 +773,17 @@ for (int i = 0; i < 3; i++) {
             player.sendMessage("§aCashing out...");
     
             double winnings;
-    
+            double totalBet = 0;
+            for (double t : betStack) {
+             totalBet += t;
+            }
             // If no tiles were clicked, return the exact wager
             if (safePicks == 0) {
-                winnings = wager; // No multiplier, return exact wager
+                winnings = totalBet; // No multiplier, return exact wager
             } else {
                 // Give the winnings to the player with payout multiplier applied
                 double payoutMultiplier = calculatePayoutMultiplier(safePicks);
-                winnings = wager * payoutMultiplier;
+                winnings = totalBet * payoutMultiplier;
             }
     
             winnings = Math.round(winnings * 100.0) / 100.0; // Round to 2 decimal places
@@ -863,7 +887,7 @@ for (int i = 0; i < 3; i++) {
         this.safePicks = 0;
         this.wagerPlaced = false;
         this.gameState = GameState.PLACING_WAGER;
-
+        betStack.clear();
         // Keep the number of mines the same
         //player.sendMessage("§d# of mines: " + minesCount );
 
@@ -871,10 +895,10 @@ for (int i = 0; i < 3; i++) {
         if (rebetEnabled && previousWager > 0) {
             if (hasEnoughCurrency(player, (int) previousWager)) {
                 removeWagerFromInventory(player, (int) previousWager);
-                wager = previousWager;
-                betStack.push(wager);
-                updateBetLore(52, wager);
-                player.sendMessage("§dRebet placed: " + wager);
+               //wager = previousWager;
+                betStack.push(previousWager);
+                updateBetLore(52, previousWager);
+                player.sendMessage("§dRebet placed: " +previousWager);
                 wagerPlaced = true;
             } else {
                 player.sendMessage("§c2 broke 4 rebet.");
