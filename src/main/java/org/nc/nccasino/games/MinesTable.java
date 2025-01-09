@@ -127,7 +127,7 @@ public class MinesTable implements InventoryHolder, Listener {
             if (player != null) {
                 player.openInventory(inventory);
                 // Inform the player about the default number of mines
-                player.sendMessage("§d# of mines: " + minesCount + ".");
+               //player.sendMessage("§d# of mines: " + minesCount + ".");
             }
         }, 1L); // Delay by 1 tick to ensure clean transition between inventories
     }
@@ -347,7 +347,7 @@ public class MinesTable implements InventoryHolder, Listener {
         // Handle rebet toggle
         if (slot == 44&& clickedItem != null && clickedItem.getType() ==Material.RED_WOOL||clickedItem.getType() ==Material.GREEN_WOOL) {
             rebetEnabled = !rebetEnabled;
-            player.sendMessage(rebetEnabled ? "§aRebet is now ON." : "§cRebet is now OFF.");
+            //player.sendMessage(rebetEnabled ? "§aRebet is now ON." : "§cRebet is now OFF.");
             updateRebetToggle();
         }
     }
@@ -377,7 +377,7 @@ public class MinesTable implements InventoryHolder, Listener {
 
                     // Update the lore of the item in slot 52 with the cumulative bet amount
                     updateBetLore(52, newBetAmount);
-
+                    player.playSound(player.getLocation(), Sound.BLOCK_FROGLIGHT_HIT, 1.0f, 1.0f);
                     player.sendMessage("§aBet placed: " + newBetAmount);
 
                     wager = newBetAmount;
@@ -411,12 +411,12 @@ public class MinesTable implements InventoryHolder, Listener {
 
                         // Update the new selected slot
                         minesCount = selectedMines;
-                        player.sendMessage("§d# of mines: " + minesCount);
+                        //player.sendMessage("§d# of mines: " + minesCount);
                         minesSelected = true;
 
                         // Update the selected mine slot
                         selectedMineSlot = slot;
-
+                        player.playSound(player.getLocation(), Sound.BLOCK_LANTERN_BREAK, 1.0f, 1.0f);
                         // Change the selected slot to stack of red glass panes
                         ItemStack selectedMineOption = createCustomItem(Material.WHITE_STAINED_GLASS_PANE, "Mines: " + minesCount, minesCount);
                         inventory.setItem(slot, selectedMineOption);
@@ -425,9 +425,11 @@ public class MinesTable implements InventoryHolder, Listener {
                         updateStartGameLever(true);
                     } else {
                         player.sendMessage("§cInvalid number of mines.");
+                         //player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f); ERROR
                     }
                 } catch (NumberFormatException e) {
                     player.sendMessage("§cError parsing number of mines.");
+                     //player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f); ERROR
                 }
             }
             return;
@@ -437,12 +439,15 @@ public class MinesTable implements InventoryHolder, Listener {
             // Start the game
             if (minesSelected) {
                 if (wager > 0) {
+                    player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f);
                     startGame();
                 } else {
                     player.sendMessage("§cPlace a wager first.");
+                    //player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f); ERROR
                 }
             } else {
                 player.sendMessage("§cSelect number of mines.");
+                //player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f); ERROR
             }
             return;
         }
@@ -452,6 +457,7 @@ public class MinesTable implements InventoryHolder, Listener {
             player.sendMessage("§dAll bets undone.");
             refundAllBets(player);
             currentBets.remove(player.getUniqueId());
+            player.playSound(player.getLocation(), Sound.AMBIENT_BASALT_DELTAS_MOOD, 1.0f, 1.0f);
             updateBetLore(52, 0);  // Reset the lore on the bet option after clearing bets
             wager = 0;
             wagerPlaced = false;
@@ -469,7 +475,7 @@ public class MinesTable implements InventoryHolder, Listener {
                 updateBetLore(52, newBetAmount);
                 wager = newBetAmount;
                 wagerPlaced = newBetAmount > 0;
-
+               player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.0f);
                 player.sendMessage("§dLast bet undone.");
                 player.sendMessage("§dNew total: " + newBetAmount);
             } else {
@@ -526,21 +532,25 @@ public class MinesTable implements InventoryHolder, Listener {
     }
 
     if (mineGrid[x][y]) {
-   // Change the cash-out button to a barrier immediately
-   updateCashOutToBarrier();
+       // Change the cash-out button to a barrier immediately
+       updateCashOutToBarrier();
+        
+       updateTile(x, y, true);
+      // Pass the coordinates of the mine hit
+    player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_PRIMED, 1.0f, 1.0f);
+       // Trigger a visual explosion at the player's location without causing damage
+
+
+       Bukkit.getScheduler().runTaskLater(plugin, () -> {
     
-   // Start the new animation sequence
-   startMineHitAnimation(x, y); // Pass the coordinates of the mine hit
+     startMineHitAnimation(x, y); 
+                }, 15L); 
 
-   // Trigger a visual explosion at the player's location without causing damage
-   player.getWorld().createExplosion(player.getLocation(), 0F, false, false); // Creates explosion, no damage or block break
-    player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
-
-   gameOver = true;
-   gameState = GameState.GAME_OVER;
-   player.sendMessage("§c§lYou hit a mine!");
-    } else {
-        // Safe tile clicked
+       gameOver = true;
+       gameState = GameState.GAME_OVER;
+       player.sendMessage("§c§lYou hit a mine!");
+        } else {
+            // Safe tile clicked
         revealedGrid[x][y] = true;
         safePicks++;
         updateTile(x, y, false);  // Reveal a safe tile
@@ -548,14 +558,22 @@ public class MinesTable implements InventoryHolder, Listener {
         // Optionally update cash out button with updated potential winnings
         updateCashOutLore(inventory.getItem(49));
 
-        player.sendMessage("§aSafe pick!");
+        //player.sendMessage("§aSafe pick!");
 
-        // Optionally check if the game is won (all safe tiles cleared)
-        if (safePicks == (totalTiles - minesCount)) {
-            player.sendMessage("§a§lAll safe tiles cleared!");
-            cashOut();  // End game and cash out the player
+        float basePitch = 0.8f;
+        float incremental = 0.05f * safePicks;  
+        float finalPitch = basePitch + incremental;
+
+
+        finalPitch = Math.min(finalPitch, 2.0f); // 2.0 is max in vanilla MC
+        //player.sendMessage("§a"+finalPitch);
+        player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, finalPitch);
+            // Optionally check if the game is won (all safe tiles cleared)
+            if (safePicks == (totalTiles - minesCount)) {
+                player.sendMessage("§a§lAll safe tiles cleared!");
+                cashOut();  // End game and cash out the player
+            }
         }
-    }
 }
 
     
@@ -588,6 +606,8 @@ public class MinesTable implements InventoryHolder, Listener {
 
             // Step 2: After another short delay, change the clicked mine tile to fire
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                player.getWorld().createExplosion(player.getLocation(), 0F, false, false); // Creates explosion, no damage or block break
+                player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
                 setTileToFire(centerX, centerY);
 
                 // Step 3: Start spreading the fire from the hit mine
@@ -695,7 +715,21 @@ public class MinesTable implements InventoryHolder, Listener {
         // Step 1: Reveal all tiles (mines and safes)
         revealAllTiles();
         player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
-        player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+
+
+        Random random = new Random();
+// We'll pick from a small array of fun pitches
+float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
+for (int i = 0; i < 3; i++) {
+    float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
+    player.playSound(player.getLocation(), 
+            Sound.ENTITY_PLAYER_LEVELUP, 
+            1.0f, 
+            chosenPitch
+        );
+    // Schedule them slightly apart for a "ding-ding-ding" effect
+
+}
 
         // Step 2: Start emerald expansion from the cash-out button (slot 49)
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -816,7 +850,7 @@ public class MinesTable implements InventoryHolder, Listener {
         this.gameState = GameState.PLACING_WAGER;
 
         // Keep the number of mines the same
-        player.sendMessage("§d# of mines: " + minesCount );
+        //player.sendMessage("§d# of mines: " + minesCount );
 
         // Handle rebet logic
         if (rebetEnabled && previousWager > 0) {
