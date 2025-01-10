@@ -380,10 +380,27 @@ private final Deque<Double> betStack = new ArrayDeque<>();
             // Handle currency chips (slots 47-51)
             player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, 1.0f, 1.0f);  
             selectedWager = chipValues.getOrDefault(itemName, 0.0);
-            player.sendMessage("§aWager: " + selectedWager + " " + plugin.getCurrencyName(internalName));
-            return;
+    
+            // Update the display of all chips
+            for (int i = 47; i <= 51; i++) {
+                ItemStack chip = inventory.getItem(i);
+                if (chip != null && chip.hasItemMeta()) {
+                    String chipName = chip.getItemMeta().getDisplayName();
+                    if (chipValues.containsKey(chipName)) {
+                        // Enchant the clicked chip
+                        if (i == slot) {
+                            inventory.setItem(i, createEnchantedItem(plugin.getCurrency(internalName), chipName, (int) chipValues.get(chipName).doubleValue()));
+                        } else {
+                            // Reset others to their default state
+                            inventory.clear(i);
+                            inventory.setItem(i, createCustomItem(plugin.getCurrency(internalName), chipName, (int) chipValues.get(chipName).doubleValue()));
+                        }
+                    }
+                }
+            }
+    
+            //player.sendMessage("§aWager: " + selectedWager + " " + plugin.getCurrencyName(internalName));
         }
-
         if (slot == 52) {
             // Handle bet placement (slot 52 - Paper item)
             if (selectedWager > 0) {
@@ -1075,4 +1092,22 @@ for (int i = 0; i < 3; i++) {
         }
         return itemStack;
     }
+
+    private ItemStack createEnchantedItem(Material material, String name, int amount) {
+        ItemStack itemStack = new ItemStack(material, amount);
+        ItemMeta meta = itemStack.getItemMeta();
+        if (meta != null) {
+            
+            meta.setDisplayName(name);
+           
+            // Add a harmless enchantment to make the item glow
+            meta.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
+            
+            // Hide the enchantment's lore for a clean look
+            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+            itemStack.setItemMeta(meta);
+        }
+        return itemStack;
+    }
+    
 }
