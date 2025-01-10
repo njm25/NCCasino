@@ -239,10 +239,33 @@ public class BettingTable implements InventoryHolder, Listener {
             if (item != null && item.hasItemMeta()) {
                 String itemName = item.getItemMeta().getDisplayName();
                 if (betTotals.containsKey(itemName)) {
-                    updateItemLore(slot, betTotals.get(itemName));
+                    int totalBet = betTotals.get(itemName);
+                    updateItemLore(slot, totalBet);
+
+                    int oldAmount = item.getAmount(); 
+                    // Extract the current lore
+                    List<String> currentLore = item.getItemMeta().getLore();
+        
+                    // Now build a brand new enchanted item...
+                    ItemStack newItem = createEnchantedItem(
+                        item.getType(),  // same Material
+                        itemName,        // same name
+                        oldAmount
+                    );
+        
+                    // Re-apply the lore
+                    ItemMeta newMeta = newItem.getItemMeta();
+                    newMeta.setLore(currentLore);
+                    newItem.setItemMeta(newMeta);
+        
+                    // Finally, place it back
+                    inventory.setItem(slot, newItem);
                 } else {
                     // If no bets remain for this item, clear the lore
                     clearItemLore(slot);
+                    int oldAmount = item.getAmount();
+                    inventory.setItem(slot, createCustomItem(item.getType(), itemName, oldAmount));
+                
                 }
             }
         }
