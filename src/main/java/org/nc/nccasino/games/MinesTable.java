@@ -524,7 +524,7 @@ private final Deque<Double> betStack = new ArrayDeque<>();
                 updateBetLore(52, totalBet);
                 wagerPlaced = totalBet > 0;
                 player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
-                player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);//switch, too similar to xp
+                player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
                 player.sendMessage("§dLast bet undone.");
                 player.sendMessage("§dNew total: " + totalBet);
             } else {
