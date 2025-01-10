@@ -35,7 +35,10 @@ public class MinesTable implements InventoryHolder, Listener {
     private final Map<Player, Boolean> animationCompleted;
     private Boolean clickAllowed = true;
     private double selectedWager;
-    private final Map<UUID, Double> currentBets = new HashMap<>();
+    //private final Map<UUID, Double> currentBets = new HashMap<>();
+    // A list of chip increments for each player, so we know the exact bet increments they placed
+private final Deque<Double> betStack = new ArrayDeque<>();
+
     private Boolean closeFlag = false;
 
     // Game state management
@@ -127,7 +130,7 @@ public class MinesTable implements InventoryHolder, Listener {
             if (player != null) {
                 player.openInventory(inventory);
                 // Inform the player about the default number of mines
-                player.sendMessage("§d# of mines: " + minesCount + ".");
+               //player.sendMessage("§d# of mines: " + minesCount + ".");
             }
         }, 1L); // Delay by 1 tick to ensure clean transition between inventories
     }
@@ -233,9 +236,11 @@ public class MinesTable implements InventoryHolder, Listener {
 
         // Add a single betting option - Paper labeled "Click here to place bet" in slot 52
         inventory.setItem(52, createCustomItem(Material.PAPER, "Click here to place bet", 1));
-
+        double currentBet=0;
+        for(double t:betStack){
+            currentBet+=t;
+        }
         // If there is a current bet, update the lore
-        double currentBet = currentBets.getOrDefault(player.getUniqueId(), 0.0);
         if (currentBet > 0) {
             updateBetLore(52, currentBet);
         }
@@ -262,7 +267,7 @@ public class MinesTable implements InventoryHolder, Listener {
             if (mineCountOption <= 24) {
                 if (mineCountOption == minesCount) {
                     // Selected mine count, show stack of red glass panes
-                    ItemStack selectedMineOption = createCustomItem(Material.WHITE_STAINED_GLASS_PANE, "Mines: " + mineCountOption, mineCountOption);
+                    ItemStack selectedMineOption = createEnchantedItem(Material.TNT, "Mines: " + mineCountOption, mineCountOption);
                     inventory.setItem(slot, selectedMineOption);
                     selectedMineSlot = slot;
                 } else {
@@ -292,7 +297,11 @@ public class MinesTable implements InventoryHolder, Listener {
 
     private void updateCashOutLore(ItemStack cashOutButton) {
         double payoutMultiplier = calculatePayoutMultiplier(safePicks);
-        double potentialWinnings = wager * payoutMultiplier;
+        double totalBet = 0;
+        for (double t : betStack) {
+         totalBet += t;
+        }
+        double potentialWinnings = totalBet * payoutMultiplier;
         potentialWinnings = Math.round(potentialWinnings * 100.0) / 100.0;
 
         ItemMeta meta = cashOutButton.getItemMeta();
@@ -316,6 +325,7 @@ public class MinesTable implements InventoryHolder, Listener {
 
         // Handle fast click prevention
         if (!clickAllowed) {
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
             player.sendMessage("§cPlease wait before clicking again!");
             return;
         }
@@ -340,6 +350,7 @@ public class MinesTable implements InventoryHolder, Listener {
            // Handle Exit Button (Slot 36)
     if (slot == 36 && clickedItem != null && clickedItem.getType() == Material.SPRUCE_DOOR) {
         player.sendMessage("§cExiting the game...");
+        player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN, 1.0f, 1.0f);
         endGame(); // End the game and clean up resources
         player.closeInventory(); // Close the inventory
         return;
@@ -347,7 +358,15 @@ public class MinesTable implements InventoryHolder, Listener {
         // Handle rebet toggle
         if (slot == 44&& clickedItem != null && clickedItem.getType() ==Material.RED_WOOL||clickedItem.getType() ==Material.GREEN_WOOL) {
             rebetEnabled = !rebetEnabled;
-            player.sendMessage(rebetEnabled ? "§aRebet is now ON." : "§cRebet is now OFF.");
+            if(clickedItem.getType() ==Material.RED_WOOL){
+                player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_PREPARE_MIRROR, 1.0f, 1.0f);
+            }
+            else{
+                player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_CAST_SPELL, 1.0f, 1.0f);  
+            }
+           
+
+            //player.sendMessage(rebetEnabled ? "§aRebet is now ON." : "§cRebet is now OFF.");
             updateRebetToggle();
         }
     }
@@ -359,37 +378,59 @@ public class MinesTable implements InventoryHolder, Listener {
 
         if (slot >= 47 && slot <= 51) {
             // Handle currency chips (slots 47-51)
+            player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, 1.0f, 1.0f);  
             selectedWager = chipValues.getOrDefault(itemName, 0.0);
-            player.sendMessage("§aWager: " + selectedWager + " " + plugin.getCurrencyName(internalName));
-            return;
+    
+            // Update the display of all chips
+            for (int i = 47; i <= 51; i++) {
+                ItemStack chip = inventory.getItem(i);
+                if (chip != null && chip.hasItemMeta()) {
+                    String chipName = chip.getItemMeta().getDisplayName();
+                    if (chipValues.containsKey(chipName)) {
+                        // Enchant the clicked chip
+                        if (i == slot) {
+                            inventory.setItem(i, createEnchantedItem(plugin.getCurrency(internalName), chipName, (int) chipValues.get(chipName).doubleValue()));
+                        } else {
+                            // Reset others to their default state
+                            inventory.clear(i);
+                            inventory.setItem(i, createCustomItem(plugin.getCurrency(internalName), chipName, (int) chipValues.get(chipName).doubleValue()));
+                        }
+                    }
+                }
+            }
+    
+            //player.sendMessage("§aWager: " + selectedWager + " " + plugin.getCurrencyName(internalName));
         }
-
         if (slot == 52) {
             // Handle bet placement (slot 52 - Paper item)
             if (selectedWager > 0) {
                 // Check if the player has enough currency to place the bet
                 if (hasEnoughCurrency(player, (int) selectedWager)) {
-                    double newBetAmount = currentBets.getOrDefault(player.getUniqueId(), 0.0) + selectedWager;
-                    currentBets.put(player.getUniqueId(), newBetAmount);
-
+                    double newBetAmount = selectedWager;
+                    betStack.push(newBetAmount);
                     // Deduct currency from player inventory
                     removeWagerFromInventory(player, (int) selectedWager);
-
+                    double totalBet = 0;
+                    for (double t : betStack) {
+                     totalBet += t;
+                    }
                     // Update the lore of the item in slot 52 with the cumulative bet amount
-                    updateBetLore(52, newBetAmount);
-
-                    player.sendMessage("§aBet placed: " + newBetAmount);
+                    updateBetLore(52, totalBet);
+                    //player.playSound(player.getLocation(), Sound.BLOCK_FROGLIGHT_HIT, 1.0f, 1.0f); old sound
+                    player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, 1.0f, 1.0f); 
+                   // player.sendMessage("§aBet placed: " + newBetAmount);
 
                     wager = newBetAmount;
                     wagerPlaced = true;
-
                     // Update "Start Game" lever visibility
                     updateStartGameLever(true);
                 } else {
                     player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName) + "s.");
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
                 }
             } else {
                 player.sendMessage("§cSelect a wager amount first.");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
             }
             return;
         }
@@ -411,69 +452,84 @@ public class MinesTable implements InventoryHolder, Listener {
 
                         // Update the new selected slot
                         minesCount = selectedMines;
-                        player.sendMessage("§d# of mines: " + minesCount);
+                        //player.sendMessage("§d# of mines: " + minesCount);
                         minesSelected = true;
 
                         // Update the selected mine slot
                         selectedMineSlot = slot;
-
+                        player.playSound(player.getLocation(), Sound.BLOCK_LANTERN_BREAK, 1.0f, 1.0f);
                         // Change the selected slot to stack of red glass panes
-                        ItemStack selectedMineOption = createCustomItem(Material.WHITE_STAINED_GLASS_PANE, "Mines: " + minesCount, minesCount);
+                                   ItemStack selectedMineOption = createEnchantedItem(Material.TNT, "Mines: " + minesCount, minesCount);
+
                         inventory.setItem(slot, selectedMineOption);
 
                         // Update "Start Game" lever visibility
                         updateStartGameLever(true);
                     } else {
                         player.sendMessage("§cInvalid number of mines.");
+                        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
                     }
                 } catch (NumberFormatException e) {
                     player.sendMessage("§cError parsing number of mines.");
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
                 }
             }
             return;
         }
 
         if (itemName.equals("Start Game") && slot == 53) {
-            // Start the game
+            // Start the gamet
             if (minesSelected) {
                 if (wager > 0) {
+                    player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1.0f, 1.0f);
                     startGame();
                 } else {
                     player.sendMessage("§cPlace a wager first.");
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
                 }
             } else {
                 player.sendMessage("§cSelect number of mines.");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
             }
             return;
         }
 
         // Undo all bets
         if (slot == 45) {
+            if(!betStack.isEmpty()){
             player.sendMessage("§dAll bets undone.");
             refundAllBets(player);
-            currentBets.remove(player.getUniqueId());
+            betStack.clear();
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, 1.0f, 1.0f);
             updateBetLore(52, 0);  // Reset the lore on the bet option after clearing bets
             wager = 0;
             wagerPlaced = false;
-            return;
+            return;}
+            else{
+                player.sendMessage("§cNo bets to undo.");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+            }
         }
 
         // Undo last bet
         if (slot == 46) {
-            if (currentBets.containsKey(player.getUniqueId()) && selectedWager > 0) {
-                double newBetAmount = currentBets.get(player.getUniqueId()) - selectedWager;
-                if (newBetAmount < 0) newBetAmount = 0;
-                currentBets.put(player.getUniqueId(), newBetAmount);
-
-                refundBet(player, (int) selectedWager);
-                updateBetLore(52, newBetAmount);
-                wager = newBetAmount;
-                wagerPlaced = newBetAmount > 0;
-
+            if (!betStack.isEmpty()) {
+                double indBet=betStack.pop();
+                refundBet(player, (int) indBet);
+                double totalBet=0;
+                for(double t:betStack){
+                    totalBet+=t;
+                }
+                if (totalBet < 0) totalBet = 0;
+                updateBetLore(52, totalBet);
+                wagerPlaced = totalBet > 0;
+                player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
+                player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
                 player.sendMessage("§dLast bet undone.");
-                player.sendMessage("§dNew total: " + newBetAmount);
+                player.sendMessage("§dNew total: " + totalBet);
             } else {
                 player.sendMessage("§cNo bets to undo.");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
             }
             return;
         }
@@ -493,11 +549,15 @@ public class MinesTable implements InventoryHolder, Listener {
         // Initialize the game grid in the inventory
         initializeTable(); // This will call initializeGameGrid
 
+        double totalBet = 0;
+        for (double t : betStack) {
+         totalBet += t;
+        }
         // Send message to the player indicating the game has started with the wager amount
-        player.sendMessage(wager + "$ game started");
+        player.sendMessage(totalBet + "$ game started");
 
         // Set previous wager
-        previousWager = wager;
+        previousWager = totalBet;
     }
 
     private void placeMines() {
@@ -526,21 +586,25 @@ public class MinesTable implements InventoryHolder, Listener {
     }
 
     if (mineGrid[x][y]) {
-   // Change the cash-out button to a barrier immediately
-   updateCashOutToBarrier();
+       // Change the cash-out button to a barrier immediately
+       updateCashOutToBarrier();
+        
+       updateTile(x, y, true);
+      // Pass the coordinates of the mine hit
+    player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_PRIMED, 1.0f, 1.0f);
+       // Trigger a visual explosion at the player's location without causing damage
+
+
+       Bukkit.getScheduler().runTaskLater(plugin, () -> {
     
-   // Start the new animation sequence
-   startMineHitAnimation(x, y); // Pass the coordinates of the mine hit
+     startMineHitAnimation(x, y); 
+                }, 15L); 
 
-   // Trigger a visual explosion at the player's location without causing damage
-   player.getWorld().createExplosion(player.getLocation(), 0F, false, false); // Creates explosion, no damage or block break
-    player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
-
-   gameOver = true;
-   gameState = GameState.GAME_OVER;
-   player.sendMessage("§c§lYou hit a mine!");
-    } else {
-        // Safe tile clicked
+       gameOver = true;
+       gameState = GameState.GAME_OVER;
+       player.sendMessage("§c§lYou hit a mine!");
+        } else {
+            // Safe tile clicked
         revealedGrid[x][y] = true;
         safePicks++;
         updateTile(x, y, false);  // Reveal a safe tile
@@ -548,14 +612,22 @@ public class MinesTable implements InventoryHolder, Listener {
         // Optionally update cash out button with updated potential winnings
         updateCashOutLore(inventory.getItem(49));
 
-        player.sendMessage("§aSafe pick!");
+        //player.sendMessage("§aSafe pick!");
 
-        // Optionally check if the game is won (all safe tiles cleared)
-        if (safePicks == (totalTiles - minesCount)) {
-            player.sendMessage("§a§lAll safe tiles cleared!");
-            cashOut();  // End game and cash out the player
+        float basePitch = 0.8f;
+        float incremental = 0.05f * safePicks;  
+        float finalPitch = basePitch + incremental;
+
+
+        finalPitch = Math.min(finalPitch, 2.0f); // 2.0 is max in vanilla MC
+        //player.sendMessage("§a"+finalPitch);
+        player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, finalPitch);
+            // Optionally check if the game is won (all safe tiles cleared)
+            if (safePicks == (totalTiles - minesCount)) {
+                player.sendMessage("§a§lAll safe tiles cleared!");
+                cashOut();  // End game and cash out the player
+            }
         }
-    }
 }
 
     
@@ -588,6 +660,8 @@ public class MinesTable implements InventoryHolder, Listener {
 
             // Step 2: After another short delay, change the clicked mine tile to fire
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                player.getWorld().createExplosion(player.getLocation(), 0F, false, false); // Creates explosion, no damage or block break
+                player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
                 setTileToFire(centerX, centerY);
 
                 // Step 3: Start spreading the fire from the hit mine
@@ -695,7 +769,21 @@ public class MinesTable implements InventoryHolder, Listener {
         // Step 1: Reveal all tiles (mines and safes)
         revealAllTiles();
         player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
-        player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+
+
+        Random random = new Random();
+// We'll pick from a small array of fun pitches
+float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
+for (int i = 0; i < 3; i++) {
+    float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
+    player.playSound(player.getLocation(), 
+            Sound.ENTITY_PLAYER_LEVELUP, 
+            1.0f, 
+            chosenPitch
+        );
+    // Schedule them slightly apart for a "ding-ding-ding" effect
+
+}
 
         // Step 2: Start emerald expansion from the cash-out button (slot 49)
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -703,14 +791,17 @@ public class MinesTable implements InventoryHolder, Listener {
             player.sendMessage("§aCashing out...");
     
             double winnings;
-    
+            double totalBet = 0;
+            for (double t : betStack) {
+             totalBet += t;
+            }
             // If no tiles were clicked, return the exact wager
             if (safePicks == 0) {
-                winnings = wager; // No multiplier, return exact wager
+                winnings = totalBet; // No multiplier, return exact wager
             } else {
                 // Give the winnings to the player with payout multiplier applied
                 double payoutMultiplier = calculatePayoutMultiplier(safePicks);
-                winnings = wager * payoutMultiplier;
+                winnings = totalBet * payoutMultiplier;
             }
     
             winnings = Math.round(winnings * 100.0) / 100.0; // Round to 2 decimal places
@@ -814,24 +905,23 @@ public class MinesTable implements InventoryHolder, Listener {
         this.safePicks = 0;
         this.wagerPlaced = false;
         this.gameState = GameState.PLACING_WAGER;
-
+        betStack.clear();
         // Keep the number of mines the same
-        player.sendMessage("§d# of mines: " + minesCount );
+        //player.sendMessage("§d# of mines: " + minesCount );
 
         // Handle rebet logic
         if (rebetEnabled && previousWager > 0) {
             if (hasEnoughCurrency(player, (int) previousWager)) {
                 removeWagerFromInventory(player, (int) previousWager);
-                wager = previousWager;
-                currentBets.put(player.getUniqueId(), wager);
-                updateBetLore(52, wager);
-                player.sendMessage("§dRebet placed: " + wager);
+                betStack.push(previousWager);
+                updateBetLore(52, previousWager);
+                player.sendMessage("§dRebet placed: " +previousWager);
                 wagerPlaced = true;
             } else {
                 player.sendMessage("§c2 broke 4 rebet.");
                  player.sendMessage("§cWager reset to 0.");
                 wager = 0;
-                currentBets.remove(player.getUniqueId());
+                betStack.clear();
                 updateBetLore(52, wager);
                 wagerPlaced = false;
             }
@@ -839,7 +929,7 @@ public class MinesTable implements InventoryHolder, Listener {
             player.sendMessage("§dRebet is off. ");
             player.sendMessage("§dWager reset to 0.");
             wager = 0;
-            currentBets.remove(player.getUniqueId());
+            betStack.clear();
             updateBetLore(52, wager);
             wagerPlaced = false;
         }
@@ -904,8 +994,11 @@ public class MinesTable implements InventoryHolder, Listener {
     }
 
     private void refundAllBets(Player player) {
-        double totalRefund = currentBets.getOrDefault(player.getUniqueId(), 0.0);
-        refundBet(player, (int) totalRefund);
+        double totalBet=0;
+        for(double t:betStack){
+            totalBet+=t;
+        }
+        refundBet(player, (int) totalBet);
     }
 
     private void refundBet(Player player, int amount) {
@@ -954,7 +1047,7 @@ public class MinesTable implements InventoryHolder, Listener {
             if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
                 refundAllBets(player);  // Refund any remaining bets
             }
-            currentBets.remove(player.getUniqueId());
+            betStack.clear();
         }
     
         // Notify minesInventory to remove the player's table
@@ -1000,4 +1093,22 @@ public class MinesTable implements InventoryHolder, Listener {
         }
         return itemStack;
     }
+
+    private ItemStack createEnchantedItem(Material material, String name, int amount) {
+        ItemStack itemStack = new ItemStack(material, amount);
+        ItemMeta meta = itemStack.getItemMeta();
+        if (meta != null) {
+            
+            meta.setDisplayName(name);
+           
+            // Add a harmless enchantment to make the item glow
+            meta.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
+            
+            // Hide the enchantment's lore for a clean look
+            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+            itemStack.setItemMeta(meta);
+        }
+        return itemStack;
+    }
+    
 }

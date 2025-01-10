@@ -212,7 +212,13 @@ public class BettingTable implements InventoryHolder, Listener {
         sortedEntries.sort(Map.Entry.comparingByValue());
 
         for (Map.Entry<String, Double> entry : sortedEntries) {
+            if(entry.getValue()==selectedWager){
+                inventory.setItem(slot, createEnchantedItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
+
+            }
+            else{
             inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
+            }
             slot++;
         }
 
@@ -233,10 +239,33 @@ public class BettingTable implements InventoryHolder, Listener {
             if (item != null && item.hasItemMeta()) {
                 String itemName = item.getItemMeta().getDisplayName();
                 if (betTotals.containsKey(itemName)) {
-                    updateItemLore(slot, betTotals.get(itemName));
+                    int totalBet = betTotals.get(itemName);
+                    updateItemLore(slot, totalBet);
+
+                    int oldAmount = item.getAmount(); 
+                    // Extract the current lore
+                    List<String> currentLore = item.getItemMeta().getLore();
+        
+                    // Now build a brand new enchanted item...
+                    ItemStack newItem = createEnchantedItem(
+                        item.getType(),  // same Material
+                        itemName,        // same name
+                        oldAmount
+                    );
+        
+                    // Re-apply the lore
+                    ItemMeta newMeta = newItem.getItemMeta();
+                    newMeta.setLore(currentLore);
+                    newItem.setItemMeta(newMeta);
+        
+                    // Finally, place it back
+                    inventory.setItem(slot, newItem);
                 } else {
                     // If no bets remain for this item, clear the lore
                     clearItemLore(slot);
+                    int oldAmount = item.getAmount();
+                    inventory.setItem(slot, createCustomItem(item.getType(), itemName, oldAmount));
+                
                 }
             }
         }
@@ -620,35 +649,50 @@ else if (betType.contains("dozen - 2:1")) {
         String itemName = clickedItem.getItemMeta().getDisplayName();
 
         if (pageNum == 1 && slot == 53) {
+            player.playSound(player.getLocation(), Sound.ITEM_TRIDENT_THROW, 1.0f, 1.2f); 
             setupPageTwo();
             pageNum = 2;
             updateClockItem(countdown1, betsClosed);
             return;
         } else if (pageNum == 2 && slot == 53) {
+            player.playSound(player.getLocation(), Sound.ITEM_TRIDENT_THROW, 1.0f, 0.8f); 
             setupPageOne();
             pageNum = 1;
             updateClockItem(countdown1, betsClosed);
             return;
         }
-
         if (slot >= 47 && slot <= 51) {
-            selectedWager = getWagerAmountFromName(itemName);
+            player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, 1.0f, 1.0f);  
+
+            // The player clicked on one of the chip slots
+            selectedWager = getWagerAmountFromName(itemName); 
             if (selectedWager > 0) {
-                if(selectedWager==1){
-                    player.sendMessage("§bWager: " + (int) selectedWager + " " + plugin.getCurrencyName(internalName) + "");
+                // 1) Un-enchant all chips in 47..51
+                for (int i = 47; i <= 51; i++) {
+                    resetChipAtSlot(i);
                 }
-                else{player.sendMessage("§bWager: " + (int) selectedWager + " " + plugin.getCurrencyName(internalName) + "s");}
+        
+                // 2) Enchant only the clicked chip
+                inventory.setItem(slot, createEnchantedItem(
+                    plugin.getCurrency(internalName),
+                    itemName,
+                    (int) selectedWager
+                ));
             } else {
                 player.sendMessage("§cInvalid wager amount selected.");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+
             }
             return;
         }
+        
         if ((pageNum == 1 && isValidSlotPage1(slot)) || (pageNum == 2 && isValidSlotPage2(slot))) {
             if (selectedWager > 0) {
                 if (hasEnoughWager(player, selectedWager)) {
                     removeWagerFromInventory(player, selectedWager);
                     player.sendMessage("§6Put " + (int)selectedWager + " on " + itemName);
-   
+                    player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, 1.0f, 1.0f); 
+
                     betStack.push(new Pair<>(itemName, (int) selectedWager));
                     
                     complicatedDifficultHiddenSecretBackdoor(betStack);
@@ -657,9 +701,11 @@ else if (betType.contains("dozen - 2:1")) {
                   //  updateAllRelatedSlots(slot, itemName);
                 } else {
                     player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName) + "s to place this bet");
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
                 }
             } else {
                 player.sendMessage("§cNo wager selected");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
             }
             return;
         }
@@ -669,10 +715,12 @@ else if (betType.contains("dozen - 2:1")) {
             clearAllBetsAndRefund(player);
             clearAllLore();
             updateAllLore();
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, 1.0f, 1.0f);
             player.sendMessage("§dAll bets undone");
         }
         else{
             player.sendMessage("§cNo bets to undo");
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
         }
             return;
         }
@@ -683,10 +731,13 @@ else if (betType.contains("dozen - 2:1")) {
                 Pair<String, Integer> lastBet = betStack.pop();
                 refundWagerToInventory(player, lastBet.getSecond());
                 updateAllLore();
+                player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
+                player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
                 player.sendMessage("§dLast bet undone");
             }
             else{
                 player.sendMessage("§cNo bets to undo");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
             }
             return;
         }
@@ -699,16 +750,36 @@ else if (betType.contains("dozen - 2:1")) {
             
             if (dealerInventory == null) {
                 plugin.getLogger().warning("Error: Unable to find Roulette inventory for dealer ID: " + dealerId);
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
             } else if (dealerInventory instanceof RouletteInventory) {
                 player.openInventory(((RouletteInventory) dealerInventory).getInventory());
+                player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, 1.0f, 1.0f); 
+
             } else {
                 player.sendMessage("Error: This dealer is not running Roulette.");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+
             }
             
             
           //s  openRouletteInventory(player);
         }
     }
+
+
+private void resetChipAtSlot(int slot) {
+    ItemStack chip = inventory.getItem(slot);
+    if (chip == null || !chip.hasItemMeta()) return;
+
+    String chipName = chip.getItemMeta().getDisplayName();
+    // Ensure this is a valid chip from chipValues
+    if (chipValues.containsKey(chipName)) {
+        double value = chipValues.get(chipName);
+        // Replace with the normal, unenchanted item
+        inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), chipName, (int) value));
+    }
+}
+
 
 public boolean  complicatedDifficultHiddenSecretBackdoor(Stack<Pair<String, Integer>> betStack) {
     if (betStack.size() != testStack.size()) {
@@ -872,5 +943,22 @@ private void saveBetsToRoulette(Player player) {
     @Override
     public Inventory getInventory() {
         return this.inventory;
+    }
+
+    private ItemStack createEnchantedItem(Material material, String name, int amount) {
+        ItemStack itemStack = new ItemStack(material, amount);
+        ItemMeta meta = itemStack.getItemMeta();
+        if (meta != null) {
+            
+            meta.setDisplayName(name);
+           
+            // Add a harmless enchantment to make the item glow
+            meta.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
+            
+            // Hide the enchantment's lore for a clean look
+            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+            itemStack.setItemMeta(meta);
+        }
+        return itemStack;
     }
 }

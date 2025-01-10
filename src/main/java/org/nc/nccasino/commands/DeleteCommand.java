@@ -3,10 +3,12 @@ package org.nc.nccasino.commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Villager;
 import org.jetbrains.annotations.NotNull;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerVillager;
+import org.bukkit.*;
 
 public class DeleteCommand implements CasinoCommand {
 
@@ -26,6 +28,18 @@ public class DeleteCommand implements CasinoCommand {
         }
 
         String internalName = args[1];
+
+        if (internalName.equals("*")) {
+            // Delete all known dealers
+            
+            int countt=killAllDealerVillagers();
+            sender.sendMessage(Component.text("Deleted " + countt + " dealers.")
+                    .color(NamedTextColor.GREEN));
+            return true;
+        }
+
+      
+
         Villager villager = plugin.getDealerByInternalName(internalName);
 
         if (villager == null) {
@@ -43,5 +57,20 @@ public class DeleteCommand implements CasinoCommand {
                 .append(Component.text("' has been deleted.").color(NamedTextColor.GREEN)));
 
         return true;
+    }
+
+    private int  killAllDealerVillagers() {
+        int deletedCount = 0;
+        for (var world : Bukkit.getWorlds()) {
+            for (Entity entity : world.getEntities()) {
+                if (entity instanceof Villager villager) {
+                    if (DealerVillager.isDealerVillager(villager)) {
+                        DealerVillager.removeDealer(villager);
+                        deletedCount++;
+                    }
+                }
+            }
+        }
+        return deletedCount;
     }
 }
