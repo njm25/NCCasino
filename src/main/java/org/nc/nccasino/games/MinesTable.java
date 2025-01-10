@@ -267,7 +267,7 @@ private final Deque<Double> betStack = new ArrayDeque<>();
             if (mineCountOption <= 24) {
                 if (mineCountOption == minesCount) {
                     // Selected mine count, show stack of red glass panes
-                    ItemStack selectedMineOption = createCustomItem(Material.WHITE_STAINED_GLASS_PANE, "Mines: " + mineCountOption, mineCountOption);
+                    ItemStack selectedMineOption = createEnchantedItem(Material.TNT, "Mines: " + mineCountOption, mineCountOption);
                     inventory.setItem(slot, selectedMineOption);
                     selectedMineSlot = slot;
                 } else {
@@ -459,7 +459,8 @@ private final Deque<Double> betStack = new ArrayDeque<>();
                         selectedMineSlot = slot;
                         player.playSound(player.getLocation(), Sound.BLOCK_LANTERN_BREAK, 1.0f, 1.0f);
                         // Change the selected slot to stack of red glass panes
-                        ItemStack selectedMineOption = createCustomItem(Material.WHITE_STAINED_GLASS_PANE, "Mines: " + minesCount, minesCount);
+                                   ItemStack selectedMineOption = createEnchantedItem(Material.TNT, "Mines: " + minesCount, minesCount);
+
                         inventory.setItem(slot, selectedMineOption);
 
                         // Update "Start Game" lever visibility
