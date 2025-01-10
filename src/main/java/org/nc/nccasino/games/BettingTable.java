@@ -212,7 +212,13 @@ public class BettingTable implements InventoryHolder, Listener {
         sortedEntries.sort(Map.Entry.comparingByValue());
 
         for (Map.Entry<String, Double> entry : sortedEntries) {
+            if(entry.getValue()==selectedWager){
+                inventory.setItem(slot, createEnchantedItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
+
+            }
+            else{
             inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
+            }
             slot++;
         }
 
