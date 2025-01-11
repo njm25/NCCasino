@@ -23,6 +23,7 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.nc.nccasino.Nccasino;
 
 import java.util.HashMap;
@@ -357,7 +358,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 47: // View Betting Info
-                player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN, 1.0f, 1.0f);
+                player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
                     exitGame(player);
                     break;
                 default:
@@ -380,7 +381,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 53: // Exit
-                player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN, 1.0f, 1.0f);
+                player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
 
                     exitGame(player);
                     break;
@@ -405,7 +406,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 8: // Exit
-                player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN, 1.0f, 1.0f);
+                player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
 
                     exitGame(player);
                     break;
@@ -429,7 +430,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 2: // Exit
-                player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN, 1.0f, 1.0f);
+                player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
 
                     exitGame(player);
                     break;
@@ -468,11 +469,11 @@ private void openBettingTable(Player player) {
             BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets, internalName, this,globalCountdown);
             Tables.put(player, bettingTable);
             player.openInventory(bettingTable.getInventory());
-            player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, 1.0f, 1.0f); 
+            player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
 
         } else {
             player.sendMessage("§cError: Dealer not found. Unable to open betting table.");
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
 
         }
     }, 1L);

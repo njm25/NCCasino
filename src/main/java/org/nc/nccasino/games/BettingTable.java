@@ -8,6 +8,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 
@@ -513,11 +514,11 @@ else if (betType.contains("dozen - 2:1")) {
         // Summaries
         if (overallWager == 0) {
             msg.append("§cNo bets were placed.\n");
-            player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 1.0f, 1.0f);
+            player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND,SoundCategory.MASTER, 1.0f, 1.0f);
         } else if (overallPayout == 0) {
             msg.append("§cNo winning bets. Lost ")
                .append(overallWager).append(" total.\n");
-               player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 1.0f, 1.0f);
+               player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND,SoundCategory.MASTER, 1.0f, 1.0f);
         } else {
            
             msg.append("§aTotal Wager: ").append(overallWager).append("\n");
@@ -526,14 +527,14 @@ else if (betType.contains("dozen - 2:1")) {
              .append(netProfit).append("\n");
             if (netProfit>0){
                 player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
-                player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP,SoundCategory.MASTER, 1.0f, 1.0f);
                 msg.append("§a§lProfit: ").append(netProfit >= 0 ? "+" : "")
                 .append(netProfit).append("\n");
             }
             else{
                 msg.append("§c§lProfit: ").append(netProfit >= 0 ? "+" : "")
              .append(netProfit).append("\n");
-                player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 1.0f, 1.0f);
+                player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND,SoundCategory.MASTER, 1.0f, 1.0f);
               
         }
         }
@@ -649,20 +650,20 @@ else if (betType.contains("dozen - 2:1")) {
         String itemName = clickedItem.getItemMeta().getDisplayName();
 
         if (pageNum == 1 && slot == 53) {
-            player.playSound(player.getLocation(), Sound.ITEM_TRIDENT_THROW, 1.0f, 1.2f); 
+            player.playSound(player.getLocation(), Sound.ITEM_TRIDENT_THROW,SoundCategory.MASTER, 1.0f, 1.2f); 
             setupPageTwo();
             pageNum = 2;
             updateClockItem(countdown1, betsClosed);
             return;
         } else if (pageNum == 2 && slot == 53) {
-            player.playSound(player.getLocation(), Sound.ITEM_TRIDENT_THROW, 1.0f, 0.8f); 
+            player.playSound(player.getLocation(), Sound.ITEM_TRIDENT_THROW,SoundCategory.MASTER, 1.0f, 0.8f); 
             setupPageOne();
             pageNum = 1;
             updateClockItem(countdown1, betsClosed);
             return;
         }
         if (slot >= 47 && slot <= 51) {
-            player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, 1.0f, 1.0f);  
+            player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE,SoundCategory.MASTER, 1.0f, 1.0f);  
 
             // The player clicked on one of the chip slots
             selectedWager = getWagerAmountFromName(itemName); 
@@ -680,7 +681,7 @@ else if (betType.contains("dozen - 2:1")) {
                 ));
             } else {
                 player.sendMessage("§cInvalid wager amount selected.");
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
 
             }
             return;
@@ -691,7 +692,7 @@ else if (betType.contains("dozen - 2:1")) {
                 if (hasEnoughWager(player, selectedWager)) {
                     removeWagerFromInventory(player, selectedWager);
                     player.sendMessage("§6Put " + (int)selectedWager + " on " + itemName);
-                    player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, 1.0f, 1.0f); 
+                    player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
 
                     betStack.push(new Pair<>(itemName, (int) selectedWager));
                     
@@ -701,11 +702,11 @@ else if (betType.contains("dozen - 2:1")) {
                   //  updateAllRelatedSlots(slot, itemName);
                 } else {
                     player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName) + "s to place this bet");
-                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
                 }
             } else {
                 player.sendMessage("§cNo wager selected");
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
             }
             return;
         }
@@ -715,12 +716,12 @@ else if (betType.contains("dozen - 2:1")) {
             clearAllBetsAndRefund(player);
             clearAllLore();
             updateAllLore();
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, 1.0f, 1.0f);
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
             player.sendMessage("§dAll bets undone");
         }
         else{
             player.sendMessage("§cNo bets to undo");
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
         }
             return;
         }
@@ -731,13 +732,13 @@ else if (betType.contains("dozen - 2:1")) {
                 Pair<String, Integer> lastBet = betStack.pop();
                 refundWagerToInventory(player, lastBet.getSecond());
                 updateAllLore();
-                player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
-                player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
+                player.playSound(player.getLocation(), Sound.UI_TOAST_IN,SoundCategory.MASTER, 3f, 1.0f);
+                player.playSound(player.getLocation(), Sound.UI_TOAST_OUT,SoundCategory.MASTER, 3f, 1.0f);
                 player.sendMessage("§dLast bet undone");
             }
             else{
                 player.sendMessage("§cNo bets to undo");
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
             }
             return;
         }
@@ -750,14 +751,14 @@ else if (betType.contains("dozen - 2:1")) {
             
             if (dealerInventory == null) {
                 plugin.getLogger().warning("Error: Unable to find Roulette inventory for dealer ID: " + dealerId);
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
             } else if (dealerInventory instanceof RouletteInventory) {
                 player.openInventory(((RouletteInventory) dealerInventory).getInventory());
-                player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, 1.0f, 1.0f); 
+                player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
 
             } else {
                 player.sendMessage("Error: This dealer is not running Roulette.");
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
 
             }
             
