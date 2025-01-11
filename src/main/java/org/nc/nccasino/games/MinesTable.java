@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
@@ -325,7 +326,7 @@ private final Deque<Double> betStack = new ArrayDeque<>();
 
         // Handle fast click prevention
         if (!clickAllowed) {
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             player.sendMessage("§cPlease wait before clicking again!");
             return;
         }
@@ -350,7 +351,7 @@ private final Deque<Double> betStack = new ArrayDeque<>();
            // Handle Exit Button (Slot 36)
     if (slot == 36 && clickedItem != null && clickedItem.getType() == Material.SPRUCE_DOOR) {
         player.sendMessage("§cExiting the game...");
-        player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN, 1.0f, 1.0f);
+        player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN, SoundCategory.MASTER,1.0f, 1.0f);
         endGame(); // End the game and clean up resources
         player.closeInventory(); // Close the inventory
         return;
@@ -359,10 +360,10 @@ private final Deque<Double> betStack = new ArrayDeque<>();
         if (slot == 44&& clickedItem != null && clickedItem.getType() ==Material.RED_WOOL||clickedItem.getType() ==Material.GREEN_WOOL) {
             rebetEnabled = !rebetEnabled;
             if(clickedItem.getType() ==Material.RED_WOOL){
-                player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_PREPARE_MIRROR, 1.0f, 1.0f);
+                player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_PREPARE_MIRROR, SoundCategory.MASTER,1.0f, 1.0f);
             }
             else{
-                player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_CAST_SPELL, 1.0f, 1.0f);  
+                player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_CAST_SPELL, SoundCategory.MASTER,1.0f, 1.0f);  
             }
            
 
@@ -378,7 +379,7 @@ private final Deque<Double> betStack = new ArrayDeque<>();
 
         if (slot >= 47 && slot <= 51) {
             // Handle currency chips (slots 47-51)
-            player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, 1.0f, 1.0f);  
+            player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
             selectedWager = chipValues.getOrDefault(itemName, 0.0);
     
             // Update the display of all chips
@@ -416,8 +417,8 @@ private final Deque<Double> betStack = new ArrayDeque<>();
                     }
                     // Update the lore of the item in slot 52 with the cumulative bet amount
                     updateBetLore(52, totalBet);
-                    //player.playSound(player.getLocation(), Sound.BLOCK_FROGLIGHT_HIT, 1.0f, 1.0f); old sound
-                    player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, 1.0f, 1.0f); 
+                    //player.playSound(player.getLocation(), Sound.BLOCK_FROGLIGHT_HIT, SoundCategory.MASTER,1.0f, 1.0f); old sound
+                    player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
                    // player.sendMessage("§aBet placed: " + newBetAmount);
 
                     wager = newBetAmount;
@@ -426,11 +427,11 @@ private final Deque<Double> betStack = new ArrayDeque<>();
                     updateStartGameLever(true);
                 } else {
                     player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName) + "s.");
-                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
                 }
             } else {
                 player.sendMessage("§cSelect a wager amount first.");
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
             }
             return;
         }
@@ -457,7 +458,7 @@ private final Deque<Double> betStack = new ArrayDeque<>();
 
                         // Update the selected mine slot
                         selectedMineSlot = slot;
-                        player.playSound(player.getLocation(), Sound.BLOCK_LANTERN_BREAK, 1.0f, 1.0f);
+                        player.playSound(player.getLocation(), Sound.BLOCK_LANTERN_BREAK, SoundCategory.MASTER,1.0f, 1.0f);
                         // Change the selected slot to stack of red glass panes
                                    ItemStack selectedMineOption = createEnchantedItem(Material.TNT, "Mines: " + minesCount, minesCount);
 
@@ -467,11 +468,11 @@ private final Deque<Double> betStack = new ArrayDeque<>();
                         updateStartGameLever(true);
                     } else {
                         player.sendMessage("§cInvalid number of mines.");
-                        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+                        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
                     }
                 } catch (NumberFormatException e) {
                     player.sendMessage("§cError parsing number of mines.");
-                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
                 }
             }
             return;
@@ -481,15 +482,15 @@ private final Deque<Double> betStack = new ArrayDeque<>();
             // Start the gamet
             if (minesSelected) {
                 if (wager > 0) {
-                    player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1.0f, 1.0f);
+                    player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER,1.0f, 1.0f);
                     startGame();
                 } else {
                     player.sendMessage("§cPlace a wager first.");
-                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
                 }
             } else {
                 player.sendMessage("§cSelect number of mines.");
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
             }
             return;
         }
@@ -500,14 +501,14 @@ private final Deque<Double> betStack = new ArrayDeque<>();
             player.sendMessage("§dAll bets undone.");
             refundAllBets(player);
             betStack.clear();
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, 1.0f, 1.0f);
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
             updateBetLore(52, 0);  // Reset the lore on the bet option after clearing bets
             wager = 0;
             wagerPlaced = false;
             return;}
             else{
                 player.sendMessage("§cNo bets to undo.");
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
             }
         }
 
@@ -529,7 +530,7 @@ private final Deque<Double> betStack = new ArrayDeque<>();
                 player.sendMessage("§dNew total: " + totalBet);
             } else {
                 player.sendMessage("§cNo bets to undo.");
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f); 
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
             }
             return;
         }
@@ -591,7 +592,7 @@ private final Deque<Double> betStack = new ArrayDeque<>();
         
        updateTile(x, y, true);
       // Pass the coordinates of the mine hit
-    player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_PRIMED, 1.0f, 1.0f);
+    player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_PRIMED, SoundCategory.MASTER,1.0f, 1.0f);
        // Trigger a visual explosion at the player's location without causing damage
 
 
@@ -777,7 +778,8 @@ float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 
 for (int i = 0; i < 3; i++) {
     float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
     player.playSound(player.getLocation(), 
-            Sound.ENTITY_PLAYER_LEVELUP, 
+            Sound.ENTITY_PLAYER_LEVELUP,
+            SoundCategory.MASTER,
             1.0f, 
             chosenPitch
         );
