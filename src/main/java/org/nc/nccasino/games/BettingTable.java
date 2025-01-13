@@ -429,16 +429,16 @@ public class BettingTable implements InventoryHolder, Listener {
     
             // 3) Calculate payout for this specific bet
             int payout = 0;
-
+            
             // Straight Up
-            if (betType.equalsIgnoreCase("straight up " + result + " - 35:1")
+            if (betType.equalsIgnoreCase(result + " - 35:1")
                 || betType.equalsIgnoreCase(result + " - 35:1")) { 
                 // E.g. "17 - 35:1" or "straight up 17 - 35:1"
                 payout = wager * 36;
             }
             // Dozens
         // Rows
-else if (betType.contains("row - 2:1")) {
+else if (betType.contains("Row - 2:1")) {
     // we already have `getColumn(result)` returning "Top", "Middle", or "Bottom".
     String columnForResult = getColumn(result); // e.g. "Bottom"
     
@@ -450,10 +450,11 @@ else if (betType.contains("row - 2:1")) {
 }
 
 // Dozens
-else if (betType.contains("dozen - 2:1")) {
+else if (betType.contains("Dozen - 2:1")) {
     // we have `getDozen(result)` returning "1st", "2nd", or "3rd"
     String dozenForResult = getDozen(result); // e.g. "2nd"
     
+    //System.out.println(betType.toLowerCase()+"|"+dozenForResult.toLowerCase() + " dozen");
     // betType might be "2nd Dozen - 2:1", or "3rd Dozen - 2:1"
     if (betType.toLowerCase().contains(dozenForResult.toLowerCase() + " dozen")) {
         payout = wager * 3;
@@ -515,25 +516,16 @@ else if (betType.contains("dozen - 2:1")) {
         if (overallWager == 0) {
             msg.append("§cNo bets were placed.\n");
             player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND,SoundCategory.MASTER, 1.0f, 1.0f);
-        } else if (overallPayout == 0) {
-            msg.append("§cNo winning bets. Lost ")
-               .append(overallWager).append(" total.\n");
-               player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND,SoundCategory.MASTER, 1.0f, 1.0f);
-        } else {
-           
+        }else {
             msg.append("§aTotal Wager: ").append(overallWager).append("\n");
             msg.append("§aTotal Payout: ").append(overallPayout).append("\n");
-            msg.append("§a§lProfit: ").append(netProfit >= 0 ? "+" : "")
-             .append(netProfit).append("\n");
-            if (netProfit>0){
+            if (netProfit>=0){
                 player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
                 player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP,SoundCategory.MASTER, 1.0f, 1.0f);
-                msg.append("§a§lProfit: ").append(netProfit >= 0 ? "+" : "")
-                .append(netProfit).append("\n");
+                msg.append("§a§lProfit: ").append("+").append(netProfit).append("\n");
             }
             else{
-                msg.append("§c§lProfit: ").append(netProfit >= 0 ? "+" : "")
-             .append(netProfit).append("\n");
+                msg.append("§c§lNet: ").append(netProfit).append("\n");
                 player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND,SoundCategory.MASTER, 1.0f, 1.0f);
               
         }
