@@ -24,6 +24,9 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.nc.VSE.Note;
+import org.nc.VSE.Song;
+import org.nc.VSE.SingleSongEngine;
 import org.nc.nccasino.Nccasino;
 
 import java.util.HashMap;
