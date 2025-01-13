@@ -661,8 +661,9 @@ private final Deque<Double> betStack = new ArrayDeque<>();
 
             // Step 2: After another short delay, change the clicked mine tile to fire
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                player.getWorld().createExplosion(player.getLocation(), 0F, false, false); // Creates explosion, no damage or block break
-                player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
+                player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
+        player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
+                
                 setTileToFire(centerX, centerY);
 
                 // Step 3: Start spreading the fire from the hit mine
