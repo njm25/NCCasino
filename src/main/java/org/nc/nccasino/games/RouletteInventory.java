@@ -784,6 +784,20 @@ private void startSpinAnimation(List<Player> activePlayers) {
         Bukkit.getScheduler().cancelTask(spinTaskId);
     }
 
+    for (Player player : playersWithBets) {
+        Song testSong = new Song("TestSong", 20);
+        testSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HARP, 0, 1, 1.0f, 1.0f));
+        testSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_PLING, 5, 6, 1.0f, 1.0f));
+
+        // Create the SingleSongEngine with some delay in ticks, say 20 ticks = 1 second
+        SingleSongEngine engine = new SingleSongEngine(plugin, testSong, /* delay param here */ 20);
+
+        // Start it for this player. If you want no initial delay, pass zero to start(...).
+        engine.start(player, 0L); 
+        //System.out.println(player.name());
+      // SingleSongEngine sv=newSingleSongEngine();
+    } 
+
     frameCounter = 0;
     boolean reverseDirection = (frameCounter + 1) % 2 == 0;
     int spinDirection = reverseDirection ? -1 : 1;
