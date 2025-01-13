@@ -1,11 +1,14 @@
 plugins {
     id 'java'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
+
 }
 
 group = 'org.nc'
 version = '1.0-SNAPSHOT'
 
 repositories {
+    mavenLocal()
     mavenCentral()
     maven {
         name = "papermc-repo"
@@ -19,6 +22,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    implementation files('libs/lib-1.0-SNAPSHOT.jar')     
 }
 
 def targetJavaVersion = 21
@@ -46,4 +50,21 @@ processResources {
     filesMatching('paper-plugin.yml') {
         expand props
     }
+}
+
+// --- SHADOW CONFIG ---
+// Give the shadow jar the same name as a normal build, e.g. nccasino-1.0-SNAPSHOT.jar
+tasks.named('shadowJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    // No “-all” or “-shadow” classifier
+    archiveClassifier.set('')  
+}
+
+// The default 'jar' task will produce a normal jar. If you only want the shadow jar:
+tasks.jar {
+    enabled = false  // we only want one final jar: the shadowed one
+}
+
+// Ensure the final 'build' depends on shadowJar
+tasks.build {
+    dependsOn tasks.shadowJar
 }

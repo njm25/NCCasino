@@ -24,6 +24,9 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.nc.VSE.Note;
+import org.nc.VSE.Song;
+import org.nc.VSE.SingleSongEngine;
 import org.nc.nccasino.Nccasino;
 
 import java.util.HashMap;
@@ -780,7 +783,6 @@ private void startSpinAnimation(List<Player> activePlayers) {
     if (spinTaskId != -1) {
         Bukkit.getScheduler().cancelTask(spinTaskId);
     }
-
     frameCounter = 0;
     boolean reverseDirection = (frameCounter + 1) % 2 == 0;
     int spinDirection = reverseDirection ? -1 : 1;
