@@ -11,9 +11,10 @@ import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Particle;
-import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
@@ -182,6 +183,16 @@ private void registerListener() {
 
         // Add game action buttons
         addItem(createCustomItem(Material.DIAMOND_SWORD, "Hit"), 36); // Hit
+        ItemStack item = inventory.getItem(36);
+        ItemMeta meta = item.getItemMeta();
+        assert meta != null;
+        meta.addAttributeModifier(Attribute.ATTACK_DAMAGE, new AttributeModifier("foo",0,AttributeModifier.Operation.MULTIPLY_SCALAR_1)); // This is necessary as of 1.20.6
+        for(ItemFlag flag : ItemFlag.values()) {
+            meta.addItemFlags(flag);
+        }
+
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+        item.setItemMeta(meta);
         addItem(createCustomItem(Material.SHIELD, "Stand"), 37); // Stand
         addItem(createCustomItem(Material.PAPER, "Double Down"), 38); // Double Down
         //addItem(createCustomItem(Material.SHEARS, "Split"), 39); // Split
@@ -329,6 +340,7 @@ private void handlePlayerAction(Player player, int slot) {
         switch (slot) {
             case 36: // Hit
                 handleHit(player);
+                player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT, SoundCategory.MASTER, 1.0f, 1.0f);
                 break;
             case 37: // Stand
                 handleStand(player);
@@ -356,7 +368,6 @@ private void handleHit(Player player) {
 
         Card newCard = deck.dealCard();
         scheduleCardDealingWithDelay(nextCardSlot, newCard, 20L, playerId); // Deal the card with a delay
-        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_HURT, SoundCategory.MASTER, 1.0f, 1.0f);
 
         cardCount++; // Increment the card count
         playerCardCounts.put(playerId, cardCount); // Update the card count
@@ -391,12 +402,9 @@ private void handleStand(Player player) {
         UUID playerId = player.getUniqueId();
         playerDone.put(playerId, true); // Mark the player as done
         playerTurnActive.put(playerId, false); // Deactivate the player's turn
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            
-            player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BLOCK, SoundCategory.MASTER,1.0f, 1.0f);
-            player.sendMessage("§9You stood.");
-            startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
-        }, 20L);
+        player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BLOCK, SoundCategory.MASTER,1.0f, 1.0f);
+        player.sendMessage("§9You stood.");
+        startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
     }
 }
 
@@ -434,13 +442,10 @@ private void handleDoubleDown(Player player) {
         
         playerDone.put(playerId, true); // Mark the player as done
         playerTurnActive.put(playerId, false); // Deactivate the player's turn after doubling down
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            
-            player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
-            player.sendMessage("§9You doubled down.");
+        player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
+        player.sendMessage("§9You doubled down.");
 
-            startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
-        }, 20L);
+        startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
     }
 }
 
@@ -906,6 +911,22 @@ private void dealInitialCards() {
     }, delay + 20L); // Delay slightly longer to allow cards to be fully dealt
 }
 
+private ItemStack createEnchantedItem(Material material, String name, int amount) {
+    ItemStack itemStack = new ItemStack(material, amount);
+    ItemMeta meta = itemStack.getItemMeta();
+    if (meta != null) {
+        
+        meta.setDisplayName(name);
+       
+        // Add a harmless enchantment to make the item glow
+        meta.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
+        
+        // Hide the enchantment's lore for a clean look
+        meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+        itemStack.setItemMeta(meta);
+    }
+    return itemStack;
+}
 
 private void startNextPlayerTurn() {
     // Initialize playerIterator if it's null or the previous iteration has ended
@@ -918,10 +939,23 @@ private void startNextPlayerTurn() {
 
     // Now proceed with the turn if there are players left
     while (playerIterator.hasNext()) {
+        UUID previousPlayerId = currentPlayerId;
+        if(previousPlayerId!=null){
+            ItemStack prevItem = inventory.getItem(playerSeats.get(previousPlayerId) + 1);
+            ItemStack replacementItem = createCustomItem(Material.PAPER, "Your turn is over.", 1);
+            replacementItem.setLore(prevItem.getLore());
+            inventory.setItem(playerSeats.get(previousPlayerId) + 1, replacementItem);
+        }
         currentPlayerId = playerIterator.next();
         if (!playerDone.getOrDefault(currentPlayerId, false)) { // Skip players who are done
+            
             Player currentPlayer = Bukkit.getPlayer(currentPlayerId);
-
+            ItemStack item = inventory.getItem(playerSeats.get(currentPlayerId) + 1);
+            
+            ItemStack enchantedItem = createEnchantedItem(Material.BOOK, "Your turn.", 1);
+            enchantedItem.setLore(item.getLore());
+            addItem(enchantedItem, playerSeats.get(currentPlayerId) + 1);
+            currentPlayer.playSound(currentPlayer.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE,SoundCategory.MASTER, 1.0f, 1.0f); 
             // Check if the player's hand value is 21
             int handValue = calculateHandValue(playerHands.get(currentPlayerId));
             if (handValue == 21) {
@@ -942,7 +976,12 @@ private void startNextPlayerTurn() {
             return;
         }
     }
-
+    if(currentPlayerId!=null){
+        ItemStack prevItem = inventory.getItem(playerSeats.get(currentPlayerId) + 1);
+        ItemStack replacementItem = createCustomItem(Material.PAPER, "Your turn is over.", 1);
+        replacementItem.setLore(prevItem.getLore());
+        inventory.setItem(playerSeats.get(currentPlayerId) + 1, replacementItem);
+    }
     // No more players left, proceed to the dealer's turn
     startDealerTurn();
 }
@@ -1236,19 +1275,19 @@ private void updatePlayerHead(UUID playerId) {
     }
     
     List<ItemStack> hand = playerHands.get(playerId);
-    int handValue = calculateHandValue(hand);
+    String handValue = calculateHandValueWithSoftCheck(hand);
     
     int seatSlot = playerSeats.get(playerId);
     updateHeadLore(seatSlot, handValue, Bukkit.getPlayer(playerId).getName());
 }
 
 private void updateDealerHead() {
-    int handValue = calculateHandValue(dealerHand);
+    String handValue = calculateHandValueWithSoftCheck(dealerHand);
     updateHeadLore(0, handValue, "Dealer");
 }
 
 
-private void updateHeadLore(int slot, int cardValue, String name) {
+private void updateHeadLore(int slot, String cardValue, String name) {
     ItemStack headItem = inventory.getItem(slot);
     if (headItem != null && (headItem.getType() == Material.PLAYER_HEAD || headItem.getType() == Material.CREEPER_HEAD)) {
         ItemMeta meta = headItem.getItemMeta();
@@ -1260,6 +1299,39 @@ private void updateHeadLore(int slot, int cardValue, String name) {
             headItem.setItemMeta(meta);
             inventory.setItem(slot, headItem);
         }
+    }
+}
+private String calculateHandValueWithSoftCheck(List<ItemStack> hand) {
+    int totalValue = 0;
+    int acesCount = 0;
+
+    if (hand == null || hand.isEmpty()) {
+        return "0";
+    }
+
+    // Calculate total value and count aces
+    for (ItemStack cardItem : hand) {
+        int cardValue = getCardValue(cardItem);
+        totalValue += cardValue;
+        if (cardValue == 1) { // Ace is worth 1
+            acesCount++;
+        }
+    }
+
+    // Calculate the soft value if there are aces
+    int softValue = totalValue;
+    if (acesCount > 0) {
+        while (acesCount > 0 && softValue + 10 <= 21) {
+            softValue += 10;
+            acesCount--;
+        }
+    }
+
+    // Return soft/hard value if an ace is present; otherwise, just return the hard value
+    if (softValue != totalValue) {
+        return softValue + "/" + totalValue;
+    } else {
+        return String.valueOf(totalValue);
     }
 }
 
