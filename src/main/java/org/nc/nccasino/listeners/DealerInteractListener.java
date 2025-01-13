@@ -7,11 +7,9 @@ import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Minecart;
 import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.games.DealerInventory;
 import org.nc.nccasino.Nccasino;
-import org.bukkit.util.Vector;
 import java.util.UUID;
 //import java.util.Vector;
 
