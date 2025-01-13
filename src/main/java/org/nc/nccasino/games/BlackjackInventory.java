@@ -1,7 +1,19 @@
 package org.nc.nccasino.games;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
@@ -18,8 +30,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerVillager;
-
-import java.util.*;
 
 public class BlackjackInventory extends DealerInventory implements Listener {
 
@@ -265,7 +275,8 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
             } else if (slot == 53) { // Handle leave chair
                 handleLeaveChairDuringGame(player);
             } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots
-                player.sendMessage("You cannot place or undo bets in an active game.");
+                player.sendMessage("§cInvalid action");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             }
         } else { // Handle clicks in the game menu before the game starts
             if (slot >= 9 && slot <= 27 && slot % 9 == 0) { // Chair slots (9, 18, 27)
@@ -291,7 +302,7 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
             }
         }
     } else {
-        player.sendMessage("Please wait before clicking again!");
+        player.sendMessage("§cPlease wait before clicking again!");
     }
 }
 
@@ -307,7 +318,8 @@ private void handlePlayerAction(Player player, int slot) {
 
         // Check if the player's turn is still active
         if (!playerTurnActive.getOrDefault(playerId, false)) {
-            player.sendMessage("Your turn is over, you can't take any more actions.");
+            player.sendMessage("§cInvalid action");
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             return;
         }
 
@@ -328,7 +340,8 @@ private void handlePlayerAction(Player player, int slot) {
               //  handleInsurance(player);
                 //break;
             default:
-                player.sendMessage("Invalid action. ");
+                player.sendMessage("§cInvalid action ");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
                 playerTurnActive.put(playerId, true); // Re-enable actions if the action was invalid
         }
     }
@@ -343,6 +356,7 @@ private void handleHit(Player player) {
 
         Card newCard = deck.dealCard();
         scheduleCardDealingWithDelay(nextCardSlot, newCard, 20L, playerId); // Deal the card with a delay
+        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_HURT, SoundCategory.MASTER, 1.0f, 1.0f);
 
         cardCount++; // Increment the card count
         playerCardCounts.put(playerId, cardCount); // Update the card count
@@ -352,12 +366,10 @@ private void handleHit(Player player) {
             int handValue = calculateHandValue(playerHands.get(playerId));
 
             if (handValue == 21) {
-                player.sendMessage("21! Your turn is over!");
                 
                 playerTurnActive.put(playerId, false); // Deactivate the player's turn
                 startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
             } else if (handValue > 21) {
-                player.sendMessage("Bust! Your turn is over.");
 
 
                 playerDone.put(playerId, true); // Mark the player as done
@@ -380,7 +392,9 @@ private void handleStand(Player player) {
         playerDone.put(playerId, true); // Mark the player as done
         playerTurnActive.put(playerId, false); // Deactivate the player's turn
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            player.sendMessage("You chose to stand.");
+            
+            player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BLOCK, SoundCategory.MASTER,1.0f, 1.0f);
+            player.sendMessage("§9You stood.");
             startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
         }, 20L);
     }
@@ -396,7 +410,7 @@ private void handleDoubleDown(Player player) {
         double currentBet = playerBets.get(playerId).values().stream().mapToDouble(Double::doubleValue).sum();
 
         if (!hasEnoughWager(player, currentBet)) {
-            player.sendMessage("Not enough funds.");
+            player.sendMessage("§cNot enough funds.");
             playerTurnActive.put(playerId, true); // Allow more actions since the double down failed
             allowPlayerActions(player); // Continue player's turn
             return;
@@ -421,7 +435,9 @@ private void handleDoubleDown(Player player) {
         playerDone.put(playerId, true); // Mark the player as done
         playerTurnActive.put(playerId, false); // Deactivate the player's turn after doubling down
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            player.sendMessage("You doubled down. Your turn is over.");
+            
+            player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
+            player.sendMessage("§9You doubled down.");
 
             startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
         }, 20L);
@@ -435,14 +451,14 @@ private void handleInsurance(Player player) {
         double insuranceBet = currentBet / 2;
 
         if (!hasEnoughWager(player, insuranceBet)) {
-            player.sendMessage("Not enough funds.");
+            player.sendMessage("§cNot enough funds.");
             allowPlayerActions(player); // Continue player's turn
             return;
         }
 
         if (inventory.getItem(2) != null && inventory.getItem(2).getItemMeta().getDisplayName().contains("ACE")) {
             removeWagerFromInventory(player, insuranceBet);
-            player.sendMessage("Insurance taken. ");
+            player.sendMessage("§6Insurance taken. ");
         }
 
         allowPlayerActions(player); // Continue player's turn
@@ -455,10 +471,12 @@ private void handleInsurance(Player player) {
 
         // Check if the player is already sitting in a chair
         if (playerSeats.containsKey(playerId)) {
-            player.sendMessage("You are already sitting in a chair.");
+            player.sendMessage("§cInvalid action");
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             return;
         }
 
+        player.playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE,SoundCategory.MASTER, 1.0f, 1.0f); 
         // Set the player's actual head at the chair's position
         inventory.setItem(slot, createPlayerHeadItem(player, 1));
 
@@ -477,6 +495,7 @@ private void handleLeaveChair(Player player) {
 
     int chairSlot = playerSeats.remove(playerId);
 
+    player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
     // Reset the chair to its original state
     inventory.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, "Click to sit here"));
 
@@ -512,6 +531,7 @@ private void handleLeaveChairDuringGame(Player player) {
     // Remove all the player's associated data
     removePlayerData(playerId);
 
+    player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
     // Reset the chair to its original state
     inventory.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, "Click to sit here"));
 
@@ -575,13 +595,10 @@ private void removePlayerData(UUID playerId) {
         UUID playerId = player.getUniqueId();
         String itemName = clickedItem.getItemMeta().getDisplayName();
         double selectedWager = chipValues.getOrDefault(itemName, 0.0);
+        player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
     
-        if (selectedWager > 0) {
-            selectedWagers.put(playerId, selectedWager);
-            player.sendMessage("You selected a wager of: " + selectedWager + " " + plugin.getCurrencyName(internalName) + "s.");
-        } else {
-            player.sendMessage("Invalid wager amount selected.");
-        }
+        selectedWagers.put(playerId, selectedWager);
+        
     }
     
     private void clearPlayerBetLore(UUID playerId) {
@@ -600,7 +617,8 @@ private void removePlayerData(UUID playerId) {
     
         // Ensure the player is sitting before placing a bet
         if (!playerSeats.containsKey(playerId)) {
-            player.sendMessage("You must sit in a chair before placing a bet.");
+            player.sendMessage("§cInvalid action");
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             return;
         }
     
@@ -609,7 +627,8 @@ private void removePlayerData(UUID playerId) {
         int betSlot = chairSlot + 1; // Paper is always right next to the chair
     
         if (slot != betSlot) {
-            player.sendMessage("You can only place a bet on your own paper.");
+            player.sendMessage("§cInvalid action");
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             return;
         }
     
@@ -624,19 +643,21 @@ private void removePlayerData(UUID playerId) {
     
             lastBetAmounts.computeIfAbsent(playerId, k -> new ArrayList<>()).add(selectedWager); // Store the last bet amount
     
-            player.sendMessage("Bet placed on slot " + slot + " with " + selectedWager + " " + plugin.getCurrencyName(internalName) + "s.");
+            player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f);
     
             if (countdownTaskId == -1) { // Start the countdown if it's not already started
                 startCountdownTimer();
             }
         } else {
-            player.sendMessage("Not enough " + plugin.getCurrencyName(internalName) + "s to place this bet, or wager not selected.");
+            player.sendMessage("§cInvalid action");
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
         }
     }
 
     private void handleUndoAllBets(Player player) {
         if (gameActive) {
-            player.sendMessage("You cannot undo bets in an active game.");
+            player.sendMessage("§cInvalid action");
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             return;
         }
     
@@ -649,8 +670,8 @@ private void removePlayerData(UUID playerId) {
             clearPlayerBetLore(playerId);  // Clear lore for items related to this player
             playerBets.remove(playerId);
             lastBetAmounts.remove(playerId);
-            player.sendMessage("All your bets have been undone and refunded.");
     
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
             // Check if there are no bets left for any player
             if (playerBets.isEmpty()) {
                 stopCountdownTimer(); // Stop the timer if no bets are left for any player
@@ -666,16 +687,16 @@ private void removePlayerData(UUID playerId) {
         if (countdownTaskId != -1) {
             Bukkit.getScheduler().cancelTask(countdownTaskId);
             countdownTaskId = -1;
-            Bukkit.broadcastMessage("No bets left. Timer stopped.");
             // Clear the Game Info lever stack to reset the display
-            inventory.setItem(1, createCustomItem(Material.LEVER, "Game Info"));
+            inventory.setItem(1, createCustomItem(Material.CLOCK, "Game Info"));
         }
     }
 
     // Handle undo last bet
     private void handleUndoLastBet(Player player) {
         if (gameActive) {
-            player.sendMessage("You cannot undo bets in an active game.");
+            player.sendMessage("§cInvalid action");
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             return;
         }
     
@@ -686,6 +707,8 @@ private void removePlayerData(UUID playerId) {
         if (bets != null && lastBets != null && !lastBets.isEmpty()) {
             double lastBet = lastBets.remove(lastBets.size() - 1); // Get the last bet amount
     
+            player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
+            player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
             // Find the slot with the last bet and reduce it
             for (Map.Entry<Integer, Double> entry : bets.entrySet()) {
                 int slot = entry.getKey();
@@ -702,7 +725,6 @@ private void removePlayerData(UUID playerId) {
                     }
     
                     addWagerToInventory(player, lastBet);
-                    player.sendMessage("Your last bet of " + lastBet + " " + plugin.getCurrencyName(internalName) + "s has been undone and refunded.");
     
                     // Check if there are no bets left for any player
                     if (bets.isEmpty()) {
@@ -787,7 +809,7 @@ private void removePlayerData(UUID playerId) {
             @Override
             public void run() {
                 if (countdown > 0) {
-                    inventory.setItem(1, createCustomItem(Material.LEVER, "Game starts in: " + countdown, countdown));
+                    inventory.setItem(1, createCustomItem(Material.CLOCK, "Game starts in: " + countdown, countdown));
                     countdown--;
                 } else {
                     Bukkit.getScheduler().cancelTask(countdownTaskId);
@@ -818,7 +840,7 @@ private void activateGame() {
 
     // Update the display name of the lever to say "Dealer's turn"
     ItemStack lever = inventory.getItem(1);
-    if (lever != null && lever.getType() == Material.LEVER) {
+    if (lever != null && lever.getType() == Material.CLOCK) {
         ItemMeta leverMeta = lever.getItemMeta();
         if (leverMeta != null) {
             leverMeta.setDisplayName("Dealer's turn"); // Set the display name to "Dealer's turn"
@@ -869,7 +891,6 @@ private void dealInitialCards() {
             if (player != null) {
                 int handValue = calculateHandValue(playerHands.get(playerId));
                 if (handValue == 21) {
-                    player.sendMessage("Blackjack! Your turn is automatically skipped.");
                     playerDone.put(playerId, true); // Mark the player as done
                     playerTurnActive.put(playerId, false); // Deactivate the player's turn
                 }
@@ -930,13 +951,12 @@ private void allowPlayerActions(Player player) {
     // Enable relevant slots for actions
     clickAllowed.putIfAbsent(player.getUniqueId(), true);
 
-    player.sendMessage("It's your turn!");
 }
 
 
 private void updateLeverDisplayName(String displayName) {
     ItemStack lever = inventory.getItem(1);
-    if (lever != null && lever.getType() == Material.LEVER) {
+    if (lever != null && lever.getType() == Material.CLOCK) {
         ItemMeta leverMeta = lever.getItemMeta();
         if (leverMeta != null) {
             leverMeta.setDisplayName(displayName);
@@ -1019,7 +1039,6 @@ private void refundBet(Player player, Map<Integer, Double> bets) {
     if (bets != null) {
         double totalBet = bets.values().stream().mapToDouble(Double::doubleValue).sum();
         addWagerToInventory(player, totalBet);
-        player.sendMessage("Your bet of " + totalBet + " " + plugin.getCurrencyName(internalName) + " has been refunded.");
     }
 }
 
@@ -1041,17 +1060,63 @@ private void finishGame() {
                 && hasAceAndTenValueCard(playerHands.get(playerId));
 
         if (isBlackjack) {
-            player.sendMessage("Blackjack! You won with a pure 21.");
+            player.sendMessage("§c§lBlackjack!");
+            Random random = new Random();
+            
+            player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
+            // We'll pick from a small array of fun pitches
+            float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
+            for (int i = 0; i < 3; i++) {
+                float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
+                player.playSound(player.getLocation(), 
+                        Sound.ENTITY_PLAYER_LEVELUP,
+                        SoundCategory.MASTER,
+                        1.0f, 
+                        chosenPitch
+                    );
+                // Schedule them slightly apart for a "ding-ding-ding" effect
+            
+            }
             payOut(player, bets, 2.5); // Pay out 2.5x for a blackjack
         } else if (playerCardSum > 21) {
-            player.sendMessage("You busted and lost your bet.");
+            player.sendMessage("§c§lYou busted and lost your bet.");
+            player.playSound(player.getLocation(), 
+                        Sound.ENTITY_GENERIC_EXPLODE,
+                        SoundCategory.MASTER,
+                        1.0f, 
+                        1.0f
+                    );
+            player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
         } else if (dealerBusted || playerCardSum > dealerCardSum) {
-            player.sendMessage("You won! Collect your winnings.");
+            player.sendMessage("§a§lYou won! Collect your winnings.");
+            
+            player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
+            Random random = new Random();
+            // We'll pick from a small array of fun pitches
+            float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
+            for (int i = 0; i < 3; i++) {
+                float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
+                player.playSound(player.getLocation(), 
+                        Sound.ENTITY_PLAYER_LEVELUP,
+                        SoundCategory.MASTER,
+                        1.0f, 
+                        chosenPitch
+                    );
+                // Schedule them slightly apart for a "ding-ding-ding" effect
+            
+            }
             payOut(player, bets, 2.0); // Regular win pays out 2x
         } else if (playerCardSum < dealerCardSum) {
-            player.sendMessage("You lost this round.");
+            player.sendMessage("§c§lYou lost this round.");
+            player.playSound(player.getLocation(), 
+            Sound.ENTITY_GENERIC_EXPLODE,
+            SoundCategory.MASTER,
+            1.0f, 
+            1.0f
+        );
+        player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
         } else {
-            player.sendMessage("It's a tie! Your bet is returned.");
+            player.sendMessage("§6§lIt's a tie! Your bet is returned.");
             refundBet(player, bets);
         }
     }
@@ -1065,7 +1130,7 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
         double totalBet = bets.values().stream().mapToDouble(Double::doubleValue).sum();
         double payout = totalBet * multiplier;
         addWagerToInventory(player, payout);
-        player.sendMessage("Congratulations! You won " + payout + " " + plugin.getCurrencyName(internalName) + ".");
+        player.sendMessage("§a§l" + payout + " " + plugin.getCurrencyName(internalName) + "s");
     }
 }
 
@@ -1108,7 +1173,7 @@ private void resetGame() {
     inventory.clear();
 
     // Set up the Game Info lever in the second slot
-    addItem(createCustomItem(Material.LEVER, "Game Info"), 1);
+    addItem(createCustomItem(Material.CLOCK, "Game Info"), 1);
 
     // Reinitialize the game menu but do not clear player seats
     initializeGameMenu();
@@ -1148,6 +1213,14 @@ private int calculateHandValue(List<ItemStack> hand) {
 
 private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
+
+        for (UUID uuid : playerSeats.keySet()) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null && player.isOnline()) {
+                player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+        }
+        
         dealCardToPlayer(slot, card, playerId);
         if (playerId != null) {
             updatePlayerHead(playerId); // Update player's head lore
@@ -1254,6 +1327,13 @@ private void scheduleHiddenCardDealing(int slot, int delay) {
             meta.setDisplayName("Hidden Card");
             hiddenCard.setItemMeta(meta);
         }
+        
+        for (UUID uuid : playerSeats.keySet()) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null && player.isOnline()) {
+                player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+        }
         inventory.setItem(slot, hiddenCard);
     }, delay);
 }
@@ -1262,6 +1342,12 @@ private void dealCardToPlayer(int slot, Card card, UUID playerId) {
     // No changes needed here; the deck will reshuffle automatically if it's empty.
     Material material = (card.getSuit() == Suit.HEARTS || card.getSuit() == Suit.DIAMONDS) ? Material.RED_STAINED_GLASS_PANE : Material.BLACK_STAINED_GLASS_PANE;
     int stackSize = getCardValueStackSize(card);
+    for (UUID uuid : playerSeats.keySet()) {
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null && player.isOnline()) {
+            player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
+        }
+    }
 
     ItemStack cardItem = new ItemStack(material, stackSize);
     ItemMeta meta = cardItem.getItemMeta();
