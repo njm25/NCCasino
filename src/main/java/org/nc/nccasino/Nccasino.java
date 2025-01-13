@@ -314,6 +314,24 @@ private void reinitializeDealerVillagers() {
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
                         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
+                        
+                        
+                        // Check if the configuration key exists
+                        if (!getConfig().contains("dealers." + internalName + ".stand-on-17") && gameType=="Blackjack") {
+                            // If the key doesn't exist, set it to 100
+                            getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+                        } else {
+                            // Retrieve the current value
+                            int hasStand17Config = getConfig().getInt("dealers." + internalName + ".stand-on-17");
+                        
+                            // Check if the value is greater than 100 or less than 0
+                            if (hasStand17Config > 100 || hasStand17Config < 0) {
+                                // Reset the value to 100
+                                getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+                            }
+                        }
+
+
                         DealerVillager.updateGameType(villager, gameType, timer, anmsg);
                     }
                 }
