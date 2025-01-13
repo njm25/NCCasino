@@ -236,6 +236,9 @@ public class BettingTable implements InventoryHolder, Listener {
     
         // Iterate over all possible slots for both pages and update the lore
         for (int slot = 0; slot < inventory.getSize(); slot++) {
+            if(slot>=47&&slot<=51){
+                break;
+            }
             ItemStack item = inventory.getItem(slot);
             if (item != null && item.hasItemMeta()) {
                 String itemName = item.getItemMeta().getDisplayName();
