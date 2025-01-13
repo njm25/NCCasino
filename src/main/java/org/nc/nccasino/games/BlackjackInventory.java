@@ -1060,7 +1060,7 @@ private void finishGame() {
                 && hasAceAndTenValueCard(playerHands.get(playerId));
 
         if (isBlackjack) {
-            player.sendMessage("§c§lBlackjack!");
+            player.sendMessage("§g§lBlackjack!");
             Random random = new Random();
             
             player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
