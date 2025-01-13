@@ -57,7 +57,7 @@ public class BlackjackInventory extends DealerInventory implements Listener {
 private Deck deck; // Declare the deck as a class variable
 private Boolean firstopen=true;
 private Boolean firstFin=true;
-
+private String dealerName= "";
 
     public BlackjackInventory(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, 54, "Blackjack Table"); // Using 54 slots for start menu
@@ -74,6 +74,24 @@ private Boolean firstFin=true;
         this.deck = new Deck(1); // Initialize the deck
         loadChipValuesFromConfig(); // Load chip values from config
         // Initialize the start menu
+        this.dealerName = dealerName;
+        Nccasino nccasino = (Nccasino) plugin;
+
+        // Check if the configuration key exists
+        if (!nccasino.getConfig().contains("dealers." + internalName + ".stand-on-17")) {
+            // If the key doesn't exist, set it to 100
+            nccasino.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+        } else {
+            // Retrieve the current value
+            int hasStand17Config = nccasino.getConfig().getInt("dealers." + internalName + ".stand-on-17");
+        
+            // Check if the value is greater than 100 or less than 0
+            if (hasStand17Config > 100 || hasStand17Config < 0) {
+                // Reset the value to 100
+                nccasino.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+            }
+        }
+        
         
        registerListener();
        plugin.addInventory(dealerId, this);
@@ -1040,6 +1058,24 @@ private void revealDealerCardWithDelay(long delay) {
 
 private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long delay) {
     final int[] mutableDealerCardSum = {dealerCardSum}; // Wrap the dealerCardSum in an array to make it mutable
+    Nccasino nccasino = (Nccasino) plugin;
+    int standOn17Chance;
+    // Ensure the stand-on-17 percentage is valid
+    if (!nccasino.getConfig().contains("dealers." + internalName + ".stand-on-17")) {
+        // If the key doesn't exist, set it to 100
+        nccasino.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+        standOn17Chance = 100;
+    } else {
+        // Retrieve the current value
+        standOn17Chance = nccasino.getConfig().getInt("dealers." + internalName + ".stand-on-17");
+    
+        // Check if the value is greater than 100 or less than 0
+        if (standOn17Chance > 100 || standOn17Chance < 0) {
+            // Reset the value to 100
+            nccasino.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+
+        }
+    }
 
     if (mutableDealerCardSum[0] < 17 && deck.hasCards()) {
         Card newCard = deck.dealCard();
@@ -1051,11 +1087,29 @@ private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long
 
         // Schedule the next card if needed
         Bukkit.getScheduler().runTaskLater(plugin, () -> dealDealerCardsUntilSeventeen(nextSlot + 1, mutableDealerCardSum[0], delay), delay);
+    } else if (mutableDealerCardSum[0] == 17) {
+        // Determine whether the dealer stops at 17 based on the percentage chance
+        if (Math.random() * 100 < standOn17Chance) {
+            // Stop at 17
+            Bukkit.getScheduler().runTaskLater(plugin, this::finishGame, delay);
+        } else {
+            // Continue if the dealer does not stop at 17
+            if (deck.hasCards()) {
+                Card newCard = deck.dealCard();
+                dealCardToPlayer(nextSlot, newCard, null);
+                mutableDealerCardSum[0] = calculateHandValue(dealerHand);
+                updateDealerHead();
+                
+                Bukkit.getScheduler().runTaskLater(plugin, () -> 
+                    dealDealerCardsUntilSeventeen(nextSlot + 1, mutableDealerCardSum[0], delay), delay);
+            }
+        }
     } else {
-        // Proceed to finish the game after dealer's turn
+        // Proceed to finish the game after the dealer's turn
         Bukkit.getScheduler().runTaskLater(plugin, this::finishGame, delay);
     }
 }
+
 
 private void scheduleCardDealingWithDelay(int slot, Card card, long delay, UUID playerId) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
