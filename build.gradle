@@ -22,8 +22,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
-          implementation files('libs/VSE-1.0.0-SNAPSHOT.jar')
-
+    implementation files('libs/lib-1.0-SNAPSHOT.jar')     
 }
 
 def targetJavaVersion = 21
@@ -54,16 +53,10 @@ processResources {
 }
 
 // --- SHADOW CONFIG ---
-
 // Give the shadow jar the same name as a normal build, e.g. nccasino-1.0-SNAPSHOT.jar
 tasks.named('shadowJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
     // No “-all” or “-shadow” classifier
     archiveClassifier.set('')  
-    // If you prefer a custom file name, use:
-    // archiveFileName.set("nccasino-${version}.jar")
-
-    // (Optional) if you want to relocate VSE classes to avoid potential conflicts:
-    // relocate "org.nc.VSE", "org.nc.nccasino.shaded.vse"
 }
 
 // The default 'jar' task will produce a normal jar. If you only want the shadow jar:
