@@ -703,8 +703,11 @@ private void updateTimerItems(int quadrant, int time) {
                 }
             }
 
-           
-            Bukkit.getScheduler().runTaskLater(plugin, () -> startBallMovement(false), 60L);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> 
+            mce.playSong("RouletteWheel", RouletteSongs.getBallLaunch(), false, "Ball Launch")
+            , 20L);
+
+            Bukkit.getScheduler().runTaskLater(plugin, () -> startBallMovement(false), 100L);
             // Transition wheel to slower spin after bets close
             // Update to spinning ball and wheel
             startSpinAnimation(activePlayers);
@@ -736,7 +739,11 @@ private void startBettingTimer() {
                     bettingTable.updateCountdown(countdown, betsClosed);
                 }
 
-                if (countdown < bettingTimeSeconds) { // Avoid double-playing on first tick
+                if(countdown==5){
+                    mce.playSong("Master", RouletteSongs.getDynamicFastTick(), false, "DynamicFastTick");
+
+                }
+                if (countdown < bettingTimeSeconds&&countdown>5) { // Avoid double-playing on first tick
                     mce.playSong("Master", RouletteSongs.getTimerTick(), false, "TimerTick");
                 }
                 // Update the timer item in the appropriate slot based on the current quadrant
