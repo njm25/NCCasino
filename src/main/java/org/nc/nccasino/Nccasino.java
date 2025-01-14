@@ -9,6 +9,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.Listener;
@@ -22,6 +24,8 @@ import org.nc.nccasino.helpers.DealerInventory;
 import org.nc.nccasino.listeners.DealerDeathHandler;
 import org.nc.nccasino.listeners.DealerEventListener;
 import org.nc.nccasino.listeners.DealerInteractListener;
+
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -199,24 +203,33 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
 
     private void loadDealerVillagers() {
-        if (getConfig().contains("dealers")) {
-    // Iterate over stored dealers in the config
-    getConfig().getConfigurationSection("dealers").getKeys(false).forEach(internalName -> {
-        String path = "dealers." + internalName;
-        int chunkX = getConfig().getInt(path + ".chunkX");
-        int chunkZ = getConfig().getInt(path + ".chunkZ");
-        String worldName = getConfig().getString(path + ".world");
-        var world = Bukkit.getWorld(worldName);
-        if (world == null) {
-            getLogger().warning("World " + worldName + " not found for DealerVillager " + internalName);
+        File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
+        if (!dealersFile.exists()) {
+            getLogger().warning("The dealers.yaml file does not exist at " + dealersFile.getPath());
             return;
         }
 
-        // Force load the chunk
-        if(!world.isChunkForceLoaded(chunkX, chunkZ));
-        world.setChunkForceLoaded(chunkX, chunkZ, true);
-        //getLogger().info("Force-loaded chunk [" + chunkX + ", " + chunkZ + "] in world " + worldName);
-    });
+        FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
+
+        if (dealersConfig.contains("dealers")) {
+            // Iterate over stored dealers in the custom config
+            dealersConfig.getConfigurationSection("dealers").getKeys(false).forEach(internalName -> {
+                String path = "dealers." + internalName;
+                int chunkX = dealersConfig.getInt(path + ".chunkX");
+                int chunkZ = dealersConfig.getInt(path + ".chunkZ");
+                String worldName = dealersConfig.getString(path + ".world");
+                var world = Bukkit.getWorld(worldName);
+
+                if (world == null) {
+                    return;
+                }
+
+                // Force load the chunk
+                if (!world.isChunkForceLoaded(chunkX, chunkZ)) {
+                    world.setChunkForceLoaded(chunkX, chunkZ, true);
+                }
+                //getLogger().info("Force-loaded chunk [" + chunkX + ", " + chunkZ + "] in world " + worldName);
+            });
         }
         
     Bukkit.getWorlds().forEach(world -> {

@@ -1,21 +1,32 @@
 package org.nc.nccasino.commands;
 
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import java.io.File;
+import java.io.IOException;
+import java.util.Set;
+
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.InvalidConfigurationException;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Villager;
 import org.jetbrains.annotations.NotNull;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerVillager;
-import org.bukkit.*;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 
 public class DeleteCommand implements CasinoCommand {
 
     private final Nccasino plugin;
+    private final File dealersFile;
+    private final YamlConfiguration dealersConfig;
 
     public DeleteCommand(Nccasino plugin) {
         this.plugin = plugin;
+        this.dealersFile = new File(plugin.getDataFolder(), "data/dealers.yaml");
+        this.dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
     }
 
     @Override
@@ -31,14 +42,13 @@ public class DeleteCommand implements CasinoCommand {
 
         if (internalName.equals("*")) {
             // Delete all known dealers
-            
-            int countt=killAllDealerVillagers();
-            sender.sendMessage(Component.text("Deleted " + countt + " dealers.")
+            int count = killAllDealerVillagers();
+            // Clear all entries in the YAML file
+            clearAllDealerData();
+            sender.sendMessage(Component.text("Deleted " + count)
                     .color(NamedTextColor.GREEN));
             return true;
         }
-
-      
 
         Villager villager = plugin.getDealerByInternalName(internalName);
 
@@ -51,6 +61,9 @@ public class DeleteCommand implements CasinoCommand {
         }
 
         DealerVillager.removeDealer(villager);
+        // Remove dealer data from YAML
+        removeDealerData(internalName);
+        
         sender.sendMessage(Component.text("Dealer '")
                 .color(NamedTextColor.GREEN)
                 .append(Component.text(internalName).color(NamedTextColor.YELLOW))
@@ -59,7 +72,7 @@ public class DeleteCommand implements CasinoCommand {
         return true;
     }
 
-    private int  killAllDealerVillagers() {
+    private int killAllDealerVillagers() {
         int deletedCount = 0;
         for (var world : Bukkit.getWorlds()) {
             for (Entity entity : world.getEntities()) {
@@ -72,5 +85,45 @@ public class DeleteCommand implements CasinoCommand {
             }
         }
         return deletedCount;
+    }
+
+private void removeDealerData(String internalName) {
+    internalName = internalName.trim(); // Sanitize input
+    String path = "dealers." + internalName;
+
+    try {
+        dealersConfig.load(dealersFile); // Reload the YAML file
+    } catch (IOException | InvalidConfigurationException e) {
+        plugin.getLogger().severe("Failed to load dealers.yaml: " + e.getMessage());
+        e.printStackTrace();
+        return;
+    }
+
+
+    if (dealersConfig.contains(path)) {
+        dealersConfig.set(path, null); // Remove the specific dealer
+        try {
+            dealersConfig.save(dealersFile); // Save the updated configuration
+        } catch (IOException e) {
+            plugin.getLogger().severe("Failed to save dealers.yaml while removing dealer: " + internalName);
+            e.printStackTrace();
+        }
+    } else {
+        plugin.getLogger().warning("Attempted to remove a non-existent dealer: " + internalName);
+    }
+}
+
+
+    private void clearAllDealerData() {
+        Set<String> keys = dealersConfig.getKeys(false);
+        for (String key : keys) {
+            dealersConfig.set(key, null);
+        }
+        try {
+            dealersConfig.save(dealersFile);
+        } catch (IOException e) {
+            plugin.getLogger().severe("Failed to save dealers.yaml while clearing all dealer data");
+            e.printStackTrace();
+        }
     }
 }
