@@ -9,12 +9,16 @@ import java.util.Random;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Color;
+import org.bukkit.FireworkEffect;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Firework;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
@@ -27,6 +31,7 @@ import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
@@ -59,10 +64,10 @@ public class BlackjackInventory extends DealerInventory implements Listener {
     private final Map<UUID, Double> selectedWagers = new HashMap<>();
     private final Object turnLock = new Object(); // Lock object for turn actionsactions
     private final Map<UUID, Boolean> playerTurnActive = new HashMap<>();
-private Deck deck; // Declare the deck as a class variable
-private Boolean firstopen=true;
-private Boolean firstFin=true;
-private String dealerName= "";
+    private Deck deck; // Declare the deck as a class variable
+    private Boolean firstopen=true;
+    private Boolean firstFin=true;
+    private String dealerName= "";
 
     public BlackjackInventory(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, 54, "Blackjack Table"); // Using 54 slots for start menu
@@ -313,6 +318,32 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
                 player.sendMessage("§cInvalid action");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             }
+            else if (slot == 0){
+                                // 1 in 1000 chance
+                if (Math.random() < 0.001) { 
+                                    // Spawn the firework at the player's location
+                    Firework firework = (Firework) player.getLocation().getWorld().spawnEntity(player.getLocation(), EntityType.FIREWORK_ROCKET);
+
+                    // Customize the firework
+                    FireworkMeta fireworkMeta = firework.getFireworkMeta();
+
+                    FireworkEffect effect = FireworkEffect.builder()
+                            .with(FireworkEffect.Type.CREEPER) // Explosion shape: Creeper head
+                            .withColor(Color.GREEN)           // Primary color
+                            .withFade(Color.BLACK)            // Fade color
+                            .flicker(true)                    // Flicker effect
+                            .trail(true)                      // Trail effect
+                            .build();
+                
+                    fireworkMeta.addEffect(effect);
+                    fireworkMeta.setPower(2); // Flight duration
+                    firework.setFireworkMeta(fireworkMeta);
+                
+                    // Do NOT call firework.detonate(), let the firework fly naturally
+                }
+                
+                player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
+            }
         } else { // Handle clicks in the game menu before the game starts
             if (slot >= 9 && slot <= 27 && slot % 9 == 0) { // Chair slots (9, 18, 27)
                 handleChairClick(slot, player);
@@ -322,6 +353,33 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
                 handleBetClick(slot, player);
             } else if (slot >= 47 && slot <= 51) { // Chip selection
                 handleChipSelection(player, event.getCurrentItem());
+            } 
+            else if (slot == 0){
+
+                // 1 in 1000 chance
+                if (Math.random() < 0.001) { 
+                                    // Spawn the firework at the player's location
+                    Firework firework = (Firework) player.getLocation().getWorld().spawnEntity(player.getLocation(), EntityType.FIREWORK_ROCKET);
+
+                    // Customize the firework
+                    FireworkMeta fireworkMeta = firework.getFireworkMeta();
+
+                    FireworkEffect effect = FireworkEffect.builder()
+                            .with(FireworkEffect.Type.CREEPER) // Explosion shape: Creeper head
+                            .withColor(Color.GREEN)           // Primary color
+                            .withFade(Color.BLACK)            // Fade color
+                            .flicker(true)                    // Flicker effect
+                            .trail(true)                      // Trail effect
+                            .build();
+                
+                    fireworkMeta.addEffect(effect);
+                    fireworkMeta.setPower(2); // Flight duration
+                    firework.setFireworkMeta(fireworkMeta);
+                
+                    // Do NOT call firework.detonate(), let the firework fly naturally
+                }
+                
+                player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
             } else {
                 switch (slot) {
                     case 45:
@@ -375,6 +433,31 @@ private void handlePlayerAction(Player player, int slot) {
             //case 40: // Insurance
               //  handleInsurance(player);
                 //break;
+            case 0:
+                                // 1 in 1000 chance
+                if (Math.random() < 0.001) { 
+                                    // Spawn the firework at the player's location
+                    Firework firework = (Firework) player.getLocation().getWorld().spawnEntity(player.getLocation(), EntityType.FIREWORK_ROCKET);
+
+                    // Customize the firework
+                    FireworkMeta fireworkMeta = firework.getFireworkMeta();
+
+                    FireworkEffect effect = FireworkEffect.builder()
+                            .with(FireworkEffect.Type.CREEPER) // Explosion shape: Creeper head
+                            .withColor(Color.GREEN)           // Primary color
+                            .withFade(Color.BLACK)            // Fade color
+                            .flicker(true)                    // Flicker effect
+                            .trail(true)                      // Trail effect
+                            .build();
+                
+                    fireworkMeta.addEffect(effect);
+                    fireworkMeta.setPower(2); // Flight duration
+                    firework.setFireworkMeta(fireworkMeta);
+                
+                    // Do NOT call firework.detonate(), let the firework fly naturally
+                }
+                
+                player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
             default:
                 player.sendMessage("§cInvalid action ");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
