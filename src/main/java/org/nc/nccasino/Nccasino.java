@@ -18,7 +18,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.commands.CommandExecutor;
 import org.nc.nccasino.entities.DealerVillager;
-import org.nc.nccasino.games.DealerInventory;
+import org.nc.nccasino.helpers.DealerInventory;
 import org.nc.nccasino.listeners.DealerDeathHandler;
 import org.nc.nccasino.listeners.DealerEventListener;
 import org.nc.nccasino.listeners.DealerInteractListener;

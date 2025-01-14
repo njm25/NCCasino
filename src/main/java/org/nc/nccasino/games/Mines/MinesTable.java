@@ -1,4 +1,4 @@
-package org.nc.nccasino.games;
+package org.nc.nccasino.games.Mines;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -17,6 +17,7 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.helpers.AnimationTable;
 
 import java.util.*;
 import java.util.stream.Collectors;

@@ -1,7 +1,8 @@
-package org.nc.nccasino.games;
+package org.nc.nccasino.games.RailRunner;
 
 import org.nc.nccasino.entities.DealerVillager;
-import org.nc.nccasino.games.DealerInventory;
+import org.nc.nccasino.games.RailRunner.RailTable;
+import org.nc.nccasino.helpers.DealerInventory;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -14,7 +15,6 @@ import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.games.RailTable;
 import org.bukkit.event.HandlerList;
 
 import java.util.HashMap;

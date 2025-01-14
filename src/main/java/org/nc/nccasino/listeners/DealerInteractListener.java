@@ -8,7 +8,7 @@ import org.bukkit.entity.Villager;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.nc.nccasino.entities.DealerVillager;
-import org.nc.nccasino.games.DealerInventory;
+import org.nc.nccasino.helpers.DealerInventory;
 import org.nc.nccasino.Nccasino;
 import java.util.UUID;
 //import java.util.Vector;
