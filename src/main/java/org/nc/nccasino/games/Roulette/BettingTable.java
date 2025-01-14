@@ -15,6 +15,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.InventoryView;
@@ -25,6 +26,7 @@ import org.nc.nccasino.Nccasino;
 import java.util.*;
 
 public class BettingTable implements InventoryHolder, Listener {
+    private final Set<Player> switchingPlayers = new HashSet<>();
     private final Inventory inventory;
     private final UUID playerId;
     private final UUID dealerId;
@@ -747,9 +749,12 @@ else if (betType.contains("Dozen - 2:1")) {
                 plugin.getLogger().warning("Error: Unable to find Roulette inventory for dealer ID: " + dealerId);
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
             } else if (dealerInventory instanceof RouletteInventory) {
+                switchingPlayers.add(player);
+                rouletteInventory.getMCE().addPlayerToChannel("RouletteWheel", player);
+                rouletteInventory.getMCE().removePlayerFromChannel("BettingTable", player);
                 player.openInventory(((RouletteInventory) dealerInventory).getInventory());
                 player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
-
+                switchingPlayers.remove(player);
             } else {
                 player.sendMessage("Error: This dealer is not running Roulette.");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
@@ -845,10 +850,20 @@ private boolean isValidSlotPage2(int slot) {
     }
 
     @EventHandler
+    public void handlePlayerQuit(PlayerQuitEvent event) {
+        switchingPlayers.remove(event.getPlayer());
+    }
+
+    @EventHandler
     public void handleInventoryClose(InventoryCloseEvent event) {
         if (event.getInventory().getHolder() != this) return;
         Player player = (Player) event.getPlayer();
        
+        if (switchingPlayers.contains(player)) {
+            switchingPlayers.remove(player);
+            return;
+        }
+
         if (!betStack.isEmpty()){
             rouletteInventory.updatePlayerBets(player.getUniqueId(),betStack,player);
 
@@ -857,6 +872,10 @@ private boolean isValidSlotPage2(int slot) {
             rouletteInventory.removeFromBets(player.getUniqueId());
 
         }
+        InventoryView closedInventory = event.getView();
+        if (closedInventory != null && closedInventory.getTopInventory().getHolder() == this) {
+        rouletteInventory.getMCE().removePlayerFromAllChannels(player);
+    }
     }
 
     private void updateItemLore(int slot, int totalBet) {
@@ -910,21 +929,26 @@ private boolean isValidSlotPage2(int slot) {
         }
     }
 
-
     private void openRouletteInventory(Villager dealer, Player player) {
+        saveBetsToRoulette(player);
         UUID dealerId = DealerVillager.getUniqueId(dealer);
         DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
-
-        if (dealerInventory instanceof RouletteInventory) {
-            RouletteInventory rouletteInventory = (RouletteInventory) dealerInventory;
-            rouletteInventory.updatePlayerBets(playerId, betStack,player);
-            player.openInventory(rouletteInventory.getInventory());
-        } else {
-            //player.sendMessage("Error: Unable to find Roulette inventory.");
+        if (dealerInventory == null) {
             plugin.getLogger().warning("Error: Unable to find Roulette inventory for dealer ID: " + dealerId);
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
+        } else if (dealerInventory instanceof RouletteInventory) {
+            switchingPlayers.add(player);
+            rouletteInventory.getMCE().addPlayerToChannel("RouletteWheel", player);
+            rouletteInventory.getMCE().removePlayerFromChannel("BettingTable", player);
+            player.openInventory(((RouletteInventory) dealerInventory).getInventory());
+            player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
+            switchingPlayers.remove(player);
+        } else {
+            player.sendMessage("Error: This dealer is not running Roulette.");
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
+
         }
     }
-
 
 private void saveBetsToRoulette(Player player) {
     Villager dealer = (Villager) Bukkit.getEntity(dealerId);
