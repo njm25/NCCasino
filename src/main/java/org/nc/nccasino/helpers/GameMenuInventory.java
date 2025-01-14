@@ -1,4 +1,4 @@
-package org.nc.nccasino.games;
+package org.nc.nccasino.helpers;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;

@@ -1,4 +1,4 @@
-package org.nc.nccasino.games;
+package org.nc.nccasino.objects;
 public class Pair<K, V> {
     private final K key;
     private final V value;

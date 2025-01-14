@@ -1,4 +1,4 @@
-package org.nc.nccasino.games;
+package org.nc.nccasino.helpers;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -54,7 +54,7 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
         return inventory;
     }
 
-    void animateMessage(Player player, Runnable onAnimationComplete) {
+    public void animateMessage(Player player, Runnable onAnimationComplete) {
         UUID playerUUID = player.getUniqueId();
         animationCallbacks.put(playerUUID, onAnimationComplete);
         animationStopped.put(playerUUID, false);

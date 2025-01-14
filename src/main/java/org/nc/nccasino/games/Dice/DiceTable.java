@@ -1,4 +1,4 @@
-package org.nc.nccasino.games;
+package org.nc.nccasino.games.Dice;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -14,10 +14,12 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.helpers.AnimationTable;
+import org.nc.nccasino.objects.Pair;
 
 import java.util.*;
 
-public class RailTable implements InventoryHolder, Listener {
+public class DiceTable implements InventoryHolder, Listener {
 
     private final Inventory inventory;
     private final UUID playerId;
@@ -25,7 +27,7 @@ public class RailTable implements InventoryHolder, Listener {
     private final Villager dealer;
     private final Nccasino plugin;
     private final String internalName;
-    private final RailInventory minesInventory;
+    private final DiceInventory diceInventory;
     private final Map<Player, Integer> animationTasks;
     private final Map<String, Double> chipValues;
     private final Map<Player, Boolean> animationCompleted;
@@ -34,15 +36,15 @@ public class RailTable implements InventoryHolder, Listener {
     private double selectedWager;
     private final Map<UUID, Double> currentBets = new HashMap<>();
     private Boolean closeFlag=false;
-    public RailTable(Player player, Villager dealer, Nccasino plugin, String internalName, RailInventory minesInventory) {
+    public DiceTable(Player player, Villager dealer, Nccasino plugin, String internalName, DiceInventory diceInventory) {
         this.playerId = player.getUniqueId();
         this.dealerId = dealer.getUniqueId();
         this.dealer = dealer;
         this.plugin = plugin;
         this.internalName = internalName;
-        this.minesInventory = minesInventory;
+        this.diceInventory = diceInventory;
         this.betStack = new Stack<>();
-        this.inventory = Bukkit.createInventory(this, 54, "Rail Runner");
+        this.inventory = Bukkit.createInventory(this, 54, "Dice");
         this.chipValues = new LinkedHashMap<>();
         this.animationTasks = new HashMap<>();
         this.animationCompleted = new HashMap<>();
@@ -67,7 +69,7 @@ public class RailTable implements InventoryHolder, Listener {
             AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
             player.openInventory(animationTable.getInventory());
     
-            // Start animation and pass a callback to return to RailTable after animation completes
+            // Start animation and pass a callback to return to DiceTable after animation completes
             animationTable.animateMessage(player, this::afterAnimationComplete);
         }, 1L); // Delay by 1 tick to ensure smooth opening of inventory
     }
@@ -120,7 +122,7 @@ public class RailTable implements InventoryHolder, Listener {
 
     @EventHandler
     public void handleClick(InventoryClickEvent event) {
-        if (!(event.getInventory().getHolder() instanceof RailTable)) return;
+        if (!(event.getInventory().getHolder() instanceof DiceTable)) return;
         event.setCancelled(true);  // Prevent default click actions, including picking up items
         Player player = (Player) event.getWhoClicked();
         int slot = event.getRawSlot();
@@ -227,7 +229,7 @@ public class RailTable implements InventoryHolder, Listener {
 public void onInventoryClose(InventoryCloseEvent event) {
 
     if (event.getInventory().getHolder() != this) return;
-    if (event.getInventory().getHolder() instanceof RailTable && event.getPlayer().getUniqueId().equals(playerId)&&closeFlag) {
+    if (event.getInventory().getHolder() instanceof DiceTable && event.getPlayer().getUniqueId().equals(playerId)&&closeFlag) {
         endGame();  // Call the end game logic when the inventory is closed
     }
 
@@ -249,8 +251,8 @@ public void onInventoryClose(InventoryCloseEvent event) {
             refundAllBets(player);  // Refund any remaining bets
         }
 
-        // Notify minesInventory to remove the player's table
-        minesInventory.removeTable(playerId);
+        // Notify diceInventory to remove the player's table
+        diceInventory.removeTable(playerId);
 
         cleanup();  // Clean up game state
     }
@@ -332,97 +334,4 @@ public void onInventoryClose(InventoryCloseEvent event) {
 
 }
 
-
-/* 
-package org.nc.nccasino.games;
-
-import org.nc.nccasino.entities.DealerVillager;
-import org.nc.nccasino.games.RailInventory;
-import org.bukkit.Bukkit;
-import org.bukkit.Material;
-import org.bukkit.entity.Player;
-import org.bukkit.entity.Villager;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.nc.nccasino.Nccasino;
-//import org.nc.nccasino.nccasino.games.RailInventory;
-import java.util.*; 
-
-public class RailTable implements InventoryHolder,Listener{ 
-
-    private final Inventory inventory;
-    private final UUID playerId;
-    private final UUID dealerId;
-    private final Villager dealer;
-    private final Nccasino plugin;
-    private final String internalName;   
-    private final RailInventory dragonInventory;
-    private final Map<String, Double> chipValues;
-
-public RailTable(Player player, Villager dealer, Nccasino plugin, String internalName, RailInventory dragonInventory) {
-        this.playerId = player.getUniqueId();
-        this.dealerId = DealerVillager.getUniqueId(dealer);
-        this.dealer = dealer;
-        this.plugin = plugin;
-        this.internalName=internalName;
-        this.dragonInventory = dragonInventory;
-        this.inventory = Bukkit.createInventory(this, 54, "Rail");
-        this.chipValues = new HashMap<>();
-        loadChipValuesFromConfig();
-
-        initializeTable();
-
-        Bukkit.getPluginManager().registerEvents(this, plugin);
-    }
-
-
-    private void loadChipValuesFromConfig() {
-        Nccasino nccasino = (Nccasino) plugin;
-        for (int i = 1; i <= 5; i++) {
-            String chipName = nccasino.getChipName(internalName, i);
-            double chipValue = nccasino.getChipValue(internalName, i);
-            this.chipValues.put(chipName, chipValue);
-        }
-    }
-
-    private void initializeTable() {
-       // setupPageOne();
-        inventory.setItem(0, createCustomItem(Material.valueOf("RAIL"), "YAYY TESTING ", 1));
-
-    }
-
-    @EventHandler
-    public void handleClick(InventoryClickEvent event) {
-        if (event.getInventory().getHolder() != this) return;
-
-        Player player = (Player) event.getWhoClicked();
-        event.setCancelled(true);
-
-        int slot = event.getRawSlot();
-
-      
-    }
-
-
-    private ItemStack createCustomItem(Material material, String name, int amount) {
-        ItemStack itemStack = new ItemStack(material, amount);
-        ItemMeta meta = itemStack.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(name);
-            itemStack.setItemMeta(meta);
-        }
-        return itemStack;
-    }
-
-
-    public Inventory getInventory() {
-        return inventory;
-    }
-
-}
-*/
+         

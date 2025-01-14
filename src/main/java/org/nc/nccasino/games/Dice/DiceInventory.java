@@ -1,7 +1,8 @@
-package org.nc.nccasino.games;
+package org.nc.nccasino.games.Dice;
 
 import org.nc.nccasino.entities.DealerVillager;
-import org.nc.nccasino.games.DealerInventory;
+import org.nc.nccasino.games.Dice.DiceTable;
+import org.nc.nccasino.helpers.DealerInventory;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -11,33 +12,29 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.games.MinesTable;
 import org.bukkit.event.HandlerList;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class MinesInventory extends DealerInventory implements Listener {
-    private final Map<UUID, MinesTable> Tables;
+public class DiceInventory extends DealerInventory implements Listener {
+    private final Map<UUID, DiceTable> Tables;
     private final Nccasino plugin;
     private final Map<UUID, Boolean> interactionLocks = new HashMap<>();
     private Boolean firstopen=true;
 
-    public MinesInventory(UUID dealerId, Nccasino plugin) {
+    public DiceInventory(UUID dealerId, Nccasino plugin) {
         
-        super(dealerId, 54, "Mines Start Menu");
+        super(dealerId, 54, "Dice Start Menu");
    
         this.plugin = plugin;
         this.Tables = new HashMap<>();
         registerListener();
         plugin.addInventory(dealerId, this);
-        
     }
 
     private void registerListener() {
@@ -45,18 +42,24 @@ public class MinesInventory extends DealerInventory implements Listener {
     }
 
     private void unregisterListener() {
+
         HandlerList.unregisterAll(this);
+
     }
 
     @Override
     public void delete() {
 
         super.delete();
-        Tables.clear();
-        interactionLocks.clear();
         unregisterListener();  // Unregister listener when deleting the inventory
     }
-   
+    // Initialize items for the start menu
+    private void initializeStartMenu() {
+       // inventory.clear();
+       // addItem(createCustomItem(Material.GREEN_WOOL, "Start Dice", 1), 22);
+      
+    }
+
     @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event){
     
@@ -82,9 +85,20 @@ public class MinesInventory extends DealerInventory implements Listener {
         Player player = event.getPlayer();
 
         if (DealerVillager.isDealerVillager(villager) && DealerVillager.getUniqueId(villager).equals(this.dealerId)) {
-            // Open the MinesTable for the player
+            // Open the DiceTable for the player
             setupGameMenu(player);
         }
+    }
+
+
+    private ItemStack createCustomItem(Material material, String name, int amount) {
+        ItemStack itemStack = new ItemStack(material, amount);
+        ItemMeta meta = itemStack.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(name);
+            itemStack.setItemMeta(meta);
+        }
+        return itemStack;
     }
 
     @EventHandler
@@ -93,10 +107,32 @@ public class MinesInventory extends DealerInventory implements Listener {
         Player player = (Player) event.getWhoClicked();
         event.setCancelled(true);
         int slot = event.getRawSlot();
+
+        // setupGameMenu(player);
+        /*  // If the player clicks to skip the animation
+        if (animationTasks.containsKey(player)) {
+            Bukkit.getScheduler().cancelTask(animationTasks.get(player));
+            animationTasks.remove(player);
+            animationCompleted.put(player, true);  // Mark animation as completed/skipped
+            setupGameMenu(player);
+        } else if (slot == 22) {
+           
+            // Start the animation if the player clicks the Start button
+          
+            startBlockAnimation(player, () -> {
+                if (!animationCompleted.getOrDefault(player, false)) {
+                    setupGameMenu(player);
+                }
+            }); 
+        }*/
     }                                                                                                                      
   
-    // Immediately have player open local mines table
+    // Set up items for the game menu
     private void setupGameMenu(Player player) {
+
+
+        
+     
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             Villager dealer = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
                     .filter(entity -> entity instanceof Villager)
@@ -106,11 +142,11 @@ public class MinesInventory extends DealerInventory implements Listener {
             if (dealer != null) {
                 String internalName = DealerVillager.getInternalName(dealer);
 
-                MinesTable minesTable = new MinesTable(player, dealer, plugin, internalName, this);
-                Tables.put(player.getUniqueId(), minesTable);
-                player.openInventory(minesTable.getInventory());
+                DiceTable diceTable = new DiceTable(player, dealer, plugin, internalName, this);
+                Tables.put(player.getUniqueId(), diceTable);
+                player.openInventory(diceTable.getInventory());
             } else {
-                player.sendMessage("§cError: Dealer not found. Unable to open mines table.");
+                player.sendMessage("Error: Dealer not found. Unable to open Dice table.");
             }
         }, 1L);
     }

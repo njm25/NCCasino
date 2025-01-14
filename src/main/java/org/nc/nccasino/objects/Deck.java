@@ -1,4 +1,4 @@
-package org.nc.nccasino.games;
+package org.nc.nccasino.objects;
 
 import java.util.ArrayList;
 import java.util.Collections;
