@@ -1217,6 +1217,15 @@ private void finishGame() {
         } else {
             player.sendMessage("§6§lIt's a tie! Your bet is returned.");
             refundBet(player, bets);
+            player.playSound(
+                player.getLocation(), 
+                Sound.ITEM_SHIELD_BREAK,
+                SoundCategory.MASTER,
+                1.0f, 
+                1.0f
+            );
+            
+            player.getWorld().spawnParticle(Particle.LARGE_SMOKE, player.getLocation(), 20);  
         }
     }
 
