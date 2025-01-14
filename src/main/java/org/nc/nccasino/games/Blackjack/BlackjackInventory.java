@@ -1,4 +1,4 @@
-package org.nc.nccasino.games;
+package org.nc.nccasino.games.Blackjack;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,6 +31,11 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.helpers.AnimationTable;
+import org.nc.nccasino.helpers.DealerInventory;
+import org.nc.nccasino.objects.Card;
+import org.nc.nccasino.objects.Deck;
+import org.nc.nccasino.objects.Suit;
 
 public class BlackjackInventory extends DealerInventory implements Listener {
 
@@ -178,6 +183,7 @@ private void registerListener() {
     }
 
     // Initialize Blackjack-specific game menu
+    @SuppressWarnings("removal")
     private void initializeGameMenu() {
         inventory.clear(); // Clear the inventory before setting up the page
 

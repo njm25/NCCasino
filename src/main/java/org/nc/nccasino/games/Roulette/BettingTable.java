@@ -1,9 +1,8 @@
-package org.nc.nccasino.games;
+package org.nc.nccasino.games.Roulette;
 
 import org.nc.nccasino.entities.DealerVillager;
-
-import org.nc.nccasino.games.Pair;
-
+import org.nc.nccasino.helpers.DealerInventory;
+import org.nc.nccasino.objects.Pair;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Particle;

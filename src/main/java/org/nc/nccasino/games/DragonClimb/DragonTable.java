@@ -1,4 +1,4 @@
-package org.nc.nccasino.games;
+package org.nc.nccasino.games.DragonClimb;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -14,44 +14,52 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.helpers.AnimationTable;
+import org.nc.nccasino.objects.Pair;
 
 import java.util.*;
 
-public class DiceTable implements InventoryHolder, Listener {
+public class DragonTable implements InventoryHolder, Listener {
 
     private final Inventory inventory;
     private final UUID playerId;
-    private final UUID dealerId;
-    private final Villager dealer;
     private final Nccasino plugin;
     private final String internalName;
-    private final DiceInventory diceInventory;
-    private final Map<Player, Integer> animationTasks;
-    private final Map<String, Double> chipValues;
-    private final Map<Player, Boolean> animationCompleted;
+    private final DragonInventory dragonInventory;
+
+    private final Villager dealer;
     private final Stack<Pair<String, Integer>> betStack;
-    private Boolean clickAllowed=true;
     private double selectedWager;
+    private final Map<String, Double> chipValues;
+    private boolean clickAllowed = true;
     private final Map<UUID, Double> currentBets = new HashMap<>();
+
+    private final Map<Player, Integer> animationTasks;
+   
+    private final Map<Player, Boolean> animationCompleted;
     private Boolean closeFlag=false;
-    public DiceTable(Player player, Villager dealer, Nccasino plugin, String internalName, DiceInventory diceInventory) {
+
+    public DragonTable(Player player, Villager dealer, Nccasino plugin, String internalName, DragonInventory dragonInventory) {
         this.playerId = player.getUniqueId();
-        this.dealerId = dealer.getUniqueId();
-        this.dealer = dealer;
         this.plugin = plugin;
         this.internalName = internalName;
-        this.diceInventory = diceInventory;
+        this.dragonInventory = dragonInventory;
+        this.dealer = dealer;
+        this.inventory = Bukkit.createInventory(this, 54, "Dragon Climb");
         this.betStack = new Stack<>();
-        this.inventory = Bukkit.createInventory(this, 54, "Dice");
-        this.chipValues = new LinkedHashMap<>();
+        this.chipValues = new LinkedHashMap<>(); // Ensure insertion order
         this.animationTasks = new HashMap<>();
         this.animationCompleted = new HashMap<>();
         loadChipValuesFromConfig();
-    
-        // Start the animation first, then return to this table once animation completes
-        startAnimation(player);
+       // initializeTable();
 
+       startAnimation(player);
+
+
+        // Register the event listener only once, and check if it's already registered
+      
         registerListener();
+      
     }
 
     private void registerListener() {
@@ -61,13 +69,14 @@ public class DiceTable implements InventoryHolder, Listener {
     private void startAnimation(Player player) {
         // Retrieve the animation message from the config for the current dealer
         String animationMessage = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
+    
         // Delaying the animation inventory opening to ensure it displays properly
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             // Pass the animation message from the config
             AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
             player.openInventory(animationTable.getInventory());
     
-            // Start animation and pass a callback to return to DiceTable after animation completes
+            // Start animation and pass a callback to return to MinesTable after animation completes
             animationTable.animateMessage(player, this::afterAnimationComplete);
         }, 1L); // Delay by 1 tick to ensure smooth opening of inventory
     }
@@ -96,6 +105,7 @@ public class DiceTable implements InventoryHolder, Listener {
                 tempChipValues.put(chipName, chipValue);
             }
         }
+
         // Sort chip values in ascending order
         tempChipValues.entrySet().stream()
             .sorted(Map.Entry.comparingByValue())
@@ -104,8 +114,10 @@ public class DiceTable implements InventoryHolder, Listener {
 
     private void initializeTable() {
         inventory.clear();
+        // Add betting buttons
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
         inventory.setItem(46, createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Undo Last Bet", 1));
+
         // Add sorted currency chips (slots 47-51)
         int slot = 47;
         for (Map.Entry<String, Double> entry : chipValues.entrySet()) {
@@ -117,20 +129,24 @@ public class DiceTable implements InventoryHolder, Listener {
         inventory.setItem(52, createCustomItem(Material.PAPER, "Click here to place bet", 1));
     }
 
-
     @EventHandler
     public void handleClick(InventoryClickEvent event) {
-        if (!(event.getInventory().getHolder() instanceof DiceTable)) return;
+        if (!(event.getInventory().getHolder() instanceof DragonTable)) return;
+    
         event.setCancelled(true);  // Prevent default click actions, including picking up items
+    
         Player player = (Player) event.getWhoClicked();
         int slot = event.getRawSlot();
+    
+
+        
         if (animationTasks.containsKey(player) && event.getCurrentItem() != null) {
             Bukkit.getScheduler().cancelTask(animationTasks.get(player));
             animationTasks.remove(player);
             animationCompleted.put(player, true);  // Mark animation as completed/skipped
             initializeTable();
-            return;
         }
+
         // Preventing item pickup and drag
         if (event.getClickedInventory() != inventory) return;
     
@@ -213,35 +229,27 @@ public class DiceTable implements InventoryHolder, Listener {
         }
     }
 
-    private void updateStartGameLever(boolean showLever) {
-        if (showLever) {
-            inventory.setItem(53, createCustomItem(Material.LEVER, "Start Game", 1));
-        } else {
-            inventory.setItem(53, null); // Remove the lever if the total bet is 0
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (event.getInventory().getHolder() != this) return;
+        if (event.getInventory().getHolder() instanceof DragonTable && event.getPlayer().getUniqueId().equals(playerId)&&closeFlag) {
+            endGame();  // Call the end game logic when the inventory is closed
         }
-    }
+
+       
+        Player player = (Player) event.getPlayer();
 
 
-// Handle inventory close event
-@EventHandler
-public void onInventoryClose(InventoryCloseEvent event) {
-
-    if (event.getInventory().getHolder() != this) return;
-    if (event.getInventory().getHolder() instanceof DiceTable && event.getPlayer().getUniqueId().equals(playerId)&&closeFlag) {
-        endGame();  // Call the end game logic when the inventory is closed
-    }
-
-    Player player = (Player) event.getPlayer();
-
-    if(player.getOpenInventory()!=null){
+        //save any games that have been start?
+        // Cancel any ongoing animation if the player closes the inventory
         if (animationTasks.containsKey(player)) {
             Bukkit.getScheduler().cancelTask(animationTasks.get(player));
             animationTasks.remove(player);
             animationCompleted.remove(player);
         }
+
+
     }
-  
-}
 
     private void endGame() {
         Player player = Bukkit.getPlayer(playerId);
@@ -249,15 +257,10 @@ public void onInventoryClose(InventoryCloseEvent event) {
             refundAllBets(player);  // Refund any remaining bets
         }
 
-        // Notify diceInventory to remove the player's table
-        diceInventory.removeTable(playerId);
+        // Notify DragonInventory to remove the player's table
+        dragonInventory.removeTable(playerId);
 
         cleanup();  // Clean up game state
-    }
-
-    // Method to unregister event listener
-    private void unregisterListener() {
-        HandlerList.unregisterAll(this);
     }
 
     // Clean up method to unregister listeners and clear data
@@ -267,22 +270,10 @@ public void onInventoryClose(InventoryCloseEvent event) {
         betStack.clear();
 
     }
-
-
-    private ItemStack createCustomItem(Material material, String name, int amount) {
-        ItemStack itemStack = new ItemStack(material, amount);
-        ItemMeta meta = itemStack.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(name);
-            itemStack.setItemMeta(meta);
-        }
-        return itemStack;
+      // Method to unregister event listener
+      private void unregisterListener() {
+        HandlerList.unregisterAll(this);
     }
-
-    public Inventory getInventory() {
-        return inventory;
-    }
-
 
     private void updateBetLore(int slot, double totalBet) {
         ItemStack item = inventory.getItem(slot);
@@ -329,7 +320,31 @@ public void onInventoryClose(InventoryCloseEvent event) {
         }
     }
 
+    
+
+    @Override
+    public Inventory getInventory() {
+        return inventory;
+    }
+
+    private ItemStack createCustomItem(Material material, String name, int amount) {
+        ItemStack itemStack = new ItemStack(material, amount);
+        ItemMeta meta = itemStack.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(name);
+            itemStack.setItemMeta(meta);
+        }
+        return itemStack;
+    }
+
+    private void updateStartGameLever(boolean showLever) {
+        if (showLever) {
+            inventory.setItem(53, createCustomItem(Material.LEVER, "Start Game", 1));
+        } else {
+            inventory.setItem(53, null); // Remove the lever if the total bet is 0
+        }
+    }
+
+
 
 }
-
-         

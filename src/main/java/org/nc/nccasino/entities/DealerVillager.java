@@ -13,7 +13,14 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.games.*;
+import org.nc.nccasino.games.Blackjack.BlackjackInventory;
+import org.nc.nccasino.games.Dice.DiceInventory;
+import org.nc.nccasino.games.DragonClimb.DragonInventory;
+import org.nc.nccasino.games.Mines.MinesInventory;
+import org.nc.nccasino.games.RailRunner.RailInventory;
+import org.nc.nccasino.games.Roulette.RouletteInventory;
+import org.nc.nccasino.helpers.DealerInventory;
+import org.nc.nccasino.helpers.GameMenuInventory;
 
 import java.util.HashMap;
 import java.util.Map;
