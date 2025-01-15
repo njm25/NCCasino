@@ -2,6 +2,8 @@ package org.nc.nccasino.games.Roulette;
 
 import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.helpers.DealerInventory;
+import org.nc.nccasino.helpers.TableGenerator;
+import org.nc.nccasino.helpers.TableGenerator.Alignment;
 import org.nc.nccasino.objects.Pair;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -498,32 +500,44 @@ else if (betType.contains("Dozen - 2:1")) {
         if (overallPayout > 0) {
             refundWagerToInventory(player, overallPayout);
         }
-    
-        // Build a condensed text output
+
         StringBuilder msg = new StringBuilder();
         msg.append("§e----- Spin Results -----\n");
-        msg.append(String.format("%-14s %6s %6s\n", "Category", "Wager", "Payout"));
-    
+
+        // Initialize the table generator with column alignments
+        TableGenerator table = new TableGenerator(Alignment.LEFT, Alignment.RIGHT, Alignment.RIGHT);
+
+        // Add header row with yellow formatting
+        table.addRow("§eCategory", "§eWager", "§ePayout");
+
+        // Add each category's data with yellow formatting
         for (Map.Entry<String, BetCategory> entry : categoryMap.entrySet()) {
             BetCategory cat = entry.getValue();
             if (cat.totalWager > 0) {
-                msg.append(String.format("%-14s %6d %6d\n", 
-                entry.getKey(), 
-                cat.totalWager, 
-                cat.totalPayout)
-  );
+                table.addRow(
+                    "§e" + entry.getKey(),
+                    "§b" + cat.totalWager,
+                    "§a" + cat.totalPayout
+                );
             }
         }
+
+        // Generate the formatted table
+        List<String> tableLines = table.generate(TableGenerator.Receiver.CLIENT, false, false);
+        for (String line : tableLines) {
+            msg.append(line).append("\n");
+        }
+
         msg.append("\n");
-    
-        // Summaries
+
+        // Add summaries with yellow text
         if (overallWager == 0) {
             msg.append("§cNo bets were placed.\n");
-            player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND,SoundCategory.MASTER, 1.0f, 1.0f);
-        }else {
-            msg.append("§aTotal Wager: ").append(overallWager).append("\n");
+            player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, SoundCategory.MASTER, 1.0f, 1.0f);
+        } else {
+            msg.append("§bTotal Wager: ").append(overallWager).append("\n");
             msg.append("§aTotal Payout: ").append(overallPayout).append("\n");
-            if (netProfit>=0){
+            if (netProfit >= 0) {
                 player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
                 Random random = new Random();
                 // We'll pick from a small array of fun pitches
@@ -538,8 +552,7 @@ else if (betType.contains("Dozen - 2:1")) {
                         );
                 }
                 msg.append("§a§lProfit: ").append("+").append(netProfit).append("\n");
-            }
-            else{
+            } else {
                 msg.append("§c§lNet: ").append(netProfit).append("\n");
                 player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
                 player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
