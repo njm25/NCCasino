@@ -23,7 +23,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class MinesTable implements InventoryHolder, Listener {
-
+    // Game state management
+    private enum GameState {
+        PLACING_WAGER,
+        WAITING_TO_START,
+        PLAYING,
+        GAME_OVER
+    }
     private final Inventory inventory;
     private final UUID playerId;
     private final Player player;
@@ -37,20 +43,8 @@ public class MinesTable implements InventoryHolder, Listener {
     private final Map<Player, Boolean> animationCompleted;
     private Boolean clickAllowed = true;
     private double selectedWager;
-    //private final Map<UUID, Double> currentBets = new HashMap<>();
-    // A list of chip increments for each player, so we know the exact bet increments they placed
-private final Deque<Double> betStack = new ArrayDeque<>();
-
+    private final Deque<Double> betStack = new ArrayDeque<>();
     private Boolean closeFlag = false;
-
-    // Game state management
-    private enum GameState {
-        PLACING_WAGER,
-        WAITING_TO_START,
-        PLAYING,
-        GAME_OVER
-    }
-
     private GameState gameState;
     private int gridSize = 5;
     private int totalTiles = gridSize * gridSize;
@@ -418,7 +412,6 @@ private final Deque<Double> betStack = new ArrayDeque<>();
                     }
                     // Update the lore of the item in slot 52 with the cumulative bet amount
                     updateBetLore(52, totalBet);
-                    //player.playSound(player.getLocation(), Sound.BLOCK_FROGLIGHT_HIT, SoundCategory.MASTER,1.0f, 1.0f); old sound
                     player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
                    // player.sendMessage("§aBet placed: " + newBetAmount);
 
@@ -772,22 +765,18 @@ private final Deque<Double> betStack = new ArrayDeque<>();
         // Step 1: Reveal all tiles (mines and safes)
         revealAllTiles();
         player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
-
-
         Random random = new Random();
-// We'll pick from a small array of fun pitches
-float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
-for (int i = 0; i < 3; i++) {
-    float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
-    player.playSound(player.getLocation(), 
-            Sound.ENTITY_PLAYER_LEVELUP,
-            SoundCategory.MASTER,
-            1.0f, 
-            chosenPitch
-        );
-    // Schedule them slightly apart for a "ding-ding-ding" effect
-
-}
+        // We'll pick from a small array of fun pitches
+        float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
+        for (int i = 0; i < 3; i++) {
+            float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
+            player.playSound(player.getLocation(), 
+                    Sound.ENTITY_PLAYER_LEVELUP,
+                    SoundCategory.MASTER,
+                    1.0f, 
+                    chosenPitch
+                );
+        }
 
         // Step 2: Start emerald expansion from the cash-out button (slot 49)
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
