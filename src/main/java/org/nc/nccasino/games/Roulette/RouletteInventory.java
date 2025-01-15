@@ -967,10 +967,15 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
 
             int adjustment=1;
     ballCurrentIndex = (ballCurrentIndex + adjustment * wheelSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
-
-
-
         } else {
+            if(ballCurrentIndex==8){
+                switchQuadrant();
+                switchQuadrant();
+                switchQuadrant();
+            }
+            else if(ballCurrentIndex==0){
+                switchQuadrant();
+            }
             ballMovementStarted = false;
             handleWinningNumber();
             return;
