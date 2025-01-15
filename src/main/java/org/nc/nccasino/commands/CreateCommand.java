@@ -3,7 +3,13 @@ package org.nc.nccasino.commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+
+import java.io.File;
+import java.io.IOException;
+
 import org.bukkit.Location;
 import org.nc.nccasino.entities.DealerVillager;
 import org.jetbrains.annotations.NotNull;
@@ -52,13 +58,32 @@ if (nccasino.getConfig().contains("dealers." + internalName)) {
         Location location = player.getLocation();
         DealerVillager.spawnDealer(plugin, location, "Dealer Villager", internalName);
 
-   // Save dealer location and chunk data
-   var chunk = location.getChunk();
-   String path = "dealers." + internalName;
-   nccasino.getConfig().set(path + ".world", location.getWorld().getName());
-   nccasino.getConfig().set(path + ".chunkX", chunk.getX());
-   nccasino.getConfig().set(path + ".chunkZ", chunk.getZ());
-   nccasino.saveConfig();
+    // Save dealer location and chunk data
+        File dealersFile = new File(nccasino.getDataFolder(), "data/dealers.yaml");
+        
+        // Ensure the parent directory exists
+        if (!dealersFile.getParentFile().exists()) {
+            dealersFile.getParentFile().mkdirs();
+        }
+
+        // Load the custom configuration
+        FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
+
+        // Set the dealer's data
+        var chunk = location.getChunk();
+        String path = "dealers." + internalName;
+        dealersConfig.set(path + ".world", location.getWorld().getName());
+        dealersConfig.set(path + ".chunkX", chunk.getX());
+        dealersConfig.set(path + ".chunkZ", chunk.getZ());
+
+        // Save the configuration to file
+        try {
+            dealersConfig.save(dealersFile);
+        } catch (IOException e) {
+            nccasino.getLogger().severe("Failed to save dealer location to " + dealersFile.getPath());
+            e.printStackTrace();
+        }
+    nccasino.saveConfig();
 
         sender.sendMessage(Component.text("Dealer with internal name '")
         .color(NamedTextColor.GREEN)
