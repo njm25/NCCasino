@@ -922,6 +922,14 @@ private void removePlayerData(UUID playerId) {
             public void run() {
                 if (countdown > 0) {
                     inventory.setItem(1, createCustomItem(Material.CLOCK, "Game starts in: " + countdown, countdown));
+                    if (countdown <=3 ){
+                        for (UUID uuid : playerSeats.keySet()) {
+                            Player player = Bukkit.getPlayer(uuid);
+                            if (player != null && player.isOnline()) {
+                                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, SoundCategory.MASTER, 1.0f, 1.0f);
+                            }
+                        }
+                    }
                     countdown--;
                 } else {
                     Bukkit.getScheduler().cancelTask(countdownTaskId);
