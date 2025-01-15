@@ -20,19 +20,21 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
-import org.nc.VSE.Note;
-import org.nc.VSE.Song;
-import org.nc.VSE.SingleSongEngine;
+import org.nc.VSE.*;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.games.Roulette.RouletteSongs;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.Stack;
 import java.util.UUID;
 import java.util.List;
@@ -41,10 +43,12 @@ import java.util.Arrays;
 import java.util.Collections;
 
 public class RouletteInventory extends DealerInventory implements Listener {
+    private final MultiChannelEngine mce;
     private final List<Integer> wheelLayout = Arrays.asList(
         0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 
         24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
     );
+    private final Set<Player> switchingPlayers = new HashSet<>();
     private int currentBallPosition = 0;
     private int pageNum;
     private final Nccasino plugin;
@@ -134,12 +138,16 @@ private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
         this.Tables = new HashMap<>();
         this.activeAnimations = new HashMap<>();
         this.internalName = internalName;
+        this.mce = new MultiChannelEngine(plugin);
         initializeTracks();
         initializeExtraSlots();
         registerListener();
         plugin.addInventory(dealerId, this);
     }
 
+    public MultiChannelEngine getMCE() {
+        return mce;
+    }
 
     private void initializeTracks() {
         // Existing track initialization code...
@@ -289,14 +297,18 @@ private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
     private void afterAnimationComplete(Player player) {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             closeFlag = true;
-            if (player != null) {
+            if (player != null&&player.isOnline()) {
+               // System.out.println("Adding"+player+"to master and roulette"); 
+                mce.addPlayerToChannel("Master", player);
+                mce.addPlayerToChannel("RouletteWheel", player);
+                player.openInventory(this.getInventory());
                 if (firstFin) {
                     firstFin = false;
                     this.bettingTimeSeconds = plugin.getTimer(internalName);
                     startBettingTimer();
                 }
 
-                player.openInventory(this.getInventory());
+                
             }
         }, 1L);
     }
@@ -329,6 +341,27 @@ private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
         }
     }
 
+    @EventHandler
+    public void handlePlayerQuit(PlayerQuitEvent event) {
+        switchingPlayers.remove(event.getPlayer());
+    }
+
+    @EventHandler
+    public void handleInventoryClose(InventoryCloseEvent event) {
+        Player player = (Player) event.getPlayer();
+        // Check if the player is switching inventories
+        if (switchingPlayers.contains(player)) {
+            return; // Ignore this close event if the player is switching
+        }
+    
+        // Check if the inventory being closed matches this specific RouletteInventory
+        InventoryView closedInventory = event.getView();
+        if (closedInventory != null && closedInventory.getTopInventory().getHolder() == this) {
+            // Properly remove the player from all channels
+            mce.removePlayerFromAllChannels(player);
+        }
+    }
+    
     @EventHandler
     public void handleClick(InventoryClickEvent event) {
         if (event.getInventory().getHolder() != this) return;
@@ -461,6 +494,8 @@ private void adjustBettingTimer(int adjustment,int quad) {
 }
 
 private void openBettingTable(Player player) {
+    switchingPlayers.add(player); // Mark the player as switching inventories
+
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
         Villager dealer = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
             .filter(entity -> entity instanceof Villager)
@@ -470,18 +505,21 @@ private void openBettingTable(Player player) {
         if (dealer != null) {
             Stack<Pair<String, Integer>> bets = getPlayerBets(player.getUniqueId());
             String internalName = DealerVillager.getInternalName(dealer);
-            BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets, internalName, this,globalCountdown);
+            BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets, internalName, this, globalCountdown);
             Tables.put(player, bettingTable);
             player.openInventory(bettingTable.getInventory());
-            player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
-
+            player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER, 1.0f, 1.0f); 
+            mce.addPlayerToChannel("BettingTable", player);
+            mce.removePlayerFromChannel("RouletteWheel", player);
+            //System.out.println("removed from RouletteWheel added to BettingTable");
         } else {
             player.sendMessage("§cError: Dealer not found. Unable to open betting table.");
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
-
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         }
-    }, 1L);
+        switchingPlayers.remove(player); // Remove the flag after the switch
+    }, 1L); // Small delay to allow the inventory to switch
 }
+
 
 private void exitGame(Player player) {
     BettingTable bt = Tables.get(player);
@@ -502,6 +540,7 @@ private void exitGame(Player player) {
 
 
 private void updateTimerItems(int quadrant, int time) {
+    System.out.println(time);
     switch (quadrant) {
         case 1: // Top-right quadrant
             addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", time), 46);
@@ -645,27 +684,25 @@ private void updateTimerItems(int quadrant, int time) {
                     activePlayers.add(player);
                     playersWithBets.add(player);
                     Bets.put(player.getUniqueId(), playerBets);
-                 
-                
                 }
                 
             }
         }
 
         if (playersWithBets.isEmpty() && activePlayers.isEmpty()) {
-            //System.out.println("Gets here");
             resetToStartState();
         } else {
-            //System.out.println("Gets hereeee"+playersWithBets.isEmpty()+activePlayers.isEmpty());
             for (Player player : playersWithBets) {
-                //System.out.println(player.name());
                 if (player.isOnline()) {
                     player.sendMessage("§dBets locked, spinning!");
                 }
             }
 
-           
-            Bukkit.getScheduler().runTaskLater(plugin, () -> startBallMovement(false), 60L);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> 
+            mce.playSong("RouletteWheel", RouletteSongs.getBallLaunch(), false, "Ball Launch")
+            , 20L);
+
+            Bukkit.getScheduler().runTaskLater(plugin, () -> startBallMovement(false), 100L);
             // Transition wheel to slower spin after bets close
             // Update to spinning ball and wheel
             startSpinAnimation(activePlayers);
@@ -673,13 +710,12 @@ private void updateTimerItems(int quadrant, int time) {
     }
     
 private void startBettingTimer() {
-
     if (bettingCountdownTaskId != -1) {
         Bukkit.getScheduler().cancelTask(bettingCountdownTaskId);
     }
 
     // Start the slow spin as soon as the betting phase begins
-    startSlowSpinAnimation(6L); // Start the wheel spinning at 10 ticks per frame
+    startSlowSpinAnimation(6L); 
 
     betsClosed = false;
 
@@ -696,6 +732,13 @@ private void startBettingTimer() {
                     bettingTable.updateCountdown(countdown, betsClosed);
                 }
 
+                if(countdown==5){
+                    mce.playSong("Master", RouletteSongs.getDynamicFastTick(), false, "DynamicFastTick");
+
+                }
+                if (countdown < bettingTimeSeconds&&countdown>5) { // Avoid double-playing on first tick
+                    mce.playSong("Master", RouletteSongs.getTimerTick(), false, "TimerTick");
+                }
                 // Update the timer item in the appropriate slot based on the current quadrant
                 int countdownSlot = getCountdownSlotForQuadrant(currentQuadrant);
                 ItemStack countdownItem = createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown + " SECONDS!", countdown);
@@ -752,7 +795,11 @@ private void startBettingTimer() {
     }, 0L, 20L);
 }
 
+
+
 private void startSlowSpinAnimation(long initialSpeed) {
+
+//////////////////////////////////////
     frameCounter = 0;
     int spinDirection = wheelSpinDirection; // Set counter-clockwise
 
@@ -773,6 +820,7 @@ private void startSlowSpinAnimation(long initialSpeed) {
             if (betsClosed) {
                 Bukkit.getScheduler().cancelTask(spinTaskId); // Stop slow spin when bets are closed
             } else {
+                mce.playSong("RouletteWheel", RouletteSongs.getSlowSpinTick(), false, "Basd");
                 updateWheelView(frameCounter * spinDirection); // Adjust direction here
                 frameCounter++; // Increment frameCounter for the next position
             }
@@ -781,9 +829,11 @@ private void startSlowSpinAnimation(long initialSpeed) {
 }
 
 private void startSpinAnimation(List<Player> activePlayers) {
+
     if (spinTaskId != -1) {
         Bukkit.getScheduler().cancelTask(spinTaskId);
     }
+
     frameCounter = 0;
     boolean reverseDirection = (frameCounter + 1) % 2 == 0;
     int spinDirection = reverseDirection ? -1 : 1;
@@ -799,6 +849,7 @@ private void startSpinAnimation(List<Player> activePlayers) {
         @Override
         public void run() {
             if (!spinAnimationOver) {
+                mce.playSong("RouletteWheel", RouletteSongs.getSpinTick(), false, "otherig");
                 updateWheel(frameCounter * spinDirection);
 
                 if (frameCounter < spinAccelerationFrames) {
@@ -816,10 +867,6 @@ private void startSpinAnimation(List<Player> activePlayers) {
                 bfastSpinTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, this, currentWheelDelay[0]);
                 frameCounter++;
             } 
-            /* 
-            else {
-                Bukkit.getScheduler().runTaskLater(plugin, () -> startBallMovement(!reverseDirection), 10L);
-            }*/
         }
     };
 
@@ -859,6 +906,7 @@ private void startBallMovement(boolean reverseDirection) {
 
     // Start moving the ball
     moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
+
 }
 
 private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slotsMovedTotal, int totalSlotsToMove, int ballAccelerationSlots, int ballDecelerationSlots) {
@@ -871,15 +919,26 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
         return;
     }
 
-    long[] tempBallDelay = {1L};
+    long[] tempBallDelay = {1L};    
      Map<Integer, List<Integer>> currentTracks = getTracksForCurrentQuadrant();
     List<Integer> currentTrackSlots = currentTracks.get(ballCurrentTrack);
     if (currentTrackSlots == null || currentTrackSlots.isEmpty()) return;
 
     int nextIndex = (ballCurrentIndex + ballSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
-   
     int nextSlot = currentTrackSlots.get(nextIndex);
-    
+
+    // Look ahead by "index" frames to determine future boundary
+    int lookaheadSlots = 7; // Fixed number of slots to look ahead
+    int futureIndex = (ballCurrentIndex + lookaheadSlots * ballSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
+    int futureSlot = currentTrackSlots.get(futureIndex);
+   
+    if (isQuadrantBoundary(futureSlot)) {
+        int pitch = Math.max(1, 10 - (slotsMovedTotal[0] / 10)); 
+        mce.stopSong("RouletteWheel", "BallScraping");
+        mce.playSong("RouletteWheel", RouletteSongs.getBallScraping(pitch), false, "BallScraping");
+        mce.stopSong("RouletteWheel", "Skibidi");
+        mce.playSong("RouletteWheel", RouletteSongs.getSkibidi(pitch), false, "Skibidi");
+    } 
     if (isQuadrantBoundary(nextSlot)) {
         isSwitchingQuadrant = true;
 
@@ -934,16 +993,26 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
                 default:
                     break;
             }
+            if(slotsMovedTotal[0]>0&&slotsMovedTotal[0]<=70){
+                
+                mce.stopSong("RouletteWheel", "skibidi");
+                mce.playSong("RouletteWheel",RouletteSongs.getEarlyWhoosh(),false, "skibidi");
+
+            }
+            if(slotsMovedTotal[0]>70){
+                mce.stopSong("RouletteWheel", "skibidi");
+                mce.playSong("RouletteWheel",RouletteSongs.getCornerWhoosh(),false, "skibidi");
+            }
 
             // Delay to simulate ball going off-screen before quadrant switch
             Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
                 switchQuadrant();
-
+               
                 // Delay to simulate ball still off-screen after quadrant switch
                 Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
                     ballCurrentIndex = getStartingIndexForNewQuadrant();
                     updateBallPosition(ballSpinDirection);
-
+                   
                     isSwitchingQuadrant = false;
                     moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
                 }, tempBallDelay[0]); // Delay after switching quadrants
@@ -1136,20 +1205,19 @@ private boolean isQuadrantBoundary(int slot) {
     }
 }
 
-
-
-
 private void handleWinningNumber() {
+    mce.stopSong("RouletteWheel", "BallScraping");
+    mce.stopSong("RouletteWheel", "Skibidi");
+    mce.stopSong("RouletteWheel", "skibidi");
     // Get the number corresponding to the final slot
     winningNumber = getNumberForSlot(ballPreviousSlot, currentQuadrant);
     finalpicked = true;
     firsthit = true;
+    mce.playSong("RouletteWheel", RouletteSongs.getFinalSpot(), false, "Final spot");
 
     // Loop over players who have placed bets
     for (Player player : playersWithBets) {
         if (player.isOnline()) {
-           //System.out.println("Processing bets for player: " + player.getName());
-
             // Schedule the processing to run after a delay
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 BettingTable bettingTable = Tables.get(player);
@@ -1158,8 +1226,6 @@ private void handleWinningNumber() {
                     Stack<Pair<String, Integer>> playerBets =newtry.get(player.getUniqueId());
   
                     if (!playerBets.isEmpty()) {
-                        //System.out.println("Processing bets for " + player.getName());
-
                         // Notify the player of the winning number
                         if (isRed(winningNumber)) {
                             player.sendMessage("§cHit Red " + winningNumber + "!");
@@ -1171,16 +1237,6 @@ private void handleWinningNumber() {
 
                         // Process the bets
                         bettingTable.processSpinResult(winningNumber, playerBets);
-/* 
-                        // Reopen the betting table if the player is viewing the roulette wheel
-                        InventoryView openInventory = player.getOpenInventory();
-                        if (openInventory != null && openInventory.getTopInventory().getHolder() instanceof RouletteInventory) {
-
-                            player.openInventory(bettingTable.getInventory());
-                        }
-*/
-
-
                     } else {
                         plugin.getLogger().warning(player.getName() + " has no bets to process.");
                     }
@@ -1192,7 +1248,6 @@ private void handleWinningNumber() {
     }
 
     // Reset for the next round
-    //resetGameForNextSpin();
     Bukkit.getScheduler().runTaskLater(plugin, this::prepareNextRound, 75L);
 }
 
@@ -1207,11 +1262,6 @@ private void prepareNextRound() {
     if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
         inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
     }
-
-    // Stop any spinning tasks related to the previous round
-    // For example, if spinTaskId or ballTaskId were ongoing:
-    // Bukkit.getScheduler().cancelTask(spinTaskId);
-    // (Ensure that your code tracks and cancels these tasks if needed)
 
     // Reset movement and state variables
     ballMovementStarted = false;
@@ -1242,7 +1292,6 @@ private void prepareNextRound() {
     // Start the betting timer again, which also resets bets and shows menu buttons
     startBettingTimer();
 
-  
 }
 
 
