@@ -757,19 +757,18 @@ private void startSlowSpinAnimation(long initialSpeed) {
     int spinDirection = wheelSpinDirection; // Set counter-clockwise
 
     initializeDecorativeSlotsForQuadrant(currentQuadrant);
-
+    if (spinTaskId != -1) {
+        Bukkit.getScheduler().cancelTask(spinTaskId);
+    }
     if (fastSpinTaskId != -1) {
         Bukkit.getScheduler().cancelTask(fastSpinTaskId);
     }
     if (bfastSpinTaskId != -1) {
         Bukkit.getScheduler().cancelTask(bfastSpinTaskId);
     }
-
-
     spinTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
         @Override
         public void run() {
-            
             if (betsClosed) {
                 Bukkit.getScheduler().cancelTask(spinTaskId); // Stop slow spin when bets are closed
             } else {
