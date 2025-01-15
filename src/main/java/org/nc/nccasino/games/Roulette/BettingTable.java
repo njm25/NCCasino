@@ -525,12 +525,25 @@ else if (betType.contains("Dozen - 2:1")) {
             msg.append("§aTotal Payout: ").append(overallPayout).append("\n");
             if (netProfit>=0){
                 player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
-                player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP,SoundCategory.MASTER, 1.0f, 1.0f);
+                Random random = new Random();
+                // We'll pick from a small array of fun pitches
+                float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
+                for (int i = 0; i < 3; i++) {
+                    float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
+                    player.playSound(player.getLocation(), 
+                            Sound.ENTITY_PLAYER_LEVELUP,
+                            SoundCategory.MASTER,
+                            1.0f, 
+                            chosenPitch
+                        );
+                }
                 msg.append("§a§lProfit: ").append("+").append(netProfit).append("\n");
             }
             else{
                 msg.append("§c§lNet: ").append(netProfit).append("\n");
-                player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND,SoundCategory.MASTER, 1.0f, 1.0f);
+                player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
+                player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
+                        
               
         }
         }

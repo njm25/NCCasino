@@ -16,22 +16,22 @@ public class RouletteSongs {
     public static Song getBallLaunch() {
         Song BallLaunch = new Song("BallLaunch", 20);
         // We'll do a short repeating pattern for 16 ticks: a "tick" every 4 ticks
-        BallLaunch.addNote(new Note(Sound.ITEM_LODESTONE_COMPASS_LOCK, 1, 1, 1.0f, 1.0f));
-        BallLaunch.addNote(new Note(Sound.MUSIC_DISC_CREATOR_MUSIC_BOX, 30, 80, 1.0f, 1.0f));
-        BallLaunch.addNote(new Note(Sound.BLOCK_BEACON_ACTIVATE, 40, 40, 1.0f, 1.0f));
-        BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_INHALE, 60,60, 1.0f, 1.0f));
-        BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_INHALE, 62,62, 1.0f, 1.2f));
-        BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_INHALE, 64,64, 1.0f, 1.4f));
-        BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_INHALE, 66,66, 1.0f, 1.6f));
-        BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_INHALE, 68,68, 1.0f, 1.8f));
+        BallLaunch.addNote(new Note(Sound.ITEM_LODESTONE_COMPASS_LOCK, 1, 1, 4.0f, 1.0f));
+        BallLaunch.addNote(new Note(Sound.MUSIC_DISC_CREATOR_MUSIC_BOX, 30, 50, 3.0f, 1.0f));
+        BallLaunch.addNote(new Note(Sound.BLOCK_BEACON_ACTIVATE, 40, 40, 3.0f, 1.0f));
+        BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_INHALE, 60,60, 2.0f, 1.0f));
+        BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_INHALE, 62,62, 2.0f, 1.2f));
+        BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_INHALE, 64,64, 2.0f, 1.4f));
+        BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_INHALE, 66,66, 2.0f, 1.6f));
+        BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_INHALE, 68,68, 2.0f, 1.8f));
         BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_CHARGE, 64,64, 1.0f, 1.4f));
         BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_CHARGE, 66,66, 1.0f, 1.6f));
         BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_CHARGE, 68,68, 1.0f, 1.8f));
-        BallLaunch.addNote(new Note(Sound.ITEM_CROSSBOW_LOADING_MIDDLE, 70,70, 1.0f, 1.0f));
-        BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_SHOOT, 80,80, 1.0f, 0.5f));
-        BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_SHOOT, 80,80, 1.0f, 1.0f));
-        BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_JUMP, 80,80, 1.0f, 1.0f));
-        BallLaunch.addNote(new Note(Sound.ITEM_CROSSBOW_SHOOT, 80,80, 1.0f, 1.0f));
+        BallLaunch.addNote(new Note(Sound.ITEM_CROSSBOW_LOADING_MIDDLE, 70,70, 3.0f, 1.0f));
+        BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_SHOOT, 80,80, 2.0f, 0.5f));
+        BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_SHOOT, 80,80, 2.0f, 1.0f));
+        BallLaunch.addNote(new Note(Sound.ENTITY_BREEZE_JUMP, 80,80, 3.0f, 1.0f));
+        BallLaunch.addNote(new Note(Sound.ITEM_CROSSBOW_SHOOT, 80,80, 3.0f, 1.0f));
         return BallLaunch;
     }
     public static Song getDynamicFastTick() {
@@ -59,75 +59,67 @@ public class RouletteSongs {
         return dynamicFastTick;
     }
     
+    public static Song getSpinTick() {
+        Song spinTick = new Song("SpinTick", 20);
+        // We'll do a short repeating pattern for 16 ticks: a "tick" every 4 ticks
+        spinTick.addNote(new Note(Sound.ITEM_SHIELD_BLOCK, 0,0, 1.5f, .05f));
+        return spinTick;
+    }
+
+    public static Song getEarlyWhoosh() {
+        Song earlyWhoosh = new Song("EarlyWhoosh", 20);
+        // We'll do a short repeating pattern for 16 ticks: a "tick" every 4 ticks
+        earlyWhoosh.addNote(new Note(Sound.ENTITY_PHANTOM_FLAP, 0,0, 1f, 10f));
+        return earlyWhoosh;
+    }
+
+    public static Song getCornerWhoosh() {
+        Song cornerWhoosh = new Song("CornerWhoosh", 20);
+        // We'll do a short repeating pattern for 16 ticks: a "tick" every 4 ticks
+        cornerWhoosh.addNote(new Note(Sound.ENTITY_PHANTOM_FLAP, 0,0, .5f, 10f));
+        return cornerWhoosh;
+    }
+
+
+    public static Song getSkibidi(int pitch) {
+        Song skibidi = new Song("skibidi", 20); // 20 ticks per second
+        float adjustedPitch = (pitch * 0.2f); 
+        skibidi.addNote(new Note(Sound.ITEM_CROSSBOW_LOADING_START, 0, 0, adjustedPitch, 2f));
+        return skibidi;
+    }
+
+    public static Song getBallScraping(int pitch) {
+        Song ballScraping = new Song("BallScraping", 20); // 20 ticks per second
+        // Adjust the pitch dynamically based on speed
+        float adjustedPitch = (pitch * 0.2f); // Scale pitch based on input
+        // A continuous scraping sound with dynamic pitch
+        ballScraping.addNote(new Note(Sound.BLOCK_GRINDSTONE_USE, 0, 0, adjustedPitch, .2f));
+        return ballScraping;
+    }
     
-
-    public static Song getSlowSpinSong() {
-        Song spinSong = new Song("SlowSpin", 20);
-        // We'll do a short repeating pattern for 16 ticks: a "tick" every 4 ticks
-        spinSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HAT, 0, 1, 1.0f, 1.0f));
-        spinSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HAT, 6, 5, 1.0f, 1.0f));
-        spinSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HAT, 12, 9, 1.0f, 1.0f));
-        spinSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HAT, 18, 13, 1.0f, 1.0f));
-        spinSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HAT, 24, 13, 1.0f, 1.0f));
-        spinSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HAT, 30, 13, 1.0f, 1.0f));
-        spinSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HAT, 36, 13, 1.0f, 1.0f));
-        return spinSong;
+    public static Song getSlowSpinTick() {
+        Song slowSpinTick = new Song("SlowSpinTick", 20);
+         slowSpinTick.addNote(new Note(Sound.ITEM_SHIELD_BLOCK, 1,1, 1.5f, .05f));
+        return slowSpinTick;
     }
 
+    public static Song getFinalSpot() {
+        Song finalSpot= new Song("FinalSpot", 20);
+        finalSpot.addNote(new Note(Sound.BLOCK_CREAKING_HEART_SPAWN, 1,1, 1, 1f));
+        return finalSpot;
+    }
 
-    public static Song getChargeSong() {
-        Song chargeSong = new Song("ChargeUp", 20);
- 
-        // Example ascending scale
-        // Format: new Note(Sound instrument, startTick, endTick, pitch, volume)
-
-        chargeSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HARP, 0, 1, 0.8f, 1.0f));
-        chargeSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HARP, 2, 3, 0.9f, 1.0f));
-        chargeSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HARP, 4, 5, 1.0f, 1.0f));
-        chargeSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HARP, 6, 7, 1.1f, 1.0f));
-        chargeSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HARP, 8, 9, 1.2f, 1.0f));
-        chargeSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HARP, 10, 11, 1.3f, 1.0f));
-
-        // Also add a breeze.charge sound at tick 0:
-        try {
-            // Some versions might require Sound.valueOf("ENTITY_BREEZE_CHARGE")
-            chargeSong.addNote(new Note(Sound.valueOf("ENTITY_BREEZE_CHARGE"), 0, 1, 1.0f, 1.0f));
-        } catch (IllegalArgumentException e) {
-            // If your server version doesn't have breeze, fallback or ignore
+    public static Song getDrumroll() {
+        Song drumroll = new Song("Drumroll", 20); // 20 ticks per second
+        int tick = 0;
+        for (int i = 0; i < 20; i++) { // 10 drum beats
+            drumroll.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_SNARE, tick, tick, 1.0f, 1.0f));
+            tick += 2; // Slight pause between beats
         }
-
-        return chargeSong;
+        // Final crescendo
+        drumroll.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_BASEDRUM, tick, tick + 1, 1.5f, 1.0f));
+        return drumroll;
     }
-
-    /**
-     * Returns a short "shoot" effect for when the ball is actually launched.
-     */
-    public static Song getShootSong() {
-        Song shootSong = new Song("Shoot", 20);
-
-        // A short chord at tick 0
-        shootSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_BASS, 0, 1, 1.2f, 1.0f));
-
-        // The breeze.shoot sound
-        try {
-            shootSong.addNote(new Note(Sound.valueOf("ENTITY_BREEZE_SHOOT"), 0, 1, 1.0f, 1.0f));
-        } catch (IllegalArgumentException e) {
-            // Fallback if not present
-        }
-
-        return shootSong;
-    }
-
-    /**
-     * Returns a repeating "spin" or "rattle" pattern that might loop while the wheel is spinning.
-     */
-    public static Song getSpinSong() {
-        Song spinSong = new Song("SpinEffect", 20);
-        // We'll do a short repeating pattern for 16 ticks: a "tick" every 4 ticks
-        spinSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HAT, 0, 1, 1.0f, 1.0f));
-        spinSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HAT, 4, 5, 1.0f, 1.0f));
-        spinSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HAT, 8, 9, 1.0f, 1.0f));
-        spinSong.addNote(new Note(Sound.BLOCK_NOTE_BLOCK_HAT, 12, 13, 1.0f, 1.0f));
-        return spinSong;
-    }
+    
+    
 }
