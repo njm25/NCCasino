@@ -537,7 +537,7 @@ else if (betType.contains("Dozen - 2:1")) {
         } else {
             msg.append("§bTotal Wager: ").append(overallWager).append("\n");
             msg.append("§aTotal Payout: ").append(overallPayout).append("\n");
-            if (netProfit >= 0) {
+            if (netProfit > 0) {
                 player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
                 Random random = new Random();
                 // We'll pick from a small array of fun pitches
@@ -552,6 +552,16 @@ else if (betType.contains("Dozen - 2:1")) {
                         );
                 }
                 msg.append("§a§lProfit: ").append("+").append(netProfit).append("\n");
+            } else if (netProfit == 0) {
+                msg.append("§6§lNet: ").append(netProfit).append("\n");
+                player.playSound(
+                    player.getLocation(), 
+                    Sound.ITEM_SHIELD_BREAK,
+                    SoundCategory.MASTER,
+                    1.0f, 
+                    1.0f
+                );
+                player.getWorld().spawnParticle(Particle.LARGE_SMOKE, player.getLocation(), 20);  
             } else {
                 msg.append("§c§lNet: ").append(netProfit).append("\n");
                 player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
