@@ -841,7 +841,7 @@ private void startSpinAnimation(List<Player> activePlayers) {
     final long initialWheelSpeed = 1L;
     final long minWheelSpeed = 6L; // Minimum delay (6L) once reached
     final int spinAccelerationFrames = 20;
-    final int spinDecelerationFrames = 300;
+    final int spinDecelerationFrames = 200;
     long[] currentWheelDelay = {initialWheelSpeed};
 
     Runnable spinTask = new Runnable() {
@@ -850,7 +850,7 @@ private void startSpinAnimation(List<Player> activePlayers) {
             if (!spinAnimationOver) {
                 mce.playSong("RouletteWheel", RouletteSongs.getSpinTick(), false, "otherig");
                 updateWheel(frameCounter * spinDirection);
-
+    
                 if (frameCounter < spinAccelerationFrames) {
                     // Acceleration phase
                     double accelerationProgress = (double) frameCounter / spinAccelerationFrames;
@@ -861,15 +861,14 @@ private void startSpinAnimation(List<Player> activePlayers) {
                     double decelerationProgress = Math.pow((double) framesSinceDecelerationStart / spinDecelerationFrames, 2);
                     currentWheelDelay[0] = Math.min(6L, 1L + (long) (decelerationProgress * (minWheelSpeed - 1L)));
                 }
-                
-                
                 bfastSpinTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, this, currentWheelDelay[0]);
                 frameCounter++;
-            } 
+            }
         }
     };
-
-    fastSpinTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, spinTask, 0L);
+    
+    fastSpinTaskId = Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, spinTask, 0L);
+    
 }
 
 private void startBallMovement(boolean reverseDirection) {
