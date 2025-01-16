@@ -508,7 +508,7 @@ private void openBettingTable(Player player) {
             BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets, internalName, this, globalCountdown);
             Tables.put(player, bettingTable);
             player.openInventory(bettingTable.getInventory());
-            player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER, 1.0f, 1.0f); 
+            player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, SoundCategory.MASTER, 5.0f, 1.0f); 
             mce.addPlayerToChannel("BettingTable", player);
             mce.removePlayerFromChannel("RouletteWheel", player);
             //System.out.println("removed from RouletteWheel added to BettingTable");

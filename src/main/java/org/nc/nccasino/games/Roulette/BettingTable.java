@@ -201,16 +201,7 @@ public class BettingTable implements InventoryHolder, Listener {
     private void addCommonComponents() {
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
         inventory.setItem(46, createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Undo Last Bet", 1));
-
-        ItemStack discItem = new ItemStack(Material.MUSIC_DISC_PIGSTEP, 1);
-        ItemMeta discMeta = discItem.getItemMeta();
-        if (discMeta != null) {
-            discMeta.setDisplayName("Back to Roulette");
-            discMeta.setLore(new ArrayList<>());
-            discItem.setItemMeta(discMeta);
-        }
-        inventory.setItem(52, discItem);
-
+        inventory.setItem(52, createCustomItem(Material.ENDER_PEARL, "Back to Wheel", 1));
         int slot = 47;
         List<Map.Entry<String, Double>> sortedEntries = new ArrayList<>(chipValues.entrySet());
         sortedEntries.sort(Map.Entry.comparingByValue());
