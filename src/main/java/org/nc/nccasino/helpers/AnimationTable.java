@@ -160,6 +160,7 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
                 rowShift++;
 
                 if (rowShift >= printmsg[0].length) {
+                    mce.removePlayerFromAllChannels(player);
                     Bukkit.getScheduler().cancelTask(taskId[0]);
                     animationTasks.remove(playerUUID);
                     if (!animationStopped.get(playerUUID)) {
