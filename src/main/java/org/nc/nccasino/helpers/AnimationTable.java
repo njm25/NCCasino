@@ -12,12 +12,14 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.VSE.*;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 public class AnimationTable extends DealerInventory implements InventoryHolder, Listener {
+    private final MultiChannelEngine mce;
     private final Inventory inventory;
     private final UUID playerId;
     private final Nccasino plugin;
@@ -44,6 +46,7 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
         this.clickAllowed = new HashMap<>();
         this.animationCallbacks = new HashMap<>();
         this.animationStopped = new HashMap<>();
+        this.mce = new MultiChannelEngine(plugin);
 
         // Register the event listener
         Bukkit.getPluginManager().registerEvents(this, plugin);
@@ -55,6 +58,8 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
     }
 
     public void animateMessage(Player player, Runnable onAnimationComplete) {
+        mce.addPlayerToChannel(player.getUniqueId().toString(), player);
+        mce.playSong(player.getUniqueId().toString(), AnimationSongs.getAnimationSong(animationMessage), false, animationMessage);
         UUID playerUUID = player.getUniqueId();
         animationCallbacks.put(playerUUID, onAnimationComplete);
         animationStopped.put(playerUUID, false);
@@ -208,30 +213,21 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
 
         if (clickAllowed.getOrDefault(playerUUID, false) && !animationStopped.get(playerUUID)) {
             stopAnimation(player);
+            mce.removePlayerFromAllChannels(player);
         }
     }
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
+          if (event.getInventory().getHolder() != this) return;
         Player player = (Player) event.getPlayer();
         UUID playerUUID = player.getUniqueId();
-
         if (!playerUUID.equals(playerId)) return;
-        if (event.getInventory().getHolder() != this) return;
-
         if (event.getReason() == InventoryCloseEvent.Reason.PLAYER) {
-            stopAnimation(player);
+             stopAnimation(player);
+             mce.removePlayerFromAllChannels(player);
         }
     }
-
-
-
-
-
-
-
-
-
 
 
     static {
