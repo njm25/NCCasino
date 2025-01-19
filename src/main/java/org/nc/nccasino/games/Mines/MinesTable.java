@@ -111,7 +111,7 @@ public class MinesTable implements InventoryHolder, Listener {
         // Delaying the animation inventory opening to ensure it displays properly
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             // Pass the animation message from the config
-            AnimationTable animationTable = new AnimationTable(player, plugin, "NCCasino - "+animationMessage, 0);
+            AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
             player.openInventory(animationTable.getInventory());
 
             // Start animation and pass a callback to return to MinesTable after animation completes

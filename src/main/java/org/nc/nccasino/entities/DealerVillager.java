@@ -257,7 +257,7 @@ public class DealerVillager {
             // Update the config and ensure correct hierarchy
             plugin.getConfig().set("dealers." + internalName + ".game", gameName);
             plugin.getConfig().set("dealers." + internalName + ".timer", defaultTimer);
-            plugin.getConfig().set("dealers." + internalName + ".animation-message", gameName); // Ensure the animation message is properly set
+            plugin.getConfig().set("dealers." + internalName + ".animation-message", "NCCasino - "+gameName); 
             plugin.saveConfig();
     
             DealerInventory.updateInventory(dealerId, newInventory);
