@@ -3,7 +3,6 @@ package org.nc.nccasino;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
@@ -11,7 +10,6 @@ import org.bukkit.entity.Villager;
 import org.bukkit.event.Listener;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.commands.CommandExecution;
 import org.nc.nccasino.commands.CommandTabCompleter;
@@ -47,7 +45,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         loadCurrencyFromConfig();
 
         // Register event listeners
-        getServer().getPluginManager().registerEvents(new DealerInteractListener(this), this);
+        getServer().getPluginManager().registerEvents(new DealerInteractListener(), this);
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new DealerDeathHandler(this), this);
         getServer().getPluginManager().registerEvents(new DealerEventListener(), this);
@@ -147,7 +145,6 @@ private void reinitializeDealerVillagers() {
         for (Entity entity : world.getEntities()) {
             if (entity instanceof Villager villager) {
                 if (DealerVillager.isDealerVillager(villager)) {
-                    UUID dealerId = DealerVillager.getUniqueId(villager);
                     String internalName = DealerVillager.getInternalName(villager);
                     
                     // Ensure that the dealer's game type and other data are updated correctly

@@ -50,9 +50,7 @@ public class BlackjackInventory extends DealerInventory implements Listener {
     private final Map<UUID, Integer> playerSeats; // Track player seats
     private final Map<UUID, Map<Integer, Double>> playerBets; // Track player bets by slot number
     private final Map<UUID, List<Double>> lastBetAmounts; // Track the last bet amounts placed by the player
-    private boolean gameStarted; // Track whether the game has started
     private boolean gameActive; // Track whether the game is active
-    private double selectedWager; // Track the selected wager
     private final Map<UUID, Boolean> clickAllowed = new HashMap<>(); // Track click state per player
     private int countdownTaskId; // Task ID for the countdown timer
     private UUID currentPlayerId; // Track the current player
@@ -67,24 +65,20 @@ public class BlackjackInventory extends DealerInventory implements Listener {
     private Deck deck; // Declare the deck as a class variable
     private Boolean firstopen=true;
     private Boolean firstFin=true;
-    private String dealerName= "";
 
     public BlackjackInventory(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, 54, "Blackjack Table"); // Using 54 slots for start menu
         this.plugin = plugin; // Store the plugin reference
         this.chipValues = new HashMap<>(); // Initialize chip values storage
         this.internalName = internalName; // Store the internal name
-        this.gameStarted = false; // Initialize game started flag
         this.gameActive = false; // Initialize game active flag
         this.playerSeats = new HashMap<>(); // Initialize player seats storage
         this.playerBets = new HashMap<>(); // Initialize player bets storage
         this.lastBetAmounts = new HashMap<>(); // Initialize last bet amounts storage
-        this.selectedWager = 0; // Initialize selected wager
         this.countdownTaskId = -1; // Initialize countdown task ID
         this.deck = new Deck(1); // Initialize the deck
         loadChipValuesFromConfig(); // Load chip values from config
         // Initialize the start menu
-        this.dealerName = dealerName;
         Nccasino nccasino = (Nccasino) plugin;
 
         // Check if the configuration key exists
@@ -179,12 +173,6 @@ private void registerListener() {
                 this.chipValues.put(chipName, chipValue);
             }
         }
-    }
-
-    // Initialize Blackjack-specific start menu
-    private void initializeStartMenu() {
-        inventory.clear(); // Clear the inventory before setting up the page
-        addItem(createCustomItem(Material.BLACK_WOOL, "Start Blackjack"), 22); // Add start button at the center
     }
 
     // Initialize Blackjack-specific game menu
@@ -556,6 +544,7 @@ private void handleDoubleDown(Player player) {
     }
 }
 
+/*
 private void handleInsurance(Player player) {
     synchronized (turnLock) {
         UUID playerId = player.getUniqueId();
@@ -576,7 +565,7 @@ private void handleInsurance(Player player) {
         allowPlayerActions(player); // Continue player's turn
     }
 }
-
+ */
     // Handle chair click
     private void handleChairClick(int slot, Player player) {
         UUID playerId = player.getUniqueId();
@@ -1250,11 +1239,6 @@ private void scheduleCardDealingWithDelay(int slot, Card card, long delay, UUID 
             updateDealerHead(); // Update dealer's head lore
         }
     }, delay);
-}
-
-
-private void setClickAllowed(UUID playerId, boolean allowed) {
-    clickAllowed.put(playerId, allowed);
 }
 
 

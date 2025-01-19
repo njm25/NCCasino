@@ -10,9 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
@@ -21,14 +19,10 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.nc.VSE.*;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.games.Roulette.RouletteSongs;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -49,20 +43,16 @@ public class RouletteInventory extends DealerInventory implements Listener {
         24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
     );
     private final Set<Player> switchingPlayers = new HashSet<>();
-    private int currentBallPosition = 0;
-    private int pageNum;
     private final Nccasino plugin;
     private final Map<UUID, Stack<Pair<String, Integer>>> Bets;
     public final Map<Player, BettingTable> Tables;
     private Map<Player, Integer> activeAnimations;
-    private static final NamespacedKey BETS_KEY = new NamespacedKey(Nccasino.getPlugin(Nccasino.class), "bets");
     private int frameCounter;
     private int bettingCountdownTaskId = -1;
     private boolean betsClosed = false;
     private int bettingTimeSeconds = 25;
     private int globalCountdown=bettingTimeSeconds;
     private String internalName;
-    private Boolean closeFlag = false;
     private Boolean firstopen = true;
     private Boolean firstFin = true;
     private int spinTaskId;
@@ -120,11 +110,9 @@ private int ballPreviousSlot = -1;
 private boolean isSwitchingQuadrant = false;
 private boolean finalpicked;
 private int winningNumber;
-private boolean firsthit=false;
 private boolean flip2=true;
 private boolean flip4=true;
 private int wheelSpinDirection = 1; // 1 for clockwise, -1 for counter-clockwise
-private boolean flag2=false;
 private int lastDisplayedOffset = 0;
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -133,7 +121,6 @@ private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
     public RouletteInventory(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, 54, "Roulette Wheel");
         this.plugin = plugin;
-        this.pageNum = 1;
         this.Bets = new HashMap<>();
         this.Tables = new HashMap<>();
         this.activeAnimations = new HashMap<>();
@@ -296,7 +283,6 @@ private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
 
     private void afterAnimationComplete(Player player) {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            closeFlag = true;
             if (player != null&&player.isOnline()) {
                // System.out.println("Adding"+player+"to master and roulette"); 
                 mce.addPlayerToChannel("Master", player);
@@ -371,10 +357,6 @@ private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
 
         int slot = event.getRawSlot();
         handleGameMenuClick(slot, player);
-    }
-
-    private void setupGameMenu() {
-        startBettingTimer();
     }
 
 
@@ -484,15 +466,6 @@ private void handleGameMenuClick(int slot, Player player) {
 }
 }
 
-private void adjustBettingTimer(int adjustment,int quad) {
-    if ((bettingTimeSeconds > 5 || adjustment > 0) && (bettingTimeSeconds < 64 || adjustment < 0)) {
-        bettingTimeSeconds += adjustment;
-        plugin.getConfig().set("dealers." + internalName + ".timer", bettingTimeSeconds);
-        plugin.saveConfig();
-        updateTimerItems(quad,bettingTimeSeconds);
-    }
-}
-
 private void openBettingTable(Player player) {
     switchingPlayers.add(player); // Mark the player as switching inventories
 
@@ -536,36 +509,6 @@ private void exitGame(Player player) {
     }
 }
 
-
-
-
-private void updateTimerItems(int quadrant, int time) {
-    System.out.println(time);
-    switch (quadrant) {
-        case 1: // Top-right quadrant
-            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", time), 46);
-            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", time), 47);
-            break;
-
-        case 2: // Top-left quadrant
-            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", time), 50);
-            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", time), 51);
-            break;
-
-        case 3: // Bottom-left quadrant
-            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", time), 5);
-            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", time), 6);
-            break;
-
-        case 4: // Bottom-right quadrant
-            addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", time), 1);
-            addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", time), 2);
-            break;
-
-        default:
-            break;
-    }
-}
 
    
     public void addBet(UUID playerId, String betType, int wager) {
@@ -642,21 +585,13 @@ private void updateTimerItems(int quadrant, int time) {
         firstFin = true;
     }
 
-    private void setTimer(int set) {
-        bettingTimeSeconds = set;
-    }
-
     
 
-    private boolean isActivePlayer(Player player) {
-        InventoryView openInventoryView = player.getOpenInventory();
-        Inventory topInventory = openInventoryView.getTopInventory();
-        return (topInventory.getHolder() == this || topInventory.getHolder() instanceof BettingTable);
-    }
-
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     public Map<UUID,Stack<Pair<String, Integer>>> newtry=new HashMap();
     private List<Player> playersWithBets = new ArrayList<>();
 
+    @SuppressWarnings("unchecked")
     private void handleBetClosure() {
         newtry.clear();
         betsClosed = true;
@@ -1210,7 +1145,6 @@ private void handleWinningNumber() {
     // Get the number corresponding to the final slot
     winningNumber = getNumberForSlot(ballPreviousSlot, currentQuadrant);
     finalpicked = true;
-    firsthit = true;
     mce.playSong("RouletteWheel", RouletteSongs.getFinalSpot(), false, "Final spot");
 
     // Loop over players who have placed bets
@@ -1265,7 +1199,6 @@ private void prepareNextRound() {
     ballMovementStarted = false;
     spinAnimationOver = false;
     finalpicked = false;
-    firsthit = false;
     trackSequenceIndex = 0;
     ballCurrentTrack = 0;
     ballCurrentIndex = 0;
@@ -1467,7 +1400,6 @@ private void switchStayToQuadrant(int quad){
             default:
                 throw new IllegalArgumentException("Invalid quadrant index");
         }
-        boolean flag=false;
         boolean newflag=false;
 
 
@@ -1509,10 +1441,6 @@ private void switchStayToQuadrant(int quad){
             }
             int number = wheelLayout.get(wheelPosition);
             
-            if(number==winningNumber&&finalpicked&&!foundfirstquadrant){
-                flag=true;
-                flag2=true;
-            }
             // Create the item with the correct number and place it in the quadrant slot
             ItemStack item = createCustomItem(getMaterialForNumber(number),  ""+number, (number == 0) ? 1 : number);
             inventory.setItem(quadrantSlots[i], item);
@@ -1712,14 +1640,6 @@ private void fillDecorativeSlots(int[] slots, Material material) {
         }
         return false;
     }
-
-    private void resetGameForNextSpin() {
-        betsClosed = false;
-        for (BettingTable bettingTable : Tables.values()) {
-            bettingTable.resetBets();
-        }
-    }
-
     public void updatePlayerBets(UUID playerId, Stack<Pair<String, Integer>> bets, Player player) {
         if (bets == null) {
             bets = new Stack<>();

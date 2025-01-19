@@ -23,8 +23,6 @@ public class RailTable implements InventoryHolder, Listener {
 
     private final Inventory inventory;
     private final UUID playerId;
-    private final UUID dealerId;
-    private final Villager dealer;
     private final Nccasino plugin;
     private final String internalName;
     private final RailInventory minesInventory;
@@ -38,8 +36,6 @@ public class RailTable implements InventoryHolder, Listener {
     private Boolean closeFlag=false;
     public RailTable(Player player, Villager dealer, Nccasino plugin, String internalName, RailInventory minesInventory) {
         this.playerId = player.getUniqueId();
-        this.dealerId = dealer.getUniqueId();
-        this.dealer = dealer;
         this.plugin = plugin;
         this.internalName = internalName;
         this.minesInventory = minesInventory;
