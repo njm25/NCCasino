@@ -229,9 +229,9 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
         Player player = (Player) event.getPlayer();
         UUID playerUUID = player.getUniqueId();
         if (!playerUUID.equals(playerId)) return;
-        if (event.getReason() == InventoryCloseEvent.Reason.PLAYER) {
-             stopAnimation(player);
-             mce.removePlayerFromAllChannels(player);
+        if (event.getPlayer() instanceof Player ) {
+            stopAnimation(player);
+            mce.removePlayerFromAllChannels(player);
         }
     }
 

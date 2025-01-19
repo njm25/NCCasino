@@ -1055,22 +1055,43 @@ private void startNextPlayerTurn() {
     // Now proceed with the turn if there are players left
     while (playerIterator.hasNext()) {
         UUID previousPlayerId = currentPlayerId;
-        if(previousPlayerId!=null){
+        if (previousPlayerId != null) {
             ItemStack prevItem = inventory.getItem(playerSeats.get(previousPlayerId) + 1);
             ItemStack replacementItem = createCustomItem(Material.PAPER, "Your turn is over.", 1);
-            replacementItem.setLore(prevItem.getLore());
+            
+            // Retrieve and transfer lore properly using ItemMeta
+            if (prevItem != null && prevItem.hasItemMeta()) {
+                ItemMeta prevMeta = prevItem.getItemMeta();
+                if (prevMeta.hasLore()) {
+                    ItemMeta replacementMeta = replacementItem.getItemMeta();
+                    replacementMeta.setLore(prevMeta.getLore());
+                    replacementItem.setItemMeta(replacementMeta);
+                }
+            }
+            
             inventory.setItem(playerSeats.get(previousPlayerId) + 1, replacementItem);
         }
+        
         currentPlayerId = playerIterator.next();
         if (!playerDone.getOrDefault(currentPlayerId, false)) { // Skip players who are done
-            
             Player currentPlayer = Bukkit.getPlayer(currentPlayerId);
             ItemStack item = inventory.getItem(playerSeats.get(currentPlayerId) + 1);
             
             ItemStack enchantedItem = createEnchantedItem(Material.BOOK, "Your turn.", 1);
-            enchantedItem.setLore(item.getLore());
+            
+            // Retrieve and transfer lore properly using ItemMeta
+            if (item != null && item.hasItemMeta()) {
+                ItemMeta itemMeta = item.getItemMeta();
+                if (itemMeta.hasLore()) {
+                    ItemMeta enchantedMeta = enchantedItem.getItemMeta();
+                    enchantedMeta.setLore(itemMeta.getLore());
+                    enchantedItem.setItemMeta(enchantedMeta);
+                }
+            }
+
             addItem(enchantedItem, playerSeats.get(currentPlayerId) + 1);
-            currentPlayer.playSound(currentPlayer.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE,SoundCategory.MASTER, 1.0f, 1.0f); 
+            currentPlayer.playSound(currentPlayer.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f); 
+            
             // Check if the player's hand value is 21
             int handValue = calculateHandValue(playerHands.get(currentPlayerId));
             if (handValue == 21) {
@@ -1091,12 +1112,24 @@ private void startNextPlayerTurn() {
             return;
         }
     }
-    if(currentPlayerId!=null){
+
+    if (currentPlayerId != null) {
         ItemStack prevItem = inventory.getItem(playerSeats.get(currentPlayerId) + 1);
         ItemStack replacementItem = createCustomItem(Material.PAPER, "Your turn is over.", 1);
-        replacementItem.setLore(prevItem.getLore());
+        
+        // Retrieve and transfer lore properly using ItemMeta
+        if (prevItem != null && prevItem.hasItemMeta()) {
+            ItemMeta prevMeta = prevItem.getItemMeta();
+            if (prevMeta.hasLore()) {
+                ItemMeta replacementMeta = replacementItem.getItemMeta();
+                replacementMeta.setLore(prevMeta.getLore());
+                replacementItem.setItemMeta(replacementMeta);
+            }
+        }
+
         inventory.setItem(playerSeats.get(currentPlayerId) + 1, replacementItem);
     }
+
     // No more players left, proceed to the dealer's turn
     startDealerTurn();
 }

@@ -1,7 +1,6 @@
 package org.nc.nccasino.commands;
 
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -26,30 +25,25 @@ public class CreateCommand implements CasinoCommand {
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(Component.text("This command can only be used by players.")
-                    .color(NamedTextColor.RED));
+            sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
             return true;
         }
 
         if (args.length < 2) {
-            sender.sendMessage(Component.text("Usage: /ncc create ")
-                    .color(NamedTextColor.AQUA)
-                    .append(Component.text("<name>").color(NamedTextColor.YELLOW)));
+            sender.sendMessage(ChatColor.AQUA + "Usage: /ncc create " + ChatColor.YELLOW + "<name>");
             return true;
         }
 
         Player player = (Player) sender;
         String internalName = args[1];
 
-// Check if the internal name already exists
-Nccasino nccasino = (Nccasino) plugin;
-if (nccasino.getConfig().contains("dealers." + internalName)) {
-    sender.sendMessage(Component.text("A dealer with the internal name '")
-            .color(NamedTextColor.RED)
-            .append(Component.text(internalName).color(NamedTextColor.YELLOW))
-            .append(Component.text("' already exists.").color(NamedTextColor.RED)));
-    return true;
-}
+        // Check if the internal name already exists
+        Nccasino nccasino = (Nccasino) plugin;
+        if (nccasino.getConfig().contains("dealers." + internalName)) {
+            sender.sendMessage(ChatColor.RED + "A dealer with the internal name '" +
+                    ChatColor.YELLOW + internalName + ChatColor.RED + "' already exists.");
+            return true;
+        }
 
         // Store the dealer configuration with default values
         nccasino.saveDefaultDealerConfig(internalName);
@@ -58,9 +52,9 @@ if (nccasino.getConfig().contains("dealers." + internalName)) {
         Location location = player.getLocation();
         DealerVillager.spawnDealer(plugin, location, "Dealer Villager", internalName);
 
-    // Save dealer location and chunk data
+        // Save dealer location and chunk data
         File dealersFile = new File(nccasino.getDataFolder(), "data/dealers.yaml");
-        
+
         // Ensure the parent directory exists
         if (!dealersFile.getParentFile().exists()) {
             dealersFile.getParentFile().mkdirs();
@@ -83,12 +77,10 @@ if (nccasino.getConfig().contains("dealers." + internalName)) {
             nccasino.getLogger().severe("Failed to save dealer location to " + dealersFile.getPath());
             e.printStackTrace();
         }
-    nccasino.saveConfig();
+        nccasino.saveConfig();
 
-        sender.sendMessage(Component.text("Dealer with internal name '")
-        .color(NamedTextColor.GREEN)
-        .append(Component.text(internalName).color(NamedTextColor.YELLOW))
-        .append(Component.text("' has been created.").color(NamedTextColor.GREEN)));
+        sender.sendMessage(ChatColor.GREEN + "Dealer with internal name '" +
+                ChatColor.YELLOW + internalName + ChatColor.GREEN + "' has been created.");
 
         return true;
     }

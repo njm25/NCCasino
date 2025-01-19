@@ -1,10 +1,5 @@
 package org.nc.nccasino;
 
-import com.mojang.brigadier.Command;
-import com.mojang.brigadier.arguments.StringArgumentType;
-import io.papermc.paper.command.brigadier.Commands;
-import io.papermc.paper.plugin.lifecycle.event.LifecycleEventManager;
-import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -18,7 +13,8 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.nc.nccasino.commands.CommandExecutor;
+import org.nc.nccasino.commands.CommandExecution;
+import org.nc.nccasino.commands.CommandTabCompleter;
 import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.helpers.DealerInventory;
 import org.nc.nccasino.listeners.DealerDeathHandler;
@@ -35,13 +31,15 @@ import java.util.UUID;
 
 
 public final class Nccasino extends JavaPlugin implements Listener {
-    private final NamespacedKey INTERNAL_NAME_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(Nccasino.class), "internal_name");
+    private NamespacedKey INTERNAL_NAME_KEY; // Declare it here
+
     private Material currency; // Material used for betting currency
     private String currencyName; // Display name for the currency
     public Map<UUID,DealerInventory> inventories=new HashMap<>();
    
     @Override
     public void onEnable() {
+        INTERNAL_NAME_KEY = new NamespacedKey(this, "internal_name"); 
         // Save default config if not present
         saveDefaultConfig();
 
@@ -54,148 +52,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new DealerDeathHandler(this), this);
         getServer().getPluginManager().registerEvents(new DealerEventListener(), this);
 
-        // Initialize the CommandExecutor instance
-        CommandExecutor commandExecutor = new CommandExecutor(this);
-
-        // Register the /ncc command using Paper's Brigadier-based system
-        LifecycleEventManager<Plugin> manager = this.getLifecycleManager();
-        manager.registerEventHandler(LifecycleEvents.COMMANDS, event -> {
-            final Commands commands = event.registrar();
-            commands.register(
-                // Base command: /ncc
-                Commands.literal("ncc")
-
-                    // Subcommand: /ncc help
-                    .then(Commands.literal("help")
-                        .executes(ctx -> {
-                            CommandSender sender = ctx.getSource().getSender();
-                            commandExecutor.execute(sender, "ncc", new String[]{"help"});
-                            return Command.SINGLE_SUCCESS;
-                        })
-                    )
-
-                    // Subcommand: /ncc reload
-                    .then(Commands.literal("reload")
-                        .executes(ctx -> {
-                            CommandSender sender = ctx.getSource().getSender();
-                            commandExecutor.execute(sender, "ncc", new String[]{"reload"});
-                            return Command.SINGLE_SUCCESS;
-                        })
-                    )
-
-                      // /ncc list [page]
-                .then(Commands.literal("list")
-                // Case 1: No page argument -> default page 1
-                .executes(ctx -> {
-                    CommandSender sender = ctx.getSource().getSender();
-                    // calls "list" with no page in your CommandExecutor
-                    commandExecutor.execute(sender, "ncc", new String[]{"list"});
-                    return Command.SINGLE_SUCCESS;
-                })
-                // Case 2: user provides integer page argument
-                .then(Commands.argument("page", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
-                    .suggests((context, builder) -> {
-                        // Dynamically calculate total pages
-                        if (getConfig().contains("dealers")) {
-                            // number of dealers
-                            int totalDealers = getConfig().getConfigurationSection("dealers").getKeys(false).size();
-                            int dealersPerPage = 6; // from your ListDealersCommand
-                            int totalPages = (int) Math.ceil((double) totalDealers / dealersPerPage);
-
-                            if (totalPages < 1) {
-                                totalPages = 1; // at least 1 page
-                            }
-
-                            for (int i = 1; i <= totalPages; i++) {
-                                builder.suggest(i);
-                            }
-                        } else {
-                            // No dealers => just suggest page 1
-                            builder.suggest(1);
-                        }
-                        return builder.buildFuture();
-                    })
-                    .executes(ctx -> {
-                        CommandSender sender = ctx.getSource().getSender();
-                        int page = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "page");
-                        // call "list" with that page
-                        commandExecutor.execute(sender, "ncc", new String[]{"list", String.valueOf(page)});
-                        return Command.SINGLE_SUCCESS;
-                    })
-                )
-            )
-
-                    // Subcommand: /ncc create <internalName>
-                    .then(Commands.literal("create")
-                        .then(Commands.argument("internalName", StringArgumentType.word())
-                            .executes(ctx -> {
-                                CommandSender sender = ctx.getSource().getSender();
-                                String internalName = StringArgumentType.getString(ctx, "internalName");
-                                commandExecutor.execute(sender, "ncc", new String[]{"create", internalName});
-                                return Command.SINGLE_SUCCESS;
-                            })
-                        )
-                    )
-
-                    .then(Commands.literal("delete")
-
-                    // ----------------------------------------------------------------
-                    // Case 1: /ncc delete *
-                    // A dedicated literal node for "*" (no quotes needed).
-                    .then(Commands.literal("*")
-                        .executes(ctx -> {
-                            CommandSender sender = ctx.getSource().getSender();
-                            // Here we call CommandExecutor with "delete *"
-                            commandExecutor.execute(sender, "ncc", new String[]{"delete", "*"});
-                            return Command.SINGLE_SUCCESS;
-                        })
-                    )
-                
-                    // ----------------------------------------------------------------
-                    // Case 2: /ncc delete <target>
-                    // A single argument node that suggests either:
-                    //  - "No dealers to delete" if none exist
-                    //  - Each dealer name if they do
-                    .then(Commands.argument("target", StringArgumentType.word())
-                        .suggests((context, builder) -> {
-                            // 1) If no dealers exist
-                            if (!getConfig().contains("dealers")
-                                || getConfig().getConfigurationSection("dealers").getKeys(false).isEmpty()) {
-                                
-                                // Only suggestion is a placeholder
-                                builder.suggest("No dealers to delete");
-                            } 
-                            else {
-                                // 2) Otherwise, suggest each dealer name
-                                for (String dealerName : getConfig().getConfigurationSection("dealers").getKeys(false)) {
-                                    builder.suggest(dealerName);
-                                }
-                            }
-                            return builder.buildFuture();
-                        })
-                        .executes(ctx -> {
-                            CommandSender sender = ctx.getSource().getSender();
-                            String target = StringArgumentType.getString(ctx, "target");
-                            // Now dispatch to your CommandExecutor
-                            commandExecutor.execute(sender, "ncc", new String[]{"delete", target});
-                            return Command.SINGLE_SUCCESS;
-                        })
-                    )
-                )
-                    // Default execution if no subcommand is provided: /ncc
-                    .executes(ctx -> {
-                        CommandSender sender = ctx.getSource().getSender();
-                        commandExecutor.execute(sender, "ncc", new String[]{});
-                        return Command.SINGLE_SUCCESS;
-                    })
-
-                    .build(), // Build the command node
-
-                // Description of the command (for logging/debugging), plus aliases if desired
-                "Command execution",
-                List.of("ncc")
-            );
-        });
+        // Register the command executor
+        this.getCommand("ncc").setExecutor(new CommandExecution(this));
+        
+        // Register tab completion (optional, see below)
+        this.getCommand("ncc").setTabCompleter(new CommandTabCompleter(this));
 
         // Optionally, load any pre-existing dealer villagers from config
         loadDealerVillagers();

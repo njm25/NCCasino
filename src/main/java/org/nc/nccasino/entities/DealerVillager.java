@@ -1,7 +1,6 @@
 package org.nc.nccasino.entities;
 
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -264,16 +263,16 @@ public class DealerVillager {
             setName(villager, newName);
             setAnimationMessage(villager, gameName); // Update the animation message to match the game type
     
-            player.sendMessage(Component.text("Dealer '")
-                    .color(NamedTextColor.GREEN)
-                    .append(Component.text(internalName).color(NamedTextColor.YELLOW))
-                    .append(Component.text("' has been set to ").color(NamedTextColor.GREEN))
-                    .append(Component.text(gameName).color(NamedTextColor.YELLOW))
-                    .append(Component.text(".").color(NamedTextColor.GREEN)));
+            player.sendMessage(ChatColor.GREEN + "Dealer '" 
+            + ChatColor.YELLOW + internalName 
+            + ChatColor.GREEN + "' has been set to " 
+            + ChatColor.YELLOW + gameName 
+            + ChatColor.GREEN + ".");
+        
         } else {
-            player.sendMessage(Component.text("The game is already set to " + gameName + ".")
-                    .color(NamedTextColor.RED));
+            player.sendMessage(ChatColor.RED + "The game is already set to " + gameName + ".");
         }
+    
     }
     public static void updateGameType(Villager villager, String gameName, int timer, String anmsg) {
         UUID dealerId = getUniqueId(villager);
