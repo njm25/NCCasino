@@ -14,6 +14,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.*;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
@@ -905,20 +906,26 @@ public class MinesTable implements InventoryHolder, Listener {
         // Handle rebet logic
         if (rebetEnabled && previousWager > 0) {
             if (hasEnoughCurrency(player, (int) previousWager)) {
-                removeWagerFromInventory(player, (int) previousWager);
-                betStack.push(previousWager);
-                updateBetLore(52, previousWager);
-                player.sendMessage("§dRebet placed: " +previousWager);
-                wagerPlaced = true;
+                // Check if the player still has the MinesTable open before deducting the bet
+                InventoryView openInventory = player.getOpenInventory();
+                if (openInventory != null && openInventory.getTopInventory().getHolder() instanceof MinesTable) {
+                    removeWagerFromInventory(player, (int) previousWager);
+                    betStack.push(previousWager);
+                    updateBetLore(52, previousWager);
+                    player.sendMessage("§dRebet placed: " + previousWager);
+                    wagerPlaced = true;
+                } 
             } else {
                 player.sendMessage("§c2 broke 4 rebet.");
-                 player.sendMessage("§cWager reset to 0.");
+                player.sendMessage("§cWager reset to 0.");
                 wager = 0;
                 betStack.clear();
                 updateBetLore(52, wager);
                 wagerPlaced = false;
             }
-        } else {
+        }
+
+         else {
             player.sendMessage("§dRebet is off. ");
             player.sendMessage("§dWager reset to 0.");
             wager = 0;
@@ -1053,7 +1060,17 @@ public class MinesTable implements InventoryHolder, Listener {
             }
             betStack.clear();
         }
+        
+        InventoryView openInventory = player.getOpenInventory();
+        boolean playerStillInMines = (openInventory != null && openInventory.getTopInventory().getHolder() instanceof MinesTable);
+
+        if (wagerPlaced && rebetEnabled && previousWager > 0 && !playerStillInMines) {
+            refundBet(player, (int) previousWager);
+        }
+
+        betStack.clear();
     
+
         // Notify minesInventory to remove the player's table
         minesInventory.removeTable(playerId);
     
