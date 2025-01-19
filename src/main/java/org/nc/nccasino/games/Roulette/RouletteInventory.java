@@ -287,7 +287,7 @@ private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
         String animationMessage = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             activeAnimations.put(player, 1);
-            AnimationTable animationTable = new AnimationTable(player, plugin, "NCCasino - "+animationMessage, 0);
+            AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
             player.openInventory(animationTable.getInventory());
 
             animationTable.animateMessage(player, () -> afterAnimationComplete(player));
