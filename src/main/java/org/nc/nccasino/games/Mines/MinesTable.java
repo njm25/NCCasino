@@ -1015,25 +1015,36 @@ public class MinesTable implements InventoryHolder, Listener {
         int fullStacks = totalAmount / 64;
         int remainder = totalAmount % 64;
         Material currencyMaterial = plugin.getCurrency(internalName);
-
+        int totalDropped = 0; // Track how many items were dropped
+    
         for (int i = 0; i < fullStacks; i++) {
             ItemStack stack = new ItemStack(currencyMaterial, 64);
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
-                // Drop the item at the player's location if inventory is full
-                player.getWorld().dropItemNaturally(player.getLocation(), stack);
+                for (ItemStack item : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), item);
+                    totalDropped += item.getAmount();
+                }
             }
         }
-
+    
         if (remainder > 0) {
             ItemStack stack = new ItemStack(currencyMaterial, remainder);
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
-                // Drop the item at the player's location if inventory is full
-                player.getWorld().dropItemNaturally(player.getLocation(), stack);
+                for (ItemStack item : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), item);
+                    totalDropped += item.getAmount();
+                }
             }
         }
+    
+        // Print total dropped if any items couldn't fit in inventory
+        if (totalDropped > 0) {
+            player.sendMessage("§cNo room for " + totalDropped + " "+plugin.getCurrencyName()+"s, dropping...");
+        }
     }
+    
 
     private void endGame() {
         if (player != null) {

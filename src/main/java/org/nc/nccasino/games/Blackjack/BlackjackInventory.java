@@ -1328,10 +1328,43 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
     if (bets != null) {
         double totalBet = bets.values().stream().mapToDouble(Double::doubleValue).sum();
         double payout = totalBet * multiplier;
-        addWagerToInventory(player, payout);
-        player.sendMessage("§a§l" + payout + " " + plugin.getCurrencyName(internalName) + "s");
+        int totalAmount = (int) Math.floor(payout);
+        int fullStacks = totalAmount / 64;
+        int remainder = totalAmount % 64;
+        Material currencyMaterial = plugin.getCurrency(internalName);
+        int totalDropped = 0; // Track how many items were dropped
+
+        for (int i = 0; i < fullStacks; i++) {
+            ItemStack stack = new ItemStack(currencyMaterial, 64);
+            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
+            if (!leftover.isEmpty()) {
+                for (ItemStack item : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), item);
+                    totalDropped += item.getAmount();
+                }
+            }
+        }
+
+        if (remainder > 0) {
+            ItemStack stack = new ItemStack(currencyMaterial, remainder);
+            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
+            if (!leftover.isEmpty()) {
+                for (ItemStack item : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), item);
+                    totalDropped += item.getAmount();
+                }
+            }
+        }
+
+        // Print total dropped if any items couldn't fit in inventory
+        if (totalDropped > 0) {
+            player.sendMessage("§a§l" + payout + " " + plugin.getCurrencyName(internalName) + "s");
+            player.sendMessage("§cNo room for " + totalDropped + " "+plugin.getCurrencyName()+"s, dropping...");        } else {
+
+        }
     }
 }
+
 
 // Utility method to check if the hand has an Ace and a 10-value card
 private boolean hasAceAndTenValueCard(List<ItemStack> hand) {
