@@ -34,14 +34,10 @@ public class MinesTable implements InventoryHolder, Listener {
     private final Inventory inventory;
     private final UUID playerId;
     private final Player player;
-    private final UUID dealerId;
-    private final Villager dealer;
     private final Nccasino plugin;
     private final String internalName;
     private final MinesInventory minesInventory;
-    private final Map<Player, Integer> animationTasks;
     private final Map<String, Double> chipValues;
-    private final Map<Player, Boolean> animationCompleted;
     private Boolean clickAllowed = true;
     private double selectedWager;
     private final Deque<Double> betStack = new ArrayDeque<>();
@@ -78,15 +74,11 @@ public class MinesTable implements InventoryHolder, Listener {
     public MinesTable(Player player, Villager dealer, Nccasino plugin, String internalName, MinesInventory minesInventory) {
         this.playerId = player.getUniqueId();
         this.player = player;
-        this.dealerId = dealer.getUniqueId();
-        this.dealer = dealer;
         this.plugin = plugin;
         this.internalName = internalName;
         this.minesInventory = minesInventory;
         this.inventory = Bukkit.createInventory(this, 54, "Mines");
         this.chipValues = new LinkedHashMap<>();
-        this.animationTasks = new HashMap<>();
-        this.animationCompleted = new HashMap<>();
 
         // Initialize game state
         this.gameState = GameState.PLACING_WAGER;
@@ -308,6 +300,7 @@ public class MinesTable implements InventoryHolder, Listener {
         }
     }
 
+    @SuppressWarnings("null")
     @EventHandler
     public void handleClick(InventoryClickEvent event) {
         if (!(event.getInventory().getHolder() instanceof MinesTable)) return;
@@ -861,7 +854,7 @@ public class MinesTable implements InventoryHolder, Listener {
     
     private void spreadEmeraldsFrom(int centerX, int centerY, int currentRadius) {
         // Expansion of emeralds from the center
-        BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
             boolean anyTilesSetToEmerald = false;
     
             for (int y = 0; y < 6; y++) { // 6 rows

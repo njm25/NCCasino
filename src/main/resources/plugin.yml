@@ -6,7 +6,7 @@ commands:
   ncc:
     description: Main command for the Nccasino plugin
     aliases: [nccasino]
-    usage: /ncc <subcommand>
+    usage: /ncc <subcommand> [args]
     permission: nccasino.use
 permissions:
   nccasino.use:

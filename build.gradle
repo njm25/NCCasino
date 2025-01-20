@@ -11,8 +11,7 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven {
-        name = "papermc-repo"
-        url = "https://repo.papermc.io/repository/maven-public/"
+        url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/'
     }
     maven {
         name = "sonatype"
@@ -21,7 +20,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly("org.spigotmc:spigot-api:1.21.4-R0.1-SNAPSHOT")
     implementation files('libs/lib-1.0-SNAPSHOT.jar')     
 }
 
@@ -47,9 +46,8 @@ processResources {
     def props = [version: version]
     inputs.properties props
     filteringCharset 'UTF-8'
-    filesMatching('paper-plugin.yml') {
-        expand props
-    }
+    exclude 'paper-plugin.yml'
+
 }
 
 // --- SHADOW CONFIG ---

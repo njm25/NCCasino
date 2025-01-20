@@ -3,11 +3,9 @@ package org.nc.nccasino.games.Roulette;
 import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.helpers.DealerInventory;
 import org.nc.nccasino.helpers.TableGenerator;
-import org.nc.nccasino.helpers.TableGenerator.Alignment;
 import org.nc.nccasino.objects.Pair;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
@@ -798,17 +796,6 @@ private boolean isValidSlotPage2(int slot) {
         }
     }
     
-
-
-    private void handleLeftoverItems(Player player, HashMap<Integer, ItemStack> leftover, int refundAmount) {
-        int leftoverAmount = leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-        player.sendMessage("§cInventory full. Couldn't refund " + leftoverAmount + " of " + refundAmount + " " + plugin.getCurrencyName(internalName) + "s!");
-
-        leftover.forEach((slot, itemStack) -> {
-            plugin.getLogger().warning("Leftover Item at Slot " + slot + ": " + itemStack.getType() + " x " + itemStack.getAmount());
-        });
-    }
-
     @EventHandler
     public void handlePlayerQuit(PlayerQuitEvent event) {
         switchingPlayers.remove(event.getPlayer());

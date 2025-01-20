@@ -10,7 +10,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
@@ -20,7 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class AnimationTable extends DealerInventory implements InventoryHolder, Listener {
+public class AnimationTable extends DealerInventory implements Listener {
     private final MultiChannelEngine mce;
     private final Inventory inventory;
     private final UUID playerId;
@@ -229,9 +228,9 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
         Player player = (Player) event.getPlayer();
         UUID playerUUID = player.getUniqueId();
         if (!playerUUID.equals(playerId)) return;
-        if (event.getReason() == InventoryCloseEvent.Reason.PLAYER) {
-             stopAnimation(player);
-             mce.removePlayerFromAllChannels(player);
+        if (event.getPlayer() instanceof Player ) {
+            stopAnimation(player);
+            mce.removePlayerFromAllChannels(player);
         }
     }
 

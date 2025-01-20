@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.Set;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -13,9 +14,6 @@ import org.bukkit.entity.Villager;
 import org.jetbrains.annotations.NotNull;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerVillager;
-
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 
 public class DeleteCommand implements CasinoCommand {
 
@@ -32,9 +30,7 @@ public class DeleteCommand implements CasinoCommand {
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
         if (args.length < 2) {
-            sender.sendMessage(Component.text("Usage: /ncc delete ")
-                    .color(NamedTextColor.AQUA)
-                    .append(Component.text("<name>").color(NamedTextColor.YELLOW)));
+            sender.sendMessage(ChatColor.AQUA + "Usage: /ncc delete " + ChatColor.YELLOW + "<name>");
             return true;
         }
 
@@ -45,18 +41,14 @@ public class DeleteCommand implements CasinoCommand {
             int count = killAllDealerVillagers();
             // Clear all entries in the YAML file
             clearAllDealerData();
-            sender.sendMessage(Component.text("Deleted " + count)
-                    .color(NamedTextColor.GREEN));
+            sender.sendMessage(ChatColor.GREEN + "Deleted " + count + " dealers.");
             return true;
         }
 
         Villager villager = plugin.getDealerByInternalName(internalName);
 
         if (villager == null) {
-            sender.sendMessage(Component.text("Dealer with internal name '")
-                    .color(NamedTextColor.RED)
-                    .append(Component.text(internalName).color(NamedTextColor.YELLOW))
-                    .append(Component.text("' not found.").color(NamedTextColor.RED)));
+            sender.sendMessage(ChatColor.RED + "Dealer with internal name '" + ChatColor.YELLOW + internalName + ChatColor.RED + "' not found.");
             return true;
         }
 
@@ -64,10 +56,7 @@ public class DeleteCommand implements CasinoCommand {
         // Remove dealer data from YAML
         removeDealerData(internalName);
         
-        sender.sendMessage(Component.text("Dealer '")
-                .color(NamedTextColor.GREEN)
-                .append(Component.text(internalName).color(NamedTextColor.YELLOW))
-                .append(Component.text("' has been deleted.").color(NamedTextColor.GREEN)));
+        sender.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName + ChatColor.GREEN + "' has been deleted.");
 
         return true;
     }
@@ -87,32 +76,30 @@ public class DeleteCommand implements CasinoCommand {
         return deletedCount;
     }
 
-private void removeDealerData(String internalName) {
-    internalName = internalName.trim(); // Sanitize input
-    String path = "dealers." + internalName;
+    private void removeDealerData(String internalName) {
+        internalName = internalName.trim(); // Sanitize input
+        String path = "dealers." + internalName;
 
-    try {
-        dealersConfig.load(dealersFile); // Reload the YAML file
-    } catch (IOException | InvalidConfigurationException e) {
-        plugin.getLogger().severe("Failed to load dealers.yaml: " + e.getMessage());
-        e.printStackTrace();
-        return;
-    }
-
-
-    if (dealersConfig.contains(path)) {
-        dealersConfig.set(path, null); // Remove the specific dealer
         try {
-            dealersConfig.save(dealersFile); // Save the updated configuration
-        } catch (IOException e) {
-            plugin.getLogger().severe("Failed to save dealers.yaml while removing dealer: " + internalName);
+            dealersConfig.load(dealersFile); // Reload the YAML file
+        } catch (IOException | InvalidConfigurationException e) {
+            plugin.getLogger().severe("Failed to load dealers.yaml: " + e.getMessage());
             e.printStackTrace();
+            return;
         }
-    } else {
-        plugin.getLogger().warning("Attempted to remove a non-existent dealer: " + internalName);
-    }
-}
 
+        if (dealersConfig.contains(path)) {
+            dealersConfig.set(path, null); // Remove the specific dealer
+            try {
+                dealersConfig.save(dealersFile); // Save the updated configuration
+            } catch (IOException e) {
+                plugin.getLogger().severe("Failed to save dealers.yaml while removing dealer: " + internalName);
+                e.printStackTrace();
+            }
+        } else {
+            plugin.getLogger().warning("Attempted to remove a non-existent dealer: " + internalName);
+        }
+    }
 
     private void clearAllDealerData() {
         Set<String> keys = dealersConfig.getKeys(false);

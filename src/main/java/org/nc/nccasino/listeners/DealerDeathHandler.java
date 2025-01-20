@@ -1,7 +1,6 @@
 package org.nc.nccasino.listeners;
 
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -44,14 +43,12 @@ public class DealerDeathHandler implements Listener {
                     plugin.saveConfig();
                 }
 
-                
                 // Get the player who killed the villager, if applicable
                 if (event.getEntity().getKiller() instanceof Player killer) {
                     // Send the removal message to the killer
-                    killer.sendMessage(Component.text("Dealer '")
-                            .color(NamedTextColor.RED)
-                            .append(Component.text(internalName).color(NamedTextColor.YELLOW))
-                            .append(Component.text("' has died and all associated data has been removed.").color(NamedTextColor.RED)));
+                    killer.sendMessage(ChatColor.RED + "Dealer '" 
+                            + ChatColor.YELLOW + internalName 
+                            + ChatColor.RED + "' has died and all associated data has been removed.");
                 }
 
                 // Perform any additional cleanup if needed

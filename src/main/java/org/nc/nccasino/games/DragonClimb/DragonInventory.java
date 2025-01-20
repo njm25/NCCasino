@@ -10,7 +10,6 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
-import org.bukkit.inventory.Inventory;
 import org.nc.nccasino.Nccasino;
 
 import java.util.HashMap;

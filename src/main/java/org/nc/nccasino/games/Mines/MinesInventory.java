@@ -1,10 +1,8 @@
 package org.nc.nccasino.games.Mines;
 
 import org.nc.nccasino.entities.DealerVillager;
-import org.nc.nccasino.games.Mines.MinesTable;
 import org.nc.nccasino.helpers.DealerInventory;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
@@ -12,10 +10,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryView;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.bukkit.event.HandlerList;
 
@@ -90,9 +84,7 @@ public class MinesInventory extends DealerInventory implements Listener {
     @EventHandler
     public void handleClick(InventoryClickEvent event) {
         if (event.getInventory().getHolder() != this) return;
-        Player player = (Player) event.getWhoClicked();
         event.setCancelled(true);
-        int slot = event.getRawSlot();
     }                                                                                                                      
   
     // Immediately have player open local mines table
