@@ -559,11 +559,12 @@ private void handleInsurance(Player player) {
     // Handle chair click
     private void handleChairClick(int slot, Player player) {
         UUID playerId = player.getUniqueId();
+        ItemStack clickedItem = inventory.getItem(slot);
 
         // Check if the player is already sitting in a chair
-        if (playerSeats.containsKey(playerId)) {
-            player.sendMessage("§cInvalid action");
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+        if (clickedItem == null || !clickedItem.getType().name().endsWith("_STAIRS")) {
+            player.sendMessage("§cYou cannot sit here.");
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
 
