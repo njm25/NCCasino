@@ -359,9 +359,7 @@ public class MinesTable implements InventoryHolder, Listener {
         }
         
         if (slot == 1) { // Mode Button
-            System.out.println(modeIndex);
             modeIndex = (modeIndex + 1) % modeNames.length;
-            System.out.println(modeIndex);
             setMode(modeIndex);
             //player.sendMessage("§eMode set to: " + modeNames[modeIndex]);
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
