@@ -340,7 +340,7 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
             } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots (10, 19, 28)
                 handleBetClick(slot, player);
             } else if (slot >= 47 && slot <= 51) { // Chip selection
-                handleChipSelection(player, event.getCurrentItem());
+                handleChipSelection(player, event.getCurrentItem(),slot);
             } 
             else if (slot == 0){
 
@@ -688,7 +688,7 @@ private void removePlayerData(UUID playerId) {
 }
 
     // Handle chip selection
-    private void handleChipSelection(Player player, ItemStack clickedItem) {
+    private void handleChipSelection(Player player, ItemStack clickedItem,int slot) {
         if (clickedItem == null || clickedItem.getItemMeta() == null) {
             return;
         }
@@ -699,7 +699,23 @@ private void removePlayerData(UUID playerId) {
         player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
     
         selectedWagers.put(playerId, selectedWager);
-        
+             // Update the display of all chips
+             for (int i = 47; i <= 51; i++) {
+                ItemStack chip = inventory.getItem(i);
+                if (chip != null && chip.hasItemMeta()) {
+                    String chipName = chip.getItemMeta().getDisplayName();
+                    if (chipValues.containsKey(chipName)) {
+                        // Enchant the clicked chip
+                        if (i == slot) {
+                            inventory.setItem(i, createEnchantedItem(plugin.getCurrency(internalName), chipName, (int) chipValues.get(chipName).doubleValue()));
+                        } else {
+                            // Reset others to their default state
+                            inventory.clear(i);
+                            inventory.setItem(i, createCustomItem(plugin.getCurrency(internalName), chipName, (int) chipValues.get(chipName).doubleValue()));
+                        }
+                    }
+                }
+            }
     }
     
     private void clearPlayerBetLore(UUID playerId) {
