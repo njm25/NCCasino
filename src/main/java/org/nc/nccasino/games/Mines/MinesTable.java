@@ -871,7 +871,6 @@ public class MinesTable implements InventoryHolder, Listener {
         int integerPart = (int) value;
 
         double fractionalPart = value - integerPart;
-        double roundedFP = Math.round(fractionalPart * 100.0) / 100.0;
 
         Random random = new Random();
         if (random.nextDouble() <= fractionalPart) {
