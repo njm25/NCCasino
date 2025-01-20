@@ -977,15 +977,9 @@ private void dealInitialCards() {
     for (int i = 0; i < 2; i++) { // Repeat for two rounds
 
         for (UUID playerId : new ArrayList<>(playerSeats.keySet())) {
-            if (!gameActive || playerSeats.isEmpty()) {
-                cancelGame(); // If game is no longer active or all players have left, stop immediately
-                return;
-            }
                 if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty()) {
-                    // Skip this player if they haven't placed any bets
                     continue;
                 }
-
                 int seatSlot = playerSeats.get(playerId);
                 scheduleCardDealing(seatSlot + 2 + i, deck.dealCard(), delay, playerId); // First and second card
                 delay += 20; // 1-second delay between card deals
@@ -1005,10 +999,6 @@ private void dealInitialCards() {
 
     // Check for initial blackjack right after dealing cards
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        if (!gameActive || playerSeats.isEmpty()) {
-            cancelGame();
-            return;
-        }
         for (UUID playerId : playerSeats.keySet()) {
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
