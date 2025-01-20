@@ -975,7 +975,12 @@ private void dealInitialCards() {
 
     // First round of dealing (one card to each player)
     for (int i = 0; i < 2; i++) { // Repeat for two rounds
+
         for (UUID playerId : new ArrayList<>(playerSeats.keySet())) {
+            if (!gameActive || playerSeats.isEmpty()) {
+                cancelGame(); // If game is no longer active or all players have left, stop immediately
+                return;
+            }
                 if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty()) {
                     // Skip this player if they haven't placed any bets
                     continue;
@@ -985,7 +990,10 @@ private void dealInitialCards() {
                 scheduleCardDealing(seatSlot + 2 + i, deck.dealCard(), delay, playerId); // First and second card
                 delay += 20; // 1-second delay between card deals
         }
-            // Deal one card to the dealer
+        if (!gameActive || playerSeats.isEmpty()) {
+            cancelGame(); // If game is no longer active or all players have left, stop immediately
+            return;
+        }
             if (i == 0) {
                 scheduleCardDealing(2, deck.dealCard(), delay, null); // First card to dealer in slot 2
             } else {
@@ -997,6 +1005,10 @@ private void dealInitialCards() {
 
     // Check for initial blackjack right after dealing cards
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        if (!gameActive || playerSeats.isEmpty()) {
+            cancelGame();
+            return;
+        }
         for (UUID playerId : playerSeats.keySet()) {
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
@@ -1695,15 +1707,34 @@ public void delete() {
     // Cancel the game and reset the board with all items and options
     private void cancelGame() {
         gameActive = false;
+    
+        // Clear all player and game-related data
         clearPlayerBets(null); // Clear all bets
         clearAllLore(); // Clear all lore
-        initializeGameMenu(); // Reestablish the board with all items and options
-
+        playerBets.clear();
+        lastBetAmounts.clear();
+        playerCardCounts.clear();
+        playerDone.clear();
+        playerHands.clear();
+        dealerHand.clear();
+        playerIterator = null;
+        currentPlayerId = null;
+        selectedWagers.clear();
+    
+        // Stop any ongoing scheduled tasks
         if (countdownTaskId != -1) {
-            Bukkit.getScheduler().cancelTask(countdownTaskId); // Cancel the countdown if it's running
+            Bukkit.getScheduler().cancelTask(countdownTaskId);
             countdownTaskId = -1;
         }
+    
+        // Clear and reset the inventory
+        inventory.clear();
+        initializeGameMenu(); // Reset the game menu
+    
+        // Reset player seats
+        playerSeats.clear();
     }
+    
 
         @EventHandler
         public void handleInventoryClose(InventoryCloseEvent event) {
