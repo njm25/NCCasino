@@ -562,7 +562,7 @@ private void exitGame(Player player) {
                 ItemMeta meta = item.getItemMeta();
                 if (meta != null && betType.equals(meta.getDisplayName())) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Current Bet: " + totalBet + " " + plugin.getCurrencyName(dealerId.toString()));
+                    lore.add("Total Bet: " + (int)totalBet + " " + plugin.getCurrencyName(internalName)+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
                     meta.setLore(lore);
                     item.setItemMeta(meta);
                 }
