@@ -6,6 +6,7 @@ import org.nc.nccasino.helpers.TableGenerator;
 import org.nc.nccasino.objects.Pair;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
@@ -397,7 +398,7 @@ public class BettingTable implements InventoryHolder, Listener {
     public void processSpinResult(int result, Stack<Pair<String, Integer>> dastack) {
         Player player = Bukkit.getPlayer(playerId);
         if (player == null) return;
-    
+        int overallWager=0;
         // We'll group categories into a data structure
         class BetCategory {
             int totalWager = 0;
@@ -418,7 +419,7 @@ public class BettingTable implements InventoryHolder, Listener {
             // 2) Create or get BetCategory
             BetCategory cat = categoryMap.computeIfAbsent(categoryName, k -> new BetCategory());
             cat.totalWager += wager;
-    
+            overallWager += wager;
             // 3) Calculate payout for this specific bet
             int payout = 0;
     
@@ -455,9 +456,7 @@ public class BettingTable implements InventoryHolder, Listener {
     
         for (Map.Entry<String, BetCategory> entry : categoryMap.entrySet()) {
             BetCategory cat = entry.getValue();
-            if (cat.totalPayout > 0) {
-                table.addRow("§e" + entry.getKey(), "§b" + cat.totalWager, "§a" + cat.totalPayout);
-            }
+            table.addRow("§e" + entry.getKey(), "§b" + cat.totalWager, (cat.totalPayout > 0 ? "§a" + cat.totalPayout : "§c0"));
         }
     
         List<String> tableLines = table.generate(TableGenerator.Receiver.CLIENT, false, false);
@@ -467,9 +466,32 @@ public class BettingTable implements InventoryHolder, Listener {
     
         msg.append("\n");
         if (totalPayout > 0) {
+            msg.append("§bTotal Wager: ").append(overallWager+"§e | ");
             msg.append("§aTotal Payout: ").append(totalPayout).append("\n");
+
+            if(totalPayout-overallWager>0){
+                msg.append("§a§lProfit: +").append(totalPayout-overallWager).append(" " + plugin.getCurrencyName(internalName)+ (Math.abs(totalPayout-overallWager) == 1 ? "" : "s") + "\n");
+                player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
+                Random random = new Random();
+                float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
+                for (int i = 0; i < 3; i++) {
+                    float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
+                    player.playSound(player.getLocation(),  Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER,1.0f, chosenPitch);
+                }
+            }
+            else if(totalPayout-overallWager==0){ 
+                msg.append("§d§lProfit: ").append(totalPayout-overallWager).append(" " + plugin.getCurrencyName(internalName)+ (Math.abs(totalPayout-overallWager) == 1 ? "" : "s") + "\n");
+                player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
+            }
+            else{
+                msg.append("§c§lProfit: ").append(totalPayout-overallWager).append(" " + plugin.getCurrencyName(internalName)+ (Math.abs(totalPayout-overallWager) == 1 ? "" : "s") + "\n");
+                player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
+                player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
+            }
         } else {
-            msg.append("§cNo winnings.\n");
+            msg.append("§c§lNo winnings.\n");
+            player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
+            player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
         }
     
         final int totalPayoutFinal = categoryMap.values().stream().mapToInt(cat -> cat.totalPayout).sum();
@@ -636,7 +658,7 @@ public class BettingTable implements InventoryHolder, Listener {
                     updateAllLore();
                   //  updateAllRelatedSlots(slot, itemName);
                 } else {
-                    player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName) + "s to place this bet");
+                    player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName) + "s");
                     player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
                 }
             } else {
@@ -782,7 +804,7 @@ private boolean isValidSlotPage2(int slot) {
     
     
         if (totalLeftoverAmount > 0) {
-            player.sendMessage("§cNo room for " + totalLeftoverAmount + " "+plugin.getCurrencyName()+"s, dropping...");
+            player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName)+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
             dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
         }
     }
@@ -831,7 +853,7 @@ private boolean isValidSlotPage2(int slot) {
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
                 List<String> lore = new ArrayList<>();
-                lore.add("Current Bet: " + totalBet + " " + plugin.getCurrencyName(internalName));
+                lore.add("Total Bet: " + (int)totalBet + " " + plugin.getCurrencyName(internalName)+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
                 meta.setLore(lore);
                 item.setItemMeta(meta);
             }
