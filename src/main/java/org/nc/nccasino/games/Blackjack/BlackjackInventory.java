@@ -1458,7 +1458,10 @@ private int calculateHandValue(List<ItemStack> hand) {
 
 private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-
+        if (!gameActive || playerSeats.isEmpty()) {
+            cancelGame(); // If game is no longer active or all players have left, stop immediately
+            return;
+        }
         for (UUID uuid : playerSeats.keySet()) {
             Player player = Bukkit.getPlayer(uuid);
             if (player != null && player.isOnline()) {
@@ -1598,6 +1601,10 @@ private int getCardValue(ItemStack cardItem) {
 
 private void scheduleHiddenCardDealing(int slot, int delay) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        if (!gameActive || playerSeats.isEmpty()) {
+            cancelGame(); // If game is no longer active or all players have left, stop immediately
+            return;
+        }
         Material material = Material.WHITE_STAINED_GLASS_PANE; // Hidden card is now white
         ItemStack hiddenCard = new ItemStack(material, 1);
         ItemMeta meta = hiddenCard.getItemMeta();
