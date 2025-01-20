@@ -1356,7 +1356,7 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
     if (bets != null) {
         double totalBet = bets.values().stream().mapToDouble(Double::doubleValue).sum();
         double payout = totalBet * multiplier;
-        int totalAmount = (int) Math.floor(payout);
+        int totalAmount = applyProbabilisticRounding(payout);
         int fullStacks = totalAmount / 64;
         int remainder = totalAmount % 64;
         Material currencyMaterial = plugin.getCurrency(internalName);
@@ -1392,6 +1392,15 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
     }
 }
 
+private int applyProbabilisticRounding(double value) {
+    int integerPart = (int) value;
+    double fractionalPart = value - integerPart;
+    Random random = new Random();
+    if (random.nextDouble() <= fractionalPart) {
+        return integerPart + 1; // Round up based on probability
+    }
+    return integerPart; // Otherwise, keep it rounded down
+}
 
 // Utility method to check if the hand has an Ace and a 10-value card
 private boolean hasAceAndTenValueCard(List<ItemStack> hand) {
