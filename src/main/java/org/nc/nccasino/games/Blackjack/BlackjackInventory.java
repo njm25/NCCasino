@@ -867,15 +867,27 @@ private void removePlayerData(UUID playerId) {
     }
 
     private void addWagerToInventory(Player player, double amount) {
-        int totalAmount = (int) Math.ceil(amount);
+        int totalAmount = (int) Math.floor(amount);
         int fullStacks = totalAmount / 64;
         int remainder = totalAmount % 64;
-
+        Material currencyMaterial = plugin.getCurrency(internalName);
         for (int i = 0; i < fullStacks; i++) {
-            player.getInventory().addItem(new ItemStack(plugin.getCurrency(internalName), 64));
+            ItemStack stack = new ItemStack(currencyMaterial, 64);
+            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
+            if (!leftover.isEmpty()) {
+                for (ItemStack item : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), item);
+                }
+            }
         }
         if (remainder > 0) {
-            player.getInventory().addItem(new ItemStack(plugin.getCurrency(internalName), remainder));
+            ItemStack stack = new ItemStack(currencyMaterial, remainder);
+            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
+            if (!leftover.isEmpty()) {
+                for (ItemStack item : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), item);
+                }
+            }
         }
     }
 
@@ -973,24 +985,23 @@ private void dealInitialCards() {
     // First round of dealing (one card to each player)
     for (int i = 0; i < 2; i++) { // Repeat for two rounds
         for (UUID playerId : new ArrayList<>(playerSeats.keySet())) {
-            if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty()) {
-                // Skip this player if they haven't placed any bets
-                continue;
+                if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty()) {
+                    // Skip this player if they haven't placed any bets
+                    continue;
+                }
+
+                int seatSlot = playerSeats.get(playerId);
+                scheduleCardDealing(seatSlot + 2 + i, deck.dealCard(), delay, playerId); // First and second card
+                delay += 20; // 1-second delay between card deals
+        }
+            // Deal one card to the dealer
+            if (i == 0) {
+                scheduleCardDealing(2, deck.dealCard(), delay, null); // First card to dealer in slot 2
+            } else {
+                scheduleHiddenCardDealing(3, delay); // Second card to dealer remains hidden in slot 3
             }
 
-            int seatSlot = playerSeats.get(playerId);
-            scheduleCardDealing(seatSlot + 2 + i, deck.dealCard(), delay, playerId); // First and second card
-            delay += 20; // 1-second delay between card deals
-        }
-
-        // Deal one card to the dealer
-        if (i == 0) {
-            scheduleCardDealing(2, deck.dealCard(), delay, null); // First card to dealer in slot 2
-        } else {
-            scheduleHiddenCardDealing(3, delay); // Second card to dealer remains hidden in slot 3
-        }
-
-        delay += 20;
+            delay += 20;
     }
 
     // Check for initial blackjack right after dealing cards
@@ -1102,7 +1113,7 @@ private void startNextPlayerTurn() {
         }
     }
 
-    if (currentPlayerId != null) {
+    if (playerSeats.get(currentPlayerId) != null) {
         ItemStack prevItem = inventory.getItem(playerSeats.get(currentPlayerId) + 1);
         ItemStack replacementItem = createCustomItem(Material.PAPER, "Your turn is over.", 1);
         
@@ -1345,7 +1356,7 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
     if (bets != null) {
         double totalBet = bets.values().stream().mapToDouble(Double::doubleValue).sum();
         double payout = totalBet * multiplier;
-        int totalAmount = (int) Math.floor(payout);
+        int totalAmount = applyProbabilisticRounding(payout);
         int fullStacks = totalAmount / 64;
         int remainder = totalAmount % 64;
         Material currencyMaterial = plugin.getCurrency(internalName);
@@ -1372,16 +1383,24 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
                 }
             }
         }
-
+        player.sendMessage("§a§l" + payout + " " + plugin.getCurrencyName(internalName) + "s");
         // Print total dropped if any items couldn't fit in inventory
         if (totalDropped > 0) {
-            player.sendMessage("§a§l" + payout + " " + plugin.getCurrencyName(internalName) + "s");
             player.sendMessage("§cNo room for " + totalDropped + " "+plugin.getCurrencyName()+"s, dropping...");        } else {
 
         }
     }
 }
 
+private int applyProbabilisticRounding(double value) {
+    int integerPart = (int) value;
+    double fractionalPart = value - integerPart;
+    Random random = new Random();
+    if (random.nextDouble() <= fractionalPart) {
+        return integerPart + 1; // Round up based on probability
+    }
+    return integerPart; // Otherwise, keep it rounded down
+}
 
 // Utility method to check if the hand has an Ace and a 10-value card
 private boolean hasAceAndTenValueCard(List<ItemStack> hand) {
