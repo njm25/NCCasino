@@ -562,7 +562,7 @@ private void handleInsurance(Player player) {
         ItemStack clickedItem = inventory.getItem(slot);
 
         // Check if the player is already sitting in a chair
-        if (clickedItem == null || !clickedItem.getType().name().endsWith("_STAIRS")) {
+        if (playerSeats.containsKey(playerId)||clickedItem == null || !clickedItem.getType().name().endsWith("_STAIRS")) {
             player.sendMessage("§cInvalid action");
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
