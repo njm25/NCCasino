@@ -68,6 +68,34 @@ public class MinesTable implements InventoryHolder, Listener {
     };
     private final List<Integer> gridSlotList = Arrays.stream(gridSlots).boxed().collect(Collectors.toList());
 
+    private int instrumentIndex = 0;
+    private int modeIndex = 0;
+
+    private final Sound[] instruments = {
+        Sound.BLOCK_NOTE_BLOCK_BANJO, 
+        Sound.BLOCK_NOTE_BLOCK_BASEDRUM , 
+         Sound.BLOCK_NOTE_BLOCK_BASS, 
+         Sound.BLOCK_NOTE_BLOCK_BELL ,
+         Sound.BLOCK_NOTE_BLOCK_BIT ,
+         Sound.BLOCK_NOTE_BLOCK_CHIME,
+         Sound.BLOCK_NOTE_BLOCK_COW_BELL,
+         Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO ,
+         Sound.BLOCK_NOTE_BLOCK_FLUTE ,
+         Sound.BLOCK_NOTE_BLOCK_GUITAR ,
+         Sound.BLOCK_NOTE_BLOCK_HARP ,
+         Sound.BLOCK_NOTE_BLOCK_HAT,
+         Sound.BLOCK_NOTE_BLOCK_IRON_XYLOPHONE,
+         Sound.BLOCK_NOTE_BLOCK_PLING, 
+         Sound.BLOCK_NOTE_BLOCK_SNARE, 
+         Sound.BLOCK_NOTE_BLOCK_XYLOPHONE
+    };
+
+    private final String[] modeNames = {"All", "Jazz", "Chords"};
+
+    private final Map<Integer, float[]> tileNotes = new HashMap<>();
+
+
+
     // Field to keep track of selected mine count slot
     private int selectedMineSlot = -1;
 
@@ -89,7 +117,8 @@ public class MinesTable implements InventoryHolder, Listener {
 
         // Start the animation first, then return to this table once animation completes
         startAnimation(player);
-
+        setMode(0);
+        instrumentIndex=15;
         registerListener();
     }
 
@@ -322,7 +351,37 @@ public class MinesTable implements InventoryHolder, Listener {
 
         clickAllowed = false;
         Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed = true, 5L);  // 5 ticks delay
-
+        if (slot == 0) { // Instrument Button
+            instrumentIndex = (instrumentIndex + 1) % instruments.length;
+            //player.sendMessage("§bInstrument set to: " + instruments[instrumentIndex].toString());
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
+            return;
+        }
+        
+        if (slot == 1) { // Mode Button
+            modeIndex = (modeIndex + 1) % modeNames.length;
+            setMode(modeIndex);
+            //player.sendMessage("§eMode set to: " + modeNames[modeIndex]);
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
+            return;
+        }
+        Boolean wow=false;
+             if (tileNotes.containsKey(slot)) {
+            if(slot==36||(slot>=44&&slot<=48)||(slot>=50&&slot<=53)){
+                if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
+                wow=true;
+                }
+            }
+            if(!wow){
+            Sound instrument = instruments[instrumentIndex];
+            float[] pitches = tileNotes.get(slot);
+        
+            for (float pitch : pitches) {
+                player.playSound(player.getLocation(), instrument, SoundCategory.MASTER, 1.0f, pitch);
+            }}
+           
+        }
+        
         if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
             handleWagerPlacement(clickedItem, slot);
         } else if (gameState == GameState.PLAYING) {
@@ -359,6 +418,14 @@ public class MinesTable implements InventoryHolder, Listener {
             //player.sendMessage(rebetEnabled ? "§aRebet is now ON." : "§cRebet is now OFF.");
             updateRebetToggle();
         }
+   
+        
+        
+
+          
+        
+
+
     }
 
     private void handleWagerPlacement(ItemStack clickedItem, int slot) {
@@ -1125,4 +1192,128 @@ public class MinesTable implements InventoryHolder, Listener {
         return itemStack;
     }
     
+    
+private void setMode(int modeIndex) {
+    List<Integer> tileKeys = Arrays.asList(45,46,47,48,50,51,52,53,36,37,43,44,27,28,34,35,18,19,25,26,9,10,16,17,7,8);
+
+    switch(modeIndex)
+{
+    case 0: { // Every Note Mode (Chromatic Scale)
+        tileNotes.clear();
+        float[] chromaticScale = {
+            0.5f,  // G♭3
+            0.53f, // G3
+            0.56f, // A♭3
+            0.6f,  // A3
+            0.63f, // B♭3
+            0.67f, // B3
+            0.7f,  // C4
+            0.75f, // D♭4
+            0.8f,  // D4
+            0.85f, // E♭4
+            0.9f,  // E4
+            0.95f, // F4
+            1.0f,  // G♭4
+            1.06f, // G4
+            1.12f, // A♭4
+            1.18f, // A4
+            1.25f, // B♭4
+            1.33f, // B4
+            1.41f, // C5
+            1.5f,  // D♭5
+            1.6f,  // D5
+            1.7f,  // E♭5
+            1.8f,  // E5
+            1.9f,  // F5
+            2.0f, // G♭5
+            0.5f   
+        };
+        
+        for (int i = 0; i < tileKeys.size() && i < chromaticScale.length; i++) {
+            tileNotes.put(tileKeys.get(i), new float[]{chromaticScale[i]});
+        }
+        break;
+    }
+case 1:{
+    tileNotes.clear();
+        float[] azzyScale = {
+            0.5f,  // G♭3
+            0.6f,  // A3
+            0.67f, // B3
+            0.7f,  // C4
+            0.75f, // D♭4
+            0.9f,  // E4
+            1.0f,  // G♭4
+            1.18f, // A4
+            1.33f, // B4
+            1.41f, // C5
+            1.5f,  // D♭5
+            1.8f,  // E5
+            2.0f, // G♭5         
+            0.67f, // B3       
+            0.8f,  // D4       
+            0.9f,  // E4
+            0.95f, // F4
+            1.0f,  // G♭4
+            1.18f, // A4
+            1.33f, // B4
+            0.9f,  // E4
+            1.06f, // G4
+            1.18f, // A4
+            1.25f, // B♭4
+            1.33f, // B4
+            1.6f,  // D5
+        };
+        
+        for (int i = 0; i < tileKeys.size() && i < azzyScale.length; i++) {
+            tileNotes.put(tileKeys.get(i), new float[]{azzyScale[i]});
+        }
+        break;
+}
+case 2: { // Unique Chords for Each Tile
+    tileNotes.clear();
+
+    float[][] chordPresets = {
+        {0.60f, 0.91f, 1.33f},  // B♭ minor 7
+        {1.12f, 0.75f, 1.50f},  // C dominant 9
+        {0.67f, 1.27f, 1.06f},  // F# augmented 7
+        {1.42f, 0.85f, 1.19f},  // A minor 11
+        {0.81f, 1.61f, 0.54f},  // D# minor 7
+        {1.31f, 0.56f, 0.88f},  // G diminished 7
+        {0.79f, 1.44f, 0.95f},  // E♭ major 13
+        {1.25f, 0.63f, 1.08f},  // B dominant 9
+        {0.53f, 1.72f, 1.04f},  // C# minor 9
+        {1.82f, 0.69f, 1.33f},  // F dominant 7
+        {0.73f, 1.90f, 0.67f},  // A♭ major 7
+        {1.47f, 0.51f, 1.61f},  // D minor 7♭5
+        {0.50f, 1.56f, 0.85f},  // G♭ dominant 7♯9
+        {1.88f, 0.79f, 1.11f},  // B♭ minor 9
+        {0.94f, 1.35f, 1.71f},  // E dominant 7
+        {1.53f, 0.67f, 1.99f},  // G major 9
+        {0.59f, 1.23f, 1.42f},  // A diminished 7
+        {1.04f, 0.75f, 1.79f},  // C dominant 11
+        {0.91f, 1.18f, 1.65f},  // D# minor 7♭9
+        {1.27f, 0.83f, 1.06f},  // F# augmented
+        {1.99f, 0.50f, 1.47f},  // B dominant 7♭5
+        {0.56f, 1.09f, 1.92f},  // G diminished 9
+        {1.16f, 0.73f, 1.88f},  // A♭ major 13
+        {0.81f, 1.35f, 1.22f},  // E♭ dominant 7♯11
+        {1.74f, 0.69f, 1.50f},  // D major 7
+        {0.60f, 1.44f, 0.95f}
+    };
+
+    
+    for (int i = 0; i < tileKeys.size(); i++) {
+        tileNotes.put(tileKeys.get(i), chordPresets[i]);
+    }
+    break;
+}
+default :{
+    for (int i = 0; i < 25; i++) {
+        tileNotes.put(tileKeys.get(i), new float[] {(1.0f)});
+    }
+    break;
+}
+}   
+}
 }
