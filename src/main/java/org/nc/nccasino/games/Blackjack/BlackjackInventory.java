@@ -50,9 +50,7 @@ public class BlackjackInventory extends DealerInventory implements Listener {
     private final Map<UUID, Integer> playerSeats; // Track player seats
     private final Map<UUID, Map<Integer, Double>> playerBets; // Track player bets by slot number
     private final Map<UUID, List<Double>> lastBetAmounts; // Track the last bet amounts placed by the player
-    private boolean gameStarted; // Track whether the game has started
     private boolean gameActive; // Track whether the game is active
-    private double selectedWager; // Track the selected wager
     private final Map<UUID, Boolean> clickAllowed = new HashMap<>(); // Track click state per player
     private int countdownTaskId; // Task ID for the countdown timer
     private UUID currentPlayerId; // Track the current player
@@ -67,24 +65,20 @@ public class BlackjackInventory extends DealerInventory implements Listener {
     private Deck deck; // Declare the deck as a class variable
     private Boolean firstopen=true;
     private Boolean firstFin=true;
-    private String dealerName= "";
 
     public BlackjackInventory(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, 54, "Blackjack Table"); // Using 54 slots for start menu
         this.plugin = plugin; // Store the plugin reference
         this.chipValues = new HashMap<>(); // Initialize chip values storage
         this.internalName = internalName; // Store the internal name
-        this.gameStarted = false; // Initialize game started flag
         this.gameActive = false; // Initialize game active flag
         this.playerSeats = new HashMap<>(); // Initialize player seats storage
         this.playerBets = new HashMap<>(); // Initialize player bets storage
         this.lastBetAmounts = new HashMap<>(); // Initialize last bet amounts storage
-        this.selectedWager = 0; // Initialize selected wager
         this.countdownTaskId = -1; // Initialize countdown task ID
         this.deck = new Deck(1); // Initialize the deck
         loadChipValuesFromConfig(); // Load chip values from config
         // Initialize the start menu
-        this.dealerName = dealerName;
         Nccasino nccasino = (Nccasino) plugin;
 
         // Check if the configuration key exists
@@ -144,7 +138,7 @@ private void registerListener() {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             // Pass the animation message from the config
            
-            AnimationTable animationTable = new AnimationTable(player, plugin, "NCCasino - "+animationMessage, 0);
+            AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
             player.openInventory(animationTable.getInventory());
     
             // Start animation and pass a callback to return to MinesTable after animation completes
@@ -179,12 +173,6 @@ private void registerListener() {
                 this.chipValues.put(chipName, chipValue);
             }
         }
-    }
-
-    // Initialize Blackjack-specific start menu
-    private void initializeStartMenu() {
-        inventory.clear(); // Clear the inventory before setting up the page
-        addItem(createCustomItem(Material.BLACK_WOOL, "Start Blackjack"), 22); // Add start button at the center
     }
 
     // Initialize Blackjack-specific game menu
@@ -556,6 +544,7 @@ private void handleDoubleDown(Player player) {
     }
 }
 
+/*
 private void handleInsurance(Player player) {
     synchronized (turnLock) {
         UUID playerId = player.getUniqueId();
@@ -576,7 +565,7 @@ private void handleInsurance(Player player) {
         allowPlayerActions(player); // Continue player's turn
     }
 }
-
+ */
     // Handle chair click
     private void handleChairClick(int slot, Player player) {
         UUID playerId = player.getUniqueId();
@@ -878,15 +867,27 @@ private void removePlayerData(UUID playerId) {
     }
 
     private void addWagerToInventory(Player player, double amount) {
-        int totalAmount = (int) Math.ceil(amount);
+        int totalAmount = (int) Math.floor(amount);
         int fullStacks = totalAmount / 64;
         int remainder = totalAmount % 64;
-
+        Material currencyMaterial = plugin.getCurrency(internalName);
         for (int i = 0; i < fullStacks; i++) {
-            player.getInventory().addItem(new ItemStack(plugin.getCurrency(internalName), 64));
+            ItemStack stack = new ItemStack(currencyMaterial, 64);
+            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
+            if (!leftover.isEmpty()) {
+                for (ItemStack item : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), item);
+                }
+            }
         }
         if (remainder > 0) {
-            player.getInventory().addItem(new ItemStack(plugin.getCurrency(internalName), remainder));
+            ItemStack stack = new ItemStack(currencyMaterial, remainder);
+            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
+            if (!leftover.isEmpty()) {
+                for (ItemStack item : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), item);
+                }
+            }
         }
     }
 
@@ -984,24 +985,23 @@ private void dealInitialCards() {
     // First round of dealing (one card to each player)
     for (int i = 0; i < 2; i++) { // Repeat for two rounds
         for (UUID playerId : new ArrayList<>(playerSeats.keySet())) {
-            if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty()) {
-                // Skip this player if they haven't placed any bets
-                continue;
+                if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty()) {
+                    // Skip this player if they haven't placed any bets
+                    continue;
+                }
+
+                int seatSlot = playerSeats.get(playerId);
+                scheduleCardDealing(seatSlot + 2 + i, deck.dealCard(), delay, playerId); // First and second card
+                delay += 20; // 1-second delay between card deals
+        }
+            // Deal one card to the dealer
+            if (i == 0) {
+                scheduleCardDealing(2, deck.dealCard(), delay, null); // First card to dealer in slot 2
+            } else {
+                scheduleHiddenCardDealing(3, delay); // Second card to dealer remains hidden in slot 3
             }
 
-            int seatSlot = playerSeats.get(playerId);
-            scheduleCardDealing(seatSlot + 2 + i, deck.dealCard(), delay, playerId); // First and second card
-            delay += 20; // 1-second delay between card deals
-        }
-
-        // Deal one card to the dealer
-        if (i == 0) {
-            scheduleCardDealing(2, deck.dealCard(), delay, null); // First card to dealer in slot 2
-        } else {
-            scheduleHiddenCardDealing(3, delay); // Second card to dealer remains hidden in slot 3
-        }
-
-        delay += 20;
+            delay += 20;
     }
 
     // Check for initial blackjack right after dealing cards
@@ -1055,22 +1055,43 @@ private void startNextPlayerTurn() {
     // Now proceed with the turn if there are players left
     while (playerIterator.hasNext()) {
         UUID previousPlayerId = currentPlayerId;
-        if(previousPlayerId!=null){
+        if (previousPlayerId != null) {
             ItemStack prevItem = inventory.getItem(playerSeats.get(previousPlayerId) + 1);
             ItemStack replacementItem = createCustomItem(Material.PAPER, "Your turn is over.", 1);
-            replacementItem.setLore(prevItem.getLore());
+            
+            // Retrieve and transfer lore properly using ItemMeta
+            if (prevItem != null && prevItem.hasItemMeta()) {
+                ItemMeta prevMeta = prevItem.getItemMeta();
+                if (prevMeta.hasLore()) {
+                    ItemMeta replacementMeta = replacementItem.getItemMeta();
+                    replacementMeta.setLore(prevMeta.getLore());
+                    replacementItem.setItemMeta(replacementMeta);
+                }
+            }
+            
             inventory.setItem(playerSeats.get(previousPlayerId) + 1, replacementItem);
         }
+        
         currentPlayerId = playerIterator.next();
         if (!playerDone.getOrDefault(currentPlayerId, false)) { // Skip players who are done
-            
             Player currentPlayer = Bukkit.getPlayer(currentPlayerId);
             ItemStack item = inventory.getItem(playerSeats.get(currentPlayerId) + 1);
             
             ItemStack enchantedItem = createEnchantedItem(Material.BOOK, "Your turn.", 1);
-            enchantedItem.setLore(item.getLore());
+            
+            // Retrieve and transfer lore properly using ItemMeta
+            if (item != null && item.hasItemMeta()) {
+                ItemMeta itemMeta = item.getItemMeta();
+                if (itemMeta.hasLore()) {
+                    ItemMeta enchantedMeta = enchantedItem.getItemMeta();
+                    enchantedMeta.setLore(itemMeta.getLore());
+                    enchantedItem.setItemMeta(enchantedMeta);
+                }
+            }
+
             addItem(enchantedItem, playerSeats.get(currentPlayerId) + 1);
-            currentPlayer.playSound(currentPlayer.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE,SoundCategory.MASTER, 1.0f, 1.0f); 
+            currentPlayer.playSound(currentPlayer.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f); 
+            
             // Check if the player's hand value is 21
             int handValue = calculateHandValue(playerHands.get(currentPlayerId));
             if (handValue == 21) {
@@ -1091,12 +1112,24 @@ private void startNextPlayerTurn() {
             return;
         }
     }
-    if(currentPlayerId!=null){
+
+    if (playerSeats.get(currentPlayerId) != null) {
         ItemStack prevItem = inventory.getItem(playerSeats.get(currentPlayerId) + 1);
         ItemStack replacementItem = createCustomItem(Material.PAPER, "Your turn is over.", 1);
-        replacementItem.setLore(prevItem.getLore());
+        
+        // Retrieve and transfer lore properly using ItemMeta
+        if (prevItem != null && prevItem.hasItemMeta()) {
+            ItemMeta prevMeta = prevItem.getItemMeta();
+            if (prevMeta.hasLore()) {
+                ItemMeta replacementMeta = replacementItem.getItemMeta();
+                replacementMeta.setLore(prevMeta.getLore());
+                replacementItem.setItemMeta(replacementMeta);
+            }
+        }
+
         inventory.setItem(playerSeats.get(currentPlayerId) + 1, replacementItem);
     }
+
     // No more players left, proceed to the dealer's turn
     startDealerTurn();
 }
@@ -1220,11 +1253,6 @@ private void scheduleCardDealingWithDelay(int slot, Card card, long delay, UUID 
 }
 
 
-private void setClickAllowed(UUID playerId, boolean allowed) {
-    clickAllowed.put(playerId, allowed);
-}
-
-
 private void refundBet(Player player, Map<Integer, Double> bets) {
     if (bets != null) {
         double totalBet = bets.values().stream().mapToDouble(Double::doubleValue).sum();
@@ -1328,9 +1356,50 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
     if (bets != null) {
         double totalBet = bets.values().stream().mapToDouble(Double::doubleValue).sum();
         double payout = totalBet * multiplier;
-        addWagerToInventory(player, payout);
+        int totalAmount = applyProbabilisticRounding(payout);
+        int fullStacks = totalAmount / 64;
+        int remainder = totalAmount % 64;
+        Material currencyMaterial = plugin.getCurrency(internalName);
+        int totalDropped = 0; // Track how many items were dropped
+
+        for (int i = 0; i < fullStacks; i++) {
+            ItemStack stack = new ItemStack(currencyMaterial, 64);
+            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
+            if (!leftover.isEmpty()) {
+                for (ItemStack item : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), item);
+                    totalDropped += item.getAmount();
+                }
+            }
+        }
+
+        if (remainder > 0) {
+            ItemStack stack = new ItemStack(currencyMaterial, remainder);
+            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
+            if (!leftover.isEmpty()) {
+                for (ItemStack item : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), item);
+                    totalDropped += item.getAmount();
+                }
+            }
+        }
         player.sendMessage("§a§l" + payout + " " + plugin.getCurrencyName(internalName) + "s");
+        // Print total dropped if any items couldn't fit in inventory
+        if (totalDropped > 0) {
+            player.sendMessage("§cNo room for " + totalDropped + " "+plugin.getCurrencyName()+"s, dropping...");        } else {
+
+        }
     }
+}
+
+private int applyProbabilisticRounding(double value) {
+    int integerPart = (int) value;
+    double fractionalPart = value - integerPart;
+    Random random = new Random();
+    if (random.nextDouble() <= fractionalPart) {
+        return integerPart + 1; // Round up based on probability
+    }
+    return integerPart; // Otherwise, keep it rounded down
 }
 
 // Utility method to check if the hand has an Ace and a 10-value card

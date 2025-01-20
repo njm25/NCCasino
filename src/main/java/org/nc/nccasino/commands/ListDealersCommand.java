@@ -1,8 +1,6 @@
 package org.nc.nccasino.commands;
 
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
+import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.NotNull;
 import org.nc.nccasino.Nccasino;
@@ -25,8 +23,7 @@ public class ListDealersCommand implements CasinoCommand {
             try {
                 page = Integer.parseInt(args[1]);
             } catch (NumberFormatException e) {
-                sender.sendMessage(Component.text("Invalid page number. Showing page 1.")
-                        .color(NamedTextColor.RED));
+                sender.sendMessage(ChatColor.RED + "Invalid page number. Showing page 1.");
             }
         }
 
@@ -35,31 +32,26 @@ public class ListDealersCommand implements CasinoCommand {
             int totalPages = (int) Math.ceil((double) dealerNames.size() / DEALERS_PER_PAGE);
 
             if (totalPages == 0) {
-                sender.sendMessage(Component.text("No dealers found.")
-                        .color(NamedTextColor.RED));
+                sender.sendMessage(ChatColor.RED + "No dealers found.");
                 return true;
             }
 
-            if (page < 0 || page > totalPages) {
-                sender.sendMessage(Component.text("Page does not exist.")
-                        .color(NamedTextColor.RED));
+            if (page < 1 || page > totalPages) {
+                sender.sendMessage(ChatColor.RED + "Page does not exist.");
                 return true;
             }
+
             int start = (page - 1) * DEALERS_PER_PAGE;
             int end = Math.min(start + DEALERS_PER_PAGE, dealerNames.size());
 
-            sender.sendMessage(Component.text("List of dealers (Page " + page + " of " + totalPages + "):")
-                    .color(NamedTextColor.LIGHT_PURPLE).decorate(TextDecoration.BOLD));
+            sender.sendMessage(ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "List of dealers (Page " + page + " of " + totalPages + "):");
             for (int i = start; i < end; i++) {
                 String dealerName = dealerNames.get(i);
                 String gameType = plugin.getConfig().getString("dealers." + dealerName + ".game", "Menu"); // Default to "Menu" if not found
-                sender.sendMessage(Component.text("- " + dealerName)
-                        .color(NamedTextColor.AQUA)
-                        .append(Component.text(" [" + gameType + "]").color(NamedTextColor.YELLOW)));
+                sender.sendMessage(ChatColor.AQUA + "- " + dealerName + ChatColor.YELLOW + " [" + gameType + "]");
             }
         } else {
-            sender.sendMessage(Component.text("No dealers found.")
-                    .color(NamedTextColor.RED));
+            sender.sendMessage(ChatColor.RED + "No dealers found.");
         }
 
         return true;

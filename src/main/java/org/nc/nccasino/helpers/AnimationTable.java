@@ -2,13 +2,14 @@ package org.nc.nccasino.helpers;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
@@ -18,7 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class AnimationTable extends DealerInventory implements InventoryHolder, Listener {
+public class AnimationTable extends DealerInventory implements Listener {
     private final MultiChannelEngine mce;
     private final Inventory inventory;
     private final UUID playerId;
@@ -160,6 +161,7 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
                 rowShift++;
 
                 if (rowShift >= printmsg[0].length) {
+                    player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f);  
                     mce.removePlayerFromAllChannels(player);
                     Bukkit.getScheduler().cancelTask(taskId[0]);
                     animationTasks.remove(playerUUID);
@@ -213,7 +215,9 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
         event.setCancelled(true);
 
         if (clickAllowed.getOrDefault(playerUUID, false) && !animationStopped.get(playerUUID)) {
+            player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
             stopAnimation(player);
+            player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f);  
             mce.removePlayerFromAllChannels(player);
         }
     }
@@ -224,9 +228,9 @@ public class AnimationTable extends DealerInventory implements InventoryHolder, 
         Player player = (Player) event.getPlayer();
         UUID playerUUID = player.getUniqueId();
         if (!playerUUID.equals(playerId)) return;
-        if (event.getReason() == InventoryCloseEvent.Reason.PLAYER) {
-             stopAnimation(player);
-             mce.removePlayerFromAllChannels(player);
+        if (event.getPlayer() instanceof Player ) {
+            stopAnimation(player);
+            mce.removePlayerFromAllChannels(player);
         }
     }
 

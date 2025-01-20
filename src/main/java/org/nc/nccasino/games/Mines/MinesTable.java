@@ -14,6 +14,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.*;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
@@ -33,14 +34,10 @@ public class MinesTable implements InventoryHolder, Listener {
     private final Inventory inventory;
     private final UUID playerId;
     private final Player player;
-    private final UUID dealerId;
-    private final Villager dealer;
     private final Nccasino plugin;
     private final String internalName;
     private final MinesInventory minesInventory;
-    private final Map<Player, Integer> animationTasks;
     private final Map<String, Double> chipValues;
-    private final Map<Player, Boolean> animationCompleted;
     private Boolean clickAllowed = true;
     private double selectedWager;
     private final Deque<Double> betStack = new ArrayDeque<>();
@@ -77,15 +74,11 @@ public class MinesTable implements InventoryHolder, Listener {
     public MinesTable(Player player, Villager dealer, Nccasino plugin, String internalName, MinesInventory minesInventory) {
         this.playerId = player.getUniqueId();
         this.player = player;
-        this.dealerId = dealer.getUniqueId();
-        this.dealer = dealer;
         this.plugin = plugin;
         this.internalName = internalName;
         this.minesInventory = minesInventory;
         this.inventory = Bukkit.createInventory(this, 54, "Mines");
         this.chipValues = new LinkedHashMap<>();
-        this.animationTasks = new HashMap<>();
-        this.animationCompleted = new HashMap<>();
 
         // Initialize game state
         this.gameState = GameState.PLACING_WAGER;
@@ -110,7 +103,7 @@ public class MinesTable implements InventoryHolder, Listener {
         // Delaying the animation inventory opening to ensure it displays properly
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             // Pass the animation message from the config
-            AnimationTable animationTable = new AnimationTable(player, plugin, "NCCasino - "+animationMessage, 0);
+            AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
             player.openInventory(animationTable.getInventory());
 
             // Start animation and pass a callback to return to MinesTable after animation completes
@@ -307,6 +300,7 @@ public class MinesTable implements InventoryHolder, Listener {
         }
     }
 
+    @SuppressWarnings("null")
     @EventHandler
     public void handleClick(InventoryClickEvent event) {
         if (!(event.getInventory().getHolder() instanceof MinesTable)) return;
@@ -860,7 +854,7 @@ public class MinesTable implements InventoryHolder, Listener {
     
     private void spreadEmeraldsFrom(int centerX, int centerY, int currentRadius) {
         // Expansion of emeralds from the center
-        BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
             boolean anyTilesSetToEmerald = false;
     
             for (int y = 0; y < 6; y++) { // 6 rows
@@ -905,20 +899,26 @@ public class MinesTable implements InventoryHolder, Listener {
         // Handle rebet logic
         if (rebetEnabled && previousWager > 0) {
             if (hasEnoughCurrency(player, (int) previousWager)) {
-                removeWagerFromInventory(player, (int) previousWager);
-                betStack.push(previousWager);
-                updateBetLore(52, previousWager);
-                player.sendMessage("§dRebet placed: " +previousWager);
-                wagerPlaced = true;
+                // Check if the player still has the MinesTable open before deducting the bet
+                InventoryView openInventory = player.getOpenInventory();
+                if (openInventory != null && openInventory.getTopInventory().getHolder() instanceof MinesTable) {
+                    removeWagerFromInventory(player, (int) previousWager);
+                    betStack.push(previousWager);
+                    updateBetLore(52, previousWager);
+                    player.sendMessage("§dRebet placed: " + previousWager);
+                    wagerPlaced = true;
+                } 
             } else {
                 player.sendMessage("§c2 broke 4 rebet.");
-                 player.sendMessage("§cWager reset to 0.");
+                player.sendMessage("§cWager reset to 0.");
                 wager = 0;
                 betStack.clear();
                 updateBetLore(52, wager);
                 wagerPlaced = false;
             }
-        } else {
+        }
+
+         else {
             player.sendMessage("§dRebet is off. ");
             player.sendMessage("§dWager reset to 0.");
             wager = 0;
@@ -1015,25 +1015,36 @@ public class MinesTable implements InventoryHolder, Listener {
         int fullStacks = totalAmount / 64;
         int remainder = totalAmount % 64;
         Material currencyMaterial = plugin.getCurrency(internalName);
-
+        int totalDropped = 0; // Track how many items were dropped
+    
         for (int i = 0; i < fullStacks; i++) {
             ItemStack stack = new ItemStack(currencyMaterial, 64);
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
-                // Drop the item at the player's location if inventory is full
-                player.getWorld().dropItemNaturally(player.getLocation(), stack);
+                for (ItemStack item : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), item);
+                    totalDropped += item.getAmount();
+                }
             }
         }
-
+    
         if (remainder > 0) {
             ItemStack stack = new ItemStack(currencyMaterial, remainder);
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
-                // Drop the item at the player's location if inventory is full
-                player.getWorld().dropItemNaturally(player.getLocation(), stack);
+                for (ItemStack item : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), item);
+                    totalDropped += item.getAmount();
+                }
             }
         }
+    
+        // Print total dropped if any items couldn't fit in inventory
+        if (totalDropped > 0) {
+            player.sendMessage("§cNo room for " + totalDropped + " "+plugin.getCurrencyName()+"s, dropping...");
+        }
     }
+    
 
     private void endGame() {
         if (player != null) {
@@ -1042,7 +1053,17 @@ public class MinesTable implements InventoryHolder, Listener {
             }
             betStack.clear();
         }
+        
+        InventoryView openInventory = player.getOpenInventory();
+        boolean playerStillInMines = (openInventory != null && openInventory.getTopInventory().getHolder() instanceof MinesTable);
+
+        if (wagerPlaced && rebetEnabled && previousWager > 0 && !playerStillInMines) {
+            refundBet(player, (int) previousWager);
+        }
+
+        betStack.clear();
     
+
         // Notify minesInventory to remove the player's table
         minesInventory.removeTable(playerId);
     

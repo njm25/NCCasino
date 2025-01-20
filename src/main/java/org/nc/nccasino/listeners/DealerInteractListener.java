@@ -9,17 +9,11 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.helpers.DealerInventory;
-import org.nc.nccasino.Nccasino;
 import java.util.UUID;
 //import java.util.Vector;
 
 public class DealerInteractListener implements Listener {
 
-    private final Nccasino plugin;
-
-    public DealerInteractListener(Nccasino plugin) {
-        this.plugin = plugin;
-    }
 
     @EventHandler
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {

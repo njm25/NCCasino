@@ -27,7 +27,6 @@ public class DragonTable implements InventoryHolder, Listener {
     private final String internalName;
     private final DragonInventory dragonInventory;
 
-    private final Villager dealer;
     private final Stack<Pair<String, Integer>> betStack;
     private double selectedWager;
     private final Map<String, Double> chipValues;
@@ -44,7 +43,6 @@ public class DragonTable implements InventoryHolder, Listener {
         this.plugin = plugin;
         this.internalName = internalName;
         this.dragonInventory = dragonInventory;
-        this.dealer = dealer;
         this.inventory = Bukkit.createInventory(this, 54, "Dragon Climb");
         this.betStack = new Stack<>();
         this.chipValues = new LinkedHashMap<>(); // Ensure insertion order
