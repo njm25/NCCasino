@@ -263,11 +263,7 @@ public class DealerVillager {
             setName(villager, newName);
             setAnimationMessage(villager, gameName); // Update the animation message to match the game type
     
-            player.sendMessage(ChatColor.GREEN + "Dealer '" 
-            + ChatColor.YELLOW + internalName 
-            + ChatColor.GREEN + "' has been set to " 
-            + ChatColor.YELLOW + gameName 
-            + ChatColor.GREEN + ".");
+            player.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName+ ChatColor.GREEN + "' has been set to "+ ChatColor.YELLOW + gameName+ ChatColor.GREEN + ".");
         
         } else {
             player.sendMessage(ChatColor.RED + "The game is already set to " + gameName + ".");
