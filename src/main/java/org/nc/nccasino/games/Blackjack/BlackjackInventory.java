@@ -287,16 +287,6 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
     if (clickAllowed.getOrDefault(playerId, true)) {
         clickAllowed.put(playerId, false); // Set click allowed to false for this player
         Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L); // Delay for click handling
-        /* 
-        if (!gameStarted) { // Handle clicks in the start menu
-            if (slot == 22) { // Start Blackjack button clicked
-                player.sendMessage("Starting Blackjack...");
-                gameStarted = true; // Set game started flag
-                initializeGameMenu(); // Switch to game menu
-                player.openInventory(this.getInventory());
-            }
-        } else */
-        
         if (gameActive) { // Game is active, handle player actions
             if (playerId.equals(currentPlayerId)) {
                 handlePlayerAction(player, slot);
@@ -844,7 +834,7 @@ private void removePlayerData(UUID playerId) {
             if (meta != null) {
                 if (wager > 0) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Current Bet: " + wager + " " + plugin.getCurrencyName(internalName));
+                    lore.add("Current Bet: " + (int)wager + " " + plugin.getCurrencyName(internalName)+ (Math.abs(wager) == 1 ? "" : "s") + "\n");
                     meta.setLore(lore);
                 } else {
                     meta.setLore(new ArrayList<>()); // Clear lore if no wager
@@ -1275,24 +1265,14 @@ private void finishGame() {
             float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
             for (int i = 0; i < 3; i++) {
                 float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
-                player.playSound(player.getLocation(), 
-                        Sound.ENTITY_PLAYER_LEVELUP,
-                        SoundCategory.MASTER,
-                        1.0f, 
-                        chosenPitch
-                    );
+                player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER, 1.0f,chosenPitch);
                 // Schedule them slightly apart for a "ding-ding-ding" effect
             
             }
             payOut(player, bets, 2.5); // Pay out 2.5x for a blackjack
         } else if (playerCardSum > 21) {
             player.sendMessage("§c§lYou busted and lost your bet.");
-            player.playSound(player.getLocation(), 
-                        Sound.ENTITY_GENERIC_EXPLODE,
-                        SoundCategory.MASTER,
-                        1.0f, 
-                        1.0f
-                    );
+            player.playSound(player.getLocation(),Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
             player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
         } else if (dealerBusted || playerCardSum > dealerCardSum) {
             player.sendMessage("§a§lYou won! Collect your winnings.");
@@ -1303,36 +1283,19 @@ private void finishGame() {
             float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
             for (int i = 0; i < 3; i++) {
                 float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
-                player.playSound(player.getLocation(), 
-                        Sound.ENTITY_PLAYER_LEVELUP,
-                        SoundCategory.MASTER,
-                        1.0f, 
-                        chosenPitch
-                    );
+                player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER,1.0f,chosenPitch);
                 // Schedule them slightly apart for a "ding-ding-ding" effect
             
             }
             payOut(player, bets, 2.0); // Regular win pays out 2x
         } else if (playerCardSum < dealerCardSum) {
             player.sendMessage("§c§lYou lost this round.");
-            player.playSound(player.getLocation(), 
-            Sound.ENTITY_GENERIC_EXPLODE,
-            SoundCategory.MASTER,
-            1.0f, 
-            1.0f
-        );
+            player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
         player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
         } else {
             player.sendMessage("§6§lIt's a tie! Your bet is returned.");
             refundBet(player, bets);
-            player.playSound(
-                player.getLocation(), 
-                Sound.ITEM_SHIELD_BREAK,
-                SoundCategory.MASTER,
-                1.0f, 
-                1.0f
-            );
-            
+            player.playSound(player.getLocation(),Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
             player.getWorld().spawnParticle(Particle.LARGE_SMOKE, player.getLocation(), 20);  
         }
     }
