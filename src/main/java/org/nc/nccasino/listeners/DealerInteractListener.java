@@ -4,10 +4,13 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.helpers.AdminInventory;
 import org.nc.nccasino.helpers.DealerInventory;
 import java.util.UUID;
 //import java.util.Vector;
@@ -27,10 +30,15 @@ public class DealerInteractListener implements Listener {
             if (DealerVillager.isDealerVillager(villager)) {
                 Player player = event.getPlayer();
                 UUID dealerId = DealerVillager.getUniqueId(villager);
-                DealerInventory dealerInventory = DealerInventory.getOrCreateInventory(dealerId);
-
-
-                player.openInventory(dealerInventory.getInventory());
+                
+                if (player.isSneaking() && player.hasPermission("nccasino.use")) {
+                    AdminInventory adminInventory = new AdminInventory(dealerId, player, (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class));
+                    player.openInventory(adminInventory.getInventory());
+                } else {
+                    DealerInventory dealerInventory = DealerInventory.getOrCreateInventory(dealerId);
+                    player.openInventory(dealerInventory.getInventory());
+                }
+            
                 event.setCancelled(true);
             }
         }

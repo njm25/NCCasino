@@ -36,6 +36,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.helpers.AdminInventory;
 import org.nc.nccasino.helpers.AnimationTable;
 import org.nc.nccasino.helpers.DealerInventory;
 import org.nc.nccasino.objects.Card;
@@ -72,6 +73,7 @@ public class BlackjackInventory extends DealerInventory implements Listener {
         this.chipValues = new HashMap<>(); // Initialize chip values storage
         this.internalName = internalName; // Store the internal name
         this.gameActive = false; // Initialize game active flag
+        this.firstopen=true;
         this.playerSeats = new HashMap<>(); // Initialize player seats storage
         this.playerBets = new HashMap<>(); // Initialize player bets storage
         this.lastBetAmounts = new HashMap<>(); // Initialize last bet amounts storage
@@ -136,14 +138,20 @@ private void registerListener() {
         String animationMessage = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
         // Delaying the animation inventory opening to ensure it displays properly
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            // Pass the animation message from the config
-           
-            AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
-            player.openInventory(animationTable.getInventory());
-    
-            // Start animation and pass a callback to return to MinesTable after animation completes
-            animationTable.animateMessage(player, () -> afterAnimationComplete(player)); // Wrap the method call in a lambda
-        }, 1L); // Delay by 1 tick to ensure smooth opening of inventory
+            if (player.isSneaking() && player.hasPermission("nccasino.use")) {
+                // Open the admin inventory immediately without animation
+                AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                player.openInventory(adminInventory.getInventory());
+            } else {
+                // Proceed with the animation for the regular inventory
+                AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
+                player.openInventory(animationTable.getInventory());
+        
+                // Start animation and return to MinesTable after completion
+                animationTable.animateMessage(player, () -> afterAnimationComplete(player));
+            }
+        }, 1L); // Delay by 1 tick to ensure smooth inventory opening
+        
     }
     
     private void afterAnimationComplete(Player player) {
@@ -240,7 +248,7 @@ private void registerListener() {
     }
 
     // Create an item stack with a custom display name and amount
-    private ItemStack createCustomItem(Material material, String name, int amount) {
+    public ItemStack createCustomItem(Material material, String name, int amount) {
         if (amount <= 0) {
             throw new IllegalArgumentException("Amount must be greater than 0 for " + name);
         }

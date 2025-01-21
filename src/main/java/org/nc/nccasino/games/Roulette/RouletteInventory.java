@@ -1,6 +1,7 @@
 package org.nc.nccasino.games.Roulette;
 
 import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.helpers.AdminInventory;
 import org.nc.nccasino.helpers.AnimationTable;
 import org.nc.nccasino.helpers.DealerInventory;
 import org.nc.nccasino.objects.Pair;
@@ -123,6 +124,7 @@ private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
         this.plugin = plugin;
         this.Bets = new HashMap<>();
         this.Tables = new HashMap<>();
+        this.firstopen=true;
         this.activeAnimations = new HashMap<>();
         this.internalName = internalName;
         this.mce = new MultiChannelEngine(plugin);
@@ -273,12 +275,21 @@ private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
     private void startAnimation(Player player) {
         String animationMessage = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            activeAnimations.put(player, 1);
-            AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
-            player.openInventory(animationTable.getInventory());
+            if (player.isSneaking() && player.hasPermission("nccasino.use")) {
+                // Open the admin inventory immediately without animation
+                AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                player.openInventory(adminInventory.getInventory());
+            } else {
+                // Proceed with the animation for the regular inventory
+                activeAnimations.put(player, 1);
+                AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
+                player.openInventory(animationTable.getInventory());
 
-            animationTable.animateMessage(player, () -> afterAnimationComplete(player));
-        }, 1L);
+                // Start animation and return to MinesTable after completion
+                animationTable.animateMessage(player, () -> afterAnimationComplete(player));
+            }
+        }, 1L); // Delay by 1 tick to ensure smooth inventory opening
+
     }
 
     private void afterAnimationComplete(Player player) {
@@ -570,15 +581,6 @@ private void exitGame(Player player) {
         }
     }
 
-    private ItemStack createCustomItem(Material material, String name, int amount) {
-        ItemStack itemStack = new ItemStack(material, amount);
-        ItemMeta meta = itemStack.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(name);
-            itemStack.setItemMeta(meta);
-        }
-        return itemStack;
-    }
 
     private void resetToStartState() {
         Tables.clear();

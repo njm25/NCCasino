@@ -98,10 +98,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
                     // Update game type from config
                     villager.setCollidable(false);
                     String internalName = DealerVillager.getInternalName(villager);
+                    String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
                     String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                     int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
                     String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
-                    DealerVillager.updateGameType(villager, gameType, timer, anmsg);
+                    DealerVillager.updateGameType(villager, gameType, timer, anmsg, name);
                 }
             }
         }
@@ -148,13 +149,14 @@ private void reinitializeDealerVillagers() {
                     String internalName = DealerVillager.getInternalName(villager);
                     
                     // Ensure that the dealer's game type and other data are updated correctly
+                    String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
                     String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                     int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
                     String animationMessage = getConfig().getString("dealers." + internalName + ".animation-message");
                     
                     // Update dealer's game and inventory based on the stored config
                     
-                    DealerVillager.updateGameType(villager, gameType, timer, animationMessage);
+                    DealerVillager.updateGameType(villager, gameType, timer, animationMessage, name);
                     
                     // Optionally reset any additional state that could be causing the issues
                     DealerVillager.setName(villager, gameType + " Dealer");
@@ -182,6 +184,7 @@ private void reinitializeDealerVillagers() {
                     if (DealerVillager.isDealerVillager(villager)) {
                         // Update game type from config
                         String internalName = DealerVillager.getInternalName(villager);
+                        String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
                         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
@@ -203,7 +206,7 @@ private void reinitializeDealerVillagers() {
                         }
 
 
-                        DealerVillager.updateGameType(villager, gameType, timer, anmsg);
+                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name);
                     }
                 }
             }
@@ -219,6 +222,7 @@ private void reinitializeDealerVillagers() {
 
         if (!getConfig().contains(path)) {
             
+            getConfig().set(path + ".display-name", "Dealer"); // Default game type
             getConfig().set(path + ".game", "Menu"); // Default game type
             getConfig().set(path + ".timer", 0); // Default timer
             getConfig().set(path + ".animation-message", "NCCASINO");
@@ -263,7 +267,6 @@ private void reinitializeDealerVillagers() {
     public void reloadDealerConfigurations() {
         // Logic to reinitialize dealer configurations if needed
         // This can be customized as per the plugin's requirements
-        getLogger().info("Reloading dealer configurations...");
         reloadDealerVillagers();
     }
 

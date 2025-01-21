@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -39,6 +40,7 @@ public class DealerInventory implements InventoryHolder {
         this.inventory.clear();
 
     }
+
     // Method to get a dealer inventory if it exists
     public static DealerInventory getInventory(UUID dealerId) {
         return inventories.get(dealerId);
@@ -74,6 +76,26 @@ public class DealerInventory implements InventoryHolder {
         playerInventory.setItem(slot, itemStack);
     }
 
+    // Create an item stack with a custom display name and amount
+    public ItemStack createCustomItem(Material material, String name, int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Amount must be greater than 0 for " + name);
+        }
+        ItemStack itemStack = new ItemStack(material, amount);
+        setCustomItemMeta(itemStack, name);
+        return itemStack;
+    }
+    private void setCustomItemMeta(ItemStack itemStack, String name) {
+        ItemMeta meta = itemStack.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(name);
+            meta.setLore(new ArrayList<>()); // Clear any existing lore
+            meta.addItemFlags(
+                ItemFlag.HIDE_ATTRIBUTES
+            ); // Hide all relevant item flags
+            itemStack.setItemMeta(meta); // Set the item meta after making changes
+        }
+    }
     // Update all players' inventories (specific slot)
     public void setAllPlayerInventoryItem(List<Inventory> playerInventories, Material material, int slot) {
         ItemStack itemStack = new ItemStack(material, 1);

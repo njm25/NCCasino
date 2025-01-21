@@ -45,6 +45,7 @@ public class DealerVillager {
         Nccasino nccasino = (Nccasino) plugin;
     
         // Ensure the correct order of config entries
+        nccasino.getConfig().set("dealers." + internalName + ".display-name", "Game Menu");
         nccasino.getConfig().set("dealers." + internalName + ".game", "Menu");
         nccasino.getConfig().set("dealers." + internalName + ".timer", 0);
         nccasino.getConfig().set("dealers." + internalName + ".animation-message", "Menu"); // Set the animation message to default
@@ -82,7 +83,6 @@ public class DealerVillager {
         initializeInventory(villager, uniqueId, name, plugin);
 
     }
-
     public static void initializeInventory(Villager villager, UUID uniqueId, String name, Nccasino plugin) {
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String gameType = dataContainer.get(GAME_TYPE_KEY, PersistentDataType.STRING);
@@ -108,7 +108,7 @@ public class DealerVillager {
                 name = "Roulette Dealer";
                 break;
             case "Mines":
-                inventory = new MinesInventory(uniqueId, plugin);
+                inventory = new MinesInventory(uniqueId, plugin, internalName);
                 name = "Mines Dealer";
                 break;
             case "Dragon Dodger":
@@ -217,81 +217,19 @@ public class DealerVillager {
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
     
-        String currentGameType = dataContainer.get(GAME_TYPE_KEY, PersistentDataType.STRING);
-        if (!gameName.equals(currentGameType)) {
-            switch (gameName) {
-                case "Blackjack":
-                    newInventory = new BlackjackInventory(dealerId, plugin, internalName);
-                    newName = "Blackjack Dealer";
-                    defaultTimer = 10;
-                    break;
-                case "Roulette":
-                    newInventory = new RouletteInventory(dealerId, plugin, internalName);
-                    newName = "Roulette Dealer";
-                    defaultTimer = 30;
-                    break;
-                case "Mines":
-                    newInventory = new MinesInventory(dealerId, plugin);
-                    newName = "Mines Dealer";
-                    break;
-                case "Dragon Climb":
-                    newInventory = new DragonInventory(dealerId, plugin);
-                    newName = "Dragon Climb Dealer";
-                    break;
-                case "Rail Runner":
-                    newInventory = new RailInventory(dealerId, plugin);
-                    newName = "Rail Runner Dealer";
-                    break;
-                case "Dice":
-                    newInventory = new DiceInventory(dealerId, plugin);
-                    newName = "Dice Dealer";
-                    break;    
-                default:
-                    newInventory = new GameMenuInventory(dealerId);
-                    newName = "Game Menu";
-                    gameName = "Menu";
-                    break;
-            }
-    
-            // Update the config and ensure correct hierarchy
-            plugin.getConfig().set("dealers." + internalName + ".game", gameName);
-            plugin.getConfig().set("dealers." + internalName + ".timer", defaultTimer);
-            plugin.getConfig().set("dealers." + internalName + ".animation-message", "NCCasino - "+gameName); 
-            plugin.saveConfig();
-    
-            DealerInventory.updateInventory(dealerId, newInventory);
-            setName(villager, newName);
-            setAnimationMessage(villager, gameName); // Update the animation message to match the game type
-    
-            player.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName+ ChatColor.GREEN + "' has been set to "+ ChatColor.YELLOW + gameName+ ChatColor.GREEN + ".");
-        
-        } else {
-            player.sendMessage(ChatColor.RED + "The game is already set to " + gameName + ".");
-        }
-    
-    }
-    public static void updateGameType(Villager villager, String gameName, int timer, String anmsg) {
-        UUID dealerId = getUniqueId(villager);
-        if (dealerId == null) return;
-
-        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
-        DealerInventory newInventory;
-        String newName;
-
-        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
-        String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
-
         switch (gameName) {
             case "Blackjack":
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);
                 newName = "Blackjack Dealer";
+                defaultTimer = 10;
                 break;
             case "Roulette":
                 newInventory = new RouletteInventory(dealerId, plugin, internalName);
                 newName = "Roulette Dealer";
+                defaultTimer = 30;
                 break;
             case "Mines":
-                newInventory = new MinesInventory(dealerId, plugin);
+                newInventory = new MinesInventory(dealerId, plugin, internalName);
                 newName = "Mines Dealer";
                 break;
             case "Dragon Climb":
@@ -305,10 +243,57 @@ public class DealerVillager {
             case "Dice":
                 newInventory = new DiceInventory(dealerId, plugin);
                 newName = "Dice Dealer";
-                break;     
+                break;    
             default:
                 newInventory = new GameMenuInventory(dealerId);
                 newName = "Game Menu";
+                gameName = "Menu";
+                break;
+        }
+
+        // Update the config and ensure correct hierarchy
+        plugin.getConfig().set("dealers." + internalName + ".display-name", newName);
+        plugin.getConfig().set("dealers." + internalName + ".game", gameName);
+        plugin.getConfig().set("dealers." + internalName + ".timer", defaultTimer);
+        plugin.getConfig().set("dealers." + internalName + ".animation-message", "NCCasino - "+gameName); 
+        plugin.saveConfig();
+
+        DealerInventory.updateInventory(dealerId, newInventory);
+        setName(villager, newName);
+        setAnimationMessage(villager, gameName); // Update the animation message to match the game type
+
+        player.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName+ ChatColor.GREEN + "' has been set to "+ ChatColor.YELLOW + gameName+ ChatColor.GREEN + ".");
+    }
+    public static void updateGameType(Villager villager, String gameName, int timer, String anmsg, String newName) {
+        UUID dealerId = getUniqueId(villager);
+        if (dealerId == null) return;
+
+        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
+        DealerInventory newInventory;
+        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+        String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
+
+        switch (gameName) {
+            case "Blackjack":
+                newInventory = new BlackjackInventory(dealerId, plugin, internalName);
+                break;
+            case "Roulette":
+                newInventory = new RouletteInventory(dealerId, plugin, internalName);
+                break;
+            case "Mines":
+                newInventory = new MinesInventory(dealerId, plugin, internalName);
+                break;
+            case "Dragon Climb":
+                newInventory = new DragonInventory(dealerId, plugin);
+                break;
+            case "Rail Runner":
+                newInventory = new RailInventory(dealerId, plugin);
+                break;
+            case "Dice":
+                newInventory = new DiceInventory(dealerId, plugin);
+                break;     
+            default:
+                newInventory = new GameMenuInventory(dealerId);
                 gameName = "Menu";
                 break;
         }
@@ -320,6 +305,7 @@ public class DealerVillager {
         dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameName);
         dataContainer.set(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING, gameName); // Set animation message to game name by default
 
+        plugin.getConfig().set("dealers." + internalName + ".display-name", newName);
         plugin.getConfig().set("dealers." + internalName + ".game", gameName);
         plugin.getConfig().set("dealers." + internalName + ".timer", timer);
         plugin.getConfig().set("dealers." + internalName + ".animation-message", anmsg); // Set animation message to game name by default
