@@ -30,30 +30,40 @@ public class AdminInventory extends DealerInventory implements Listener {
     private Villager dealer;
     private final Map<UUID, Boolean> clickAllowed = new HashMap<>(); // Track click state per player
     private Nccasino plugin;
-    private final Map<UUID, Boolean> moveMode = new HashMap<>(); // Track players in move mode
-    private final Map<UUID, Boolean> nameEditMode = new HashMap<>(); // Track players renaming dealer
+    private static final Map<UUID, Boolean> moveMode = new HashMap<>(); // Track players in move mode
+    private static final Map<UUID, Boolean> nameEditMode = new HashMap<>(); // Track players renaming dealer
+    private static final Map<UUID, Boolean> timerEditMode = new HashMap<>(); // Track players renaming dealer
+    private static final Map<UUID, Boolean> amsgEditMode = new HashMap<>(); // Track players renaming dealer
 
+
+    private static final Map<UUID, Villager> villagerMap = new HashMap<>();
     private enum SlotOption {
         EDIT_DISPLAY_NAME,
         SELECT_GAME_TYPE,
         MOVE_DEALER,
         DELETE_DEALER,
         EDIT_CURRENCY,
-        USE_VAULT
+        USE_VAULT,
+        EDIT_TIMER,
+        EDIT_ANIMATION_MESSAGE
     }
 
     private final Map<SlotOption, Integer> slotMapping = new HashMap<>() {{
-        put(SlotOption.EDIT_DISPLAY_NAME, 12);
-        put(SlotOption.SELECT_GAME_TYPE, 14);
+        put(SlotOption.EDIT_DISPLAY_NAME, 10);
+        put(SlotOption.SELECT_GAME_TYPE, 12);
+        put(SlotOption.EDIT_TIMER, 14);
+        put(SlotOption.EDIT_ANIMATION_MESSAGE, 16);
+
+        put(SlotOption.USE_VAULT, 28);
+        put(SlotOption.EDIT_CURRENCY, 30);
         put(SlotOption.MOVE_DEALER, 32);
         put(SlotOption.DELETE_DEALER, 34);
-        put(SlotOption.EDIT_CURRENCY, 30);
-        put(SlotOption.USE_VAULT, 28);
     }};
 
     public AdminInventory(UUID dealerId, Player player, Nccasino plugin) {
         super(player.getUniqueId(), 54, "Admin Menu");
         this.dealerId = dealerId;
+        this.dealer = DealerVillager.getVillagerFromId(dealerId);
         this.dealer =(Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
             .filter(entity -> entity instanceof Villager)
             .map(entity -> (Villager) entity)
@@ -67,14 +77,24 @@ public class AdminInventory extends DealerInventory implements Listener {
     private void initializeAdminMenu() {
         addItem(createCustomItem(Material.NAME_TAG, "Edit Display Name"), slotMapping.get(SlotOption.EDIT_DISPLAY_NAME));
         addItem(createCustomItem(Material.PAPER, "Select Game Type"), slotMapping.get(SlotOption.SELECT_GAME_TYPE));
-        addItem(createCustomItem(Material.COMPASS, "Move"), slotMapping.get(SlotOption.MOVE_DEALER));
+        addItem(createCustomItem(Material.CLOCK, "Edit Timer"), slotMapping.get(SlotOption.EDIT_TIMER));
+        addItem(createCustomItem(Material.RED_STAINED_GLASS_PANE, "Edit Animation Message"), slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE));
 
+        addItem(createCustomItem(Material.CHEST, "Use Vault"), slotMapping.get(SlotOption.USE_VAULT));
+        addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
+        addItem(createCustomItem(Material.COMPASS, "Move"), slotMapping.get(SlotOption.MOVE_DEALER));
         addItem(createCustomItem(Material.BARRIER, "Delete", 2), slotMapping.get(SlotOption.DELETE_DEALER));
         setPlayerItemLore(this.getInventory(), slotMapping.get(SlotOption.DELETE_DEALER), List.of("§cClick twice to delete"));
 
-        addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-        addItem(createCustomItem(Material.CHEST, "Use Vault"), slotMapping.get(SlotOption.USE_VAULT));
     }
+    
+    private boolean isPlayerOccupied(UUID playerId) {
+        return nameEditMode.getOrDefault(playerId, false) ||
+               timerEditMode.getOrDefault(playerId, false) ||
+               amsgEditMode.getOrDefault(playerId, false) ||
+               moveMode.getOrDefault(playerId, false);
+    }
+    
 
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
@@ -108,6 +128,12 @@ public class AdminInventory extends DealerInventory implements Listener {
                     case USE_VAULT:
                         handleUseVault(player);
                         break;
+                    case EDIT_TIMER:
+                        handleEditTimer(player);
+                        break;
+                    case EDIT_ANIMATION_MESSAGE:
+                        handleAnimationMessage(player);
+                        break;
                     default:
                         player.sendMessage("§cInvalid option selected.");
                         break;
@@ -118,16 +144,49 @@ public class AdminInventory extends DealerInventory implements Listener {
         }
     }
 
+    private void handleEditTimer(Player player){
+        UUID playerId = player.getUniqueId();
+    
+
+        // Temporarily mark player as occupied before checking
+
+    // Run the check in the main thread
+        if (isPlayerOccupied(playerId)) {
+            player.sendMessage("§cYou are already editing something. ");
+            return;
+        }    
+        player.closeInventory();
+        villagerMap.put(playerId, dealer);  // Store dealer reference
+        timerEditMode.put(playerId, true);
+        player.sendMessage("§aType the new timer in chat.");
+    }
+
+    private void handleAnimationMessage(Player player){
+        UUID playerId = player.getUniqueId();
+    
+        if (isPlayerOccupied(playerId)) {
+            player.sendMessage("§cYou are already editing something. ");
+            return;
+        }
+    
+
+        player.closeInventory();
+        villagerMap.put(playerId, dealer);  // Store dealer reference
+        amsgEditMode.put(playerId, true);
+        player.sendMessage("§aType the new animation message in chat.");
+    }
+
     private void handleEditDealerName(Player player) {
         UUID playerId = player.getUniqueId();
     
-        if (nameEditMode.containsKey(playerId)) {
-            player.sendMessage("§cYou are already editing a dealer's name. ");
+        if (isPlayerOccupied(playerId)) {
+            player.sendMessage("§cYou are already editing something. ");
             return;
         }
     
         player.closeInventory();
         nameEditMode.put(playerId, true);
+        villagerMap.put(playerId, dealer);  // Store dealer reference
         player.sendMessage("§aType the new dealer name in chat.");
     }
     
@@ -135,20 +194,21 @@ public class AdminInventory extends DealerInventory implements Listener {
     private void handleSelectGameType(Player player) {
         
         plugin.getConfig().set("dealers." + DealerVillager.getInternalName(dealer) + ".game", "Menu");
-        plugin.reloadDealerConfigurations();
+        plugin.reloadDealerVillager(dealer);
         DealerVillager.openDealerInventory(dealer, player);
     }
 
     private void handleMoveDealer(Player player) {
         UUID playerId = player.getUniqueId();
     
-        if (moveMode.containsKey(playerId)) {
-            player.sendMessage("§cYou are already moving a dealer.");
+        if (isPlayerOccupied(playerId)) {
+            player.sendMessage("§cYou are already editing.");
             return;
         }
     
         player.closeInventory();
         moveMode.put(playerId, true);
+        villagerMap.put(playerId, dealer);  // Store dealer reference
         player.sendMessage("§aClick a block to move the dealer.");
     }
 
@@ -195,8 +255,9 @@ public class AdminInventory extends DealerInventory implements Listener {
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
+        Villager dealer = villagerMap.get(playerId);
 
-        if (nameEditMode.containsKey(playerId) && nameEditMode.get(playerId)) {
+        if (nameEditMode.getOrDefault(playerId, false)) {
             event.setCancelled(true); // Prevent message from being broadcast
 
             String newName = event.getMessage().trim();
@@ -211,12 +272,58 @@ public class AdminInventory extends DealerInventory implements Listener {
                 plugin.getConfig().set("dealers." + internalName + ".display-name", newName);
                 plugin.saveConfig();
                 dealer.setCustomNameVisible(true);
+                plugin.reloadDealerVillager(dealer);
                 player.sendMessage("§aDealer name updated to: " + newName);
             } else {
                 player.sendMessage("§cCould not find dealer.");
             }
 
             nameEditMode.remove(playerId); // Remove from edit mode
+            villagerMap.remove(playerId);
+        }
+        else if (timerEditMode.getOrDefault(playerId, false)) {
+            event.setCancelled(true); // Prevent message from being broadcast
+
+            String newTimer = event.getMessage().trim();
+            if (newTimer.isEmpty() || !newTimer.matches("\\d+") || Integer.parseInt(newTimer) <= 0) {
+                player.sendMessage("§cInvalid input. Please enter a positive number.");
+                return;
+            }
+
+            if (dealer != null) {
+                String internalName = DealerVillager.getInternalName(dealer);
+                plugin.getConfig().set("dealers." + internalName + ".timer", Integer.parseInt(newTimer));
+                plugin.saveConfig();
+                plugin.reloadDealerVillager(dealer);
+                player.sendMessage("§aDealer timer updated to: " + newTimer);
+            } else {
+                player.sendMessage("§cCould not find dealer.");
+            }
+
+            timerEditMode.remove(playerId); // Remove from edit mode
+            villagerMap.remove(playerId);
+        }
+        else if (amsgEditMode.getOrDefault(playerId, false)) {
+            event.setCancelled(true); // Prevent message from being broadcast
+
+            String newAmsg = event.getMessage().trim();
+            if (newAmsg.isEmpty()) {
+                player.sendMessage("§cInvalid input.");
+                return;
+            }
+
+            if (dealer != null) {
+                String internalName = DealerVillager.getInternalName(dealer);
+                plugin.getConfig().set("dealers." + internalName + ".animation-message", newAmsg);
+                plugin.saveConfig();
+                plugin.reloadDealerVillager(dealer);
+                player.sendMessage("§aDealer animation message updated to: " + newAmsg);
+            } else {
+                player.sendMessage("§cCould not find dealer.");
+            }
+
+            villagerMap.remove(playerId);
+            amsgEditMode.remove(playerId); // Remove from edit mode
         }
     }
 
@@ -226,6 +333,7 @@ public class AdminInventory extends DealerInventory implements Listener {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
+        Villager dealer = villagerMap.get(playerId);
         if (moveMode.containsKey(playerId) && moveMode.get(playerId)) {
             if (event.getClickedBlock() != null) {
                 Location newLocation = event.getClickedBlock().getLocation().add(0.5, 1, 0.5); // Center on block
@@ -244,7 +352,7 @@ public class AdminInventory extends DealerInventory implements Listener {
 
                     // Set the dealer's data
                     var chunk = dealer.getLocation().getChunk();
-                    String path = "dealers." + DealerVillager.getInternalName(dealer).toString();
+                    String path = "dealers." + DealerVillager.getInternalName(dealer);
                     dealersConfig.set(path + ".chunkX", chunk.getX());
                     dealersConfig.set(path + ".chunkZ", chunk.getZ());
                             // Save the configuration to file
@@ -262,6 +370,8 @@ public class AdminInventory extends DealerInventory implements Listener {
                 }
 
                 moveMode.remove(playerId); 
+                villagerMap.remove(playerId);
+
             }
             event.setCancelled(true); 
         }

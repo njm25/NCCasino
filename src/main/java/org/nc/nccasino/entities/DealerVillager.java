@@ -359,4 +359,11 @@ public class DealerVillager {
     public Villager getVillager() {
         return villager;
     }
+
+
+    public static Villager getVillagerFromId(UUID dealerId) {
+        DealerVillager dealer = dealers.get(dealerId);
+        return (dealer != null) ? dealer.getVillager() : null;
+    }
+    
 }

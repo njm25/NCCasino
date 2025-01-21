@@ -299,9 +299,10 @@ private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
                 mce.addPlayerToChannel("Master", player);
                 mce.addPlayerToChannel("RouletteWheel", player);
                 player.openInventory(this.getInventory());
+                this.bettingTimeSeconds = plugin.getTimer(internalName);
+
                 if (firstFin) {
                     firstFin = false;
-                    this.bettingTimeSeconds = plugin.getTimer(internalName);
                     startBettingTimer();
                 }
 

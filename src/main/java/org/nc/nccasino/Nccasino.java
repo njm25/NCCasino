@@ -166,6 +166,36 @@ private void reinitializeDealerVillagers() {
         }
     });
 }
+
+    public void reloadDealerVillager(Villager villager) {
+        if (!DealerVillager.isDealerVillager(villager)) {
+        return;
+        }
+
+        UUID dealerId = villager.getUniqueId();
+        DealerInventory inventory = DealerInventory.inventories.get(dealerId);
+        if (inventory != null) {
+            inventory.delete();
+        }
+
+        String internalName = DealerVillager.getInternalName(villager);
+        String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
+        String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
+        int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
+        String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
+
+        if (!getConfig().contains("dealers." + internalName + ".stand-on-17") && gameType.equals("Blackjack")) {
+            getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+        } else {
+            int hasStand17Config = getConfig().getInt("dealers." + internalName + ".stand-on-17");
+            if (hasStand17Config > 100 || hasStand17Config < 0) {
+                getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+            }
+        }
+
+        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name);
+    }
+
     private void reloadDealerVillagers() {
         // Collect the dealer IDs to delete in a separate list
         List<UUID> dealerIdsToDelete = new ArrayList<>(DealerInventory.inventories.keySet());
