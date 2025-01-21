@@ -172,7 +172,7 @@ private void reinitializeDealerVillagers() {
         return;
         }
 
-        UUID dealerId = villager.getUniqueId();
+        UUID dealerId = DealerVillager.getUniqueId(villager);
         DealerInventory inventory = DealerInventory.inventories.get(dealerId);
         if (inventory != null) {
             inventory.delete();
