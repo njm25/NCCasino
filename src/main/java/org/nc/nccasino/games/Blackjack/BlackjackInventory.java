@@ -65,7 +65,7 @@ public class BlackjackInventory extends DealerInventory implements Listener {
     private Deck deck; // Declare the deck as a class variable
     private Boolean firstopen=true;
     private Boolean firstFin=true;
-
+    private Boolean sittable=true;
     public BlackjackInventory(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, 54, "Blackjack Table"); // Using 54 slots for start menu
         this.plugin = plugin; // Store the plugin reference
@@ -178,6 +178,7 @@ private void registerListener() {
     // Initialize Blackjack-specific game menu
     @SuppressWarnings("removal")
     private void initializeGameMenu() {
+
         inventory.clear(); // Clear the inventory before setting up the page
 
         for (UUID playerId : playerSeats.keySet()) {
@@ -192,6 +193,7 @@ private void registerListener() {
         addItem(createCustomItem(Material.OAK_STAIRS, "Click to sit here"), 9); // Chair 1
         addItem(createCustomItem(Material.OAK_STAIRS, "Click to sit here"), 18); // Chair 2
         addItem(createCustomItem(Material.OAK_STAIRS, "Click to sit here"), 27); // Chair 3
+        sittable=true;
 
         // Add betting papers
         addItem(createCustomItem(Material.PAPER, "Click here to place bet"), 10); // Bet 1
@@ -459,6 +461,9 @@ private void handleHit(Player player) {
 
         // Delay the hand value calculation to ensure the card is fully added to the player's hand
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!playerSeats.containsKey(playerId)) {
+                return;
+            }
             int handValue = calculateHandValue(playerHands.get(playerId));
 
             if (handValue == 21) {
@@ -562,7 +567,7 @@ private void handleInsurance(Player player) {
         ItemStack clickedItem = inventory.getItem(slot);
 
         // Check if the player is already sitting in a chair
-        if (playerSeats.containsKey(playerId)||clickedItem == null || !clickedItem.getType().name().endsWith("_STAIRS")) {
+        if (playerSeats.containsKey(playerId)||clickedItem == null || !clickedItem.getType().name().endsWith("_STAIRS")||!sittable) {
             player.sendMessage("§cInvalid action");
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
@@ -600,6 +605,7 @@ private void handleLeaveChair(Player player) {
 
     // Check if all players have left the game
     if (playerSeats.isEmpty()) {
+        sittable=false;
         cancelGame();
     }
 }
@@ -611,7 +617,7 @@ private void handleLeaveChairDuringGame(Player player) {
     if (!playerSeats.containsKey(playerId)) {
         return;
     }
-
+    
     // If it's the player's turn, end their turn immediately
     if (playerId.equals(currentPlayerId)) {
         playerDone.put(playerId, true); // Mark the player as done
@@ -626,9 +632,11 @@ private void handleLeaveChairDuringGame(Player player) {
     player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
     // Reset the chair to its original state
     inventory.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, "Click to sit here"));
-
+  
+    
     // Check if all players have left the game
     if (playerSeats.isEmpty()) {
+        sittable=false;
         cancelGame();
     }
 }
@@ -984,10 +992,6 @@ private void dealInitialCards() {
                 scheduleCardDealing(seatSlot + 2 + i, deck.dealCard(), delay, playerId); // First and second card
                 delay += 20; // 1-second delay between card deals
         }
-        if (!gameActive || playerSeats.isEmpty()) {
-            cancelGame(); // If game is no longer active or all players have left, stop immediately
-            return;
-        }
             if (i == 0) {
                 scheduleCardDealing(2, deck.dealCard(), delay, null); // First card to dealer in slot 2
             } else {
@@ -1037,6 +1041,10 @@ private ItemStack createEnchantedItem(Material material, String name, int amount
 }
 
 private void startNextPlayerTurn() {
+    if (!gameActive || playerSeats.isEmpty()) {
+       // cancelGame(); // If game is no longer active or all players have left, stop immediately
+        return;
+    }
     // Initialize playerIterator if it's null or the previous iteration has ended
     if (playerIterator == null || !playerIterator.hasNext()) {
         // Create a new iterator with players who have active bets and are not done
@@ -1047,6 +1055,7 @@ private void startNextPlayerTurn() {
 
     // Now proceed with the turn if there are players left
     while (playerIterator.hasNext()) {
+
         UUID previousPlayerId = currentPlayerId;
         if (previousPlayerId != null) {
             ItemStack prevItem = inventory.getItem(playerSeats.get(previousPlayerId) + 1);
@@ -1102,6 +1111,7 @@ private void startNextPlayerTurn() {
 
             // Allow the player to take actions (Hit, Stand, Double Down, Insurance)
             allowPlayerActions(currentPlayer);
+
             return;
         }
     }
@@ -1146,6 +1156,7 @@ private void updateLeverDisplayName(String displayName) {
 }
 
 private void startDealerTurn() {
+
     // Check if all players have busted
     boolean allPlayersBusted = true;
     for (UUID playerId : playerSeats.keySet()) {
@@ -1156,6 +1167,7 @@ private void startDealerTurn() {
         }
     }
     if (allPlayersBusted) {
+
         finishGame(); // Directly finish the game if all players are busted
         return;
     }
@@ -1169,6 +1181,7 @@ private void startDealerTurn() {
 }
 
 private void revealDealerCardWithDelay(long delay) {
+
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
         ItemStack hiddenCard = inventory.getItem(3);
         if (hiddenCard != null && hiddenCard.getType() == Material.WHITE_STAINED_GLASS_PANE) {
@@ -1180,6 +1193,10 @@ private void revealDealerCardWithDelay(long delay) {
 }
 
 private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long delay) {
+    if (!gameActive || playerSeats.isEmpty()) {
+    // If game is no longer active or all players have left, stop immediately
+        return;
+    }
     final int[] mutableDealerCardSum = {dealerCardSum}; // Wrap the dealerCardSum in an array to make it mutable
     Nccasino nccasino = (Nccasino) plugin;
     int standOn17Chance;
@@ -1449,7 +1466,6 @@ private int calculateHandValue(List<ItemStack> hand) {
 private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
         if (!gameActive || playerSeats.isEmpty()) {
-            cancelGame(); // If game is no longer active or all players have left, stop immediately
             return;
         }
         for (UUID uuid : playerSeats.keySet()) {
@@ -1592,7 +1608,6 @@ private int getCardValue(ItemStack cardItem) {
 private void scheduleHiddenCardDealing(int slot, int delay) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
         if (!gameActive || playerSeats.isEmpty()) {
-            cancelGame(); // If game is no longer active or all players have left, stop immediately
             return;
         }
         Material material = Material.WHITE_STAINED_GLASS_PANE; // Hidden card is now white
@@ -1730,6 +1745,7 @@ public void delete() {
     
         // Reset player seats
         playerSeats.clear();
+        
     }
     
 
