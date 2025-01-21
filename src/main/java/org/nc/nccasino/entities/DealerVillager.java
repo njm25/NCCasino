@@ -18,8 +18,7 @@ import org.nc.nccasino.games.DragonClimb.DragonInventory;
 import org.nc.nccasino.games.Mines.MinesInventory;
 import org.nc.nccasino.games.RailRunner.RailInventory;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
-import org.nc.nccasino.helpers.DealerInventory;
-import org.nc.nccasino.helpers.GameMenuInventory;
+import org.nc.nccasino.components.GameMenuInventory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,28 +33,19 @@ public class DealerVillager {
     private static final NamespacedKey INTERNAL_NAME_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "internal_name");
     private static final NamespacedKey ANIMATION_MESSAGE_KEY = new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "animation_message");
   
-    public static Villager spawnDealer(JavaPlugin plugin, Location location, String name, String internalName) {
+    public static Villager spawnDealer(JavaPlugin plugin, Location location, String name, String internalName, String gameType) {
         Location centeredLocation = location.getBlock().getLocation().add(0.5, 0.0, 0.5);
         Villager villager = (Villager) centeredLocation.getWorld().spawnEntity(centeredLocation, EntityType.VILLAGER);
     
         // Initialize the dealer villager with proper data
-        initializeVillager(villager, centeredLocation, name, internalName);
+        initializeVillager(villager, centeredLocation, name, internalName, gameType);
     
-        // Update the configuration with the default values for this dealer
-        Nccasino nccasino = (Nccasino) plugin;
-    
-        // Ensure the correct order of config entries
-        nccasino.getConfig().set("dealers." + internalName + ".display-name", "Game Menu");
-        nccasino.getConfig().set("dealers." + internalName + ".game", "Menu");
-        nccasino.getConfig().set("dealers." + internalName + ".timer", 0);
-        nccasino.getConfig().set("dealers." + internalName + ".animation-message", "Menu"); // Set the animation message to default
-        nccasino.saveConfig();  // Immediately save the configuration after setting the values
-    
+
         return villager;
     }
     
 
-    private static void initializeVillager(Villager villager, Location location, String name, String internalName) {
+    private static void initializeVillager(Villager villager, Location location, String name, String internalName, String gameType) {
         villager.setAI(true);
         villager.setInvulnerable(true);
         villager.setCustomName(name);
@@ -67,7 +57,6 @@ public class DealerVillager {
 
         UUID uniqueId = UUID.randomUUID();
 
-
         AttributeInstance movementSpeedAttribute = villager.getAttribute(Attribute.MOVEMENT_SPEED);
         movementSpeedAttribute.setBaseValue(0.0);
 
@@ -75,9 +64,9 @@ public class DealerVillager {
         dataContainer.set(DEALER_KEY, PersistentDataType.BYTE, (byte) 1);
         dataContainer.set(UNIQUE_ID_KEY, PersistentDataType.STRING, uniqueId.toString());
         dataContainer.set(NAME_KEY, PersistentDataType.STRING, name);
-        dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, "Menu"); // Default game type
+        dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameType); // Default game type
         dataContainer.set(INTERNAL_NAME_KEY, PersistentDataType.STRING, internalName);
-        dataContainer.set(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING, "Menu"); // Default animation message is the game name
+        dataContainer.set(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING, "NCCasino - " + gameType);
 
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
         initializeInventory(villager, uniqueId, name, plugin);
@@ -87,6 +76,7 @@ public class DealerVillager {
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String gameType = dataContainer.get(GAME_TYPE_KEY, PersistentDataType.STRING);
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
+        int defaultTimer = 0;
 
         if (gameType == null) {
             gameType = "Game Menu"; // Set to default Game Menu only if the game type is null
@@ -100,10 +90,12 @@ public class DealerVillager {
         DealerInventory inventory = null;
         switch (gameType) {
             case "Blackjack":
+                defaultTimer = 10;
                 inventory = new BlackjackInventory(uniqueId, plugin, internalName);
                 name = "Blackjack Dealer";
                 break;
             case "Roulette":
+                defaultTimer = 30;
                 inventory = new RouletteInventory(uniqueId, plugin, internalName);
                 name = "Roulette Dealer";
                 break;
@@ -153,6 +145,18 @@ public class DealerVillager {
                 }
                 break;
         }
+
+
+        // Update the configuration with the default values for this dealer
+        Nccasino nccasino = (Nccasino) plugin;
+
+        // Ensure the correct order of config entries
+        nccasino.getConfig().set("dealers." + internalName + ".display-name", name);
+        nccasino.getConfig().set("dealers." + internalName + ".game", gameType);
+        nccasino.getConfig().set("dealers." + internalName + ".timer", defaultTimer);
+        nccasino.getConfig().set("dealers." + internalName + ".animation-message", "NCCasino - " + gameType); // Set the animation message to default
+        nccasino.saveConfig();  // Immediately save the configuration after setting the values
+    
 
         DealerInventory.updateInventory(uniqueId, inventory);
         setName(villager, name);

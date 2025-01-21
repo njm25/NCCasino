@@ -9,9 +9,10 @@ import org.bukkit.entity.Villager;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.components.AdminInventory;
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
-import org.nc.nccasino.helpers.AdminInventory;
-import org.nc.nccasino.helpers.DealerInventory;
+
 import java.util.UUID;
 //import java.util.Vector;
 

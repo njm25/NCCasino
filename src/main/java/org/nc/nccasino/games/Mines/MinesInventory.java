@@ -1,9 +1,7 @@
 package org.nc.nccasino.games.Mines;
 
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
-import org.nc.nccasino.helpers.AdminInventory;
-import org.nc.nccasino.helpers.AnimationTable;
-import org.nc.nccasino.helpers.DealerInventory;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
@@ -13,6 +11,8 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.components.AdminInventory;
+import org.nc.nccasino.components.AnimationTable;
 import org.bukkit.event.HandlerList;
 
 import java.util.HashMap;

@@ -1,9 +1,8 @@
-package org.nc.nccasino.helpers;
+package org.nc.nccasino.components;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -22,7 +21,9 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
 
 public class AdminInventory extends DealerInventory implements Listener {
@@ -83,8 +84,7 @@ public class AdminInventory extends DealerInventory implements Listener {
         addItem(createCustomItem(Material.CHEST, "Use Vault"), slotMapping.get(SlotOption.USE_VAULT));
         addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
         addItem(createCustomItem(Material.COMPASS, "Move"), slotMapping.get(SlotOption.MOVE_DEALER));
-        addItem(createCustomItem(Material.BARRIER, "Delete", 2), slotMapping.get(SlotOption.DELETE_DEALER));
-        setPlayerItemLore(this.getInventory(), slotMapping.get(SlotOption.DELETE_DEALER), List.of("§cClick twice to delete"));
+        addItem(createCustomItem(Material.BARRIER, "Delete"), slotMapping.get(SlotOption.DELETE_DEALER));
 
     }
     
@@ -216,21 +216,29 @@ public class AdminInventory extends DealerInventory implements Listener {
         int slot = slotMapping.get(SlotOption.DELETE_DEALER);
         Inventory playerInventory = getInventory();
         ItemStack deleteItem = playerInventory.getItem(slot);
-
+    
         if (deleteItem != null && deleteItem.getType() == Material.BARRIER) {
-            if (deleteItem.getAmount() == 2) {
-                // Change stack size to 1 and update description
-                deleteItem.setAmount(1);
-                setPlayerItemLore(playerInventory, slot, List.of("§cAre you sure? Click again to confirm."));
-            } else if (deleteItem.getAmount() == 1) {
-                // Execute deletion
-                player.closeInventory();
-                delete();
-                Bukkit.dispatchCommand(player, "ncc delete " + DealerVillager.getInternalName(dealer));
-            }
+            // Open confirmation inventory directly
+            ConfirmInventory confirmInventory = new ConfirmInventory(
+                dealerId,
+                "Are you sure?",
+                (uuid) -> {
+                    // Confirm action: close inventory, delete dealer, and execute command
+                    player.closeInventory();
+                    delete();
+                    Bukkit.dispatchCommand(player, "ncc delete " + DealerVillager.getInternalName(dealer));
+                },
+                (uuid) -> {
+                    AdminInventory adminInventory = new AdminInventory(dealerId, player, (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class));
+                    player.openInventory(adminInventory.getInventory());
+                },
+                plugin
+            );
+    
+            player.openInventory(confirmInventory.getInventory());
         }
     }
-
+    
 
     private void handleEditCurrency(Player player) {
         player.sendMessage("§aEditing currency...");

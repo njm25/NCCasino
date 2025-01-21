@@ -1,9 +1,7 @@
 package org.nc.nccasino.games.Roulette;
 
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
-import org.nc.nccasino.helpers.AdminInventory;
-import org.nc.nccasino.helpers.AnimationTable;
-import org.nc.nccasino.helpers.DealerInventory;
 import org.nc.nccasino.objects.Pair;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -24,6 +22,8 @@ import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.nc.VSE.*;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.components.AdminInventory;
+import org.nc.nccasino.components.AnimationTable;
 
 import java.util.HashMap;
 import java.util.HashSet;

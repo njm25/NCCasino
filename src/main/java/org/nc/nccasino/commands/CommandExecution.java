@@ -18,7 +18,7 @@ public class CommandExecution implements CommandExecutor {
     public CommandExecution(JavaPlugin plugin) {
         // Register each subcommand and its handler
         commands.put("help", new HelpCommand());
-        commands.put("create", new CreateCommand(plugin));
+        commands.put("create", new CreateCommand((Nccasino) plugin));
         commands.put("reload", new ReloadCommand(plugin));
         commands.put("list", new ListDealersCommand((Nccasino) plugin));
         commands.put("delete", new DeleteCommand((Nccasino) plugin));

@@ -1,4 +1,4 @@
-package org.nc.nccasino.helpers;
+package org.nc.nccasino.components;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -8,6 +8,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
 
 import java.util.UUID;
