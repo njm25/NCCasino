@@ -448,7 +448,11 @@ private void handlePlayerAction(Player player, int slot) {
 
 private void handleHit(Player player) {
     synchronized (turnLock) {
+
         UUID playerId = player.getUniqueId();
+        if (playerSeats.get(playerId) == null || !playerSeats.containsKey(playerId)){
+            return;
+        }
         int seatSlot = playerSeats.get(playerId);
         int cardCount = playerCardCounts.getOrDefault(playerId, 2); // Default to 2 because of the initial 2 cards dealt
         int nextCardSlot = seatSlot + 2 + cardCount; // Calculate the next slot based on the number of cards
@@ -621,7 +625,7 @@ private void handleLeaveChairDuringGame(Player player) {
     // If it's the player's turn, end their turn immediately
     if (playerId.equals(currentPlayerId)) {
         playerDone.put(playerId, true); // Mark the player as done
-        startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
+        startNextPlayerTurn(); // Start next player's turn with delay
     }
 
     int chairSlot = playerSeats.remove(playerId);
@@ -1485,7 +1489,7 @@ private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId) 
 }
 
 private void updatePlayerHead(UUID playerId) {
-    if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty()) {
+    if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty() || playerSeats.get(playerId) == null) {
         return; // Skip updating if the player hasn't placed a bet
     }
     
@@ -1630,6 +1634,10 @@ private void scheduleHiddenCardDealing(int slot, int delay) {
 
 private void dealCardToPlayer(int slot, Card card, UUID playerId) {
     // No changes needed here; the deck will reshuffle automatically if it's empty.
+    
+    if (!playerSeats.containsKey(playerId) && slot > 9) {
+        return;
+    }
     Material material = (card.getSuit() == Suit.HEARTS || card.getSuit() == Suit.DIAMONDS) ? Material.RED_STAINED_GLASS_PANE : Material.BLACK_STAINED_GLASS_PANE;
     int stackSize = getCardValueStackSize(card);
     for (UUID uuid : playerSeats.keySet()) {
