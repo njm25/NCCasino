@@ -1383,7 +1383,7 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
         player.sendMessage("§a§l" + payout + " " + plugin.getCurrencyName(internalName)+ (Math.abs(payout) == 1 ? "" : "s") + "\n");
         // Print total dropped if any items couldn't fit in inventory
         if (totalDropped > 0) {
-            player.sendMessage("§cNo room for " + totalDropped + plugin.getCurrencyName(internalName)+ (Math.abs(totalDropped) == 1 ? "" : "s") +", dropping...");        } else {
+            player.sendMessage("§cNo room for " + totalDropped + " "+plugin.getCurrencyName(internalName)+ (Math.abs(totalDropped) == 1 ? "" : "s") +", dropping...");        } else {
 
         }
     }
