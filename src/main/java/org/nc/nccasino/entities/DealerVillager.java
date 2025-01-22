@@ -18,8 +18,6 @@ import org.nc.nccasino.games.Mines.MinesInventory;
 import org.nc.nccasino.games.RailRunner.RailInventory;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
 import org.nc.nccasino.helpers.AttributeHelper;
-import org.nc.nccasino.helpers.DealerInventory;
-import org.nc.nccasino.helpers.GameMenuInventory;
 
 
 import java.util.HashMap;
@@ -59,7 +57,8 @@ public class DealerVillager {
         UUID uniqueId = UUID.randomUUID();
 
         AttributeInstance movementSpeedAttribute = villager.getAttribute(AttributeHelper.getAttributeSafely("MOVEMENT_SPEED"));
-
+        movementSpeedAttribute.setBaseValue(0.0);
+        
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         dataContainer.set(DEALER_KEY, PersistentDataType.BYTE, (byte) 1);
         dataContainer.set(UNIQUE_ID_KEY, PersistentDataType.STRING, uniqueId.toString());
