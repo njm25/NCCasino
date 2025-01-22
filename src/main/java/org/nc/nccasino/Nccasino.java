@@ -13,8 +13,8 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.commands.CommandExecution;
 import org.nc.nccasino.commands.CommandTabCompleter;
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
-import org.nc.nccasino.helpers.DealerInventory;
 import org.nc.nccasino.listeners.DealerDeathHandler;
 import org.nc.nccasino.listeners.DealerEventListener;
 import org.nc.nccasino.listeners.DealerInteractListener;
@@ -98,10 +98,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
                     // Update game type from config
                     villager.setCollidable(false);
                     String internalName = DealerVillager.getInternalName(villager);
+                    String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
                     String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                     int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
                     String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
-                    DealerVillager.updateGameType(villager, gameType, timer, anmsg);
+                    DealerVillager.updateGameType(villager, gameType, timer, anmsg, name);
                 }
             }
         }
@@ -148,13 +149,14 @@ private void reinitializeDealerVillagers() {
                     String internalName = DealerVillager.getInternalName(villager);
                     
                     // Ensure that the dealer's game type and other data are updated correctly
+                    String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
                     String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                     int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
                     String animationMessage = getConfig().getString("dealers." + internalName + ".animation-message");
                     
                     // Update dealer's game and inventory based on the stored config
                     
-                    DealerVillager.updateGameType(villager, gameType, timer, animationMessage);
+                    DealerVillager.updateGameType(villager, gameType, timer, animationMessage, name);
                     
                     // Optionally reset any additional state that could be causing the issues
                     DealerVillager.setName(villager, gameType + " Dealer");
@@ -164,6 +166,36 @@ private void reinitializeDealerVillagers() {
         }
     });
 }
+
+    public void reloadDealerVillager(Villager villager) {
+        if (!DealerVillager.isDealerVillager(villager)) {
+        return;
+        }
+
+        UUID dealerId = DealerVillager.getUniqueId(villager);
+        DealerInventory inventory = DealerInventory.inventories.get(dealerId);
+        if (inventory != null) {
+            inventory.delete();
+        }
+
+        String internalName = DealerVillager.getInternalName(villager);
+        String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
+        String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
+        int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
+        String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
+
+        if (!getConfig().contains("dealers." + internalName + ".stand-on-17") && gameType.equals("Blackjack")) {
+            getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+        } else {
+            int hasStand17Config = getConfig().getInt("dealers." + internalName + ".stand-on-17");
+            if (hasStand17Config > 100 || hasStand17Config < 0) {
+                getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+            }
+        }
+
+        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name);
+    }
+
     private void reloadDealerVillagers() {
         // Collect the dealer IDs to delete in a separate list
         List<UUID> dealerIdsToDelete = new ArrayList<>(DealerInventory.inventories.keySet());
@@ -182,6 +214,7 @@ private void reinitializeDealerVillagers() {
                     if (DealerVillager.isDealerVillager(villager)) {
                         // Update game type from config
                         String internalName = DealerVillager.getInternalName(villager);
+                        String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
                         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
@@ -203,7 +236,7 @@ private void reinitializeDealerVillagers() {
                         }
 
 
-                        DealerVillager.updateGameType(villager, gameType, timer, anmsg);
+                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name);
                     }
                 }
             }
@@ -218,7 +251,7 @@ private void reinitializeDealerVillagers() {
         String path = "dealers." + internalName;
 
         if (!getConfig().contains(path)) {
-            
+            getConfig().set(path + ".display-name", "Dealer"); // Default game type
             getConfig().set(path + ".game", "Menu"); // Default game type
             getConfig().set(path + ".timer", 0); // Default timer
             getConfig().set(path + ".animation-message", "NCCASINO");
@@ -263,7 +296,6 @@ private void reinitializeDealerVillagers() {
     public void reloadDealerConfigurations() {
         // Logic to reinitialize dealer configurations if needed
         // This can be customized as per the plugin's requirements
-        getLogger().info("Reloading dealer configurations...");
         reloadDealerVillagers();
     }
 

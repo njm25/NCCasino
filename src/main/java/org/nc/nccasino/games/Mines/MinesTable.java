@@ -7,7 +7,6 @@ import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
@@ -18,14 +17,13 @@ import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.helpers.AnimationTable;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class MinesTable implements InventoryHolder, Listener {
     // Game state management
-    private enum GameState {
+    public enum GameState {
         PLACING_WAGER,
         WAITING_TO_START,
         PLAYING,
@@ -41,8 +39,8 @@ public class MinesTable implements InventoryHolder, Listener {
     private Boolean clickAllowed = true;
     private double selectedWager;
     private final Deque<Double> betStack = new ArrayDeque<>();
-    private Boolean closeFlag = false;
-    private GameState gameState;
+    public Boolean closeFlag = false;
+    public GameState gameState;
     private int gridSize = 5;
     private int totalTiles = gridSize * gridSize;
     private int minesCount = 3; // default number of mines is 3
@@ -98,8 +96,7 @@ public class MinesTable implements InventoryHolder, Listener {
 
     // Field to keep track of selected mine count slot
     private int selectedMineSlot = -1;
-
-    public MinesTable(Player player, Villager dealer, Nccasino plugin, String internalName, MinesInventory minesInventory) {
+    public MinesTable(Player player,  Nccasino plugin, String internalName, MinesInventory minesInventory) {
         this.playerId = player.getUniqueId();
         this.player = player;
         this.plugin = plugin;
@@ -107,7 +104,6 @@ public class MinesTable implements InventoryHolder, Listener {
         this.minesInventory = minesInventory;
         this.inventory = Bukkit.createInventory(this, 54, "Mines");
         this.chipValues = new LinkedHashMap<>();
-
         // Initialize game state
         this.gameState = GameState.PLACING_WAGER;
         this.safePicks = 0;
@@ -116,7 +112,7 @@ public class MinesTable implements InventoryHolder, Listener {
         loadChipValuesFromConfig();
 
         // Start the animation first, then return to this table once animation completes
-        startAnimation(player);
+
         setMode(0);
         instrumentIndex=15;
         registerListener();
@@ -124,32 +120,6 @@ public class MinesTable implements InventoryHolder, Listener {
 
     private void registerListener() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
-    }
-
-    private void startAnimation(Player player) {
-        // Retrieve the animation message from the config for the current dealer
-        String animationMessage = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
-        // Delaying the animation inventory opening to ensure it displays properly
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            // Pass the animation message from the config
-            AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
-            player.openInventory(animationTable.getInventory());
-
-            // Start animation and pass a callback to return to MinesTable after animation completes
-            animationTable.animateMessage(player, this::afterAnimationComplete);
-        }, 1L); // Delay by 1 tick to ensure smooth opening of inventory
-    }
-
-    private void afterAnimationComplete() {
-        // Add a slight delay to ensure smooth transition from the animation to the table
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            closeFlag = true;
-            initializeTable();
-            if (player != null) {
-                player.openInventory(inventory);
-                // Inform the player about the default number of mines
-            }
-        }, 1L); // Delay by 1 tick to ensure clean transition between inventories
     }
 
     private void loadChipValuesFromConfig() {
@@ -168,7 +138,7 @@ public class MinesTable implements InventoryHolder, Listener {
                 .forEachOrdered(entry -> chipValues.put(entry.getKey(), entry.getValue()));
     }
 
-    private void initializeTable() {
+    void initializeTable() {
         inventory.clear();
 
         if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
@@ -882,7 +852,7 @@ public class MinesTable implements InventoryHolder, Listener {
     }
     
 
-    private void closeCashOut() {
+    void closeCashOut() {
         if (gameOver) {
             player.sendMessage("§cGame over.");
             return;
@@ -1132,7 +1102,7 @@ public class MinesTable implements InventoryHolder, Listener {
     }
     
 
-    private void endGame() {
+    void endGame() {
         if (player != null) {
             if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
                 refundAllBets(player);  // Refund any remaining bets
@@ -1175,8 +1145,8 @@ public class MinesTable implements InventoryHolder, Listener {
     // Handle inventory close event
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
-        if (event.getInventory().getHolder() != this) return;
-        if (event.getInventory().getHolder() instanceof MinesTable && event.getPlayer().getUniqueId().equals(playerId) && closeFlag) {
+
+        if (event.getInventory().getHolder() instanceof MinesTable && event.getPlayer().getUniqueId().equals(playerId)) {
             if (gameState == GameState.PLAYING) {
                 closeCashOut();  // Automatically cash out the player
             }
