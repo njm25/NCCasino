@@ -9,7 +9,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.NamespacedKey;
-import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.games.Blackjack.BlackjackInventory;
@@ -18,6 +17,10 @@ import org.nc.nccasino.games.DragonClimb.DragonInventory;
 import org.nc.nccasino.games.Mines.MinesInventory;
 import org.nc.nccasino.games.RailRunner.RailInventory;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
+import org.nc.nccasino.helpers.AttributeHelper;
+import org.nc.nccasino.helpers.DealerInventory;
+import org.nc.nccasino.helpers.GameMenuInventory;
+
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,7 +45,6 @@ public class DealerVillager {
 
         return villager;
     }
-    
 
     private static void initializeVillager(Villager villager, Location location, String name, String internalName, String gameType) {
         villager.setAI(true);
@@ -56,8 +58,7 @@ public class DealerVillager {
 
         UUID uniqueId = UUID.randomUUID();
 
-        AttributeInstance movementSpeedAttribute = villager.getAttribute(Attribute.MOVEMENT_SPEED);
-        movementSpeedAttribute.setBaseValue(0.0);
+        AttributeInstance movementSpeedAttribute = villager.getAttribute(AttributeHelper.getAttributeSafely("MOVEMENT_SPEED"));
 
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         dataContainer.set(DEALER_KEY, PersistentDataType.BYTE, (byte) 1);

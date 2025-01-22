@@ -15,7 +15,6 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
-import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
@@ -39,6 +38,9 @@ import org.nc.nccasino.components.AdminInventory;
 import org.nc.nccasino.components.AnimationTable;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.helpers.AnimationTable;
+import org.nc.nccasino.helpers.AttributeHelper;
+import org.nc.nccasino.helpers.DealerInventory;
 import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Deck;
 import org.nc.nccasino.objects.Suit;
@@ -171,7 +173,6 @@ private void registerListener() {
         }, 1L); // Delay by 1 tick to ensure clean transition between inventories
     }
  
-
     // Load chip values from the plugin config
     private void loadChipValuesFromConfig() {
         for (int i = 1; i <= 5; i++) {
@@ -213,7 +214,9 @@ private void registerListener() {
         ItemStack item = inventory.getItem(36);
         ItemMeta meta = item.getItemMeta();
         assert meta != null;
-        meta.addAttributeModifier(Attribute.ATTACK_DAMAGE, new AttributeModifier("foo",0,AttributeModifier.Operation.MULTIPLY_SCALAR_1)); // This is necessary as of 1.20.6
+        meta.addAttributeModifier(AttributeHelper.getAttributeSafely("ATTACK_DAMAGE"), 
+            new AttributeModifier("foo", 0, AttributeModifier.Operation.MULTIPLY_SCALAR_1));
+     // This is necessary as of 1.20.6
         for(ItemFlag flag : ItemFlag.values()) {
             meta.addItemFlags(flag);
         }
