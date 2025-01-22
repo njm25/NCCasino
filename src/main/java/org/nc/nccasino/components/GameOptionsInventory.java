@@ -5,6 +5,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Villager;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
@@ -25,11 +26,24 @@ public class GameOptionsInventory extends DealerInventory implements Listener {
     private final Map<UUID, Boolean> clickAllowed = new HashMap<>();
     private final Nccasino plugin;
     private final String internalName;
+    private final Boolean editing;
+    private final Villager dealer;
 
     public GameOptionsInventory(Nccasino plugin, String internalName) {
         super(UUID.randomUUID(), 9, "Select Game Type");
         this.plugin = plugin;
         this.internalName = internalName;
+        this.editing = false;
+        this.dealer = null;
+        initializeMenu();
+    }
+
+    public GameOptionsInventory(Nccasino plugin, Villager dealer) {
+        super(UUID.randomUUID(), 9, "Select Game Type");
+        this.plugin = plugin;
+        this.internalName = DealerVillager.getInternalName(dealer);
+        this.editing = true;
+        this.dealer = dealer;
        initializeMenu();
     }
 
@@ -64,8 +78,12 @@ public class GameOptionsInventory extends DealerInventory implements Listener {
                     player.sendMessage("§cInvalid option selected.");
                     return;
             }
-
-            createDealer(player, gameType);
+            if (!editing){
+                createDealer(player, gameType);
+            }
+            else{
+                editDealer(player, gameType);
+            }
         } else {
             player.sendMessage("§cPlease wait before clicking again!");
         }
@@ -103,4 +121,32 @@ public class GameOptionsInventory extends DealerInventory implements Listener {
         player.closeInventory();
         this.delete();
     }
+
+    private void editDealer(Player player, String gameType){
+        if (!DealerVillager.isDealerVillager(dealer)) {
+            return;
+        }
+    
+        UUID dealerId = DealerVillager.getUniqueId(dealer);
+        DealerInventory inventory = DealerInventory.inventories.get(dealerId);
+        if (inventory != null) {
+            inventory.delete();
+        }
+
+        String internalName = DealerVillager.getInternalName(dealer);
+
+        if (!plugin.getConfig().contains("dealers." + internalName + ".stand-on-17") && gameType.equals("Blackjack")) {
+            plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+        } else {
+            int hasStand17Config = plugin.getConfig().getInt("dealers." + internalName + ".stand-on-17");
+            if (hasStand17Config > 100 || hasStand17Config < 0) {
+                plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+            }
+        }
+
+        DealerVillager.switchGame(dealer, gameType, player);
+        player.closeInventory();
+        this.delete();
+    }
+
 }

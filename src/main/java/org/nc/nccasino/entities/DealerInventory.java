@@ -9,7 +9,6 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.nc.nccasino.components.GameMenuInventory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,7 +32,7 @@ public class DealerInventory implements InventoryHolder {
     }
     // Factory method to create or get existing inventory (defaults to game menu)
     public static DealerInventory getOrCreateInventory(UUID dealerId) {
-        return inventories.computeIfAbsent(dealerId, id -> new GameMenuInventory(id));
+        return inventories.computeIfAbsent(dealerId, id -> new DealerInventory(id, 54, "Default Inventory"));
     }
     public void delete() {
         inventories.remove(dealerId);

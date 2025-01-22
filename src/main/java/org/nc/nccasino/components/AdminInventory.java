@@ -55,10 +55,10 @@ public class AdminInventory extends DealerInventory implements Listener {
         put(SlotOption.EDIT_TIMER, 14);
         put(SlotOption.EDIT_ANIMATION_MESSAGE, 16);
 
-        put(SlotOption.USE_VAULT, 28);
-        put(SlotOption.EDIT_CURRENCY, 30);
-        put(SlotOption.MOVE_DEALER, 32);
-        put(SlotOption.DELETE_DEALER, 34);
+        //put(SlotOption.USE_VAULT, 28);
+        //put(SlotOption.EDIT_CURRENCY, 30);
+        put(SlotOption.MOVE_DEALER, 30);
+        put(SlotOption.DELETE_DEALER, 32);
     }};
 
     public AdminInventory(UUID dealerId, Player player, Nccasino plugin) {
@@ -81,8 +81,8 @@ public class AdminInventory extends DealerInventory implements Listener {
         addItem(createCustomItem(Material.CLOCK, "Edit Timer"), slotMapping.get(SlotOption.EDIT_TIMER));
         addItem(createCustomItem(Material.RED_STAINED_GLASS_PANE, "Edit Animation Message"), slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE));
 
-        addItem(createCustomItem(Material.CHEST, "Use Vault"), slotMapping.get(SlotOption.USE_VAULT));
-        addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
+        //addItem(createCustomItem(Material.CHEST, "Use Vault"), slotMapping.get(SlotOption.USE_VAULT));
+        //addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
         addItem(createCustomItem(Material.COMPASS, "Move"), slotMapping.get(SlotOption.MOVE_DEALER));
         addItem(createCustomItem(Material.BARRIER, "Delete"), slotMapping.get(SlotOption.DELETE_DEALER));
 
@@ -193,9 +193,10 @@ public class AdminInventory extends DealerInventory implements Listener {
 
     private void handleSelectGameType(Player player) {
         
-        plugin.getConfig().set("dealers." + DealerVillager.getInternalName(dealer) + ".game", "Menu");
-        plugin.reloadDealerVillager(dealer);
-        DealerVillager.openDealerInventory(dealer, player);
+        // Open the Game Options Inventory
+        GameOptionsInventory inventory = new GameOptionsInventory((Nccasino)plugin, dealer);
+        player.openInventory(inventory.getInventory());
+      
     }
 
     private void handleMoveDealer(Player player) {

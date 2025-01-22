@@ -18,7 +18,6 @@ import org.nc.nccasino.games.DragonClimb.DragonInventory;
 import org.nc.nccasino.games.Mines.MinesInventory;
 import org.nc.nccasino.games.RailRunner.RailInventory;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
-import org.nc.nccasino.components.GameMenuInventory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -139,10 +138,9 @@ public class DealerVillager {
             
  */
             default:
-                if (inventory == null) {
-                    inventory = new GameMenuInventory(uniqueId);
-                    name = "Game Menu";
-                }
+                defaultTimer = 10;
+                inventory = new BlackjackInventory(uniqueId, plugin, internalName);
+                name = "Blackjack Dealer";
                 break;
         }
 
@@ -256,9 +254,9 @@ public class DealerVillager {
                 newName = "Dice Dealer";
                 break;    
             default:
-                newInventory = new GameMenuInventory(dealerId);
-                newName = "Game Menu";
-                gameName = "Menu";
+                newInventory = new BlackjackInventory(dealerId, plugin, internalName);
+                newName = "Blackjack Dealer";
+                defaultTimer = 10;
                 break;
         }
 
@@ -304,8 +302,7 @@ public class DealerVillager {
                 newInventory = new DiceInventory(dealerId, plugin);
                 break;     
             default:
-                newInventory = new GameMenuInventory(dealerId);
-                gameName = "Menu";
+                newInventory = new BlackjackInventory(dealerId, plugin, internalName);
                 break;
         }
 
