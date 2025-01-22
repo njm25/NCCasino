@@ -426,7 +426,7 @@ private void handleAllIn(Player player) {
 
     // Play sound effect to confirm All In
     player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, SoundCategory.MASTER, 1.5f, 0.8f);
-    player.sendMessage("§aAll in with: " + totalBalance + " " + plugin.getCurrencyName(internalName)+ (Math.abs(totalBalance) == 1 ? "" : "s") + "\n");
+    player.sendMessage("§aAll in with " + (int)totalBalance + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalBalance) == 1 ? "" : "s") + "\n");
 
     // Start countdown if not already running
     if (countdownTaskId == -1) {
@@ -915,7 +915,7 @@ private void removePlayerData(UUID playerId) {
             if (meta != null) {
                 if (wager > 0) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Current Bet: " + (int)wager + " " + plugin.getCurrencyName(internalName)+ (Math.abs(wager) == 1 ? "" : "s") + "\n");
+                    lore.add("Current Bet: " + (int)wager + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(wager) == 1 ? "" : "s") + "\n");
                     meta.setLore(lore);
                 } else {
                     meta.setLore(new ArrayList<>()); // Clear lore if no wager
@@ -1439,10 +1439,10 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
             }
         }
 
-        player.sendMessage("§a§l" + payout + " " + plugin.getCurrencyName(internalName)+ (Math.abs(payout) == 1 ? "" : "s") + "\n");
+        player.sendMessage("§a§l" + (int)payout + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s") + "\n");
         // Print total dropped if any items couldn't fit in inventory
         if (totalDropped > 0) {
-            player.sendMessage("§cNo room for " + totalDropped + " "+plugin.getCurrencyName(internalName)+ (Math.abs(totalDropped) == 1 ? "" : "s") +", dropping...");        } else {
+            player.sendMessage("§cNo room for " + (int)totalDropped + " "+plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalDropped) == 1 ? "" : "s") +", dropping...");        } else {
 
         }
     }

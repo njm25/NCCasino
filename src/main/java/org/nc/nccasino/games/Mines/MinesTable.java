@@ -395,7 +395,7 @@ public class MinesTable implements InventoryHolder, Listener {
                               .filter(it -> it.getType() == currencyMat)
                               .mapToInt(ItemStack::getAmount).sum();
             if (count <= 0) {
-                player.sendMessage("§cNo " + plugin.getCurrencyName(internalName)+ (Math.abs(count) == 1 ? "" : "s") + "\n");
+                player.sendMessage("§cNo " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(count) == 1 ? "" : "s") + "\n");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f);
                 return;
             }
@@ -407,7 +407,7 @@ public class MinesTable implements InventoryHolder, Listener {
             wager = count;
             wagerPlaced = true;
             updateStartGameLever(true);
-            player.sendMessage("§aAll in with: " + count + " " + plugin.getCurrencyName(internalName)+ (Math.abs(count) == 1 ? "" : "s") + "\n");
+            player.sendMessage("§aAll in with " + (int)count + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(count) == 1 ? "" : "s") + "\n");
             player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER,1.0f, 1.0f);
             return;
         }
@@ -466,7 +466,7 @@ public class MinesTable implements InventoryHolder, Listener {
                     // Update "Start Game" lever visibility
                     updateStartGameLever(true);
                 } else {
-                    player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName) + "s.");
+                    player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s.");
                     player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
                 }
             } else {
@@ -567,7 +567,7 @@ public class MinesTable implements InventoryHolder, Listener {
                 player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
                 player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
                 player.sendMessage("§dLast bet undone.");
-                player.sendMessage("§dNew total: " + totalBet);
+                player.sendMessage("§dNew total: " + (int)totalBet);
             } else {
                 player.sendMessage("§cNo bets to undo.");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
@@ -840,10 +840,10 @@ public class MinesTable implements InventoryHolder, Listener {
     
             if (winnings > 0) {
                 giveWinningsToPlayer(winnings);
-             player.sendMessage("§a§oCashed Out: "+winnings+" " + plugin.getCurrencyName(internalName)+ (Math.abs(previousWager) == 1 ? "" : "s") + "\n");
+             player.sendMessage("§a§oCashed out "+(int)winnings+" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(previousWager) == 1 ? "" : "s") + "\n");
             }
             else if(winnings==0){
-                player.sendMessage("§d§oCashed Out: "+winnings+" " + plugin.getCurrencyName(internalName)+ (Math.abs(previousWager) == 1 ? "" : "s") + "\n");
+                player.sendMessage("§d§oCashed out "+(int)winnings+" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(previousWager) == 1 ? "" : "s") + "\n");
             }
             gameOver = true;
             gameState = GameState.GAME_OVER;
@@ -965,7 +965,7 @@ public class MinesTable implements InventoryHolder, Listener {
                     removeWagerFromInventory(player, (int) previousWager);
                     betStack.push(previousWager);
                     updateBetLore(52, previousWager);
-                    player.sendMessage("§dRebet placed: " + previousWager + " " + plugin.getCurrencyName(internalName)+ (Math.abs(previousWager) == 1 ? "" : "s") + "\n");
+                    player.sendMessage("§dRebet of " + previousWager + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(previousWager) == 1 ? "" : "s") + " placed\n");
                     wagerPlaced = true;
                 } 
             } else {
@@ -1017,7 +1017,7 @@ public class MinesTable implements InventoryHolder, Listener {
             if (meta != null) {
                 if (totalBet > 0) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Total Bet: " + (int)totalBet + " " + plugin.getCurrencyName(internalName)+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
+                    lore.add("Total Bet: " + (int)totalBet + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
                     meta.setLore(lore);
                 } else {
                     meta.setLore(new ArrayList<>());  // Clear lore if no wager
@@ -1114,7 +1114,7 @@ public class MinesTable implements InventoryHolder, Listener {
     
         // Print total dropped if any items couldn't fit in inventory
         if (totalDropped > 0) {
-            player.sendMessage("§cNo room for " + totalDropped + " " + plugin.getCurrencyName(internalName)+ (Math.abs(totalDropped) == 1 ? "" : "s") + ", dropping...");
+            player.sendMessage("§cNo room for " + totalDropped + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalDropped) == 1 ? "" : "s") + ", dropping...");
         }
     }
     

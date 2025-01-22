@@ -479,7 +479,7 @@ public class BettingTable implements InventoryHolder, Listener {
             msg.append("§aTotal Payout: ").append(totalPayout).append("\n");
 
             if(totalPayout-overallWager>0){
-                msg.append("§a§lProfit: +").append(totalPayout-overallWager).append(" " + plugin.getCurrencyName(internalName)+ (Math.abs(totalPayout-overallWager) == 1 ? "" : "s") + "\n");
+                msg.append("§a§lProfit: +").append(totalPayout-overallWager).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout-overallWager) == 1 ? "" : "s") + "\n");
                 player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
                 Random random = new Random();
                 float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
@@ -489,11 +489,11 @@ public class BettingTable implements InventoryHolder, Listener {
                 }
             }
             else if(totalPayout-overallWager==0){ 
-                msg.append("§d§lProfit: ").append(totalPayout-overallWager).append(" " + plugin.getCurrencyName(internalName)+ (Math.abs(totalPayout-overallWager) == 1 ? "" : "s") + "\n");
+                msg.append("§d§lProfit: ").append(totalPayout-overallWager).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout-overallWager) == 1 ? "" : "s") + "\n");
                 player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
             }
             else{
-                msg.append("§c§lProfit: ").append(totalPayout-overallWager).append(" " + plugin.getCurrencyName(internalName)+ (Math.abs(totalPayout-overallWager) == 1 ? "" : "s") + "\n");
+                msg.append("§c§lProfit: ").append(totalPayout-overallWager).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout-overallWager) == 1 ? "" : "s") + "\n");
                 player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
                 player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
             }
@@ -635,7 +635,7 @@ public class BettingTable implements InventoryHolder, Listener {
                               .filter(it -> it.getType() == currencyMat)
                               .mapToInt(ItemStack::getAmount).sum();
             if (count <= 0) {
-                player.sendMessage("§cNo " + plugin.getCurrencyName(internalName)+ (Math.abs(count) == 1 ? "" : "s") + "\n");
+                player.sendMessage("§cNo " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(count) == 1 ? "" : "s") + "\n");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f);
                 return;
             }
@@ -694,7 +694,7 @@ public class BettingTable implements InventoryHolder, Listener {
                     
                   //  updateAllRelatedSlots(slot, itemName);
                 } else {
-                    player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName) + "s");
+                    player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s");
                     player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
                 }
             } else {
@@ -840,7 +840,7 @@ private boolean isValidSlotPage2(int slot) {
     
     
         if (totalLeftoverAmount > 0) {
-            player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName)+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+            player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
             dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
         }
     }
@@ -889,7 +889,7 @@ private boolean isValidSlotPage2(int slot) {
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
                 List<String> lore = new ArrayList<>();
-                lore.add("Total Bet: " + (int)totalBet + " " + plugin.getCurrencyName(internalName)+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
+                lore.add("Total Bet: " + (int)totalBet + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
                 meta.setLore(lore);
                 item.setItemMeta(meta);
             }
