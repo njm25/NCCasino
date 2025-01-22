@@ -39,7 +39,7 @@ public class GameOptionsInventory extends DealerInventory implements Listener {
     }
 
     public GameOptionsInventory(Nccasino plugin, Villager dealer) {
-        super(UUID.randomUUID(), 9, "Select Game Type");
+        super(UUID.randomUUID(), 9, "Edit Game Type");
         this.plugin = plugin;
         this.internalName = DealerVillager.getInternalName(dealer);
         this.editing = true;

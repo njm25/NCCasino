@@ -40,7 +40,7 @@ public class AdminInventory extends DealerInventory implements Listener {
     private static final Map<UUID, Villager> villagerMap = new HashMap<>();
     private enum SlotOption {
         EDIT_DISPLAY_NAME,
-        SELECT_GAME_TYPE,
+        EDIT_GAME_TYPE,
         MOVE_DEALER,
         DELETE_DEALER,
         EDIT_CURRENCY,
@@ -51,7 +51,7 @@ public class AdminInventory extends DealerInventory implements Listener {
 
     private final Map<SlotOption, Integer> slotMapping = new HashMap<>() {{
         put(SlotOption.EDIT_DISPLAY_NAME, 10);
-        put(SlotOption.SELECT_GAME_TYPE, 12);
+        put(SlotOption.EDIT_GAME_TYPE, 12);
         put(SlotOption.EDIT_TIMER, 14);
         put(SlotOption.EDIT_ANIMATION_MESSAGE, 16);
 
@@ -77,7 +77,7 @@ public class AdminInventory extends DealerInventory implements Listener {
 
     private void initializeAdminMenu() {
         addItem(createCustomItem(Material.NAME_TAG, "Edit Display Name"), slotMapping.get(SlotOption.EDIT_DISPLAY_NAME));
-        addItem(createCustomItem(Material.PAPER, "Select Game Type"), slotMapping.get(SlotOption.SELECT_GAME_TYPE));
+        addItem(createCustomItem(Material.PAPER, "Edit Game Type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE));
         addItem(createCustomItem(Material.CLOCK, "Edit Timer"), slotMapping.get(SlotOption.EDIT_TIMER));
         addItem(createCustomItem(Material.RED_STAINED_GLASS_PANE, "Edit Animation Message"), slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE));
 
@@ -113,7 +113,7 @@ public class AdminInventory extends DealerInventory implements Listener {
                     case EDIT_DISPLAY_NAME:
                         handleEditDealerName(player);
                         break;
-                    case SELECT_GAME_TYPE:
+                    case EDIT_GAME_TYPE:
                         handleSelectGameType(player);
                         break;
                     case MOVE_DEALER:
