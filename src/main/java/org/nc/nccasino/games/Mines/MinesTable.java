@@ -179,6 +179,7 @@ public class MinesTable implements InventoryHolder, Listener {
         // Add undo buttons
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
         inventory.setItem(46, createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Undo Last Bet", 1));
+        inventory.setItem(43, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
     }
     
    // Method to toggle rebet on/off
@@ -336,7 +337,7 @@ public class MinesTable implements InventoryHolder, Listener {
         }
         Boolean wow=false;
              if (tileNotes.containsKey(slot)) {
-            if(slot==36||(slot>=44&&slot<=48)||(slot>=50&&slot<=53)){
+            if(slot==36||(slot>=43&&slot<=48)||(slot>=50&&slot<=53)){
                 if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
                 wow=true;
                 }
@@ -386,14 +387,30 @@ public class MinesTable implements InventoryHolder, Listener {
 
             updateRebetToggle();
         }
-   
-        
-        
-
-          
-        
-
-
+        if (slot == 43&& clickedItem != null && clickedItem.getType() ==Material.SNIFFER_EGG) {
+            // sum up how many currency items the player has
+            Material currencyMat = plugin.getCurrency(internalName);
+            int count = Arrays.stream(player.getInventory().getContents())
+                              .filter(Objects::nonNull)
+                              .filter(it -> it.getType() == currencyMat)
+                              .mapToInt(ItemStack::getAmount).sum();
+            if (count <= 0) {
+                player.sendMessage("§cNo " + plugin.getCurrencyName(internalName)+ (Math.abs(count) == 1 ? "" : "s") + "\n");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f);
+                return;
+            }
+            // place that entire count as a single bet in the betStack
+            betStack.push((double) count);
+            removeWagerFromInventory(player, count);
+            double totalBet = betStack.stream().mapToDouble(d -> d).sum();
+            updateBetLore(52, totalBet);
+            wager = count;
+            wagerPlaced = true;
+            updateStartGameLever(true);
+            player.sendMessage("§aAll in with: " + count + " " + plugin.getCurrencyName(internalName)+ (Math.abs(count) == 1 ? "" : "s") + "\n");
+            player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER,1.0f, 1.0f);
+            return;
+        }
     }
 
     private void handleWagerPlacement(ItemStack clickedItem, int slot) {
