@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 
 public class MinesTable implements InventoryHolder, Listener {
     // Game state management
-    private enum GameState {
+    public enum GameState {
         PLACING_WAGER,
         WAITING_TO_START,
         PLAYING,
@@ -39,8 +39,8 @@ public class MinesTable implements InventoryHolder, Listener {
     private Boolean clickAllowed = true;
     private double selectedWager;
     private final Deque<Double> betStack = new ArrayDeque<>();
-    private Boolean closeFlag = false;
-    private GameState gameState;
+    public Boolean closeFlag = false;
+    public GameState gameState;
     private int gridSize = 5;
     private int totalTiles = gridSize * gridSize;
     private int minesCount = 3; // default number of mines is 3
@@ -852,7 +852,7 @@ public class MinesTable implements InventoryHolder, Listener {
     }
     
 
-    private void closeCashOut() {
+    void closeCashOut() {
         if (gameOver) {
             player.sendMessage("§cGame over.");
             return;
@@ -1102,7 +1102,7 @@ public class MinesTable implements InventoryHolder, Listener {
     }
     
 
-    private void endGame() {
+    void endGame() {
         if (player != null) {
             if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
                 refundAllBets(player);  // Refund any remaining bets
@@ -1145,8 +1145,8 @@ public class MinesTable implements InventoryHolder, Listener {
     // Handle inventory close event
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
-        if (event.getInventory().getHolder() != this) return;
-        if (event.getInventory().getHolder() instanceof MinesTable && event.getPlayer().getUniqueId().equals(playerId) && closeFlag) {
+
+        if (event.getInventory().getHolder() instanceof MinesTable && event.getPlayer().getUniqueId().equals(playerId)) {
             if (gameState == GameState.PLAYING) {
                 closeCashOut();  // Automatically cash out the player
             }

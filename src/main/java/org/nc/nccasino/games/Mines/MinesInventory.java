@@ -128,7 +128,6 @@ public class MinesInventory extends DealerInventory implements Listener {
         }, 1L); // Delay by 1 tick to ensure smooth inventory opening
     }
 
-
     private void afterAnimationComplete(Player player) {
         // Add a slight delay to ensure smooth transition from the animation to the table
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
