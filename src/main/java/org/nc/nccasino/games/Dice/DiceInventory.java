@@ -1,7 +1,7 @@
 package org.nc.nccasino.games.Dice;
 
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
-import org.nc.nccasino.helpers.DealerInventory;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;

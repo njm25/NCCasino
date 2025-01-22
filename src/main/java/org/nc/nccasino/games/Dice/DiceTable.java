@@ -14,7 +14,7 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.helpers.AnimationTable;
+import org.nc.nccasino.components.AnimationTable;
 import org.nc.nccasino.objects.Pair;
 
 import java.util.*;

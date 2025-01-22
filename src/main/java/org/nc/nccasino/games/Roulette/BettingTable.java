@@ -1,7 +1,7 @@
 package org.nc.nccasino.games.Roulette;
 
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
-import org.nc.nccasino.helpers.DealerInventory;
 import org.nc.nccasino.helpers.TableGenerator;
 import org.nc.nccasino.objects.Pair;
 import org.bukkit.Bukkit;
