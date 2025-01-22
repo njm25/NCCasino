@@ -155,7 +155,14 @@ public class DealerVillager {
         nccasino.getConfig().set("dealers." + internalName + ".game", gameType);
         nccasino.getConfig().set("dealers." + internalName + ".timer", defaultTimer);
         nccasino.getConfig().set("dealers." + internalName + ".animation-message", "NCCasino - " + gameType); // Set the animation message to default
-        nccasino.saveConfig();  // Immediately save the configuration after setting the values
+        nccasino.getConfig().set("dealers." + internalName + ".currency.material", "EMERALD");
+        nccasino.getConfig().set("dealers." + internalName + ".currency.name", "Emerald");
+        nccasino.getConfig().set("dealers." + internalName + ".chip-sizes.size1", 1);
+        nccasino.getConfig().set("dealers." + internalName + ".chip-sizes.size2", 5);
+        nccasino.getConfig().set("dealers." + internalName + ".chip-sizes.size3", 10);
+        nccasino.getConfig().set("dealers." + internalName + ".chip-sizes.size4", 25);
+        nccasino.getConfig().set("dealers." + internalName + ".chip-sizes.size5", 50);
+        plugin.saveConfig();
     
 
         DealerInventory.updateInventory(uniqueId, inventory);

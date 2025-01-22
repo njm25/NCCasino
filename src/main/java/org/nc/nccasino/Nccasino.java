@@ -252,10 +252,6 @@ private void reinitializeDealerVillagers() {
 
         if (!getConfig().contains(path)) {
             
-            getConfig().set(path + ".display-name", "Dealer"); // Default game type
-            getConfig().set(path + ".game", "Menu"); // Default game type
-            getConfig().set(path + ".timer", 0); // Default timer
-            getConfig().set(path + ".animation-message", "NCCASINO");
             getConfig().set(path + ".currency.material", "EMERALD");
             getConfig().set(path + ".currency.name", "Emerald");
             getConfig().set(path + ".chip-sizes.size1", 1);
