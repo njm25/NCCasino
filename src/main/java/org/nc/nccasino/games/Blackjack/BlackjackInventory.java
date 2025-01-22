@@ -238,7 +238,7 @@ private void registerListener() {
             inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
             slot++;
         }
-
+        inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
         // Add leave chair option with a wooden door
         inventory.setItem(53, createCustomItem(Material.OAK_DOOR, "Leave Chair", 1));
     }
@@ -377,6 +377,8 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
                     case 46:
                         handleUndoLastBet(player);
                         break;
+                    case 52:
+                        handleAllIn(player);
                     default:
                         // Handle other slots if needed
                         break;
@@ -386,6 +388,63 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
     } else {
         player.sendMessage("§cPlease wait before clicking again!");
     }
+}
+
+private void handleAllIn(Player player) {
+    UUID playerId = player.getUniqueId();
+    
+    // Ensure the player is seated before allowing all-in
+    if (!playerSeats.containsKey(playerId)) {
+        player.sendMessage("§cInvalid action");
+        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+        return;
+    }
+
+    // Calculate total player balance in inventory
+    double totalBalance = getPlayerTotalBalance(player);
+    
+    if (totalBalance <= 0) {
+        player.sendMessage("§cInvalid action");
+        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+        return;
+    }
+
+    int seatSlot = playerSeats.get(playerId);
+    int betSlot = seatSlot + 1; // The slot where bets are placed
+
+    // Remove the full balance from the player's inventory
+    removeWagerFromInventory(player, totalBalance);
+
+    // Store the bet amount
+    Map<Integer, Double> bets = playerBets.computeIfAbsent(playerId, k -> new HashMap<>());
+    bets.put(betSlot, totalBalance);
+    
+    // Update the displayed bet amount
+    updateItemLore(betSlot, totalBalance);
+
+    lastBetAmounts.computeIfAbsent(playerId, k -> new ArrayList<>()).add(totalBalance); // Store last bet amount
+
+    // Play sound effect to confirm All In
+    player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, SoundCategory.MASTER, 1.5f, 0.8f);
+    player.sendMessage("§aAll in with: " + totalBalance + " " + plugin.getCurrencyName(internalName)+ (Math.abs(totalBalance) == 1 ? "" : "s") + "\n");
+
+    // Start countdown if not already running
+    if (countdownTaskId == -1) {
+        startCountdownTimer();
+    }
+}
+
+private double getPlayerTotalBalance(Player player) {
+    int totalAmount = 0;
+    Material currencyMaterial = plugin.getCurrency(internalName);
+
+    for (ItemStack item : player.getInventory().getContents()) {
+        if (item != null && item.getType() == currencyMaterial) {
+            totalAmount += item.getAmount();
+        }
+    }
+
+    return totalAmount;
 }
 
 private void handlePlayerAction(Player player, int slot) {

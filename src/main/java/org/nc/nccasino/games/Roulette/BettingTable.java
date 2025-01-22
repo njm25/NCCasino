@@ -37,7 +37,7 @@ public class BettingTable implements InventoryHolder, Listener {
     private final RouletteInventory rouletteInventory;
     private double selectedWager;
     private int pageNum;
-
+    private Boolean allin=false;
     private final Map<String, Double> chipValues;
     private final Stack<Pair<String, Integer>> betStack;
     private Stack<Pair<String, Integer>> testStack;
@@ -84,7 +84,11 @@ public class BettingTable implements InventoryHolder, Listener {
         clearAllLore();
                 // Directly update the clock item before other items
         updateClockItem(countdown1, betsClosed);
-        
+        if(allin){
+            inventory.setItem(36, createEnchantedItem(Material.SNIFFER_EGG, "All In (" + selectedWager + ")", 1));
+        }
+        else{inventory.setItem(36, createCustomItem(Material.SNIFFER_EGG, "All In", 1));}
+
         addStraightUpBetsPageOne();
         addDozensAndOtherBetsPageOne();
         addCommonComponents();
@@ -95,12 +99,17 @@ public class BettingTable implements InventoryHolder, Listener {
     }
     
     private void setupPageTwo() {
+        
         inventory.clear();
         clearAllLore();
         
         // Directly update the clock item before other items
         updateClockItem(countdown1, betsClosed);
-        
+        if(allin){
+            inventory.setItem(44, createEnchantedItem(Material.SNIFFER_EGG, "All In (" + selectedWager + ")", 1));
+        }
+        else{inventory.setItem(44, createCustomItem(Material.SNIFFER_EGG, "All In", 1));}
+
         addStraightUpBetsPageTwo();
         addDozensAndOtherBetsPageTwo();
         addCommonComponents();
@@ -116,13 +125,13 @@ public class BettingTable implements InventoryHolder, Listener {
             if (pageNum == 1) {
                 inventory.setItem(0, createCustomItem(Material.CLOCK, "BETS CLOSED", 1));
             } else {
-                inventory.setItem(44, createCustomItem(Material.CLOCK, "BETS CLOSED", 1));
+                inventory.setItem(35, createCustomItem(Material.CLOCK, "BETS CLOSED", 1));
             }
         } else if (countdown > 0) {
             if (pageNum == 1) {
                 inventory.setItem(0, createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown1 + " SECONDS!", countdown1));
             } else {
-                inventory.setItem(44, createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown1 + " SECONDS!", countdown1));
+                inventory.setItem(35, createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown1 + " SECONDS!", countdown1));
             }
         }
     }
@@ -373,7 +382,7 @@ public class BettingTable implements InventoryHolder, Listener {
             if (pageNum == 1) {
                 inventory.setItem(0, createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown + " SECONDS!", countdown));
             } else {
-                inventory.setItem(44, createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown + " SECONDS!", countdown));
+                inventory.setItem(35, createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown + " SECONDS!", countdown));
             }
         } else {
             if (pageNum == 1) {
@@ -381,7 +390,7 @@ public class BettingTable implements InventoryHolder, Listener {
                 
             } else {
 
-                inventory.setItem(44, createCustomItem(Material.CLOCK, "BETS CLOSED", 1));
+                inventory.setItem(35, createCustomItem(Material.CLOCK, "BETS CLOSED", 1));
                 pageNum=1;
             }
         
@@ -619,9 +628,30 @@ public class BettingTable implements InventoryHolder, Listener {
             updateClockItem(countdown1, betsClosed);
             return;
         }
+        if(clickedItem.getType()==Material.SNIFFER_EGG){
+            Material currencyMat = plugin.getCurrency(internalName);
+            int count = Arrays.stream(player.getInventory().getContents())
+                              .filter(Objects::nonNull)
+                              .filter(it -> it.getType() == currencyMat)
+                              .mapToInt(ItemStack::getAmount).sum();
+            if (count <= 0) {
+                player.sendMessage("§cNo " + plugin.getCurrencyName(internalName)+ (Math.abs(count) == 1 ? "" : "s") + "\n");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f);
+                return;
+            }
+            allin=true;
+            selectedWager=count;
+
+            for (int i = 47; i <= 51; i++) {
+                resetChipAtSlot(i);
+            }
+            ItemStack updatedTotem = createEnchantedItem(Material.SNIFFER_EGG, "All In (" + count + ")", 1);
+            inventory.setItem(slot, updatedTotem);
+            player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER,1.0f, 1.0f);
+        }
         if (slot >= 47 && slot <= 51) {
             player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE,SoundCategory.MASTER, 1.0f, 1.0f);  
-
+            allin=false;
             // The player clicked on one of the chip slots
             selectedWager = getWagerAmountFromName(itemName); 
             if (selectedWager > 0) {
@@ -629,7 +659,7 @@ public class BettingTable implements InventoryHolder, Listener {
                 for (int i = 47; i <= 51; i++) {
                     resetChipAtSlot(i);
                 }
-        
+                inventory.setItem((pageNum==1?36 :44), createCustomItem(Material.SNIFFER_EGG,"All In",1 ));
                 // 2) Enchant only the clicked chip
                 inventory.setItem(slot, createEnchantedItem(
                     plugin.getCurrency(internalName),
@@ -656,6 +686,12 @@ public class BettingTable implements InventoryHolder, Listener {
                     complicatedDifficultHiddenSecretBackdoor(betStack);
                     rouletteInventory.updatePlayerBets(playerId, betStack, player);
                     updateAllLore();
+                    if(allin){
+                        allin=false;
+                     inventory.setItem((pageNum==1?36 :44), createCustomItem(Material.SNIFFER_EGG,"All In",1 ));
+   
+                    }
+                    
                   //  updateAllRelatedSlots(slot, itemName);
                 } else {
                     player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName) + "s");
