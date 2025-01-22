@@ -1,6 +1,7 @@
 package org.nc.nccasino.components;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -72,6 +73,7 @@ public class GameOptionsInventory extends DealerInventory implements Listener {
 
     private void createDealer(Player player, String gameType) {
         Location location = player.getLocation();
+        plugin.saveDefaultDealerConfig(internalName);
         DealerVillager.spawnDealer(plugin, location, "Dealer Villager", internalName, gameType);
 
         // Save dealer data
@@ -96,7 +98,7 @@ public class GameOptionsInventory extends DealerInventory implements Listener {
             e.printStackTrace();
         }
 
-        player.sendMessage("§aDealer with game type '" + gameType + "' created successfully!");
+        player.sendMessage("§aDealer with game type '" + ChatColor.YELLOW + gameType + ChatColor.GREEN + "' created successfully!");
 
         player.closeInventory();
         this.delete();

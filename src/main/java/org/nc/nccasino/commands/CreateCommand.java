@@ -3,14 +3,15 @@ package org.nc.nccasino.commands;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.components.GameOptionsInventory;
 
 public class CreateCommand implements CasinoCommand {
-    private final Nccasino plugin;
+    private final JavaPlugin plugin;
 
-    public CreateCommand(Nccasino plugin) {
+    public CreateCommand(JavaPlugin plugin) {
         this.plugin = plugin;
     }
 
@@ -37,7 +38,7 @@ public class CreateCommand implements CasinoCommand {
         }
 
         // Open the Game Options Inventory
-        GameOptionsInventory inventory = new GameOptionsInventory(plugin, internalName);
+        GameOptionsInventory inventory = new GameOptionsInventory((Nccasino)plugin, internalName);
         player.openInventory(inventory.getInventory());
 
         sender.sendMessage(ChatColor.GREEN + "Choose a game type for the dealer '" +

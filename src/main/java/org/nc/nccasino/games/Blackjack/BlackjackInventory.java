@@ -79,9 +79,8 @@ public class BlackjackInventory extends DealerInventory implements Listener {
         this.lastBetAmounts = new HashMap<>(); // Initialize last bet amounts storage
         this.countdownTaskId = -1; // Initialize countdown task ID
         this.deck = new Deck(1); // Initialize the deck
-        loadChipValuesFromConfig(); // Load chip values from config
         // Initialize the start menu
-        Nccasino nccasino = (Nccasino) plugin;
+        Nccasino nccasino = plugin;
 
         // Check if the configuration key exists
         if (!nccasino.getConfig().contains("dealers." + internalName + ".stand-on-17")) {
@@ -98,6 +97,7 @@ public class BlackjackInventory extends DealerInventory implements Listener {
             }
         }
         
+        loadChipValuesFromConfig(); // Load chip values from config
         
        registerListener();
        plugin.addInventory(dealerId, this);
