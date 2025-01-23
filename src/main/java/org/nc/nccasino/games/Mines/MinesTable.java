@@ -179,14 +179,14 @@ public class MinesTable implements InventoryHolder, Listener {
         // Add undo buttons
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
         inventory.setItem(46, createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Undo Last Bet", 1));
-        inventory.setItem(43, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
+        inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
     }
     
    // Method to toggle rebet on/off
    private void updateRebetToggle() {
     Material material = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
     String name = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
-    inventory.setItem(44, createCustomItem(material, name, 1));  // Slot 48
+    inventory.setItem(43, createCustomItem(material, name, 1));  // Slot 48
 }
 
     // Method to set rainbow border colors
@@ -223,14 +223,14 @@ public class MinesTable implements InventoryHolder, Listener {
         }
 
         // Add a single betting option - Paper labeled "Click here to place bet" in slot 52
-        inventory.setItem(52, createCustomItem(Material.PAPER, "Click here to place bet", 1));
+        inventory.setItem(53, createCustomItem(Material.PAPER, "Click here to place bet", 1));
         double currentBet=0;
         for(double t:betStack){
             currentBet+=t;
         }
         // If there is a current bet, update the lore
         if (currentBet > 0) {
-            updateBetLore(52, currentBet);
+            updateBetLore(53, currentBet);
         }
     }
 
@@ -375,7 +375,7 @@ public class MinesTable implements InventoryHolder, Listener {
         return;
     }
         // Handle rebet toggle
-        if (slot == 44&& clickedItem != null && clickedItem.getType() ==Material.RED_WOOL||clickedItem.getType() ==Material.GREEN_WOOL) {
+        if (slot == 43&& clickedItem != null && clickedItem.getType() ==Material.RED_WOOL||clickedItem.getType() ==Material.GREEN_WOOL) {
             rebetEnabled = !rebetEnabled;
             if(clickedItem.getType() ==Material.RED_WOOL){
                 player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_PREPARE_MIRROR, SoundCategory.MASTER,1.0f, 1.0f);
@@ -387,7 +387,7 @@ public class MinesTable implements InventoryHolder, Listener {
 
             updateRebetToggle();
         }
-        if (slot == 43&& clickedItem != null && clickedItem.getType() ==Material.SNIFFER_EGG) {
+        if (slot == 52&& clickedItem != null && clickedItem.getType() ==Material.SNIFFER_EGG) {
             // sum up how many currency items the player has
             Material currencyMat = plugin.getCurrency(internalName);
             int count = Arrays.stream(player.getInventory().getContents())
@@ -403,7 +403,7 @@ public class MinesTable implements InventoryHolder, Listener {
             betStack.push((double) count);
             removeWagerFromInventory(player, count);
             double totalBet = betStack.stream().mapToDouble(d -> d).sum();
-            updateBetLore(52, totalBet);
+            updateBetLore(53, totalBet);
             wager = count;
             wagerPlaced = true;
             updateStartGameLever(true);
@@ -443,7 +443,7 @@ public class MinesTable implements InventoryHolder, Listener {
     
             //player.sendMessage("§aWager: " + selectedWager + " " + plugin.getCurrencyName(internalName));
         }
-        if (slot == 52) {
+        if (itemName.equals("Click here to place bet")) {
             // Handle bet placement (slot 52 - Paper item)
             if (selectedWager > 0) {
                 // Check if the player has enough currency to place the bet
@@ -457,7 +457,7 @@ public class MinesTable implements InventoryHolder, Listener {
                      totalBet += t;
                     }
                     // Update the lore of the item in slot 52 with the cumulative bet amount
-                    updateBetLore(52, totalBet);
+                    updateBetLore(53, totalBet);
                     player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
                    // player.sendMessage("§aBet placed: " + newBetAmount);
 
@@ -518,7 +518,7 @@ public class MinesTable implements InventoryHolder, Listener {
             return;
         }
 
-        if (itemName.equals("Start Game") && slot == 53) {
+        if (itemName.equals("Start Game")) {
             // Start the gamet
             if (minesSelected) {
                 if (wager > 0) {
@@ -542,7 +542,7 @@ public class MinesTable implements InventoryHolder, Listener {
             refundAllBets(player);
             betStack.clear();
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-            updateBetLore(52, 0);  // Reset the lore on the bet option after clearing bets
+            updateBetLore(53, 0);  // Reset the lore on the bet option after clearing bets
             wager = 0;
             wagerPlaced = false;
             return;}
@@ -562,7 +562,7 @@ public class MinesTable implements InventoryHolder, Listener {
                     totalBet+=t;
                 }
                 if (totalBet < 0) totalBet = 0;
-                updateBetLore(52, totalBet);
+                updateBetLore(53, totalBet);
                 wagerPlaced = totalBet > 0;
                 player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
                 player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
@@ -838,7 +838,7 @@ public class MinesTable implements InventoryHolder, Listener {
             winnings = applyProbabilisticRounding(winnings,player); 
             //player.sendMessage("§aWon " + winnings);
     
-            player.sendMessage("§a§lPaid out "+ (int)winnings+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(winnings) == 1 ? "" : "s")  + " (profit of "+(int)Math.abs(winnings-totalBet)+")\n");
+            player.sendMessage("§a§lPaid "+ (int)winnings+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(winnings) == 1 ? "" : "s")  + " (profit of "+(int)Math.abs(winnings-totalBet)+")\n");
              //player.sendMessage("§a§oCashed out "+(int)winnings+" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(winnings) == 1 ? "" : "s") + "\n");
             giveWinningsToPlayer(winnings);
        
@@ -888,7 +888,7 @@ public class MinesTable implements InventoryHolder, Listener {
                 winnings = totalBet * payoutMultiplier;
             }
             winnings = applyProbabilisticRounding(winnings,player); 
-            player.sendMessage("§a§lPaid out "+(int)winnings+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(winnings) == 1 ? "" : "s")  + " (profit of "+(int)Math.abs(winnings-totalBet)+")\n");
+            player.sendMessage("§a§lPaid "+(int)winnings+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(winnings) == 1 ? "" : "s")  + " (profit of "+(int)Math.abs(winnings-totalBet)+")\n");
     
             if (winnings > 0) {
                 giveWinningsToPlayer(winnings);
@@ -959,7 +959,7 @@ public class MinesTable implements InventoryHolder, Listener {
                 if (openInventory != null && openInventory.getTopInventory().getHolder() instanceof MinesTable) {
                     removeWagerFromInventory(player, (int) previousWager);
                     betStack.push(previousWager);
-                    updateBetLore(52, previousWager);
+                    updateBetLore(53, previousWager);
                     player.sendMessage("§dRebet of " + (int) previousWager + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(previousWager) == 1 ? "" : "s") + " placed\n");
                     wagerPlaced = true;
                 } 
@@ -968,7 +968,7 @@ public class MinesTable implements InventoryHolder, Listener {
                 //player.sendMessage("§cWager reset to 0.");
                 wager = 0;
                 betStack.clear();
-                updateBetLore(52, wager);
+                updateBetLore(53, wager);
                 wagerPlaced = false;
             }
         }
@@ -978,7 +978,7 @@ public class MinesTable implements InventoryHolder, Listener {
             //player.sendMessage("§dWager reset to 0.");
             wager = 0;
             betStack.clear();
-            updateBetLore(52, wager);
+            updateBetLore(53, wager);
             wagerPlaced = false;
         }
 
@@ -1024,9 +1024,9 @@ public class MinesTable implements InventoryHolder, Listener {
 
     private void updateStartGameLever(boolean showLever) {
         if (showLever) {
-            inventory.setItem(53, createCustomItem(Material.LEVER, "Start Game", 1)); // Slot 53
+            inventory.setItem(44, createCustomItem(Material.LEVER, "Start Game", 1)); // Slot 53
         } else {
-            inventory.setItem(53, null); // Remove the lever if conditions not met
+            inventory.setItem(44, null); // Remove the lever if conditions not met
         }
     }
 
