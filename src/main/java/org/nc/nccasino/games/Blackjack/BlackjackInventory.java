@@ -427,8 +427,8 @@ private void handleAllIn(Player player) {
     lastBetAmounts.computeIfAbsent(playerId, k -> new ArrayList<>()).add(totalBalance); // Store last bet amount
 
     // Play sound effect to confirm All In
-    player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, SoundCategory.MASTER, 1.5f, 0.8f);
-    player.sendMessage("§aAll in with " + (int)totalBalance + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalBalance) == 1 ? "" : "s") + "\n");
+    player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER, 1.5f, 0.8f);
+    //player.sendMessage("§aAll in with " + (int)totalBalance + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalBalance) == 1 ? "" : "s") + "\n");
 
     // Start countdown if not already running
     if (countdownTaskId == -1) {
@@ -1362,7 +1362,7 @@ private void finishGame() {
                 && hasAceAndTenValueCard(playerHands.get(playerId));
 
         if (isBlackjack) {
-            player.sendMessage("§g§lBlackjack!");
+            player.sendMessage("§a§lBlackjack!");
             Random random = new Random();
             
             player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
@@ -1376,11 +1376,11 @@ private void finishGame() {
             }
             payOut(player, bets, 2.5); // Pay out 2.5x for a blackjack
         } else if (playerCardSum > 21) {
-            player.sendMessage("§c§lYou busted and lost your bet.");
+            player.sendMessage("§c§lYou busted");
             player.playSound(player.getLocation(),Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
             player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
         } else if (dealerBusted || playerCardSum > dealerCardSum) {
-            player.sendMessage("§a§lYou won! Collect your winnings.");
+            player.sendMessage("§a§lYou won!");
             
             player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
             Random random = new Random();
@@ -1394,11 +1394,11 @@ private void finishGame() {
             }
             payOut(player, bets, 2.0); // Regular win pays out 2x
         } else if (playerCardSum < dealerCardSum) {
-            player.sendMessage("§c§lYou lost this round.");
+            player.sendMessage("§c§lYou lost");
             player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
         player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
         } else {
-            player.sendMessage("§6§lIt's a tie! Your bet is returned.");
+            player.sendMessage("§6§lIt's a push! Your bet is returned");
             refundBet(player, bets);
             player.playSound(player.getLocation(),Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
             player.getWorld().spawnParticle(Particle.LARGE_SMOKE, player.getLocation(), 20);  
@@ -1440,8 +1440,9 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
                 }
             }
         }
+        player.sendMessage("§a§lPaid "+(int)totalAmount+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalAmount) == 1 ? "" : "s")  + " (profit of "+(int)Math.abs(totalAmount-totalBet)+")\n");
 
-        player.sendMessage("§a§l" + (int)payout + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s") + "\n");
+        //player.sendMessage("§a§l" + (int)payout + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s") + "\n");
         // Print total dropped if any items couldn't fit in inventory
         if (totalDropped > 0) {
             player.sendMessage("§cNo room for " + (int)totalDropped + " "+plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalDropped) == 1 ? "" : "s") +", dropping...");        } else {
