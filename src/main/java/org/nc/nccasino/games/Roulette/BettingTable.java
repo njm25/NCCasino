@@ -461,7 +461,7 @@ public class BettingTable implements InventoryHolder, Listener {
         // Build result message
         StringBuilder msg = new StringBuilder("§e----- Spin Results -----\n");
         TableGenerator table = new TableGenerator(TableGenerator.Alignment.LEFT, TableGenerator.Alignment.RIGHT, TableGenerator.Alignment.RIGHT);
-        table.addRow("§eCategory", "§eWager", "§ePayout");
+        table.addRow("§eCategory", "§bWager", "§aPayout");
     
         for (Map.Entry<String, BetCategory> entry : categoryMap.entrySet()) {
             BetCategory cat = entry.getValue();
@@ -475,32 +475,42 @@ public class BettingTable implements InventoryHolder, Listener {
     
         msg.append("\n");
         if (totalPayout > 0) {
-            msg.append("§bTotal Wager: ").append(overallWager+"§e | ");
-            msg.append("§aTotal Payout: ").append(totalPayout).append("\n");
+            //msg.append("§bTotal Wager: ").append(overallWager+"§e | ");
+            //msg.append("§aTotal Payout: ").append(totalPayout).append("\n");
 
             if(totalPayout-overallWager>0){
-                msg.append("§a§lProfit: +").append(totalPayout-overallWager).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout-overallWager) == 1 ? "" : "s") + "\n");
-                player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
-                Random random = new Random();
-                float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
-                for (int i = 0; i < 3; i++) {
-                    float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
-                    player.playSound(player.getLocation(),  Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER,1.0f, chosenPitch);
-                }
+                msg.append("§a§lPaid out ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + " (profit of "+(totalPayout-overallWager)+")\n");
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
+                    Random random = new Random();
+                    float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
+                    for (int i = 0; i < 3; i++) {
+                        float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
+                        player.playSound(player.getLocation(),  Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER,1.0f, chosenPitch);
+                    }
+    
+                }, 20L);  
             }
             else if(totalPayout-overallWager==0){ 
-                msg.append("§d§lProfit: ").append(totalPayout-overallWager).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout-overallWager) == 1 ? "" : "s") + "\n");
-                player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
+                msg.append("§6§lPaid out ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + " (broke even)\n");
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
+                    player.getWorld().spawnParticle(Particle.SCRAPE, player.getLocation(), 20); 
+                }, 20L);  
             }
             else{
-                msg.append("§c§lProfit: ").append(totalPayout-overallWager).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout-overallWager) == 1 ? "" : "s") + "\n");
-                player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
-                player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
+                msg.append("§c§lPaid out ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + " (loss of "+Math.abs(totalPayout-overallWager)+")\n");
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
+                    player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20); 
+                }, 20L);  
             }
         } else {
-            msg.append("§c§lNo winnings.\n");
-            player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
-            player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
+            msg.append("§c§lPaid out ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + " (loss of "+Math.abs(totalPayout-overallWager)+")\n");
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
+                player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20); 
+            }, 20L);  
         }
     
         final int totalPayoutFinal = categoryMap.values().stream().mapToInt(cat -> cat.totalPayout).sum();
@@ -595,7 +605,7 @@ public class BettingTable implements InventoryHolder, Listener {
         event.setCancelled(true);
 
         if (betsClosed) {
-            player.sendMessage("§d§lBets are closed!");
+            //player.sendMessage("§d§lBets are closed!");
             return;
         }
 
@@ -667,7 +677,7 @@ public class BettingTable implements InventoryHolder, Listener {
                     (int) selectedWager
                 ));
             } else {
-                player.sendMessage("§cInvalid wager amount selected.");
+                //player.sendMessage("§cInvalid wager amount selected.");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
 
             }
@@ -678,7 +688,7 @@ public class BettingTable implements InventoryHolder, Listener {
             if (selectedWager > 0) {
                 if (hasEnoughWager(player, selectedWager)) {
                     removeWagerFromInventory(player, selectedWager);
-                    player.sendMessage("§6Put " + (int)selectedWager + " on " + itemName);
+                    //player.sendMessage("§6Put " + (int)selectedWager + " on " + itemName);
                     player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
 
                     betStack.push(new Pair<>(itemName, (int) selectedWager));
@@ -710,7 +720,7 @@ public class BettingTable implements InventoryHolder, Listener {
             clearAllLore();
             updateAllLore();
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-            player.sendMessage("§dAll bets undone");
+           // player.sendMessage("§dAll bets undone");
         }
         else{
             player.sendMessage("§cNo bets to undo");
@@ -727,7 +737,7 @@ public class BettingTable implements InventoryHolder, Listener {
                 updateAllLore();
                 player.playSound(player.getLocation(), Sound.UI_TOAST_IN,SoundCategory.MASTER, 3f, 1.0f);
                 player.playSound(player.getLocation(), Sound.UI_TOAST_OUT,SoundCategory.MASTER, 3f, 1.0f);
-                player.sendMessage("§dLast bet undone");
+                //player.sendMessage("§dLast bet undone");
             }
             else{
                 player.sendMessage("§cNo bets to undo");

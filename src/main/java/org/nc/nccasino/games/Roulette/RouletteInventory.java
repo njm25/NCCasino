@@ -630,11 +630,12 @@ private void exitGame(Player player) {
         if (playersWithBets.isEmpty() && activePlayers.isEmpty()) {
             resetToStartState();
         } else {
+            /*
             for (Player player : playersWithBets) {
                 if (player.isOnline()) {
                     player.sendMessage("§dBets locked, spinning!");
                 }
-            }
+            }*/
 
             Bukkit.getScheduler().runTaskLater(plugin, () -> 
             mce.playSong("RouletteWheel", RouletteSongs.getBallLaunch(), false, "Ball Launch")
