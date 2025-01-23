@@ -292,7 +292,9 @@ private ItemStack createPlayerHeadItem(Player player, int stackSize) {
 @Override
 public void handleClick(int slot, Player player, InventoryClickEvent event) {
     event.setCancelled(true); // Ensure the event is cancelled to prevent unintended item movement
-
+    if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
+        return;
+    }
     UUID playerId = player.getUniqueId();
 
     if (clickAllowed.getOrDefault(playerId, true)) {
