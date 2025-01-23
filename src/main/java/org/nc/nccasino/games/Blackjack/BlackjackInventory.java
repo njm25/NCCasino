@@ -1440,7 +1440,7 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
                 }
             }
         }
-        player.sendMessage("§a§lPaid out "+(int)totalAmount+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalAmount) == 1 ? "" : "s")  + " (profit of "+(int)Math.abs(totalAmount-totalBet)+")\n");
+        player.sendMessage("§a§lPaid "+(int)totalAmount+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalAmount) == 1 ? "" : "s")  + " (profit of "+(int)Math.abs(totalAmount-totalBet)+")\n");
 
         //player.sendMessage("§a§l" + (int)payout + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s") + "\n");
         // Print total dropped if any items couldn't fit in inventory
