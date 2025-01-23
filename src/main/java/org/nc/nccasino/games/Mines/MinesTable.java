@@ -54,7 +54,7 @@ public class MinesTable implements InventoryHolder, Listener {
     private double previousWager = 0.0; // New field to store previous wager
     private boolean[][] fireGrid; // [6][9] To track which tiles are on fire
     private final List<Integer> scheduledTasks = new ArrayList<>();
-    private boolean rebetEnabled = true; 
+    private boolean rebetEnabled = false; 
 
     // Adjusted fields for grid mapping
     private final int[] gridSlots = {
@@ -368,7 +368,7 @@ public class MinesTable implements InventoryHolder, Listener {
 
            // Handle Exit Button (Slot 36)
     if (slot == 36 && clickedItem != null && clickedItem.getType() == Material.SPRUCE_DOOR) {
-        player.sendMessage("§cExiting the game...");
+        //player.sendMessage("§cExiting the game...");
         player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN, SoundCategory.MASTER,1.0f, 1.0f);
         endGame(); // End the game and clean up resources
         player.closeInventory(); // Close the inventory
@@ -407,7 +407,7 @@ public class MinesTable implements InventoryHolder, Listener {
             wager = count;
             wagerPlaced = true;
             updateStartGameLever(true);
-            player.sendMessage("§aAll in with " + (int)count + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(count) == 1 ? "" : "s") + "\n");
+            //player.sendMessage("§aAll in with " + (int)count + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(count) == 1 ? "" : "s") + "\n");
             player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER,1.0f, 1.0f);
             return;
         }
@@ -538,7 +538,7 @@ public class MinesTable implements InventoryHolder, Listener {
         // Undo all bets
         if (slot == 45) {
             if(!betStack.isEmpty()){
-            player.sendMessage("§dAll bets undone.");
+            //player.sendMessage("§dAll bets undone.");
             refundAllBets(player);
             betStack.clear();
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
@@ -566,8 +566,8 @@ public class MinesTable implements InventoryHolder, Listener {
                 wagerPlaced = totalBet > 0;
                 player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
                 player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
-                player.sendMessage("§dLast bet undone.");
-                player.sendMessage("§dNew total: " + (int)totalBet);
+                //player.sendMessage("§dLast bet undone.");
+                //player.sendMessage("§dNew total: " + (int)totalBet +" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
             } else {
                 player.sendMessage("§cNo bets to undo.");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
@@ -614,12 +614,12 @@ public class MinesTable implements InventoryHolder, Listener {
 
    private void handleTileSelection(int x, int y) {
     if (gameOver) {
-        player.sendMessage("§c§lGame over.");
+        //player.sendMessage("§c§lGame over.");
         return;
     }
 
     if (revealedGrid[x][y]) {
-        player.sendMessage("§dTile already revealed.");
+        //player.sendMessage("§dTile already revealed.");
         return;
     }
 
@@ -640,7 +640,7 @@ public class MinesTable implements InventoryHolder, Listener {
 
        gameOver = true;
        gameState = GameState.GAME_OVER;
-       player.sendMessage("§c§lYou hit a mine!");
+       player.sendMessage("§c§lGame Over!");
         } else {
             // Safe tile clicked
         revealedGrid[x][y] = true;
@@ -801,7 +801,7 @@ public class MinesTable implements InventoryHolder, Listener {
 
     private void cashOut() {
         if (gameOver) {
-            player.sendMessage("§cGame over.");
+            //player.sendMessage("§cGame over.");
             return;
         }
     
@@ -835,16 +835,13 @@ public class MinesTable implements InventoryHolder, Listener {
                 winnings = totalBet * payoutMultiplier;
             }
     
-            winnings = applyProbabilisticRounding(winnings,player); // Round to 2 decimal places
+            winnings = applyProbabilisticRounding(winnings,player); 
             //player.sendMessage("§aWon " + winnings);
     
-            if (winnings > 0) {
-                giveWinningsToPlayer(winnings);
-             player.sendMessage("§a§oCashed out "+(int)winnings+" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(previousWager) == 1 ? "" : "s") + "\n");
-            }
-            else if(winnings==0){
-                player.sendMessage("§d§oCashed out "+(int)winnings+" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(previousWager) == 1 ? "" : "s") + "\n");
-            }
+            player.sendMessage("§a§lPaid out "+ (int)winnings+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(winnings) == 1 ? "" : "s")  + " (profit of "+(int)Math.abs(winnings-totalBet)+")\n");
+             //player.sendMessage("§a§oCashed out "+(int)winnings+" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(winnings) == 1 ? "" : "s") + "\n");
+            giveWinningsToPlayer(winnings);
+       
             gameOver = true;
             gameState = GameState.GAME_OVER;
     
@@ -871,26 +868,27 @@ public class MinesTable implements InventoryHolder, Listener {
 
     void closeCashOut() {
         if (gameOver) {
-            player.sendMessage("§cGame over.");
+            //player.sendMessage("§cGame over.");
             return;
         }
      
-        // Step 2: Start emerald expansion from the cash-out button (slot 49)
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+
             // Slot 49 is the cash-out button position
-            player.sendMessage("§aCashing out...");
+            double totalBet = 0;
+            for (double t : betStack) {
+             totalBet += t;
+            }
             double winnings;
-    
             // If no tiles were clicked, return the exact wager
             if (safePicks == 0) {
-                winnings = wager; // No multiplier, return exact wager
+                winnings = totalBet; // No multiplier, return exact wager
             } else {
                 // Give the winnings to the player with payout multiplier applied
                 double payoutMultiplier = calculatePayoutMultiplier(safePicks);
-                winnings = wager * payoutMultiplier;
+                winnings = totalBet * payoutMultiplier;
             }
-            winnings = Math.round(winnings * 100.0) / 100.0; // Round to 2 decimal places
-            player.sendMessage("§aCashed out: " + winnings);
+            winnings = applyProbabilisticRounding(winnings,player); 
+            player.sendMessage("§a§lPaid out "+(int)winnings+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(winnings) == 1 ? "" : "s")  + " (profit of "+(int)Math.abs(winnings-totalBet)+")\n");
     
             if (winnings > 0) {
                 giveWinningsToPlayer(winnings);
@@ -900,9 +898,6 @@ public class MinesTable implements InventoryHolder, Listener {
             gameState = GameState.GAME_OVER;
     
             //check if properly closed?
-        }, 10L); // Wait 2 seconds before starting the emerald expansion
-
-       
     }
 
     // Step 2: Emerald expansion animation from the cash-out button (slot 49)
@@ -965,12 +960,12 @@ public class MinesTable implements InventoryHolder, Listener {
                     removeWagerFromInventory(player, (int) previousWager);
                     betStack.push(previousWager);
                     updateBetLore(52, previousWager);
-                    player.sendMessage("§dRebet of " + previousWager + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(previousWager) == 1 ? "" : "s") + " placed\n");
+                    player.sendMessage("§dRebet of " + (int) previousWager + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(previousWager) == 1 ? "" : "s") + " placed\n");
                     wagerPlaced = true;
                 } 
             } else {
                 player.sendMessage("§c2 broke 4 rebet.");
-                player.sendMessage("§cWager reset to 0.");
+                //player.sendMessage("§cWager reset to 0.");
                 wager = 0;
                 betStack.clear();
                 updateBetLore(52, wager);
@@ -979,8 +974,8 @@ public class MinesTable implements InventoryHolder, Listener {
         }
 
          else {
-            player.sendMessage("§dRebet is off. ");
-            player.sendMessage("§dWager reset to 0.");
+           // player.sendMessage("§dRebet is off. ");
+            //player.sendMessage("§dWager reset to 0.");
             wager = 0;
             betStack.clear();
             updateBetLore(52, wager);
@@ -1114,7 +1109,7 @@ public class MinesTable implements InventoryHolder, Listener {
     
         // Print total dropped if any items couldn't fit in inventory
         if (totalDropped > 0) {
-            player.sendMessage("§cNo room for " + totalDropped + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalDropped) == 1 ? "" : "s") + ", dropping...");
+            player.sendMessage("§cNo room for " + (int) totalDropped + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalDropped) == 1 ? "" : "s") + ", dropping...");
         }
     }
     
