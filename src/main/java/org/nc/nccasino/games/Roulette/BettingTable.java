@@ -84,11 +84,7 @@ public class BettingTable implements InventoryHolder, Listener {
         clearAllLore();
                 // Directly update the clock item before other items
         updateClockItem(countdown1, betsClosed);
-        if(allin){
-            inventory.setItem(36, createEnchantedItem(Material.SNIFFER_EGG, "All In (" + selectedWager + ")", 1));
-        }
-        else{inventory.setItem(36, createCustomItem(Material.SNIFFER_EGG, "All In", 1));}
-
+      
         addStraightUpBetsPageOne();
         addDozensAndOtherBetsPageOne();
         addCommonComponents();
@@ -105,10 +101,7 @@ public class BettingTable implements InventoryHolder, Listener {
         
         // Directly update the clock item before other items
         updateClockItem(countdown1, betsClosed);
-        if(allin){
-            inventory.setItem(44, createEnchantedItem(Material.SNIFFER_EGG, "All In (" + selectedWager + ")", 1));
-        }
-        else{inventory.setItem(44, createCustomItem(Material.SNIFFER_EGG, "All In", 1));}
+       
 
         addStraightUpBetsPageTwo();
         addDozensAndOtherBetsPageTwo();
@@ -207,9 +200,20 @@ public class BettingTable implements InventoryHolder, Listener {
     }
 
     private void addCommonComponents() {
+        if(allin){
+            inventory.setItem(52, createEnchantedItem(Material.SNIFFER_EGG, "All In (" + (int)selectedWager + ")", 1));
+        }
+        else{inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));}
+
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
         inventory.setItem(46, createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Undo Last Bet", 1));
-        inventory.setItem(52, createCustomItem(Material.ENDER_PEARL, "Back to Wheel", 1));
+        if(pageNum==1){
+            inventory.setItem(36, createCustomItem(Material.ENDER_PEARL, "Back to Wheel", 1));
+
+        }
+        else{
+            inventory.setItem(44, createCustomItem(Material.ENDER_PEARL, "Back to Wheel", 1));
+        }
         int slot = 47;
         List<Map.Entry<String, Double>> sortedEntries = new ArrayList<>(chipValues.entrySet());
         sortedEntries.sort(Map.Entry.comparingByValue());
@@ -479,7 +483,7 @@ public class BettingTable implements InventoryHolder, Listener {
             //msg.append("§aTotal Payout: ").append(totalPayout).append("\n");
 
             if(totalPayout-overallWager>0){
-                msg.append("§a§lPaid out ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + " (profit of "+(totalPayout-overallWager)+")\n");
+                msg.append("§a§lPaid ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + " (profit of "+(totalPayout-overallWager)+")\n");
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
                     Random random = new Random();
@@ -492,21 +496,21 @@ public class BettingTable implements InventoryHolder, Listener {
                 }, 20L);  
             }
             else if(totalPayout-overallWager==0){ 
-                msg.append("§6§lPaid out ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + " (broke even)\n");
+                msg.append("§6§lPaid ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + " (broke even)\n");
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
                     player.getWorld().spawnParticle(Particle.SCRAPE, player.getLocation(), 20); 
                 }, 20L);  
             }
             else{
-                msg.append("§c§lPaid out ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + " (loss of "+Math.abs(totalPayout-overallWager)+")\n");
+                msg.append("§c§lPaid ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + " (loss of "+Math.abs(totalPayout-overallWager)+")\n");
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
                     player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20); 
                 }, 20L);  
             }
         } else {
-            msg.append("§c§lPaid out ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + " (loss of "+Math.abs(totalPayout-overallWager)+")\n");
+            msg.append("§c§lPaid ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + " (loss of "+Math.abs(totalPayout-overallWager)+")\n");
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
                 player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20); 
@@ -627,14 +631,15 @@ public class BettingTable implements InventoryHolder, Listener {
 
         if (pageNum == 1 && slot == 53) {
             player.playSound(player.getLocation(), Sound.ITEM_TRIDENT_THROW,SoundCategory.MASTER, 1.0f, 1.2f); 
-            setupPageTwo();
             pageNum = 2;
+            setupPageTwo();
+           
             updateClockItem(countdown1, betsClosed);
             return;
         } else if (pageNum == 2 && slot == 53) {
             player.playSound(player.getLocation(), Sound.ITEM_TRIDENT_THROW,SoundCategory.MASTER, 1.0f, 0.8f); 
-            setupPageOne();
             pageNum = 1;
+            setupPageOne();
             updateClockItem(countdown1, betsClosed);
             return;
         }
@@ -669,7 +674,7 @@ public class BettingTable implements InventoryHolder, Listener {
                 for (int i = 47; i <= 51; i++) {
                     resetChipAtSlot(i);
                 }
-                inventory.setItem((pageNum==1?36 :44), createCustomItem(Material.SNIFFER_EGG,"All In",1 ));
+                inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG,"All In",1 ));
                 // 2) Enchant only the clicked chip
                 inventory.setItem(slot, createEnchantedItem(
                     plugin.getCurrency(internalName),
@@ -698,7 +703,7 @@ public class BettingTable implements InventoryHolder, Listener {
                     updateAllLore();
                     if(allin){
                         allin=false;
-                     inventory.setItem((pageNum==1?36 :44), createCustomItem(Material.SNIFFER_EGG,"All In",1 ));
+                     inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG,"All In",1 ));
    
                     }
                     
@@ -746,7 +751,7 @@ public class BettingTable implements InventoryHolder, Listener {
             return;
         }
 
-        if (slot == 52) {
+        if ((slot == 36&&pageNum==1)||(slot == 44&&pageNum==2)) {
             saveBetsToRoulette(player);
             //player.sendMessage("Returning to Roulette...");
             UUID dealerId = DealerVillager.getUniqueId(dealer);
