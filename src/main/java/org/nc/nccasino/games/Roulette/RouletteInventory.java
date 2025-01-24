@@ -59,6 +59,8 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private int spinTaskId;
     private int fastSpinTaskId;
     private int bfastSpinTaskId;
+    private int regTaskId;
+    private int reg2TaskId;
     private int ballTaskId;
     private int wheelOffset = 0;
     private int currentQuadrant = 1; // 1=Top-Right, 2=Top-Left, 3=Bottom-Left, 4=Bottom-Right
@@ -66,58 +68,61 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private boolean spinAnimationOver = false;
     private int ballSpinDirection;
     private boolean foundfirstquadrant =false;
+    private Boolean eightflag=false;
+    private Boolean sevflag=false;
+    private Boolean nextflag=false;
     // Add these variables at the class level
-private static final long INITIAL_BALL_SPEED = 1L;
-private static final long MIN_BALL_SPEED = 6L;
+    private static final long INITIAL_BALL_SPEED = 1L;
+    private static final long MIN_BALL_SPEED = 6L;
 
-// Quadrant-specific slot mappings for main and extra slots
+    // Quadrant-specific slot mappings for main and extra slots
     private final Map<Integer, int[]> extraSlotsMapTopRight = new HashMap<>();
     private final Map<Integer, int[]> extraSlotsMapTopLeft = new HashMap<>();
     private final Map<Integer, int[]> extraSlotsMapBottomLeft = new HashMap<>();
     private final Map<Integer, int[]> extraSlotsMapBottomRight = new HashMap<>();
 
-///////////vvvvvvBall Movement Variables/////////////////////////////////////////
-private final Map<Integer, List<Integer>> tracksTopRight = new HashMap<>();
-private final Map<Integer, List<Integer>> tracksTopLeft = new HashMap<>();
-private final Map<Integer, List<Integer>> tracksBottomLeft = new HashMap<>();
-private final Map<Integer, List<Integer>> tracksBottomRight = new HashMap<>();
-// Ball movement spin ranges per track (in spins)
-private final double track1MinSpins = 1.5;
-private final double track1MaxSpins = 3;
-private final double track2MinSpins = .5;
-private final double track2MaxSpins = 1;
-private final double track3MinSpins = 1/36.0;
-private final double track3MaxSpins = 1/36.0;
-private final double track4MinSpins = 1/18.0;
-private final double track4MaxSpins =1/18.0;
-private int slotsPerSpinTrack1;
-private int slotsPerSpinTrack2;
-private int slotsPerSpinTrack3;
-private int slotsPerSpinTrack4;
-private int minSlotsTrack1;
-private int maxSlotsTrack1;
-private int minSlotsTrack2;
-private int maxSlotsTrack2;
-private int minSlotsTrack3;
-private int maxSlotsTrack3;
-private int minSlotsTrack4;
-private int maxSlotsTrack4;
-private int[] slotsToMovePerTrack = new int[5]; // 5 tracks in the sequence
-private final int[] trackSequence = {1, 2, 3/*, 4, 3*/};
-private int trackSequenceIndex = 0;
-private int ballCurrentTrack;
-private int ballCurrentIndex;
-private int ballPreviousSlot = -1;
-private boolean isSwitchingQuadrant = false;
-private boolean finalpicked;
-private int winningNumber;
-private boolean flip2=true;
-private boolean flip4=true;
-private int wheelSpinDirection = 1; // 1 for clockwise, -1 for counter-clockwise
-private int lastDisplayedOffset = 0;
-
-/////////////////////////////////////////////////////////////////////////////////////////
-private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
+    ///////////vvvvvvBall Movement Variables/////////////////////////////////////////
+    private final Map<Integer, List<Integer>> tracksTopRight = new HashMap<>();
+    private final Map<Integer, List<Integer>> tracksTopLeft = new HashMap<>();
+    private final Map<Integer, List<Integer>> tracksBottomLeft = new HashMap<>();
+    private final Map<Integer, List<Integer>> tracksBottomRight = new HashMap<>();
+    // Ball movement spin ranges per track (in spins)
+    private final double track1MinSpins = 1.5;
+    private final double track1MaxSpins = 3;
+    private final double track2MinSpins = .5;
+    private final double track2MaxSpins = 1;
+    private final double track3MinSpins = 1/36.0;
+    private final double track3MaxSpins = 1/36.0;
+    private final double track4MinSpins = 1/18.0;
+    private final double track4MaxSpins =1/18.0;
+    private int slotsPerSpinTrack1;
+    private int slotsPerSpinTrack2;
+    private int slotsPerSpinTrack3;
+    private int slotsPerSpinTrack4;
+    private int minSlotsTrack1;
+    private int maxSlotsTrack1;
+    private int minSlotsTrack2;
+    private int maxSlotsTrack2;
+    private int minSlotsTrack3;
+    private int maxSlotsTrack3;
+    private int minSlotsTrack4;
+    private int maxSlotsTrack4;
+    private int[] slotsToMovePerTrack = new int[5]; // 5 tracks in the sequence
+    private final int[] trackSequence = {1, 2, 3/*, 4, 3*/};
+    private int trackSequenceIndex = 0;
+    private int ballCurrentTrack;
+    private int ballCurrentIndex;
+    private int ballPreviousSlot = -1;
+    private boolean isSwitchingQuadrant = false;
+    private boolean finalpicked;
+    private int winningNumber;
+    private boolean flip2=true;
+    private boolean flip4=true;
+    private int wheelSpinDirection = 1; // 1 for clockwise, -1 for counter-clockwise
+    private int lastDisplayedOffset = 0;
+    
+    /////////////////////////////////////////////////////////////////////////////////////////
+    private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
 
     public RouletteInventory(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, 54, "Roulette Wheel");
@@ -847,6 +852,7 @@ private void startBallMovement(boolean reverseDirection) {
 }
 
 private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slotsMovedTotal, int totalSlotsToMove, int ballAccelerationSlots, int ballDecelerationSlots) {
+
     if (!ballMovementStarted) return;
 
     if (isSwitchingQuadrant) {
@@ -863,20 +869,57 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
 
     int nextIndex = (ballCurrentIndex + ballSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
     int nextSlot = currentTrackSlots.get(nextIndex);
+    int tempSTMPTb=slotsToMovePerTrack[trackSequenceIndex]-1;
+    if (tempSTMPTb <= 0) {
+        int tempTSIb=trackSequenceIndex+1;
+        if (tempTSIb < trackSequence.length) {
+        // lookaheadby1 is not final number
+        }
+        else{
+            if(eightflag&&nextIndex==8){
+                nextflag=true;
 
-    // Look ahead by "index" frames to determine future boundary
-    int lookaheadSlots = 7; // Fixed number of slots to look ahead
+            }
+            if(nextIndex==7){
+                sevflag=true;
+
+            }
+        }
+
+    }
+
+    int lookaheadSlots = 2; // Fixed number of slots to look ahead
     int futureIndex = (ballCurrentIndex + lookaheadSlots * ballSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
     int futureSlot = currentTrackSlots.get(futureIndex);
-   
-    if (isQuadrantBoundary(futureSlot)) {
-        int pitch = Math.max(1, 10 - (slotsMovedTotal[0] / 10)); 
+    int tempSTMPT=slotsToMovePerTrack[trackSequenceIndex]-lookaheadSlots;
+    if (tempSTMPT == -1) {
+        int tempTSI=trackSequenceIndex+lookaheadSlots;
+        if (tempTSI < trackSequence.length) {
+        // lookaheadslots is not final number
+        }
+        else{
+              // lookaheadslots is !! final number  
+            if (isQuadrantBoundary(futureSlot)&&futureIndex==0&&!(ballCurrentIndex==2&&ballCurrentTrack==3)){
+                eightflag=true;
+            }
+
+        }
+    }
+    int soundLookaheadSlots = Math.max(4, 7 - (slotsMovedTotal[0] / 15)); 
+    int soundFutureIndex = (ballCurrentIndex + soundLookaheadSlots * ballSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
+    int soundFutureSlot = currentTrackSlots.get(soundFutureIndex);
+
+   ///change below to improve whoosh sound delays. redo with a different lookaheadSlots
+    if (isQuadrantBoundary(soundFutureSlot)) {
+        int pitch = Math.max(3, 10 - (slotsMovedTotal[0] / 10)); 
         mce.stopSong("RouletteWheel", "BallScraping");
         mce.playSong("RouletteWheel", RouletteSongs.getBallScraping(pitch), false, "BallScraping");
         mce.stopSong("RouletteWheel", "Skibidi");
-        mce.playSong("RouletteWheel", RouletteSongs.getSkibidi(pitch), false, "Skibidi");
+       mce.playSong("RouletteWheel", RouletteSongs.getSkibidi(pitch), false, "Skibidi");
+        mce.stopSong("RouletteWheel", "scas");
+       mce.playSong("RouletteWheel",RouletteSongs.getWhoosh(pitch),false, "scas");
     } 
-    if (isQuadrantBoundary(nextSlot)) {
+    if (isQuadrantBoundary(nextSlot)&&!eightflag&&!sevflag&&trackSequenceIndex!=2) { 
         isSwitchingQuadrant = true;
 
         // Show ball in the final slot of the current track
@@ -930,17 +973,7 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
                 default:
                     break;
             }
-            if(slotsMovedTotal[0]>0&&slotsMovedTotal[0]<=70){
-                
-                mce.stopSong("RouletteWheel", "skibidi");
-                mce.playSong("RouletteWheel",RouletteSongs.getEarlyWhoosh(),false, "skibidi");
-
-            }
-            if(slotsMovedTotal[0]>70){
-                mce.stopSong("RouletteWheel", "skibidi");
-                mce.playSong("RouletteWheel",RouletteSongs.getCornerWhoosh(),false, "skibidi");
-            }
-
+    
             // Delay to simulate ball going off-screen before quadrant switch
             Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
                 switchQuadrant();
@@ -959,13 +992,34 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
     }
 
     // Normal ball movement if not at boundary
-    updateBallPosition(ballSpinDirection);
+    if(!nextflag&&!sevflag){
+        updateBallPosition(ballSpinDirection);
+        slotsMovedTotal[0]++;
+        adjustBallSpeed(currentBallDelay, slotsMovedTotal[0], ballAccelerationSlots, totalSlotsToMove, ballDecelerationSlots);
+        slotsToMovePerTrack[trackSequenceIndex]--;
+    }
+   else{
+    if(sevflag){
+        updateBallPosition(ballSpinDirection);
+        slotsMovedTotal[0]++;
+        slotsToMovePerTrack[trackSequenceIndex]--;
+        ballMovementStarted = false;
+        handleWinningNumber();
+        sevflag=false;
+        eightflag=false;
+        nextflag=false;
+        return;
+    }
+    updateBallPosition(0);
     slotsMovedTotal[0]++;
-
-    adjustBallSpeed(currentBallDelay, slotsMovedTotal[0], ballAccelerationSlots, totalSlotsToMove, ballDecelerationSlots);
-    
     slotsToMovePerTrack[trackSequenceIndex]--;
-
+    ballMovementStarted = false;
+    handleWinningNumber();
+    sevflag=false;
+    eightflag=false;
+    nextflag=false;
+    return;
+   }
     if (slotsToMovePerTrack[trackSequenceIndex] <= 0) {
         trackSequenceIndex++;
         if (trackSequenceIndex < trackSequence.length) {
@@ -974,16 +1028,11 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
             int adjustment=1;
     ballCurrentIndex = (ballCurrentIndex + adjustment * wheelSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
         } else {
-            if(ballCurrentIndex==8){
-                switchQuadrant();
-                switchQuadrant();
-                switchQuadrant();
-            }
-            else if(ballCurrentIndex==0){
-                switchQuadrant();
-            }
             ballMovementStarted = false;
             handleWinningNumber();
+            sevflag=false;
+            eightflag=false;
+            nextflag=false;
             return;
         }
     }
@@ -1081,6 +1130,7 @@ private void switchQuadrant() {
 }
 
 private void switchQauadrant() {
+  
     if (wheelSpinDirection == 1) { // Clockwise
         currentQuadrant = (currentQuadrant % 4) + 1; // Move to next quadrant in order
     } else { // Counterclockwise
@@ -1215,6 +1265,12 @@ private void prepareNextRound() {
   if (spinTaskId != -1) {
         Bukkit.getScheduler().cancelTask(spinTaskId);
     }
+    if (regTaskId != -1) {
+        Bukkit.getScheduler().cancelTask(regTaskId);
+    }
+    if (reg2TaskId != -1) {
+        Bukkit.getScheduler().cancelTask(reg2TaskId);
+    }
     //wheelOffset = currentOffset;
 
     if (fastSpinTaskId != -1) {
@@ -1245,8 +1301,8 @@ private int getNumberForSlot(int mainSlot, int quadrant) {
     if (number != null) {
         return number;
     } else {
-        plugin.getLogger().warning("Error: No number associated with slot " + mainSlot + " in quadrant " + quadrant);
-        return -1;
+        //plugin.getLogger().warning("Error: No number associated with slot " + mainSlot + " in quadrant " + quadrant);
+        return 0;
     }
 }  
    
@@ -1408,7 +1464,6 @@ private void switchStayToQuadrant(int quad){
 
 
         if(finalpicked&&!foundfirstquadrant){
-    
             for (int i = 0; i < quadrantSlots.length; i++) {
              
                 int wheelPosition;
@@ -1469,7 +1524,7 @@ private void switchStayToQuadrant(int quad){
                         meta.setDisplayName("Ball");
                         ballItem.setItemMeta(meta);
                         inventory.setItem(extraSlot, ballItem);
-                            Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+                        regTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
                                 // Remove ball from current slot
                                 if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
                                     inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
@@ -1518,7 +1573,7 @@ private void switchStayToQuadrant(int quad){
                                 }
                             
                                 // Delay to simulate ball going off-screen before quadrant switch
-                                Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+                                reg2TaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
 
                                     switchQauadrant();
 
