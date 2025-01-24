@@ -66,20 +66,12 @@ public class RouletteSongs {
         return spinTick;
     }
 
-    public static Song getEarlyWhoosh() {
-        Song earlyWhoosh = new Song("EarlyWhoosh", 20);
-        // We'll do a short repeating pattern for 16 ticks: a "tick" every 4 ticks
-        earlyWhoosh.addNote(new Note(Sound.ENTITY_PHANTOM_FLAP, 0,0, 1f, 10f));
-        return earlyWhoosh;
-    }
-
-    public static Song getCornerWhoosh() {
+    public static Song getWhoosh(int pitch) {
         Song cornerWhoosh = new Song("CornerWhoosh", 20);
-        // We'll do a short repeating pattern for 16 ticks: a "tick" every 4 ticks
-        cornerWhoosh.addNote(new Note(Sound.ENTITY_PHANTOM_FLAP, 0,0, .5f, 10f));
+        float adjustedPitch = (pitch * 0.2f); 
+        cornerWhoosh.addNote(new Note(Sound.ENTITY_PHANTOM_FLAP, 0, 0, adjustedPitch, 10f));
         return cornerWhoosh;
     }
-
 
     public static Song getSkibidi(int pitch) {
         Song skibidi = new Song("skibidi", 20); // 20 ticks per second
