@@ -23,25 +23,25 @@ public class AnimationSongs {
 
     private static Song getRouletteIntro() {
         Song song = new Song("RouletteIntro", 20);
-        song.addNote(new Note(Sound.MUSIC_DISC_CAT, 0, 0, 2f, 5f));
+        song.addNote(new Note("minecraft:music_disc.cat", 0, 0, 2f, 5f));
         return song;
     }
 
     private static Song getBlackjackIntro() {
         Song song = new Song("BlackjackIntro", 20);
-        song.addNote(new Note(Sound.MUSIC_DISC_CAT, 0, 0, 2f, 5f));
+        song.addNote(new Note("minecraft:music_disc.cat", 0, 0, 2f, 5f));
         return song;
     }
 
     private static Song getMinesIntro() {
         Song song = new Song("MinesIntro", 20);
-        song.addNote(new Note(Sound.MUSIC_DISC_CAT, 0, 0, 2f, 5f));
+        song.addNote(new Note("minecraft:music_disc.cat", 0, 0, 2f, 5f));
         return song;
     }
 
     private static Song getDefaultIntro() {
         Song song = new Song("DefaultIntro", 20);
-        song.addNote(new Note(Sound.MUSIC_DISC_CAT, 0, 0, 2f, 5f));
+        song.addNote(new Note("minecraft:music_disc.cat", 0, 0, 2f, 5f));
         return song;
     }
 }

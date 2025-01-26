@@ -13,6 +13,7 @@ import org.bukkit.inventory.Inventory;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.AnimationSongs;
+import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.VSE.*;
 
 import java.util.HashMap;
@@ -162,7 +163,8 @@ public class AnimationTable extends DealerInventory implements Listener {
 
                 if (rowShift >= printmsg[0].length) {
                     stopAnimation(player);
-                    player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f);  
+                    stopAnimation(player);
+                    if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport")!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
                     mce.removePlayerFromAllChannels(player);
                     Bukkit.getScheduler().cancelTask(taskId[0]);
                     animationTasks.remove(playerUUID);
@@ -205,9 +207,9 @@ public class AnimationTable extends DealerInventory implements Listener {
         event.setCancelled(true);
 
         if (clickAllowed.getOrDefault(playerUUID, false) && !animationStopped.get(playerUUID)) {
-            player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+            if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
             stopAnimation(player);
-            player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f);  
+            if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport")!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
             mce.removePlayerFromAllChannels(player);
         }
     }
