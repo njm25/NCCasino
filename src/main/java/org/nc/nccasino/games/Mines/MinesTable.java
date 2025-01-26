@@ -345,7 +345,6 @@ public class MinesTable implements InventoryHolder, Listener {
 
         // Handle fast click prevention
         if (!clickAllowed) {
-             if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             player.sendMessage("§cPlease wait before clicking again!");
             return;
         }
