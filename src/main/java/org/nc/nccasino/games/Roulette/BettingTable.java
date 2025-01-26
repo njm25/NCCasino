@@ -609,7 +609,6 @@ public class BettingTable implements InventoryHolder, Listener {
         event.setCancelled(true);
 
         if (betsClosed) {
-            //player.sendMessage("§d§lBets are closed!");
             return;
         }
 
