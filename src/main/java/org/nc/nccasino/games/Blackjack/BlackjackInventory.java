@@ -398,8 +398,8 @@ private void handleAllIn(Player player) {
     
     // Ensure the player is seated before allowing all-in
     if (!playerSeats.containsKey(playerId)) {
-        player.sendMessage("§cInvalid action");
-         if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+        player.sendMessage("§cSit to bet \n");
+        if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         return;
     }
 
@@ -407,7 +407,7 @@ private void handleAllIn(Player player) {
     double totalBalance = getPlayerTotalBalance(player);
     
     if (totalBalance <= 0) {
-        player.sendMessage("§cInvalid action");
+        player.sendMessage("§cNo " + plugin.getCurrencyName(internalName).toLowerCase()+"s"+ "\n");
          if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         return;
     }
@@ -643,7 +643,7 @@ private void handleInsurance(Player player) {
 
         // Check if the player is already sitting in a chair
         if (playerSeats.containsKey(playerId)||clickedItem == null || !clickedItem.getType().name().endsWith("_STAIRS")||!sittable) {
-            player.sendMessage("§cInvalid action");
+            player.sendMessage("§cYou're sitting buster");
              if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
@@ -792,7 +792,7 @@ private void removePlayerData(UUID playerId) {
     
         // Ensure the player is sitting before placing a bet
         if (!playerSeats.containsKey(playerId)) {
-            player.sendMessage("§cInvalid action");
+            player.sendMessage("§cSit to bet");
              if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             return;
         }
@@ -802,7 +802,7 @@ private void removePlayerData(UUID playerId) {
         int betSlot = chairSlot + 1; // Paper is always right next to the chair
     
         if (slot != betSlot) {
-            player.sendMessage("§cInvalid action");
+            player.sendMessage("§cNot your betting paper");
              if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             return;
         }
@@ -831,7 +831,7 @@ private void removePlayerData(UUID playerId) {
 
     private void handleUndoAllBets(Player player) {
         if (gameActive) {
-            player.sendMessage("§cInvalid action");
+            player.sendMessage("§cGame started, can't undo bets");
              if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             return;
         }
@@ -870,7 +870,7 @@ private void removePlayerData(UUID playerId) {
     // Handle undo last bet
     private void handleUndoLastBet(Player player) {
         if (gameActive) {
-            player.sendMessage("§cInvalid action");
+            player.sendMessage("§cGame started, can't undo bet");
              if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             return;
         }
