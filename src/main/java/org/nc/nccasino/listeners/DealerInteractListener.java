@@ -33,8 +33,21 @@ public class DealerInteractListener implements Listener {
                 UUID dealerId = DealerVillager.getUniqueId(villager);
                 
                 if (player.isSneaking() && player.hasPermission("nccasino.use")) {
-                    AdminInventory adminInventory = new AdminInventory(dealerId, player, (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class));
-                    player.openInventory(adminInventory.getInventory());
+                    if (AdminInventory.adminInventories.get(player.getUniqueId()) != null ){
+                        if(AdminInventory.villagerMap.get(player.getUniqueId()) != null){
+                            AdminInventory.villagerMap.remove(player.getUniqueId());
+                        }
+                        System.out.println("opening existing");
+                        AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                        
+                        AdminInventory.villagerMap.put(player.getUniqueId(), DealerVillager.getVillagerFromId(dealerId));
+                        player.openInventory(adminInventory.getInventory());
+                    }
+                    else{
+                        System.out.println("making new");
+                        AdminInventory adminInventory = new AdminInventory(dealerId, player, (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class));
+                        player.openInventory(adminInventory.getInventory());
+                    }
                 } else {
                     DealerInventory dealerInventory = DealerInventory.getOrCreateInventory(dealerId);
                     player.openInventory(dealerInventory.getInventory());

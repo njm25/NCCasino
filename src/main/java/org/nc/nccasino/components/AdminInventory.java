@@ -40,9 +40,11 @@ public class AdminInventory extends DealerInventory implements Listener {
     private static final Map<UUID, Boolean> nameEditMode = new HashMap<>(); // Track players renaming dealer
     private static final Map<UUID, Boolean> timerEditMode = new HashMap<>(); // Track players renaming dealer
     private static final Map<UUID, Boolean> amsgEditMode = new HashMap<>(); // Track players renaming dealer
+    public static final Map<UUID, AdminInventory> adminInventories = new HashMap<>();
+
+    public static final Map<UUID, Villager> villagerMap = new HashMap<>();
 
 
-    private static final Map<UUID, Villager> villagerMap = new HashMap<>();
     private enum SlotOption {
         EDIT_DISPLAY_NAME,
         EDIT_GAME_TYPE,
@@ -77,31 +79,15 @@ public class AdminInventory extends DealerInventory implements Listener {
             .findFirst().orElse(null);
         this.plugin = plugin;
         registerListener();
+        adminInventories.put(player.getUniqueId(), this);
         initializeAdminMenu();
     }
 
     private void registerListener() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
+
     
-    public void unregisterListener() {
-        System.out.println("unreg");
-    HandlerList.unregisterAll(this);
-    }
-
-
-    @EventHandler
-public void onInventoryClose(InventoryCloseEvent event) {
-    if(!isPlayerOccupied(event.getPlayer().getUniqueId())){
-        System.out.print("closetrigga");
-        if (event.getInventory().getHolder() ==this) {
-            System.out.print("closetrigga2");
-            unregisterListener();
-        }
-    }
-
-}
-
     private void initializeAdminMenu() {
         addItem(createCustomItem(Material.NAME_TAG, "Edit Display Name"), slotMapping.get(SlotOption.EDIT_DISPLAY_NAME));
         addItem(createCustomItem(Material.PAPER, "Edit Game Type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE));
@@ -139,6 +125,7 @@ public void onInventoryClose(InventoryCloseEvent event) {
                 switch (option) {
                     case EDIT_DISPLAY_NAME:
                         handleEditDealerName(player);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case EDIT_GAME_TYPE:
                         handleSelectGameType(player);
@@ -146,6 +133,7 @@ public void onInventoryClose(InventoryCloseEvent event) {
                         break;
                     case MOVE_DEALER:
                         handleMoveDealer(player);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case DELETE_DEALER:
                         handleDeleteDealer(player);
@@ -160,9 +148,11 @@ public void onInventoryClose(InventoryCloseEvent event) {
                         if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case EDIT_TIMER:
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         handleEditTimer(player);
                         break;
                     case EDIT_ANIMATION_MESSAGE:
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         handleAnimationMessage(player);
                         break;
                     default:
@@ -187,7 +177,6 @@ public void onInventoryClose(InventoryCloseEvent event) {
             player.sendMessage("§cYou are already editing something. ");
             return;
         }
-        if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);  
         villagerMap.put(playerId, dealer);  // Store dealer reference
         timerEditMode.put(playerId, true);
         player.closeInventory();
@@ -202,7 +191,6 @@ public void onInventoryClose(InventoryCloseEvent event) {
             player.sendMessage("§cYou are already editing something. ");
             return;
         }
-        if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
 
        villagerMap.put(playerId, dealer);  // Store dealer reference
         amsgEditMode.put(playerId, true);
@@ -219,7 +207,6 @@ public void onInventoryClose(InventoryCloseEvent event) {
             player.sendMessage("§cYou are already editing something. ");
             return;
         }
-        if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
         nameEditMode.put(playerId, true);
         villagerMap.put(playerId, dealer);  // Store dealer reference
         player.closeInventory();
@@ -244,7 +231,6 @@ public void onInventoryClose(InventoryCloseEvent event) {
             player.sendMessage("§cYou are already editing something. ");
             return;
         }
-        if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport")!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
 
         
         moveMode.put(playerId, true);
@@ -266,7 +252,16 @@ public void onInventoryClose(InventoryCloseEvent event) {
                 (uuid) -> {
                     // Confirm action: close inventory, delete dealer, and execute command
                     player.closeInventory();
+                    UUID playerId = player.getUniqueId();
+                    
+                    nameEditMode.remove(playerId); // Remove from edit mode
+                    amsgEditMode.remove(playerId);
+                    timerEditMode.remove(playerId);
+                    moveMode.remove(playerId);
+                    villagerMap.remove(playerId);
+                    adminInventories.remove(playerId);
                     delete();
+                            
                     Bukkit.dispatchCommand(player, "ncc delete " + DealerVillager.getInternalName(dealer));
                 },
                 (uuid) -> {
@@ -311,6 +306,8 @@ public void onInventoryClose(InventoryCloseEvent event) {
 
             String newName = event.getMessage().trim();
             if (newName.isEmpty()) {
+                if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+
                 player.sendMessage("§cInvalid name. Try again.");
                 return;
             }
@@ -322,6 +319,8 @@ public void onInventoryClose(InventoryCloseEvent event) {
                 plugin.saveConfig();
                 dealer.setCustomNameVisible(true);
                 plugin.reloadDealerVillager(dealer);
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+
                 player.sendMessage("§aDealer name updated to: " + newName);
             } else {
                 player.sendMessage("§cCould not find dealer.");
@@ -329,13 +328,15 @@ public void onInventoryClose(InventoryCloseEvent event) {
 
             nameEditMode.remove(playerId); // Remove from edit mode
             villagerMap.remove(playerId);
-            unregisterListener();
+            adminInventories.remove(playerId);
         }
         else if (timerEditMode.getOrDefault(playerId, false)) {
             event.setCancelled(true); // Prevent message from being broadcast
 
             String newTimer = event.getMessage().trim();
             if (newTimer.isEmpty() || !newTimer.matches("\\d+") || Integer.parseInt(newTimer) <= 0) {
+                if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+
                 player.sendMessage("§cInvalid input. Please enter a positive number.");
                 return;
             }
@@ -345,6 +346,8 @@ public void onInventoryClose(InventoryCloseEvent event) {
                 plugin.getConfig().set("dealers." + internalName + ".timer", Integer.parseInt(newTimer));
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+
                 player.sendMessage("§aDealer timer updated to: " + newTimer);
             } else {
                 player.sendMessage("§cCould not find dealer.");
@@ -352,7 +355,7 @@ public void onInventoryClose(InventoryCloseEvent event) {
 
             timerEditMode.remove(playerId); // Remove from edit mode
             villagerMap.remove(playerId);
-            unregisterListener();
+            adminInventories.remove(playerId);
 
         }
         else if (amsgEditMode.getOrDefault(playerId, false)) {
@@ -360,6 +363,7 @@ public void onInventoryClose(InventoryCloseEvent event) {
 
             String newAmsg = event.getMessage().trim();
             if (newAmsg.isEmpty()) {
+                if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
                 player.sendMessage("§cInvalid input.");
                 return;
             }
@@ -369,6 +373,7 @@ public void onInventoryClose(InventoryCloseEvent event) {
                 plugin.getConfig().set("dealers." + internalName + ".animation-message", newAmsg);
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 player.sendMessage("§aDealer animation message updated to: " + newAmsg);
             } else {
                 player.sendMessage("§cCould not find dealer.");
@@ -376,7 +381,7 @@ public void onInventoryClose(InventoryCloseEvent event) {
 
             villagerMap.remove(playerId);
             amsgEditMode.remove(playerId); // Remove from edit mode
-            unregisterListener();
+            adminInventories.remove(playerId);
 
         }
     }
@@ -417,7 +422,7 @@ public void onInventoryClose(InventoryCloseEvent event) {
                         e.printStackTrace();
                     }
                     plugin.saveConfig();
-
+                    if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport")!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
                     player.sendMessage("§aDealer moved to new location.");
                 } else {
                     player.sendMessage("§cCould not find dealer.");
@@ -425,7 +430,7 @@ public void onInventoryClose(InventoryCloseEvent event) {
 
                 moveMode.remove(playerId); 
                 villagerMap.remove(playerId);
-                unregisterListener();
+                adminInventories.remove(playerId);
 
             }
             event.setCancelled(true); 

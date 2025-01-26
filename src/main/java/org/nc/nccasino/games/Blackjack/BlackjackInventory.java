@@ -33,6 +33,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.components.AdminInventory;
 import org.nc.nccasino.components.AnimationTable;
@@ -141,8 +142,21 @@ private void registerListener() {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (player.isSneaking() && player.hasPermission("nccasino.use")) {
                 // Open the admin inventory immediately without animation
-                AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
-                player.openInventory(adminInventory.getInventory());
+                if (AdminInventory.adminInventories.get(player.getUniqueId()) != null ){
+                    if(AdminInventory.villagerMap.get(player.getUniqueId()) != null){
+                        AdminInventory.villagerMap.remove(player.getUniqueId());
+                    }
+                    System.out.println("opening existing");
+                    AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                    
+                    AdminInventory.villagerMap.put(player.getUniqueId(), DealerVillager.getVillagerFromId(dealerId));
+                    player.openInventory(adminInventory.getInventory());
+                }
+                else{
+                    System.out.println("making new");
+                    AdminInventory adminInventory = new AdminInventory(dealerId, player, (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class));
+                    player.openInventory(adminInventory.getInventory());
+                }
             } else {
                 // Proceed with the animation for the regular inventory
                 AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);

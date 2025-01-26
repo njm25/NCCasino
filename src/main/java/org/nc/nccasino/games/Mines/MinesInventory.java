@@ -10,6 +10,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.components.AdminInventory;
 import org.nc.nccasino.components.AnimationTable;
@@ -113,8 +114,21 @@ public class MinesInventory extends DealerInventory implements Listener {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (player.isSneaking() && player.hasPermission("nccasino.use")) {
                 // Open the admin inventory immediately without animation
-                AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
-                player.openInventory(adminInventory.getInventory());
+                if (AdminInventory.adminInventories.get(player.getUniqueId()) != null ){
+                    if(AdminInventory.villagerMap.get(player.getUniqueId()) != null){
+                        AdminInventory.villagerMap.remove(player.getUniqueId());
+                    }
+                    System.out.println("opening existing");
+                    AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                    
+                    AdminInventory.villagerMap.put(player.getUniqueId(), DealerVillager.getVillagerFromId(dealerId));
+                    player.openInventory(adminInventory.getInventory());
+                }
+                else{
+                    System.out.println("making new");
+                    AdminInventory adminInventory = new AdminInventory(dealerId, player, (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class));
+                    player.openInventory(adminInventory.getInventory());
+                }
             } else {
                 // Proceed with the animation for the regular inventory
                 setupGameMenu(player);

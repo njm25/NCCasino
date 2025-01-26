@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
@@ -282,9 +283,21 @@ public class RouletteInventory extends DealerInventory implements Listener {
         String animationMessage = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (player.isSneaking() && player.hasPermission("nccasino.use")) {
-                // Open the admin inventory immediately without animation
-                AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
-                player.openInventory(adminInventory.getInventory());
+                if (AdminInventory.adminInventories.get(player.getUniqueId()) != null ){
+                    if(AdminInventory.villagerMap.get(player.getUniqueId()) != null){
+                        AdminInventory.villagerMap.remove(player.getUniqueId());
+                    }
+                    System.out.println("opening existing");
+                    AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                    
+                    AdminInventory.villagerMap.put(player.getUniqueId(), DealerVillager.getVillagerFromId(dealerId));
+                    player.openInventory(adminInventory.getInventory());
+                }
+                else{
+                    System.out.println("making new");
+                    AdminInventory adminInventory = new AdminInventory(dealerId, player, (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class));
+                    player.openInventory(adminInventory.getInventory());
+                }
             } else {
                 // Proceed with the animation for the regular inventory
                 activeAnimations.put(player, 1);
