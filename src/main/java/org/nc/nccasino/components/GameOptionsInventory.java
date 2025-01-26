@@ -59,7 +59,9 @@ public class GameOptionsInventory extends DealerInventory implements Listener {
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
         event.setCancelled(true); // Prevent unintended item movement
-
+        if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
+            return;
+        }
         UUID playerId = player.getUniqueId();
 
         if (clickAllowed.getOrDefault(playerId, true)) {
@@ -81,8 +83,6 @@ public class GameOptionsInventory extends DealerInventory implements Listener {
                     gameType = "Mines";
                     break;
                 default:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-                    player.sendMessage("§cInvalid option selected.");
                     return;
             }
             if (!editing){
