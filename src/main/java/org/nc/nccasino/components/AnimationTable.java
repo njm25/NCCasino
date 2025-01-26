@@ -161,6 +161,7 @@ public class AnimationTable extends DealerInventory implements Listener {
                 rowShift++;
 
                 if (rowShift >= printmsg[0].length) {
+                    stopAnimation(player);
                     player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f);  
                     mce.removePlayerFromAllChannels(player);
                     Bukkit.getScheduler().cancelTask(taskId[0]);
