@@ -9,14 +9,18 @@ import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
@@ -25,6 +29,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.helpers.SoundHelper;
 
 public class AdminInventory extends DealerInventory implements Listener {
     private UUID dealerId;
@@ -71,9 +76,31 @@ public class AdminInventory extends DealerInventory implements Listener {
             .filter(v -> DealerVillager.isDealerVillager(v) && DealerVillager.getUniqueId(v).equals(this.dealerId))
             .findFirst().orElse(null);
         this.plugin = plugin;
-        Bukkit.getPluginManager().registerEvents(this, plugin);
+        registerListener();
         initializeAdminMenu();
     }
+
+    private void registerListener() {
+        Bukkit.getPluginManager().registerEvents(this, plugin);
+    }
+    
+    public void unregisterListener() {
+        System.out.println("unreg");
+    HandlerList.unregisterAll(this);
+    }
+
+
+    @EventHandler
+public void onInventoryClose(InventoryCloseEvent event) {
+    if(!isPlayerOccupied(event.getPlayer().getUniqueId())){
+        System.out.print("closetrigga");
+        if (event.getInventory().getHolder() ==this) {
+            System.out.print("closetrigga2");
+            unregisterListener();
+        }
+    }
+
+}
 
     private void initializeAdminMenu() {
         addItem(createCustomItem(Material.NAME_TAG, "Edit Display Name"), slotMapping.get(SlotOption.EDIT_DISPLAY_NAME));
@@ -115,18 +142,22 @@ public class AdminInventory extends DealerInventory implements Listener {
                         break;
                     case EDIT_GAME_TYPE:
                         handleSelectGameType(player);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case MOVE_DEALER:
                         handleMoveDealer(player);
                         break;
                     case DELETE_DEALER:
                         handleDeleteDealer(player);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case EDIT_CURRENCY:
                         handleEditCurrency(player);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case USE_VAULT:
                         handleUseVault(player);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case EDIT_TIMER:
                         handleEditTimer(player);
@@ -152,12 +183,14 @@ public class AdminInventory extends DealerInventory implements Listener {
 
     // Run the check in the main thread
         if (isPlayerOccupied(playerId)) {
+            if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             player.sendMessage("§cYou are already editing something. ");
             return;
-        }    
-        player.closeInventory();
+        }
+        if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);  
         villagerMap.put(playerId, dealer);  // Store dealer reference
         timerEditMode.put(playerId, true);
+        player.closeInventory();
         player.sendMessage("§aType the new timer in chat.");
     }
 
@@ -165,14 +198,16 @@ public class AdminInventory extends DealerInventory implements Listener {
         UUID playerId = player.getUniqueId();
     
         if (isPlayerOccupied(playerId)) {
+            if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             player.sendMessage("§cYou are already editing something. ");
             return;
         }
-    
+        if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
 
-        player.closeInventory();
-        villagerMap.put(playerId, dealer);  // Store dealer reference
+       villagerMap.put(playerId, dealer);  // Store dealer reference
         amsgEditMode.put(playerId, true);
+        player.closeInventory();
+ 
         player.sendMessage("§aType the new animation message in chat.");
     }
 
@@ -180,13 +215,15 @@ public class AdminInventory extends DealerInventory implements Listener {
         UUID playerId = player.getUniqueId();
     
         if (isPlayerOccupied(playerId)) {
+            if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             player.sendMessage("§cYou are already editing something. ");
             return;
         }
-    
-        player.closeInventory();
+        if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
         nameEditMode.put(playerId, true);
         villagerMap.put(playerId, dealer);  // Store dealer reference
+        player.closeInventory();
+
         player.sendMessage("§aType the new dealer name in chat.");
     }
     
@@ -203,13 +240,16 @@ public class AdminInventory extends DealerInventory implements Listener {
         UUID playerId = player.getUniqueId();
     
         if (isPlayerOccupied(playerId)) {
-            player.sendMessage("§cYou are already editing.");
+            if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+            player.sendMessage("§cYou are already editing something. ");
             return;
         }
-    
-        player.closeInventory();
+        if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport")!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
+
+        
         moveMode.put(playerId, true);
         villagerMap.put(playerId, dealer);  // Store dealer reference
+        player.closeInventory();
         player.sendMessage("§aClick a block to move the dealer.");
     }
 
@@ -289,6 +329,7 @@ public class AdminInventory extends DealerInventory implements Listener {
 
             nameEditMode.remove(playerId); // Remove from edit mode
             villagerMap.remove(playerId);
+            unregisterListener();
         }
         else if (timerEditMode.getOrDefault(playerId, false)) {
             event.setCancelled(true); // Prevent message from being broadcast
@@ -311,6 +352,8 @@ public class AdminInventory extends DealerInventory implements Listener {
 
             timerEditMode.remove(playerId); // Remove from edit mode
             villagerMap.remove(playerId);
+            unregisterListener();
+
         }
         else if (amsgEditMode.getOrDefault(playerId, false)) {
             event.setCancelled(true); // Prevent message from being broadcast
@@ -333,6 +376,8 @@ public class AdminInventory extends DealerInventory implements Listener {
 
             villagerMap.remove(playerId);
             amsgEditMode.remove(playerId); // Remove from edit mode
+            unregisterListener();
+
         }
     }
 
@@ -380,6 +425,7 @@ public class AdminInventory extends DealerInventory implements Listener {
 
                 moveMode.remove(playerId); 
                 villagerMap.remove(playerId);
+                unregisterListener();
 
             }
             event.setCancelled(true); 
