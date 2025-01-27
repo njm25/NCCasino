@@ -1,6 +1,8 @@
 package org.nc.nccasino.listeners;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -13,6 +15,7 @@ import org.nc.nccasino.components.AdminInventory;
 import org.nc.nccasino.components.AnimationTable;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.helpers.SoundHelper;
 
 import java.util.HashSet;
 import java.util.List;
@@ -42,6 +45,9 @@ public class DealerInteractListener implements Listener {
         List<Villager> villagers = AdminInventory.getOccupiedVillagers(player.getUniqueId());
         
         if (!occupations.isEmpty()) {
+            if (SoundHelper.getSoundSafely("entity.villager.no") != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
             for (int i = 0; i < occupations.size(); i++) {
                 String occupation = occupations.get(i);
                 Villager villager = (i < villagers.size()) ? villagers.get(i) : null;
