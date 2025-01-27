@@ -45,16 +45,15 @@ public class AdminInventory extends DealerInventory {
     private UUID dealerId;
     private Villager dealer;
     private final Nccasino plugin;
-
     // Track click state per player
     private final Map<UUID, Boolean> clickAllowed = new HashMap<>();
-
+    private int chipIndex=1;
     // Static maps referencing AdminInventory or the player's editing states
     private static final Map<UUID, Villager> moveMode = new HashMap<>();
     private static final Map<UUID, Villager> nameEditMode = new HashMap<>();
     private static final Map<UUID, Villager> timerEditMode = new HashMap<>();
     private static final Map<UUID, Villager> amsgEditMode = new HashMap<>();
-
+    private static final Map<UUID, Villager> chipEditMode = new HashMap<>();
     // All active AdminInventories by player ID
     public static final Map<UUID, AdminInventory> adminInventories = new HashMap<>();
 
@@ -70,7 +69,12 @@ public class AdminInventory extends DealerInventory {
         EDIT_CURRENCY,
         USE_VAULT,
         EDIT_TIMER,
-        EDIT_ANIMATION_MESSAGE
+        EDIT_ANIMATION_MESSAGE,
+        CHIP_SIZE1,
+        CHIP_SIZE2,
+        CHIP_SIZE3,
+        CHIP_SIZE4,
+        CHIP_SIZE5
     }
 
     // The slot positions of each option in the inventory
@@ -83,8 +87,14 @@ public class AdminInventory extends DealerInventory {
         // put(SlotOption.USE_VAULT, 28);
         // put(SlotOption.EDIT_CURRENCY, 30);
 
-        put(SlotOption.MOVE_DEALER, 30);
-        put(SlotOption.DELETE_DEALER, 32);
+        put(SlotOption.MOVE_DEALER, 48);
+        put(SlotOption.DELETE_DEALER, 50);
+        put(SlotOption.CHIP_SIZE1, 29);
+        put(SlotOption.CHIP_SIZE2, 30);
+        put(SlotOption.CHIP_SIZE3, 31);
+        put(SlotOption.CHIP_SIZE4, 32);
+        put(SlotOption.CHIP_SIZE5, 33);
+
     }};
 
     /**
@@ -139,6 +149,7 @@ public class AdminInventory extends DealerInventory {
      * Build out the Admin Menu items.
      */
     private void initializeAdminMenu() {
+        String internalName= DealerVillager.getInternalName(dealer);
         addItem(createCustomItem(Material.NAME_TAG, "Edit Display Name"),
                 slotMapping.get(SlotOption.EDIT_DISPLAY_NAME));
         addItem(createCustomItem(Material.PAPER, "Edit Game Type"),
@@ -155,8 +166,15 @@ public class AdminInventory extends DealerInventory {
                 slotMapping.get(SlotOption.MOVE_DEALER));
         addItem(createCustomItem(Material.BARRIER, "Delete"),
                 slotMapping.get(SlotOption.DELETE_DEALER));
-    }
+        addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 1st Chip Value (Currently: "+plugin.getChipName(internalName, 1)+")", (int)plugin.getChipValue(internalName, 1)),slotMapping.get(SlotOption.CHIP_SIZE1));
+        addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 2nd Chip Value (Currently: "+plugin.getChipName(internalName, 2)+")", (int)plugin.getChipValue(internalName, 2)),slotMapping.get(SlotOption.CHIP_SIZE2));
+        addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 3rd Chip Value (Currently: "+plugin.getChipName(internalName, 3)+")", (int)plugin.getChipValue(internalName, 3)),slotMapping.get(SlotOption.CHIP_SIZE3));
+        addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 4th Chip Value (Currently: "+plugin.getChipName(internalName, 4)+")", (int)plugin.getChipValue(internalName, 4)),slotMapping.get(SlotOption.CHIP_SIZE4));
+        addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 5th Chip Value (Currently: "+plugin.getChipName(internalName, 5)+")", (int)plugin.getChipValue(internalName, 5)),slotMapping.get(SlotOption.CHIP_SIZE5));
+    } 
 
+
+  
     /**
      * Returns whether the player is currently editing something else (rename, timer, etc.).
      */
@@ -165,7 +183,9 @@ public class AdminInventory extends DealerInventory {
         return (villager != null)
             || (timerEditMode.get(playerId) != null)
             || (amsgEditMode.get(playerId) != null)
-            || (moveMode.get(playerId) != null);
+            || (moveMode.get(playerId) != null)
+            || (chipEditMode.get(playerId) != null);
+        
     }
     
     public static List<String> playerOccupations(UUID playerId) {
@@ -183,7 +203,9 @@ public class AdminInventory extends DealerInventory {
         if (moveMode.get(playerId) != null) {
             occupations.add("location");
         }
-    
+        if (chipEditMode.get(playerId) != null) {
+            occupations.add("chip size");
+        }
         return occupations;
     }
     public static List<Villager> getOccupiedVillagers(UUID playerId) {
@@ -201,6 +223,9 @@ public class AdminInventory extends DealerInventory {
             villagers.add(villager);
         }
         if ((villager = moveMode.get(playerId)) != null) {
+            villagers.add(villager);
+        }
+        if ((villager = chipEditMode.get(playerId)) != null) {
             villagers.add(villager);
         }
     
@@ -256,6 +281,27 @@ public class AdminInventory extends DealerInventory {
                         handleAnimationMessage(player);
                         if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
+                    case CHIP_SIZE1:
+                        handleEditChipSize(player,1);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        break;
+                    case CHIP_SIZE2:
+                        handleEditChipSize(player,2);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        break;
+                    case CHIP_SIZE3:
+                        handleEditChipSize(player,3);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        break;
+                    case CHIP_SIZE4:
+                        handleEditChipSize(player,4);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        break;
+                    case CHIP_SIZE5:
+                        handleEditChipSize(player,5);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        break;
+
                     default:
                         player.sendMessage("§cInvalid option selected.");
                         break;
@@ -273,6 +319,41 @@ public class AdminInventory extends DealerInventory {
         timerEditMode.put(playerId, dealer);
         player.closeInventory();
         player.sendMessage("§aType the new timer in chat.");
+    }
+
+    private void handleEditChipSize(Player player,int chipInd) {
+        chipIndex=chipInd;
+        UUID playerId = player.getUniqueId();
+        localVillager.put(playerId, dealer);
+        chipEditMode.put(playerId, dealer);
+        player.closeInventory();
+        switch(chipInd){
+        case 1:{
+            player.sendMessage("§aType the new value for the 1st chip size.");
+            break;
+        }
+        case 2:{
+            player.sendMessage("§aType the new value for the 2nd chip size.");
+            break;
+        }
+        case 3:{
+            player.sendMessage("§aType the new value for the 3rd chip size.");
+            break;
+        }
+        case 4:{
+            player.sendMessage("§aType the new value for the 4th chip size.");
+            break;
+        }
+        case 5:{
+            player.sendMessage("§aType the new value for the 5th chip size.");
+            break;
+        }
+        default:{
+            player.sendMessage("§aType the new value for chip size number "+chipInd+".");
+            break;
+        }
+        
+        }
     }
 
     private void handleAnimationMessage(Player player) {
@@ -444,6 +525,28 @@ public class AdminInventory extends DealerInventory {
                 
             cleanup();
         }
+        else if (chipEditMode.get(playerId) != null) {
+            event.setCancelled(true);
+            String newChipSize = event.getMessage().trim();
+
+            if (newChipSize.isEmpty() || !newChipSize.matches("\\d+") || Integer.parseInt(newChipSize) <= 0) {
+                denyAction(player, "Please enter a positive number.");
+                return;
+            }
+            if (dealer != null) {
+                String internalName = DealerVillager.getInternalName(dealer);
+                plugin.getConfig().set("dealers." + internalName + ".chip-sizes.size" + chipIndex,Integer.parseInt(newChipSize));
+                plugin.saveConfig();
+                plugin.reloadDealerVillager(dealer);
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                player.sendMessage("§aChip size "+chipIndex+" updated to: " + ChatColor.YELLOW + newChipSize + "§a.");
+            } else {
+                player.sendMessage("§cCould not find dealer.");
+            }
+
+                
+            cleanup();
+        }
     }
 
     @EventHandler
@@ -590,6 +693,7 @@ public class AdminInventory extends DealerInventory {
         nameEditMode.remove(ownerId);
         timerEditMode.remove(ownerId);
         amsgEditMode.remove(ownerId);
+        chipEditMode.remove(ownerId);
         localVillager.remove(ownerId);
         clickAllowed.remove(ownerId);
     }
