@@ -122,7 +122,7 @@ public class GameOptionsInventory extends DealerInventory {
             e.printStackTrace();
         }
 
-        player.sendMessage("§aDealer with game type '" + ChatColor.YELLOW + gameType + ChatColor.GREEN + "' created successfully!");
+        player.sendMessage("§aDealer with game type " + ChatColor.YELLOW + gameType + ChatColor.GREEN + " created successfully!");
 
         player.closeInventory();
         this.delete();

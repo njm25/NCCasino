@@ -32,6 +32,8 @@ import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.helpers.SoundHelper;
 
+import net.md_5.bungee.api.ChatColor;
+
 public class AdminInventory extends DealerInventory {
 
     /**
@@ -267,16 +269,6 @@ public class AdminInventory extends DealerInventory {
     // ----- Option handlers -----
     private void handleEditTimer(Player player) {
         UUID playerId = player.getUniqueId();
-        List<String> occupations = AdminInventory.playerOccupations(playerId);
-
-        if (!occupations.isEmpty()) {
-            for (String occupation : occupations) {
-                denyAction(player, "Please finish editing " + occupation + " for " + DealerVillager.getInternalName(dealer));
-            }
-            return;
-        }
-        
-
         localVillager.put(playerId, dealer);
         timerEditMode.put(playerId, dealer);
         player.closeInventory();
@@ -285,16 +277,6 @@ public class AdminInventory extends DealerInventory {
 
     private void handleAnimationMessage(Player player) {
         UUID playerId = player.getUniqueId();
-        List<String> occupations = AdminInventory.playerOccupations(playerId);
-
-        if (!occupations.isEmpty()) {
-            for (String occupation : occupations) {
-                denyAction(player, "Please finish editing " + occupation + " for " + DealerVillager.getInternalName(dealer));
-            }
-            return;
-        }
-        
-
         localVillager.put(playerId, dealer);
         amsgEditMode.put(playerId, dealer);
         player.closeInventory();
@@ -303,16 +285,6 @@ public class AdminInventory extends DealerInventory {
 
     private void handleEditDealerName(Player player) {
         UUID playerId = player.getUniqueId();
-        List<String> occupations = AdminInventory.playerOccupations(playerId);
-
-        if (!occupations.isEmpty()) {
-            for (String occupation : occupations) {
-                denyAction(player, "Please finish editing " + occupation + " for " + DealerVillager.getInternalName(dealer));
-            }
-            return;
-        }
-        
-
         nameEditMode.put(playerId, dealer);
         localVillager.put(playerId, dealer);
         player.closeInventory();
@@ -327,16 +299,6 @@ public class AdminInventory extends DealerInventory {
 
     private void handleMoveDealer(Player player) {
         UUID playerId = player.getUniqueId();
-
-        List<String> occupations = AdminInventory.playerOccupations(playerId);
-
-        if (!occupations.isEmpty()) {
-            for (String occupation : occupations) {
-                denyAction(player, "Please finish editing " + occupation + " for " + DealerVillager.getInternalName(dealer));
-            }
-            return;
-        }
-        
 
         moveMode.put(playerId, dealer);
         localVillager.put(playerId, dealer);
@@ -427,7 +389,7 @@ public class AdminInventory extends DealerInventory {
                 dealer.setCustomNameVisible(true);
                 plugin.reloadDealerVillager(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                player.sendMessage("§aDealer name updated to: " + newName);
+                player.sendMessage("§aDealer name updated to: '" + ChatColor.YELLOW + newName + "§a'.");
             } else {
                 player.sendMessage("§cCould not find dealer.");
             }
@@ -442,7 +404,7 @@ public class AdminInventory extends DealerInventory {
             String newTimer = event.getMessage().trim();
 
             if (newTimer.isEmpty() || !newTimer.matches("\\d+") || Integer.parseInt(newTimer) <= 0) {
-                denyAction(player, "Invalid input. Please enter a positive number.");
+                denyAction(player, "Please enter a positive number.");
                 return;
             }
             if (dealer != null) {
@@ -451,7 +413,7 @@ public class AdminInventory extends DealerInventory {
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                player.sendMessage("§aDealer timer updated to: " + newTimer);
+                player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
             } else {
                 player.sendMessage("§cCould not find dealer.");
             }
@@ -474,7 +436,7 @@ public class AdminInventory extends DealerInventory {
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                player.sendMessage("§aDealer animation message updated to: " + newAmsg);
+                player.sendMessage("§aDealer animation message updated to: '" + ChatColor.YELLOW + newAmsg + "§a'.");
             } else {
                 player.sendMessage("§cCould not find dealer.");
             }

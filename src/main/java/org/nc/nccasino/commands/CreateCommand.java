@@ -30,21 +30,7 @@ public class CreateCommand implements CasinoCommand {
             return true;
         }
 
-        if (args.length < 2) {
-            sender.sendMessage(ChatColor.AQUA + "Usage: /ncc create " + ChatColor.YELLOW + "<name>");
-            return true;
-        }
-
         Player player = (Player) sender;
-        String internalName = args[1];
-
-        // Check if the internal name already exists
-        if (plugin.getConfig().contains("dealers." + internalName)) {
-            sender.sendMessage(ChatColor.RED + "A dealer with the internal name '" +
-                    ChatColor.YELLOW + internalName + ChatColor.RED + "' already exists.");
-            return true;
-        }
-
                 
         List<String> occupations = AdminInventory.playerOccupations(player.getUniqueId());
         List<Villager> villagers = AdminInventory.getOccupiedVillagers(player.getUniqueId())
@@ -64,10 +50,26 @@ public class CreateCommand implements CasinoCommand {
                 Villager villager = villagers.get(i);
                 
                 String villagerName = (villager != null) ? DealerVillager.getInternalName(villager) : "unknown villager";
-                Nccasino.sendErrorMessage(player, "Please finish editing " + occupation + " for " + villagerName);
+                Nccasino.sendErrorMessage(player, "Please finish editing " + occupation + " for '" +
+                    ChatColor.YELLOW + villagerName + ChatColor.RED + "'.");
             }
             return true;
         }
+
+        if (args.length < 2) {
+            sender.sendMessage(ChatColor.AQUA + "Usage: /ncc create " + ChatColor.YELLOW + "<name>");
+            return true;
+        }
+
+        String internalName = args[1];
+
+        // Check if the internal name already exists
+        if (plugin.getConfig().contains("dealers." + internalName)) {
+            sender.sendMessage(ChatColor.RED + "A dealer with the internal name '" +
+                    ChatColor.YELLOW + internalName + ChatColor.RED + "' already exists.");
+            return true;
+        }
+
         // Open the Game Options Inventory
         GameOptionsInventory inventory = new GameOptionsInventory((Nccasino)plugin, internalName);
         player.openInventory(inventory.getInventory());

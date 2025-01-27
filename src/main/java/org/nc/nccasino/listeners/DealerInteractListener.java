@@ -1,6 +1,7 @@
 package org.nc.nccasino.listeners;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Villager;
@@ -59,7 +60,8 @@ public class DealerInteractListener implements Listener {
                 Villager villager = villagers.get(i);
                 
                 String villagerName = (villager != null) ? DealerVillager.getInternalName(villager) : "unknown villager";
-                Nccasino.sendErrorMessage(player, "Please finish editing " + occupation + " for " + villagerName);
+                Nccasino.sendErrorMessage(player, "Please finish editing " + occupation + " for '" +
+                    ChatColor.YELLOW + villagerName + ChatColor.RED + "'.");
             }
             return;
         }
