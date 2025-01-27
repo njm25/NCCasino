@@ -6,7 +6,6 @@ import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
@@ -20,7 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class AnimationTable extends DealerInventory implements Listener {
+public class AnimationTable extends DealerInventory {
     private final MultiChannelEngine mce;
     private final Inventory inventory;
     private final UUID playerId;

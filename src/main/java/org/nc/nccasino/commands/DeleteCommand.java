@@ -10,9 +10,12 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.jetbrains.annotations.NotNull;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.components.AdminInventory;
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
 
 public class DeleteCommand implements CasinoCommand {
@@ -33,6 +36,7 @@ public class DeleteCommand implements CasinoCommand {
             sender.sendMessage(ChatColor.AQUA + "Usage: /ncc delete " + ChatColor.YELLOW + "<name>");
             return true;
         }
+        AdminInventory.deleteAssociatedAdminInventories((Player) sender);
 
         String internalName = args[1];
 
@@ -53,6 +57,7 @@ public class DeleteCommand implements CasinoCommand {
         }
 
         DealerVillager.removeDealer(villager);
+        DealerInventory.unregisterAllListeners(villager);
         // Remove dealer data from YAML
         removeDealerData(internalName);
         
@@ -68,6 +73,7 @@ public class DeleteCommand implements CasinoCommand {
                 if (entity instanceof Villager villager) {
                     if (DealerVillager.isDealerVillager(villager)) {
                         DealerVillager.removeDealer(villager);
+                        DealerInventory.unregisterAllListeners(villager);
                         deletedCount++;
                     }
                 }

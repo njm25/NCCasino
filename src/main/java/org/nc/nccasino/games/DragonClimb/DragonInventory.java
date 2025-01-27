@@ -7,7 +7,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.nc.nccasino.Nccasino;
@@ -16,7 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class DragonInventory extends DealerInventory implements Listener {
+public class DragonInventory extends DealerInventory {
     private final Map<UUID, DragonTable> Tables;  // Use UUID instead of Player
     private final Nccasino plugin;
     private final Map<UUID, Boolean> interactionLocks = new HashMap<>();  // Locking mechanism to prevent double triggers

@@ -8,7 +8,6 @@ import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
-import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
@@ -24,7 +23,7 @@ import java.util.UUID;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
-public class GameOptionsInventory extends DealerInventory implements Listener {
+public class GameOptionsInventory extends DealerInventory {
 
     private final Map<UUID, Boolean> clickAllowed = new HashMap<>();
     private final Nccasino plugin;

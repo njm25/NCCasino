@@ -10,13 +10,12 @@ import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.SoundHelper;
 
-public class ConfirmInventory extends DealerInventory implements Listener {
+public class ConfirmInventory extends DealerInventory {
     private final Consumer<UUID> confirm;
     private final Consumer<UUID> cancel;
     private UUID dealerId;

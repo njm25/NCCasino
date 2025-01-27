@@ -26,40 +26,44 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-
-
 public final class Nccasino extends JavaPlugin implements Listener {
     private NamespacedKey INTERNAL_NAME_KEY; // Declare it here
 
-    private Material currency; // Material used for betting currency
-    private String currencyName; // Display name for the currency
-    public Map<UUID,DealerInventory> inventories=new HashMap<>();
-   
+    private Material currency;    // Material used for betting currency
+    private String currencyName;  // Display name for the currency
+
+    /**
+     * This local map was used in your code. If you still need it,
+     * ensure you also clean it up. If not needed, consider removing.
+     */
+    public Map<UUID, DealerInventory> inventories = new HashMap<>();
+
     @Override
     public void onEnable() {
-        INTERNAL_NAME_KEY = new NamespacedKey(this, "internal_name"); 
-        // Save default config if not present
+        INTERNAL_NAME_KEY = new NamespacedKey(this, "internal_name");
+
         saveDefaultConfig();
 
-        // Load the currency from config
+        // Load currency from config
         loadCurrencyFromConfig();
 
         // Register event listeners
-        getServer().getPluginManager().registerEvents(new DealerInteractListener(), this);
+        getServer().getPluginManager().registerEvents(new DealerInteractListener(this), this);
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new DealerDeathHandler(this), this);
         getServer().getPluginManager().registerEvents(new DealerEventListener(), this);
 
         // Register the command executor
-        this.getCommand("ncc").setExecutor(new CommandExecution(this));
-        
-        // Register tab completion (optional, see below)
-        this.getCommand("ncc").setTabCompleter(new CommandTabCompleter(this));
+        if (this.getCommand("ncc") != null) {
+            this.getCommand("ncc").setExecutor(new CommandExecution(this));
+            this.getCommand("ncc").setTabCompleter(new CommandTabCompleter(this));
+        }
 
-        // Optionally, load any pre-existing dealer villagers from config
+        // Load any pre-existing dealer villagers from config
         loadDealerVillagers();
-    }
 
+        getLogger().info("Nccasino plugin enabled!");
+    }
 
     private void loadDealerVillagers() {
         File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
@@ -71,7 +75,6 @@ public final class Nccasino extends JavaPlugin implements Listener {
         FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
 
         if (dealersConfig.contains("dealers")) {
-            // Iterate over stored dealers in the custom config
             dealersConfig.getConfigurationSection("dealers").getKeys(false).forEach(internalName -> {
                 String path = "dealers." + internalName;
                 int chunkX = dealersConfig.getInt(path + ".chunkX");
@@ -83,42 +86,36 @@ public final class Nccasino extends JavaPlugin implements Listener {
                     return;
                 }
 
-                // Force load the chunk
+                // Force-load the chunk if not already
                 if (!world.isChunkForceLoaded(chunkX, chunkZ)) {
                     world.setChunkForceLoaded(chunkX, chunkZ, true);
                 }
-                //getLogger().info("Force-loaded chunk [" + chunkX + ", " + chunkZ + "] in world " + worldName);
             });
         }
-        
-    Bukkit.getWorlds().forEach(world -> {
-        for (Entity entity : world.getEntities()) {
-            if (entity instanceof Villager villager) {
-                if (DealerVillager.isDealerVillager(villager)) {
-                    // Update game type from config
-                    villager.setCollidable(false);
-                    String internalName = DealerVillager.getInternalName(villager);
-                    String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
-                    String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
-                    int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
-                    String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
-                    DealerVillager.updateGameType(villager, gameType, timer, anmsg, name);
+
+        // After ensuring chunks are loaded, update existing Villagers
+        Bukkit.getWorlds().forEach(world -> {
+            for (Entity entity : world.getEntities()) {
+                if (entity instanceof Villager villager) {
+                    if (DealerVillager.isDealerVillager(villager)) {
+                        villager.setCollidable(false);
+                        String internalName = DealerVillager.getInternalName(villager);
+                        String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
+                        String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
+                        int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
+                        String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
+                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name);
+                    }
                 }
             }
-        }
-    });
-    getLogger().info("Nccasino plugin enabled!");
-}
-
-   
-
-    public void addInventory(UUID villagerId,DealerInventory inv){
-
-        inventories.putIfAbsent(villagerId,inv);
-
+        });
     }
 
-    // Load the currency material and name from the config file
+    public void addInventory(UUID villagerId, DealerInventory inv) {
+        inventories.putIfAbsent(villagerId, inv);
+    }
+
+    // Load currency material and name from config
     public void loadCurrencyFromConfig() {
         String currencyMaterialName = getConfig().getString("currency.material", "EMERALD").toUpperCase();
         currency = Material.matchMaterial(currencyMaterialName);
@@ -127,7 +124,6 @@ public final class Nccasino extends JavaPlugin implements Listener {
             getLogger().warning("Invalid currency material specified in config. Defaulting to EMERALD.");
             currency = Material.EMERALD;
         }
-
         currencyName = getConfig().getString("currency.name", "Emerald");
     }
 
@@ -139,41 +135,35 @@ public final class Nccasino extends JavaPlugin implements Listener {
         return currencyName;
     }
 
+    private void reinitializeDealerVillagers() {
+        getLogger().info("Entered reinitializeDealerVillagers.");
+        Bukkit.getWorlds().forEach(world -> {
+            for (Entity entity : world.getEntities()) {
+                if (entity instanceof Villager villager) {
+                    if (DealerVillager.isDealerVillager(villager)) {
+                        String internalName = DealerVillager.getInternalName(villager);
 
-private void reinitializeDealerVillagers() {
-    getLogger().info("Entered reinitializeDealerVillagers.");
-    Bukkit.getWorlds().forEach(world -> {
-        for (Entity entity : world.getEntities()) {
-            if (entity instanceof Villager villager) {
-                if (DealerVillager.isDealerVillager(villager)) {
-                    String internalName = DealerVillager.getInternalName(villager);
-                    
-                    // Ensure that the dealer's game type and other data are updated correctly
-                    String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
-                    String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
-                    int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
-                    String animationMessage = getConfig().getString("dealers." + internalName + ".animation-message");
-                    
-                    // Update dealer's game and inventory based on the stored config
-                    
-                    DealerVillager.updateGameType(villager, gameType, timer, animationMessage, name);
-                    
-                    // Optionally reset any additional state that could be causing the issues
-                    DealerVillager.setName(villager, gameType + " Dealer");
-                    DealerVillager.setAnimationMessage(villager, animationMessage);
+                        String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
+                        String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
+                        int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
+                        String animationMessage = getConfig().getString("dealers." + internalName + ".animation-message");
+
+                        DealerVillager.updateGameType(villager, gameType, timer, animationMessage, name);
+                        DealerVillager.setName(villager, gameType + " Dealer");
+                        DealerVillager.setAnimationMessage(villager, animationMessage);
+                    }
                 }
             }
-        }
-    });
-}
+        });
+    }
 
     public void reloadDealerVillager(Villager villager) {
         if (!DealerVillager.isDealerVillager(villager)) {
-        return;
+            return;
         }
 
         UUID dealerId = DealerVillager.getUniqueId(villager);
-        DealerInventory inventory = DealerInventory.inventories.get(dealerId);
+        DealerInventory inventory = DealerInventory.getInventory(dealerId);
         if (inventory != null) {
             inventory.delete();
         }
@@ -184,7 +174,8 @@ private void reinitializeDealerVillagers() {
         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
 
-        if (!getConfig().contains("dealers." + internalName + ".stand-on-17") && gameType.equals("Blackjack")) {
+        // Example special case for Blackjack
+        if (!getConfig().contains("dealers." + internalName + ".stand-on-17") && "Blackjack".equals(gameType)) {
             getConfig().set("dealers." + internalName + ".stand-on-17", 100);
         } else {
             int hasStand17Config = getConfig().getInt("dealers." + internalName + ".stand-on-17");
@@ -197,44 +188,38 @@ private void reinitializeDealerVillagers() {
     }
 
     private void reloadDealerVillagers() {
-        // Collect the dealer IDs to delete in a separate list
+        // Collect dealer IDs first
         List<UUID> dealerIdsToDelete = new ArrayList<>(DealerInventory.inventories.keySet());
-    
-        // Delete the inventories after collecting the keys
+
+        // Delete them
         for (UUID dealerId : dealerIdsToDelete) {
-            DealerInventory inventory = DealerInventory.inventories.get(dealerId);
-            if (inventory != null) {
-                inventory.delete();
+            DealerInventory inv = DealerInventory.getInventory(dealerId);
+            if (inv != null) {
+                inv.delete();
             }
         }
 
+        // Refresh each dealer from config
         Bukkit.getWorlds().forEach(world -> {
             for (Entity entity : world.getEntities()) {
                 if (entity instanceof Villager villager) {
                     if (DealerVillager.isDealerVillager(villager)) {
-                        // Update game type from config
                         String internalName = DealerVillager.getInternalName(villager);
                         String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
                         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
-                        
-                        
-                        // Check if the configuration key exists
-                        if (!getConfig().contains("dealers." + internalName + ".stand-on-17") && gameType=="Blackjack") {
-                            // If the key doesn't exist, set it to 100
+
+                        // Example special-case check
+                        if (!getConfig().contains("dealers." + internalName + ".stand-on-17")
+                            && "Blackjack".equals(gameType)) {
                             getConfig().set("dealers." + internalName + ".stand-on-17", 100);
                         } else {
-                            // Retrieve the current value
                             int hasStand17Config = getConfig().getInt("dealers." + internalName + ".stand-on-17");
-                        
-                            // Check if the value is greater than 100 or less than 0
                             if (hasStand17Config > 100 || hasStand17Config < 0) {
-                                // Reset the value to 100
                                 getConfig().set("dealers." + internalName + ".stand-on-17", 100);
                             }
                         }
-
 
                         DealerVillager.updateGameType(villager, gameType, timer, anmsg, name);
                     }
@@ -247,13 +232,13 @@ private void reinitializeDealerVillagers() {
     public NamespacedKey getKey(String key) {
         return new NamespacedKey(this, key);
     }
+
     public void saveDefaultDealerConfig(String internalName) {
         String path = "dealers." + internalName;
-
         if (!getConfig().contains(path)) {
-            getConfig().set(path + ".display-name", "Dealer"); // Default game type
-            getConfig().set(path + ".game", "Menu"); // Default game type
-            getConfig().set(path + ".timer", 0); // Default timer
+            getConfig().set(path + ".display-name", "Dealer");
+            getConfig().set(path + ".game", "Menu");
+            getConfig().set(path + ".timer", 0);
             getConfig().set(path + ".animation-message", "NCCASINO");
             getConfig().set(path + ".currency.material", "EMERALD");
             getConfig().set(path + ".currency.name", "Emerald");
@@ -283,38 +268,32 @@ private void reinitializeDealerVillagers() {
         double value = getChipValue(internalName, index);
         return (int) value + " " + getCurrencyName(internalName);
     }
+
     public int getTimer(String internalName) {
         return getConfig().getInt("dealers." + internalName + ".timer", 0);
     }
-    // Method to reinitialize dealer configurations
+
     public void reinitializeDealerConfigurations() {
-        // Logic to reinitialize dealer configurations if needed
-        // This can be customized as per the plugin's requirements
         getLogger().info("Reinitializing dealer configurations...");
         reinitializeDealerVillagers();
     }
+
     public void reloadDealerConfigurations() {
-        // Logic to reinitialize dealer configurations if needed
-        // This can be customized as per the plugin's requirements
         reloadDealerVillagers();
     }
 
-
     public Villager getDealerByInternalName(String internalName) {
         for (var world : Bukkit.getWorlds()) {
-    for (Entity entity : world.getEntities()) {
-        if (entity instanceof Villager) {
-            Villager villager = (Villager) entity;
-            PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
-            String storedInternalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
-            if (internalName.equals(storedInternalName)) {
-                return villager;
+            for (Entity entity : world.getEntities()) {
+                if (entity instanceof Villager villager) {
+                    PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+                    String storedInternalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
+                    if (internalName.equals(storedInternalName)) {
+                        return villager;
+                    }
+                }
             }
         }
-    }
-}
         return null;
     }
-    
-
 }

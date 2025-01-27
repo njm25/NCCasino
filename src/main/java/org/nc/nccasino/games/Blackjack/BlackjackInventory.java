@@ -20,32 +20,25 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.components.AdminInventory;
-import org.nc.nccasino.components.AnimationTable;
 import org.nc.nccasino.entities.DealerInventory;
-import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.helpers.AttributeHelper;
 import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Deck;
 import org.nc.nccasino.objects.Suit;
 import org.nc.nccasino.helpers.SoundHelper;
 
-public class BlackjackInventory extends DealerInventory implements Listener {
+public class BlackjackInventory extends DealerInventory {
 
     private final Nccasino plugin; // Reference to the main plugin
     private final Map<String, Double> chipValues; // Track chip values
@@ -66,7 +59,6 @@ public class BlackjackInventory extends DealerInventory implements Listener {
     private final Object turnLock = new Object(); // Lock object for turn actionsactions
     private final Map<UUID, Boolean> playerTurnActive = new HashMap<>();
     private Deck deck; // Declare the deck as a class variable
-    private Boolean firstopen=true;
     private Boolean firstFin=true;
     private Boolean sittable=true;
     public BlackjackInventory(UUID dealerId, Nccasino plugin, String internalName) {
@@ -75,7 +67,6 @@ public class BlackjackInventory extends DealerInventory implements Listener {
         this.chipValues = new HashMap<>(); // Initialize chip values storage
         this.internalName = internalName; // Store the internal name
         this.gameActive = false; // Initialize game active flag
-        this.firstopen=true;
         this.playerSeats = new HashMap<>(); // Initialize player seats storage
         this.playerBets = new HashMap<>(); // Initialize player bets storage
         this.lastBetAmounts = new HashMap<>(); // Initialize last bet amounts storage
@@ -109,81 +100,26 @@ private void registerListener() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
- @EventHandler
-    public void handlePlayerInteract(PlayerInteractEntityEvent event) {
-        if (!(event.getRightClicked() instanceof Villager)) return;
-        Villager villager = (Villager) event.getRightClicked();
-        Player player = event.getPlayer();
-        if (DealerVillager.isDealerVillager(villager) && DealerVillager.getUniqueId(villager).equals(this.dealerId)) {
-            if(!firstopen){
-            startAnimation(player);}
-        }
-    }
 
       @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event){
-        Player player=(Player)event.getPlayer();
-        if(player.getInventory() !=null){
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if(player.getOpenInventory().getTopInventory()== this.getInventory()){
-                    if(firstopen){
-                        firstopen=false;
-                        startAnimation((Player)event.getPlayer());
-                    }
-                }
-            }, 2L);    
-    }
-    }
-
-    private void startAnimation(Player player) {
-        // Retrieve the animation message from the config for the current dealer
-        String animationMessage = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
-        // Delaying the animation inventory opening to ensure it displays properly
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (player.isSneaking() && player.hasPermission("nccasino.use")) {
-                // Open the admin inventory immediately without animation
-                if (AdminInventory.adminInventories.get(player.getUniqueId()) != null ){
-                    if(AdminInventory.villagerMap.get(player.getUniqueId()) != null){
-                        AdminInventory.villagerMap.remove(player.getUniqueId());
-                    }
-                    System.out.println("opening existing");
-                    AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
-                    
-                    AdminInventory.villagerMap.put(player.getUniqueId(), DealerVillager.getVillagerFromId(dealerId));
-                    player.openInventory(adminInventory.getInventory());
-                }
-                else{
-                    System.out.println("making new");
-                    AdminInventory adminInventory = new AdminInventory(dealerId, player, (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class));
-                    player.openInventory(adminInventory.getInventory());
-                }
-            } else {
-                // Proceed with the animation for the regular inventory
-                AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
-                player.openInventory(animationTable.getInventory());
-        
-                // Start animation and return to MinesTable after completion
-                animationTable.animateMessage(player, () -> afterAnimationComplete(player));
+        if (event.getInventory() == this.getInventory()){
+            Player player=(Player)event.getPlayer();
+            if(player.getInventory() !=null){
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        if (player != null) {
+                            if(firstFin){
+                        firstFin=false;
+                        initializeGameMenu();
+            
+                            }
+            
+                            // No need to register the listener here since it's handled in the constructor
+                        }
+                }, 2L);    
             }
-        }, 1L); // Delay by 1 tick to ensure smooth inventory opening
-        
-    }
-    
-    private void afterAnimationComplete(Player player) {
-        // Add a slight delay to ensure smooth transition from the animation to the table
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-           
-            if (player != null) {
-                if(firstFin){
-            firstFin=false;
-            initializeGameMenu();
-
-                }
-
-                player.openInventory(this.getInventory());
-                // No need to register the listener here since it's handled in the constructor
-            }
-        }, 1L); // Delay by 1 tick to ensure clean transition between inventories
+        }   
+      
     }
  
     // Load chip values from the plugin config
