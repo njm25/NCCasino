@@ -54,6 +54,7 @@ public class AdminInventory extends DealerInventory {
     private static final Map<UUID, Villager> timerEditMode = new HashMap<>();
     private static final Map<UUID, Villager> amsgEditMode = new HashMap<>();
     private static final Map<UUID, Villager> chipEditMode = new HashMap<>();
+    private static final Map<UUID, Villager> currencyEditMode = new HashMap<>();
     // All active AdminInventories by player ID
     public static final Map<UUID, AdminInventory> adminInventories = new HashMap<>();
 
@@ -66,34 +67,44 @@ public class AdminInventory extends DealerInventory {
         EDIT_GAME_TYPE,
         MOVE_DEALER,
         DELETE_DEALER,
+        TOGGLE_CURRENCY_MODE,
         EDIT_CURRENCY,
-        USE_VAULT,
+        //USE_VAULT,
         EDIT_TIMER,
         EDIT_ANIMATION_MESSAGE,
         CHIP_SIZE1,
         CHIP_SIZE2,
         CHIP_SIZE3,
         CHIP_SIZE4,
-        CHIP_SIZE5
+        CHIP_SIZE5,
+
     }
+
+        private enum CurrencyMode {
+            VANILLA,
+            CUSTOM,
+            VAULT
+        }
+        private CurrencyMode currencyMode;
 
     // The slot positions of each option in the inventory
     private final Map<SlotOption, Integer> slotMapping = new HashMap<>() {{
-        put(SlotOption.EDIT_DISPLAY_NAME, 10);
-        put(SlotOption.EDIT_GAME_TYPE, 12);
-        put(SlotOption.EDIT_TIMER, 14);
-        put(SlotOption.EDIT_ANIMATION_MESSAGE, 16);
+        put(SlotOption.EDIT_DISPLAY_NAME, 2);
+        put(SlotOption.EDIT_GAME_TYPE, 0);
+        put(SlotOption.EDIT_TIMER, 6);
+        put(SlotOption.EDIT_ANIMATION_MESSAGE, 8);
 
-        // put(SlotOption.USE_VAULT, 28);
-        // put(SlotOption.EDIT_CURRENCY, 30);
+        // put(SlotOption.USE_VAULT, 28);   
+        put(SlotOption.EDIT_CURRENCY, 13);
+        put(SlotOption.TOGGLE_CURRENCY_MODE, 31);
 
-        put(SlotOption.MOVE_DEALER, 48);
-        put(SlotOption.DELETE_DEALER, 50);
-        put(SlotOption.CHIP_SIZE1, 29);
-        put(SlotOption.CHIP_SIZE2, 30);
-        put(SlotOption.CHIP_SIZE3, 31);
-        put(SlotOption.CHIP_SIZE4, 32);
-        put(SlotOption.CHIP_SIZE5, 33);
+        put(SlotOption.MOVE_DEALER, 37);
+        put(SlotOption.DELETE_DEALER, 43);
+        put(SlotOption.CHIP_SIZE1, 20);
+        put(SlotOption.CHIP_SIZE2, 21);
+        put(SlotOption.CHIP_SIZE3, 22);
+        put(SlotOption.CHIP_SIZE4, 23);
+        put(SlotOption.CHIP_SIZE5, 24);
 
     }};
 
@@ -101,7 +112,7 @@ public class AdminInventory extends DealerInventory {
      * Constructor: creates an AdminInventory for a specific dealer, owned by a specific player.
      */
     public AdminInventory(UUID dealerId, Player player, Nccasino plugin) {
-        super(player.getUniqueId(), 54, 
+        super(player.getUniqueId(), 45, 
         
             DealerVillager.getInternalName((Villager) player.getWorld()
                     .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
@@ -132,6 +143,9 @@ public class AdminInventory extends DealerInventory {
                              && DealerVillager.getUniqueId(v).equals(this.dealerId))
                 .findFirst().orElse(null);
         }
+
+//////////VVVVVVVVVVVVVexpand to retrieve mode from config once thats set up
+        this.currencyMode = CurrencyMode.VANILLA;
 
         registerListener();
         adminInventories.put(this.ownerId, this);
@@ -171,6 +185,25 @@ public class AdminInventory extends DealerInventory {
         addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 3rd Chip Value (Currently: "+plugin.getChipName(internalName, 3)+")", (int)plugin.getChipValue(internalName, 3)),slotMapping.get(SlotOption.CHIP_SIZE3));
         addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 4th Chip Value (Currently: "+plugin.getChipName(internalName, 4)+")", (int)plugin.getChipValue(internalName, 4)),slotMapping.get(SlotOption.CHIP_SIZE4));
         addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 5th Chip Value (Currently: "+plugin.getChipName(internalName, 5)+")", (int)plugin.getChipValue(internalName, 5)),slotMapping.get(SlotOption.CHIP_SIZE5));
+        switch(this.currencyMode){
+            case CurrencyMode.VAULT:
+                addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Select Currency [Disabled For Vault Mode]"),slotMapping.get(SlotOption.EDIT_CURRENCY));
+                addItem(createCustomItem(Material.CHEST,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+            break;
+            case CurrencyMode.VANILLA:
+                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
+                addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+            break;
+            case CurrencyMode.CUSTOM:
+                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Custom Currency",1),slotMapping.get(SlotOption.EDIT_CURRENCY));
+                //addItem(createEnchantedItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                addItem(createCustomItem(Material.ENDER_CHEST,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                break;
+            default:
+            addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
+            addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+            break;
+        }
     } 
 
 
@@ -184,8 +217,8 @@ public class AdminInventory extends DealerInventory {
             || (timerEditMode.get(playerId) != null)
             || (amsgEditMode.get(playerId) != null)
             || (moveMode.get(playerId) != null)
-            || (chipEditMode.get(playerId) != null);
-        
+            || (chipEditMode.get(playerId) != null)
+            || (currencyEditMode.get(playerId) != null);
     }
     
     public static List<String> playerOccupations(UUID playerId) {
@@ -205,6 +238,9 @@ public class AdminInventory extends DealerInventory {
         }
         if (chipEditMode.get(playerId) != null) {
             occupations.add("chip size");
+        }
+        if (currencyEditMode.get(playerId) != null) {///////////might never get to this
+            occupations.add("selecting currency item");
         }
         return occupations;
     }
@@ -226,6 +262,9 @@ public class AdminInventory extends DealerInventory {
             villagers.add(villager);
         }
         if ((villager = chipEditMode.get(playerId)) != null) {
+            villagers.add(villager);
+        }
+        if ((villager = currencyEditMode.get(playerId)) != null) {
             villagers.add(villager);
         }
     
@@ -269,8 +308,13 @@ public class AdminInventory extends DealerInventory {
                         handleEditCurrency(player);
                         if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
+                        /* 
                     case USE_VAULT:
                         handleUseVault(player);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        break;*/
+                     case TOGGLE_CURRENCY_MODE:
+                        handleToggleCurrencyMode(player);
                         if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case EDIT_TIMER:
@@ -319,6 +363,64 @@ public class AdminInventory extends DealerInventory {
         timerEditMode.put(playerId, dealer);
         player.closeInventory();
         player.sendMessage("§aType the new timer in chat.");
+    }
+
+    private void handleToggleCurrencyMode(Player player) {
+        CurrencyMode next;
+        switch (this.currencyMode) {
+            case VANILLA: next = CurrencyMode.CUSTOM; break;
+            case CUSTOM:  next = CurrencyMode.VAULT;  break;
+            default:      next = CurrencyMode.VANILLA; break;
+        }
+        this.currencyMode = next;
+
+        /* 
+        // Update the config
+        if (dealer != null) {
+            String internalName = DealerVillager.getInternalName(dealer);
+            plugin.getConfig().set("dealers." + internalName + ".currency.mode", next.name());
+            plugin.saveConfig();
+        }*/
+
+        // Update the button labels in the admin inventory
+        updateCurrencyButtons();
+        //player.sendMessage("§eSwitched currency mode to: §a" + this.currencyMode.name());
+    }
+
+
+    private void handleSelectCurrency(Player player) {
+        if (this.currencyMode == CurrencyMode.VAULT) {
+            player.sendMessage("§cCannot select currency item in VAULT mode.");
+            return;
+        }
+        // Place the player into "select currency mode"
+       //currencyEditMode.put(player.getUniqueId(), this.dealer);
+        player.sendMessage("§aPlease click an item in your (bottom) inventory to set as the new currency...");
+    }
+
+    private void updateCurrencyButtons() {
+        String internalName= DealerVillager.getInternalName(dealer);
+        Inventory inv = getInventory();
+        if (inv == null) return;
+        switch(this.currencyMode){
+            case CurrencyMode.VAULT:
+                addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Select Currency [Disabled For Vault Mode]"),slotMapping.get(SlotOption.EDIT_CURRENCY));
+                addItem(createCustomItem(Material.CHEST,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+            break;
+            case CurrencyMode.VANILLA:
+                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
+                addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+            break;
+            case CurrencyMode.CUSTOM:
+                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Custom Currency",1),slotMapping.get(SlotOption.EDIT_CURRENCY));
+                //addItem(createEnchantedItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                addItem(createCustomItem(Material.ENDER_CHEST,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+            break;
+            default:
+            addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
+            addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+            break;
+        }
     }
 
     private void handleEditChipSize(Player player,int chipInd) {
@@ -418,12 +520,19 @@ public class AdminInventory extends DealerInventory {
                         Bukkit.dispatchCommand(player, "ncc delete " + DealerVillager.getInternalName(dealer));
                     },
                     (uuid) -> {
-                        // Cancel action: re-open the AdminInventory
-                        AdminInventory adminInventory = new AdminInventory(
-                                dealerId, 
-                                player,
-                                (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class));
-                        player.openInventory(adminInventory.getInventory());
+                        player.closeInventory();
+                        //Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            AdminInventory adminInventory;
+                            if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
+                                adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                            } else {
+                                adminInventory = new AdminInventory(dealerId, player, plugin);
+                            }
+                            player.openInventory(adminInventory.getInventory());
+                    
+                            // Force an inventory update to refresh client-side display
+                            Bukkit.getScheduler().runTaskLater(plugin, player::updateInventory, 1L);
+                        //}, 2L);
                     },
                     plugin
             );

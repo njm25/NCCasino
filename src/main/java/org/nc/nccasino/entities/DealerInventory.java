@@ -134,6 +134,23 @@ public class DealerInventory implements InventoryHolder, Listener {
         return itemStack;
     }
 
+    public ItemStack createEnchantedItem(Material material, String name, int amount) {
+        ItemStack itemStack = new ItemStack(material, amount);
+        ItemMeta meta = itemStack.getItemMeta();
+        if (meta != null) {
+            
+            meta.setDisplayName(name);
+           
+            // Add a harmless enchantment to make the item glow
+            meta.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
+            
+            // Hide the enchantment's lore for a clean look
+            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+            itemStack.setItemMeta(meta);
+        }
+        return itemStack;
+    }
+
     private void setCustomItemMeta(ItemStack itemStack, String name) {
         ItemMeta meta = itemStack.getItemMeta();
         if (meta != null) {
