@@ -6,6 +6,7 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.Listener;
 import org.bukkit.persistence.PersistentDataContainer;
@@ -280,6 +281,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     public void reloadDealerConfigurations() {
         reloadDealerVillagers();
+    }
+
+    public static void sendErrorMessage(Player player, String msg){
+        player.sendMessage("§c" + msg);
     }
 
     public Villager getDealerByInternalName(String internalName) {

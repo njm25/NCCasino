@@ -2,7 +2,9 @@ package org.nc.nccasino.components;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -46,10 +48,10 @@ public class AdminInventory extends DealerInventory {
     private final Map<UUID, Boolean> clickAllowed = new HashMap<>();
 
     // Static maps referencing AdminInventory or the player's editing states
-    private static final Map<UUID, Boolean> moveMode = new HashMap<>();
-    private static final Map<UUID, Boolean> nameEditMode = new HashMap<>();
-    private static final Map<UUID, Boolean> timerEditMode = new HashMap<>();
-    private static final Map<UUID, Boolean> amsgEditMode = new HashMap<>();
+    private static final Map<UUID, Villager> moveMode = new HashMap<>();
+    private static final Map<UUID, Villager> nameEditMode = new HashMap<>();
+    private static final Map<UUID, Villager> timerEditMode = new HashMap<>();
+    private static final Map<UUID, Villager> amsgEditMode = new HashMap<>();
 
     // All active AdminInventories by player ID
     public static final Map<UUID, AdminInventory> adminInventories = new HashMap<>();
@@ -146,11 +148,52 @@ public class AdminInventory extends DealerInventory {
      * Returns whether the player is currently editing something else (rename, timer, etc.).
      */
     public static boolean isPlayerOccupied(UUID playerId) {
-        return nameEditMode.getOrDefault(playerId, false)
-            || timerEditMode.getOrDefault(playerId, false)
-            || amsgEditMode.getOrDefault(playerId, false)
-            || moveMode.getOrDefault(playerId, false);
+        Villager villager = nameEditMode.get(playerId);
+        return (villager != null)
+            || (timerEditMode.get(playerId) != null)
+            || (amsgEditMode.get(playerId) != null)
+            || (moveMode.get(playerId) != null);
     }
+    
+    public static List<String> playerOccupations(UUID playerId) {
+        List<String> occupations = new ArrayList<>();
+    
+        if (nameEditMode.get(playerId) != null) {
+            occupations.add("display name");
+        }
+        if (timerEditMode.get(playerId) != null) {
+            occupations.add("timer");
+        }
+        if (amsgEditMode.get(playerId) != null) {
+            occupations.add("animation message");
+        }
+        if (moveMode.get(playerId) != null) {
+            occupations.add("location");
+        }
+    
+        return occupations;
+    }
+    public static List<Villager> getOccupiedVillagers(UUID playerId) {
+        List<Villager> villagers = new ArrayList<>();
+    
+        Villager villager;
+    
+        if ((villager = nameEditMode.get(playerId)) != null) {
+            villagers.add(villager);
+        }
+        if ((villager = timerEditMode.get(playerId)) != null) {
+            villagers.add(villager);
+        }
+        if ((villager = amsgEditMode.get(playerId)) != null) {
+            villagers.add(villager);
+        }
+        if ((villager = moveMode.get(playerId)) != null) {
+            villagers.add(villager);
+        }
+    
+        return villagers;
+    }
+    
 
     /**
      * Handle inventory clicks for AdminInventory.
@@ -213,41 +256,53 @@ public class AdminInventory extends DealerInventory {
     // ----- Option handlers -----
     private void handleEditTimer(Player player) {
         UUID playerId = player.getUniqueId();
+        List<String> occupations = AdminInventory.playerOccupations(playerId);
 
-        if (isPlayerOccupied(playerId)) {
-            denyAction(player, "You are already editing something.");
+        if (!occupations.isEmpty()) {
+            for (String occupation : occupations) {
+                denyAction(player, "Please finish editing " + occupation + " for " + DealerVillager.getInternalName(dealer));
+            }
             return;
         }
+        
 
         localVillager.put(playerId, dealer);
-        timerEditMode.put(playerId, true);
+        timerEditMode.put(playerId, dealer);
         player.closeInventory();
         player.sendMessage("§aType the new timer in chat.");
     }
 
     private void handleAnimationMessage(Player player) {
         UUID playerId = player.getUniqueId();
+        List<String> occupations = AdminInventory.playerOccupations(playerId);
 
-        if (isPlayerOccupied(playerId)) {
-            denyAction(player, "You are already editing something.");
+        if (!occupations.isEmpty()) {
+            for (String occupation : occupations) {
+                denyAction(player, "Please finish editing " + occupation + " for " + DealerVillager.getInternalName(dealer));
+            }
             return;
         }
+        
 
         localVillager.put(playerId, dealer);
-        amsgEditMode.put(playerId, true);
+        amsgEditMode.put(playerId, dealer);
         player.closeInventory();
         player.sendMessage("§aType the new animation message in chat.");
     }
 
     private void handleEditDealerName(Player player) {
         UUID playerId = player.getUniqueId();
+        List<String> occupations = AdminInventory.playerOccupations(playerId);
 
-        if (isPlayerOccupied(playerId)) {
-            denyAction(player, "You are already editing something.");
+        if (!occupations.isEmpty()) {
+            for (String occupation : occupations) {
+                denyAction(player, "Please finish editing " + occupation + " for " + DealerVillager.getInternalName(dealer));
+            }
             return;
         }
+        
 
-        nameEditMode.put(playerId, true);
+        nameEditMode.put(playerId, dealer);
         localVillager.put(playerId, dealer);
         player.closeInventory();
         player.sendMessage("§aType the new dealer name in chat.");
@@ -262,12 +317,17 @@ public class AdminInventory extends DealerInventory {
     private void handleMoveDealer(Player player) {
         UUID playerId = player.getUniqueId();
 
-        if (isPlayerOccupied(playerId)) {
-            denyAction(player, "You are already editing something.");
+        List<String> occupations = AdminInventory.playerOccupations(playerId);
+
+        if (!occupations.isEmpty()) {
+            for (String occupation : occupations) {
+                denyAction(player, "Please finish editing " + occupation + " for " + DealerVillager.getInternalName(dealer));
+            }
             return;
         }
+        
 
-        moveMode.put(playerId, true);
+        moveMode.put(playerId, dealer);
         localVillager.put(playerId, dealer);
         player.closeInventory();
         player.sendMessage("§aClick a block to move the dealer.");
@@ -341,7 +401,7 @@ public class AdminInventory extends DealerInventory {
         }
 
         // Editing dealer name
-        if (nameEditMode.getOrDefault(playerId, false)) {
+        if (nameEditMode.get(playerId) != null) {
             event.setCancelled(true);
             String newName = event.getMessage().trim();
             if (newName.isEmpty()) {
@@ -366,7 +426,7 @@ public class AdminInventory extends DealerInventory {
 
         }
         // Editing dealer timer
-        else if (timerEditMode.getOrDefault(playerId, false)) {
+        else if (timerEditMode.get(playerId) != null) {
             event.setCancelled(true);
             String newTimer = event.getMessage().trim();
 
@@ -389,7 +449,7 @@ public class AdminInventory extends DealerInventory {
             cleanup();
         }
         // Editing dealer animation message
-        else if (amsgEditMode.getOrDefault(playerId, false)) {
+        else if (amsgEditMode.get(playerId) != null) {
             event.setCancelled(true);
             String newAmsg = event.getMessage().trim();
 
@@ -422,7 +482,7 @@ public class AdminInventory extends DealerInventory {
             return;
         }
 
-        if (moveMode.getOrDefault(playerId, false)) {
+        if (moveMode.get(playerId) != null) {
 
             if (event.getClickedBlock() != null) {
                 Location newLocation = event.getClickedBlock().getLocation().add(0.5, 1, 0.5);
@@ -468,7 +528,7 @@ public class AdminInventory extends DealerInventory {
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         UUID pid = player.getUniqueId();
-        if (moveMode.getOrDefault(pid, false)) {
+        if (moveMode.get(pid) != null) {
             event.setCancelled(true);
             player.sendMessage("§cYou cannot break blocks while moving the dealer.");
         }

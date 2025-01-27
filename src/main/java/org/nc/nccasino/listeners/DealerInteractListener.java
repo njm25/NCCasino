@@ -15,6 +15,7 @@ import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -36,10 +37,21 @@ public class DealerInteractListener implements Listener {
         if (!DealerVillager.isDealerVillager(villager)) return;
         Player player = event.getPlayer();
         UUID dealerId = DealerVillager.getUniqueId(villager);
-        if (AdminInventory.isPlayerOccupied(player.getUniqueId())) {
-            player.sendMessage("§cCannot open inventory while editing.");
+        
+        List<String> occupations = AdminInventory.playerOccupations(player.getUniqueId());
+        List<Villager> villagers = AdminInventory.getOccupiedVillagers(player.getUniqueId());
+        
+        if (!occupations.isEmpty()) {
+            for (int i = 0; i < occupations.size(); i++) {
+                String occupation = occupations.get(i);
+                Villager villager = (i < villagers.size()) ? villagers.get(i) : null;
+                
+                String villagerName = (villager != null) ? DealerVillager.getInternalName(villager) : "unknown villager";
+                Nccasino.sendErrorMessage(player, "Please finish editing " + occupation + " for " + villagerName);
+            }
             return;
         }
+        
         else if (player.isSneaking() && player.hasPermission("nccasino.use")) {
             handleAdminInventory(player, dealerId);
         } else {
