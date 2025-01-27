@@ -89,7 +89,18 @@ public class AdminInventory extends DealerInventory {
      * Constructor: creates an AdminInventory for a specific dealer, owned by a specific player.
      */
     public AdminInventory(UUID dealerId, Player player, Nccasino plugin) {
-        super(player.getUniqueId(), 54, "Admin Menu"); 
+        super(player.getUniqueId(), 54, 
+        
+            DealerVillager.getInternalName((Villager) player.getWorld()
+                    .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
+                    .filter(entity -> entity instanceof Villager)
+                    .map(entity -> (Villager) entity)
+                    .filter(v -> DealerVillager.isDealerVillager(v)
+                                && DealerVillager.getUniqueId(v).equals(dealerId))
+                    .findFirst().orElse(null))
+
+                    + "'s Admin Menu"
+        ); 
         
         // ^ We are using the player's UUID as "dealerId" in the DealerInventory parent. That's your existing logic.
 
