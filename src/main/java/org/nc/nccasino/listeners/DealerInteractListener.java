@@ -42,21 +42,28 @@ public class DealerInteractListener implements Listener {
         UUID dealerId = DealerVillager.getUniqueId(villager);
         
         List<String> occupations = AdminInventory.playerOccupations(player.getUniqueId());
-        List<Villager> villagers = AdminInventory.getOccupiedVillagers(player.getUniqueId());
-        
-        if (!occupations.isEmpty()) {
+        List<Villager> villagers = AdminInventory.getOccupiedVillagers(player.getUniqueId())
+            .stream()
+            .filter(v -> v != null && !v.isDead() && v.isValid()) // Ensure valid villagers
+            .toList();
+
+        if (!occupations.isEmpty() && !villagers.isEmpty()) {
             if (SoundHelper.getSoundSafely("entity.villager.no") != null) {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             }
             for (int i = 0; i < occupations.size(); i++) {
+                if (i >= villagers.size()) {
+                    break; // Prevent index mismatch
+                }
                 String occupation = occupations.get(i);
-                Villager villager = (i < villagers.size()) ? villagers.get(i) : null;
+                Villager villager = villagers.get(i);
                 
                 String villagerName = (villager != null) ? DealerVillager.getInternalName(villager) : "unknown villager";
                 Nccasino.sendErrorMessage(player, "Please finish editing " + occupation + " for " + villagerName);
             }
             return;
         }
+            
         
         else if (player.isSneaking() && player.hasPermission("nccasino.use")) {
             handleAdminInventory(player, dealerId);
