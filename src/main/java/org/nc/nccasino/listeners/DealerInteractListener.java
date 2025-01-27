@@ -36,8 +36,11 @@ public class DealerInteractListener implements Listener {
         if (!DealerVillager.isDealerVillager(villager)) return;
         Player player = event.getPlayer();
         UUID dealerId = DealerVillager.getUniqueId(villager);
-
-        if (player.isSneaking() && player.hasPermission("nccasino.use")) {
+        if (AdminInventory.isPlayerOccupied(player.getUniqueId())) {
+            player.sendMessage("§cCannot open inventory while editing.");
+            return;
+        }
+        else if (player.isSneaking() && player.hasPermission("nccasino.use")) {
             handleAdminInventory(player, dealerId);
         } else {
             handleDealerInventory(player, dealerId);
@@ -49,10 +52,6 @@ public class DealerInteractListener implements Listener {
     private void handleAdminInventory(Player player, UUID dealerId) {
         if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
             AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
-            if (AdminInventory.isPlayerOccupied(player.getUniqueId())) {
-                player.sendMessage("Cannot open admin inventory while editing.");
-                return;
-            }
             player.openInventory(adminInventory.getInventory());
         } else {
             AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);

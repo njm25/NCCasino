@@ -361,9 +361,8 @@ public class AdminInventory extends DealerInventory {
                 player.sendMessage("§cCould not find dealer.");
             }
 
-            nameEditMode.remove(playerId);
-            localVillager.remove(playerId);
-            adminInventories.remove(playerId);
+                
+            cleanup();
 
         }
         // Editing dealer timer
@@ -372,7 +371,6 @@ public class AdminInventory extends DealerInventory {
             String newTimer = event.getMessage().trim();
 
             if (newTimer.isEmpty() || !newTimer.matches("\\d+") || Integer.parseInt(newTimer) <= 0) {
-                System.out.println(DealerVillager.getInternalName(dealer));
                 denyAction(player, "Invalid input. Please enter a positive number.");
                 return;
             }
@@ -387,9 +385,8 @@ public class AdminInventory extends DealerInventory {
                 player.sendMessage("§cCould not find dealer.");
             }
 
-            timerEditMode.remove(playerId);
-            localVillager.remove(playerId);
-            adminInventories.remove(playerId);
+                
+            cleanup();
         }
         // Editing dealer animation message
         else if (amsgEditMode.getOrDefault(playerId, false)) {
@@ -411,24 +408,22 @@ public class AdminInventory extends DealerInventory {
                 player.sendMessage("§cCould not find dealer.");
             }
 
-            amsgEditMode.remove(playerId);
-            localVillager.remove(playerId);
-            adminInventories.remove(playerId);
+                
+            cleanup();
         }
-        cleanup();
     }
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
-
+        if (adminInventories.get(playerId) == null){
+            cleanup();
+            return;
+        }
 
         if (moveMode.getOrDefault(playerId, false)) {
-            if (adminInventories.get(playerId) == null){
-                cleanup();
-                return;
-            }
+
             if (event.getClickedBlock() != null) {
                 Location newLocation = event.getClickedBlock().getLocation().add(0.5, 1, 0.5);
 
@@ -462,13 +457,10 @@ public class AdminInventory extends DealerInventory {
                     player.sendMessage("§cCould not find dealer.");
                 }
 
-                moveMode.remove(playerId);
-                localVillager.remove(playerId);
-                adminInventories.remove(playerId);
+                cleanup();
             }
             event.setCancelled(true);
                 
-            cleanup();
         }
     }
 
