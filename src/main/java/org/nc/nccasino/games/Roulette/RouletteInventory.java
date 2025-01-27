@@ -12,18 +12,14 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.nc.VSE.*;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.components.AdminInventory;
-import org.nc.nccasino.components.AnimationTable;
 import org.nc.nccasino.helpers.SoundHelper;
 
 import java.util.HashMap;
@@ -38,7 +34,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 
-public class RouletteInventory extends DealerInventory implements Listener {
+public class RouletteInventory extends DealerInventory {
     private final MultiChannelEngine mce;
     private final List<Integer> wheelLayout = Arrays.asList(
         0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 
@@ -55,7 +51,6 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private int bettingTimeSeconds = 25;
     private int globalCountdown=bettingTimeSeconds;
     private String internalName;
-    private Boolean firstopen = true;
     private Boolean firstFin = true;
     private int spinTaskId;
     private int fastSpinTaskId;
@@ -130,7 +125,6 @@ public class RouletteInventory extends DealerInventory implements Listener {
         this.plugin = plugin;
         this.Bets = new HashMap<>();
         this.Tables = new HashMap<>();
-        this.firstopen=true;
         this.activeAnimations = new HashMap<>();
         this.internalName = internalName;
         this.mce = new MultiChannelEngine(plugin);
@@ -278,71 +272,31 @@ public class RouletteInventory extends DealerInventory implements Listener {
         
     }
 
-    private void startAnimation(Player player) {
-        String animationMessage = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (player.isSneaking() && player.hasPermission("nccasino.use")) {
-                // Open the admin inventory immediately without animation
-                AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
-                player.openInventory(adminInventory.getInventory());
-            } else {
-                // Proceed with the animation for the regular inventory
-                activeAnimations.put(player, 1);
-                AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
-                player.openInventory(animationTable.getInventory());
-
-                // Start animation and return to MinesTable after completion
-                animationTable.animateMessage(player, () -> afterAnimationComplete(player));
-            }
-        }, 1L); // Delay by 1 tick to ensure smooth inventory opening
-
-    }
-
-    private void afterAnimationComplete(Player player) {
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (player != null&&player.isOnline()) {
-               // System.out.println("Adding"+player+"to master and roulette"); 
-                mce.addPlayerToChannel("Master", player);
-                mce.addPlayerToChannel("RouletteWheel", player);
-                player.openInventory(this.getInventory());
-                this.bettingTimeSeconds = plugin.getTimer(internalName);
-
-                if (firstFin) {
-                    firstFin = false;
-                    startBettingTimer();
-                }
-
-                
-            }
-        }, 1L);
-    }
-
-    @EventHandler
-    public void handlePlayerInteract(PlayerInteractEntityEvent event) {
-        if (!(event.getRightClicked() instanceof Villager)) return;
-        Villager villager = (Villager) event.getRightClicked();
-        Player player = event.getPlayer();
-
-        if (DealerVillager.isDealerVillager(villager) && DealerVillager.getUniqueId(villager).equals(this.dealerId)) {
-            if (!firstopen) {
-                startAnimation(player);
-            }
-        }
-    }
 
     @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event) {
-        Player player = (Player) event.getPlayer();
-        if (player.getInventory() != null) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (player.getOpenInventory().getTopInventory().getHolder() == this.getInventory().getHolder()) {
-                    if (firstopen) {
-                        firstopen = false;
-                        startAnimation(player);
+             
+        if (event.getInventory() == this.getInventory()){
+            Player player = (Player) event.getPlayer();
+            if (player.getInventory() != null) {
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (player != null&&player.isOnline()) {
+                        // System.out.println("Adding"+player+"to master and roulette"); 
+                        mce.addPlayerToChannel("Master", player);
+                        mce.addPlayerToChannel("RouletteWheel", player);
+                        this.bettingTimeSeconds = plugin.getTimer(internalName);
+        
+                        if (firstFin) {
+                            firstFin = false;
+                            startBettingTimer();
+                        }
+        
+                        
                     }
-                }
-            }, 2L);
+                }, 2L);
+            }
         }
+        
     }
 
     @EventHandler

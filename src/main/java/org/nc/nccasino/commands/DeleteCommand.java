@@ -2,18 +2,25 @@ package org.nc.nccasino.commands;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.jetbrains.annotations.NotNull;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.components.AdminInventory;
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.helpers.SoundHelper;
 
 public class DeleteCommand implements CasinoCommand {
 
@@ -33,8 +40,35 @@ public class DeleteCommand implements CasinoCommand {
             sender.sendMessage(ChatColor.AQUA + "Usage: /ncc delete " + ChatColor.YELLOW + "<name>");
             return true;
         }
+        AdminInventory.deleteAssociatedAdminInventories((Player) sender);
 
-        String internalName = args[1];
+        String internalName = args[1];    
+        
+        Player player = (Player) sender;
+
+        List<String> occupations = AdminInventory.playerOccupations(player.getUniqueId());
+        List<Villager> villagers = AdminInventory.getOccupiedVillagers(player.getUniqueId())
+            .stream()
+            .filter(v -> v != null && !v.isDead() && v.isValid()) // Ensure valid villagers
+            .toList();
+
+        if (!occupations.isEmpty() && !villagers.isEmpty()) {
+            if (SoundHelper.getSoundSafely("entity.villager.no") != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            for (int i = 0; i < occupations.size(); i++) {
+                if (i >= villagers.size()) {
+                    break; // Prevent index mismatch
+                }
+                String occupation = occupations.get(i);
+                Villager villager = villagers.get(i);
+                
+                String villagerName = (villager != null) ? DealerVillager.getInternalName(villager) : "unknown villager";
+                Nccasino.sendErrorMessage(player, "Please finish editing " + occupation + " for '" +
+                    ChatColor.YELLOW + villagerName + ChatColor.RED + "'.");
+            }
+            return true;
+        }
 
         if (internalName.equals("*")) {
             // Delete all known dealers
@@ -53,6 +87,7 @@ public class DeleteCommand implements CasinoCommand {
         }
 
         DealerVillager.removeDealer(villager);
+        DealerInventory.unregisterAllListeners(villager);
         // Remove dealer data from YAML
         removeDealerData(internalName);
         
@@ -68,6 +103,7 @@ public class DeleteCommand implements CasinoCommand {
                 if (entity instanceof Villager villager) {
                     if (DealerVillager.isDealerVillager(villager)) {
                         DealerVillager.removeDealer(villager);
+                        DealerInventory.unregisterAllListeners(villager);
                         deletedCount++;
                     }
                 }

@@ -4,13 +4,15 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
-import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.helpers.SoundHelper;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,7 +23,7 @@ import java.util.UUID;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
-public class GameOptionsInventory extends DealerInventory implements Listener {
+public class GameOptionsInventory extends DealerInventory {
 
     private final Map<UUID, Boolean> clickAllowed = new HashMap<>();
     private final Nccasino plugin;
@@ -56,7 +58,9 @@ public class GameOptionsInventory extends DealerInventory implements Listener {
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
         event.setCancelled(true); // Prevent unintended item movement
-
+        if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
+            return;
+        }
         UUID playerId = player.getUniqueId();
 
         if (clickAllowed.getOrDefault(playerId, true)) {
@@ -66,16 +70,18 @@ public class GameOptionsInventory extends DealerInventory implements Listener {
             String gameType;
             switch (slot) {
                 case 0:
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     gameType = "Blackjack";
                     break;
                 case 1:
+                 if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     gameType = "Roulette";
                     break;
                 case 2:
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     gameType = "Mines";
                     break;
                 default:
-                    player.sendMessage("§cInvalid option selected.");
                     return;
             }
             if (!editing){
@@ -116,7 +122,7 @@ public class GameOptionsInventory extends DealerInventory implements Listener {
             e.printStackTrace();
         }
 
-        player.sendMessage("§aDealer with game type '" + ChatColor.YELLOW + gameType + ChatColor.GREEN + "' created successfully!");
+        player.sendMessage("§aDealer with game type " + ChatColor.YELLOW + gameType + ChatColor.GREEN + " created successfully!");
 
         player.closeInventory();
         this.delete();

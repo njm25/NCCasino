@@ -7,13 +7,15 @@ import java.util.function.Consumer;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
+import org.nc.nccasino.helpers.SoundHelper;
 
-public class ConfirmInventory extends DealerInventory implements Listener {
+public class ConfirmInventory extends DealerInventory {
     private final Consumer<UUID> confirm;
     private final Consumer<UUID> cancel;
     private UUID dealerId;
@@ -58,12 +60,15 @@ public class ConfirmInventory extends DealerInventory implements Listener {
 
             switch (slot) {
                 case 0:
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     executeConfirm();
                     break;
                 case 8:
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     executeCancel();
                     break;
                 default:
+                    if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
                     player.sendMessage("§cInvalid option selected.");
                     break;
             }
