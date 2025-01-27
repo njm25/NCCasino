@@ -1,8 +1,7 @@
 package org.nc.nccasino.games.Roulette;
 
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
-import org.nc.nccasino.helpers.AnimationTable;
-import org.nc.nccasino.helpers.DealerInventory;
 import org.nc.nccasino.objects.Pair;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -13,16 +12,15 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.nc.VSE.*;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.helpers.SoundHelper;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,7 +34,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 
-public class RouletteInventory extends DealerInventory implements Listener {
+public class RouletteInventory extends DealerInventory {
     private final MultiChannelEngine mce;
     private final List<Integer> wheelLayout = Arrays.asList(
         0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 
@@ -53,11 +51,12 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private int bettingTimeSeconds = 25;
     private int globalCountdown=bettingTimeSeconds;
     private String internalName;
-    private Boolean firstopen = true;
     private Boolean firstFin = true;
     private int spinTaskId;
     private int fastSpinTaskId;
     private int bfastSpinTaskId;
+    private int regTaskId;
+    private int reg2TaskId;
     private int ballTaskId;
     private int wheelOffset = 0;
     private int currentQuadrant = 1; // 1=Top-Right, 2=Top-Left, 3=Bottom-Left, 4=Bottom-Right
@@ -65,58 +64,61 @@ public class RouletteInventory extends DealerInventory implements Listener {
     private boolean spinAnimationOver = false;
     private int ballSpinDirection;
     private boolean foundfirstquadrant =false;
+    private Boolean eightflag=false;
+    private Boolean sevflag=false;
+    private Boolean nextflag=false;
     // Add these variables at the class level
-private static final long INITIAL_BALL_SPEED = 1L;
-private static final long MIN_BALL_SPEED = 6L;
+    private static final long INITIAL_BALL_SPEED = 1L;
+    private static final long MIN_BALL_SPEED = 6L;
 
-// Quadrant-specific slot mappings for main and extra slots
+    // Quadrant-specific slot mappings for main and extra slots
     private final Map<Integer, int[]> extraSlotsMapTopRight = new HashMap<>();
     private final Map<Integer, int[]> extraSlotsMapTopLeft = new HashMap<>();
     private final Map<Integer, int[]> extraSlotsMapBottomLeft = new HashMap<>();
     private final Map<Integer, int[]> extraSlotsMapBottomRight = new HashMap<>();
 
-///////////vvvvvvBall Movement Variables/////////////////////////////////////////
-private final Map<Integer, List<Integer>> tracksTopRight = new HashMap<>();
-private final Map<Integer, List<Integer>> tracksTopLeft = new HashMap<>();
-private final Map<Integer, List<Integer>> tracksBottomLeft = new HashMap<>();
-private final Map<Integer, List<Integer>> tracksBottomRight = new HashMap<>();
-// Ball movement spin ranges per track (in spins)
-private final double track1MinSpins = 1.5;
-private final double track1MaxSpins = 3;
-private final double track2MinSpins = .5;
-private final double track2MaxSpins = 1;
-private final double track3MinSpins = 1/36.0;
-private final double track3MaxSpins = 1/36.0;
-private final double track4MinSpins = 1/18.0;
-private final double track4MaxSpins =1/18.0;
-private int slotsPerSpinTrack1;
-private int slotsPerSpinTrack2;
-private int slotsPerSpinTrack3;
-private int slotsPerSpinTrack4;
-private int minSlotsTrack1;
-private int maxSlotsTrack1;
-private int minSlotsTrack2;
-private int maxSlotsTrack2;
-private int minSlotsTrack3;
-private int maxSlotsTrack3;
-private int minSlotsTrack4;
-private int maxSlotsTrack4;
-private int[] slotsToMovePerTrack = new int[5]; // 5 tracks in the sequence
-private final int[] trackSequence = {1, 2, 3/*, 4, 3*/};
-private int trackSequenceIndex = 0;
-private int ballCurrentTrack;
-private int ballCurrentIndex;
-private int ballPreviousSlot = -1;
-private boolean isSwitchingQuadrant = false;
-private boolean finalpicked;
-private int winningNumber;
-private boolean flip2=true;
-private boolean flip4=true;
-private int wheelSpinDirection = 1; // 1 for clockwise, -1 for counter-clockwise
-private int lastDisplayedOffset = 0;
-
-/////////////////////////////////////////////////////////////////////////////////////////
-private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
+    ///////////vvvvvvBall Movement Variables/////////////////////////////////////////
+    private final Map<Integer, List<Integer>> tracksTopRight = new HashMap<>();
+    private final Map<Integer, List<Integer>> tracksTopLeft = new HashMap<>();
+    private final Map<Integer, List<Integer>> tracksBottomLeft = new HashMap<>();
+    private final Map<Integer, List<Integer>> tracksBottomRight = new HashMap<>();
+    // Ball movement spin ranges per track (in spins)
+    private final double track1MinSpins = 1.5;
+    private final double track1MaxSpins = 3;
+    private final double track2MinSpins = .5;
+    private final double track2MaxSpins = 1;
+    private final double track3MinSpins = 1/36.0;
+    private final double track3MaxSpins = 1/36.0;
+    private final double track4MinSpins = 1/18.0;
+    private final double track4MaxSpins =1/18.0;
+    private int slotsPerSpinTrack1;
+    private int slotsPerSpinTrack2;
+    private int slotsPerSpinTrack3;
+    private int slotsPerSpinTrack4;
+    private int minSlotsTrack1;
+    private int maxSlotsTrack1;
+    private int minSlotsTrack2;
+    private int maxSlotsTrack2;
+    private int minSlotsTrack3;
+    private int maxSlotsTrack3;
+    private int minSlotsTrack4;
+    private int maxSlotsTrack4;
+    private int[] slotsToMovePerTrack = new int[5]; // 5 tracks in the sequence
+    private final int[] trackSequence = {1, 2, 3/*, 4, 3*/};
+    private int trackSequenceIndex = 0;
+    private int ballCurrentTrack;
+    private int ballCurrentIndex;
+    private int ballPreviousSlot = -1;
+    private boolean isSwitchingQuadrant = false;
+    private boolean finalpicked;
+    private int winningNumber;
+    private boolean flip2=true;
+    private boolean flip4=true;
+    private int wheelSpinDirection = 1; // 1 for clockwise, -1 for counter-clockwise
+    private int lastDisplayedOffset = 0;
+    
+    /////////////////////////////////////////////////////////////////////////////////////////
+    private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
 
     public RouletteInventory(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, 54, "Roulette Wheel");
@@ -270,61 +272,31 @@ private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
         
     }
 
-    private void startAnimation(Player player) {
-        String animationMessage = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            activeAnimations.put(player, 1);
-            AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
-            player.openInventory(animationTable.getInventory());
-
-            animationTable.animateMessage(player, () -> afterAnimationComplete(player));
-        }, 1L);
-    }
-
-    private void afterAnimationComplete(Player player) {
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (player != null&&player.isOnline()) {
-               // System.out.println("Adding"+player+"to master and roulette"); 
-                mce.addPlayerToChannel("Master", player);
-                mce.addPlayerToChannel("RouletteWheel", player);
-                player.openInventory(this.getInventory());
-                if (firstFin) {
-                    firstFin = false;
-                    this.bettingTimeSeconds = plugin.getTimer(internalName);
-                    startBettingTimer();
-                }
-
-                
-            }
-        }, 1L);
-    }
-
-    @EventHandler
-    public void handlePlayerInteract(PlayerInteractEntityEvent event) {
-        if (!(event.getRightClicked() instanceof Villager)) return;
-        Villager villager = (Villager) event.getRightClicked();
-        Player player = event.getPlayer();
-
-        if (DealerVillager.isDealerVillager(villager) && DealerVillager.getUniqueId(villager).equals(this.dealerId)) {
-            if (!firstopen) {
-                startAnimation(player);
-            }
-        }
-    }
 
     @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event) {
-        Player player = (Player) event.getPlayer();
-        if (player.getInventory() != null) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (player.getOpenInventory().getTopInventory().getHolder() == this.getInventory().getHolder()) {
-                    if (firstopen) {
-                        firstopen = false;
-                        startAnimation(player);
+             
+        if (event.getInventory() == this.getInventory()){
+            Player player = (Player) event.getPlayer();
+            if (player.getInventory() != null) {
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (player != null&&player.isOnline()) {
+                        // System.out.println("Adding"+player+"to master and roulette"); 
+                        mce.addPlayerToChannel("Master", player);
+                        mce.addPlayerToChannel("RouletteWheel", player);
+                        this.bettingTimeSeconds = plugin.getTimer(internalName);
+        
+                        if (firstFin) {
+                            firstFin = false;
+                            startBettingTimer();
+                        }
+        
+                        
                     }
-                }
-            }, 2L);
+                }, 2L);
+            }
         }
+        
     }
 
     @EventHandler
@@ -377,7 +349,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 47: // View Betting Info
-                player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
+                 if(SoundHelper.getSoundSafely("block.wooden_door.open")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
                     exitGame(player);
                     break;
                 default:
@@ -400,7 +372,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 53: // Exit
-                player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
+                 if(SoundHelper.getSoundSafely("block.wooden_door.open")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
 
                     exitGame(player);
                     break;
@@ -425,7 +397,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 8: // Exit
-                player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
+                 if(SoundHelper.getSoundSafely("block.wooden_door.open")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
 
                     exitGame(player);
                     break;
@@ -449,7 +421,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 2: // Exit
-                player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
+                 if(SoundHelper.getSoundSafely("block.wooden_door.open")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
 
                     exitGame(player);
                     break;
@@ -481,13 +453,13 @@ private void openBettingTable(Player player) {
             BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets, internalName, this, globalCountdown);
             Tables.put(player, bettingTable);
             player.openInventory(bettingTable.getInventory());
-            player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, SoundCategory.MASTER, 5.0f, 1.0f); 
+             if(SoundHelper.getSoundSafely("item.book.page_turn")!=null)player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, SoundCategory.MASTER, 5.0f, 1.0f); 
             mce.addPlayerToChannel("BettingTable", player);
             mce.removePlayerFromChannel("RouletteWheel", player);
             //System.out.println("removed from RouletteWheel added to BettingTable");
         } else {
             player.sendMessage("§cError: Dealer not found. Unable to open betting table.");
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+             if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         }
         switchingPlayers.remove(player); // Remove the flag after the switch
     }, 1L); // Small delay to allow the inventory to switch
@@ -562,7 +534,7 @@ private void exitGame(Player player) {
                 ItemMeta meta = item.getItemMeta();
                 if (meta != null && betType.equals(meta.getDisplayName())) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Current Bet: " + totalBet + " " + plugin.getCurrencyName(dealerId.toString()));
+                    lore.add("Total Bet: " + (int)totalBet + " " + plugin.getCurrencyName(internalName)+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
                     meta.setLore(lore);
                     item.setItemMeta(meta);
                 }
@@ -570,15 +542,6 @@ private void exitGame(Player player) {
         }
     }
 
-    private ItemStack createCustomItem(Material material, String name, int amount) {
-        ItemStack itemStack = new ItemStack(material, amount);
-        ItemMeta meta = itemStack.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(name);
-            itemStack.setItemMeta(meta);
-        }
-        return itemStack;
-    }
 
     private void resetToStartState() {
         Tables.clear();
@@ -627,11 +590,12 @@ private void exitGame(Player player) {
         if (playersWithBets.isEmpty() && activePlayers.isEmpty()) {
             resetToStartState();
         } else {
+            /*
             for (Player player : playersWithBets) {
                 if (player.isOnline()) {
                     player.sendMessage("§dBets locked, spinning!");
                 }
-            }
+            }*/
 
             Bukkit.getScheduler().runTaskLater(plugin, () -> 
             mce.playSong("RouletteWheel", RouletteSongs.getBallLaunch(), false, "Ball Launch")
@@ -843,6 +807,7 @@ private void startBallMovement(boolean reverseDirection) {
 }
 
 private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slotsMovedTotal, int totalSlotsToMove, int ballAccelerationSlots, int ballDecelerationSlots) {
+
     if (!ballMovementStarted) return;
 
     if (isSwitchingQuadrant) {
@@ -859,20 +824,57 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
 
     int nextIndex = (ballCurrentIndex + ballSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
     int nextSlot = currentTrackSlots.get(nextIndex);
+    int tempSTMPTb=slotsToMovePerTrack[trackSequenceIndex]-1;
+    if (tempSTMPTb <= 0) {
+        int tempTSIb=trackSequenceIndex+1;
+        if (tempTSIb < trackSequence.length) {
+        // lookaheadby1 is not final number
+        }
+        else{
+            if(eightflag&&nextIndex==8){
+                nextflag=true;
 
-    // Look ahead by "index" frames to determine future boundary
-    int lookaheadSlots = 7; // Fixed number of slots to look ahead
+            }
+            if(nextIndex==7){
+                sevflag=true;
+
+            }
+        }
+
+    }
+
+    int lookaheadSlots = 2; // Fixed number of slots to look ahead
     int futureIndex = (ballCurrentIndex + lookaheadSlots * ballSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
     int futureSlot = currentTrackSlots.get(futureIndex);
-   
-    if (isQuadrantBoundary(futureSlot)) {
-        int pitch = Math.max(1, 10 - (slotsMovedTotal[0] / 10)); 
+    int tempSTMPT=slotsToMovePerTrack[trackSequenceIndex]-lookaheadSlots;
+    if (tempSTMPT == -1) {
+        int tempTSI=trackSequenceIndex+lookaheadSlots;
+        if (tempTSI < trackSequence.length) {
+        // lookaheadslots is not final number
+        }
+        else{
+              // lookaheadslots is !! final number  
+            if (isQuadrantBoundary(futureSlot)&&futureIndex==0&&!(ballCurrentIndex==2&&ballCurrentTrack==3)){
+                eightflag=true;
+            }
+
+        }
+    }
+    int soundLookaheadSlots = Math.max(4, 7 - (slotsMovedTotal[0] / 15)); 
+    int soundFutureIndex = (ballCurrentIndex + soundLookaheadSlots * ballSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
+    int soundFutureSlot = currentTrackSlots.get(soundFutureIndex);
+
+   ///change below to improve whoosh sound delays. redo with a different lookaheadSlots
+    if (isQuadrantBoundary(soundFutureSlot)) {
+        int pitch = Math.max(3, 10 - (slotsMovedTotal[0] / 10)); 
         mce.stopSong("RouletteWheel", "BallScraping");
         mce.playSong("RouletteWheel", RouletteSongs.getBallScraping(pitch), false, "BallScraping");
         mce.stopSong("RouletteWheel", "Skibidi");
-        mce.playSong("RouletteWheel", RouletteSongs.getSkibidi(pitch), false, "Skibidi");
+       mce.playSong("RouletteWheel", RouletteSongs.getSkibidi(pitch), false, "Skibidi");
+        mce.stopSong("RouletteWheel", "scas");
+       mce.playSong("RouletteWheel",RouletteSongs.getWhoosh(pitch),false, "scas");
     } 
-    if (isQuadrantBoundary(nextSlot)) {
+    if (isQuadrantBoundary(nextSlot)&&!eightflag&&!sevflag&&trackSequenceIndex!=2) { 
         isSwitchingQuadrant = true;
 
         // Show ball in the final slot of the current track
@@ -926,17 +928,7 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
                 default:
                     break;
             }
-            if(slotsMovedTotal[0]>0&&slotsMovedTotal[0]<=70){
-                
-                mce.stopSong("RouletteWheel", "skibidi");
-                mce.playSong("RouletteWheel",RouletteSongs.getEarlyWhoosh(),false, "skibidi");
-
-            }
-            if(slotsMovedTotal[0]>70){
-                mce.stopSong("RouletteWheel", "skibidi");
-                mce.playSong("RouletteWheel",RouletteSongs.getCornerWhoosh(),false, "skibidi");
-            }
-
+    
             // Delay to simulate ball going off-screen before quadrant switch
             Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
                 switchQuadrant();
@@ -955,13 +947,34 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
     }
 
     // Normal ball movement if not at boundary
-    updateBallPosition(ballSpinDirection);
+    if(!nextflag&&!sevflag){
+        updateBallPosition(ballSpinDirection);
+        slotsMovedTotal[0]++;
+        adjustBallSpeed(currentBallDelay, slotsMovedTotal[0], ballAccelerationSlots, totalSlotsToMove, ballDecelerationSlots);
+        slotsToMovePerTrack[trackSequenceIndex]--;
+    }
+   else{
+    if(sevflag){
+        updateBallPosition(ballSpinDirection);
+        slotsMovedTotal[0]++;
+        slotsToMovePerTrack[trackSequenceIndex]--;
+        ballMovementStarted = false;
+        handleWinningNumber();
+        sevflag=false;
+        eightflag=false;
+        nextflag=false;
+        return;
+    }
+    updateBallPosition(0);
     slotsMovedTotal[0]++;
-
-    adjustBallSpeed(currentBallDelay, slotsMovedTotal[0], ballAccelerationSlots, totalSlotsToMove, ballDecelerationSlots);
-    
     slotsToMovePerTrack[trackSequenceIndex]--;
-
+    ballMovementStarted = false;
+    handleWinningNumber();
+    sevflag=false;
+    eightflag=false;
+    nextflag=false;
+    return;
+   }
     if (slotsToMovePerTrack[trackSequenceIndex] <= 0) {
         trackSequenceIndex++;
         if (trackSequenceIndex < trackSequence.length) {
@@ -970,16 +983,11 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
             int adjustment=1;
     ballCurrentIndex = (ballCurrentIndex + adjustment * wheelSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
         } else {
-            if(ballCurrentIndex==8){
-                switchQuadrant();
-                switchQuadrant();
-                switchQuadrant();
-            }
-            else if(ballCurrentIndex==0){
-                switchQuadrant();
-            }
             ballMovementStarted = false;
             handleWinningNumber();
+            sevflag=false;
+            eightflag=false;
+            nextflag=false;
             return;
         }
     }
@@ -1077,6 +1085,7 @@ private void switchQuadrant() {
 }
 
 private void switchQauadrant() {
+  
     if (wheelSpinDirection == 1) { // Clockwise
         currentQuadrant = (currentQuadrant % 4) + 1; // Move to next quadrant in order
     } else { // Counterclockwise
@@ -1145,8 +1154,8 @@ private void handleWinningNumber() {
     // Get the number corresponding to the final slot
     winningNumber = getNumberForSlot(ballPreviousSlot, currentQuadrant);
     finalpicked = true;
-    mce.playSong("RouletteWheel", RouletteSongs.getFinalSpot(), false, "Final spot");
 
+    mce.playSong("RouletteWheel", RouletteSongs.getFinalSpot(), false, "Final spot");
     // Loop over players who have placed bets
     for (Player player : playersWithBets) {
         if (player.isOnline()) {
@@ -1211,6 +1220,12 @@ private void prepareNextRound() {
   if (spinTaskId != -1) {
         Bukkit.getScheduler().cancelTask(spinTaskId);
     }
+    if (regTaskId != -1) {
+        Bukkit.getScheduler().cancelTask(regTaskId);
+    }
+    if (reg2TaskId != -1) {
+        Bukkit.getScheduler().cancelTask(reg2TaskId);
+    }
     //wheelOffset = currentOffset;
 
     if (fastSpinTaskId != -1) {
@@ -1241,8 +1256,8 @@ private int getNumberForSlot(int mainSlot, int quadrant) {
     if (number != null) {
         return number;
     } else {
-        plugin.getLogger().warning("Error: No number associated with slot " + mainSlot + " in quadrant " + quadrant);
-        return -1;
+        //plugin.getLogger().warning("Error: No number associated with slot " + mainSlot + " in quadrant " + quadrant);
+        return 0;
     }
 }  
    
@@ -1404,7 +1419,6 @@ private void switchStayToQuadrant(int quad){
 
 
         if(finalpicked&&!foundfirstquadrant){
-    
             for (int i = 0; i < quadrantSlots.length; i++) {
              
                 int wheelPosition;
@@ -1465,7 +1479,7 @@ private void switchStayToQuadrant(int quad){
                         meta.setDisplayName("Ball");
                         ballItem.setItemMeta(meta);
                         inventory.setItem(extraSlot, ballItem);
-                            Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+                        regTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
                                 // Remove ball from current slot
                                 if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
                                     inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
@@ -1514,7 +1528,7 @@ private void switchStayToQuadrant(int quad){
                                 }
                             
                                 // Delay to simulate ball going off-screen before quadrant switch
-                                Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+                                reg2TaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
 
                                     switchQauadrant();
 

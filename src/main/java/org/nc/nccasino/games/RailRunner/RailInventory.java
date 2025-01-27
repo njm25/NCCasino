@@ -1,12 +1,11 @@
 package org.nc.nccasino.games.RailRunner;
 
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
-import org.nc.nccasino.helpers.DealerInventory;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
@@ -18,7 +17,7 @@ import java.util.Map;
 import java.util.UUID;
 
 
-public class RailInventory extends DealerInventory implements Listener {
+public class RailInventory extends DealerInventory {
     private final Map<UUID, RailTable> Tables;
     private final Nccasino plugin;
     private final Map<UUID, Boolean> interactionLocks = new HashMap<>();

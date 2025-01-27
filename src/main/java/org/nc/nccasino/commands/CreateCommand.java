@@ -1,19 +1,20 @@
 package org.nc.nccasino.commands;
 
+import java.util.List;
+
 import org.bukkit.ChatColor;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-
-import java.io.File;
-import java.io.IOException;
-
-import org.bukkit.Location;
-import org.nc.nccasino.entities.DealerVillager;
-import org.jetbrains.annotations.NotNull;
+import org.bukkit.entity.Villager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.NotNull;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.components.AdminInventory;
+import org.nc.nccasino.components.GameOptionsInventory;
+import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.helpers.SoundHelper;
 
 public class CreateCommand implements CasinoCommand {
     private final JavaPlugin plugin;
@@ -29,58 +30,52 @@ public class CreateCommand implements CasinoCommand {
             return true;
         }
 
+        Player player = (Player) sender;
+                
+        List<String> occupations = AdminInventory.playerOccupations(player.getUniqueId());
+        List<Villager> villagers = AdminInventory.getOccupiedVillagers(player.getUniqueId())
+            .stream()
+            .filter(v -> v != null && !v.isDead() && v.isValid()) // Ensure valid villagers
+            .toList();
+
+        if (!occupations.isEmpty() && !villagers.isEmpty()) {
+            if (SoundHelper.getSoundSafely("entity.villager.no") != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            for (int i = 0; i < occupations.size(); i++) {
+                if (i >= villagers.size()) {
+                    break; // Prevent index mismatch
+                }
+                String occupation = occupations.get(i);
+                Villager villager = villagers.get(i);
+                
+                String villagerName = (villager != null) ? DealerVillager.getInternalName(villager) : "unknown villager";
+                Nccasino.sendErrorMessage(player, "Please finish editing " + occupation + " for '" +
+                    ChatColor.YELLOW + villagerName + ChatColor.RED + "'.");
+            }
+            return true;
+        }
+
         if (args.length < 2) {
             sender.sendMessage(ChatColor.AQUA + "Usage: /ncc create " + ChatColor.YELLOW + "<name>");
             return true;
         }
 
-        Player player = (Player) sender;
         String internalName = args[1];
 
         // Check if the internal name already exists
-        Nccasino nccasino = (Nccasino) plugin;
-        if (nccasino.getConfig().contains("dealers." + internalName)) {
+        if (plugin.getConfig().contains("dealers." + internalName)) {
             sender.sendMessage(ChatColor.RED + "A dealer with the internal name '" +
                     ChatColor.YELLOW + internalName + ChatColor.RED + "' already exists.");
             return true;
         }
 
-        // Store the dealer configuration with default values
-        nccasino.saveDefaultDealerConfig(internalName);
+        // Open the Game Options Inventory
+        GameOptionsInventory inventory = new GameOptionsInventory((Nccasino)plugin, internalName);
+        player.openInventory(inventory.getInventory());
 
-        // Spawn the dealer
-        Location location = player.getLocation();
-        DealerVillager.spawnDealer(plugin, location, "Dealer Villager", internalName);
-
-        // Save dealer location and chunk data
-        File dealersFile = new File(nccasino.getDataFolder(), "data/dealers.yaml");
-
-        // Ensure the parent directory exists
-        if (!dealersFile.getParentFile().exists()) {
-            dealersFile.getParentFile().mkdirs();
-        }
-
-        // Load the custom configuration
-        FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
-
-        // Set the dealer's data
-        var chunk = location.getChunk();
-        String path = "dealers." + internalName;
-        dealersConfig.set(path + ".world", location.getWorld().getName());
-        dealersConfig.set(path + ".chunkX", chunk.getX());
-        dealersConfig.set(path + ".chunkZ", chunk.getZ());
-
-        // Save the configuration to file
-        try {
-            dealersConfig.save(dealersFile);
-        } catch (IOException e) {
-            nccasino.getLogger().severe("Failed to save dealer location to " + dealersFile.getPath());
-            e.printStackTrace();
-        }
-        nccasino.saveConfig();
-
-        sender.sendMessage(ChatColor.GREEN + "Dealer with internal name '" +
-                ChatColor.YELLOW + internalName + ChatColor.GREEN + "' has been created.");
+        sender.sendMessage(ChatColor.GREEN + "Choose a game type for the dealer '" +
+                ChatColor.YELLOW + internalName + ChatColor.GREEN + "'.");
 
         return true;
     }
