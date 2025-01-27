@@ -36,12 +36,12 @@ public class AnimationTable extends DealerInventory {
    
 
     public AnimationTable(Player player, Nccasino plugin, String animationMessage, int index) {
-        super(player.getUniqueId(), 54, "Animation Table");
+        super(player.getUniqueId(), 54, "");
 
         this.playerId = player.getUniqueId();
         this.plugin = plugin;
         this.animationMessage = animationMessage;
-        this.inventory = Bukkit.createInventory(this, 54, "Animation");
+        this.inventory = Bukkit.createInventory(this, 54, animationMessage);
         this.animationTasks = new HashMap<>();
         this.animationCompleted = new HashMap<>();
         this.clickAllowed = new HashMap<>();

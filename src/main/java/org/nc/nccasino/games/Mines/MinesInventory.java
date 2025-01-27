@@ -20,7 +20,7 @@ public class MinesInventory extends DealerInventory {
     private String internalName;
     public MinesInventory(UUID dealerId, Nccasino plugin, String internalName) {
         
-        super(dealerId, 54, "Mines Start Menu");
+        super(dealerId, 54, "");
         this.internalName = internalName;
         this.plugin = plugin;
         registerListener();
