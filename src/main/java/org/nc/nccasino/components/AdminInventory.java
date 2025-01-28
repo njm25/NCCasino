@@ -26,7 +26,6 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
@@ -58,7 +57,7 @@ public class AdminInventory extends DealerInventory {
     public static final Map<UUID, AdminInventory> adminInventories = new HashMap<>();
 
     // Tracks which dealer is being edited by which player
-    public final Map<UUID, Villager> localVillager = new HashMap<>();
+    public static final Map<UUID, Villager> localVillager = new HashMap<>();
 
     // Slot options for the admin menu
     private enum SlotOption {
@@ -189,7 +188,8 @@ public class AdminInventory extends DealerInventory {
             || (timerEditMode.get(playerId) != null)
             || (amsgEditMode.get(playerId) != null)
             || (moveMode.get(playerId) != null)
-            || (chipEditMode.get(playerId) != null);
+            || (chipEditMode.get(playerId) != null)
+            || (localVillager.get(playerId) != null);
         
     }
     
@@ -401,6 +401,7 @@ public class AdminInventory extends DealerInventory {
         int slot = slotMapping.get(SlotOption.DELETE_DEALER);
         Inventory playerInventory = getInventory();
         ItemStack deleteItem = playerInventory.getItem(slot);
+        localVillager.put(player.getUniqueId(), dealer);
 
         if (deleteItem != null && deleteItem.getType() == Material.BARRIER) {
             // Open confirmation inventory
@@ -429,11 +430,15 @@ public class AdminInventory extends DealerInventory {
                     },
                     (uuid) -> {
                         // Cancel action: re-open the AdminInventory
-                        AdminInventory adminInventory = new AdminInventory(
-                                dealerId, 
-                                player,
-                                (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class));
-                        player.openInventory(adminInventory.getInventory());
+                        if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                            player.openInventory(adminInventory.getInventory());
+                            localVillager.remove(player.getUniqueId());
+                        } else {
+                            AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                            player.openInventory(adminInventory.getInventory());
+                            localVillager.remove(player.getUniqueId());
+                        }
                     },
                     plugin
             );
