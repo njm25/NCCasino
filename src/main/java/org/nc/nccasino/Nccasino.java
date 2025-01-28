@@ -1,8 +1,24 @@
 package org.nc.nccasino;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.logging.Level;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
@@ -20,13 +36,6 @@ import org.nc.nccasino.listeners.DealerDeathHandler;
 import org.nc.nccasino.listeners.DealerEventListener;
 import org.nc.nccasino.listeners.DealerInteractListener;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
 public final class Nccasino extends JavaPlugin implements Listener {
     private NamespacedKey INTERNAL_NAME_KEY; // Declare it here
 
@@ -42,7 +51,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         INTERNAL_NAME_KEY = new NamespacedKey(this, "internal_name");
-
+        checkForUpdates();
         saveDefaultConfig();
 
         // Load currency from config
@@ -63,7 +72,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         // Load any pre-existing dealer villagers from config
         loadDealerVillagers();
 
-        getLogger().info("Nccasino plugin enabled!");
+        getLogger().info("NCcasino plugin enabled!");
     }
 
     private void loadDealerVillagers() {
@@ -105,7 +114,16 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
                         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
-                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name);
+                        List<Integer> chipSizes = new ArrayList<>();
+                        ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
+                        if (chipSizeSection != null) {
+                            for (String key : chipSizeSection.getKeys(false)) {
+                                chipSizes.add(getConfig().getInt("dealers." + internalName + ".chip-sizes." + key));
+                            }
+                        }
+                        chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
+                
+                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes);
                     }
                 }
             }
@@ -148,8 +166,16 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
                         String animationMessage = getConfig().getString("dealers." + internalName + ".animation-message");
-
-                        DealerVillager.updateGameType(villager, gameType, timer, animationMessage, name);
+                        List<Integer> chipSizes = new ArrayList<>();
+                        ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
+                        if (chipSizeSection != null) {
+                            for (String key : chipSizeSection.getKeys(false)) {
+                                chipSizes.add(getConfig().getInt("dealers." + internalName + ".chip-sizes." + key));
+                            }
+                        }
+                        chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
+                
+                        DealerVillager.updateGameType(villager, gameType, timer, animationMessage, name, chipSizes);
                         DealerVillager.setName(villager, gameType + " Dealer");
                         DealerVillager.setAnimationMessage(villager, animationMessage);
                     }
@@ -174,6 +200,14 @@ public final class Nccasino extends JavaPlugin implements Listener {
         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
+        List<Integer> chipSizes = new ArrayList<>();
+        ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
+        if (chipSizeSection != null) {
+            for (String key : chipSizeSection.getKeys(false)) {
+                chipSizes.add(getConfig().getInt("dealers." + internalName + ".chip-sizes." + key));
+            }
+        }
+        chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
 
         // Example special case for Blackjack
         if (!getConfig().contains("dealers." + internalName + ".stand-on-17") && "Blackjack".equals(gameType)) {
@@ -185,7 +219,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
             }
         }
 
-        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name);
+        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes);
     }
 
     private void reloadDealerVillagers() {
@@ -210,7 +244,15 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
                         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
-
+                        List<Integer> chipSizes = new ArrayList<>();
+                        ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
+                        if (chipSizeSection != null) {
+                            for (String key : chipSizeSection.getKeys(false)) {
+                                chipSizes.add(getConfig().getInt("dealers." + internalName + ".chip-sizes." + key));
+                            }
+                        }
+                        chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
+                
                         // Example special-case check
                         if (!getConfig().contains("dealers." + internalName + ".stand-on-17")
                             && "Blackjack".equals(gameType)) {
@@ -222,7 +264,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                             }
                         }
 
-                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name);
+                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes);
                     }
                 }
             }
@@ -300,5 +342,66 @@ public final class Nccasino extends JavaPlugin implements Listener {
             }
         }
         return null;
+    }
+
+    public void checkForUpdates() {
+        try {
+            String pageContent = fetchPageContent("https://dev.bukkit.org/projects/nccasino");
+            String latestVersion = parseVersionFromHtml(pageContent);
+            String currentVersion = getDescription().getVersion();
+    
+            if (latestVersion != null && isVersionBehind(currentVersion, latestVersion)) {
+                getLogger().log(Level.WARNING, "[NCCasino] A new version of the plugin is available: {0}", latestVersion);
+            }
+        } catch (Exception e) {
+            getLogger().log(Level.WARNING, "[NCCasino] Failed to check for updates: {0}", e.getMessage());
+        }
+    }
+    
+    private boolean isVersionBehind(String currentVersion, String latestVersion) {
+        int[] currentParts = parseVersionNumbers(currentVersion);
+        int[] latestParts = parseVersionNumbers(latestVersion);
+    
+        for (int i = 0; i < 3; i++) {
+            if (currentParts[i] < latestParts[i]) return true;  // Current version is behind
+            if (currentParts[i] > latestParts[i]) return false; // Current version is ahead
+        }
+        return false; // Versions are equal
+    }
+    
+    private int[] parseVersionNumbers(String version) {
+        String[] parts = version.split("\\.");
+        int[] numbers = new int[3]; // major.minor.build
+        for (int i = 0; i < parts.length && i < 3; i++) {
+            try {
+                numbers[i] = Integer.parseInt(parts[i]);
+            } catch (NumberFormatException e) {
+                numbers[i] = 0; // Fallback to 0 if parsing fails
+            }
+        }
+        return numbers;
+    }
+    
+    private String fetchPageContent(String urlString) throws Exception {
+        URL url = URI.create(urlString).toURL(); 
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("GET");
+        connection.setConnectTimeout(5000);
+        connection.setReadTimeout(5000);
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+            StringBuilder content = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                content.append(line).append("\n");
+            }
+            return content.toString();
+        }
+    }
+
+    private String parseVersionFromHtml(String htmlContent) {
+        Pattern pattern = Pattern.compile("nccasino-(\\d+\\.\\d+\\.\\d+)\\.jar");
+        Matcher matcher = pattern.matcher(htmlContent);
+        return matcher.find() ? matcher.group(1) : null;
     }
 }

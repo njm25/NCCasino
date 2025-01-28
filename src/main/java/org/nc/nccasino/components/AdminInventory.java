@@ -157,12 +157,42 @@ public class AdminInventory extends DealerInventory {
     private void registerListener() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
-
-    /**
-     * Build out the Admin Menu items.
-     */
     private void initializeAdminMenu() {
-        String internalName= DealerVillager.getInternalName(dealer);
+
+
+        String internalName = DealerVillager.getInternalName(dealer);
+    
+        // Retrieve dealer config values safely
+        FileConfiguration config = plugin.getConfig();
+        String currentGame = config.getString("dealers." + internalName + ".game", "Unknown");
+        int currentTimer = config.contains("dealers." + internalName + ".timer")
+            ? config.getInt("dealers." + internalName + ".timer")
+            : 10; // Default to 10 if missing
+    
+        String currentAnimationMessage = config.getString("dealers." + internalName + ".animation-message", "Default Message");
+    
+        //String currencyMaterial = config.getString("dealers." + internalName + ".currency.material", "UNKNOWN");
+       // String currencyName = config.getString("dealers." + internalName + ".currency.name", "Unknown Currency");
+        addItemAndLore(Material.NAME_TAG, 1, "Edit Display Name",  slotMapping.get(SlotOption.EDIT_DISPLAY_NAME), "Current: " + DealerVillager.getName(dealer));
+        addItemAndLore(Material.PAPER, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: " + currentGame);
+        if(currentGame!="Mines"){
+        addItemAndLore(Material.CLOCK, currentTimer, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Current: " + currentTimer);
+    }
+        else{
+        addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Unvailable For Mines");
+        }
+        addItemAndLore(Material.RED_STAINED_GLASS_PANE, 1, "Edit Animation Message",  slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE), "Current: " + currentAnimationMessage);
+       /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
+        addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
+        addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
+        // Chip Sizes
+        for (int i = 1; i <= 5; i++) {
+            int chipValue = config.contains("dealers." + internalName + ".chip-sizes.size" + i)
+                ? config.getInt("dealers." + internalName + ".chip-sizes.size" + i)
+                : 1; // Default to 1 if missing
+            addItemAndLore(plugin.getCurrency(internalName), chipValue, "Edit Chip Size #" + i,  slotMapping.get(SlotOption.valueOf("CHIP_SIZE" + i)), "Current: " + chipValue);
+   
+        //String internalName= DealerVillager.getInternalName(dealer);
         addItem(createCustomItem(Material.NAME_TAG, "Edit Display Name"),
                 slotMapping.get(SlotOption.EDIT_DISPLAY_NAME));
         addItem(createCustomItem(Material.PAPER, "Edit Game Type"),
@@ -184,6 +214,8 @@ public class AdminInventory extends DealerInventory {
         addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 3rd Chip Value (Currently: "+plugin.getChipName(internalName, 3)+")", (int)plugin.getChipValue(internalName, 3)),slotMapping.get(SlotOption.CHIP_SIZE3));
         addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 4th Chip Value (Currently: "+plugin.getChipName(internalName, 4)+")", (int)plugin.getChipValue(internalName, 4)),slotMapping.get(SlotOption.CHIP_SIZE4));
         addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 5th Chip Value (Currently: "+plugin.getChipName(internalName, 5)+")", (int)plugin.getChipValue(internalName, 5)),slotMapping.get(SlotOption.CHIP_SIZE5));
+    
+    
         switch(this.currencyMode){
             case CurrencyMode.VAULT:
                 addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Select Currency [Disabled For Vault Mode]"),slotMapping.get(SlotOption.EDIT_CURRENCY));
@@ -321,7 +353,8 @@ public class AdminInventory extends DealerInventory {
             // Throttle clicking slightly to prevent spam
         clickAllowed.put(playerId, false);
         Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);
-
+            String internalName = DealerVillager.getInternalName(dealer);
+            String currentGame = plugin.getConfig().getString("dealers." + internalName + ".game", "Unknown");
 
             event.setCancelled(true);
             SlotOption option = getKeyByValue(slotMapping, slot);
@@ -357,8 +390,12 @@ public class AdminInventory extends DealerInventory {
                         if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case EDIT_TIMER:
+                        if(currentGame.equals("Mines")){
+                        if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+                        }
+                        else{
                         handleEditTimer(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);}  
                         break;
                     case EDIT_ANIMATION_MESSAGE:
                         handleAnimationMessage(player);
