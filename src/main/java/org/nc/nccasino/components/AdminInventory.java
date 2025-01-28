@@ -60,7 +60,7 @@ public class AdminInventory extends DealerInventory {
     public static final Map<UUID, AdminInventory> adminInventories = new HashMap<>();
 
     // Tracks which dealer is being edited by which player
-    public final Map<UUID, Villager> localVillager = new HashMap<>();
+    public static final Map<UUID, Villager> localVillager = new HashMap<>();
 
     // Slot options for the admin menu
     private enum SlotOption {
@@ -219,7 +219,9 @@ public class AdminInventory extends DealerInventory {
             || (amsgEditMode.get(playerId) != null)
             || (moveMode.get(playerId) != null)
             || (chipEditMode.get(playerId) != null)
+            || (localVillager.get(playerId) != null)
             || (currencyEditMode.get(playerId) != null);
+
     }
     
     public static List<String> playerOccupations(UUID playerId) {
@@ -552,6 +554,7 @@ public class AdminInventory extends DealerInventory {
         int slot = slotMapping.get(SlotOption.DELETE_DEALER);
         Inventory playerInventory = getInventory();
         ItemStack deleteItem = playerInventory.getItem(slot);
+        localVillager.put(player.getUniqueId(), dealer);
 
         if (deleteItem != null && deleteItem.getType() == Material.BARRIER) {
             // Open confirmation inventory
@@ -579,19 +582,18 @@ public class AdminInventory extends DealerInventory {
                         Bukkit.dispatchCommand(player, "ncc delete " + DealerVillager.getInternalName(dealer));
                     },
                     (uuid) -> {
-                        player.closeInventory();
-                        //Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                            AdminInventory adminInventory;
-                            if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
-                                adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
-                            } else {
-                                adminInventory = new AdminInventory(dealerId, player, plugin);
-                            }
+
+                        // Cancel action: re-open the AdminInventory
+                        if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
                             player.openInventory(adminInventory.getInventory());
-                    
-                            // Force an inventory update to refresh client-side display
-                            Bukkit.getScheduler().runTaskLater(plugin, player::updateInventory, 1L);
-                        //}, 2L);
+                            localVillager.remove(player.getUniqueId());
+                        } else {
+                            AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                            player.openInventory(adminInventory.getInventory());
+                            localVillager.remove(player.getUniqueId());
+                        }
+
                     },
                     plugin
             );

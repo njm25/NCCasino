@@ -351,10 +351,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
             String currentVersion = getDescription().getVersion();
     
             if (latestVersion != null && isVersionBehind(currentVersion, latestVersion)) {
-                getLogger().log(Level.WARNING, "[NCCasino] A new version of the plugin is available: {0}", latestVersion);
+                getLogger().log(Level.WARNING, "A new version of the plugin is available: {0}", latestVersion);
             }
         } catch (Exception e) {
-            getLogger().log(Level.WARNING, "[NCCasino] Failed to check for updates: {0}", e.getMessage());
+            getLogger().log(Level.WARNING, "Failed to check for updates: {0}", e.getMessage());
         }
     }
     
