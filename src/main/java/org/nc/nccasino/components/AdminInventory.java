@@ -437,18 +437,6 @@ public class AdminInventory extends DealerInventory {
         //player.sendMessage("§eSwitched currency mode to: §a" + this.currencyMode.name());
     }
 
-
-    private void handleSelectCurrency(Player player) {
-        
-        if (this.currencyMode == CurrencyMode.VAULT) {
-            player.sendMessage("§cCannot select currency item in VAULT mode.");
-            return;
-        }
-        // Place the player into "select currency mode"
-       //currencyEditMode.put(player.getUniqueId(), this.dealer);
-        player.sendMessage("§aPlease click an item in your (bottom) inventory to set as the new currency...");
-    }
-
     private void updateCurrencyButtons() {
         String internalName= DealerVillager.getInternalName(dealer);
         Inventory inv = getInventory();
@@ -605,14 +593,12 @@ public class AdminInventory extends DealerInventory {
     private void handleEditCurrency(Player player, InventoryClickEvent event) {
         UUID playerId = player.getUniqueId();
         AdminInventory adminInv = adminInventories.get(playerId);
-        Inventory topInv = adminInv.getInventory();
         
         if (adminInv.currencyMode == CurrencyMode.VAULT) {
             player.sendMessage("§cCurrency selection is disabled in VAULT mode.");
             return;
         }
     
-        int slot = slotMapping.get(SlotOption.EDIT_CURRENCY);
         ItemStack cursorItem = event.getCursor(); // Item being dragged
     
         if (cursorItem != null && cursorItem.getType() != Material.AIR) {
@@ -648,12 +634,6 @@ public class AdminInventory extends DealerInventory {
             player.sendMessage("§aCurrency updated to: " + displayName + " (" + selectedMaterial.name() + ")");
             event.setCancelled(true);
         }
-    }
-    
-
-    private void handleUseVault(Player player) {
-        player.sendMessage("§aUsing vault...");
-        // Implement vault usage logic here
     }
 
     // ----- Event handlers -----
