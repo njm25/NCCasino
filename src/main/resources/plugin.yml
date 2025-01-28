@@ -1,5 +1,5 @@
 name: NCCasino
-version: '1.4.0'
+version: '1.4.2'
 main: org.nc.nccasino.Nccasino
 api-version: '1.21'
 commands:
