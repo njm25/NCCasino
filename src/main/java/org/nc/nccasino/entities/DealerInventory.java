@@ -1,6 +1,7 @@
 package org.nc.nccasino.entities;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
@@ -132,6 +133,50 @@ public class DealerInventory implements InventoryHolder, Listener {
         ItemStack itemStack = new ItemStack(material, amount);
         setCustomItemMeta(itemStack, name);
         return itemStack;
+    }
+    
+    public void addItemAndLore(Material material, int count, String name, int slot) {
+        addItemAndLore(material, count, name, ChatColor.YELLOW, ChatColor.GRAY, slot);
+    }
+    
+    public void addItemAndLore(Material material, int count, String name, ChatColor titleColor, int slot) {
+        addItemAndLore(material, count, name, titleColor, ChatColor.GRAY, slot);
+    }
+
+    public void addItemAndLore(Material material, int count, String name, int slot, String... lore) {
+        addItemAndLore(material, count, name, ChatColor.YELLOW, ChatColor.GRAY, slot, lore);
+    }
+    
+    public void addItemAndLore(Material material, int count, String name, ChatColor titleColor, ChatColor loreColor, int slot, String... lore) {
+        addItem(createItemAndLore(material, count, name, titleColor, loreColor, lore), slot);
+    }
+    
+    /**
+     * Create a custom item with an optional lore, supporting multiple lines.
+     */
+    public ItemStack createItemAndLore(Material material, int count, String name, ChatColor titleColor, ChatColor loreColor, String... lore) {
+        if (count <= 0) {
+            throw new IllegalArgumentException("Amount must be greater than 0 for " + name);
+        }
+        ItemStack item = new ItemStack(material, count);
+        ItemMeta meta = item.getItemMeta();
+    
+        if (meta != null) {
+            // Default title color is yellow if none is provided
+            meta.setDisplayName((titleColor != null ? titleColor : ChatColor.YELLOW) + name);
+    
+            if (lore.length > 0) {
+                List<String> loreList = new ArrayList<>();
+                for (String line : lore) {
+                    loreList.add((loreColor != null ? loreColor : ChatColor.GRAY) + line);
+                }
+                meta.setLore(loreList);
+            }
+    
+            item.setItemMeta(meta);
+        }
+    
+        return item;
     }
 
     private void setCustomItemMeta(ItemStack itemStack, String name) {

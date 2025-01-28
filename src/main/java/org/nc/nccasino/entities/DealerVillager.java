@@ -246,17 +246,17 @@ public class DealerVillager {
                 defaultTimer = 10;
                 break;
         }
-
+        plugin.getConfig().set("dealers." + internalName + ".game", gameName);
         // Update config
         if (resetToDefault){
             plugin.getConfig().set("dealers." + internalName + ".display-name", newName);
-            plugin.getConfig().set("dealers." + internalName + ".game", gameName);
             plugin.getConfig().set("dealers." + internalName + ".timer", defaultTimer);
             plugin.getConfig().set("dealers." + internalName + ".animation-message", "NCCasino - " + gameName);
             setAnimationMessage(villager, gameName);
             setName(villager, newName);
-            plugin.saveConfig();
+           
         }
+        plugin.saveConfig();
         DealerInventory.updateInventory(dealerId, newInventory);
 
         player.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName
