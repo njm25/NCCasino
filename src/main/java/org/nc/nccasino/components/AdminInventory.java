@@ -174,7 +174,22 @@ public class AdminInventory extends DealerInventory {
         //String currencyMaterial = config.getString("dealers." + internalName + ".currency.material", "UNKNOWN");
        // String currencyName = config.getString("dealers." + internalName + ".currency.name", "Unknown Currency");
         addItemAndLore(Material.NAME_TAG, 1, "Edit Display Name",  slotMapping.get(SlotOption.EDIT_DISPLAY_NAME), "Current: " + DealerVillager.getName(dealer));
-        addItemAndLore(Material.PAPER, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: " + currentGame);
+        switch(currentGame){
+            case"Mines":{
+                addItemAndLore(Material.TNT, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: " + currentGame);
+                break;
+            }
+            case"Roulette":{
+                addItemAndLore(Material.ENDER_PEARL, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: " + currentGame);
+                break;
+            }  
+            case"Blackjack":{
+                addItemAndLore(Material.CREEPER_HEAD, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: " + currentGame);
+                break;
+            }
+            default:
+            break;
+        }
         if(currentGame!="Mines"){
         addItemAndLore(Material.CLOCK, currentTimer, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Current: " + currentTimer);
     }
@@ -191,52 +206,32 @@ public class AdminInventory extends DealerInventory {
                 ? config.getInt("dealers." + internalName + ".chip-sizes.size" + i)
                 : 1; // Default to 1 if missing
             addItemAndLore(plugin.getCurrency(internalName), chipValue, "Edit Chip Size #" + i,  slotMapping.get(SlotOption.valueOf("CHIP_SIZE" + i)), "Current: " + chipValue);
-   
-        //String internalName= DealerVillager.getInternalName(dealer);
-        addItem(createCustomItem(Material.NAME_TAG, "Edit Display Name"),
-                slotMapping.get(SlotOption.EDIT_DISPLAY_NAME));
-        addItem(createCustomItem(Material.PAPER, "Edit Game Type"),
-                slotMapping.get(SlotOption.EDIT_GAME_TYPE));
-        addItem(createCustomItem(Material.CLOCK, "Edit Timer"),
-                slotMapping.get(SlotOption.EDIT_TIMER));
-        addItem(createCustomItem(Material.RED_STAINED_GLASS_PANE, "Edit Animation Message"),
-                slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE));
 
-        // addItem(createCustomItem(Material.CHEST, "Use Vault"), slotMapping.get(SlotOption.USE_VAULT));
-        // addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-
-        addItem(createCustomItem(Material.COMPASS, "Move"),
-                slotMapping.get(SlotOption.MOVE_DEALER));
-        addItem(createCustomItem(Material.BARRIER, "Delete"),
-                slotMapping.get(SlotOption.DELETE_DEALER));
-        addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 1st Chip Value (Currently: "+plugin.getChipName(internalName, 1)+")", (int)plugin.getChipValue(internalName, 1)),slotMapping.get(SlotOption.CHIP_SIZE1));
-        addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 2nd Chip Value (Currently: "+plugin.getChipName(internalName, 2)+")", (int)plugin.getChipValue(internalName, 2)),slotMapping.get(SlotOption.CHIP_SIZE2));
-        addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 3rd Chip Value (Currently: "+plugin.getChipName(internalName, 3)+")", (int)plugin.getChipValue(internalName, 3)),slotMapping.get(SlotOption.CHIP_SIZE3));
-        addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 4th Chip Value (Currently: "+plugin.getChipName(internalName, 4)+")", (int)plugin.getChipValue(internalName, 4)),slotMapping.get(SlotOption.CHIP_SIZE4));
-        addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 5th Chip Value (Currently: "+plugin.getChipName(internalName, 5)+")", (int)plugin.getChipValue(internalName, 5)),slotMapping.get(SlotOption.CHIP_SIZE5));
-    
     
         switch(this.currencyMode){
             case CurrencyMode.VAULT:
-                addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Select Currency [Disabled For Vault Mode]"),slotMapping.get(SlotOption.EDIT_CURRENCY));
-                addItem(createCustomItem(Material.CHEST,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY), "[Disabled For Vault Mode]");
+
+                //addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Select Currency [Disabled For Vault Mode]"),slotMapping.get(SlotOption.EDIT_CURRENCY));
+                //addItem(createCustomItem(Material.CHEST,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
             break;
             case CurrencyMode.VANILLA:
-                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-                addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                addItemAndLore(plugin.getCurrency(internalName), 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY),"Current: §a"+plugin.getCurrencyName(internalName), "Drag item here to change");
+                //addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
+                //addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
             break;
             case CurrencyMode.CUSTOM:
                 addItem(createCustomItem(plugin.getCurrency(internalName), "Select Custom Currency",1),slotMapping.get(SlotOption.EDIT_CURRENCY));
                 //addItem(createEnchantedItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-                addItem(createCustomItem(Material.ENDER_CHEST,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                //addItem(createCustomItem(Material.ENDER_CHEST,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
                 break;
             default:
             addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-            addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+            //addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
             break;
         }
     } 
-
+    }
 
   
     /**
@@ -481,23 +476,27 @@ public class AdminInventory extends DealerInventory {
         String internalName= DealerVillager.getInternalName(dealer);
         Inventory inv = getInventory();
         if (inv == null) return;
+    
         switch(this.currencyMode){
             case CurrencyMode.VAULT:
-                addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Select Currency [Disabled For Vault Mode]"),slotMapping.get(SlotOption.EDIT_CURRENCY));
-                addItem(createCustomItem(Material.CHEST,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY), "[Disabled For Vault Mode]");
+
+                //addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Select Currency [Disabled For Vault Mode]"),slotMapping.get(SlotOption.EDIT_CURRENCY));
+                //addItem(createCustomItem(Material.CHEST,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
             break;
             case CurrencyMode.VANILLA:
-                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-                addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                addItemAndLore(plugin.getCurrency(internalName), 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY),"Current: §a"+plugin.getCurrencyName(internalName), "Drag item here to change");
+                //addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
+                //addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
             break;
             case CurrencyMode.CUSTOM:
                 addItem(createCustomItem(plugin.getCurrency(internalName), "Select Custom Currency",1),slotMapping.get(SlotOption.EDIT_CURRENCY));
                 //addItem(createEnchantedItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-                addItem(createCustomItem(Material.ENDER_CHEST,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-            break;
+                //addItem(createCustomItem(Material.ENDER_CHEST,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                break;
             default:
             addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-            addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+            //addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
             break;
         }
     }
