@@ -270,7 +270,41 @@ public class AdminInventory extends DealerInventory {
         return villagers;
     }
     
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        Player player = (Player) event.getWhoClicked();
+        UUID playerId = player.getUniqueId();
+    
+        // 1) Make sure this event is for an AdminInventory
+        if (!adminInventories.containsKey(playerId)) return;
+        AdminInventory adminInv = adminInventories.get(playerId);
+        if (adminInv == null) return;
+    
+        Inventory topInv = adminInv.getInventory();
+        if (topInv == null) return;
+    
+        // 2) Check where they clicked
+        if (event.getClickedInventory() == null) return; // clicked outside any inventory
+        boolean clickedTop = event.getClickedInventory().equals(topInv);
+        int slot = event.getSlot();
+    
+        // 3) If user clicked inside the TOP (admin) inventory:
+        if (clickedTop) {
+                handleClick(slot, player,event);
+        }
+        else {
+            // 4) Player clicked in their BOTTOM inventory
+            if (event.isShiftClick()) {
+                // By default, SHIFT-click will attempt to move items into the top inventory
+                event.setCancelled(true);
+                player.sendMessage("§cShift-click is disabled for the admin inventory.");
+            }
+            else{
 
+            }
+        }
+    }
+    
     /**
      * Handle inventory clicks for AdminInventory.
      */
@@ -280,12 +314,16 @@ public class AdminInventory extends DealerInventory {
         if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
             return;
         }
-        UUID playerId = player.getUniqueId();
-        if (clickAllowed.getOrDefault(playerId, true)) {
-            // Throttle clicking slightly to prevent spam
-            clickAllowed.put(playerId, false);
-            Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);
 
+  
+        UUID playerId = player.getUniqueId();
+    if (clickAllowed.getOrDefault(playerId, true)) {
+            // Throttle clicking slightly to prevent spam
+        clickAllowed.put(playerId, false);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);
+
+
+            event.setCancelled(true);
             SlotOption option = getKeyByValue(slotMapping, slot);
             if (option != null) {
                 switch (option) {
@@ -306,7 +344,7 @@ public class AdminInventory extends DealerInventory {
                         if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case EDIT_CURRENCY:
-                        handleEditCurrency(player);
+                        handleEditCurrency(player,event);
                         if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                         /* 
@@ -352,6 +390,8 @@ public class AdminInventory extends DealerInventory {
                         break;
                 }
             }
+
+        
         } else {
             player.sendMessage("§cPlease wait before clicking again!");
         }
@@ -390,6 +430,7 @@ public class AdminInventory extends DealerInventory {
 
 
     private void handleSelectCurrency(Player player) {
+        
         if (this.currencyMode == CurrencyMode.VAULT) {
             player.sendMessage("§cCannot select currency item in VAULT mode.");
             return;
@@ -542,8 +583,81 @@ public class AdminInventory extends DealerInventory {
         }
     }
 
-    private void handleEditCurrency(Player player) {
-        player.sendMessage("§aEditing currency...");
+    private void handleEditCurrency(Player player,InventoryClickEvent event) {
+        UUID playerId = player.getUniqueId();
+        int slot = event.getSlot();
+        AdminInventory adminInv = adminInventories.get(playerId);
+        Inventory topInv = adminInv.getInventory();
+
+        // If in Vault mode, just block it
+        if (adminInv.currencyMode == CurrencyMode.VAULT) {
+            player.sendMessage("§cCurrency slot disabled in VAULT mode.");
+            return;
+        }
+
+        // CASE 1: Player is putting an item INTO the currency slot
+        //   => either with a mouse cursor item or SHIFT-click from bottom
+        // event.getCursor() is the item on their mouse pointer
+        // event.getCurrentItem() is the item in the slot (if any)
+        // SHIFT-click scenario: event.isShiftClick()
+
+        // Check if they are SHIFT-clicking the same top slot (rare) or if there's an item in their cursor
+        // Usually for SHIFT from bottom → top, event.getCurrentItem() is the stack from the bottom
+        // but the slot is in top. 
+        ItemStack cursor = event.getCursor();       // item on mouse
+        ItemStack clickedItem = event.getCurrentItem(); // item in the clicked slot
+
+        // If they are picking UP the ghost item from slot 13 to remove it:
+        if (clickedItem != null && clickedItem.getType() != Material.AIR && !event.isShiftClick() && cursor == null) {
+            // This means they tried to pick up the "ghost" item from slot 13
+            //topInv.setItem(slot, null); // remove the ghost
+            player.sendMessage("§cDrag an item into this slot to change the currency");
+            return;
+        }
+
+        // Otherwise, they might be placing an item in:
+        // SHIFT-click from bottom inventory → top slot 13
+        /* 
+        if (event.isShiftClick()) {
+            // The stack is the one in the player's bottom slot
+            // so we can get it from event.getCurrentItem() 
+            if (clickedItem != null && clickedItem.getType() != Material.AIR) {
+                // Make a ghost copy
+                ItemStack ghostCopy = clickedItem.clone();
+                ghostCopy.setAmount(1); // or entire stack if you want
+                topInv.setItem(slot, ghostCopy);
+
+                // TODO: store to config as your "currency"
+                // e.g. storeVanillaOrCustomCurrency(ghostCopy);
+
+                player.sendMessage("§aCurrency updated (ghost copy).");
+            }
+            return;
+        }*/
+
+        // Normal mouse drag from bottom → slot 13
+        if (cursor != null && cursor.getType() != Material.AIR) {
+            // Create a ghost copy of what's on the mouse
+            ItemStack ghostCopy = cursor.clone();
+            ghostCopy.setAmount(1); // usually 1 is enough for "ghost"
+            topInv.setItem(slot, ghostCopy);
+
+            // TODO: store to config as your "currency"
+            // e.g. storeVanillaOrCustomCurrency(ghostCopy);
+
+            player.sendMessage("§aCurrency updated (ghost copy).");
+        }
+
+        return; // done handling slot 13
+        /* 
+        if (this.currencyMode == CurrencyMode.VAULT) {
+            player.sendMessage("§cCannot select currency item in VAULT mode.");
+            return;
+        }
+        UUID playerId = player.getUniqueId();
+        currencyEditMode.put(player.getUniqueId(), this.dealer);
+        localVillager.put(playerId, dealer);
+        player.sendMessage("§aPlease click an item in your (bottom) inventory to set as the new currency...");*/
         // Implement currency editing logic here
     }
 
