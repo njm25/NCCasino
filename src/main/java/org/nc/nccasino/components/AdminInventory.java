@@ -630,6 +630,7 @@ public class AdminInventory extends DealerInventory {
                 player.updateInventory(); // Ensure client sees the change immediately
             }, 1L);
     
+            plugin.reloadDealerVillager(dealer);
     
             player.sendMessage("§aCurrency updated to: " + displayName + " (" + selectedMaterial.name() + ")");
             event.setCancelled(true);
