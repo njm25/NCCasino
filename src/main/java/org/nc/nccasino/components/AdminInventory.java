@@ -160,7 +160,12 @@ public class AdminInventory extends DealerInventory {
        // String currencyName = config.getString("dealers." + internalName + ".currency.name", "Unknown Currency");
         addItemAndLore(Material.NAME_TAG, 1, "Edit Display Name",  slotMapping.get(SlotOption.EDIT_DISPLAY_NAME), "Current: " + DealerVillager.getName(dealer));
         addItemAndLore(Material.PAPER, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: " + currentGame);
+        if(currentGame!="Mines"){
         addItemAndLore(Material.CLOCK, currentTimer, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Current: " + currentTimer);
+    }
+        else{
+        addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Unvailable For Mines");
+        }
         addItemAndLore(Material.RED_STAINED_GLASS_PANE, 1, "Edit Animation Message",  slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE), "Current: " + currentAnimationMessage);
        /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
         addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
@@ -245,7 +250,8 @@ public class AdminInventory extends DealerInventory {
             // Throttle clicking slightly to prevent spam
             clickAllowed.put(playerId, false);
             Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);
-
+            String internalName = DealerVillager.getInternalName(dealer);
+            String currentGame = plugin.getConfig().getString("dealers." + internalName + ".game", "Unknown");
             SlotOption option = getKeyByValue(slotMapping, slot);
             if (option != null) {
                 switch (option) {
@@ -274,8 +280,12 @@ public class AdminInventory extends DealerInventory {
                         if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case EDIT_TIMER:
+                        if(currentGame.equals("Mines")){
+                        if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+                        }
+                        else{
                         handleEditTimer(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);}  
                         break;
                     case EDIT_ANIMATION_MESSAGE:
                         handleAnimationMessage(player);
