@@ -20,6 +20,7 @@ import org.nc.nccasino.games.Roulette.RouletteInventory;
 import org.nc.nccasino.helpers.AttributeHelper;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -192,7 +193,7 @@ public class DealerVillager {
         }
     }
 
-    public static void switchGame(Villager villager, String gameName, Player player) {
+    public static void switchGame(Villager villager, String gameName, Player player, Boolean resetToDefault) {
         UUID dealerId = getUniqueId(villager);
         if (dealerId == null) return;
 
@@ -203,6 +204,14 @@ public class DealerVillager {
 
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
+// do chip sizes specificially before because bj initalizes them and theyll get reset otherwise
+        if(resetToDefault){
+            plugin.getConfig().set("dealers." + internalName + ".chip-sizes.size1", 1);
+            plugin.getConfig().set("dealers." + internalName + ".chip-sizes.size2", 5);
+            plugin.getConfig().set("dealers." + internalName + ".chip-sizes.size3", 10);
+            plugin.getConfig().set("dealers." + internalName + ".chip-sizes.size4", 25);
+            plugin.getConfig().set("dealers." + internalName + ".chip-sizes.size5", 50);
+        }
 
         switch (gameName) {
             case "Blackjack":
@@ -239,21 +248,22 @@ public class DealerVillager {
         }
 
         // Update config
-        plugin.getConfig().set("dealers." + internalName + ".display-name", newName);
-        plugin.getConfig().set("dealers." + internalName + ".game", gameName);
-        plugin.getConfig().set("dealers." + internalName + ".timer", defaultTimer);
-        plugin.getConfig().set("dealers." + internalName + ".animation-message", "NCCasino - " + gameName);
-        plugin.saveConfig();
-
+        if (resetToDefault){
+            plugin.getConfig().set("dealers." + internalName + ".display-name", newName);
+            plugin.getConfig().set("dealers." + internalName + ".game", gameName);
+            plugin.getConfig().set("dealers." + internalName + ".timer", defaultTimer);
+            plugin.getConfig().set("dealers." + internalName + ".animation-message", "NCCasino - " + gameName);
+            setAnimationMessage(villager, gameName);
+            setName(villager, newName);
+            plugin.saveConfig();
+        }
         DealerInventory.updateInventory(dealerId, newInventory);
-        setName(villager, newName);
-        setAnimationMessage(villager, gameName);
 
         player.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName
             + ChatColor.GREEN + "' has been set to " + ChatColor.YELLOW + gameName + ChatColor.GREEN + ".");
     }
 
-    public static void updateGameType(Villager villager, String gameName, int timer, String anmsg, String newName) {
+    public static void updateGameType(Villager villager, String gameName, int timer, String anmsg, String newName, List<Integer> chipSizes) {
         UUID dealerId = getUniqueId(villager);
         if (dealerId == null) return;
 
@@ -261,7 +271,23 @@ public class DealerVillager {
         DealerInventory newInventory;
         PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
+        setName(villager, newName);
 
+        // Update the game type & animation message
+        dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameName);
+        dataContainer.set(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING, gameName);
+
+        plugin.getConfig().set("dealers." + internalName + ".display-name", newName);
+        plugin.getConfig().set("dealers." + internalName + ".game", gameName);
+        plugin.getConfig().set("dealers." + internalName + ".timer", timer);
+        plugin.getConfig().set("dealers." + internalName + ".animation-message", anmsg);
+                // Update chip sizes dynamically
+        if (chipSizes != null && !chipSizes.isEmpty()) {
+            for (int i = 0; i < chipSizes.size(); i++) {
+                plugin.getConfig().set("dealers." + internalName + ".chip-sizes.size" + (i + 1), chipSizes.get(i));
+            }
+        }
+        plugin.saveConfig();
         switch (gameName) {
             case "Blackjack":
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);
@@ -287,17 +313,7 @@ public class DealerVillager {
         }
 
         DealerInventory.updateInventory(dealerId, newInventory);
-        setName(villager, newName);
-
-        // Update the game type & animation message
-        dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameName);
-        dataContainer.set(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING, gameName);
-
-        plugin.getConfig().set("dealers." + internalName + ".display-name", newName);
-        plugin.getConfig().set("dealers." + internalName + ".game", gameName);
-        plugin.getConfig().set("dealers." + internalName + ".timer", timer);
-        plugin.getConfig().set("dealers." + internalName + ".animation-message", anmsg);
-        plugin.saveConfig();
+ 
     }
 
     public static void removeDealer(Villager villager) {

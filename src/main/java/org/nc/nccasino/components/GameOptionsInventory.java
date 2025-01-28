@@ -150,9 +150,26 @@ public class GameOptionsInventory extends DealerInventory {
             }
         }
 
-        DealerVillager.switchGame(dealer, gameType, player);
-        player.closeInventory();
-        this.delete();
+
+        ConfirmInventory confirmInventory = new ConfirmInventory(
+            dealerId,
+            "Reset config to default?",
+            (uuid) -> {
+                // Confirm action
+
+                DealerVillager.switchGame(dealer, gameType, player, true);
+                player.closeInventory();
+                this.delete();
+            },
+            (uuid) -> {
+                // Dent action
+                DealerVillager.switchGame(dealer, gameType, player, false);
+                player.closeInventory();
+                this.delete();
+            },
+            plugin
+            );
+        player.openInventory(confirmInventory.getInventory());
     }
 
 }
