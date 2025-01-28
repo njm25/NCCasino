@@ -127,10 +127,15 @@ public class DealerInventory implements InventoryHolder, Listener {
 
     // Create an item stack with a custom display name and amount
     public ItemStack createCustomItem(Material material, String name, int amount) {
-        if (amount <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than 0 for " + name);
+        int stackSize;
+        if(amount <= 0){
+            stackSize=1;
         }
-        ItemStack itemStack = new ItemStack(material, amount);
+        else{
+            stackSize = amount;
+        }
+
+        ItemStack itemStack = new ItemStack(material, stackSize);
         setCustomItemMeta(itemStack, name);
         return itemStack;
     }
@@ -155,10 +160,15 @@ public class DealerInventory implements InventoryHolder, Listener {
      * Create a custom item with an optional lore, supporting multiple lines.
      */
     public ItemStack createItemAndLore(Material material, int count, String name, ChatColor titleColor, ChatColor loreColor, String... lore) {
-        if (count <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than 0 for " + name);
+        int stackSize;
+        if(count <= 0){
+            stackSize=1;
         }
-        ItemStack item = new ItemStack(material, count);
+        else{
+            stackSize = count;
+        }
+
+        ItemStack item = new ItemStack(material, stackSize);
         ItemMeta meta = item.getItemMeta();
     
         if (meta != null) {
