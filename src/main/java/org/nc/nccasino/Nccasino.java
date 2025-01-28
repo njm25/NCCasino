@@ -116,6 +116,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
                         List<Integer> chipSizes = new ArrayList<>();
                         ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
+                        
                         if (chipSizeSection != null) {
                             for (String key : chipSizeSection.getKeys(false)) {
                                 chipSizes.add(getConfig().getInt("dealers." + internalName + ".chip-sizes." + key));
@@ -123,7 +124,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         }
                         chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
                 
-                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes);
+                        String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
+                        String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
+                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
                     }
                 }
             }
@@ -175,7 +178,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         }
                         chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
                 
-                        DealerVillager.updateGameType(villager, gameType, timer, animationMessage, name, chipSizes);
+                        String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
+                        String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
+                        DealerVillager.updateGameType(villager, gameType, timer, animationMessage, name, chipSizes, currencyMaterial, currencyName);
                         DealerVillager.setName(villager, gameType + " Dealer");
                         DealerVillager.setAnimationMessage(villager, animationMessage);
                     }
@@ -219,7 +224,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
             }
         }
 
-        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes);
+        String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
+        String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
+        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
     }
 
     private void reloadDealerVillagers() {
@@ -264,7 +271,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
                             }
                         }
 
-                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes);
+                        String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
+                        String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
+                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
                     }
                 }
             }

@@ -252,6 +252,8 @@ public class DealerVillager {
             plugin.getConfig().set("dealers." + internalName + ".display-name", newName);
             plugin.getConfig().set("dealers." + internalName + ".timer", defaultTimer);
             plugin.getConfig().set("dealers." + internalName + ".animation-message", "NCCasino - " + gameName);
+            plugin.getConfig().set("dealers." + internalName + ".currency.material", "EMERALD");
+            plugin.getConfig().set("dealers." + internalName + ".currency.name", "Emerald");
             setAnimationMessage(villager, gameName);
             setName(villager, newName);
            
@@ -263,7 +265,7 @@ public class DealerVillager {
             + ChatColor.GREEN + "' has been set to " + ChatColor.YELLOW + gameName + ChatColor.GREEN + ".");
     }
 
-    public static void updateGameType(Villager villager, String gameName, int timer, String anmsg, String newName, List<Integer> chipSizes) {
+    public static void updateGameType(Villager villager, String gameName, int timer, String anmsg, String newName, List<Integer> chipSizes, String currencyMaterial, String currencyName) {
         UUID dealerId = getUniqueId(villager);
         if (dealerId == null) return;
 
@@ -281,6 +283,8 @@ public class DealerVillager {
         plugin.getConfig().set("dealers." + internalName + ".game", gameName);
         plugin.getConfig().set("dealers." + internalName + ".timer", timer);
         plugin.getConfig().set("dealers." + internalName + ".animation-message", anmsg);
+        plugin.getConfig().set("dealers." + internalName + ".currency.material", currencyMaterial);
+        plugin.getConfig().set("dealers." + internalName + ".currency.name", currencyName);
                 // Update chip sizes dynamically
         if (chipSizes != null && !chipSizes.isEmpty()) {
             for (int i = 0; i < chipSizes.size(); i++) {
