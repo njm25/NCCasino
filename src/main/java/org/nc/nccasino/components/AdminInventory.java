@@ -26,7 +26,6 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
@@ -278,7 +277,9 @@ public class AdminInventory extends DealerInventory {
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
         event.setCancelled(true); // Prevent unintended item movement
-
+        if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
+            return;
+        }
         UUID playerId = player.getUniqueId();
         if (clickAllowed.getOrDefault(playerId, true)) {
             // Throttle clicking slightly to prevent spam
