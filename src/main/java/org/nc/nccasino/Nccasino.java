@@ -1,8 +1,24 @@
 package org.nc.nccasino;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.logging.Level;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
@@ -19,20 +35,6 @@ import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.listeners.DealerDeathHandler;
 import org.nc.nccasino.listeners.DealerEventListener;
 import org.nc.nccasino.listeners.DealerInteractListener;
-import java.util.logging.Level;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public final class Nccasino extends JavaPlugin implements Listener {
     private NamespacedKey INTERNAL_NAME_KEY; // Declare it here
@@ -112,7 +114,16 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
                         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
-                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name);
+                        List<Integer> chipSizes = new ArrayList<>();
+                        ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
+                        if (chipSizeSection != null) {
+                            for (String key : chipSizeSection.getKeys(false)) {
+                                chipSizes.add(getConfig().getInt("dealers." + internalName + ".chip-sizes." + key));
+                            }
+                        }
+                        chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
+                
+                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes);
                     }
                 }
             }
@@ -155,8 +166,16 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
                         String animationMessage = getConfig().getString("dealers." + internalName + ".animation-message");
-
-                        DealerVillager.updateGameType(villager, gameType, timer, animationMessage, name);
+                        List<Integer> chipSizes = new ArrayList<>();
+                        ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
+                        if (chipSizeSection != null) {
+                            for (String key : chipSizeSection.getKeys(false)) {
+                                chipSizes.add(getConfig().getInt("dealers." + internalName + ".chip-sizes." + key));
+                            }
+                        }
+                        chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
+                
+                        DealerVillager.updateGameType(villager, gameType, timer, animationMessage, name, chipSizes);
                         DealerVillager.setName(villager, gameType + " Dealer");
                         DealerVillager.setAnimationMessage(villager, animationMessage);
                     }
@@ -181,6 +200,14 @@ public final class Nccasino extends JavaPlugin implements Listener {
         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
+        List<Integer> chipSizes = new ArrayList<>();
+        ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
+        if (chipSizeSection != null) {
+            for (String key : chipSizeSection.getKeys(false)) {
+                chipSizes.add(getConfig().getInt("dealers." + internalName + ".chip-sizes." + key));
+            }
+        }
+        chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
 
         // Example special case for Blackjack
         if (!getConfig().contains("dealers." + internalName + ".stand-on-17") && "Blackjack".equals(gameType)) {
@@ -192,7 +219,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
             }
         }
 
-        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name);
+        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes);
     }
 
     private void reloadDealerVillagers() {
@@ -217,7 +244,15 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
                         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
-
+                        List<Integer> chipSizes = new ArrayList<>();
+                        ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
+                        if (chipSizeSection != null) {
+                            for (String key : chipSizeSection.getKeys(false)) {
+                                chipSizes.add(getConfig().getInt("dealers." + internalName + ".chip-sizes." + key));
+                            }
+                        }
+                        chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
+                
                         // Example special-case check
                         if (!getConfig().contains("dealers." + internalName + ".stand-on-17")
                             && "Blackjack".equals(gameType)) {
@@ -229,7 +264,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                             }
                         }
 
-                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name);
+                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes);
                     }
                 }
             }
