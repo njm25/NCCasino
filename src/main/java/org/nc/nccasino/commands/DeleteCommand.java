@@ -40,7 +40,6 @@ public class DeleteCommand implements CasinoCommand {
             sender.sendMessage(ChatColor.AQUA + "Usage: /ncc delete " + ChatColor.YELLOW + "<name>");
             return true;
         }
-        AdminInventory.deleteAssociatedAdminInventories((Player) sender);
 
         String internalName = args[1];    
         
@@ -69,6 +68,8 @@ public class DeleteCommand implements CasinoCommand {
             }
             return true;
         }
+        
+        AdminInventory.deleteAssociatedAdminInventories((Player) sender);
 
         if (internalName.equals("*")) {
             // Delete all known dealers
