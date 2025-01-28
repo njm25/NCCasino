@@ -3,10 +3,12 @@ package org.nc.nccasino.components;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -200,37 +202,10 @@ public class AdminInventory extends DealerInventory {
        /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
         addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
         addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
-        // Chip Sizes
-        for (int i = 1; i <= 5; i++) {
-            int chipValue = config.contains("dealers." + internalName + ".chip-sizes.size" + i)
-                ? config.getInt("dealers." + internalName + ".chip-sizes.size" + i)
-                : 1; // Default to 1 if missing
-            addItemAndLore(plugin.getCurrency(internalName), chipValue, "Edit Chip Size #" + i,  slotMapping.get(SlotOption.valueOf("CHIP_SIZE" + i)), "Current: " + chipValue);
+    
 
     
-        switch(this.currencyMode){
-            case CurrencyMode.VAULT:
-                addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY), "[Disabled For Vault Mode]");
-
-                //addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Select Currency [Disabled For Vault Mode]"),slotMapping.get(SlotOption.EDIT_CURRENCY));
-                //addItem(createCustomItem(Material.CHEST,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-            break;
-            case CurrencyMode.VANILLA:
-                addItemAndLore(plugin.getCurrency(internalName), 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY),"Current: §a"+plugin.getCurrencyName(internalName), "Drag item here to change");
-                //addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-                //addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-            break;
-            case CurrencyMode.CUSTOM:
-                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Custom Currency",1),slotMapping.get(SlotOption.EDIT_CURRENCY));
-                //addItem(createEnchantedItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-                //addItem(createCustomItem(Material.ENDER_CHEST,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-                break;
-            default:
-            addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-            //addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-            break;
-        }
-    } 
+        updateCurrencyButtons();
     }
 
   
@@ -476,7 +451,6 @@ public class AdminInventory extends DealerInventory {
         String internalName= DealerVillager.getInternalName(dealer);
         Inventory inv = getInventory();
         if (inv == null) return;
-    
         switch(this.currencyMode){
             case CurrencyMode.VAULT:
                 addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY), "[Disabled For Vault Mode]");
@@ -499,6 +473,13 @@ public class AdminInventory extends DealerInventory {
             //addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
             break;
         }
+            // Chip Sizes
+            for (int i = 1; i <= 5; i++) {
+                int chipValue = plugin.getConfig().contains("dealers." + internalName + ".chip-sizes.size" + i)
+                    ? plugin.getConfig().getInt("dealers." + internalName + ".chip-sizes.size" + i)
+                    : 1; // Default to 1 if missing
+                addItemAndLore(plugin.getCurrency(internalName), chipValue, "Edit Chip Size #" + i,  slotMapping.get(SlotOption.valueOf("CHIP_SIZE" + i)), "Current: " + chipValue);
+    } 
     }
 
     private void handleEditChipSize(Player player,int chipInd) {
@@ -619,83 +600,54 @@ public class AdminInventory extends DealerInventory {
         }
     }
 
-    private void handleEditCurrency(Player player,InventoryClickEvent event) {
+    private void handleEditCurrency(Player player, InventoryClickEvent event) {
         UUID playerId = player.getUniqueId();
-        int slot = event.getSlot();
         AdminInventory adminInv = adminInventories.get(playerId);
         Inventory topInv = adminInv.getInventory();
-
-        // If in Vault mode, just block it
+        
         if (adminInv.currencyMode == CurrencyMode.VAULT) {
-            player.sendMessage("§cCurrency slot disabled in VAULT mode.");
+            player.sendMessage("§cCurrency selection is disabled in VAULT mode.");
             return;
         }
-
-        // CASE 1: Player is putting an item INTO the currency slot
-        //   => either with a mouse cursor item or SHIFT-click from bottom
-        // event.getCursor() is the item on their mouse pointer
-        // event.getCurrentItem() is the item in the slot (if any)
-        // SHIFT-click scenario: event.isShiftClick()
-
-        // Check if they are SHIFT-clicking the same top slot (rare) or if there's an item in their cursor
-        // Usually for SHIFT from bottom → top, event.getCurrentItem() is the stack from the bottom
-        // but the slot is in top. 
-        ItemStack cursor = event.getCursor();       // item on mouse
-        ItemStack clickedItem = event.getCurrentItem(); // item in the clicked slot
-
-        // If they are picking UP the ghost item from slot 13 to remove it:
-        if (clickedItem != null && clickedItem.getType() != Material.AIR && !event.isShiftClick() && cursor == null) {
-            // This means they tried to pick up the "ghost" item from slot 13
-            //topInv.setItem(slot, null); // remove the ghost
-            player.sendMessage("§cDrag an item into this slot to change the currency");
-            return;
-        }
-
-        // Otherwise, they might be placing an item in:
-        // SHIFT-click from bottom inventory → top slot 13
-        /* 
-        if (event.isShiftClick()) {
-            // The stack is the one in the player's bottom slot
-            // so we can get it from event.getCurrentItem() 
-            if (clickedItem != null && clickedItem.getType() != Material.AIR) {
-                // Make a ghost copy
-                ItemStack ghostCopy = clickedItem.clone();
-                ghostCopy.setAmount(1); // or entire stack if you want
-                topInv.setItem(slot, ghostCopy);
-
-                // TODO: store to config as your "currency"
-                // e.g. storeVanillaOrCustomCurrency(ghostCopy);
-
-                player.sendMessage("§aCurrency updated (ghost copy).");
+    
+        int slot = slotMapping.get(SlotOption.EDIT_CURRENCY);
+        ItemStack cursorItem = event.getCursor(); // Item being dragged
+    
+        if (cursorItem != null && cursorItem.getType() != Material.AIR) {
+            ItemStack selectedItem = cursorItem.clone();
+            selectedItem.setAmount(1); // Store a single reference item
+    
+            // Extract material and custom name
+            Material selectedMaterial = selectedItem.getType();
+            String rawName = selectedMaterial.name();
+                    
+            // Convert underscore to spaces and apply Pascal Case
+            String displayName = Arrays.stream(rawName.split("_"))
+                    .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
+                    .collect(Collectors.joining(" "));
+                    
+            if (selectedItem.getItemMeta() != null && selectedItem.getItemMeta().hasDisplayName()) {
+                displayName = selectedItem.getItemMeta().getDisplayName();
             }
-            return;
-        }*/
-
-        // Normal mouse drag from bottom → slot 13
-        if (cursor != null && cursor.getType() != Material.AIR) {
-            // Create a ghost copy of what's on the mouse
-            ItemStack ghostCopy = cursor.clone();
-            ghostCopy.setAmount(1); // usually 1 is enough for "ghost"
-            topInv.setItem(slot, ghostCopy);
-
-            // TODO: store to config as your "currency"
-            // e.g. storeVanillaOrCustomCurrency(ghostCopy);
-
-            player.sendMessage("§aCurrency updated (ghost copy).");
+            
+            // Save to config
+            String internalName = DealerVillager.getInternalName(dealer);
+            plugin.getConfig().set("dealers." + internalName + ".currency.material", selectedMaterial.name());
+            plugin.getConfig().set("dealers." + internalName + ".currency.name", displayName);
+            plugin.saveConfig();
+    
+            // Update inventory display
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                updateCurrencyButtons();
+                player.updateInventory(); // Ensure client sees the change immediately
+            }, 1L);
+    
+    
+            player.sendMessage("§aCurrency updated to: " + displayName + " (" + selectedMaterial.name() + ")");
+            event.setCancelled(true);
         }
-
-        return; // done handling slot 13
-        /* 
-        if (this.currencyMode == CurrencyMode.VAULT) {
-            player.sendMessage("§cCannot select currency item in VAULT mode.");
-            return;
-        }
-        UUID playerId = player.getUniqueId();
-        currencyEditMode.put(player.getUniqueId(), this.dealer);
-        localVillager.put(playerId, dealer);
-        player.sendMessage("§aPlease click an item in your (bottom) inventory to set as the new currency...");*/
-        // Implement currency editing logic here
     }
+    
 
     private void handleUseVault(Player player) {
         player.sendMessage("§aUsing vault...");
