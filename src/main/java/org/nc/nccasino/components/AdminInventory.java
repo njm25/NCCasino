@@ -3,10 +3,12 @@ package org.nc.nccasino.components;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -53,6 +55,7 @@ public class AdminInventory extends DealerInventory {
     private static final Map<UUID, Villager> timerEditMode = new HashMap<>();
     private static final Map<UUID, Villager> amsgEditMode = new HashMap<>();
     private static final Map<UUID, Villager> chipEditMode = new HashMap<>();
+    private static final Map<UUID, Villager> currencyEditMode = new HashMap<>();
     // All active AdminInventories by player ID
     public static final Map<UUID, AdminInventory> adminInventories = new HashMap<>();
 
@@ -65,34 +68,44 @@ public class AdminInventory extends DealerInventory {
         EDIT_GAME_TYPE,
         MOVE_DEALER,
         DELETE_DEALER,
+        TOGGLE_CURRENCY_MODE,
         EDIT_CURRENCY,
-        USE_VAULT,
+        //USE_VAULT,
         EDIT_TIMER,
         EDIT_ANIMATION_MESSAGE,
         CHIP_SIZE1,
         CHIP_SIZE2,
         CHIP_SIZE3,
         CHIP_SIZE4,
-        CHIP_SIZE5
+        CHIP_SIZE5,
+
     }
+
+        private enum CurrencyMode {
+            VANILLA,
+            CUSTOM,
+            VAULT
+        }
+        private CurrencyMode currencyMode;
 
     // The slot positions of each option in the inventory
     private final Map<SlotOption, Integer> slotMapping = new HashMap<>() {{
-        put(SlotOption.EDIT_DISPLAY_NAME, 10);
-        put(SlotOption.EDIT_GAME_TYPE, 12);
-        put(SlotOption.EDIT_TIMER, 14);
-        put(SlotOption.EDIT_ANIMATION_MESSAGE, 16);
+        put(SlotOption.EDIT_DISPLAY_NAME, 2);
+        put(SlotOption.EDIT_GAME_TYPE, 0);
+        put(SlotOption.EDIT_TIMER, 6);
+        put(SlotOption.EDIT_ANIMATION_MESSAGE, 8);
 
-        // put(SlotOption.USE_VAULT, 28);
-        // put(SlotOption.EDIT_CURRENCY, 30);
+        // put(SlotOption.USE_VAULT, 28);   
+        put(SlotOption.EDIT_CURRENCY, 13);
+        put(SlotOption.TOGGLE_CURRENCY_MODE, 31);
 
-        put(SlotOption.MOVE_DEALER, 48);
-        put(SlotOption.DELETE_DEALER, 50);
-        put(SlotOption.CHIP_SIZE1, 29);
-        put(SlotOption.CHIP_SIZE2, 30);
-        put(SlotOption.CHIP_SIZE3, 31);
-        put(SlotOption.CHIP_SIZE4, 32);
-        put(SlotOption.CHIP_SIZE5, 33);
+        put(SlotOption.MOVE_DEALER, 37);
+        put(SlotOption.DELETE_DEALER, 43);
+        put(SlotOption.CHIP_SIZE1, 20);
+        put(SlotOption.CHIP_SIZE2, 21);
+        put(SlotOption.CHIP_SIZE3, 22);
+        put(SlotOption.CHIP_SIZE4, 23);
+        put(SlotOption.CHIP_SIZE5, 24);
 
     }};
 
@@ -100,7 +113,7 @@ public class AdminInventory extends DealerInventory {
      * Constructor: creates an AdminInventory for a specific dealer, owned by a specific player.
      */
     public AdminInventory(UUID dealerId, Player player, Nccasino plugin) {
-        super(player.getUniqueId(), 54, 
+        super(player.getUniqueId(), 45, 
         
             DealerVillager.getInternalName((Villager) player.getWorld()
                     .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
@@ -132,6 +145,9 @@ public class AdminInventory extends DealerInventory {
                 .findFirst().orElse(null);
         }
 
+//////////VVVVVVVVVVVVVexpand to retrieve mode from config once thats set up
+        this.currencyMode = CurrencyMode.VANILLA;
+
         registerListener();
         adminInventories.put(this.ownerId, this);
         initializeAdminMenu();
@@ -144,6 +160,8 @@ public class AdminInventory extends DealerInventory {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
     private void initializeAdminMenu() {
+
+
         String internalName = DealerVillager.getInternalName(dealer);
     
         // Retrieve dealer config values safely
@@ -158,7 +176,22 @@ public class AdminInventory extends DealerInventory {
         //String currencyMaterial = config.getString("dealers." + internalName + ".currency.material", "UNKNOWN");
        // String currencyName = config.getString("dealers." + internalName + ".currency.name", "Unknown Currency");
         addItemAndLore(Material.NAME_TAG, 1, "Edit Display Name",  slotMapping.get(SlotOption.EDIT_DISPLAY_NAME), "Current: " + DealerVillager.getName(dealer));
-        addItemAndLore(Material.PAPER, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: " + currentGame);
+        switch(currentGame){
+            case"Mines":{
+                addItemAndLore(Material.TNT, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: " + currentGame);
+                break;
+            }
+            case"Roulette":{
+                addItemAndLore(Material.ENDER_PEARL, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: " + currentGame);
+                break;
+            }  
+            case"Blackjack":{
+                addItemAndLore(Material.CREEPER_HEAD, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: " + currentGame);
+                break;
+            }
+            default:
+            break;
+        }
         if(currentGame!="Mines"){
         addItemAndLore(Material.CLOCK, currentTimer, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Current: " + currentTimer);
     }
@@ -169,15 +202,12 @@ public class AdminInventory extends DealerInventory {
        /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
         addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
         addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
-        // Chip Sizes
-        for (int i = 1; i <= 5; i++) {
-            int chipValue = config.contains("dealers." + internalName + ".chip-sizes.size" + i)
-                ? config.getInt("dealers." + internalName + ".chip-sizes.size" + i)
-                : 1; // Default to 1 if missing
-            addItemAndLore(plugin.getCurrency(internalName), chipValue, "Edit Chip Size #" + i,  slotMapping.get(SlotOption.valueOf("CHIP_SIZE" + i)), "Current: " + chipValue);
-        }
-    }
     
+
+    
+        updateCurrencyButtons();
+    }
+
   
     /**
      * Returns whether the player is currently editing something else (rename, timer, etc.).
@@ -189,8 +219,9 @@ public class AdminInventory extends DealerInventory {
             || (amsgEditMode.get(playerId) != null)
             || (moveMode.get(playerId) != null)
             || (chipEditMode.get(playerId) != null)
-            || (localVillager.get(playerId) != null);
-        
+            || (localVillager.get(playerId) != null)
+            || (currencyEditMode.get(playerId) != null);
+
     }
     
     public static List<String> playerOccupations(UUID playerId) {
@@ -210,6 +241,9 @@ public class AdminInventory extends DealerInventory {
         }
         if (chipEditMode.get(playerId) != null) {
             occupations.add("chip size");
+        }
+        if (currencyEditMode.get(playerId) != null) {///////////might never get to this
+            occupations.add("selecting currency item");
         }
         return occupations;
     }
@@ -233,25 +267,68 @@ public class AdminInventory extends DealerInventory {
         if ((villager = chipEditMode.get(playerId)) != null) {
             villagers.add(villager);
         }
+        if ((villager = currencyEditMode.get(playerId)) != null) {
+            villagers.add(villager);
+        }
     
         return villagers;
     }
     
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        Player player = (Player) event.getWhoClicked();
+        UUID playerId = player.getUniqueId();
+    
+        // 1) Make sure this event is for an AdminInventory
+        if (!adminInventories.containsKey(playerId)) return;
+        AdminInventory adminInv = adminInventories.get(playerId);
+        if (adminInv == null) return;
+    
+        Inventory topInv = adminInv.getInventory();
+        if (topInv == null) return;
+    
+        // 2) Check where they clicked
+        if (event.getClickedInventory() == null) return; // clicked outside any inventory
+        boolean clickedTop = event.getClickedInventory().equals(topInv);
+        int slot = event.getSlot();
+    
+        // 3) If user clicked inside the TOP (admin) inventory:
+        if (clickedTop) {
+                handleClick(slot, player,event);
+        }
+        else {
+            // 4) Player clicked in their BOTTOM inventory
+            if (event.isShiftClick()) {
+                // By default, SHIFT-click will attempt to move items into the top inventory
+                event.setCancelled(true);
+                player.sendMessage("§cShift-click is disabled for the admin inventory.");
+            }
+            else{
 
+            }
+        }
+    }
+    
     /**
      * Handle inventory clicks for AdminInventory.
      */
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
         event.setCancelled(true); // Prevent unintended item movement
+        if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
+            return;
+        }
 
+  
         UUID playerId = player.getUniqueId();
-        if (clickAllowed.getOrDefault(playerId, true)) {
+    if (clickAllowed.getOrDefault(playerId, true)) {
             // Throttle clicking slightly to prevent spam
-            clickAllowed.put(playerId, false);
-            Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);
+        clickAllowed.put(playerId, false);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);
             String internalName = DealerVillager.getInternalName(dealer);
             String currentGame = plugin.getConfig().getString("dealers." + internalName + ".game", "Unknown");
+
+            event.setCancelled(true);
             SlotOption option = getKeyByValue(slotMapping, slot);
             if (option != null) {
                 switch (option) {
@@ -272,11 +349,16 @@ public class AdminInventory extends DealerInventory {
                         if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case EDIT_CURRENCY:
-                        handleEditCurrency(player);
+                        handleEditCurrency(player,event);
                         if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
+                        /* 
                     case USE_VAULT:
                         handleUseVault(player);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        break;*/
+                     case TOGGLE_CURRENCY_MODE:
+                        handleToggleCurrencyMode(player);
                         if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case EDIT_TIMER:
@@ -317,6 +399,8 @@ public class AdminInventory extends DealerInventory {
                         break;
                 }
             }
+
+        
         } else {
             player.sendMessage("§cPlease wait before clicking again!");
         }
@@ -329,6 +413,75 @@ public class AdminInventory extends DealerInventory {
         timerEditMode.put(playerId, dealer);
         player.closeInventory();
         player.sendMessage("§aType the new timer in chat.");
+    }
+
+    private void handleToggleCurrencyMode(Player player) {
+        CurrencyMode next;
+        switch (this.currencyMode) {
+            case VANILLA: next = CurrencyMode.CUSTOM; break;
+            case CUSTOM:  next = CurrencyMode.VAULT;  break;
+            default:      next = CurrencyMode.VANILLA; break;
+        }
+        this.currencyMode = next;
+
+        /* 
+        // Update the config
+        if (dealer != null) {
+            String internalName = DealerVillager.getInternalName(dealer);
+            plugin.getConfig().set("dealers." + internalName + ".currency.mode", next.name());
+            plugin.saveConfig();
+        }*/
+
+        // Update the button labels in the admin inventory
+        updateCurrencyButtons();
+        //player.sendMessage("§eSwitched currency mode to: §a" + this.currencyMode.name());
+    }
+
+
+    private void handleSelectCurrency(Player player) {
+        
+        if (this.currencyMode == CurrencyMode.VAULT) {
+            player.sendMessage("§cCannot select currency item in VAULT mode.");
+            return;
+        }
+        // Place the player into "select currency mode"
+       //currencyEditMode.put(player.getUniqueId(), this.dealer);
+        player.sendMessage("§aPlease click an item in your (bottom) inventory to set as the new currency...");
+    }
+
+    private void updateCurrencyButtons() {
+        String internalName= DealerVillager.getInternalName(dealer);
+        Inventory inv = getInventory();
+        if (inv == null) return;
+        switch(this.currencyMode){
+            case CurrencyMode.VAULT:
+                addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY), "[Disabled For Vault Mode]");
+
+                //addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Select Currency [Disabled For Vault Mode]"),slotMapping.get(SlotOption.EDIT_CURRENCY));
+                //addItem(createCustomItem(Material.CHEST,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+            break;
+            case CurrencyMode.VANILLA:
+                addItemAndLore(plugin.getCurrency(internalName), 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY),"Current: §a"+plugin.getCurrencyName(internalName), "Drag item here to change");
+                //addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
+                //addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+            break;
+            case CurrencyMode.CUSTOM:
+                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Custom Currency",1),slotMapping.get(SlotOption.EDIT_CURRENCY));
+                //addItem(createEnchantedItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                //addItem(createCustomItem(Material.ENDER_CHEST,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                break;
+            default:
+            addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
+            //addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+            break;
+        }
+            // Chip Sizes
+            for (int i = 1; i <= 5; i++) {
+                int chipValue = plugin.getConfig().contains("dealers." + internalName + ".chip-sizes.size" + i)
+                    ? plugin.getConfig().getInt("dealers." + internalName + ".chip-sizes.size" + i)
+                    : 1; // Default to 1 if missing
+                addItemAndLore(plugin.getCurrency(internalName), chipValue, "Edit Chip Size #" + i,  slotMapping.get(SlotOption.valueOf("CHIP_SIZE" + i)), "Current: " + chipValue);
+    } 
     }
 
     private void handleEditChipSize(Player player,int chipInd) {
@@ -429,6 +582,7 @@ public class AdminInventory extends DealerInventory {
                         Bukkit.dispatchCommand(player, "ncc delete " + DealerVillager.getInternalName(dealer));
                     },
                     (uuid) -> {
+
                         // Cancel action: re-open the AdminInventory
                         if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
                             AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
@@ -439,6 +593,7 @@ public class AdminInventory extends DealerInventory {
                             player.openInventory(adminInventory.getInventory());
                             localVillager.remove(player.getUniqueId());
                         }
+
                     },
                     plugin
             );
@@ -447,10 +602,54 @@ public class AdminInventory extends DealerInventory {
         }
     }
 
-    private void handleEditCurrency(Player player) {
-        player.sendMessage("§aEditing currency...");
-        // Implement currency editing logic here
+    private void handleEditCurrency(Player player, InventoryClickEvent event) {
+        UUID playerId = player.getUniqueId();
+        AdminInventory adminInv = adminInventories.get(playerId);
+        Inventory topInv = adminInv.getInventory();
+        
+        if (adminInv.currencyMode == CurrencyMode.VAULT) {
+            player.sendMessage("§cCurrency selection is disabled in VAULT mode.");
+            return;
+        }
+    
+        int slot = slotMapping.get(SlotOption.EDIT_CURRENCY);
+        ItemStack cursorItem = event.getCursor(); // Item being dragged
+    
+        if (cursorItem != null && cursorItem.getType() != Material.AIR) {
+            ItemStack selectedItem = cursorItem.clone();
+            selectedItem.setAmount(1); // Store a single reference item
+    
+            // Extract material and custom name
+            Material selectedMaterial = selectedItem.getType();
+            String rawName = selectedMaterial.name();
+                    
+            // Convert underscore to spaces and apply Pascal Case
+            String displayName = Arrays.stream(rawName.split("_"))
+                    .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
+                    .collect(Collectors.joining(" "));
+                    
+            if (selectedItem.getItemMeta() != null && selectedItem.getItemMeta().hasDisplayName()) {
+                displayName = selectedItem.getItemMeta().getDisplayName();
+            }
+            
+            // Save to config
+            String internalName = DealerVillager.getInternalName(dealer);
+            plugin.getConfig().set("dealers." + internalName + ".currency.material", selectedMaterial.name());
+            plugin.getConfig().set("dealers." + internalName + ".currency.name", displayName);
+            plugin.saveConfig();
+    
+            // Update inventory display
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                updateCurrencyButtons();
+                player.updateInventory(); // Ensure client sees the change immediately
+            }, 1L);
+    
+    
+            player.sendMessage("§aCurrency updated to: " + displayName + " (" + selectedMaterial.name() + ")");
+            event.setCancelled(true);
+        }
     }
+    
 
     private void handleUseVault(Player player) {
         player.sendMessage("§aUsing vault...");

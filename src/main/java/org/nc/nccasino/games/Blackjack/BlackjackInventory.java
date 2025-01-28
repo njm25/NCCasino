@@ -1048,23 +1048,6 @@ private void dealInitialCards() {
     }, delay + 20L); // Delay slightly longer to allow cards to be fully dealt
 }
 
-private ItemStack createEnchantedItem(Material material, String name, int amount) {
-    ItemStack itemStack = new ItemStack(material, amount);
-    ItemMeta meta = itemStack.getItemMeta();
-    if (meta != null) {
-        
-        meta.setDisplayName(name);
-       
-        // Add a harmless enchantment to make the item glow
-        meta.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
-        
-        // Hide the enchantment's lore for a clean look
-        meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
-        itemStack.setItemMeta(meta);
-    }
-    return itemStack;
-}
-
 private void startNextPlayerTurn() {
     if (!gameActive || playerSeats.isEmpty()) {
        // cancelGame(); // If game is no longer active or all players have left, stop immediately

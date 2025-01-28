@@ -124,6 +124,11 @@ public class DealerInteractListener implements Listener {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         Player player = (Player) event.getWhoClicked();
+
+        if (event.getInventory().getHolder() instanceof AdminInventory) {
+            return; // Do not handle, let AdminInventory handle it
+        }
+
         if (event.getInventory().getHolder() instanceof DealerInventory) {
             event.setCancelled(true);
             DealerInventory dealerInventory = (DealerInventory) event.getInventory().getHolder();
