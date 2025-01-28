@@ -144,36 +144,36 @@ public class AdminInventory extends DealerInventory {
     private void registerListener() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
-
-    /**
-     * Build out the Admin Menu items.
-     */
     private void initializeAdminMenu() {
-        String internalName= DealerVillager.getInternalName(dealer);
-        addItem(createCustomItem(Material.NAME_TAG, "Edit Display Name"),
-                slotMapping.get(SlotOption.EDIT_DISPLAY_NAME));
-        addItem(createCustomItem(Material.PAPER, "Edit Game Type"),
-                slotMapping.get(SlotOption.EDIT_GAME_TYPE));
-        addItem(createCustomItem(Material.CLOCK, "Edit Timer"),
-                slotMapping.get(SlotOption.EDIT_TIMER));
-        addItem(createCustomItem(Material.RED_STAINED_GLASS_PANE, "Edit Animation Message"),
-                slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE));
-
-        // addItem(createCustomItem(Material.CHEST, "Use Vault"), slotMapping.get(SlotOption.USE_VAULT));
-        // addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-
-        addItem(createCustomItem(Material.COMPASS, "Move"),
-                slotMapping.get(SlotOption.MOVE_DEALER));
-        addItem(createCustomItem(Material.BARRIER, "Delete"),
-                slotMapping.get(SlotOption.DELETE_DEALER));
-        addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 1st Chip Value (Currently: "+plugin.getChipName(internalName, 1)+")", (int)plugin.getChipValue(internalName, 1)),slotMapping.get(SlotOption.CHIP_SIZE1));
-        addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 2nd Chip Value (Currently: "+plugin.getChipName(internalName, 2)+")", (int)plugin.getChipValue(internalName, 2)),slotMapping.get(SlotOption.CHIP_SIZE2));
-        addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 3rd Chip Value (Currently: "+plugin.getChipName(internalName, 3)+")", (int)plugin.getChipValue(internalName, 3)),slotMapping.get(SlotOption.CHIP_SIZE3));
-        addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 4th Chip Value (Currently: "+plugin.getChipName(internalName, 4)+")", (int)plugin.getChipValue(internalName, 4)),slotMapping.get(SlotOption.CHIP_SIZE4));
-        addItem(createCustomItem(plugin.getCurrency(internalName),  "Edit 5th Chip Value (Currently: "+plugin.getChipName(internalName, 5)+")", (int)plugin.getChipValue(internalName, 5)),slotMapping.get(SlotOption.CHIP_SIZE5));
-    } 
-
-
+        String internalName = DealerVillager.getInternalName(dealer);
+    
+        // Retrieve dealer config values safely
+        FileConfiguration config = plugin.getConfig();
+        String currentGame = config.getString("dealers." + internalName + ".game", "Unknown");
+        int currentTimer = config.contains("dealers." + internalName + ".timer")
+            ? config.getInt("dealers." + internalName + ".timer")
+            : 10; // Default to 10 if missing
+    
+        String currentAnimationMessage = config.getString("dealers." + internalName + ".animation-message", "Default Message");
+    
+        //String currencyMaterial = config.getString("dealers." + internalName + ".currency.material", "UNKNOWN");
+       // String currencyName = config.getString("dealers." + internalName + ".currency.name", "Unknown Currency");
+        addItemAndLore(Material.NAME_TAG, 1, "Edit Display Name",  slotMapping.get(SlotOption.EDIT_DISPLAY_NAME), "Current: " + DealerVillager.getName(dealer));
+        addItemAndLore(Material.PAPER, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: " + currentGame);
+        addItemAndLore(Material.CLOCK, currentTimer, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Current: " + currentTimer);
+        addItemAndLore(Material.RED_STAINED_GLASS_PANE, 1, "Edit Animation Message",  slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE), "Current: " + currentAnimationMessage);
+       /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
+        addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
+        addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
+        // Chip Sizes
+        for (int i = 1; i <= 5; i++) {
+            int chipValue = config.contains("dealers." + internalName + ".chip-sizes.size" + i)
+                ? config.getInt("dealers." + internalName + ".chip-sizes.size" + i)
+                : 1; // Default to 1 if missing
+            addItemAndLore(plugin.getCurrency(internalName), chipValue, "Edit Chip Size #" + i,  slotMapping.get(SlotOption.valueOf("CHIP_SIZE" + i)), "Current: " + chipValue);
+        }
+    }
+    
   
     /**
      * Returns whether the player is currently editing something else (rename, timer, etc.).
