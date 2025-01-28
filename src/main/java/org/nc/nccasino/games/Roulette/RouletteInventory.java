@@ -1,38 +1,39 @@
 package org.nc.nccasino.games.Roulette;
 
-import org.nc.nccasino.entities.DealerInventory;
-import org.nc.nccasino.entities.DealerVillager;
-import org.nc.nccasino.objects.Pair;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.Stack;
+import java.util.UUID;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.InventoryView;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
-import org.nc.VSE.*;
+import org.bukkit.inventory.InventoryView;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.scheduler.BukkitTask;
+import org.nc.VSE.MultiChannelEngine;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.entities.DealerInventory;
+import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.helpers.SoundHelper;
-
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.Stack;
-import java.util.UUID;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
+import org.nc.nccasino.objects.Pair;
 
 public class RouletteInventory extends DealerInventory {
     private final MultiChannelEngine mce;
@@ -116,7 +117,10 @@ public class RouletteInventory extends DealerInventory {
     private boolean flip4=true;
     private int wheelSpinDirection = 1; // 1 for clockwise, -1 for counter-clockwise
     private int lastDisplayedOffset = 0;
-    
+    private final Set<Integer> activeTaskIds = new HashSet<>();
+    private BukkitTask miscTask;
+    private int miscTaskId;
+
     /////////////////////////////////////////////////////////////////////////////////////////
     private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
 
@@ -241,6 +245,10 @@ public class RouletteInventory extends DealerInventory {
     @Override
     public void delete() {
         super.delete();
+         for (int taskId : activeTaskIds) {
+            if(taskId!=1){
+        Bukkit.getScheduler().cancelTask(taskId);}
+        }
         if (spinTaskId != -1) {
             Bukkit.getScheduler().cancelTask(spinTaskId);
             spinTaskId = -1;
@@ -597,11 +605,13 @@ private void exitGame(Player player) {
                 }
             }*/
 
-            Bukkit.getScheduler().runTaskLater(plugin, () -> 
+            miscTask=Bukkit.getScheduler().runTaskLater(plugin, () -> 
             mce.playSong("RouletteWheel", RouletteSongs.getBallLaunch(), false, "Ball Launch")
             , 20L);
+            activeTaskIds.add(miscTask.getTaskId()); // Store the task ID
 
-            Bukkit.getScheduler().runTaskLater(plugin, () -> startBallMovement(false), 100L);
+            miscTask=Bukkit.getScheduler().runTaskLater(plugin, () -> startBallMovement(false), 100L);
+            activeTaskIds.add(miscTask.getTaskId());
             // Transition wheel to slower spin after bets close
             // Update to spinning ball and wheel
             startSpinAnimation(activePlayers);
@@ -811,9 +821,10 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
     if (!ballMovementStarted) return;
 
     if (isSwitchingQuadrant) {
-        Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+        miscTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
             moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
         }, currentBallDelay[0]);
+        activeTaskIds.add(miscTaskId); // Store the task ID
         return;
     }
 
@@ -881,7 +892,7 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
         updateBallPosition(ballSpinDirection);
 
         // Schedule delay for ball to disappear, then switch quadrant view
-        Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+        miscTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
             // Remove ball from current slot
             if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
                 inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
@@ -930,19 +941,25 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
             }
     
             // Delay to simulate ball going off-screen before quadrant switch
-            Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+             miscTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
                 switchQuadrant();
                
                 // Delay to simulate ball still off-screen after quadrant switch
-                Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+                miscTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
                     ballCurrentIndex = getStartingIndexForNewQuadrant();
                     updateBallPosition(ballSpinDirection);
                    
                     isSwitchingQuadrant = false;
                     moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
                 }, tempBallDelay[0]); // Delay after switching quadrants
+                
+                activeTaskIds.add(miscTaskId); 
             }, tempBallDelay[0]); // Delay before switching quadrants
+           
+            activeTaskIds.add(miscTaskId); 
         }, 3L); // Delay before ball disappears
+        
+        activeTaskIds.add(miscTaskId); 
         return;
     }
 
@@ -992,9 +1009,10 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
         }
     }
 
-    Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+     miscTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
         moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
     }, currentBallDelay[0]);
+    activeTaskIds.add(miscTaskId); 
 }
 
 private void adjustBallSpeed(long[] currentBallDelay, int slotsMoved, int ballAccelerationSlots, int totalSlots, int ballDecelerationSlots) {
@@ -1160,7 +1178,7 @@ private void handleWinningNumber() {
     for (Player player : playersWithBets) {
         if (player.isOnline()) {
             // Schedule the processing to run after a delay
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            miscTask=Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 BettingTable bettingTable = Tables.get(player);
                 if (bettingTable != null) {
                     // Get the bet stack directly from the BettingTable
@@ -1185,11 +1203,15 @@ private void handleWinningNumber() {
                     plugin.getLogger().warning("No betting table found for player: " + player.getName());
                 }
             }, 30L);
+            
+            activeTaskIds.add(miscTask.getTaskId()); 
         }
     }
 
     // Reset for the next round
-    Bukkit.getScheduler().runTaskLater(plugin, this::prepareNextRound, 75L);
+    miscTask=Bukkit.getScheduler().runTaskLater(plugin, this::prepareNextRound, 75L);
+    activeTaskIds.add(miscTask.getTaskId()); 
+
 }
 
 private void prepareNextRound() {
@@ -1533,9 +1555,11 @@ private void switchStayToQuadrant(int quad){
                                     switchQauadrant();
 
                                     // Delay to simulate ball still off-screen after quadrant switch
-                                    Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+                                    miscTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
                                        //?something goes here?
                                     }, 2L); // Delay after switching quadrants
+                                    activeTaskIds.add(miscTaskId); 
+
                                 }, 2L); // Delay before switching quadrants
                             }, 3L); // Delay before ball disappears 
                             }
