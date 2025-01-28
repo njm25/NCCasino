@@ -50,8 +50,8 @@ public class GameOptionsInventory extends DealerInventory {
     }
 
     private void initializeMenu() {
-        addItem(createCustomItem(Material.DIAMOND_BLOCK, "Blackjack"), 0);
-        addItem(createCustomItem(Material.EMERALD_BLOCK, "Roulette"), 1);
+        addItem(createCustomItem(Material.CREEPER_HEAD, "Blackjack",1), 0);
+        addItem(createCustomItem(Material.ENDER_PEARL, "Roulette"), 1);
         addItem(createCustomItem(Material.TNT, "Mines"), 2);
     }
 
