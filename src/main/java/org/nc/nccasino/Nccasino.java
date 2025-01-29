@@ -32,6 +32,7 @@ import org.nc.nccasino.commands.CommandExecution;
 import org.nc.nccasino.commands.CommandTabCompleter;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.helpers.Metrics;
 import org.nc.nccasino.listeners.DealerDeathHandler;
 import org.nc.nccasino.listeners.DealerEventListener;
 import org.nc.nccasino.listeners.DealerInteractListener;
@@ -71,6 +72,13 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
         // Load any pre-existing dealer villagers from config
         loadDealerVillagers();
+
+
+        //bStats support
+        int pluginId = 24579; // <-- Replace with the id of your plugin!
+        @SuppressWarnings("unused")
+        Metrics metrics = new Metrics(this, pluginId);
+        
 
         getLogger().info("NCcasino plugin enabled!");
     }
