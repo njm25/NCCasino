@@ -134,21 +134,8 @@ public class GameOptionsInventory extends DealerInventory {
         }
     
         UUID dealerId = DealerVillager.getUniqueId(dealer);
-        DealerInventory inventory = DealerInventory.inventories.get(dealerId);
-        if (inventory != null) {
-            inventory.delete();
-        }
 
         String internalName = DealerVillager.getInternalName(dealer);
-
-        if (!plugin.getConfig().contains("dealers." + internalName + ".stand-on-17") && gameType.equals("Blackjack")) {
-            plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
-        } else {
-            int hasStand17Config = plugin.getConfig().getInt("dealers." + internalName + ".stand-on-17");
-            if (hasStand17Config > 100 || hasStand17Config < 0) {
-                plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
-            }
-        }
 
 
         ConfirmInventory confirmInventory = new ConfirmInventory(
@@ -159,6 +146,17 @@ public class GameOptionsInventory extends DealerInventory {
 
                 DealerVillager.switchGame(dealer, gameType, player, true);
                 player.closeInventory();
+
+                if (!plugin.getConfig().contains("dealers." + internalName + ".stand-on-17") && gameType.equals("Blackjack")) {
+                    plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+                } else {
+                    int hasStand17Config = plugin.getConfig().getInt("dealers." + internalName + ".stand-on-17");
+                    if (hasStand17Config > 100 || hasStand17Config < 0) {
+                        plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+                    }
+                }
+
+        
                 this.delete();
             },
             (uuid) -> {
