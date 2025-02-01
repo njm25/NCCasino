@@ -731,7 +731,6 @@ public class AdminInventory extends DealerInventory {
         UUID playerId = player.getUniqueId();
 
         if (adminInventories.get(playerId) == null){
-            cleanup();
             return;
         }
 
@@ -834,8 +833,8 @@ public class AdminInventory extends DealerInventory {
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
+
         if (adminInventories.get(playerId) == null){
-            cleanup();
             return;
         }
 
@@ -979,7 +978,7 @@ public class AdminInventory extends DealerInventory {
         HandlerList.unregisterAll(this);
 
         // 2) Remove from adminInventories
-               adminInventories.remove(ownerId);
+        adminInventories.remove(ownerId);
 
         // 3) Remove player references from the specialized maps
         moveMode.remove(ownerId);

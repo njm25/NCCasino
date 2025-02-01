@@ -1694,14 +1694,6 @@ public void delete() {
     // Stop any ongoing game operations
     cancelGame();
 
-    // Close the inventory for all players currently viewing it
-    for (HumanEntity entity : new ArrayList<>(inventory.getViewers())) {
-        if (entity instanceof Player) {
-            Player player = (Player) entity;
-            player.closeInventory();
-        }
-    }
-
     // Clear all player data and bets
     clearPlayerBets(null);
     playerSeats.clear();
