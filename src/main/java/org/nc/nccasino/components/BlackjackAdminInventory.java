@@ -37,12 +37,14 @@ public class BlackjackAdminInventory extends DealerInventory {
     private enum SlotOption {
         RETURN,
         EDIT_TIMER,
-        STAND_17
+        STAND_17,
+        NUMBER_OF_DECKS
      }
      private final Map<SlotOption, Integer> slotMapping = new HashMap<>() {{
          put(SlotOption.RETURN, 0);
          put(SlotOption.EDIT_TIMER, 1);
          put(SlotOption.STAND_17, 2);
+         put(SlotOption.NUMBER_OF_DECKS, 3);
      }};
 
     public BlackjackAdminInventory(UUID dealerId,Player player, String title, Consumer<UUID> ret, Nccasino plugin,String returnName) {
@@ -87,6 +89,7 @@ public class BlackjackAdminInventory extends DealerInventory {
         // 3) Remove player references from the specialized maps
         AdminInventory.timerEditMode.remove(ownerId);
         AdminInventory.standOn17Mode.remove(ownerId);
+        AdminInventory.decksEditMode.remove(ownerId);
         clickAllowed.remove(ownerId);
     }
 
@@ -95,9 +98,18 @@ public class BlackjackAdminInventory extends DealerInventory {
         FileConfiguration config = plugin.getConfig();
         int currentTimer = config.contains("dealers." + internalName + ".timer")? config.getInt("dealers." + internalName + ".timer"): 10; 
         int standOn17Chance = config.getInt("dealers." + internalName + ".stand-on-17", 100);
+        int numberOfDecks = config.getInt("dealers." + internalName + ".number-of-decks", 6);
         addItemAndLore(Material.CLOCK, currentTimer, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Current: " + currentTimer);
         addItemAndLore(Material.SHIELD, standOn17Chance, "Change Stand On 17 Chance", slotMapping.get(SlotOption.STAND_17), "Current: " + standOn17Chance + "%");
+        addItemAndLore(Material.RED_STAINED_GLASS_PANE, numberOfDecks, "Change Number of Decks", slotMapping.get(SlotOption.NUMBER_OF_DECKS), "Current: " + numberOfDecks);
         addItem(createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Return to "+returnName), 0);
+    }
+
+    public boolean isPlayerOccupied(UUID playerId){
+        return 
+            !AdminInventory.timerEditMode.containsKey(playerId) &&
+            !AdminInventory.standOn17Mode.containsKey(playerId) &&
+            !AdminInventory.decksEditMode.containsKey(playerId);
     }
 
     @EventHandler
@@ -108,7 +120,7 @@ public class BlackjackAdminInventory extends DealerInventory {
         // Check if the player has an active AdminInventory
             if (BAInventories.containsKey(playerId)) {
                     // Check if the player is currently editing something
-                if (!AdminInventory.timerEditMode.containsKey(playerId)&&!AdminInventory.standOn17Mode.containsKey(playerId)) {
+                if (isPlayerOccupied(playerId)) {
                     // Remove the AdminInventory and clean up references
                     BlackjackAdminInventory inventory = BAInventories.remove(playerId);
 
@@ -170,6 +182,10 @@ public class BlackjackAdminInventory extends DealerInventory {
                 case STAND_17:
                     handleEditStand(player);
                     if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    break;   
+                case NUMBER_OF_DECKS:
+                    handleEditDecks(player);
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     break;    
                 default:
                     if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
@@ -196,6 +212,14 @@ public class BlackjackAdminInventory extends DealerInventory {
         AdminInventory.standOn17Mode.put(playerId, dealer);
         player.closeInventory();
         player.sendMessage("§aType new stand on 17 percent value between 0 and 100.");
+    }
+
+    private void handleEditDecks(Player player) {
+        UUID playerId = player.getUniqueId();
+        AdminInventory.localVillager.put(playerId, dealer);
+        AdminInventory.decksEditMode.put(playerId, dealer);
+        player.closeInventory();
+        player.sendMessage("§aType the new number of decks.");
     }
 
 
@@ -254,6 +278,29 @@ public class BlackjackAdminInventory extends DealerInventory {
                 plugin.reloadDealerVillager(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 player.sendMessage("§aDealer stand on 17 chance updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                AdminInventory.localVillager.remove(playerId);
+            } else {
+                player.sendMessage("§cCould not find dealer.");
+            }
+
+                
+            cleanup();
+        }
+        else if(AdminInventory.decksEditMode.get(playerId) != null) {
+            event.setCancelled(true);
+            String newDecks = event.getMessage().trim();
+
+            if (newDecks.isEmpty() || !newDecks.matches("\\d+") || Integer.parseInt(newDecks) <= 0) {
+                denyAction(player, "Please enter a postive number");
+                return;
+            }
+            if (dealer != null) {
+                String internalName = DealerVillager.getInternalName(dealer);
+                plugin.getConfig().set("dealers." + internalName + ".number-of-decks", Integer.parseInt(newDecks));
+                plugin.saveConfig();
+                plugin.reloadDealerVillager(dealer);
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                player.sendMessage("§aDealer number of decks chance updated to: " + ChatColor.YELLOW + newDecks + "§a.");
                 AdminInventory.localVillager.remove(playerId);
             } else {
                 player.sendMessage("§cCould not find dealer.");
