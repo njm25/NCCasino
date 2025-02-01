@@ -834,8 +834,8 @@ public class AdminInventory extends DealerInventory {
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
+
         if (adminInventories.get(playerId) == null){
-            cleanup();
             return;
         }
 
