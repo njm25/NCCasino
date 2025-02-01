@@ -79,9 +79,16 @@ public class DealerInteractListener implements Listener {
     }
 
     private void handleAdminInventory(Player player, UUID dealerId) {
+
         if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
             AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+
+            if(adminInventory.getDealerId().equals(dealerId)){
             player.openInventory(adminInventory.getInventory());
+            }
+            else{
+                Bukkit.getLogger().warning("adminInventorie's dealerId does not match the dealerId of entity interacted with");
+            }
         } else {
             AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
             player.openInventory(adminInventory.getInventory());
@@ -118,7 +125,11 @@ public class DealerInteractListener implements Listener {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (player != null && player.isOnline()) {
                 activeAnimations.remove(player);
-                player.openInventory(dealerInventory.getInventory());
+                if(dealerInventory!=null){
+                player.openInventory(dealerInventory.getInventory());}
+                else{
+                    Bukkit.getLogger().warning("Error: tried to open null dealerInventory");
+                }
             }
         }, 1L);
     }
