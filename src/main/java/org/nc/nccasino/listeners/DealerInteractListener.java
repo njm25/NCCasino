@@ -32,18 +32,33 @@ public class DealerInteractListener implements Listener {
 
     public DealerInteractListener(Nccasino plugin) {
         this.plugin = plugin;
-
     }
 
     @EventHandler
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         Entity clickedEntity = event.getRightClicked();
         if (!(clickedEntity instanceof Villager)) return;
-        this.villager =  (Villager) clickedEntity;
+        this.villager = (Villager) clickedEntity;
         if (!DealerVillager.isDealerVillager(villager)) return;
+        
         Player player = event.getPlayer();
         UUID dealerId = DealerVillager.getUniqueId(villager);
-        
+        String internalName = DealerVillager.getInternalName(villager);
+
+        // Check if dealer has a game type defined
+        if (!plugin.getConfig().contains("dealers." + internalName + ".game")) {
+            player.sendMessage(ChatColor.RED + "This dealer has no game type assigned.");
+            return;
+        }
+
+        String gameType = plugin.getConfig().getString("dealers." + internalName + ".game");
+        String permission = getGamePermission(gameType);
+
+        if (permission == null || !player.hasPermission(permission)) {
+            player.sendMessage(ChatColor.RED + "You do not have permission to play " + gameType + ".");
+            return;
+        }
+
         List<String> occupations = AdminInventory.playerOccupations(player.getUniqueId());
         List<Villager> villagers = AdminInventory.getOccupiedVillagers(player.getUniqueId())
             .stream()
@@ -67,26 +82,23 @@ public class DealerInteractListener implements Listener {
             }
             return;
         }
-            
         
-        else if (player.isSneaking() && player.hasPermission("nccasino.use")) {
+        if (player.isSneaking() && player.hasPermission("nccasino.adminmenu")) {
             handleAdminInventory(player, dealerId);
         } else {
             handleDealerInventory(player, dealerId);
         }
-
+        
         event.setCancelled(true);
     }
 
     private void handleAdminInventory(Player player, UUID dealerId) {
-
         if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
             AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
 
-            if(adminInventory.getDealerId().equals(dealerId)){
-            player.openInventory(adminInventory.getInventory());
-            }
-            else{
+            if (adminInventory.getDealerId().equals(dealerId)) {
+                player.openInventory(adminInventory.getInventory());
+            } else {
                 Bukkit.getLogger().warning("Error: adminInventory's dealerId does not match the dealerId of entity interacted with");
             }
         } else {
@@ -105,8 +117,8 @@ public class DealerInteractListener implements Listener {
     }
 
     private boolean shouldPlayAnimation(Player player, UUID dealerId) {
-        // Logic to determine if an animation should play before opening the inventory
-        return !activeAnimations.contains(player) && plugin.getConfig().contains("dealers." + DealerVillager.getInternalName(villager) + ".animation-message");
+        return !activeAnimations.contains(player) &&
+               plugin.getConfig().contains("dealers." + DealerVillager.getInternalName(villager) + ".animation-message");
     }
 
     private void startAnimation(Player player, DealerInventory dealerInventory, UUID dealerId) {
@@ -125,9 +137,9 @@ public class DealerInteractListener implements Listener {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (player != null && player.isOnline()) {
                 activeAnimations.remove(player);
-                if(dealerInventory!=null){
-                player.openInventory(dealerInventory.getInventory());}
-                else{
+                if (dealerInventory != null) {
+                    player.openInventory(dealerInventory.getInventory());
+                } else {
                     Bukkit.getLogger().warning("Error: tried to open null dealerInventory");
                 }
             }
@@ -138,22 +150,30 @@ public class DealerInteractListener implements Listener {
     public void onInventoryClick(InventoryClickEvent event) {
         Player player = (Player) event.getWhoClicked();
         if (event.getInventory().getHolder() instanceof AdminInventory) {
-            return; // Do not handle, let AdminInventory handle it
+            return;
         }
         if (event.getInventory().getHolder() instanceof DealerInventory) {
             event.setCancelled(true);
             DealerInventory dealerInventory = (DealerInventory) event.getInventory().getHolder();
             dealerInventory.handleClick(event.getSlot(), player, event);
         }
-
     }
 
     @EventHandler
     public void onInventoryDrag(InventoryDragEvent event) {
-    Inventory topInventory = event.getView().getTopInventory();
-    if (topInventory.getHolder() instanceof AdminInventory) {
-        event.setCancelled(true);
+        Inventory topInventory = event.getView().getTopInventory();
+        if (topInventory.getHolder() instanceof AdminInventory) {
+            event.setCancelled(true);
+        }
     }
-}
 
+    private String getGamePermission(String gameType) {
+        if (gameType == null) return null;
+        switch (gameType.toLowerCase()) {
+            case "roulette": return "nccasino.games.roulette";
+            case "mines": return "nccasino.games.mines";
+            case "blackjack": return "nccasino.games.blackjack";
+            default: return null;
+        }
+    }
 }

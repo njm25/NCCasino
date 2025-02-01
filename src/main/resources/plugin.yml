@@ -12,3 +12,57 @@ permissions:
   nccasino.use:
     description: Allows use of the /ncc and /nccasino commands
     default: op
+
+  nccasino.commands:
+    description: Grants access to all NCCasino commands
+    default: op
+    children:
+      nccasino.commands.create: true
+      nccasino.commands.delete: true
+      nccasino.commands.help: true
+      nccasino.commands.list: true
+      nccasino.commands.reload: true
+
+  nccasino.commands.create:
+    description: Allows creating a dealer in NCCasino
+    default: op
+
+  nccasino.commands.delete:
+    description: Allows deleting a dealer in NCCasino
+    default: op
+
+  nccasino.commands.help:
+    description: Allows using the help command in NCCasino
+    default: op
+
+  nccasino.commands.list:
+    description: Allows listing dealers in NCCasino
+    default: op
+
+  nccasino.commands.reload:
+    description: Allows reloading the NCCasino plugin
+    default: op
+
+  nccasino.games:
+    description: Grants access to all NCCasino games
+    default: true
+    children:
+      nccasino.games.blackjack: true
+      nccasino.games.roulette: true
+      nccasino.games.mines: true
+
+  nccasino.games.blackjack:
+    description: Allows playing blackjack
+    default: true
+
+  nccasino.games.roulette:
+    description: Allows playing roulette
+    default: true
+
+  nccasino.games.mines:
+    description: Allows playing mines
+    default: true
+
+  nccasino.adminmenu:
+    description: Allows access to the NCCasino Admin Menu
+    default: op
