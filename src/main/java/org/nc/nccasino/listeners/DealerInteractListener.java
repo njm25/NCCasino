@@ -10,7 +10,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.inventory.Inventory;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.components.AdminInventory;
 import org.nc.nccasino.components.AnimationTable;
@@ -77,9 +79,16 @@ public class DealerInteractListener implements Listener {
     }
 
     private void handleAdminInventory(Player player, UUID dealerId) {
+
         if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
             AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+
+            if(adminInventory.getDealerId().equals(dealerId)){
             player.openInventory(adminInventory.getInventory());
+            }
+            else{
+                Bukkit.getLogger().warning("Error: adminInventory's dealerId does not match the dealerId of entity interacted with");
+            }
         } else {
             AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
             player.openInventory(adminInventory.getInventory());
@@ -116,7 +125,11 @@ public class DealerInteractListener implements Listener {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (player != null && player.isOnline()) {
                 activeAnimations.remove(player);
-                player.openInventory(dealerInventory.getInventory());
+                if(dealerInventory!=null){
+                player.openInventory(dealerInventory.getInventory());}
+                else{
+                    Bukkit.getLogger().warning("Error: tried to open null dealerInventory");
+                }
             }
         }, 1L);
     }
@@ -124,15 +137,23 @@ public class DealerInteractListener implements Listener {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         Player player = (Player) event.getWhoClicked();
-
         if (event.getInventory().getHolder() instanceof AdminInventory) {
             return; // Do not handle, let AdminInventory handle it
         }
-
         if (event.getInventory().getHolder() instanceof DealerInventory) {
             event.setCancelled(true);
             DealerInventory dealerInventory = (DealerInventory) event.getInventory().getHolder();
             dealerInventory.handleClick(event.getSlot(), player, event);
         }
+
     }
+
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+    Inventory topInventory = event.getView().getTopInventory();
+    if (topInventory.getHolder() instanceof AdminInventory) {
+        event.setCancelled(true);
+    }
+}
+
 }

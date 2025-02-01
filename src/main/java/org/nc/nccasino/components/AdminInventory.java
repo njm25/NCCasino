@@ -52,7 +52,9 @@ public class AdminInventory extends DealerInventory {
     // Static maps referencing AdminInventory or the player's editing states
     private static final Map<UUID, Villager> moveMode = new HashMap<>();
     private static final Map<UUID, Villager> nameEditMode = new HashMap<>();
-    private static final Map<UUID, Villager> timerEditMode = new HashMap<>();
+    public static final Map<UUID, Villager> timerEditMode = new HashMap<>();
+    public static final Map<UUID, Villager> standOn17Mode = new HashMap<>();
+    public static final Map<UUID, Villager> editMinesMode = new HashMap<>();
     private static final Map<UUID, Villager> amsgEditMode = new HashMap<>();
     private static final Map<UUID, Villager> chipEditMode = new HashMap<>();
     private static final Map<UUID, Villager> currencyEditMode = new HashMap<>();
@@ -71,7 +73,7 @@ public class AdminInventory extends DealerInventory {
         TOGGLE_CURRENCY_MODE,
         EDIT_CURRENCY,
         //USE_VAULT,
-        EDIT_TIMER,
+        GAME_OPTIONS,
         EDIT_ANIMATION_MESSAGE,
         CHIP_SIZE1,
         CHIP_SIZE2,
@@ -90,9 +92,9 @@ public class AdminInventory extends DealerInventory {
 
     // The slot positions of each option in the inventory
     private final Map<SlotOption, Integer> slotMapping = new HashMap<>() {{
-        put(SlotOption.EDIT_DISPLAY_NAME, 2);
+        put(SlotOption.EDIT_DISPLAY_NAME, 6);
         put(SlotOption.EDIT_GAME_TYPE, 0);
-        put(SlotOption.EDIT_TIMER, 6);
+        put(SlotOption.GAME_OPTIONS, 2);
         put(SlotOption.EDIT_ANIMATION_MESSAGE, 8);
 
         // put(SlotOption.USE_VAULT, 28);   
@@ -152,7 +154,9 @@ public class AdminInventory extends DealerInventory {
         adminInventories.put(this.ownerId, this);
         initializeAdminMenu();
     }
-
+   public UUID getDealerId(){
+    return dealerId;
+   }
     /**
      * Registers this inventory as an event listener with the plugin.
      */
@@ -167,9 +171,7 @@ public class AdminInventory extends DealerInventory {
         // Retrieve dealer config values safely
         FileConfiguration config = plugin.getConfig();
         String currentGame = config.getString("dealers." + internalName + ".game", "Unknown");
-        int currentTimer = config.contains("dealers." + internalName + ".timer")
-            ? config.getInt("dealers." + internalName + ".timer")
-            : 10; // Default to 10 if missing
+  
     
         String currentAnimationMessage = config.getString("dealers." + internalName + ".animation-message", "Default Message");
     
@@ -192,12 +194,9 @@ public class AdminInventory extends DealerInventory {
             default:
             break;
         }
-        if(currentGame!="Mines"){
-        addItemAndLore(Material.CLOCK, currentTimer, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Current: " + currentTimer);
-    }
-        else{
-        addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Unvailable For Mines");
-        }
+        
+        addItemAndLore(Material.BOOK, 1, "Game-Specific Options",  slotMapping.get(SlotOption.GAME_OPTIONS), "Current: " + currentGame);
+        
         addItemAndLore(Material.RED_STAINED_GLASS_PANE, 1, "Edit Animation Message",  slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE), "Current: " + currentAnimationMessage);
        /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
         addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
@@ -215,6 +214,8 @@ public class AdminInventory extends DealerInventory {
     public static boolean isPlayerOccupied(UUID playerId) {
         Villager villager = nameEditMode.get(playerId);
         return (villager != null)
+            || (standOn17Mode.get(playerId) != null)
+            || (editMinesMode.get(playerId) != null)
             || (timerEditMode.get(playerId) != null)
             || (amsgEditMode.get(playerId) != null)
             || (moveMode.get(playerId) != null)
@@ -242,6 +243,12 @@ public class AdminInventory extends DealerInventory {
         if (chipEditMode.get(playerId) != null) {
             occupations.add("chip size");
         }
+        if (standOn17Mode.get(playerId) != null) {
+            occupations.add("stand on 17 chance");
+        }
+        if (editMinesMode.get(playerId) != null) {
+            occupations.add("default # of mines");
+        }
         if (currencyEditMode.get(playerId) != null) {///////////might never get to this
             occupations.add("selecting currency item");
         }
@@ -256,6 +263,12 @@ public class AdminInventory extends DealerInventory {
             villagers.add(villager);
         }
         if ((villager = timerEditMode.get(playerId)) != null) {
+            villagers.add(villager);
+        }
+        if ((villager = standOn17Mode.get(playerId)) != null) {
+            villagers.add(villager);
+        }
+        if ((villager = editMinesMode.get(playerId)) != null) {
             villagers.add(villager);
         }
         if ((villager = amsgEditMode.get(playerId)) != null) {
@@ -286,7 +299,7 @@ public class AdminInventory extends DealerInventory {
     
         Inventory topInv = adminInv.getInventory();
         if (topInv == null) return;
-    
+        if(player.getOpenInventory().getTopInventory() != this.getInventory()){return;}
         // 2) Check where they clicked
         if (event.getClickedInventory() == null) return; // clicked outside any inventory
         boolean clickedTop = event.getClickedInventory().equals(topInv);
@@ -361,13 +374,9 @@ public class AdminInventory extends DealerInventory {
                         handleToggleCurrencyMode(player);
                         if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
-                    case EDIT_TIMER:
-                        if(currentGame.equals("Mines")){
-                        if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
-                        }
-                        else{
-                        handleEditTimer(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);}  
+                    case GAME_OPTIONS:
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    handleGameOptions(player,currentGame);
                         break;
                     case EDIT_ANIMATION_MESSAGE:
                         handleAnimationMessage(player);
@@ -407,12 +416,88 @@ public class AdminInventory extends DealerInventory {
     }
 
     // ----- Option handlers -----
-    private void handleEditTimer(Player player) {
+    private void handleGameOptions(Player player, String currentGame) {
+        switch(currentGame){
+            case "Mines":{
+                MinesAdminInventory minesAdminInventory = new MinesAdminInventory(
+                    dealerId,
+                    player,
+                    DealerVillager.getInternalName(dealer)+ "'s Mines Settings",
+                    (uuid) -> {
+
+                        // Cancel action: re-open the AdminInventory
+                        if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                            player.openInventory(adminInventory.getInventory());
+                        } else {
+                            AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                            player.openInventory(adminInventory.getInventory());
+                        }
+        
+                    },
+                    plugin,DealerVillager.getInternalName(dealer)+ "'s Admin Menu"
+            );
+            player.openInventory(minesAdminInventory.getInventory());
+                break;
+            }
+            case "Roulette":{
+                RouletteAdminInventory rouletteAdminInventory = new RouletteAdminInventory(
+                    dealerId,
+                    player,
+                    DealerVillager.getInternalName(dealer)+ "'s Roulette Settings",
+                    (uuid) -> {
+        
+                        // Cancel action: re-open the AdminInventory
+                        if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                            player.openInventory(adminInventory.getInventory());
+                        } else {
+                            AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                            player.openInventory(adminInventory.getInventory());
+                        }
+        
+                    },
+                    plugin,DealerVillager.getInternalName(dealer)+ "'s Admin Menu"
+            );
+                player.openInventory(rouletteAdminInventory.getInventory());
+
+                break;
+            }
+            case "Blackjack":{
+                BlackjackAdminInventory blackjackAdminInventory = new BlackjackAdminInventory(
+                    dealerId,
+                    player,
+                    DealerVillager.getInternalName(dealer)+ "'s Blackjack Settings",
+                    (uuid) -> {
+        
+                        // Cancel action: re-open the AdminInventory
+                        if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                            player.openInventory(adminInventory.getInventory());
+                        } else {
+                            AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                            player.openInventory(adminInventory.getInventory());
+                        }
+        
+                    },
+                    plugin,DealerVillager.getInternalName(dealer)+ "'s Admin Menu"
+            );
+                player.openInventory(blackjackAdminInventory.getInventory());
+                break;
+            }
+            default: {
+                break;
+            }
+
+        }
+
+
+        /* 
         UUID playerId = player.getUniqueId();
         localVillager.put(playerId, dealer);
         timerEditMode.put(playerId, dealer);
         player.closeInventory();
-        player.sendMessage("§aType the new timer in chat.");
+        player.sendMessage("§aType the new timer in chat.");*/
     }
 
     private void handleToggleCurrencyMode(Player player) {
@@ -832,9 +917,11 @@ public class AdminInventory extends DealerInventory {
     public void onInventoryClose(InventoryCloseEvent event) {
         Player player = (Player) event.getPlayer();
         UUID playerId = player.getUniqueId();
-
+        if(!(event.getInventory().getHolder() instanceof AdminInventory)){
+            return;
+        }
         // Check if the player has an active AdminInventory
-        if (adminInventories.containsKey(playerId)) {
+        if (adminInventories.containsKey(playerId)&&adminInventories.get(playerId).getDealerId()==dealerId) {
             // Check if the player is currently editing something
             if (!isPlayerOccupied(playerId)) {
                 // Remove the AdminInventory and clean up references
@@ -881,7 +968,7 @@ public class AdminInventory extends DealerInventory {
         HandlerList.unregisterAll(this);
 
         // 2) Remove from adminInventories
-        adminInventories.remove(ownerId);
+               adminInventories.remove(ownerId);
 
         // 3) Remove player references from the specialized maps
         moveMode.remove(ownerId);
