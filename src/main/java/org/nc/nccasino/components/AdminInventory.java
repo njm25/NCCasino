@@ -150,9 +150,9 @@ public class AdminInventory extends DealerInventory {
 //////////VVVVVVVVVVVVVexpand to retrieve mode from config once thats set up
         this.currencyMode = CurrencyMode.VANILLA;
 
-        registerListener();
         adminInventories.put(this.ownerId, this);
         initializeAdminMenu();
+        registerListener();
     }
    public UUID getDealerId(){
     return dealerId;
@@ -205,6 +205,7 @@ public class AdminInventory extends DealerInventory {
 
     
         updateCurrencyButtons();
+        
     }
 
   
@@ -915,13 +916,18 @@ public class AdminInventory extends DealerInventory {
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
         Player player = (Player) event.getPlayer();
         UUID playerId = player.getUniqueId();
+        if(player.getOpenInventory().getTopInventory().getHolder() instanceof AdminInventory){
+            return;
+        }
         if(!(event.getInventory().getHolder() instanceof AdminInventory)){
             return;
         }
         // Check if the player has an active AdminInventory
         if (adminInventories.containsKey(playerId)&&adminInventories.get(playerId).getDealerId()==dealerId) {
+
             // Check if the player is currently editing something
             if (!isPlayerOccupied(playerId)) {
                 // Remove the AdminInventory and clean up references
@@ -938,6 +944,11 @@ public class AdminInventory extends DealerInventory {
                 }
             }
         }
+
+    }
+        , 5L);
+
+
     }
 
     private void unregisterListener() {
