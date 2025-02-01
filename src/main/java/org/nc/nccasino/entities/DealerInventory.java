@@ -13,6 +13,8 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.nc.nccasino.Nccasino;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -87,11 +89,23 @@ public class DealerInventory implements InventoryHolder, Listener {
     public static void updateInventory(UUID dealerId, DealerInventory newInventory) {
         // If an old inventory exists for the same ID, remove it
         DealerInventory existing = inventories.get(dealerId);
+        
         if (existing != null) {
+            Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (player.getOpenInventory().getTopInventory().getHolder().equals(existing)) {
+                        player.closeInventory();
+                    }
+                }
+            }, 1L);
             existing.delete();
         }
+    
         inventories.put(dealerId, newInventory);
     }
+    
+    
 
     @Override
     public Inventory getInventory() {

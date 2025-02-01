@@ -22,6 +22,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.Listener;
@@ -202,12 +203,6 @@ public final class Nccasino extends JavaPlugin implements Listener {
             return;
         }
 
-        UUID dealerId = DealerVillager.getUniqueId(villager);
-        DealerInventory inventory = DealerInventory.getInventory(dealerId);
-        if (inventory != null) {
-            inventory.delete();
-        }
-
         String internalName = DealerVillager.getInternalName(villager);
         String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
@@ -235,6 +230,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
         String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
         String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
         DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+
+
     }
 
     private void reloadDealerVillagers() {
