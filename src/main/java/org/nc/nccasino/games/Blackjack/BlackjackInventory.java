@@ -18,7 +18,6 @@ import org.bukkit.SoundCategory;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
-import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
@@ -71,7 +70,6 @@ public class BlackjackInventory extends DealerInventory {
         this.playerBets = new HashMap<>(); // Initialize player bets storage
         this.lastBetAmounts = new HashMap<>(); // Initialize last bet amounts storage
         this.countdownTaskId = -1; // Initialize countdown task ID
-        this.deck = new Deck(1); // Initialize the deck
         // Initialize the start menu
         Nccasino nccasino = plugin;
 
@@ -89,7 +87,28 @@ public class BlackjackInventory extends DealerInventory {
                 nccasino.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
             }
         }
+
+        int numberOfDecks;
+
+        if (!plugin.getConfig().contains("dealers." + internalName + ".number-of-decks")) {
+            numberOfDecks = 6;
+            plugin.getConfig().set("dealers." + internalName + ".number-of-decks", numberOfDecks);
+        } else {
+            // Retrieve the current value
+            int currentDecks = plugin.getConfig().getInt("dealers." + internalName + ".number-of-decks");
         
+            // Check if the value is less than 1
+            if (currentDecks <= 0) {
+                numberOfDecks = 6;
+                plugin.getConfig().set("dealers." + internalName + ".number-of-decks", 6);
+            }
+            else{
+                numberOfDecks=currentDecks;
+            }
+        }
+
+        
+        this.deck = new Deck(numberOfDecks); // Initialize the deck
         loadChipValuesFromConfig(); // Load chip values from config
         
        registerListener();

@@ -58,6 +58,7 @@ public class AdminInventory extends DealerInventory {
     private static final Map<UUID, Villager> amsgEditMode = new HashMap<>();
     private static final Map<UUID, Villager> chipEditMode = new HashMap<>();
     private static final Map<UUID, Villager> currencyEditMode = new HashMap<>();
+    public static final Map<UUID, Villager> decksEditMode = new HashMap<>();
     // All active AdminInventories by player ID
     public static final Map<UUID, AdminInventory> adminInventories = new HashMap<>();
 
