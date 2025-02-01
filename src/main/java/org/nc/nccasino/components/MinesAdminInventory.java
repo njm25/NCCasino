@@ -9,65 +9,232 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Villager;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
+import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.helpers.SoundHelper;
+import net.md_5.bungee.api.ChatColor;
 
 public class MinesAdminInventory extends DealerInventory {
+    private final UUID ownerId;
     private final Consumer<UUID> ret;
     private UUID dealerId;
     private final Map<UUID, Boolean> clickAllowed = new HashMap<>(); // Track click state per player
     private Nccasino plugin;
     private String returnName;
+    private Villager dealer;
+    public static final Map<UUID, MinesAdminInventory> MAInventories = new HashMap<>();
 
-    public MinesAdminInventory(UUID dealerId, String title, Consumer<UUID> ret, Nccasino plugin,String returnName) {
-        super(dealerId, 9, title);
+
+    private enum SlotOption {
+        RETURN,
+        EDIT_MINES
+     }
+     private final Map<SlotOption, Integer> slotMapping = new HashMap<>() {{
+         put(SlotOption.RETURN, 0);
+         put(SlotOption.EDIT_MINES, 1);
+     }};
+
+    public MinesAdminInventory(UUID dealerId,Player player, String title, Consumer<UUID> ret, Nccasino plugin,String returnName) {
+        super(player.getUniqueId(), 9, title);
         this.ret = ret;
         this.dealerId = dealerId;
         this.plugin = plugin;
         this.returnName=returnName;
+        this.dealer = DealerVillager.getVillagerFromId(dealerId);
+        if (this.dealer == null) {
+            // Attempt to find a nearby Dealer if not found above
+            this.dealer = (Villager) player.getWorld()
+                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
+                .filter(entity -> entity instanceof Villager)
+                .map(entity -> (Villager) entity)
+                .filter(v -> DealerVillager.isDealerVillager(v)
+                             && DealerVillager.getUniqueId(v).equals(this.dealerId))
+                .findFirst().orElse(null);
+        }
+        registerListener();
+        this.ownerId = player.getUniqueId();  // Store the player's ID
+
+        MAInventories.put(this.ownerId, this);
         initalizeMenu();
     }
 
-    private void initalizeMenu(){
-        
-        addItem(createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Return to "+returnName), 0);
- 
+    private void registerListener() {
+        Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
+    private void unregisterListener() {
+        InventoryCloseEvent.getHandlerList().unregister(this);
+    }
 
+    public void cleanup() {
+        // 1) Unregister all event handlers for this instance
+        HandlerList.unregisterAll(this);
+
+        // 2) Remove from adminInventories
+        MAInventories.remove(ownerId);
+
+        // 3) Remove player references from the specialized maps
+        AdminInventory.editMinesMode.remove(ownerId);
+        clickAllowed.remove(ownerId);
+    }
+
+    private void initalizeMenu(){
+        String internalName = DealerVillager.getInternalName(dealer);
+        FileConfiguration config = plugin.getConfig();
+        int defaultMines = config.getInt("dealers." + internalName + ".default-mines", 3);
+        addItemAndLore(Material.TNT, defaultMines, "Edit Default # Of Mines",  slotMapping.get(SlotOption.EDIT_MINES), "Current: " + defaultMines);
+        addItem(createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Return to "+returnName), 0);
+    }
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        Player player = (Player) event.getPlayer();
+        UUID playerId = player.getUniqueId();
+        if(event.getInventory().getHolder() instanceof MinesAdminInventory){
+        // Check if the player has an active AdminInventory
+            if (MAInventories.containsKey(playerId)) {
+                    // Check if the player is currently editing something
+                if (!AdminInventory.editMinesMode.containsKey(playerId)) {
+                    // Remove the AdminInventory and clean up references
+                    MinesAdminInventory inventory = MAInventories.remove(playerId);
+
+                    if (inventory != null) {
+                        inventory.cleanup();
+                        inventory.delete();
+                    }
+                
+                    // Unregister this listener if no more AdminInventories exist
+                    if (MAInventories.isEmpty()) {
+                        unregisterListener();
+                    }
+                }
+
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (player.getOpenInventory().getTopInventory().getHolder() instanceof AdminInventory) {
+                        return;
+                    }
+                    AdminInventory temp=AdminInventory.adminInventories.get(player.getUniqueId());
+                    if(temp!=null){
+                        if(temp.getDealerId()==dealerId){
+                            temp.delete();
+                        }
+                    }
+                }
+                , 5L);
+            }
+        }
+    }
 
     public void executeReturn() {
         ret.accept(dealerId);
+        delete();
     }
 
 
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
-        event.setCancelled(true); // Prevent unintended item movement
-
         UUID playerId = player.getUniqueId();
+        if (!MAInventories.containsKey(playerId)) return;
+        //event.setCancelled(true); // Default behavior: prevent unintended interactions
 
+        if (event.getClickedInventory() == null) return; 
         if (clickAllowed.getOrDefault(playerId, true)) {
             clickAllowed.put(playerId, false); // Prevent rapid clicking
             Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);
 
-
-            switch (slot) {
-                case 0:
+            SlotOption option = getKeyByValue(slotMapping, slot);
+            if(option!=null){
+            switch (option) {
+                case RETURN:
                     if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     executeReturn();
+                    break;
+                case EDIT_MINES:
+                handleEditMines(player);
+                if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     break;
                 default:
                     if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
                     player.sendMessage("§cInvalid option selected.");
                     break;
-            }
+            }}
         } else {
             player.sendMessage("§cPlease wait before clicking again!");
         }
+    }
+
+    public static <K, V> K getKeyByValue(Map<K, V> map, V value) {
+        for (Map.Entry<K, V> entry : map.entrySet()) {
+            if (entry.getValue().equals(value)) {
+                return entry.getKey();
+            }
+        }
+        return null; 
+    }
+
+    private void handleEditMines(Player player) {
+        UUID playerId = player.getUniqueId();
+        AdminInventory.localVillager.put(player.getUniqueId(), dealer);
+        AdminInventory.editMinesMode.put(playerId, dealer);
+        player.closeInventory();
+        player.sendMessage("§aType new default # of mines between 1 and 24");
+    }
+
+      @EventHandler
+    public void onPlayerChat(AsyncPlayerChatEvent event) {
+        Player player = event.getPlayer();
+        UUID playerId = player.getUniqueId();
+
+        if (MAInventories.get(playerId) == null){
+            cleanup();
+            return;
+        }
+         if (AdminInventory.editMinesMode.get(playerId) != null) {
+            event.setCancelled(true);
+            String newTimer = event.getMessage().trim();
+
+            if (newTimer.isEmpty() || !newTimer.matches("\\d+") || Integer.parseInt(newTimer) <= 0|| Integer.parseInt(newTimer) >24 ) {
+                denyAction(player, "Please enter a default # of mines between 1 and 24.");
+                return;
+            }
+            if (dealer != null) {
+                String internalName = DealerVillager.getInternalName(dealer);
+                plugin.getConfig().set("dealers." + internalName + ".default-mines", Integer.parseInt(newTimer));
+                plugin.saveConfig();
+                plugin.reloadDealerVillager(dealer);
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                player.sendMessage("§aDefault # of mines updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+            } else {
+                player.sendMessage("§cCould not find dealer.");
+            }
+
+            AdminInventory.localVillager.remove(playerId);
+
+            cleanup();
+        }
+
+    }
+    private void denyAction(Player player, String message) {
+        if (SoundHelper.getSoundSafely("entity.villager.no") != null) {
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+        }
+        player.sendMessage("§c" + message);
+    }
+    
+    public void delete() {
+        cleanup();
+   
+        super.delete(); 
+        // super.delete() removes from DealerInventory.inventories & clears the Inventory
     }
 
 }

@@ -143,6 +143,22 @@ public class MinesTable implements InventoryHolder, Listener {
         loadChipValuesFromConfig();
 
         // Start the animation first, then return to this table once animation completes
+        if (!plugin.getConfig().contains("dealers." + internalName + ".default-mines")) {
+
+            plugin.getConfig().set("dealers." + internalName + ".default-mines", 3);
+        } else {
+            // Retrieve the current value
+            int defaultMines = plugin.getConfig().getInt("dealers." + internalName + ".default-mines");
+        
+            // Check if the value is greater than 100 or less than 0
+            if (defaultMines > 24 || defaultMines < 1) {
+                // Reset the value to 100
+                plugin.getConfig().set("dealers." + internalName + ".default-mines", 3);
+            }
+            else{
+                minesCount=defaultMines;
+            }
+        }
 
         setMode(0);
         instrumentIndex=15;
