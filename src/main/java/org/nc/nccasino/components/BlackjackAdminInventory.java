@@ -15,16 +15,15 @@ import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.inventory.Inventory;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
-//import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.SoundHelper;
-
 import net.md_5.bungee.api.ChatColor;
 
-public class BlackjackAdminInventory extends LinkedInventory {
+public class BlackjackAdminInventory extends DealerInventory {
     private final UUID ownerId;
     private final Consumer<UUID> ret;
     private UUID dealerId;
@@ -32,23 +31,22 @@ public class BlackjackAdminInventory extends LinkedInventory {
     private Nccasino plugin;
     private String returnName;
     private Villager dealer;
-    public static final Map<UUID, Villager> localBAVillager = new HashMap<>();
-    private static final Map<UUID, Villager> timerEditMode = new HashMap<>();
     public static final Map<UUID, BlackjackAdminInventory> BAInventories = new HashMap<>();
 
 
     private enum SlotOption {
         RETURN,
-        EDIT_TIMER
+        EDIT_TIMER,
+        STAND_17
      }
      private final Map<SlotOption, Integer> slotMapping = new HashMap<>() {{
          put(SlotOption.RETURN, 0);
          put(SlotOption.EDIT_TIMER, 1);
+         put(SlotOption.STAND_17, 2);
      }};
 
     public BlackjackAdminInventory(UUID dealerId,Player player, String title, Consumer<UUID> ret, Nccasino plugin,String returnName) {
-        super(dealerId, player,title,ret,plugin,returnName,9);
-       // super(dealerId, 9, title);
+        super(player.getUniqueId(), 9, title);
         this.ret = ret;
         this.dealerId = dealerId;
         this.plugin = plugin;
@@ -69,14 +67,17 @@ public class BlackjackAdminInventory extends LinkedInventory {
 
         BAInventories.put(this.ownerId, this);
         initalizeMenu();
-        
     }
 
     private void registerListener() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
-        public void cleanup() {
+    private void unregisterListener() {
+        InventoryCloseEvent.getHandlerList().unregister(this);
+    }
+
+    public void cleanup() {
         // 1) Unregister all event handlers for this instance
         HandlerList.unregisterAll(this);
 
@@ -84,24 +85,63 @@ public class BlackjackAdminInventory extends LinkedInventory {
         BAInventories.remove(ownerId);
 
         // 3) Remove player references from the specialized maps
-        timerEditMode.remove(ownerId);
+        AdminInventory.timerEditMode.remove(ownerId);
+        AdminInventory.standOn17Mode.remove(ownerId);
         clickAllowed.remove(ownerId);
     }
 
     private void initalizeMenu(){
         String internalName = DealerVillager.getInternalName(dealer);
         FileConfiguration config = plugin.getConfig();
-        int currentTimer = config.contains("dealers." + internalName + ".timer")
-        ? config.getInt("dealers." + internalName + ".timer")
-        : 10; // Default to 10 if missing
+        int currentTimer = config.contains("dealers." + internalName + ".timer")? config.getInt("dealers." + internalName + ".timer"): 10; 
+        int standOn17Chance = config.getInt("dealers." + internalName + ".stand-on-17", 100);
         addItemAndLore(Material.CLOCK, currentTimer, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Current: " + currentTimer);
+        addItemAndLore(Material.SHIELD, standOn17Chance, "Change Stand On 17 Chance", slotMapping.get(SlotOption.STAND_17), "Current: " + standOn17Chance + "%");
         addItem(createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Return to "+returnName), 0);
     }
 
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        Player player = (Player) event.getPlayer();
+        UUID playerId = player.getUniqueId();
+        if(event.getInventory().getHolder() instanceof BlackjackAdminInventory){
+        // Check if the player has an active AdminInventory
+            if (BAInventories.containsKey(playerId)) {
+                    // Check if the player is currently editing something
+                if (!AdminInventory.timerEditMode.containsKey(playerId)&&!AdminInventory.standOn17Mode.containsKey(playerId)) {
+                    // Remove the AdminInventory and clean up references
+                    BlackjackAdminInventory inventory = BAInventories.remove(playerId);
 
+                    if (inventory != null) {
+                        inventory.cleanup();
+                        inventory.delete();
+                    }
+                
+                    // Unregister this listener if no more AdminInventories exist
+                    if (BAInventories.isEmpty()) {
+                        unregisterListener();
+                    }
+                }
+
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (player.getOpenInventory().getTopInventory().getHolder() instanceof AdminInventory) {
+                        return;
+                    }
+                    AdminInventory temp=AdminInventory.adminInventories.get(player.getUniqueId());
+                    if(temp!=null){
+                        if(temp.getDealerId()==dealerId){
+                            temp.delete();
+                        }
+                    }
+                }
+                , 5L);
+            }
+        }
+    }
 
     public void executeReturn() {
         ret.accept(dealerId);
+        delete();
     }
 
 
@@ -124,9 +164,13 @@ public class BlackjackAdminInventory extends LinkedInventory {
                     executeReturn();
                     break;
                 case EDIT_TIMER:
-                handleEditTimer(player);
-                if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    handleEditTimer(player);
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     break;
+                case STAND_17:
+                    handleEditStand(player);
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    break;    
                 default:
                     if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
                     player.sendMessage("§cInvalid option selected.");
@@ -137,10 +181,28 @@ public class BlackjackAdminInventory extends LinkedInventory {
         }
     }
 
+    public static <K, V> K getKeyByValue(Map<K, V> map, V value) {
+        for (Map.Entry<K, V> entry : map.entrySet()) {
+            if (entry.getValue().equals(value)) {
+                return entry.getKey();
+            }
+        }
+        return null; 
+    }
+
+    private void handleEditStand(Player player) {
+        UUID playerId = player.getUniqueId();
+        AdminInventory.localVillager.put(playerId, dealer);
+        AdminInventory.standOn17Mode.put(playerId, dealer);
+        player.closeInventory();
+        player.sendMessage("§aType new stand on 17 percent value between 0 and 100.");
+    }
+
+
     private void handleEditTimer(Player player) {
         UUID playerId = player.getUniqueId();
-        localBAVillager.put(playerId, dealer);
-        timerEditMode.put(playerId, dealer);
+        AdminInventory.localVillager.put(playerId, dealer);
+        AdminInventory.timerEditMode.put(playerId, dealer);
         player.closeInventory();
         player.sendMessage("§aType the new timer in chat.");
     }
@@ -154,7 +216,7 @@ public class BlackjackAdminInventory extends LinkedInventory {
             cleanup();
             return;
         }
-         if (timerEditMode.get(playerId) != null) {
+         if (AdminInventory.timerEditMode.get(playerId) != null) {
             event.setCancelled(true);
             String newTimer = event.getMessage().trim();
 
@@ -169,6 +231,30 @@ public class BlackjackAdminInventory extends LinkedInventory {
                 plugin.reloadDealerVillager(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                AdminInventory.localVillager.remove(playerId);
+            } else {
+                player.sendMessage("§cCould not find dealer.");
+            }
+
+                
+            cleanup();
+        }
+        else if(AdminInventory.standOn17Mode.get(playerId) != null) {
+            event.setCancelled(true);
+            String newTimer = event.getMessage().trim();
+
+            if (newTimer.isEmpty() || !newTimer.matches("\\d+") || Integer.parseInt(newTimer) < 0|| Integer.parseInt(newTimer) >100) {
+                denyAction(player, "Please enter a number between 0 and 100");
+                return;
+            }
+            if (dealer != null) {
+                String internalName = DealerVillager.getInternalName(dealer);
+                plugin.getConfig().set("dealers." + internalName + ".stand-on-17", Integer.parseInt(newTimer));
+                plugin.saveConfig();
+                plugin.reloadDealerVillager(dealer);
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                player.sendMessage("§aDealer stand on 17 chance updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                AdminInventory.localVillager.remove(playerId);
             } else {
                 player.sendMessage("§cCould not find dealer.");
             }
@@ -187,6 +273,7 @@ public class BlackjackAdminInventory extends LinkedInventory {
     
     public void delete() {
         cleanup();
+   
         super.delete(); 
         // super.delete() removes from DealerInventory.inventories & clears the Inventory
     }
