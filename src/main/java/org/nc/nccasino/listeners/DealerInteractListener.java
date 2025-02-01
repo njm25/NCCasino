@@ -87,7 +87,7 @@ public class DealerInteractListener implements Listener {
             player.openInventory(adminInventory.getInventory());
             }
             else{
-                Bukkit.getLogger().warning("adminInventorie's dealerId does not match the dealerId of entity interacted with");
+                Bukkit.getLogger().warning("Error: adminInventory's dealerId does not match the dealerId of entity interacted with");
             }
         } else {
             AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
