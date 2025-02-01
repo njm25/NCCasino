@@ -3,6 +3,7 @@ package org.nc.nccasino.commands;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.nc.nccasino.Nccasino;
@@ -25,16 +26,22 @@ public class CommandTabCompleter implements TabCompleter {
                                                 @NotNull String[] args) {
         List<String> completions = new ArrayList<>();
 
+        if (!(sender instanceof Player)) {
+            return completions; // Only players receive tab completions.
+        }
+
+        Player player = (Player) sender;
+
         if (args.length == 1) {
-            // Suggest main subcommands
-            completions.add("help");
-            completions.add("create");
-            completions.add("reload");
-            completions.add("list");
-            completions.add("delete");
+            // Suggest only the subcommands the player has permission for.
+            if (player.hasPermission("nccasino.commands.help")) completions.add("help");
+            if (player.hasPermission("nccasino.commands.create")) completions.add("create");
+            if (player.hasPermission("nccasino.commands.reload")) completions.add("reload");
+            if (player.hasPermission("nccasino.commands.list")) completions.add("list");
+            if (player.hasPermission("nccasino.commands.delete")) completions.add("delete");
         } 
         else if (args.length == 2) {
-            if (args[0].equalsIgnoreCase("delete")) {
+            if (args[0].equalsIgnoreCase("delete") && player.hasPermission("nccasino.commands.delete")) {
                 // Allow deleting all dealers using "*"
                 completions.add("*");
 
@@ -43,7 +50,7 @@ public class CommandTabCompleter implements TabCompleter {
                     completions.addAll(plugin.getConfig().getConfigurationSection("dealers").getKeys(false));
                 }
             }
-            else if (args[0].equalsIgnoreCase("list")) {
+            else if (args[0].equalsIgnoreCase("list") && player.hasPermission("nccasino.commands.list")) {
                 // Suggest valid page numbers dynamically for "/ncc list [page]"
                 if (plugin.getConfig().contains("dealers")) {
                     int totalDealers = plugin.getConfig().getConfigurationSection("dealers").getKeys(false).size();
