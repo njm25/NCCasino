@@ -27,7 +27,7 @@ import java.util.UUID;
 
 public class DealerInteractListener implements Listener {
     private final Nccasino plugin;
-    private final Set<Player> activeAnimations = new HashSet<>();
+    public static Set<Player> activeAnimations = new HashSet<>();
     private Villager villager;
 
     public DealerInteractListener(Nccasino plugin) {

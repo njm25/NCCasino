@@ -13,6 +13,7 @@ import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.AnimationSongs;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.listeners.DealerInteractListener;
 import org.nc.VSE.*;
 
 import java.util.HashMap;
@@ -30,7 +31,7 @@ public class AnimationTable extends DealerInventory {
     private final Map<UUID, Boolean> clickAllowed;
     private final Map<UUID, Boolean> animationStopped; // Track if animation is already stopped
     private final Map<UUID, Runnable> animationCallbacks;
-
+    private Boolean closedManually = false;
     private static final Map<Character, int[][]> letterMap = new HashMap<>();
 
    
@@ -116,7 +117,7 @@ public class AnimationTable extends DealerInventory {
         if (animationTasks.containsKey(playerUUID) || animationStopped.get(playerUUID)) {
             return;
         }
-
+        closedManually=false;
         final int[] taskId = new int[1];
         final int initialRowShift = 0; 
 
@@ -188,7 +189,11 @@ public class AnimationTable extends DealerInventory {
 
         if (!animationStopped.get(playerUUID)) {
             animationStopped.put(playerUUID, true);
-            animationCallbacks.get(playerUUID).run();
+            if(!closedManually){
+            animationCallbacks.get(playerUUID).run();}
+            else{
+            DealerInteractListener.activeAnimations.remove(player);
+            }
         }
 
         InventoryClickEvent.getHandlerList().unregister(this);
@@ -220,6 +225,7 @@ public class AnimationTable extends DealerInventory {
         UUID playerUUID = player.getUniqueId();
         if (!playerUUID.equals(playerId)) return;
         if (event.getPlayer() instanceof Player ) {
+            closedManually=true;
             stopAnimation(player);
             mce.removePlayerFromAllChannels(player);
         }
