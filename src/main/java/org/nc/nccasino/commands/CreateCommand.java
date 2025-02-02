@@ -39,7 +39,7 @@ public class CreateCommand implements CasinoCommand {
             .toList();
 
         if (!occupations.isEmpty() && !villagers.isEmpty()) {
-            if (SoundHelper.getSoundSafely("entity.villager.no") != null) {
+            if (SoundHelper.getSoundSafely("entity.villager.no",player) != null) {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             }
             for (int i = 0; i < occupations.size(); i++) {
