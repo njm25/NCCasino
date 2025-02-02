@@ -34,6 +34,7 @@ import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.objects.Pair;
+import org.nc.nccasino.helpers.Preferences;
 
 public class RouletteInventory extends DealerInventory {
     private final MultiChannelEngine mce;
@@ -290,8 +291,10 @@ public class RouletteInventory extends DealerInventory {
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     if (player != null&&player.isOnline()) {
                         // System.out.println("Adding"+player+"to master and roulette"); 
-                        mce.addPlayerToChannel("Master", player);
-                        mce.addPlayerToChannel("RouletteWheel", player);
+                        if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
+                            mce.addPlayerToChannel("Master", player);
+                            mce.addPlayerToChannel("RouletteWheel", player);
+                        }
                         this.bettingTimeSeconds = plugin.getTimer(internalName);
         
                         if (firstFin) {
@@ -357,7 +360,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 47: // View Betting Info
-                 if(SoundHelper.getSoundSafely("block.wooden_door.close")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
+                 if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
                     exitGame(player);
                     break;
                 default:
@@ -380,7 +383,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 53: // Exit
-                if(SoundHelper.getSoundSafely("block.wooden_door.close")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
+                if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
 
                     exitGame(player);
                     break;
@@ -405,7 +408,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 8: // Exit
-                if(SoundHelper.getSoundSafely("block.wooden_door.close")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
+                if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
 
                     exitGame(player);
                     break;
@@ -429,7 +432,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 2: // Exit
-                if(SoundHelper.getSoundSafely("block.wooden_door.close")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
+                if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
 
                     exitGame(player);
                     break;
@@ -461,13 +464,15 @@ private void openBettingTable(Player player) {
             BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets, internalName, this, globalCountdown);
             Tables.put(player, bettingTable);
             player.openInventory(bettingTable.getInventory());
-             if(SoundHelper.getSoundSafely("item.book.page_turn")!=null)player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, SoundCategory.MASTER, 5.0f, 1.0f); 
+             if (SoundHelper.getSoundSafely("item.book.page_turn", player) != null)player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, SoundCategory.MASTER, 5.0f, 1.0f); 
+             if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
             mce.addPlayerToChannel("BettingTable", player);
-            mce.removePlayerFromChannel("RouletteWheel", player);
+        
+            mce.removePlayerFromChannel("RouletteWheel", player);}
             //System.out.println("removed from RouletteWheel added to BettingTable");
         } else {
             player.sendMessage("§cError: Dealer not found. Unable to open betting table.");
-             if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         }
         switchingPlayers.remove(player); // Remove the flag after the switch
     }, 1L); // Small delay to allow the inventory to switch

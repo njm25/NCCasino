@@ -36,11 +36,13 @@ public class MinesAdminInventory extends DealerInventory {
 
     private enum SlotOption {
         RETURN,
-        EDIT_MINES
+        EDIT_MINES,
+        EXIT
      }
      private final Map<SlotOption, Integer> slotMapping = new HashMap<>() {{
-         put(SlotOption.RETURN, 0);
-         put(SlotOption.EDIT_MINES, 1);
+        put(SlotOption.EXIT, 0);
+        put(SlotOption.RETURN, 1);
+        put(SlotOption.EDIT_MINES, 2);
      }};
 
     public MinesAdminInventory(UUID dealerId,Player player, String title, Consumer<UUID> ret, Nccasino plugin,String returnName) {
@@ -92,7 +94,9 @@ public class MinesAdminInventory extends DealerInventory {
         FileConfiguration config = plugin.getConfig();
         int defaultMines = config.getInt("dealers." + internalName + ".default-mines", 3);
         addItemAndLore(Material.TNT, defaultMines, "Edit Default # Of Mines",  slotMapping.get(SlotOption.EDIT_MINES), "Current: " + defaultMines);
-        addItem(createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Return to "+returnName), 0);
+        addItem(createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Return to "+returnName), slotMapping.get(SlotOption.RETURN));
+        addItem( createCustomItem(Material.SPRUCE_DOOR, "Exit"),slotMapping.get(SlotOption.EXIT) );
+
     }
 
     @EventHandler
@@ -155,21 +159,30 @@ public class MinesAdminInventory extends DealerInventory {
             if(option!=null){
             switch (option) {
                 case RETURN:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     executeReturn();
                     break;
                 case EDIT_MINES:
                 handleEditMines(player);
-                if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    break;
+                case EXIT:
+                    handleExit(player);
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     break;
                 default:
-                    if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+                    if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
                     player.sendMessage("§cInvalid option selected.");
                     break;
             }}
         } else {
             player.sendMessage("§cPlease wait before clicking again!");
         }
+    }
+
+    private void handleExit(Player player) {
+        player.closeInventory();
+        delete();
     }
 
     public static <K, V> K getKeyByValue(Map<K, V> map, V value) {
@@ -211,7 +224,7 @@ public class MinesAdminInventory extends DealerInventory {
                 plugin.getConfig().set("dealers." + internalName + ".default-mines", Integer.parseInt(newTimer));
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 player.sendMessage("§aDefault # of mines updated to: " + ChatColor.YELLOW + newTimer + "§a.");
             } else {
                 player.sendMessage("§cCould not find dealer.");
@@ -224,7 +237,7 @@ public class MinesAdminInventory extends DealerInventory {
 
     }
     private void denyAction(Player player, String message) {
-        if (SoundHelper.getSoundSafely("entity.villager.no") != null) {
+        if (SoundHelper.getSoundSafely("entity.villager.no",player) != null) {
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         }
         player.sendMessage("§c" + message);

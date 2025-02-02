@@ -28,6 +28,7 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
@@ -81,6 +82,8 @@ public class AdminInventory extends DealerInventory {
         CHIP_SIZE3,
         CHIP_SIZE4,
         CHIP_SIZE5,
+        PM,
+        EXIT
 
     }
 
@@ -101,9 +104,11 @@ public class AdminInventory extends DealerInventory {
         // put(SlotOption.USE_VAULT, 28);   
         put(SlotOption.EDIT_CURRENCY, 13);
         put(SlotOption.TOGGLE_CURRENCY_MODE, 31);
+        put(SlotOption.EXIT, 36);
+        put(SlotOption.PM, 38);
 
-        put(SlotOption.MOVE_DEALER, 37);
-        put(SlotOption.DELETE_DEALER, 43);
+        put(SlotOption.MOVE_DEALER, 42);
+        put(SlotOption.DELETE_DEALER, 44);
         put(SlotOption.CHIP_SIZE1, 20);
         put(SlotOption.CHIP_SIZE2, 21);
         put(SlotOption.CHIP_SIZE3, 22);
@@ -152,7 +157,7 @@ public class AdminInventory extends DealerInventory {
         this.currencyMode = CurrencyMode.VANILLA;
 
         adminInventories.put(this.ownerId, this);
-        initializeAdminMenu();
+        initializeAdminMenu(player);
         registerListener();
     }
    public UUID getDealerId(){
@@ -164,7 +169,7 @@ public class AdminInventory extends DealerInventory {
     private void registerListener() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
-    private void initializeAdminMenu() {
+    private void initializeAdminMenu(Player player ) {
 
 
         String internalName = DealerVillager.getInternalName(dealer);
@@ -202,9 +207,12 @@ public class AdminInventory extends DealerInventory {
        /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
         addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
         addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
-    
-
-    
+        addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
+        addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
+        addItem( createCustomItem(Material.SPRUCE_DOOR, "Exit"),slotMapping.get(SlotOption.EXIT) );
+        ItemStack head=createPlayerHeadItem(player, 1);
+        setCustomItemMeta(head,"Player Menu");
+        addItem(head,slotMapping.get(SlotOption.PM) );
         updateCurrencyButtons();
         
     }
@@ -349,62 +357,70 @@ public class AdminInventory extends DealerInventory {
                 switch (option) {
                     case EDIT_DISPLAY_NAME:
                         handleEditDealerName(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case EDIT_GAME_TYPE:
                         handleSelectGameType(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case MOVE_DEALER:
                         handleMoveDealer(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case DELETE_DEALER:
                         handleDeleteDealer(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case EDIT_CURRENCY:
                         handleEditCurrency(player,event);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                         /* 
                     case USE_VAULT:
                         handleUseVault(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f);
+player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;*/
                      case TOGGLE_CURRENCY_MODE:
                         handleToggleCurrencyMode(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case GAME_OPTIONS:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     handleGameOptions(player,currentGame);
                         break;
                     case EDIT_ANIMATION_MESSAGE:
                         handleAnimationMessage(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case CHIP_SIZE1:
                         handleEditChipSize(player,1);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case CHIP_SIZE2:
                         handleEditChipSize(player,2);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case CHIP_SIZE3:
                         handleEditChipSize(player,3);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case CHIP_SIZE4:
                         handleEditChipSize(player,4);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case CHIP_SIZE5:
                         handleEditChipSize(player,5);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
-
+                    case PM:
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        handlePlayerMenu(player);
+                        break;
+                    case EXIT:
+                        handleExit(player);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        break;
                     default:
                         player.sendMessage("§cInvalid option selected.");
                         break;
@@ -415,6 +431,28 @@ public class AdminInventory extends DealerInventory {
         } else {
             player.sendMessage("§cPlease wait before clicking again!");
         }
+    }
+
+    private void handlePlayerMenu(Player player) {
+        PlayerMenu pm = new PlayerMenu(player, plugin,dealerId, (p) -> {
+
+
+            if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
+                AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                player.openInventory(adminInventory.getInventory());
+                //localVillager.remove(player.getUniqueId());
+            } else {
+                AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                player.openInventory(adminInventory.getInventory());
+                //localVillager.remove(player.getUniqueId());
+            }
+        });
+        player.openInventory(pm.getInventory());
+    }
+
+    private void handleExit(Player player) {
+        player.closeInventory();
+        delete();
     }
 
     // ----- Option handlers -----
@@ -750,7 +788,7 @@ public class AdminInventory extends DealerInventory {
                 plugin.saveConfig();
                 dealer.setCustomNameVisible(true);
                 plugin.reloadDealerVillager(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 player.sendMessage("§aDealer name updated to: '" + ChatColor.YELLOW + newName + "§a'.");
             } else {
                 player.sendMessage("§cCould not find dealer.");
@@ -774,7 +812,7 @@ public class AdminInventory extends DealerInventory {
                 plugin.getConfig().set("dealers." + internalName + ".timer", Integer.parseInt(newTimer));
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
             } else {
                 player.sendMessage("§cCould not find dealer.");
@@ -797,7 +835,7 @@ public class AdminInventory extends DealerInventory {
                 plugin.getConfig().set("dealers." + internalName + ".animation-message", newAmsg);
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 player.sendMessage("§aDealer animation message updated to: '" + ChatColor.YELLOW + newAmsg + "§a'.");
             } else {
                 player.sendMessage("§cCould not find dealer.");
@@ -819,7 +857,7 @@ public class AdminInventory extends DealerInventory {
                 plugin.getConfig().set("dealers." + internalName + ".chip-sizes.size" + chipIndex,Integer.parseInt(newChipSize));
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 player.sendMessage("§aChip size "+chipIndex+" updated to: " + ChatColor.YELLOW + newChipSize + "§a.");
             } else {
                 player.sendMessage("§cCould not find dealer.");
@@ -868,7 +906,7 @@ public class AdminInventory extends DealerInventory {
                         e.printStackTrace();
                     }
                     plugin.saveConfig();
-                    if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport")!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
+                    if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
                     player.sendMessage("§aDealer moved to new location.");
                 } else {
                     player.sendMessage("§cCould not find dealer.");
@@ -908,7 +946,7 @@ public class AdminInventory extends DealerInventory {
      * Provide user feedback if an action is disallowed.
      */
     private void denyAction(Player player, String message) {
-        if (SoundHelper.getSoundSafely("entity.villager.no") != null) {
+        if (SoundHelper.getSoundSafely("entity.villager.no",player) != null) {
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         }
         player.sendMessage("§c" + message);
@@ -996,5 +1034,20 @@ public class AdminInventory extends DealerInventory {
             adminInventories.remove(player.getUniqueId());
         }
     }
+
+    private ItemStack createPlayerHeadItem(Player player, int stackSize) {
+    if (stackSize <= 0) {
+        throw new IllegalArgumentException("Stack size must be greater than 0 for player head.");
+    }
+
+    ItemStack playerHead = new ItemStack(Material.PLAYER_HEAD, stackSize);
+    SkullMeta skullMeta = (SkullMeta) playerHead.getItemMeta();
+    if (skullMeta != null) {
+        skullMeta.setOwningPlayer(player);
+        skullMeta.setDisplayName(player.getName());
+        playerHead.setItemMeta(skullMeta);
+    }
+    return playerHead;
+}
 
 }

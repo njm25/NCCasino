@@ -220,7 +220,7 @@ public class DealerInventory implements InventoryHolder, Listener {
         return itemStack;
     }
 
-    private void setCustomItemMeta(ItemStack itemStack, String name) {
+    public void setCustomItemMeta(ItemStack itemStack, String name) {
         ItemMeta meta = itemStack.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(name);

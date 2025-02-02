@@ -370,7 +370,7 @@ public class MinesTable implements InventoryHolder, Listener {
         if (slot == 0) { // Instrument Button
             instrumentIndex = (instrumentIndex + 1) % instruments.length;
             //player.sendMessage("§bInstrument set to: " + instruments[instrumentIndex].toString());
-             if(SoundHelper.getSoundSafely("ui.button.click")!=null)player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
+             if (SoundHelper.getSoundSafely("ui.button.click", player) != null)player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
         
@@ -378,7 +378,7 @@ public class MinesTable implements InventoryHolder, Listener {
             modeIndex = (modeIndex + 1) % modeNames.length;
             setMode(modeIndex);
             //player.sendMessage("§eMode set to: " + modeNames[modeIndex]);
-             if(SoundHelper.getSoundSafely("ui.button.click")!=null)player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
+             if (SoundHelper.getSoundSafely("ui.button.click", player) != null)player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
         Boolean wow=false;
@@ -393,7 +393,7 @@ public class MinesTable implements InventoryHolder, Listener {
             float[] pitches = tileNotes.get(slot);
         
             for (float pitch : pitches) {
-                 if(SoundHelper.getSoundSafely(instrumentstrings[instrumentIndex])!=null)player.playSound(player.getLocation(), instrument, SoundCategory.MASTER, 1.0f, pitch);
+                 if(SoundHelper.getSoundSafely(instrumentstrings[instrumentIndex],player)!=null)player.playSound(player.getLocation(), instrument, SoundCategory.MASTER, 1.0f, pitch);
             }}
            
         }
@@ -415,7 +415,7 @@ public class MinesTable implements InventoryHolder, Listener {
            // Handle Exit Button (Slot 36)
     if (slot == 36 && clickedItem != null && clickedItem.getType() == Material.SPRUCE_DOOR) {
         //player.sendMessage("§cExiting the game...");
-         if(SoundHelper.getSoundSafely("block.wooden_door.close")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE, SoundCategory.MASTER,1.0f, 1.0f);
+         if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE, SoundCategory.MASTER,1.0f, 1.0f);
         endGame(); // End the game and clean up resources
         player.closeInventory(); // Close the inventory
         return;
@@ -424,10 +424,10 @@ public class MinesTable implements InventoryHolder, Listener {
         if (slot == 43&& clickedItem != null && clickedItem.getType() ==Material.RED_WOOL||clickedItem.getType() ==Material.GREEN_WOOL) {
             rebetEnabled = !rebetEnabled;
             if(clickedItem.getType() ==Material.RED_WOOL){
-                 if(SoundHelper.getSoundSafely("entity.illusioner.prepare_mirror")!=null)player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_PREPARE_MIRROR, SoundCategory.MASTER,1.0f, 1.0f);
+                 if (SoundHelper.getSoundSafely("entity.illusioner.prepare_mirror", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_PREPARE_MIRROR, SoundCategory.MASTER,1.0f, 1.0f);
             }
             else{
-                 if(SoundHelper.getSoundSafely("entity.illusioner.cast_spell")!=null)player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_CAST_SPELL, SoundCategory.MASTER,1.0f, 1.0f);  
+                 if (SoundHelper.getSoundSafely("entity.illusioner.cast_spell", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_CAST_SPELL, SoundCategory.MASTER,1.0f, 1.0f);  
             }
            
 
@@ -442,8 +442,7 @@ public class MinesTable implements InventoryHolder, Listener {
                               .mapToInt(ItemStack::getAmount).sum();
             if (count <= 0) {
                 player.sendMessage("§cNo " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(count) == 1 ? "" : "s") + "\n");
-                 if(SoundHelper.getSoundSafely("entity.villager.no"
-)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f);
+                 if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f);
                 return;
             }
             // place that entire count as a single bet in the betStack
@@ -455,7 +454,7 @@ public class MinesTable implements InventoryHolder, Listener {
             wagerPlaced = true;
             updateStartGameLever(true);
             //player.sendMessage("§aAll in with " + (int)count + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(count) == 1 ? "" : "s") + "\n");
-             if(SoundHelper.getSoundSafely("entity.lightning_bolt.thunder")!=null)player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER,1.0f, 1.0f);
+             if (SoundHelper.getSoundSafely("entity.lightning_bolt.thunder", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER,1.0f, 1.0f);
             return;
         }
     }
@@ -467,7 +466,7 @@ public class MinesTable implements InventoryHolder, Listener {
 
         if (slot >= 47 && slot <= 51) {
             // Handle currency chips (slots 47-51)
-             if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+             if (SoundHelper.getSoundSafely("item.flintandsteel.use", player) != null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
             selectedWager = chipValues.getOrDefault(itemName, 0.0);
     
             // Update the display of all chips
@@ -505,7 +504,7 @@ public class MinesTable implements InventoryHolder, Listener {
                     }
                     // Update the lore of the item in slot 52 with the cumulative bet amount
                     updateBetLore(53, totalBet);
-                     if(SoundHelper.getSoundSafely("item.armor.equip_chain")!=null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
+                     if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
                    // player.sendMessage("§aBet placed: " + newBetAmount);
 
                     wager = newBetAmount;
@@ -514,11 +513,11 @@ public class MinesTable implements InventoryHolder, Listener {
                     updateStartGameLever(true);
                 } else {
                     player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s.");
-                     if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
+                     if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
                 }
             } else {
                 player.sendMessage("§cSelect a wager amount first.");
-                 if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
+                 if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
             }
             return;
         }
@@ -545,7 +544,7 @@ public class MinesTable implements InventoryHolder, Listener {
 
                         // Update the selected mine slot
                         selectedMineSlot = slot;
-                         if(SoundHelper.getSoundSafely("block.lantern.break")!=null)player.playSound(player.getLocation(), Sound.BLOCK_LANTERN_BREAK, SoundCategory.MASTER,1.0f, 1.0f);
+                         if (SoundHelper.getSoundSafely("block.lantern.break", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_LANTERN_BREAK, SoundCategory.MASTER,1.0f, 1.0f);
                         // Change the selected slot to stack of red glass panes
                                    ItemStack selectedMineOption = createEnchantedItem(Material.TNT, "Mines: " + minesCount, minesCount);
 
@@ -555,11 +554,11 @@ public class MinesTable implements InventoryHolder, Listener {
                         updateStartGameLever(true);
                     } else {
                         player.sendMessage("§cInvalid number of mines.");
-                         if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
+                         if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
                     }
                 } catch (NumberFormatException e) {
                     player.sendMessage("§cError parsing number of mines.");
-                     if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
+                     if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
                 }
             }
             return;
@@ -569,15 +568,15 @@ public class MinesTable implements InventoryHolder, Listener {
             // Start the gamet
             if (minesSelected) {
                 if (wager > 0) {
-                     if(SoundHelper.getSoundSafely("block.enchantment_table.use")!=null)player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER,1.0f, 1.0f);
+                     if (SoundHelper.getSoundSafely("block.enchantment_table.use", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER,1.0f, 1.0f);
                     startGame();
                 } else {
                     player.sendMessage("§cPlace a wager first.");
-                     if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
+                     if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
                 }
             } else {
                 player.sendMessage("§cSelect number of mines.");
-                 if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
+                 if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
             }
             return;
         }
@@ -588,14 +587,14 @@ public class MinesTable implements InventoryHolder, Listener {
             //player.sendMessage("§dAll bets undone.");
             refundAllBets(player);
             betStack.clear();
-             if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+             if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
             updateBetLore(53, 0);  // Reset the lore on the bet option after clearing bets
             wager = 0;
             wagerPlaced = false;
             return;}
             else{
                 player.sendMessage("§cNo bets to undo.");
-                 if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
+                 if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
             }
         }
 
@@ -611,13 +610,13 @@ public class MinesTable implements InventoryHolder, Listener {
                 if (totalBet < 0) totalBet = 0;
                 updateBetLore(53, totalBet);
                 wagerPlaced = totalBet > 0;
-                 if(SoundHelper.getSoundSafely("ui.toast.in")!=null)player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
-                 if(SoundHelper.getSoundSafely("ui.toast.out")!=null)player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
+                 if (SoundHelper.getSoundSafely("ui.toast.in", player) != null)player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
+                 if (SoundHelper.getSoundSafely("ui.toast.out", player) != null)player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
                 //player.sendMessage("§dLast bet undone.");
                 //player.sendMessage("§dNew total: " + (int)totalBet +" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
             } else {
                 player.sendMessage("§cNo bets to undo.");
-                 if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
+                 if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
             }
             return;
         }
@@ -676,7 +675,7 @@ public class MinesTable implements InventoryHolder, Listener {
         
        updateTile(x, y, true);
       // Pass the coordinates of the mine hit
-     if(SoundHelper.getSoundSafely("entity.creeper.primed")!=null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_PRIMED, SoundCategory.MASTER,1.0f, 1.0f);
+     if (SoundHelper.getSoundSafely("entity.creeper.primed", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_PRIMED, SoundCategory.MASTER,1.0f, 1.0f);
        // Trigger a visual explosion at the player's location without causing damage
 
 
@@ -706,7 +705,7 @@ public class MinesTable implements InventoryHolder, Listener {
 
         finalPitch = Math.min(finalPitch, 2.0f); // 2.0 is max in vanilla MC
         //player.sendMessage("§a"+finalPitch);
-         if(SoundHelper.getSoundSafely("entity.experience_orb.pickup")!=null)player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, finalPitch);
+         if (SoundHelper.getSoundSafely("entity.experience_orb.pickup", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, finalPitch);
             // Optionally check if the game is won (all safe tiles cleared)
             if (safePicks == (totalTiles - minesCount)) {
                 player.sendMessage("§a§lAll safe tiles cleared!");
@@ -745,7 +744,7 @@ public class MinesTable implements InventoryHolder, Listener {
 
             // Step 2: After another short delay, change the clicked mine tile to fire
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                 if(SoundHelper.getSoundSafely("entity.generic.explode")!=null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
+                 if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
         player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
                 
                 setTileToFire(centerX, centerY);
@@ -860,7 +859,7 @@ public class MinesTable implements InventoryHolder, Listener {
         float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
         for (int i = 0; i < 3; i++) {
             float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
-             if(SoundHelper.getSoundSafely("entity.player.levelup")!=null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER,1.0f,chosenPitch);
+             if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER,1.0f,chosenPitch);
         }
 
         // Step 2: Start emerald expansion from the cash-out button (slot 49)

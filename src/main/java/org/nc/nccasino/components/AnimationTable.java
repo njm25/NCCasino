@@ -12,6 +12,7 @@ import org.bukkit.inventory.Inventory;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.AnimationSongs;
+import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.listeners.DealerInteractListener;
 import org.nc.VSE.*;
@@ -60,8 +61,10 @@ public class AnimationTable extends DealerInventory {
     }
 
     public void animateMessage(Player player, Runnable onAnimationComplete) {
+        if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
         mce.addPlayerToChannel(player.getUniqueId().toString(), player);
         mce.playSong(player.getUniqueId().toString(), AnimationSongs.getAnimationSong(animationMessage), false, animationMessage);
+        }
         UUID playerUUID = player.getUniqueId();
         animationCallbacks.put(playerUUID, onAnimationComplete);
         animationStopped.put(playerUUID, false);
@@ -164,7 +167,7 @@ public class AnimationTable extends DealerInventory {
                 if (rowShift >= printmsg[0].length) {
                     stopAnimation(player);
                     stopAnimation(player);
-                    if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport")!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
+                    if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
                     mce.removePlayerFromAllChannels(player);
                     Bukkit.getScheduler().cancelTask(taskId[0]);
                     animationTasks.remove(playerUUID);
@@ -211,9 +214,9 @@ public class AnimationTable extends DealerInventory {
         event.setCancelled(true);
 
         if (clickAllowed.getOrDefault(playerUUID, false) && !animationStopped.get(playerUUID)) {
-            if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+            if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
             stopAnimation(player);
-            if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport")!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
+            if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
             mce.removePlayerFromAllChannels(player);
         }
     }
