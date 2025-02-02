@@ -210,7 +210,7 @@ private void registerListener() {
         }
         inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
         // Add leave chair option with a wooden door
-        inventory.setItem(53, createCustomItem(Material.OAK_DOOR, "Leave Chair", 1));
+        inventory.setItem(53, createCustomItem(Material.SPRUCE_DOOR, "Leave Chair/Exit", 1));
     }
 
     // Create an item stack with a custom display name
@@ -231,7 +231,7 @@ private void registerListener() {
     }
 
     // Set custom item metadata
-    private void setCustomItemMeta(ItemStack itemStack, String name) {
+    public void setCustomItemMeta(ItemStack itemStack, String name) {
         ItemMeta meta = itemStack.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(name);
@@ -275,7 +275,11 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
                 handlePlayerAction(player, slot);
             } else if (slot == 53) { // Handle leave chair
                 handleLeaveChairDuringGame(player);
-            } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots
+                player.closeInventory();}
+            else if (isPlayerHeadSlot(slot, player)) { // Handle clicking own player head
+                    handleLeaveChair(player); // Leave chair but stay in inventory
+            }
+            else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots
                 player.sendMessage("§cInvalid action");
                  if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             }
@@ -305,11 +309,16 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
                 
                  if(SoundHelper.getSoundSafely("entity.creeper.hurt")!=null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
             }
-        } else { // Handle clicks in the game menu before the game starts
-            if (slot >= 9 && slot <= 27 && slot % 9 == 0) { // Chair slots (9, 18, 27)
+        }
+         else { // Handle clicks in the game menu before the game starts
+            if (isPlayerHeadSlot(slot, player)) { // Handle clicking own player head
+                handleLeaveChair(player); // Leave chair but stay in inventory
+            }
+            else if (slot >= 9 && slot <= 27 && slot % 9 == 0) { // Chair slots (9, 18, 27)
                 handleChairClick(slot, player);
             } else if (slot == 53) { // Leave chair
                 handleLeaveChair(player);
+                player.closeInventory();
             } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots (10, 19, 28)
                 handleBetClick(slot, player);
             } else if (slot >= 47 && slot <= 51) { // Chip selection
@@ -361,6 +370,20 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
         player.sendMessage("§cPlease wait before clicking again!");
     }
 }
+
+private boolean isPlayerHeadSlot(int slot, Player player) {
+    if (slot < 0 || slot >= inventory.getSize()) { 
+        return false; // Prevent invalid slot access
+    }
+
+    ItemStack item = inventory.getItem(slot);
+    if (item == null || item.getType() != Material.PLAYER_HEAD) return false;
+
+    SkullMeta meta = (SkullMeta) item.getItemMeta();
+    return meta != null && meta.hasOwner() && meta.getOwningPlayer() != null &&
+           meta.getOwningPlayer().getUniqueId().equals(player.getUniqueId());
+}
+
 
 private void handleAllIn(Player player) {
     UUID playerId = player.getUniqueId();
