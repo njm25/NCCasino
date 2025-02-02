@@ -357,7 +357,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 47: // View Betting Info
-                 if(SoundHelper.getSoundSafely("block.wooden_door.open")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
+                 if(SoundHelper.getSoundSafely("block.wooden_door.close")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
                     exitGame(player);
                     break;
                 default:
@@ -380,7 +380,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 53: // Exit
-                 if(SoundHelper.getSoundSafely("block.wooden_door.open")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
+                if(SoundHelper.getSoundSafely("block.wooden_door.close")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
 
                     exitGame(player);
                     break;
@@ -405,7 +405,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 8: // Exit
-                 if(SoundHelper.getSoundSafely("block.wooden_door.open")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
+                if(SoundHelper.getSoundSafely("block.wooden_door.close")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
 
                     exitGame(player);
                     break;
@@ -429,7 +429,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 2: // Exit
-                 if(SoundHelper.getSoundSafely("block.wooden_door.open")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
+                if(SoundHelper.getSoundSafely("block.wooden_door.close")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
 
                     exitGame(player);
                     break;
@@ -480,7 +480,7 @@ private void exitGame(Player player) {
         bt.clearAllBetsAndRefund(player);
     }
     player.closeInventory();
-    player.sendMessage("§cYou have left the game.");
+    //player.sendMessage("§cYou have left the game.");
     Tables.remove(player);
     removeAllBets(player.getUniqueId());
 
@@ -660,25 +660,25 @@ private void startBettingTimer() {
             //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 46);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 47);
             addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 46);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, "EXIT (Refund and Exit)", 1), 47);
+            addItem(createCustomItem(Material.SPRUCE_DOOR, "Refund and/or Exit", 1), 47);
             break;
         case 2: // Top-left quadrant
             //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 50);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 51);
             addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 52);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, "EXIT (Refund and Exit)", 1), 53);
+            addItem(createCustomItem(Material.SPRUCE_DOOR, "Refund and/or Exit", 1), 53);
             break;
         case 3: // Bottom-left quadrant
            // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 5);
            // addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 6);
             addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 7);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, "EXIT (Refund and Exit)", 1), 8);
+            addItem(createCustomItem(Material.SPRUCE_DOOR, "Refund and/or Exit", 1), 8);
             break;
         case 4: // Bottom-right quadrant
            // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 1);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 2);
             addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 1);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, "EXIT (Refund and Exit)", 1), 2);
+            addItem(createCustomItem(Material.SPRUCE_DOOR, "Refund and/or Exit", 1), 2);
             break;
     }
             } else if (countdown == 0) {
