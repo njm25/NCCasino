@@ -127,6 +127,17 @@ private void registerListener() {
             if(player.getInventory() !=null){
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         if (player != null) {
+                            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                                case STANDARD:{
+                                    break;}
+                                case VERBOSE:{
+                                    player.sendMessage("§aWelcome to blackjack.");
+                                    break;     
+                                }
+                                    case NONE:{
+                                    break;
+                                }
+                            } 
                             if(firstFin){
                         firstFin=false;
                         initializeGameMenu();
@@ -210,7 +221,7 @@ private void registerListener() {
         }
         inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
         // Add leave chair option with a wooden door
-        inventory.setItem(53, createCustomItem(Material.OAK_DOOR, "Leave Chair", 1));
+        inventory.setItem(53, createCustomItem(Material.SPRUCE_DOOR, "Leave Chair/Exit", 1));
     }
 
     // Create an item stack with a custom display name
@@ -231,7 +242,7 @@ private void registerListener() {
     }
 
     // Set custom item metadata
-    private void setCustomItemMeta(ItemStack itemStack, String name) {
+    public void setCustomItemMeta(ItemStack itemStack, String name) {
         ItemMeta meta = itemStack.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(name);
@@ -275,9 +286,23 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
                 handlePlayerAction(player, slot);
             } else if (slot == 53) { // Handle leave chair
                 handleLeaveChairDuringGame(player);
-            } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots
-                player.sendMessage("§cInvalid action");
-                 if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+                player.closeInventory();}
+            else if (isPlayerHeadSlot(slot, player)) { // Handle clicking own player head
+                    handleLeaveChair(player); // Leave chair but stay in inventory
+            }
+            else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cInvalid action.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cCan't bet during a game.");
+                    break;}
+                case NONE:{
+                    break;
+                }
+            }
+                 if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             }
             else if (slot == 0){
                                 // 1 in 1000 chance
@@ -303,13 +328,41 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
                     // Do NOT call firework.detonate(), let the firework fly naturally
                 }
                 
-                 if(SoundHelper.getSoundSafely("entity.creeper.hurt")!=null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
+                 if (SoundHelper.getSoundSafely("entity.creeper.hurt", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
             }
-        } else { // Handle clicks in the game menu before the game starts
-            if (slot >= 9 && slot <= 27 && slot % 9 == 0) { // Chair slots (9, 18, 27)
+        }
+         else { // Handle clicks in the game menu before the game starts
+            if (isPlayerHeadSlot(slot, player)) { // Handle clicking own player head
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§aLeft chair.");
+                        break;     
+        
+                    }
+                        case NONE:{
+                        break;
+                    }
+                }
+                handleLeaveChair(player); // Leave chair but stay in inventory
+            }
+            else if (slot >= 9 && slot <= 27 && slot % 9 == 0) { // Chair slots (9, 18, 27)
                 handleChairClick(slot, player);
             } else if (slot == 53) { // Leave chair
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§aLeft game.");
+                        break;     
+                    }
+                        case NONE:{
+                        break;
+                    }
+                }
                 handleLeaveChair(player);
+                player.closeInventory();
             } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots (10, 19, 28)
                 handleBetClick(slot, player);
             } else if (slot >= 47 && slot <= 51) { // Chip selection
@@ -340,10 +393,12 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
                     // Do NOT call firework.detonate(), let the firework fly naturally
                 }
                 
-                 if(SoundHelper.getSoundSafely("entity.creeper.hurt")!=null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
+                 if (SoundHelper.getSoundSafely("entity.creeper.hurt", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
             } else {
                 switch (slot) {
                     case 45:
+
+
                         handleUndoAllBets(player);
                         break;
                     case 46:
@@ -358,17 +413,51 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
             }
         }
     } else {
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
         player.sendMessage("§cPlease wait before clicking again!");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§cPlease wait before clicking blackjack again!");
+                break;}
+            case NONE:{
+                break;
+            }
+        }
     }
 }
+
+private boolean isPlayerHeadSlot(int slot, Player player) {
+    if (slot < 0 || slot >= inventory.getSize()) { 
+        return false; // Prevent invalid slot access
+    }
+
+    ItemStack item = inventory.getItem(slot);
+    if (item == null || item.getType() != Material.PLAYER_HEAD) return false;
+
+    SkullMeta meta = (SkullMeta) item.getItemMeta();
+    return meta != null && meta.hasOwner() && meta.getOwningPlayer() != null &&
+           meta.getOwningPlayer().getUniqueId().equals(player.getUniqueId());
+}
+
 
 private void handleAllIn(Player player) {
     UUID playerId = player.getUniqueId();
     
     // Ensure the player is seated before allowing all-in
     if (!playerSeats.containsKey(playerId)) {
-        player.sendMessage("§cSit to bet \n");
-        if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+        player.sendMessage("§cInvalid action.");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§cMust be seated to go all in.");
+                break;}
+            case NONE:{
+                break;
+            }
+        }
+        if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         return;
     }
 
@@ -376,8 +465,18 @@ private void handleAllIn(Player player) {
     double totalBalance = getPlayerTotalBalance(player);
     
     if (totalBalance <= 0) {
-        player.sendMessage("§cNo " + plugin.getCurrencyName(internalName).toLowerCase()+"s"+ "\n");
-         if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage("§cInvalid action.");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§cNo " + plugin.getCurrencyName(internalName).toLowerCase()+"s"+ "\n");
+                break;}
+            case NONE:{
+                break;
+            }
+        }
+         if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         return;
     }
 
@@ -389,16 +488,26 @@ private void handleAllIn(Player player) {
 
     // Store the bet amount
     Map<Integer, Double> bets = playerBets.computeIfAbsent(playerId, k -> new HashMap<>());
-    bets.put(betSlot, totalBalance);
-    
-    // Update the displayed bet amount
-    updateItemLore(betSlot, totalBalance);
+    double newTotal = bets.merge(betSlot, totalBalance, Double::sum);
+
+    // Update the displayed bet amount with the new total
+    updateItemLore(betSlot, newTotal);
 
     lastBetAmounts.computeIfAbsent(playerId, k -> new ArrayList<>()).add(totalBalance); // Store last bet amount
 
     // Play sound effect to confirm All In
-     if(SoundHelper.getSoundSafely("entity.lightning_bolt.thunder")!=null)player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER, 1.5f, 0.8f);
-    //player.sendMessage("§aAll in with " + (int)totalBalance + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalBalance) == 1 ? "" : "s") + "\n");
+     if (SoundHelper.getSoundSafely("entity.lightning_bolt.thunder", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER, 1.5f, 0.8f);
+     switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+        case STANDARD:{
+            break;}
+        case VERBOSE:{
+            player.sendMessage("§aAll in with " + (int)newTotal + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(newTotal) == 1 ? "" : "s") + "\n");
+                        break;}
+        case NONE:{
+            break;
+        }
+    }
+    //
 
     // Start countdown if not already running
     if (countdownTaskId == -1) {
@@ -431,8 +540,19 @@ private void handlePlayerAction(Player player, int slot) {
 
         // Check if the player's turn is still active
         if (!playerTurnActive.getOrDefault(playerId, false)) {
-            player.sendMessage("§cInvalid action");
-             if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cInvalid action.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cNot your turn.");
+                    break;     
+                }
+                case NONE:{
+                    break;
+                }
+            }
+             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             return;
         }
 
@@ -442,7 +562,7 @@ private void handlePlayerAction(Player player, int slot) {
         switch (slot) {
             case 36: // Hit
                 handleHit(player);
-                 if(SoundHelper.getSoundSafely("entity.creeper.hurt")!=null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT, SoundCategory.MASTER, 1.0f, 1.0f);
+                 if (SoundHelper.getSoundSafely("entity.creeper.hurt", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT, SoundCategory.MASTER, 1.0f, 1.0f);
                 break;
             case 37: // Stand
                 handleStand(player);
@@ -477,10 +597,21 @@ private void handlePlayerAction(Player player, int slot) {
                     // Do NOT call firework.detonate(), let the firework fly naturally
                 }
                 
-                 if(SoundHelper.getSoundSafely("entity.creeper.hurt")!=null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
+                 if (SoundHelper.getSoundSafely("entity.creeper.hurt", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
             default:
-                player.sendMessage("§cInvalid action ");
-                 if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cInvalid action. ");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cInvalid action. ");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            }
+                 if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
                 playerTurnActive.put(playerId, true); // Re-enable actions if the action was invalid
         }
     }
@@ -509,9 +640,20 @@ private void handleHit(Player player) {
                 return;
             }
             int handValue = calculateHandValue(playerHands.get(playerId));
-
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                 
+                    player.sendMessage("§aYou drew a "+newCard.getRank().toString().toLowerCase()+".");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
             if (handValue == 21) {
-                
+   
                 playerTurnActive.put(playerId, false); // Deactivate the player's turn
                 startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
             } else if (handValue > 21) {
@@ -536,8 +678,19 @@ private void handleStand(Player player) {
         UUID playerId = player.getUniqueId();
         playerDone.put(playerId, true); // Mark the player as done
         playerTurnActive.put(playerId, false); // Deactivate the player's turn
-         if(SoundHelper.getSoundSafely("item.shield.block")!=null)player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BLOCK, SoundCategory.MASTER,1.0f, 1.0f);
-        player.sendMessage("§9You stood.");
+         if (SoundHelper.getSoundSafely("item.shield.block", player) != null)player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BLOCK, SoundCategory.MASTER,1.0f, 1.0f);
+         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage("§9You stood.");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§9You stood.");
+                break;     
+            }
+                case NONE:{
+                break;
+            }
+        }
         startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
     }
 }
@@ -552,7 +705,16 @@ private void handleDoubleDown(Player player) {
         double currentBet = playerBets.get(playerId).values().stream().mapToDouble(Double::doubleValue).sum();
 
         if (!hasEnoughWager(player, currentBet)) {
-            player.sendMessage("§cNot enough funds.");
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cNot enough funds.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cNot enough funds for double down.");}
+                    case NONE:{
+                    break;
+                }
+            }
             playerTurnActive.put(playerId, true); // Allow more actions since the double down failed
             allowPlayerActions(player); // Continue player's turn
             return;
@@ -576,9 +738,20 @@ private void handleDoubleDown(Player player) {
         
         playerDone.put(playerId, true); // Mark the player as done
         playerTurnActive.put(playerId, false); // Deactivate the player's turn after doubling down
-         if(SoundHelper.getSoundSafely("item.armor.equip_chain")!=null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
-        player.sendMessage("§9You doubled down.");
+         if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
+         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage("§9You doubled down.");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§9You doubled down.");
+                break;     
 
+            }
+                case NONE:{
+                break;
+            }
+        }
         startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
     }
 }
@@ -612,15 +785,39 @@ private void handleInsurance(Player player) {
 
         // Check if the player is already sitting in a chair
         if (playerSeats.containsKey(playerId)||clickedItem == null || !clickedItem.getType().name().endsWith("_STAIRS")||!sittable) {
-            player.sendMessage("§cYou're sitting buster");
-             if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+               case STANDARD:{
+                player.sendMessage("§cYou're sitting buster");
+                break;}
+               case VERBOSE:{
+                player.sendMessage("§cCannot switch chairs");
+                break;     
+
+            }
+                   case NONE:{
+                   break;
+               }
+           }
+             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
 
-         if(SoundHelper.getSoundSafely("block.wood.place")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE,SoundCategory.MASTER, 1.0f, 1.0f); 
+         if (SoundHelper.getSoundSafely("block.wood.place", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE,SoundCategory.MASTER, 1.0f, 1.0f); 
         // Set the player's actual head at the chair's position
         inventory.setItem(slot, createPlayerHeadItem(player, 1));
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§aSat down.");
+                break;     
 
+            }
+                case NONE:{
+                break;
+            }
+        }
         // Track the player's seat
         playerSeats.put(playerId, slot);
     }
@@ -636,7 +833,7 @@ private void handleLeaveChair(Player player) {
 
     int chairSlot = playerSeats.remove(playerId);
 
-     if(SoundHelper.getSoundSafely("block.wooden_door.close")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
+     if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
     // Reset the chair to its original state
     inventory.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, "Click to sit here"));
 
@@ -673,7 +870,7 @@ private void handleLeaveChairDuringGame(Player player) {
     // Remove all the player's associated data
     removePlayerData(playerId);
 
-     if(SoundHelper.getSoundSafely("block.wooden_door.close")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
+     if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
     // Reset the chair to its original state
     inventory.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, "Click to sit here"));
   
@@ -739,8 +936,18 @@ private void removePlayerData(UUID playerId) {
         UUID playerId = player.getUniqueId();
         String itemName = clickedItem.getItemMeta().getDisplayName();
         double selectedWager = chipValues.getOrDefault(itemName, 0.0);
-         if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-    
+         if (SoundHelper.getSoundSafely("item.flintandsteel.use", player) != null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§aWager: " + selectedWager + " " + plugin.getCurrencyName(internalName));                     
+                break;     
+            }
+                case NONE:{
+                break;
+            }
+        }
         selectedWagers.put(playerId, selectedWager);
         
     }
@@ -761,8 +968,20 @@ private void removePlayerData(UUID playerId) {
     
         // Ensure the player is sitting before placing a bet
         if (!playerSeats.containsKey(playerId)) {
-            player.sendMessage("§cSit to bet");
-             if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cSit to bet.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cMust be seated to bet.");
+                    break;     
+
+                }
+                    case NONE:{
+                    break;
+                }
+            }
+             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             return;
         }
     
@@ -771,8 +990,20 @@ private void removePlayerData(UUID playerId) {
         int betSlot = chairSlot + 1; // Paper is always right next to the chair
     
         if (slot != betSlot) {
-            player.sendMessage("§cNot your betting paper");
-             if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cNot your betting paper");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cCannot bet on someone else.");
+                    break;     
+
+                }
+                    case NONE:{
+                    break;
+                }
+            }
+             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             return;
         }
     
@@ -780,28 +1011,63 @@ private void removePlayerData(UUID playerId) {
         if (selectedWager > 0 && hasEnoughWager(player, selectedWager)) {
             removeWagerFromInventory(player, selectedWager);
             Map<Integer, Double> bets = playerBets.computeIfAbsent(playerId, k -> new HashMap<>());
-    
             double currentBet = bets.getOrDefault(betSlot, 0.0);
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aPlaced bet of "+selectedWager+".");
+                    break;     
+
+                }
+                    case NONE:{
+                    break;
+                }
+            }
             bets.put(betSlot, currentBet + selectedWager);
             updateItemLore(betSlot, bets.get(betSlot));
     
             lastBetAmounts.computeIfAbsent(playerId, k -> new ArrayList<>()).add(selectedWager); // Store the last bet amount
     
-             if(SoundHelper.getSoundSafely("item.armor.equip_chain")!=null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f);
+             if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f);
     
             if (countdownTaskId == -1) { // Start the countdown if it's not already started
                 startCountdownTimer();
             }
         } else {
-            player.sendMessage("§cInvalid action");
-             if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cInvalid action.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cToo broke to place bet.");
+                    break;     
+
+                }
+                    case NONE:{
+                    break;
+                }
+            }
+             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
         }
     }
 
     private void handleUndoAllBets(Player player) {
         if (gameActive) {
-            player.sendMessage("§cGame started, can't undo bets");
-             if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cInvalid action.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cGame started, can't undo all bets");
+                    break;     
+
+                }
+                    case NONE:{
+                    break;
+                }
+            }
+             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             return;
         }
     
@@ -809,13 +1075,25 @@ private void removePlayerData(UUID playerId) {
         Map<Integer, Double> bets = playerBets.get(playerId);
     
         if (bets != null && !bets.isEmpty()) {
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                 
+                    player.sendMessage("§aAll bets undone.");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            }
             double totalRefund = bets.values().stream().mapToDouble(Double::doubleValue).sum();
             addWagerToInventory(player, totalRefund);
             clearPlayerBetLore(playerId);  // Clear lore for items related to this player
             playerBets.remove(playerId);
             lastBetAmounts.remove(playerId);
     
-             if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+             if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
             // Check if there are no bets left for any player
             if (playerBets.isEmpty()) {
                 stopCountdownTimer(); // Stop the timer if no bets are left for any player
@@ -839,8 +1117,20 @@ private void removePlayerData(UUID playerId) {
     // Handle undo last bet
     private void handleUndoLastBet(Player player) {
         if (gameActive) {
-            player.sendMessage("§cGame started, can't undo bet");
-             if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cInvalid action.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cGame started, can't undo bets");
+                    break;     
+
+                }
+                    case NONE:{
+                    break;
+                }
+            }
+             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
             return;
         }
     
@@ -849,10 +1139,22 @@ private void removePlayerData(UUID playerId) {
         List<Double> lastBets = lastBetAmounts.get(playerId);
     
         if (bets != null && lastBets != null && !lastBets.isEmpty()) {
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                 
+                    player.sendMessage("§aLast bet undone.");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
             double lastBet = lastBets.remove(lastBets.size() - 1); // Get the last bet amount
     
-             if(SoundHelper.getSoundSafely("ui.toast.in")!=null)player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
-             if(SoundHelper.getSoundSafely("ui.toast.out")!=null)player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
+             if (SoundHelper.getSoundSafely("ui.toast.in", player) != null)player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
+             if (SoundHelper.getSoundSafely("ui.toast.out", player) != null)player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
             // Find the slot with the last bet and reduce it
             for (Map.Entry<Integer, Double> entry : bets.entrySet()) {
                 int slot = entry.getKey();
@@ -970,7 +1272,7 @@ private void removePlayerData(UUID playerId) {
                         for (UUID uuid : playerSeats.keySet()) {
                             Player player = Bukkit.getPlayer(uuid);
                             if (player != null && player.isOnline()) {
-                                 if(SoundHelper.getSoundSafely("block.note_block.hat")!=null)player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, SoundCategory.MASTER, 1.0f, 1.0f);
+                                 if (SoundHelper.getSoundSafely("block.note_block.hat", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, SoundCategory.MASTER, 1.0f, 1.0f);
                             }
                         }
                     }
@@ -1107,7 +1409,18 @@ private void startNextPlayerTurn() {
             ItemStack item = inventory.getItem(playerSeats.get(currentPlayerId) + 1);
             
             ItemStack enchantedItem = createEnchantedItem(Material.BOOK, "Your turn.", 1);
-            
+            switch(plugin.getPreferences(currentPlayer.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                 
+                    currentPlayer.sendMessage("§aYour turn.");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
             // Retrieve and transfer lore properly using ItemMeta
             if (item != null && item.hasItemMeta()) {
                 ItemMeta itemMeta = item.getItemMeta();
@@ -1119,7 +1432,7 @@ private void startNextPlayerTurn() {
             }
 
             addItem(enchantedItem, playerSeats.get(currentPlayerId) + 1);
-             if(SoundHelper.getSoundSafely("block.enchantment_table.use")!=null)currentPlayer.playSound(currentPlayer.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f); 
+             if (SoundHelper.getSoundSafely("block.enchantment_table.use", currentPlayer) != null)currentPlayer.playSound(currentPlayer.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f); 
             
             // Check if the player's hand value is 21
             int handValue = calculateHandValue(playerHands.get(currentPlayerId));
@@ -1315,7 +1628,19 @@ private void finishGame() {
                 && hasAceAndTenValueCard(playerHands.get(playerId));
 
         if (isBlackjack) {
-            player.sendMessage("§a§lBlackjack!");
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§a§lBlackjack!");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§a§lBlackjack!");
+                    break;     
+
+                }
+                    case NONE:{
+                    break;
+                }
+            }
             Random random = new Random();
             
             player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
@@ -1323,37 +1648,82 @@ private void finishGame() {
             float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
             for (int i = 0; i < 3; i++) {
                 float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
-                 if(SoundHelper.getSoundSafely("entity.player.levelup")!=null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER, 1.0f,chosenPitch);
+                 if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER, 1.0f,chosenPitch);
                 // Schedule them slightly apart for a "ding-ding-ding" effect
             
             }
             payOut(player, bets, 2.5); // Pay out 2.5x for a blackjack
         } else if (playerCardSum > 21) {
-            player.sendMessage("§c§lYou busted");
-             if(SoundHelper.getSoundSafely("entity.generic.explode")!=null)player.playSound(player.getLocation(),Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§c§lYou busted");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§c§lYou busted");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            }
+             if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
             player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
         } else if (dealerBusted || playerCardSum > dealerCardSum) {
-            player.sendMessage("§a§lYou won!");
-            
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§a§lYou won!");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§a§lYou won!");
+                    break;     
+
+                }
+                    case NONE:{
+                    break;
+                }
+            }            
             player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
             Random random = new Random();
             // We'll pick from a small array of fun pitches
             float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
             for (int i = 0; i < 3; i++) {
                 float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
-                 if(SoundHelper.getSoundSafely("entity.player.levelup")!=null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER,1.0f,chosenPitch);
+                 if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER,1.0f,chosenPitch);
                 // Schedule them slightly apart for a "ding-ding-ding" effect
             
             }
             payOut(player, bets, 2.0); // Regular win pays out 2x
         } else if (playerCardSum < dealerCardSum) {
-            player.sendMessage("§c§lYou lost");
-             if(SoundHelper.getSoundSafely("entity.generic.explode")!=null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§c§lYou lost");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§c§lYou lost");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            }    
+             if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
         player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
         } else {
-            player.sendMessage("§6§lIt's a push! Your bet is returned");
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§6§lPush");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§6§lIt's a push! Your bet is returned");
+                    break;     
+
+                }
+                    case NONE:{
+                    break;
+                }
+            }  
             refundBet(player, bets);
-             if(SoundHelper.getSoundSafely("item.shield.break")!=null)player.playSound(player.getLocation(),Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
+             if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(),Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
             player.getWorld().spawnParticle(Particle.LARGE_SMOKE, player.getLocation(), 20);  
         }
     }
@@ -1393,12 +1763,35 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
                 }
             }
         }
-        player.sendMessage("§a§lPaid "+(int)totalAmount+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalAmount) == 1 ? "" : "s")  + "\n §r§a§o(profit of "+(int)Math.abs(totalAmount-totalBet)+")");
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage("§a§lPaid "+(int)totalAmount+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalAmount) == 1 ? "" : "s"));
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§a§lPaid "+(int)totalAmount+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalAmount) == 1 ? "" : "s")  + "\n §r§a§o(profit of "+(int)Math.abs(totalAmount-totalBet)+")");
+                break;     
+            }
+                case NONE:{
+                break;
+            }
+        } 
 
         //player.sendMessage("§a§l" + (int)payout + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s") + "\n");
         // Print total dropped if any items couldn't fit in inventory
         if (totalDropped > 0) {
-            player.sendMessage("§cNo room for " + (int)totalDropped + " "+plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalDropped) == 1 ? "" : "s") +", dropping...");        } else {
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cNo room for " + (int)totalDropped + " "+plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalDropped) == 1 ? "" : "s") +", dropping...");       
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cNo room for " + (int)totalDropped + " "+plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalDropped) == 1 ? "" : "s") +", dropping...");  
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
+         } else {
 
         }
     }
@@ -1499,7 +1892,7 @@ private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId) 
         for (UUID uuid : playerSeats.keySet()) {
             Player player = Bukkit.getPlayer(uuid);
             if (player != null && player.isOnline()) {
-                 if(SoundHelper.getSoundSafely("block.soul_soil.step")!=null)player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
+                 if (SoundHelper.getSoundSafely("block.soul_soil.step", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
             }
         }
         
@@ -1649,7 +2042,7 @@ private void scheduleHiddenCardDealing(int slot, int delay) {
         for (UUID uuid : playerSeats.keySet()) {
             Player player = Bukkit.getPlayer(uuid);
             if (player != null && player.isOnline()) {
-                 if(SoundHelper.getSoundSafely("block.soul_soil.step")!=null)player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
+                 if (SoundHelper.getSoundSafely("block.soul_soil.step", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
             }
         }
         inventory.setItem(slot, hiddenCard);
@@ -1667,7 +2060,7 @@ private void dealCardToPlayer(int slot, Card card, UUID playerId) {
     for (UUID uuid : playerSeats.keySet()) {
         Player player = Bukkit.getPlayer(uuid);
         if (player != null && player.isOnline()) {
-             if(SoundHelper.getSoundSafely("block.soul_soil.step")!=null)player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
+             if (SoundHelper.getSoundSafely("block.soul_soil.step", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
         }
     }
 

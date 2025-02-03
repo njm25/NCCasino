@@ -16,6 +16,7 @@ import org.bukkit.inventory.Inventory;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.components.AdminInventory;
 import org.nc.nccasino.components.AnimationTable;
+import org.nc.nccasino.components.PlayerMenu;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.helpers.SoundHelper;
@@ -27,7 +28,7 @@ import java.util.UUID;
 
 public class DealerInteractListener implements Listener {
     private final Nccasino plugin;
-    private final Set<Player> activeAnimations = new HashSet<>();
+    public static Set<Player> activeAnimations = new HashSet<>();
     private Villager villager;
 
     public DealerInteractListener(Nccasino plugin) {
@@ -66,7 +67,7 @@ public class DealerInteractListener implements Listener {
             .toList();
 
         if (!occupations.isEmpty() && !villagers.isEmpty()) {
-            if (SoundHelper.getSoundSafely("entity.villager.no") != null) {
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             }
             for (int i = 0; i < occupations.size(); i++) {
@@ -85,11 +86,29 @@ public class DealerInteractListener implements Listener {
         
         if (player.isSneaking() && player.hasPermission("nccasino.adminmenu")) {
             handleAdminInventory(player, dealerId);
+        }
+        else if (player.isSneaking() && !player.hasPermission("nccasino.adminmenu")) {
+            handlePlayerMenu(player, dealerId);
         } else {
             handleDealerInventory(player, dealerId);
         }
         
         event.setCancelled(true);
+    }
+
+    private void handlePlayerMenu(Player player, UUID dealerId) {
+        if (PlayerMenu.playerMenus.containsKey(player.getUniqueId())) {
+            PlayerMenu playerMenu = PlayerMenu.playerMenus.get(player.getUniqueId());
+
+            if (playerMenu.getDealerId().equals(dealerId)) {
+                player.openInventory(playerMenu.getInventory());
+            } else {
+                Bukkit.getLogger().warning("Error: playerMenu's dealerId does not match the dealerId of entity interacted with");
+            }
+        } else {
+            PlayerMenu playerMenu = new PlayerMenu(player,plugin,dealerId);
+            player.openInventory(playerMenu.getInventory());
+        }
     }
 
     private void handleAdminInventory(Player player, UUID dealerId) {

@@ -33,18 +33,19 @@ public class BlackjackAdminInventory extends DealerInventory {
     private Villager dealer;
     public static final Map<UUID, BlackjackAdminInventory> BAInventories = new HashMap<>();
 
-
     private enum SlotOption {
         RETURN,
         EDIT_TIMER,
         STAND_17,
-        NUMBER_OF_DECKS
+        NUMBER_OF_DECKS,
+        EXIT
      }
      private final Map<SlotOption, Integer> slotMapping = new HashMap<>() {{
-         put(SlotOption.RETURN, 0);
-         put(SlotOption.EDIT_TIMER, 1);
-         put(SlotOption.STAND_17, 2);
-         put(SlotOption.NUMBER_OF_DECKS, 3);
+        put(SlotOption.EXIT, 0);
+        put(SlotOption.RETURN, 1);
+        put(SlotOption.EDIT_TIMER, 2);
+        put(SlotOption.STAND_17, 3);
+        put(SlotOption.NUMBER_OF_DECKS, 4);
      }};
 
     public BlackjackAdminInventory(UUID dealerId,Player player, String title, Consumer<UUID> ret, Nccasino plugin,String returnName) {
@@ -102,7 +103,9 @@ public class BlackjackAdminInventory extends DealerInventory {
         addItemAndLore(Material.CLOCK, currentTimer, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Current: " + currentTimer);
         addItemAndLore(Material.SHIELD, standOn17Chance, "Change Stand On 17 Chance", slotMapping.get(SlotOption.STAND_17), "Current: " + standOn17Chance + "%");
         addItemAndLore(Material.RED_STAINED_GLASS_PANE, numberOfDecks, "Change Number of Decks", slotMapping.get(SlotOption.NUMBER_OF_DECKS), "Current: " + numberOfDecks);
-        addItem(createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Return to "+returnName), 0);
+        addItem(createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Return to "+returnName), slotMapping.get(SlotOption.RETURN));
+        addItem( createCustomItem(Material.SPRUCE_DOOR, "Exit"),slotMapping.get(SlotOption.EXIT) );
+
     }
 
     public boolean isPlayerOccupied(UUID playerId){
@@ -172,29 +175,58 @@ public class BlackjackAdminInventory extends DealerInventory {
             if(option!=null){
             switch (option) {
                 case RETURN:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     executeReturn();
                     break;
                 case EDIT_TIMER:
                     handleEditTimer(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     break;
                 case STAND_17:
                     handleEditStand(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     break;   
                 case NUMBER_OF_DECKS:
                     handleEditDecks(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-                    break;    
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    break; 
+                case EXIT:
+                    handleExit(player);
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    break;   
                 default:
-                    if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
-                    player.sendMessage("§cInvalid option selected.");
+                    if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                        case STANDARD:{
+                            player.sendMessage("§cInvalid option selected.");
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage("§cInvalid blackjack settings option selected.");
+                            break;}
+                        case NONE:{
+                            break;
+                        }
+                    }
                     break;
             }}
         } else {
-            player.sendMessage("§cPlease wait before clicking again!");
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cPlease wait before clicking again!");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cPlease wait before clicking mines settings again!");
+                    break;}
+                case NONE:{
+                    break;
+                }
+            }
         }
+    }
+
+    private void handleExit(Player player) {
+        player.closeInventory();
+        delete();
     }
 
     public static <K, V> K getKeyByValue(Map<K, V> map, V value) {
@@ -211,7 +243,18 @@ public class BlackjackAdminInventory extends DealerInventory {
         AdminInventory.localVillager.put(playerId, dealer);
         AdminInventory.standOn17Mode.put(playerId, dealer);
         player.closeInventory();
-        player.sendMessage("§aType new stand on 17 percent value between 0 and 100.");
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage("§aType new stand on 17 percent in chat.");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§aType new stand on 17 percent value between 0 and 100 in chat.");
+                break;}
+            case NONE:{
+                player.sendMessage("§aType new value.");
+                break;
+            }
+        }
     }
 
     private void handleEditDecks(Player player) {
@@ -219,7 +262,18 @@ public class BlackjackAdminInventory extends DealerInventory {
         AdminInventory.localVillager.put(playerId, dealer);
         AdminInventory.decksEditMode.put(playerId, dealer);
         player.closeInventory();
-        player.sendMessage("§aType the new number of decks.");
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage("§aType new number in chat.");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§aType the new number of decks.");
+                break;}
+            case NONE:{
+                player.sendMessage("§aType new value.");
+                break;
+            }
+        }
     }
 
 
@@ -228,7 +282,18 @@ public class BlackjackAdminInventory extends DealerInventory {
         AdminInventory.localVillager.put(playerId, dealer);
         AdminInventory.timerEditMode.put(playerId, dealer);
         player.closeInventory();
-        player.sendMessage("§aType the new timer in chat.");
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage("§aType new number in chat.");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§aType the new timer in chat.");
+                break;}
+            case NONE:{
+                player.sendMessage("§aType new value.");
+                break;
+            }
+        }
     }
 
       @EventHandler
@@ -253,11 +318,31 @@ public class BlackjackAdminInventory extends DealerInventory {
                 plugin.getConfig().set("dealers." + internalName + ".timer", Integer.parseInt(newTimer));
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§aDealer timer updated.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                        break;}
+                    case NONE:{
+                        break;
+                    }
+                }
                 AdminInventory.localVillager.remove(playerId);
             } else {
-                player.sendMessage("§cCould not find dealer.");
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cCould not find dealer.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cCould not find blackjack settings dealer.");
+                        break;}
+                    case NONE:{
+                        break;
+                    }
+                }
             }
 
                 
@@ -276,11 +361,31 @@ public class BlackjackAdminInventory extends DealerInventory {
                 plugin.getConfig().set("dealers." + internalName + ".stand-on-17", Integer.parseInt(newTimer));
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                player.sendMessage("§aDealer stand on 17 chance updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cDealer stand on 17 chance updated.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§aDealer stand on 17 chance updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                        break;}
+                    case NONE:{
+                        break;
+                    }
+                }
                 AdminInventory.localVillager.remove(playerId);
             } else {
-                player.sendMessage("§cCould not find dealer.");
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cCould not find dealer.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cCould not find blackjack settings dealer.");
+                        break;}
+                    case NONE:{
+                        break;
+                    }
+                }
             }
 
                 
@@ -299,11 +404,31 @@ public class BlackjackAdminInventory extends DealerInventory {
                 plugin.getConfig().set("dealers." + internalName + ".number-of-decks", Integer.parseInt(newDecks));
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                player.sendMessage("§aDealer number of decks chance updated to: " + ChatColor.YELLOW + newDecks + "§a.");
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§aDealer number of decks updated.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§aDealer number of decks updated to: " + ChatColor.YELLOW + newDecks + "§a.");
+                        break;}
+                    case NONE:{
+                        break;
+                    }
+                }
                 AdminInventory.localVillager.remove(playerId);
             } else {
-                player.sendMessage("§cCould not find dealer.");
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cCould not find dealer.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cCould not find blackjack settings dealer.");
+                        break;}
+                    case NONE:{
+                        break;
+                    }
+                }
             }
 
                 
@@ -311,8 +436,9 @@ public class BlackjackAdminInventory extends DealerInventory {
         }
 
     }
+    
     private void denyAction(Player player, String message) {
-        if (SoundHelper.getSoundSafely("entity.villager.no") != null) {
+        if (SoundHelper.getSoundSafely("entity.villager.no",player) != null) {
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         }
         player.sendMessage("§c" + message);

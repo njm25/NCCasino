@@ -36,11 +36,13 @@ public class RouletteAdminInventory extends DealerInventory {
 
     private enum SlotOption {
         RETURN,
-        EDIT_TIMER
+        EDIT_TIMER,
+        EXIT
      }
      private final Map<SlotOption, Integer> slotMapping = new HashMap<>() {{
-         put(SlotOption.RETURN, 0);
-         put(SlotOption.EDIT_TIMER, 1);
+        put(SlotOption.EXIT, 0);
+        put(SlotOption.RETURN, 1);
+        put(SlotOption.EDIT_TIMER, 2);
      }};
 
     public RouletteAdminInventory(UUID dealerId,Player player, String title, Consumer<UUID> ret, Nccasino plugin,String returnName) {
@@ -94,7 +96,9 @@ public class RouletteAdminInventory extends DealerInventory {
         ? config.getInt("dealers." + internalName + ".timer")
         : 10; // Default to 10 if missing
         addItemAndLore(Material.CLOCK, currentTimer, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Current: " + currentTimer);
-        addItem(createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Return to "+returnName), 0);
+        addItem(createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Return to "+returnName), slotMapping.get(SlotOption.RETURN));
+        addItem( createCustomItem(Material.SPRUCE_DOOR, "Exit"),slotMapping.get(SlotOption.EXIT) );
+
     }
 
     @EventHandler
@@ -157,21 +161,48 @@ public class RouletteAdminInventory extends DealerInventory {
             if(option!=null){
             switch (option) {
                 case RETURN:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     executeReturn();
                     break;
                 case EDIT_TIMER:
-                handleEditTimer(player);
-                if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    handleEditTimer(player);
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    break;
+                case EXIT:
+                    handleExit(player);
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     break;
                 default:
-                    if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
-                    player.sendMessage("§cInvalid option selected.");
-                    break;
+                    if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                        case STANDARD:{
+                            player.sendMessage("§cInvalid option selected.");
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage("§cInvalid roulette settings option selected.");
+                            break;}
+                        case NONE:{
+                            break;
+                        }
+                    }                    break;
             }}
         } else {
-            player.sendMessage("§cPlease wait before clicking again!");
-        }
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cPlease wait before clicking again!");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cPlease wait before clicking roulette settings again!");
+                    break;}
+                case NONE:{
+                    break;
+                }
+            }        }
+    }
+
+    private void handleExit(Player player) {
+        player.closeInventory();
+        delete();
     }
 
     public static <K, V> K getKeyByValue(Map<K, V> map, V value) {
@@ -188,7 +219,18 @@ public class RouletteAdminInventory extends DealerInventory {
         AdminInventory.localVillager.put(player.getUniqueId(), dealer);
         AdminInventory.timerEditMode.put(playerId, dealer);
         player.closeInventory();
-        player.sendMessage("§aType the new timer in chat.");
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage("§aType the new number in chat.");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§aType the new timer in chat.");
+                break;}
+            case NONE:{
+                player.sendMessage("§aType the value.");
+                break;
+            }
+        }  
     }
 
       @EventHandler
@@ -213,10 +255,30 @@ public class RouletteAdminInventory extends DealerInventory {
                 plugin.getConfig().set("dealers." + internalName + ".timer", Integer.parseInt(newTimer));
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§aTDealer timer updated.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                        break;}
+                    case NONE:{
+                        break;
+                    }
+                }  
             } else {
-                player.sendMessage("§cCould not find dealer.");
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cCould not find dealer.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cCould not find dealer for roulette settings.");
+                        break;}
+                    case NONE:{
+                        break;
+                    }
+                }
             }
 
             AdminInventory.localVillager.remove(playerId);
@@ -226,7 +288,7 @@ public class RouletteAdminInventory extends DealerInventory {
 
     }
     private void denyAction(Player player, String message) {
-        if (SoundHelper.getSoundSafely("entity.villager.no") != null) {
+        if (SoundHelper.getSoundSafely("entity.villager.no",player) != null) {
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         }
         player.sendMessage("§c" + message);

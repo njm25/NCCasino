@@ -12,10 +12,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.NamespacedKey;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.games.Blackjack.BlackjackInventory;
-import org.nc.nccasino.games.Dice.DiceInventory;
-import org.nc.nccasino.games.DragonClimb.DragonInventory;
 import org.nc.nccasino.games.Mines.MinesInventory;
-import org.nc.nccasino.games.RailRunner.RailInventory;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
 import org.nc.nccasino.helpers.AttributeHelper;
 
@@ -115,18 +112,6 @@ public class DealerVillager {
             case "Mines":
                 inventory = new MinesInventory(uniqueId, plugin, internalName);
                 name = "Mines Dealer";
-                break;
-            case "Dragon Dodger":
-                inventory = new DragonInventory(uniqueId, plugin);
-                name = "Dragon Dodger Dealer";
-                break;
-            case "Rail Runner":
-                inventory = new RailInventory(uniqueId, plugin);
-                name = "Rail Runner Dealer";
-                break;
-            case "Dice":
-                inventory = new DiceInventory(uniqueId, plugin);
-                name = "Dice Dealer";
                 break;
             default:
                 defaultTimer = 10;
@@ -228,18 +213,6 @@ public class DealerVillager {
                 newInventory = new MinesInventory(dealerId, plugin, internalName);
                 newName = "Mines Dealer";
                 break;
-            case "Dragon Climb":
-                newInventory = new DragonInventory(dealerId, plugin);
-                newName = "Dragon Climb Dealer";
-                break;
-            case "Rail Runner":
-                newInventory = new RailInventory(dealerId, plugin);
-                newName = "Rail Runner Dealer";
-                break;
-            case "Dice":
-                newInventory = new DiceInventory(dealerId, plugin);
-                newName = "Dice Dealer";
-                break;
             default:
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);
                 newName = "Blackjack Dealer";
@@ -260,9 +233,17 @@ public class DealerVillager {
         }
         plugin.saveConfig();
         DealerInventory.updateInventory(dealerId, newInventory);
-
-        player.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName
-            + ChatColor.GREEN + "' has been set to " + ChatColor.YELLOW + gameName + ChatColor.GREEN + ".");
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName+ ChatColor.GREEN + "' has been set to " + ChatColor.YELLOW + gameName + ChatColor.GREEN + ".");
+                break;}
+            case VERBOSE:{
+                player.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName+ ChatColor.GREEN + "' has been set to " + ChatColor.YELLOW + gameName + ChatColor.GREEN + ".");
+                break;}
+            case NONE:{
+                break;
+            }
+        }
     }
 
     public static void updateGameType(Villager villager, String gameName, int timer, String anmsg, String newName, List<Integer> chipSizes, String currencyMaterial, String currencyName) {
@@ -301,15 +282,6 @@ public class DealerVillager {
                 break;
             case "Mines":
                 newInventory = new MinesInventory(dealerId, plugin, internalName);
-                break;
-            case "Dragon Climb":
-                newInventory = new DragonInventory(dealerId, plugin);
-                break;
-            case "Rail Runner":
-                newInventory = new RailInventory(dealerId, plugin);
-                break;
-            case "Dice":
-                newInventory = new DiceInventory(dealerId, plugin);
                 break;
             default:
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);

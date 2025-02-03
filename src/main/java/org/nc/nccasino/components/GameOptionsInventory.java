@@ -70,15 +70,15 @@ public class GameOptionsInventory extends DealerInventory {
             String gameType;
             switch (slot) {
                 case 0:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     gameType = "Blackjack";
                     break;
                 case 1:
-                 if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                 if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     gameType = "Roulette";
                     break;
                 case 2:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     gameType = "Mines";
                     break;
                 default:
@@ -91,7 +91,17 @@ public class GameOptionsInventory extends DealerInventory {
                 editDealer(player, gameType);
             }
         } else {
-            player.sendMessage("§cPlease wait before clicking again!");
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cPlease wait before clicking again!");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cPlease wait before clicking game options menu again!");
+                    break;}
+                case NONE:{
+                    break;
+                }
+            }
         }
     }
 
@@ -100,6 +110,7 @@ public class GameOptionsInventory extends DealerInventory {
         plugin.saveDefaultDealerConfig(internalName);
         DealerVillager.spawnDealer(plugin, location, "Dealer Villager", internalName, gameType);
 
+        Location centeredLocation = location.getBlock().getLocation().add(0.5, 0.0, 0.5);
         // Save dealer data
         File dealersFile = new File(plugin.getDataFolder(), "data/dealers.yaml");
         if (!dealersFile.getParentFile().exists()) {
@@ -121,8 +132,18 @@ public class GameOptionsInventory extends DealerInventory {
             plugin.getLogger().severe("Failed to save dealer location to " + dealersFile.getPath());
             e.printStackTrace();
         }
-
-        player.sendMessage("§aDealer with game type " + ChatColor.YELLOW + gameType + ChatColor.GREEN + " created successfully!");
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage("§aDealer with game type " + ChatColor.YELLOW + gameType + ChatColor.GREEN + " created successfully!");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§aDealer with game type " + ChatColor.YELLOW + gameType + ChatColor.GREEN + " created successfully at x: " +ChatColor.YELLOW+centeredLocation.getX()+"§a y: "+ChatColor.YELLOW+centeredLocation.getY()+ "§a z: "+ChatColor.YELLOW+centeredLocation.getZ()+ "§a.");
+                break;}
+            case NONE:{
+                player.sendMessage("§aDealer created successfully!");
+                break;
+            }
+        }
 
         player.closeInventory();
         this.delete();
