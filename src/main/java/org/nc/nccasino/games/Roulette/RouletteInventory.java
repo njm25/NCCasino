@@ -485,7 +485,17 @@ private void exitGame(Player player) {
         bt.clearAllBetsAndRefund(player);
     }
     player.closeInventory();
-    //player.sendMessage("§cYou have left the game.");
+    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+        case STANDARD:{
+            break;}
+        case VERBOSE:{
+    player.sendMessage("§cYou have left the game.");
+    break;     
+        }
+            case NONE:{
+            break;
+        }
+    } 
     Tables.remove(player);
     removeAllBets(player.getUniqueId());
 
@@ -603,12 +613,22 @@ private void exitGame(Player player) {
         if (playersWithBets.isEmpty() && activePlayers.isEmpty()) {
             resetToStartState();
         } else {
-            /*
+            
             for (Player player : playersWithBets) {
                 if (player.isOnline()) {
-                    player.sendMessage("§dBets locked, spinning!");
+                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                        case STANDARD:{
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage("§dBets locked, spinning!");
+                            break;     
+                        }
+                            case NONE:{
+                            break;
+                        }
+                    } 
                 }
-            }*/
+            }
 
             miscTask=Bukkit.getScheduler().runTaskLater(plugin, () -> 
             mce.playSong("RouletteWheel", RouletteSongs.getBallLaunch(), false, "Ball Launch")
@@ -1192,11 +1212,44 @@ private void handleWinningNumber() {
                     if (!playerBets.isEmpty()) {
                         // Notify the player of the winning number
                         if (isRed(winningNumber)) {
-                            player.sendMessage("§cHit Red " + winningNumber + "!");
+                            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                                case STANDARD:{
+                                    player.sendMessage("§cHit Red " + winningNumber + "!");
+                                    break;}
+                                case VERBOSE:{
+                                    player.sendMessage("§cHit Red " + winningNumber + "!");
+                                    break;     
+                                }
+                                    case NONE:{
+                                    break;
+                                }
+                            } 
                         } else if (isBlack(winningNumber)) {
-                            player.sendMessage("§fHit Black " + winningNumber + "!");
+                            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                                case STANDARD:{
+                                    player.sendMessage("§fHit Black " + winningNumber + "!");
+                                    break;}
+                                case VERBOSE:{
+                                    player.sendMessage("§fHit Black " + winningNumber + "!");
+                                    break;     
+                                }
+                                    case NONE:{
+                                    break;
+                                }
+                            } 
                         } else {
-                            player.sendMessage("§aHit Green " + winningNumber + ", WOW!");
+                            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                                case STANDARD:{
+                                    player.sendMessage("§aHit Green " + winningNumber + ", WOW!");
+                                    break;}
+                                case VERBOSE:{
+                                    player.sendMessage("§aHit Green " + winningNumber + ", WOW!");
+                                    break;     
+                                }
+                                    case NONE:{
+                                    break;
+                                }
+                            } 
                         }
 
                         // Process the bets

@@ -520,7 +520,18 @@ public class BettingTable implements InventoryHolder, Listener {
     
         final int totalPayoutFinal = categoryMap.values().stream().mapToInt(cat -> cat.totalPayout).sum();
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            player.sendMessage(msg.toString());
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage(msg.toString());
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage(msg.toString());
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
             if (totalPayoutFinal > 0) {
                 refundWagerToInventory(player, totalPayoutFinal);
             }
@@ -614,7 +625,18 @@ public class BettingTable implements InventoryHolder, Listener {
         }
 
         if (!clickAllowed) {
-            player.sendMessage("§cPlease wait before clicking again!");
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cInvalid action.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cPlease wait before clicking again!");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
             return;
         }
         clickAllowed = false;
@@ -650,7 +672,18 @@ public class BettingTable implements InventoryHolder, Listener {
                               .filter(it -> it.getType() == currencyMat)
                               .mapToInt(ItemStack::getAmount).sum();
             if (count <= 0) {
-                player.sendMessage("§cNo " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(count) == 1 ? "" : "s") + "\n");
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cInvalid action.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cNo " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(count) == 1 ? "" : "s") + "\n");
+                        break;     
+                    }
+                        case NONE:{
+                        break;
+                    }
+                } 
                  if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f);
                 return;
             }
@@ -682,7 +715,16 @@ public class BettingTable implements InventoryHolder, Listener {
                     (int) selectedWager
                 ));
             } else {
-                //player.sendMessage("§cInvalid wager amount selected.");
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cInvalid wager amount selected.");                        break;     
+                    }
+                        case NONE:{
+                        break;
+                    }
+                } 
                  if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
 
             }
@@ -693,7 +735,17 @@ public class BettingTable implements InventoryHolder, Listener {
             if (selectedWager > 0) {
                 if (hasEnoughWager(player, selectedWager)) {
                     removeWagerFromInventory(player, selectedWager);
-                    //player.sendMessage("§6Put " + (int)selectedWager + " on " + itemName);
+                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                        case STANDARD:{
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage("§6Put " + (int)selectedWager + " on " + itemName);
+                                                        break;     
+                        }
+                            case NONE:{
+                            break;
+                        }
+                    } 
                      if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
 
                     betStack.push(new Pair<>(itemName, (int) selectedWager));
@@ -709,33 +761,87 @@ public class BettingTable implements InventoryHolder, Listener {
                     
                   //  updateAllRelatedSlots(slot, itemName);
                 } else {
-                    player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s");
+                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                        case STANDARD:{
+                            player.sendMessage("§cInvalid action.");
+
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s");
+                            break;     
+                        }
+                            case NONE:{
+                            break;
+                        }
+                    } 
                      if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
                 }
             } else {
-                player.sendMessage("§cNo wager selected");
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cInvalid action.");
+
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cNo wager selected");
+                        break;     
+                    }
+                        case NONE:{
+                        break;
+                    }
+                } 
                  if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
             }
             return;
         }
         if (slot == 45) {
-           // player.sendMessage("Undoing all bets...");
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("Undoing all bets...");                   
+                     break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
            if (!betStack.isEmpty()) {
             clearAllBetsAndRefund(player);
             clearAllLore();
             updateAllLore();
              if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-           // player.sendMessage("§dAll bets undone");
         }
         else{
-            player.sendMessage("§cNo bets to undo");
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cInvalid action.");
+
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cNo bets to undo");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
              if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
         }
             return;
         }
 
         if (slot == 46) {
-           // player.sendMessage("Undoing last bet...");
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("Undoing last bet...");                     break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
             if (!betStack.isEmpty()) {
                 Pair<String, Integer> lastBet = betStack.pop();
                 refundWagerToInventory(player, lastBet.getSecond());
@@ -745,7 +851,19 @@ public class BettingTable implements InventoryHolder, Listener {
                 //player.sendMessage("§dLast bet undone");
             }
             else{
-                player.sendMessage("§cNo bets to undo");
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cInvalid action.");
+    
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cNo bets to undo");
+                        break;     
+                    }
+                        case NONE:{
+                        break;
+                    }
+                } 
                  if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
             }
             return;
@@ -753,7 +871,17 @@ public class BettingTable implements InventoryHolder, Listener {
 
         if ((slot == 36&&pageNum==1)||(slot == 44&&pageNum==2)) {
             saveBetsToRoulette(player);
-            //player.sendMessage("Returning to Roulette...");
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("Returning to Roulette...");                    
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
             UUID dealerId = DealerVillager.getUniqueId(dealer);
             DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
             
@@ -857,7 +985,19 @@ private boolean isValidSlotPage2(int slot) {
     
     
         if (totalLeftoverAmount > 0) {
-            player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
             dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
         }
     }
@@ -947,7 +1087,19 @@ private boolean isValidSlotPage2(int slot) {
         if (requiredAmount > 0) {
             player.getInventory().removeItem(new ItemStack(plugin.getCurrency(internalName), requiredAmount));
         } else {
-            player.sendMessage("§cInvalid wager amount: " + amount);
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cInvalid action.");
+
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cInvalid wager amount: " + amount);
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
         }
     }
 
