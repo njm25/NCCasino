@@ -174,12 +174,30 @@ public class RouletteAdminInventory extends DealerInventory {
                     break;
                 default:
                     if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
-                    player.sendMessage("§cInvalid option selected.");
-                    break;
+                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                        case STANDARD:{
+                            player.sendMessage("§cInvalid option selected.");
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage("§cInvalid roulette settings option selected.");
+                            break;}
+                        case NONE:{
+                            break;
+                        }
+                    }                    break;
             }}
         } else {
-            player.sendMessage("§cPlease wait before clicking again!");
-        }
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cPlease wait before clicking again!");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cPlease wait before clicking roulette settings again!");
+                    break;}
+                case NONE:{
+                    break;
+                }
+            }        }
     }
 
     private void handleExit(Player player) {
@@ -201,7 +219,18 @@ public class RouletteAdminInventory extends DealerInventory {
         AdminInventory.localVillager.put(player.getUniqueId(), dealer);
         AdminInventory.timerEditMode.put(playerId, dealer);
         player.closeInventory();
-        player.sendMessage("§aType the new timer in chat.");
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage("§aType the new number in chat.");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§aType the new timer in chat.");
+                break;}
+            case NONE:{
+                player.sendMessage("§aType the value.");
+                break;
+            }
+        }  
     }
 
       @EventHandler
@@ -227,9 +256,29 @@ public class RouletteAdminInventory extends DealerInventory {
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§aTDealer timer updated.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                        break;}
+                    case NONE:{
+                        break;
+                    }
+                }  
             } else {
-                player.sendMessage("§cCould not find dealer.");
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cCould not find dealer.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cCould not find dealer for roulette settings.");
+                        break;}
+                    case NONE:{
+                        break;
+                    }
+                }
             }
 
             AdminInventory.localVillager.remove(playerId);
