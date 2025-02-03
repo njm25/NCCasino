@@ -1189,7 +1189,7 @@ private void removePlayerData(UUID playerId) {
             if (meta != null) {
                 if (wager > 0) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Current Bet: " + (int)wager + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(wager) == 1 ? "" : "s") + "\n");
+                    lore.add("Wager: " + (int)wager + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(wager) == 1 ? "" : "s") + "\n");
                     meta.setLore(lore);
                 } else {
                     meta.setLore(new ArrayList<>()); // Clear lore if no wager
