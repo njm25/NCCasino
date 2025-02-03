@@ -207,7 +207,7 @@ public class BettingTable implements InventoryHolder, Listener {
         else{inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));}
 
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
-        inventory.setItem(46, createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Undo Last Bet", 1));
+        inventory.setItem(46, createCustomItem(Material.WIND_CHARGE, "Undo Last Bet", 1));
         if(pageNum==1){
             inventory.setItem(36, createCustomItem(Material.ENDER_PEARL, "Back to Wheel", 1));
 

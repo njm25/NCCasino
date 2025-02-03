@@ -208,9 +208,7 @@ public class AdminInventory extends DealerInventory {
        /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
         addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
         addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
-        addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
-        addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
-        addItem( createCustomItem(Material.SPRUCE_DOOR, "Exit"),slotMapping.get(SlotOption.EXIT) );
+        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
         ItemStack head=createPlayerHeadItem(player, 1);
         setCustomItemMeta(head,"Player Menu");
         addItem(head,slotMapping.get(SlotOption.PM) );
@@ -913,7 +911,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             plugin.reloadDealerVillager(dealer);
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§cCurrency updated.");
+                    player.sendMessage("§aCurrency updated.");
                     break;}
                 case VERBOSE:{
                     player.sendMessage("§aCurrency updated to: " + ChatColor.YELLOW + displayName + "§a (" + ChatColor.YELLOW + selectedMaterial.name() + "§a).");
