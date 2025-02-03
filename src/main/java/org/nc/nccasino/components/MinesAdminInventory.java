@@ -93,9 +93,9 @@ public class MinesAdminInventory extends DealerInventory {
         String internalName = DealerVillager.getInternalName(dealer);
         FileConfiguration config = plugin.getConfig();
         int defaultMines = config.getInt("dealers." + internalName + ".default-mines", 3);
-        addItemAndLore(Material.TNT, defaultMines, "Edit Default # Of Mines",  slotMapping.get(SlotOption.EDIT_MINES), "Current: " + defaultMines);
-        addItem(createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Return to "+returnName), slotMapping.get(SlotOption.RETURN));
-        addItem( createCustomItem(Material.SPRUCE_DOOR, "Exit"),slotMapping.get(SlotOption.EXIT) );
+        addItemAndLore(Material.TNT, defaultMines, "Edit Default # Of Mines",  slotMapping.get(SlotOption.EDIT_MINES), "Current: §a" + defaultMines);
+        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to "+returnName,  slotMapping.get(SlotOption.RETURN));
+        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
 
     }
 

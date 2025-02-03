@@ -82,11 +82,12 @@ public class PlayerMenu extends DealerInventory {
      * Populate our Player Menu items.
      */
     private void initializeMenu() {
-        addItem( createCustomItem(Material.WRITABLE_BOOK, "Player Preferences"),slotMapping.get(SlotOption.PREFERENCES));
-        addItem(createCustomItem(Material.BOOK, "Statistics"),slotMapping.get(SlotOption.STATS));
-        addItem( createCustomItem(Material.SPRUCE_DOOR, "Exit"),slotMapping.get(SlotOption.EXIT) );
-        if (fromAdmin) {
-            addItem(createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Return to Admin Menu"), slotMapping.get(SlotOption.RETURN)  );
+        addItemAndLore(Material.BOOK, 1, "Statistics",  slotMapping.get(SlotOption.STATS), "§cComing Soon...");
+        addItemAndLore(Material.WRITABLE_BOOK, 1, "Player Preferences",  slotMapping.get(SlotOption.PREFERENCES));
+
+        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
+        if (fromAdmin) {       
+            addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to Admin Menu",  slotMapping.get(SlotOption.RETURN));
         }
     }
 

@@ -79,8 +79,9 @@ public class PreferencesInventory extends DealerInventory {
        
         //addItem( createCustomItem(Material.BELL, "Sound"),slotMapping.get(SlotOption.SOUNDS));
         //addItem(createCustomItem(Material.BOOKSHELF, "Messages"),slotMapping.get(SlotOption.MESSAGES));
-        addItem( createCustomItem(Material.SPRUCE_DOOR, "Exit"),slotMapping.get(SlotOption.EXIT) );
-        addItem(createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Return to Player Menu"), slotMapping.get(SlotOption.RETURN)  );
+
+        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to Player Menu",  slotMapping.get(SlotOption.RETURN));
+        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
         
     }
 
