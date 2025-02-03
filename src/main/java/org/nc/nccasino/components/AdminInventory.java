@@ -916,7 +916,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     player.sendMessage("§cCurrency updated.");
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aCurrency updated to: " + displayName + " (" + selectedMaterial.name() + ")");
+                    player.sendMessage("§aCurrency updated to: " + ChatColor.YELLOW + displayName + "§a (" + ChatColor.YELLOW + selectedMaterial.name() + "§a).");
                     break;}
                 case NONE:{break;
                 }
@@ -1149,7 +1149,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                             player.sendMessage("§aDealer moved to new location.");
                             break;}
                         case VERBOSE:{
-                            player.sendMessage("§aDealer moved to new location x:"+newLocation.getX()+" y:"+newLocation.getY()+ " z:"+newLocation.getZ());
+                            player.sendMessage("§aDealer moved to new location x: " +ChatColor.YELLOW+newLocation.getX()+"§a y: "+ChatColor.YELLOW+newLocation.getY()+ "§a z: "+ChatColor.YELLOW+newLocation.getZ()+ "§a.");
                             break;}
                         case NONE:{break;
                         }

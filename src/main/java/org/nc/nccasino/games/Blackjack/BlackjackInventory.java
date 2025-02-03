@@ -452,10 +452,10 @@ private void handleAllIn(Player player) {
 
     // Store the bet amount
     Map<Integer, Double> bets = playerBets.computeIfAbsent(playerId, k -> new HashMap<>());
-    bets.put(betSlot, totalBalance);
-    
-    // Update the displayed bet amount
-    updateItemLore(betSlot, totalBalance);
+    double newTotal = bets.merge(betSlot, totalBalance, Double::sum);
+
+    // Update the displayed bet amount with the new total
+    updateItemLore(betSlot, newTotal);
 
     lastBetAmounts.computeIfAbsent(playerId, k -> new ArrayList<>()).add(totalBalance); // Store last bet amount
 
@@ -465,7 +465,7 @@ private void handleAllIn(Player player) {
         case STANDARD:{
             break;}
         case VERBOSE:{
-            player.sendMessage("§aAll in with " + (int)totalBalance + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalBalance) == 1 ? "" : "s") + "\n");
+            player.sendMessage("§aAll in with " + (int)newTotal + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(newTotal) == 1 ? "" : "s") + "\n");
                         break;}
         case NONE:{
             break;

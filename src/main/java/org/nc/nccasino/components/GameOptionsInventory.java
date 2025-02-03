@@ -110,6 +110,7 @@ public class GameOptionsInventory extends DealerInventory {
         plugin.saveDefaultDealerConfig(internalName);
         DealerVillager.spawnDealer(plugin, location, "Dealer Villager", internalName, gameType);
 
+        Location centeredLocation = location.getBlock().getLocation().add(0.5, 0.0, 0.5);
         // Save dealer data
         File dealersFile = new File(plugin.getDataFolder(), "data/dealers.yaml");
         if (!dealersFile.getParentFile().exists()) {
@@ -136,7 +137,7 @@ public class GameOptionsInventory extends DealerInventory {
                 player.sendMessage("§aDealer with game type " + ChatColor.YELLOW + gameType + ChatColor.GREEN + " created successfully!");
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aDealer with game type " + ChatColor.YELLOW + gameType + ChatColor.GREEN + " created successfully at x:"+location.getX()+" y:"+location.getY()+" z:"+location.getX()+"!");
+                player.sendMessage("§aDealer with game type " + ChatColor.YELLOW + gameType + ChatColor.GREEN + " created successfully at x: " +ChatColor.YELLOW+centeredLocation.getX()+"§a y: "+ChatColor.YELLOW+centeredLocation.getY()+ "§a z: "+ChatColor.YELLOW+centeredLocation.getZ()+ "§a.");
                 break;}
             case NONE:{
                 player.sendMessage("§aDealer created successfully!");
