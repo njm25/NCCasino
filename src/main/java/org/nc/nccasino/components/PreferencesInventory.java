@@ -111,7 +111,17 @@ public class PreferencesInventory extends DealerInventory {
                         returnToPM.accept(player);
                     }
                     else {
-                        player.sendMessage("No return callback was set!");
+                        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                            case STANDARD:{
+                                player.sendMessage("§cNo return callback was set!");
+                                break;}
+                            case VERBOSE:{
+                                player.sendMessage("§cNo return callback was set for preferences menu!");
+                                break;}
+                            case NONE:{
+                                break;
+                            }
+                        }
                         player.closeInventory();
                     }
                     break;
@@ -128,14 +138,34 @@ public class PreferencesInventory extends DealerInventory {
                     if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     break;
                 default:
-                    player.sendMessage("§cInvalid option selected.");
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cInvalid option selected.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cInvalid preferences menu option selected.");
+                        break;}
+                    case NONE:{
+                        break;
+                    }
+                }
                     break;
             }
         }
 
     
     } else {
-        player.sendMessage("§cPlease wait before clicking again!");
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage("§cPlease wait before clicking again!");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§cPlease wait before clicking player menu again!");
+                break;}
+            case NONE:{
+                break;
+            }
+        }
     }
        
     }

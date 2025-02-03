@@ -57,7 +57,7 @@ public class Preferences {
 
     public String getMessageDisplay() {
         return switch (messageSetting) {
-            case NONE -> "§cNone";
+            case NONE -> "§cMinimal";
             case STANDARD -> "§eStandard";
             case VERBOSE -> "§aVerbose";
         };

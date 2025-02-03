@@ -172,11 +172,31 @@ public class MinesAdminInventory extends DealerInventory {
                     break;
                 default:
                     if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
-                    player.sendMessage("§cInvalid option selected.");
+                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                        case STANDARD:{
+                            player.sendMessage("§cInvalid option selected.");
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage("§cInvalid mines settings option selected.");
+                            break;}
+                        case NONE:{
+                            break;
+                        }
+                    }
                     break;
             }}
         } else {
-            player.sendMessage("§cPlease wait before clicking again!");
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cPlease wait before clicking again!");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cPlease wait before clicking mines settings again!");
+                    break;}
+                case NONE:{
+                    break;
+                }
+            }
         }
     }
 
@@ -199,7 +219,18 @@ public class MinesAdminInventory extends DealerInventory {
         AdminInventory.localVillager.put(player.getUniqueId(), dealer);
         AdminInventory.editMinesMode.put(playerId, dealer);
         player.closeInventory();
-        player.sendMessage("§aType new default # of mines between 1 and 24");
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage("§aType new default # of mines in chat.");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§aType new default # of mines between 1 and 24 in chat.");
+                break;}
+            case NONE:{
+                player.sendMessage("§aType new value.");
+                break;
+            }
+        }
     }
 
       @EventHandler
@@ -225,9 +256,29 @@ public class MinesAdminInventory extends DealerInventory {
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                player.sendMessage("§aDefault # of mines updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§aDefault # of mines updated.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§aDefault # of mines updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                        break;}
+                    case NONE:{
+                        break;
+                    }
+                }
             } else {
-                player.sendMessage("§cCould not find dealer.");
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cCould not find dealer.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cCould not find dealer for mines settings.");
+                        break;}
+                    case NONE:{
+                        break;
+                    }
+                }
             }
 
             AdminInventory.localVillager.remove(playerId);

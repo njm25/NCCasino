@@ -14,7 +14,6 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.SoundHelper;
-
 public class ConfirmInventory extends DealerInventory {
     private final Consumer<UUID> confirm;
     private final Consumer<UUID> cancel;
@@ -69,11 +68,31 @@ public class ConfirmInventory extends DealerInventory {
                     break;
                 default:
                     if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
-                    player.sendMessage("§cInvalid option selected.");
+                    player.closeInventory();
+                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                        case STANDARD:{
+                            player.sendMessage("§cInvalid option selected.");
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage("§cInvalid confirm menu option selected.");
+                            break;}
+                        case NONE:{break;
+                        }
+                    }
                     break;
             }
         } else {
-            player.sendMessage("§cPlease wait before clicking again!");
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cPlease wait before clicking again!");
+                                        break;}
+                case VERBOSE:{
+                    player.sendMessage("§cPlease wait before clicking confirm menu again!");
+                                        break;}
+                case NONE:{break;
+                }
+            }
+         
         }
     }
 
