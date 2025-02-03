@@ -437,7 +437,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                             player.sendMessage("§cInvalid option selected.");    
                             break;}
                         case VERBOSE:{
-                            player.sendMessage("§cInvalid Admin Menu option selected");
+                            player.sendMessage("§cInvalid Admin Menu option selected.");
                             break;}
                         default:{
                             break;}
@@ -454,7 +454,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     player.sendMessage("§cPlease wait before clicking again!");    
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cClicking too fast, click not registered in Admin Menu");
+                    player.sendMessage("§cClicking too fast, click not registered in admin menu.");
                     break;}
                 default:{
                     break;}
@@ -509,7 +509,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             );
             switch(messPref){
                 case VERBOSE:{
-                    player.sendMessage("§aMines Settings Opened");
+                    player.sendMessage("§aMines Settings Opened.");
                     break;}
                 default:{
                     break;}
@@ -538,7 +538,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             );
             switch(messPref){
                 case VERBOSE:{
-                    player.sendMessage("§aRoulette Settings Opened");
+                    player.sendMessage("§aRoulette Settings Opened.");
                     break;}
                 default:{
                     break;}
@@ -568,7 +568,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             );
             switch(messPref){
                 case VERBOSE:{
-                    player.sendMessage("§aBlackjack Settings Opened");
+                    player.sendMessage("§aBlackjack Settings Opened.");
                     break;}
                 default:{
                     break;}
@@ -604,7 +604,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         updateCurrencyButtons();
         switch(messPref){
             case VERBOSE:{
-                player.sendMessage("§eSwitched currency mode to: §a" + this.currencyMode.name()); 
+                player.sendMessage("§eSwitched currency mode to: §a" + this.currencyMode.name()+"§e."); 
                 break;}
             default:{
                 break;}

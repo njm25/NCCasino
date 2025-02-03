@@ -290,7 +290,17 @@ public class RouletteInventory extends DealerInventory {
             if (player.getInventory() != null) {
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     if (player != null&&player.isOnline()) {
-                        // System.out.println("Adding"+player+"to master and roulette"); 
+                        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                            case STANDARD:{
+                                break;}
+                            case VERBOSE:{
+
+                                player.sendMessage("§aWelcome to roulette.");            break;     
+                            }
+                                case NONE:{
+                                break;
+                            }
+                        } 
                         if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
                             mce.addPlayerToChannel("Master", player);
                             mce.addPlayerToChannel("RouletteWheel", player);
@@ -467,9 +477,17 @@ private void openBettingTable(Player player) {
              if (SoundHelper.getSoundSafely("item.book.page_turn", player) != null)player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, SoundCategory.MASTER, 5.0f, 1.0f); 
              if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
             mce.addPlayerToChannel("BettingTable", player);
-        
             mce.removePlayerFromChannel("RouletteWheel", player);}
-            //System.out.println("removed from RouletteWheel added to BettingTable");
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aOpened betting table.");            break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
         } else {
             player.sendMessage("§cError: Dealer not found. Unable to open betting table.");
              if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);

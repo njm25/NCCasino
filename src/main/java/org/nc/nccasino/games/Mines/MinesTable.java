@@ -159,7 +159,17 @@ public class MinesTable implements InventoryHolder, Listener {
                 minesCount=defaultMines;
             }
         }
-
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§aWelcome to mines.");
+                break;     
+            }
+                case NONE:{
+                break;
+            }
+        } 
         setMode(0);
         instrumentIndex=15;
         registerListener();
@@ -356,28 +366,24 @@ public class MinesTable implements InventoryHolder, Listener {
 
         int slot = event.getRawSlot();
         ItemStack clickedItem = event.getCurrentItem();
+        if (clickedItem == null) return;
 
-        if (event.getClickedInventory() != inventory) return;
-
-        // Handle fast click prevention
-        if (!clickAllowed) {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage("§cPlease wait before clicking mines again!");
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§cPlease wait before clicking again!");
-                    break;     
-                }
-                    case NONE:{
-                    break;
-                }
-            } 
+        boolean isEasterEggGlass;
+        isEasterEggGlass = isEasterEggGlass(clickedItem);
+        if (!isEasterEggGlass && !clickAllowed) {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD -> player.sendMessage("§cPlease wait before clicking mines again!");
+                case VERBOSE -> player.sendMessage("§cPlease wait before clicking again!");
+                case NONE -> {}
+            }
             return;
         }
 
-        clickAllowed = false;
-        Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed = true, 5L);  // 5 ticks delay
+        if (!isEasterEggGlass) {
+            clickAllowed = false;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed = true, 5L);  // 5 ticks delay
+        }
+
         if (slot == 0) { // Instrument Button
             instrumentIndex = (instrumentIndex + 1) % instruments.length;
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -520,6 +526,17 @@ public class MinesTable implements InventoryHolder, Listener {
              if (SoundHelper.getSoundSafely("entity.lightning_bolt.thunder", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER,1.0f, 1.0f);
             return;
         }
+    }
+    private boolean isEasterEggGlass(ItemStack item) {
+        if (item == null) return false;
+        Material type = item.getType();
+        
+        return type == Material.RED_STAINED_GLASS_PANE ||
+               type == Material.ORANGE_STAINED_GLASS_PANE ||
+               type == Material.YELLOW_STAINED_GLASS_PANE ||
+               type == Material.LIME_STAINED_GLASS_PANE ||
+               type == Material.BLUE_STAINED_GLASS_PANE ||
+               type == Material.PURPLE_STAINED_GLASS_PANE;
     }
 
     private void handleWagerPlacement(ItemStack clickedItem, int slot) {
@@ -1446,10 +1463,10 @@ public class MinesTable implements InventoryHolder, Listener {
         }
     
         // Print total dropped if any items couldn't fit in inventory
-        if (totalDropped > 0) {     switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+        if (totalDropped > 0) {     
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
                 player.sendMessage("§cNo room for " + (int) totalDropped + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalDropped) == 1 ? "" : "s") + ", dropping...");
-
                 break;}
             case VERBOSE:{
                 player.sendMessage("§cNo room for " + (int) totalDropped + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalDropped) == 1 ? "" : "s") + ", dropping...");

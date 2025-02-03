@@ -127,6 +127,17 @@ private void registerListener() {
             if(player.getInventory() !=null){
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         if (player != null) {
+                            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                                case STANDARD:{
+                                    break;}
+                                case VERBOSE:{
+                                    player.sendMessage("§aWelcome to blackjack.");
+                                    break;     
+                                }
+                                    case NONE:{
+                                    break;
+                                }
+                            } 
                             if(firstFin){
                         firstFin=false;
                         initializeGameMenu();
@@ -322,11 +333,34 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
         }
          else { // Handle clicks in the game menu before the game starts
             if (isPlayerHeadSlot(slot, player)) { // Handle clicking own player head
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§aLeft chair.");
+                        break;     
+        
+                    }
+                        case NONE:{
+                        break;
+                    }
+                }
                 handleLeaveChair(player); // Leave chair but stay in inventory
             }
             else if (slot >= 9 && slot <= 27 && slot % 9 == 0) { // Chair slots (9, 18, 27)
                 handleChairClick(slot, player);
             } else if (slot == 53) { // Leave chair
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§aLeft game.");
+                        break;     
+                    }
+                        case NONE:{
+                        break;
+                    }
+                }
                 handleLeaveChair(player);
                 player.closeInventory();
             } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots (10, 19, 28)
@@ -363,6 +397,8 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
             } else {
                 switch (slot) {
                     case 45:
+
+
                         handleUndoAllBets(player);
                         break;
                     case 46:
@@ -604,9 +640,20 @@ private void handleHit(Player player) {
                 return;
             }
             int handValue = calculateHandValue(playerHands.get(playerId));
-
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                 
+                    player.sendMessage("§aYou drew a "+newCard.getRank().toString().toLowerCase()+".");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
             if (handValue == 21) {
-                
+   
                 playerTurnActive.put(playerId, false); // Deactivate the player's turn
                 startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
             } else if (handValue > 21) {
@@ -759,7 +806,18 @@ private void handleInsurance(Player player) {
          if (SoundHelper.getSoundSafely("block.wood.place", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE,SoundCategory.MASTER, 1.0f, 1.0f); 
         // Set the player's actual head at the chair's position
         inventory.setItem(slot, createPlayerHeadItem(player, 1));
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§aSat down.");
+                break;     
 
+            }
+                case NONE:{
+                break;
+            }
+        }
         // Track the player's seat
         playerSeats.put(playerId, slot);
     }
@@ -879,7 +937,17 @@ private void removePlayerData(UUID playerId) {
         String itemName = clickedItem.getItemMeta().getDisplayName();
         double selectedWager = chipValues.getOrDefault(itemName, 0.0);
          if (SoundHelper.getSoundSafely("item.flintandsteel.use", player) != null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-    
+         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§aWager: " + selectedWager + " " + plugin.getCurrencyName(internalName));                     
+                break;     
+            }
+                case NONE:{
+                break;
+            }
+        }
         selectedWagers.put(playerId, selectedWager);
         
     }
@@ -943,8 +1011,19 @@ private void removePlayerData(UUID playerId) {
         if (selectedWager > 0 && hasEnoughWager(player, selectedWager)) {
             removeWagerFromInventory(player, selectedWager);
             Map<Integer, Double> bets = playerBets.computeIfAbsent(playerId, k -> new HashMap<>());
-    
             double currentBet = bets.getOrDefault(betSlot, 0.0);
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aPlaced bet of "+selectedWager+".");
+                    break;     
+
+                }
+                    case NONE:{
+                    break;
+                }
+            }
             bets.put(betSlot, currentBet + selectedWager);
             updateItemLore(betSlot, bets.get(betSlot));
     
@@ -996,6 +1075,18 @@ private void removePlayerData(UUID playerId) {
         Map<Integer, Double> bets = playerBets.get(playerId);
     
         if (bets != null && !bets.isEmpty()) {
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                 
+                    player.sendMessage("§aAll bets undone.");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            }
             double totalRefund = bets.values().stream().mapToDouble(Double::doubleValue).sum();
             addWagerToInventory(player, totalRefund);
             clearPlayerBetLore(playerId);  // Clear lore for items related to this player
@@ -1048,6 +1139,18 @@ private void removePlayerData(UUID playerId) {
         List<Double> lastBets = lastBetAmounts.get(playerId);
     
         if (bets != null && lastBets != null && !lastBets.isEmpty()) {
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                 
+                    player.sendMessage("§aLast bet undone.");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
             double lastBet = lastBets.remove(lastBets.size() - 1); // Get the last bet amount
     
              if (SoundHelper.getSoundSafely("ui.toast.in", player) != null)player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
@@ -1306,7 +1409,18 @@ private void startNextPlayerTurn() {
             ItemStack item = inventory.getItem(playerSeats.get(currentPlayerId) + 1);
             
             ItemStack enchantedItem = createEnchantedItem(Material.BOOK, "Your turn.", 1);
-            
+            switch(plugin.getPreferences(currentPlayer.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                 
+                    currentPlayer.sendMessage("§aYour turn.");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
             // Retrieve and transfer lore properly using ItemMeta
             if (item != null && item.hasItemMeta()) {
                 ItemMeta itemMeta = item.getItemMeta();

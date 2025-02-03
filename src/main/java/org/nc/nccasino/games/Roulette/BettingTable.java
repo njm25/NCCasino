@@ -655,13 +655,34 @@ public class BettingTable implements InventoryHolder, Listener {
              if (SoundHelper.getSoundSafely("item.trident.throw", player) != null)player.playSound(player.getLocation(), Sound.ITEM_TRIDENT_THROW,SoundCategory.MASTER, 1.0f, 1.2f); 
             pageNum = 2;
             setupPageTwo();
-           
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aOpened page 2.");            
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
             updateClockItem(countdown1, betsClosed);
             return;
         } else if (pageNum == 2 && slot == 53) {
              if (SoundHelper.getSoundSafely("item.trident.throw", player) != null)player.playSound(player.getLocation(), Sound.ITEM_TRIDENT_THROW,SoundCategory.MASTER, 1.0f, 0.8f); 
             pageNum = 1;
             setupPageOne();
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aOpened page 1.");            
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
             updateClockItem(countdown1, betsClosed);
             return;
         }
@@ -693,6 +714,17 @@ public class BettingTable implements InventoryHolder, Listener {
             for (int i = 47; i <= 51; i++) {
                 resetChipAtSlot(i);
             }
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aAll in wager of " + count +" ready to place.");            
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
             ItemStack updatedTotem = createEnchantedItem(Material.SNIFFER_EGG, "All In (" + count + ")", 1);
             inventory.setItem(slot, updatedTotem);
              if (SoundHelper.getSoundSafely("entity.lightning_bolt.thunder", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER,1.0f, 1.0f);
@@ -714,6 +746,17 @@ public class BettingTable implements InventoryHolder, Listener {
                     itemName,
                     (int) selectedWager
                 ));
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§aWager: " + selectedWager + " " + plugin.getCurrencyName(internalName));                     
+                        break;     
+                    }
+                        case NONE:{
+                        break;
+                    }
+                } 
             } else {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
@@ -795,18 +838,18 @@ public class BettingTable implements InventoryHolder, Listener {
             return;
         }
         if (slot == 45) {
+           if (!betStack.isEmpty()) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("Undoing all bets...");                   
+                    player.sendMessage("§aAll bets undone.");                   
                      break;     
                 }
                     case NONE:{
                     break;
                 }
             } 
-           if (!betStack.isEmpty()) {
             clearAllBetsAndRefund(player);
             clearAllLore();
             updateAllLore();
@@ -832,17 +875,18 @@ public class BettingTable implements InventoryHolder, Listener {
         }
 
         if (slot == 46) {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("Undoing last bet...");                     break;     
-                }
-                    case NONE:{
-                    break;
-                }
-            } 
             if (!betStack.isEmpty()) {
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§aLast bet undone.");
+                        break;     
+                    }
+                        case NONE:{
+                        break;
+                    }
+                } 
                 Pair<String, Integer> lastBet = betStack.pop();
                 refundWagerToInventory(player, lastBet.getSecond());
                 updateAllLore();
