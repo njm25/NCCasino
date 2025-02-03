@@ -235,7 +235,7 @@ public class MinesTable implements InventoryHolder, Listener {
         inventory.setItem(36, createCustomItem(Material.SPRUCE_DOOR, "Refund/Exit", 1));
         // Add undo buttons
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
-        inventory.setItem(46, createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Undo Last Bet", 1));
+        inventory.setItem(46, createCustomItem(Material.WIND_CHARGE, "Undo Last Bet", 1));
         inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
     }
     

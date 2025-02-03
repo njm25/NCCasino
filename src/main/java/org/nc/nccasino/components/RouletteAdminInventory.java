@@ -258,7 +258,7 @@ public class RouletteAdminInventory extends DealerInventory {
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§aTDealer timer updated.");
+                        player.sendMessage("§aDealer timer updated.");
                         break;}
                     case VERBOSE:{
                         player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
