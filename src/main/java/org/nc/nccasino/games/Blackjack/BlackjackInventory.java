@@ -131,7 +131,7 @@ private void registerListener() {
                                 case STANDARD:{
                                     break;}
                                 case VERBOSE:{
-                                    player.sendMessage("§aWelcome to blackjack.");
+                                    player.sendMessage("§aWelcome to Blackjack.");
                                     break;     
                                 }
                                     case NONE:{

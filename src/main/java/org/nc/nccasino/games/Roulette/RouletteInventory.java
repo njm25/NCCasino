@@ -296,7 +296,7 @@ public class RouletteInventory extends DealerInventory {
                                 break;}
                             case VERBOSE:{
 
-                                player.sendMessage("§aWelcome to roulette.");            break;     
+                                player.sendMessage("§aWelcome to Roulette.");            break;     
                             }
                                 case NONE:{
                                 break;

@@ -472,20 +472,27 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     }
 
     private void handlePlayerMenu(Player player) {
-        PlayerMenu pm = new PlayerMenu(player, plugin,dealerId, (p) -> {
+        if (player.hasPermission("nccasino.playermenu")){
+            PlayerMenu pm = new PlayerMenu(player, plugin,dealerId, (p) -> {
 
 
-            if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
-                AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
-                player.openInventory(adminInventory.getInventory());
-                //localVillager.remove(player.getUniqueId());
-            } else {
-                AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
-                player.openInventory(adminInventory.getInventory());
-                //localVillager.remove(player.getUniqueId());
-            }
-        });
-        player.openInventory(pm.getInventory());
+                if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
+                    AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                    player.openInventory(adminInventory.getInventory());
+                    //localVillager.remove(player.getUniqueId());
+                } else {
+                    AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                    player.openInventory(adminInventory.getInventory());
+                    //localVillager.remove(player.getUniqueId());
+                }
+            },
+                DealerVillager.getInternalName(dealer) + "'s Admin Menu"
+            );
+            player.openInventory(pm.getInventory());
+        }
+        else {
+            player.sendMessage(ChatColor.RED + "You do not have permission to use the player menu.");
+        }
     }
 
     private void handleExit(Player player) {

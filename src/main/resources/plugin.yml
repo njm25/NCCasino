@@ -66,3 +66,7 @@ permissions:
   nccasino.adminmenu:
     description: Allows access to the NCCasino Admin Menu
     default: op
+
+  nccasino.playermenu:
+    description: Allows access to the NCCasino Player Menu
+    default: true

@@ -87,7 +87,7 @@ public class DealerInteractListener implements Listener {
         if (player.isSneaking() && player.hasPermission("nccasino.adminmenu")) {
             handleAdminInventory(player, dealerId);
         }
-        else if (player.isSneaking() && !player.hasPermission("nccasino.adminmenu")) {
+        else if (player.isSneaking() && player.hasPermission("nccasino.playermenu")) {
             handlePlayerMenu(player, dealerId);
         } else {
             handleDealerInventory(player, dealerId);

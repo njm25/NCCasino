@@ -47,7 +47,7 @@ public class PreferencesInventory extends DealerInventory {
 
 
     public PreferencesInventory(Player player, Nccasino plugin,UUID dealerId, Consumer<Player> returnToPM) {
-        super(player.getUniqueId(), 9, "Preferences Menu");
+        super(player.getUniqueId(), 9, "Preferences");
         this.dealerId=dealerId;
         this.ownerId = player.getUniqueId();
         this.plugin = plugin;

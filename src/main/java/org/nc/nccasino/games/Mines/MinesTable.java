@@ -163,7 +163,7 @@ public class MinesTable implements InventoryHolder, Listener {
             case STANDARD:{
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aWelcome to mines.");
+                player.sendMessage("§aWelcome to Mines.");
                 break;     
             }
                 case NONE:{
