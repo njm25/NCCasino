@@ -509,7 +509,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             );
             switch(messPref){
                 case VERBOSE:{
-                    player.sendMessage("§aMines Settings Opened.");
+                    //player.sendMessage("§aMines Settings Opened.");
                     break;}
                 default:{
                     break;}
@@ -538,7 +538,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             );
             switch(messPref){
                 case VERBOSE:{
-                    player.sendMessage("§aRoulette Settings Opened.");
+                    //player.sendMessage("§aRoulette Settings Opened.");
                     break;}
                 default:{
                     break;}
@@ -568,7 +568,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             );
             switch(messPref){
                 case VERBOSE:{
-                    player.sendMessage("§aBlackjack Settings Opened.");
+                    //player.sendMessage("§aBlackjack Settings Opened.");
                     break;}
                 default:{
                     break;}
