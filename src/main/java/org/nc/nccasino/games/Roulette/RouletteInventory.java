@@ -34,6 +34,7 @@ import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.objects.Pair;
+import org.nc.nccasino.helpers.Preferences;
 
 public class RouletteInventory extends DealerInventory {
     private final MultiChannelEngine mce;
@@ -289,12 +290,26 @@ public class RouletteInventory extends DealerInventory {
             if (player.getInventory() != null) {
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     if (player != null&&player.isOnline()) {
-                        // System.out.println("Adding"+player+"to master and roulette"); 
-                        mce.addPlayerToChannel("Master", player);
-                        mce.addPlayerToChannel("RouletteWheel", player);
-                        this.bettingTimeSeconds = plugin.getTimer(internalName);
+                        if (!BettingTable.switchingPlayers.contains(player)){
+                        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                            case STANDARD:{
+                                break;}
+                            case VERBOSE:{
+
+                                player.sendMessage("§aWelcome to Roulette.");            break;     
+                            }
+                                case NONE:{
+                                break;
+                            }
+                        } 
+                    }
+                        if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
+                            mce.addPlayerToChannel("Master", player);
+                            mce.addPlayerToChannel("RouletteWheel", player);
+                        }
         
                         if (firstFin) {
+                            this.bettingTimeSeconds = plugin.getTimer(internalName);
                             firstFin = false;
                             startBettingTimer();
                         }
@@ -357,7 +372,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 47: // View Betting Info
-                 if(SoundHelper.getSoundSafely("block.wooden_door.open")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
+                 if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
                     exitGame(player);
                     break;
                 default:
@@ -380,7 +395,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 53: // Exit
-                 if(SoundHelper.getSoundSafely("block.wooden_door.open")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
+                if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
 
                     exitGame(player);
                     break;
@@ -405,7 +420,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 8: // Exit
-                 if(SoundHelper.getSoundSafely("block.wooden_door.open")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
+                if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
 
                     exitGame(player);
                     break;
@@ -429,7 +444,7 @@ private void handleGameMenuClick(int slot, Player player) {
                     openBettingTable(player);
                     break;
                 case 2: // Exit
-                 if(SoundHelper.getSoundSafely("block.wooden_door.open")!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_OPEN,SoundCategory.MASTER, 1.0f, 1.0f);
+                if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
 
                     exitGame(player);
                     break;
@@ -461,13 +476,23 @@ private void openBettingTable(Player player) {
             BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets, internalName, this, globalCountdown);
             Tables.put(player, bettingTable);
             player.openInventory(bettingTable.getInventory());
-             if(SoundHelper.getSoundSafely("item.book.page_turn")!=null)player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, SoundCategory.MASTER, 5.0f, 1.0f); 
+             if (SoundHelper.getSoundSafely("item.book.page_turn", player) != null)player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, SoundCategory.MASTER, 5.0f, 1.0f); 
+             if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
             mce.addPlayerToChannel("BettingTable", player);
-            mce.removePlayerFromChannel("RouletteWheel", player);
-            //System.out.println("removed from RouletteWheel added to BettingTable");
+            mce.removePlayerFromChannel("RouletteWheel", player);}
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aOpened betting table.");            break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
         } else {
             player.sendMessage("§cError: Dealer not found. Unable to open betting table.");
-             if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         }
         switchingPlayers.remove(player); // Remove the flag after the switch
     }, 1L); // Small delay to allow the inventory to switch
@@ -480,7 +505,17 @@ private void exitGame(Player player) {
         bt.clearAllBetsAndRefund(player);
     }
     player.closeInventory();
+    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+        case STANDARD:{
+            break;}
+        case VERBOSE:{
     player.sendMessage("§cYou have left the game.");
+    break;     
+        }
+            case NONE:{
+            break;
+        }
+    } 
     Tables.remove(player);
     removeAllBets(player.getUniqueId());
 
@@ -542,7 +577,7 @@ private void exitGame(Player player) {
                 ItemMeta meta = item.getItemMeta();
                 if (meta != null && betType.equals(meta.getDisplayName())) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Total Bet: " + (int)totalBet + " " + plugin.getCurrencyName(internalName)+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
+                    lore.add("Wager: " + (int)totalBet + " " + plugin.getCurrencyName(internalName)+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
                     meta.setLore(lore);
                     item.setItemMeta(meta);
                 }
@@ -598,12 +633,22 @@ private void exitGame(Player player) {
         if (playersWithBets.isEmpty() && activePlayers.isEmpty()) {
             resetToStartState();
         } else {
-            /*
+            
             for (Player player : playersWithBets) {
                 if (player.isOnline()) {
-                    player.sendMessage("§dBets locked, spinning!");
+                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                        case STANDARD:{
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage("§dBets locked, spinning!");
+                            break;     
+                        }
+                            case NONE:{
+                            break;
+                        }
+                    } 
                 }
-            }*/
+            }
 
             miscTask=Bukkit.getScheduler().runTaskLater(plugin, () -> 
             mce.playSong("RouletteWheel", RouletteSongs.getBallLaunch(), false, "Ball Launch")
@@ -660,25 +705,25 @@ private void startBettingTimer() {
             //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 46);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 47);
             addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 46);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, "EXIT (Refund and Exit)", 1), 47);
+            addItem(createCustomItem(Material.SPRUCE_DOOR, "Refund and/or Exit", 1), 47);
             break;
         case 2: // Top-left quadrant
             //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 50);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 51);
             addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 52);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, "EXIT (Refund and Exit)", 1), 53);
+            addItem(createCustomItem(Material.SPRUCE_DOOR, "Refund and/or Exit", 1), 53);
             break;
         case 3: // Bottom-left quadrant
            // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 5);
            // addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 6);
             addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 7);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, "EXIT (Refund and Exit)", 1), 8);
+            addItem(createCustomItem(Material.SPRUCE_DOOR, "Refund and/or Exit", 1), 8);
             break;
         case 4: // Bottom-right quadrant
            // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 1);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 2);
             addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 1);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, "EXIT (Refund and Exit)", 1), 2);
+            addItem(createCustomItem(Material.SPRUCE_DOOR, "Refund and/or Exit", 1), 2);
             break;
     }
             } else if (countdown == 0) {
@@ -1187,11 +1232,44 @@ private void handleWinningNumber() {
                     if (!playerBets.isEmpty()) {
                         // Notify the player of the winning number
                         if (isRed(winningNumber)) {
-                            player.sendMessage("§cHit Red " + winningNumber + "!");
+                            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                                case STANDARD:{
+                                    player.sendMessage("§cHit Red " + winningNumber + "!");
+                                    break;}
+                                case VERBOSE:{
+                                    player.sendMessage("§cHit Red " + winningNumber + "!");
+                                    break;     
+                                }
+                                    case NONE:{
+                                    break;
+                                }
+                            } 
                         } else if (isBlack(winningNumber)) {
-                            player.sendMessage("§fHit Black " + winningNumber + "!");
+                            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                                case STANDARD:{
+                                    player.sendMessage("§fHit Black " + winningNumber + "!");
+                                    break;}
+                                case VERBOSE:{
+                                    player.sendMessage("§fHit Black " + winningNumber + "!");
+                                    break;     
+                                }
+                                    case NONE:{
+                                    break;
+                                }
+                            } 
                         } else {
-                            player.sendMessage("§aHit Green " + winningNumber + ", WOW!");
+                            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                                case STANDARD:{
+                                    player.sendMessage("§aHit Green " + winningNumber + ", WOW!");
+                                    break;}
+                                case VERBOSE:{
+                                    player.sendMessage("§aHit Green " + winningNumber + ", WOW!");
+                                    break;     
+                                }
+                                    case NONE:{
+                                    break;
+                                }
+                            } 
                         }
 
                         // Process the bets

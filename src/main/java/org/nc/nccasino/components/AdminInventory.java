@@ -28,9 +28,12 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.helpers.SoundHelper;
 
 import net.md_5.bungee.api.ChatColor;
@@ -52,13 +55,16 @@ public class AdminInventory extends DealerInventory {
     // Static maps referencing AdminInventory or the player's editing states
     private static final Map<UUID, Villager> moveMode = new HashMap<>();
     private static final Map<UUID, Villager> nameEditMode = new HashMap<>();
-    private static final Map<UUID, Villager> timerEditMode = new HashMap<>();
+    public static final Map<UUID, Villager> timerEditMode = new HashMap<>();
+    public static final Map<UUID, Villager> standOn17Mode = new HashMap<>();
+    public static final Map<UUID, Villager> editMinesMode = new HashMap<>();
     private static final Map<UUID, Villager> amsgEditMode = new HashMap<>();
     private static final Map<UUID, Villager> chipEditMode = new HashMap<>();
     private static final Map<UUID, Villager> currencyEditMode = new HashMap<>();
+    public static final Map<UUID, Villager> decksEditMode = new HashMap<>();
     // All active AdminInventories by player ID
     public static final Map<UUID, AdminInventory> adminInventories = new HashMap<>();
-
+    private Preferences.MessageSetting messPref;
     // Tracks which dealer is being edited by which player
     public static final Map<UUID, Villager> localVillager = new HashMap<>();
 
@@ -71,13 +77,15 @@ public class AdminInventory extends DealerInventory {
         TOGGLE_CURRENCY_MODE,
         EDIT_CURRENCY,
         //USE_VAULT,
-        EDIT_TIMER,
+        GAME_OPTIONS,
         EDIT_ANIMATION_MESSAGE,
         CHIP_SIZE1,
         CHIP_SIZE2,
         CHIP_SIZE3,
         CHIP_SIZE4,
         CHIP_SIZE5,
+        PM,
+        EXIT
 
     }
 
@@ -90,17 +98,19 @@ public class AdminInventory extends DealerInventory {
 
     // The slot positions of each option in the inventory
     private final Map<SlotOption, Integer> slotMapping = new HashMap<>() {{
-        put(SlotOption.EDIT_DISPLAY_NAME, 2);
+        put(SlotOption.EDIT_DISPLAY_NAME, 6);
         put(SlotOption.EDIT_GAME_TYPE, 0);
-        put(SlotOption.EDIT_TIMER, 6);
+        put(SlotOption.GAME_OPTIONS, 2);
         put(SlotOption.EDIT_ANIMATION_MESSAGE, 8);
 
         // put(SlotOption.USE_VAULT, 28);   
         put(SlotOption.EDIT_CURRENCY, 13);
         put(SlotOption.TOGGLE_CURRENCY_MODE, 31);
+        put(SlotOption.EXIT, 36);
+        put(SlotOption.PM, 38);
 
-        put(SlotOption.MOVE_DEALER, 37);
-        put(SlotOption.DELETE_DEALER, 43);
+        put(SlotOption.MOVE_DEALER, 42);
+        put(SlotOption.DELETE_DEALER, 44);
         put(SlotOption.CHIP_SIZE1, 20);
         put(SlotOption.CHIP_SIZE2, 21);
         put(SlotOption.CHIP_SIZE3, 22);
@@ -147,19 +157,21 @@ public class AdminInventory extends DealerInventory {
 
 //////////VVVVVVVVVVVVVexpand to retrieve mode from config once thats set up
         this.currencyMode = CurrencyMode.VANILLA;
-
-        registerListener();
+        this.messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
         adminInventories.put(this.ownerId, this);
-        initializeAdminMenu();
+        initializeAdminMenu(player);
+        registerListener();
     }
-
+   public UUID getDealerId(){
+    return dealerId;
+   }
     /**
      * Registers this inventory as an event listener with the plugin.
      */
     private void registerListener() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
-    private void initializeAdminMenu() {
+    private void initializeAdminMenu(Player player ) {
 
 
         String internalName = DealerVillager.getInternalName(dealer);
@@ -167,45 +179,51 @@ public class AdminInventory extends DealerInventory {
         // Retrieve dealer config values safely
         FileConfiguration config = plugin.getConfig();
         String currentGame = config.getString("dealers." + internalName + ".game", "Unknown");
-        int currentTimer = config.contains("dealers." + internalName + ".timer")
-            ? config.getInt("dealers." + internalName + ".timer")
-            : 10; // Default to 10 if missing
+  
     
         String currentAnimationMessage = config.getString("dealers." + internalName + ".animation-message", "Default Message");
     
         //String currencyMaterial = config.getString("dealers." + internalName + ".currency.material", "UNKNOWN");
        // String currencyName = config.getString("dealers." + internalName + ".currency.name", "Unknown Currency");
-        addItemAndLore(Material.NAME_TAG, 1, "Edit Display Name",  slotMapping.get(SlotOption.EDIT_DISPLAY_NAME), "Current: " + DealerVillager.getName(dealer));
+        addItemAndLore(Material.NAME_TAG, 1, "Edit Display Name",  slotMapping.get(SlotOption.EDIT_DISPLAY_NAME), "Current: §a" + DealerVillager.getName(dealer));
         switch(currentGame){
             case"Mines":{
-                addItemAndLore(Material.TNT, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: " + currentGame);
+                addItemAndLore(Material.TNT, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
                 break;
             }
             case"Roulette":{
-                addItemAndLore(Material.ENDER_PEARL, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: " + currentGame);
+                addItemAndLore(Material.ENDER_PEARL, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
                 break;
             }  
             case"Blackjack":{
-                addItemAndLore(Material.CREEPER_HEAD, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: " + currentGame);
+                addItemAndLore(Material.CREEPER_HEAD, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
                 break;
             }
             default:
             break;
         }
-        if(currentGame!="Mines"){
-        addItemAndLore(Material.CLOCK, currentTimer, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Current: " + currentTimer);
-    }
-        else{
-        addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Unvailable For Mines");
-        }
-        addItemAndLore(Material.RED_STAINED_GLASS_PANE, 1, "Edit Animation Message",  slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE), "Current: " + currentAnimationMessage);
+        
+        addItemAndLore(Material.BOOK, 1, "Game-Specific Options",  slotMapping.get(SlotOption.GAME_OPTIONS), "Current: §a" + currentGame);
+        
+        addItemAndLore(Material.RED_STAINED_GLASS_PANE, 1, "Edit Animation Message",  slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE), "Current: §a" + currentAnimationMessage);
        /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
         addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
         addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
-    
+        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
 
+
+        ItemStack head=createPlayerHeadItem(player, 1);
+        setCustomItemMeta(head,"Player Menu");
+        ItemMeta meta = head.getItemMeta();
     
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.YELLOW+ "Player Menu");
+            head.setItemMeta(meta);
+        }
+
+        addItem(head,slotMapping.get(SlotOption.PM) );
         updateCurrencyButtons();
+        
     }
 
   
@@ -215,6 +233,8 @@ public class AdminInventory extends DealerInventory {
     public static boolean isPlayerOccupied(UUID playerId) {
         Villager villager = nameEditMode.get(playerId);
         return (villager != null)
+            || (standOn17Mode.get(playerId) != null)
+            || (editMinesMode.get(playerId) != null)
             || (timerEditMode.get(playerId) != null)
             || (amsgEditMode.get(playerId) != null)
             || (moveMode.get(playerId) != null)
@@ -242,6 +262,12 @@ public class AdminInventory extends DealerInventory {
         if (chipEditMode.get(playerId) != null) {
             occupations.add("chip size");
         }
+        if (standOn17Mode.get(playerId) != null) {
+            occupations.add("stand on 17 chance");
+        }
+        if (editMinesMode.get(playerId) != null) {
+            occupations.add("default # of mines");
+        }
         if (currencyEditMode.get(playerId) != null) {///////////might never get to this
             occupations.add("selecting currency item");
         }
@@ -256,6 +282,12 @@ public class AdminInventory extends DealerInventory {
             villagers.add(villager);
         }
         if ((villager = timerEditMode.get(playerId)) != null) {
+            villagers.add(villager);
+        }
+        if ((villager = standOn17Mode.get(playerId)) != null) {
+            villagers.add(villager);
+        }
+        if ((villager = editMinesMode.get(playerId)) != null) {
             villagers.add(villager);
         }
         if ((villager = amsgEditMode.get(playerId)) != null) {
@@ -286,7 +318,7 @@ public class AdminInventory extends DealerInventory {
     
         Inventory topInv = adminInv.getInventory();
         if (topInv == null) return;
-    
+        if(player.getOpenInventory().getTopInventory() != this.getInventory()){return;}
         // 2) Check where they clicked
         if (event.getClickedInventory() == null) return; // clicked outside any inventory
         boolean clickedTop = event.getClickedInventory().equals(topInv);
@@ -301,7 +333,16 @@ public class AdminInventory extends DealerInventory {
             if (event.isShiftClick()) {
                 // By default, SHIFT-click will attempt to move items into the top inventory
                 event.setCancelled(true);
-                player.sendMessage("§cShift-click is disabled for the admin inventory.");
+                switch(messPref){
+                    case STANDARD:{
+                        player.sendMessage("§cShift-click disabled.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cShift-click is disabled for the admin inventory.");
+                        break;}
+                    default:{
+                        break;}
+                }
             }
             else{
 
@@ -334,88 +375,232 @@ public class AdminInventory extends DealerInventory {
                 switch (option) {
                     case EDIT_DISPLAY_NAME:
                         handleEditDealerName(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case EDIT_GAME_TYPE:
                         handleSelectGameType(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case MOVE_DEALER:
                         handleMoveDealer(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case DELETE_DEALER:
                         handleDeleteDealer(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case EDIT_CURRENCY:
                         handleEditCurrency(player,event);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                         /* 
                     case USE_VAULT:
                         handleUseVault(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f);
+player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;*/
                      case TOGGLE_CURRENCY_MODE:
+                     /*
                         handleToggleCurrencyMode(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-                        break;
-                    case EDIT_TIMER:
-                        if(currentGame.equals("Mines")){
-                        if(SoundHelper.getSoundSafely("entity.villager.no")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
-                        }
-                        else{
-                        handleEditTimer(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);}  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    */  break;
+                    case GAME_OPTIONS:
+                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    handleGameOptions(player,currentGame);
                         break;
                     case EDIT_ANIMATION_MESSAGE:
                         handleAnimationMessage(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case CHIP_SIZE1:
                         handleEditChipSize(player,1);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case CHIP_SIZE2:
                         handleEditChipSize(player,2);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case CHIP_SIZE3:
                         handleEditChipSize(player,3);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case CHIP_SIZE4:
                         handleEditChipSize(player,4);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
                     case CHIP_SIZE5:
                         handleEditChipSize(player,5);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use")!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
-
+                    case PM:
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        handlePlayerMenu(player);
+                        break;
+                    case EXIT:
+                        handleExit(player);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        break;
                     default:
-                        player.sendMessage("§cInvalid option selected.");
+                    switch(messPref){
+                        case STANDARD:{
+                            player.sendMessage("§cInvalid option selected.");    
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage("§cInvalid Admin Menu option selected.");
+                            break;}
+                        default:{
+                            break;}
+                    }
+                        
                         break;
                 }
             }
 
         
         } else {
-            player.sendMessage("§cPlease wait before clicking again!");
+            switch(messPref){
+                case STANDARD:{
+                    player.sendMessage("§cPlease wait before clicking again!");    
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cClicking too fast, click not registered in admin menu.");
+                    break;}
+                default:{
+                    break;}
+            }
+           
         }
     }
 
-    // ----- Option handlers -----
-    private void handleEditTimer(Player player) {
-        UUID playerId = player.getUniqueId();
-        localVillager.put(playerId, dealer);
-        timerEditMode.put(playerId, dealer);
-        player.closeInventory();
-        player.sendMessage("§aType the new timer in chat.");
+    private void handlePlayerMenu(Player player) {
+        if (player.hasPermission("nccasino.playermenu")){
+            PlayerMenu pm = new PlayerMenu(player, plugin,dealerId, (p) -> {
+
+
+                if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
+                    AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                    player.openInventory(adminInventory.getInventory());
+                    //localVillager.remove(player.getUniqueId());
+                } else {
+                    AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                    player.openInventory(adminInventory.getInventory());
+                    //localVillager.remove(player.getUniqueId());
+                }
+            },
+                DealerVillager.getInternalName(dealer) + "'s Admin Menu"
+            );
+            player.openInventory(pm.getInventory());
+        }
+        else {
+            player.sendMessage(ChatColor.RED + "You do not have permission to use the player menu.");
+        }
     }
 
+    private void handleExit(Player player) {
+        player.closeInventory();
+        delete();
+    }
+
+    // ----- Option handlers -----
+    private void handleGameOptions(Player player, String currentGame) {
+        switch(currentGame){
+            case "Mines":{
+                MinesAdminInventory minesAdminInventory = new MinesAdminInventory(
+                    dealerId,
+                    player,
+                    DealerVillager.getInternalName(dealer)+ "'s Mines Settings",
+                    (uuid) -> {
+
+                        // Cancel action: re-open the AdminInventory
+                        if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                            player.openInventory(adminInventory.getInventory());
+                        } else {
+                            AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                            player.openInventory(adminInventory.getInventory());
+                        }
+        
+                    },
+                    plugin,DealerVillager.getInternalName(dealer)+ "'s Admin Menu"
+            );
+            switch(messPref){
+                case VERBOSE:{
+                    //player.sendMessage("§aMines Settings Opened.");
+                    break;}
+                default:{
+                    break;}
+            }
+            player.openInventory(minesAdminInventory.getInventory());
+                break;
+            }
+            case "Roulette":{
+                RouletteAdminInventory rouletteAdminInventory = new RouletteAdminInventory(
+                    dealerId,
+                    player,
+                    DealerVillager.getInternalName(dealer)+ "'s Roulette Settings",
+                    (uuid) -> {
+        
+                        // Cancel action: re-open the AdminInventory
+                        if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                            player.openInventory(adminInventory.getInventory());
+                        } else {
+                            AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                            player.openInventory(adminInventory.getInventory());
+                        }
+        
+                    },
+                    plugin,DealerVillager.getInternalName(dealer)+ "'s Admin Menu"
+            );
+            switch(messPref){
+                case VERBOSE:{
+                    //player.sendMessage("§aRoulette Settings Opened.");
+                    break;}
+                default:{
+                    break;}
+            }
+                player.openInventory(rouletteAdminInventory.getInventory());
+
+                break;
+            }
+            case "Blackjack":{
+                BlackjackAdminInventory blackjackAdminInventory = new BlackjackAdminInventory(
+                    dealerId,
+                    player,
+                    DealerVillager.getInternalName(dealer)+ "'s Blackjack Settings",
+                    (uuid) -> {
+        
+                        // Cancel action: re-open the AdminInventory
+                        if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                            player.openInventory(adminInventory.getInventory());
+                        } else {
+                            AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                            player.openInventory(adminInventory.getInventory());
+                        }
+        
+                    },
+                    plugin,DealerVillager.getInternalName(dealer)+ "'s Admin Menu"
+            );
+            switch(messPref){
+                case VERBOSE:{
+                    //player.sendMessage("§aBlackjack Settings Opened.");
+                    break;}
+                default:{
+                    break;}
+            }
+                player.openInventory(blackjackAdminInventory.getInventory());
+                break;
+            }
+            default: {
+                break;
+            }
+
+        }
+    }
+/* 
     private void handleToggleCurrencyMode(Player player) {
+
         CurrencyMode next;
         switch (this.currencyMode) {
             case VANILLA: next = CurrencyMode.CUSTOM; break;
@@ -424,19 +609,26 @@ public class AdminInventory extends DealerInventory {
         }
         this.currencyMode = next;
 
-        /* 
+        
         // Update the config
         if (dealer != null) {
             String internalName = DealerVillager.getInternalName(dealer);
             plugin.getConfig().set("dealers." + internalName + ".currency.mode", next.name());
             plugin.saveConfig();
-        }*/
+        }
 
         // Update the button labels in the admin inventory
         updateCurrencyButtons();
-        //player.sendMessage("§eSwitched currency mode to: §a" + this.currencyMode.name());
+        switch(messPref){
+            case VERBOSE:{
+                player.sendMessage("§eSwitched currency mode to: §a" + this.currencyMode.name()+"§e."); 
+                break;}
+            default:{
+                break;}
+        }
+     
     }
-
+    */
     private void updateCurrencyButtons() {
         String internalName= DealerVillager.getInternalName(dealer);
         Inventory inv = getInventory();
@@ -468,7 +660,7 @@ public class AdminInventory extends DealerInventory {
                 int chipValue = plugin.getConfig().contains("dealers." + internalName + ".chip-sizes.size" + i)
                     ? plugin.getConfig().getInt("dealers." + internalName + ".chip-sizes.size" + i)
                     : 1; // Default to 1 if missing
-                addItemAndLore(plugin.getCurrency(internalName), chipValue, "Edit Chip Size #" + i,  slotMapping.get(SlotOption.valueOf("CHIP_SIZE" + i)), "Current: " + chipValue);
+                addItemAndLore(plugin.getCurrency(internalName), chipValue, "Edit Chip Size #" + i,  slotMapping.get(SlotOption.valueOf("CHIP_SIZE" + i)), "Current: §a" + chipValue);
     } 
     }
 
@@ -480,27 +672,93 @@ public class AdminInventory extends DealerInventory {
         player.closeInventory();
         switch(chipInd){
         case 1:{
-            player.sendMessage("§aType the new value for the 1st chip size.");
+            switch(messPref){
+                case STANDARD:{
+                    player.sendMessage("§aType new chip size value in chat.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aType new value for the 1st chip size in chat.");
+                    break;}
+                case NONE:{
+                    player.sendMessage("§aType new value.");
+                    break;
+                }
+            }
             break;
         }
         case 2:{
-            player.sendMessage("§aType the new value for the 2nd chip size.");
+            switch(messPref){
+                case STANDARD:{
+                    player.sendMessage("§aType new chip size value in chat.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aType new value for the 2nd chip size in chat.");
+                    break;}
+                case NONE:{
+                    player.sendMessage("§aType new value.");
+                    break;
+                }
+            }            
             break;
         }
         case 3:{
-            player.sendMessage("§aType the new value for the 3rd chip size.");
+            switch(messPref){
+                case STANDARD:{
+                    player.sendMessage("§aType new chip size value in chat.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aType new value for the 3rd chip size in chat.");
+                    break;}
+                case NONE:{
+                    player.sendMessage("§aType new value.");
+                    break;
+                }
+            }            
             break;
         }
         case 4:{
-            player.sendMessage("§aType the new value for the 4th chip size.");
+            switch(messPref){
+                case STANDARD:{
+                    player.sendMessage("§aType new chip size value in chat.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aType new value for the 4th chip size in chat.");
+                    break;}
+                case NONE:{
+                    player.sendMessage("§aType new value.");
+                    break;
+                }
+            }            
             break;
         }
         case 5:{
-            player.sendMessage("§aType the new value for the 5th chip size.");
+            switch(messPref){
+                case STANDARD:{
+                    player.sendMessage("§aType new chip size value in chat.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aType new value for the 5th chip size in chat.");
+                    break;}
+                case NONE:{
+                    player.sendMessage("§aType new value.");
+                    break;
+                }
+            }            
             break;
         }
         default:{
-            player.sendMessage("§aType the new value for chip size number "+chipInd+".");
+            switch(messPref){
+                case STANDARD:{
+                    player.sendMessage("§aType new chip size valuein chat.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aType new value for chip #"+chipIndex+" in chat.");
+                    break;}
+                case NONE:{
+                    player.sendMessage("§aType new value.");
+                    break;
+                }
+            }   
             break;
         }
         
@@ -512,7 +770,17 @@ public class AdminInventory extends DealerInventory {
         localVillager.put(playerId, dealer);
         amsgEditMode.put(playerId, dealer);
         player.closeInventory();
-        player.sendMessage("§aType the new animation message in chat.");
+        switch(messPref){
+            case STANDARD:{
+                player.sendMessage("§aType new message in chat.");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§aType the new animation message in chat.");
+                break;}
+            case NONE:{
+                player.sendMessage("§aType new value."); break;
+            }
+        }   
     }
 
     private void handleEditDealerName(Player player) {
@@ -520,12 +788,34 @@ public class AdminInventory extends DealerInventory {
         nameEditMode.put(playerId, dealer);
         localVillager.put(playerId, dealer);
         player.closeInventory();
-        player.sendMessage("§aType the new dealer name in chat.");
+        switch(messPref){
+            case STANDARD:{
+                player.sendMessage("§aType new name in chat.");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§aType the new dealer name in chat.");
+                break;}
+            case NONE:{
+                player.sendMessage("§aType new value.");break;
+            }
+        }   
     }
 
     private void handleSelectGameType(Player player) {
         // Open the Game Options Inventory
-        GameOptionsInventory inventory = new GameOptionsInventory(plugin, dealer);
+        GameOptionsInventory inventory = new GameOptionsInventory(plugin, dealer,
+        (uuid) -> {
+        
+            // Cancel action: re-open the AdminInventory
+            if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
+                AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                player.openInventory(adminInventory.getInventory());
+            } else {
+                AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                player.openInventory(adminInventory.getInventory());
+            }
+
+        });
         player.openInventory(inventory.getInventory());
     }
 
@@ -535,7 +825,17 @@ public class AdminInventory extends DealerInventory {
         moveMode.put(playerId, dealer);
         localVillager.put(playerId, dealer);
         player.closeInventory();
-        player.sendMessage("§aClick a block to move the dealer.");
+        switch(messPref){
+            case STANDARD:{
+                player.sendMessage("§aClick a block to move the dealer.");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§aClick a block to move the dealer to that position.");
+                 break;}
+            case NONE:{
+                player.sendMessage("§aClick destination.");break;
+            }
+        } 
     }
 
     private void handleDeleteDealer(Player player) {
@@ -595,7 +895,16 @@ public class AdminInventory extends DealerInventory {
         AdminInventory adminInv = adminInventories.get(playerId);
         
         if (adminInv.currencyMode == CurrencyMode.VAULT) {
-            player.sendMessage("§cCurrency selection is disabled in VAULT mode.");
+            switch(messPref){
+                case STANDARD:{
+                    player.sendMessage("§cCurrency selection is disabled in VAULT mode.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cCurrency selection is disabled in VAULT mode. Planned for the future");
+                    break;}
+                case NONE:{break;
+                }
+            } 
             return;
         }
     
@@ -631,8 +940,16 @@ public class AdminInventory extends DealerInventory {
             }, 1L);
     
             plugin.reloadDealerVillager(dealer);
-    
-            player.sendMessage("§aCurrency updated to: " + displayName + " (" + selectedMaterial.name() + ")");
+            switch(messPref){
+                case STANDARD:{
+                    player.sendMessage("§aCurrency updated.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aCurrency updated to: " + ChatColor.YELLOW + displayName + "§a (" + ChatColor.YELLOW + selectedMaterial.name() + "§a).");
+                    break;}
+                case NONE:{break;
+                }
+            } 
             event.setCancelled(true);
         }
     }
@@ -645,7 +962,6 @@ public class AdminInventory extends DealerInventory {
         UUID playerId = player.getUniqueId();
 
         if (adminInventories.get(playerId) == null){
-            cleanup();
             return;
         }
 
@@ -664,10 +980,29 @@ public class AdminInventory extends DealerInventory {
                 plugin.saveConfig();
                 dealer.setCustomNameVisible(true);
                 plugin.reloadDealerVillager(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                player.sendMessage("§aDealer name updated to: '" + ChatColor.YELLOW + newName + "§a'.");
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                switch(messPref){
+                    case STANDARD:{
+                        player.sendMessage("§aDealer name updated.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§aDealer name updated to: '" + ChatColor.YELLOW + newName + "§a'.");
+                        break;}
+                    case NONE:{break;
+                    }
+                } 
             } else {
-                player.sendMessage("§cCould not find dealer.");
+                switch(messPref){
+                    case STANDARD:{
+                        player.sendMessage("§cCould not find dealer.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cCould not find dealer for admin menu chat response.");
+
+                        break;}
+                    case NONE:{break;
+                    }
+                } 
             }
 
                 
@@ -688,10 +1023,28 @@ public class AdminInventory extends DealerInventory {
                 plugin.getConfig().set("dealers." + internalName + ".timer", Integer.parseInt(newTimer));
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                switch(messPref){
+                    case STANDARD:{
+                        player.sendMessage("§aDealer timer updated.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                        break;}
+                    case NONE:{break;
+                    }
+                } 
             } else {
-                player.sendMessage("§cCould not find dealer.");
+                switch(messPref){
+                    case STANDARD:{
+                        player.sendMessage("§cCould not find dealer.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cCould not find dealer for admin menu chat response");
+                        break;}
+                    case NONE:{break;
+                    }
+                } 
             }
 
                 
@@ -711,10 +1064,29 @@ public class AdminInventory extends DealerInventory {
                 plugin.getConfig().set("dealers." + internalName + ".animation-message", newAmsg);
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                player.sendMessage("§aDealer animation message updated to: '" + ChatColor.YELLOW + newAmsg + "§a'.");
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                switch(messPref){
+                    case STANDARD:{
+                        player.sendMessage("§aDealer animation message updated..");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§aDealer animation message updated to: '" + ChatColor.YELLOW + newAmsg + "§a'.");
+                        break;}
+                    case NONE:{break;
+                    }
+                } 
             } else {
-                player.sendMessage("§cCould not find dealer.");
+                switch(messPref){
+                    case STANDARD:{
+                        player.sendMessage("§cCould not find dealer.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cCould not find dealer for admin menu chat response.");
+
+                        break;}
+                    case NONE:{break;
+                    }
+                } 
             }
 
                 
@@ -733,10 +1105,28 @@ public class AdminInventory extends DealerInventory {
                 plugin.getConfig().set("dealers." + internalName + ".chip-sizes.size" + chipIndex,Integer.parseInt(newChipSize));
                 plugin.saveConfig();
                 plugin.reloadDealerVillager(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer")!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                player.sendMessage("§aChip size "+chipIndex+" updated to: " + ChatColor.YELLOW + newChipSize + "§a.");
+                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
+                switch(messPref){
+                    case STANDARD:{
+                        player.sendMessage("§aChip size updated.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§aChip size "+chipIndex+" updated to: " + ChatColor.YELLOW + newChipSize + "§a.");
+                        break;}
+                    case NONE:{break;
+                    }
+                } 
             } else {
-                player.sendMessage("§cCould not find dealer.");
+                switch(messPref){
+                    case STANDARD:{
+                        player.sendMessage("§cCould not find dealer.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cCould not find dealer for admin menu chat response.");
+                        break;}
+                    case NONE:{break;
+                    }
+                } 
             }
 
                 
@@ -748,8 +1138,8 @@ public class AdminInventory extends DealerInventory {
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
+
         if (adminInventories.get(playerId) == null){
-            cleanup();
             return;
         }
 
@@ -782,10 +1172,28 @@ public class AdminInventory extends DealerInventory {
                         e.printStackTrace();
                     }
                     plugin.saveConfig();
-                    if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport")!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
-                    player.sendMessage("§aDealer moved to new location.");
+                    if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
+                    switch(messPref){
+                        case STANDARD:{
+                            player.sendMessage("§aDealer moved to new location.");
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage("§aDealer moved to new location x: " +ChatColor.YELLOW+newLocation.getX()+"§a y: "+ChatColor.YELLOW+newLocation.getY()+ "§a z: "+ChatColor.YELLOW+newLocation.getZ()+ "§a.");
+                            break;}
+                        case NONE:{break;
+                        }
+                    } 
                 } else {
-                    player.sendMessage("§cCould not find dealer.");
+                    switch(messPref){
+                        case STANDARD:{
+                            player.sendMessage("§cCould not find dealer.");
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage("§cCould not find dealer for admin menu chat response.");
+                            break;}
+                        case NONE:{break;
+                        }
+                    } 
                 }
 
                 cleanup();
@@ -801,7 +1209,16 @@ public class AdminInventory extends DealerInventory {
         UUID pid = player.getUniqueId();
         if (moveMode.get(pid) != null) {
             event.setCancelled(true);
-            player.sendMessage("§cYou cannot break blocks while moving the dealer.");
+            switch(messPref){
+                case STANDARD:{
+                    player.sendMessage("§cCan't do that.");
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cYou cannot break blocks while moving the dealer.");
+                    break;}
+                case NONE:{break;
+                }
+            } 
         }
     }
 
@@ -822,7 +1239,7 @@ public class AdminInventory extends DealerInventory {
      * Provide user feedback if an action is disallowed.
      */
     private void denyAction(Player player, String message) {
-        if (SoundHelper.getSoundSafely("entity.villager.no") != null) {
+        if (SoundHelper.getSoundSafely("entity.villager.no",player) != null) {
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         }
         player.sendMessage("§c" + message);
@@ -830,11 +1247,18 @@ public class AdminInventory extends DealerInventory {
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
         Player player = (Player) event.getPlayer();
         UUID playerId = player.getUniqueId();
-
+        if(player.getOpenInventory().getTopInventory().getHolder() instanceof AdminInventory){
+            return;
+        }
+        if(!(event.getInventory().getHolder() instanceof AdminInventory)){
+            return;
+        }
         // Check if the player has an active AdminInventory
-        if (adminInventories.containsKey(playerId)) {
+        if (adminInventories.containsKey(playerId)&&adminInventories.get(playerId).getDealerId()==dealerId) {
+
             // Check if the player is currently editing something
             if (!isPlayerOccupied(playerId)) {
                 // Remove the AdminInventory and clean up references
@@ -851,6 +1275,11 @@ public class AdminInventory extends DealerInventory {
                 }
             }
         }
+
+    }
+        , 5L);
+
+
     }
 
     private void unregisterListener() {
@@ -898,5 +1327,20 @@ public class AdminInventory extends DealerInventory {
             adminInventories.remove(player.getUniqueId());
         }
     }
+
+    private ItemStack createPlayerHeadItem(Player player, int stackSize) {
+    if (stackSize <= 0) {
+        throw new IllegalArgumentException("Stack size must be greater than 0 for player head.");
+    }
+
+    ItemStack playerHead = new ItemStack(Material.PLAYER_HEAD, stackSize);
+    SkullMeta skullMeta = (SkullMeta) playerHead.getItemMeta();
+    if (skullMeta != null) {
+        skullMeta.setOwningPlayer(player);
+        skullMeta.setDisplayName(player.getName());
+        playerHead.setItemMeta(skullMeta);
+    }
+    return playerHead;
+}
 
 }

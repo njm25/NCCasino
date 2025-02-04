@@ -2,6 +2,7 @@ package org.nc.nccasino;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
@@ -32,11 +33,16 @@ import org.nc.nccasino.commands.CommandExecution;
 import org.nc.nccasino.commands.CommandTabCompleter;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.helpers.Metrics;
+import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.listeners.DealerDeathHandler;
 import org.nc.nccasino.listeners.DealerEventListener;
 import org.nc.nccasino.listeners.DealerInteractListener;
 
 public final class Nccasino extends JavaPlugin implements Listener {
+    private Map<UUID, Preferences> playerPreferences = new HashMap<>();
+    private File preferencesFile;
+    private FileConfiguration preferencesConfig;
     private NamespacedKey INTERNAL_NAME_KEY; // Declare it here
 
     private Material currency;    // Material used for betting currency
@@ -49,10 +55,16 @@ public final class Nccasino extends JavaPlugin implements Listener {
     public Map<UUID, DealerInventory> inventories = new HashMap<>();
 
     @Override
+    public void onDisable() {
+        savePreferences();
+    }
+
+    @Override
     public void onEnable() {
         INTERNAL_NAME_KEY = new NamespacedKey(this, "internal_name");
         checkForUpdates();
         saveDefaultConfig();
+        loadPreferences();
 
         // Load currency from config
         loadCurrencyFromConfig();
@@ -71,6 +83,13 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
         // Load any pre-existing dealer villagers from config
         loadDealerVillagers();
+
+
+        //bStats support
+        int pluginId = 24579; // <-- Replace with the id of your plugin!
+        @SuppressWarnings("unused")
+        Metrics metrics = new Metrics(this, pluginId);
+        
 
         getLogger().info("NCcasino plugin enabled!");
     }
@@ -133,6 +152,75 @@ public final class Nccasino extends JavaPlugin implements Listener {
         });
     }
 
+     public Preferences getPreferences(UUID playerId) {
+        return playerPreferences.computeIfAbsent(playerId, id -> {
+            Preferences newPrefs = new Preferences(id);
+            savePreferences();
+            return newPrefs;
+        });
+    }
+
+    private void loadPreferences() {
+        File dataFolder = new File(getDataFolder(), "data"); // Ensure it's in `data/`
+        if (!dataFolder.exists()) {
+            dataFolder.mkdirs(); // Create the `data/` directory if missing
+        }
+    
+        preferencesFile = new File(dataFolder, "preferences.yml");
+    
+        if (!preferencesFile.exists()) {
+            try {
+                preferencesFile.createNewFile();
+                getLogger().info("Created new data/preferences.yml file.");
+            } catch (IOException e) {
+                getLogger().severe("Could not create data/preferences.yml!");
+                return;
+            }
+        }
+    
+        // Load YAML configuration
+        preferencesConfig = YamlConfiguration.loadConfiguration(preferencesFile);
+    
+        // Read stored preferences into memory
+        for (String key : preferencesConfig.getKeys(false)) {
+            UUID playerId;
+            try {
+                playerId = UUID.fromString(key);
+            } catch (IllegalArgumentException e) {
+                getLogger().warning("Invalid UUID found in preferences.yml: " + key);
+                continue;
+            }
+    
+            Preferences preferences = new Preferences(playerId);
+            preferences.setSoundSetting(Preferences.SoundSetting.valueOf(preferencesConfig.getString(key + ".sound", "ON")));
+            preferences.setMessageSetting(Preferences.MessageSetting.valueOf(preferencesConfig.getString(key + ".messages", "STANDARD")));
+            playerPreferences.put(playerId, preferences);
+        }
+    }
+    
+    
+
+    public void savePreferences() {
+        if (preferencesConfig == null || preferencesFile == null) {
+            getLogger().severe("preferencesConfig is null! Skipping save.");
+            return;
+        }
+    
+        for (Map.Entry<UUID, Preferences> entry : playerPreferences.entrySet()) {
+            Preferences preferences = entry.getValue();
+            preferencesConfig.set(entry.getKey() + ".sound", preferences.getSoundSetting().name());
+            preferencesConfig.set(entry.getKey() + ".messages", preferences.getMessageSetting().name());
+        }
+    
+        try {
+            preferencesConfig.save(preferencesFile);
+            //getLogger().info("Saved player preferences.");
+        } catch (IOException e) {
+            getLogger().severe("Could not save data/preferences.yml!");
+        }
+    }
+    
+
     public void addInventory(UUID villagerId, DealerInventory inv) {
         inventories.putIfAbsent(villagerId, inv);
     }
@@ -194,12 +282,6 @@ public final class Nccasino extends JavaPlugin implements Listener {
             return;
         }
 
-        UUID dealerId = DealerVillager.getUniqueId(villager);
-        DealerInventory inventory = DealerInventory.getInventory(dealerId);
-        if (inventory != null) {
-            inventory.delete();
-        }
-
         String internalName = DealerVillager.getInternalName(villager);
         String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
@@ -227,6 +309,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
         String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
         String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
         DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+
+
     }
 
     private void reloadDealerVillagers() {
