@@ -290,24 +290,26 @@ public class RouletteInventory extends DealerInventory {
             if (player.getInventory() != null) {
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     if (player != null&&player.isOnline()) {
+                        if (!BettingTable.switchingPlayers.contains(player)){
                         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                             case STANDARD:{
                                 break;}
                             case VERBOSE:{
 
-                                player.sendMessage("§aWelcome to roulette.");            break;     
+                                player.sendMessage("§aWelcome to Roulette.");            break;     
                             }
                                 case NONE:{
                                 break;
                             }
                         } 
+                    }
                         if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
                             mce.addPlayerToChannel("Master", player);
                             mce.addPlayerToChannel("RouletteWheel", player);
                         }
-                        this.bettingTimeSeconds = plugin.getTimer(internalName);
         
                         if (firstFin) {
+                            this.bettingTimeSeconds = plugin.getTimer(internalName);
                             firstFin = false;
                             startBettingTimer();
                         }
@@ -575,7 +577,7 @@ private void exitGame(Player player) {
                 ItemMeta meta = item.getItemMeta();
                 if (meta != null && betType.equals(meta.getDisplayName())) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Total Bet: " + (int)totalBet + " " + plugin.getCurrencyName(internalName)+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
+                    lore.add("Wager: " + (int)totalBet + " " + plugin.getCurrencyName(internalName)+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
                     meta.setLore(lore);
                     item.setItemMeta(meta);
                 }

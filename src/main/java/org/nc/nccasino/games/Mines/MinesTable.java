@@ -163,7 +163,7 @@ public class MinesTable implements InventoryHolder, Listener {
             case STANDARD:{
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aWelcome to mines.");
+                player.sendMessage("§aWelcome to Mines.");
                 break;     
             }
                 case NONE:{
@@ -1367,7 +1367,7 @@ public class MinesTable implements InventoryHolder, Listener {
             if (meta != null) {
                 if (totalBet > 0) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Total Bet: " + (int)totalBet + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
+                    lore.add("Wager: " + (int)totalBet + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
                     meta.setLore(lore);
                 } else {
                     meta.setLore(new ArrayList<>());  // Clear lore if no wager

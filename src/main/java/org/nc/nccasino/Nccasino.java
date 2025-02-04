@@ -196,8 +196,6 @@ public final class Nccasino extends JavaPlugin implements Listener {
             preferences.setMessageSetting(Preferences.MessageSetting.valueOf(preferencesConfig.getString(key + ".messages", "STANDARD")));
             playerPreferences.put(playerId, preferences);
         }
-    
-        getLogger().info("Loaded player preferences.");
     }
     
     

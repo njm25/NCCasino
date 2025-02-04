@@ -100,11 +100,11 @@ public class BlackjackAdminInventory extends DealerInventory {
         int currentTimer = config.contains("dealers." + internalName + ".timer")? config.getInt("dealers." + internalName + ".timer"): 10; 
         int standOn17Chance = config.getInt("dealers." + internalName + ".stand-on-17", 100);
         int numberOfDecks = config.getInt("dealers." + internalName + ".number-of-decks", 6);
-        addItemAndLore(Material.CLOCK, currentTimer, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Current: " + currentTimer);
-        addItemAndLore(Material.SHIELD, standOn17Chance, "Edit Stand on 17 Chance", slotMapping.get(SlotOption.STAND_17), "Current: " + standOn17Chance + "%");
-        addItemAndLore(Material.RED_STAINED_GLASS_PANE, numberOfDecks, "Edit Number of Decks", slotMapping.get(SlotOption.NUMBER_OF_DECKS), "Current: " + numberOfDecks);
-        addItem(createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Return to "+returnName), slotMapping.get(SlotOption.RETURN));
-        addItem( createCustomItem(Material.SPRUCE_DOOR, "Exit"),slotMapping.get(SlotOption.EXIT) );
+        addItemAndLore(Material.CLOCK, currentTimer, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Current: §a" + currentTimer);
+        addItemAndLore(Material.SHIELD, standOn17Chance, "Edit Stand on 17 Chance", slotMapping.get(SlotOption.STAND_17), "Current: §a" + standOn17Chance + "%");
+        addItemAndLore(Material.RED_STAINED_GLASS_PANE, numberOfDecks, "Edit Number of Decks", slotMapping.get(SlotOption.NUMBER_OF_DECKS), "Current: §a" + numberOfDecks);
+        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to "+returnName,  slotMapping.get(SlotOption.RETURN));
+        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
 
     }
 

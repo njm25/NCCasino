@@ -35,15 +35,16 @@ public class PlayerMenu extends DealerInventory {
     private final Nccasino plugin;
     private final boolean fromAdmin;
     private final Consumer<Player> returnToAdmin;
+    private final String returnName;
 
-
-    public PlayerMenu(Player player, Nccasino plugin,UUID dealerId, Consumer<Player> returnToAdmin) {
+    public PlayerMenu(Player player, Nccasino plugin,UUID dealerId, Consumer<Player> returnToAdmin, String returnName) {
         super(player.getUniqueId(), 9, "Player Menu");
         this.dealerId=dealerId;
         this.ownerId = player.getUniqueId();
         this.plugin = plugin;
         this.fromAdmin = (returnToAdmin != null);
         this.returnToAdmin = returnToAdmin;
+        this.returnName = returnName;
 
         // Keep track of this menu in the static map
         playerMenus.put(ownerId, this);
@@ -71,7 +72,7 @@ public class PlayerMenu extends DealerInventory {
     }
 
     public PlayerMenu(Player player, Nccasino plugin,UUID dealerId) {
-        this(player, plugin,dealerId, null);
+        this(player, plugin,dealerId, null, null);
     }
 
     public UUID getDealerId(){
@@ -82,11 +83,12 @@ public class PlayerMenu extends DealerInventory {
      * Populate our Player Menu items.
      */
     private void initializeMenu() {
-        addItem( createCustomItem(Material.WRITABLE_BOOK, "Player Preferences"),slotMapping.get(SlotOption.PREFERENCES));
-        addItem(createCustomItem(Material.BOOK, "Statistics"),slotMapping.get(SlotOption.STATS));
-        addItem( createCustomItem(Material.SPRUCE_DOOR, "Exit"),slotMapping.get(SlotOption.EXIT) );
-        if (fromAdmin) {
-            addItem(createCustomItem(Material.MAGENTA_GLAZED_TERRACOTTA, "Return to Admin Menu"), slotMapping.get(SlotOption.RETURN)  );
+        addItemAndLore(Material.BOOK, 1, "Statistics",  slotMapping.get(SlotOption.STATS), "§cComing Soon...");
+        addItemAndLore(Material.WRITABLE_BOOK, 1, "Preferences",  slotMapping.get(SlotOption.PREFERENCES));
+
+        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
+        if (fromAdmin) {       
+            addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnName,  slotMapping.get(SlotOption.RETURN));
         }
     }
 
@@ -180,7 +182,7 @@ public class PlayerMenu extends DealerInventory {
                 PlayerMenu adminInventory = PlayerMenu.playerMenus.get(player.getUniqueId());
                 player.openInventory(adminInventory.getInventory());
             } else {
-                if(player.hasPermission("nccasino.adminmenu")){
+                if(player.hasPermission("nccasino.playermenu")){
                     PlayerMenu pmen = new PlayerMenu(player,plugin,dealerId,(a) -> {
                         if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
                             AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
@@ -191,7 +193,9 @@ public class PlayerMenu extends DealerInventory {
                             player.openInventory(adminInventory.getInventory());
                             //localVillager.remove(player.getUniqueId());
                         }
-                    });
+                    },
+                        returnName
+                    );
                         player.openInventory(pmen.getInventory());
                 }
                 else{

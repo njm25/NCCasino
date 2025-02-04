@@ -28,7 +28,7 @@ import org.nc.nccasino.helpers.Preferences;
 import java.util.*;
 
 public class BettingTable implements InventoryHolder, Listener {
-    private final Set<Player> switchingPlayers = new HashSet<>();
+    public static final Set<Player> switchingPlayers = new HashSet<>();
     private final Inventory inventory;
     private final UUID playerId;
     private final UUID dealerId;
@@ -919,7 +919,7 @@ public class BettingTable implements InventoryHolder, Listener {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("Returning to Roulette...");                    
+                    player.sendMessage("§aReturning to Roulette...");                    
                     break;     
                 }
                     case NONE:{
@@ -940,7 +940,10 @@ public class BettingTable implements InventoryHolder, Listener {
                 }
                 player.openInventory(((RouletteInventory) dealerInventory).getInventory());
                  if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
+                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
+
                 switchingPlayers.remove(player);
+                 },5L);
             } else {
                 player.sendMessage("Error: This dealer is not running Roulette.");
                  if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
@@ -1066,7 +1069,10 @@ private boolean isValidSlotPage2(int slot) {
         Player player = (Player) event.getPlayer();
        
         if (switchingPlayers.contains(player)) {
-            switchingPlayers.remove(player);
+
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                switchingPlayers.remove(player);
+                 },20L);
             return;
         }
 
@@ -1090,7 +1096,7 @@ private boolean isValidSlotPage2(int slot) {
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
                 List<String> lore = new ArrayList<>();
-                lore.add("Total Bet: " + (int)totalBet + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
+                lore.add("Wager: " + (int)totalBet + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
                 meta.setLore(lore);
                 item.setItemMeta(meta);
             }
