@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'com.github.johnrengelman.shadow' version '7.1.2'
+id 'com.github.johnrengelman.shadow' version '8.1.1'
 
 }
 
@@ -18,11 +18,17 @@ repositories {
         name = "sonatype"
         url = "https://oss.sonatype.org/content/groups/public/"
     }
+      maven {
+        url "https://repo.codemc.io/repository/maven-public/" // Repo for NBT API
+    }
 }
 
 dependencies {
     compileOnly("org.spigotmc:spigot-api:1.21.4-R0.1-SNAPSHOT")
-    implementation files('libs/lib-1.0-SNAPSHOT.jar')     
+    implementation files('libs/lib-1.0-SNAPSHOT.jar')  
+      implementation 'de.tr7zw:item-nbt-api:2.11.3' // NBT API  
+    compileOnly fileTree(dir: System.getProperty("user.home") + "/.m2/repository/org/spigotmc/spigot/1.21.4-R0.1-SNAPSHOT", includes: ["*.jar"])
+    compileOnly("org.jetbrains:annotations:24.0.1")
 }
 
 def targetJavaVersion = 21
