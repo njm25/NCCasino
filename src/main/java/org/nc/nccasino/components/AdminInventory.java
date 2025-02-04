@@ -400,9 +400,10 @@ public class AdminInventory extends DealerInventory {
 player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;*/
                      case TOGGLE_CURRENCY_MODE:
+                     /*
                         handleToggleCurrencyMode(player);
                         if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-                        break;
+                    */  break;
                     case GAME_OPTIONS:
                     if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                     handleGameOptions(player,currentGame);
@@ -597,8 +598,9 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
         }
     }
-
+/* 
     private void handleToggleCurrencyMode(Player player) {
+
         CurrencyMode next;
         switch (this.currencyMode) {
             case VANILLA: next = CurrencyMode.CUSTOM; break;
@@ -607,13 +609,13 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         }
         this.currencyMode = next;
 
-        /* 
+        
         // Update the config
         if (dealer != null) {
             String internalName = DealerVillager.getInternalName(dealer);
             plugin.getConfig().set("dealers." + internalName + ".currency.mode", next.name());
             plugin.saveConfig();
-        }*/
+        }
 
         // Update the button labels in the admin inventory
         updateCurrencyButtons();
@@ -626,7 +628,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         }
      
     }
-
+    */
     private void updateCurrencyButtons() {
         String internalName= DealerVillager.getInternalName(dealer);
         Inventory inv = getInventory();
@@ -801,7 +803,19 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
     private void handleSelectGameType(Player player) {
         // Open the Game Options Inventory
-        GameOptionsInventory inventory = new GameOptionsInventory(plugin, dealer);
+        GameOptionsInventory inventory = new GameOptionsInventory(plugin, dealer,
+        (uuid) -> {
+        
+            // Cancel action: re-open the AdminInventory
+            if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
+                AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                player.openInventory(adminInventory.getInventory());
+            } else {
+                AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                player.openInventory(adminInventory.getInventory());
+            }
+
+        });
         player.openInventory(inventory.getInventory());
     }
 
