@@ -83,7 +83,7 @@ public class PlayerMenu extends DealerInventory {
      * Populate our Player Menu items.
      */
     private void initializeMenu() {
-        addItemAndLore(Material.BOOK, 1, "Statistics",  slotMapping.get(SlotOption.STATS), "§cComing Soon...");
+        addItemAndLore(Material.BOOK, 1, "Statistics",  slotMapping.get(SlotOption.STATS), "§cComing soon...");
         addItemAndLore(Material.WRITABLE_BOOK, 1, "Preferences",  slotMapping.get(SlotOption.PREFERENCES));
 
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
@@ -183,20 +183,27 @@ public class PlayerMenu extends DealerInventory {
                 player.openInventory(adminInventory.getInventory());
             } else {
                 if(player.hasPermission("nccasino.playermenu")){
-                    PlayerMenu pmen = new PlayerMenu(player,plugin,dealerId,(a) -> {
-                        if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
-                            AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
-                            player.openInventory(adminInventory.getInventory());
-                            //localVillager.remove(player.getUniqueId());
-                        } else {
-                            AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
-                            player.openInventory(adminInventory.getInventory());
-                            //localVillager.remove(player.getUniqueId());
-                        }
-                    },
-                        returnName
-                    );
-                        player.openInventory(pmen.getInventory());
+                    if (player.hasPermission("nccasino.adminmenu")){
+                        PlayerMenu pmen = new PlayerMenu(player,plugin,dealerId,(a) -> {
+                            if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
+                                AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                                player.openInventory(adminInventory.getInventory());
+                                //localVillager.remove(player.getUniqueId());
+                            } else {
+                                AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                                player.openInventory(adminInventory.getInventory());
+                                //localVillager.remove(player.getUniqueId());
+                            }
+                        },
+                            returnName
+                        );
+                            player.openInventory(pmen.getInventory());
+                    }
+                    else{
+                        PlayerMenu adminInventory = new PlayerMenu(player,plugin,dealerId);
+                        player.openInventory(adminInventory.getInventory());
+                    }
+                    
                 }
                 else{
                 PlayerMenu adminInventory = new PlayerMenu(player,plugin,dealerId);
