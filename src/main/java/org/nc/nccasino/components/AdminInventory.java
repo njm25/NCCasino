@@ -632,39 +632,52 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     }
     */
     private void updateCurrencyButtons() {
-        String internalName= DealerVillager.getInternalName(dealer);
+        String internalName = DealerVillager.getInternalName(dealer);
         Inventory inv = getInventory();
         if (inv == null) return;
-        switch(this.currencyMode){
-            case CurrencyMode.VAULT:
-                addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY), "[Disabled For Vault Mode]");
-
-                //addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Select Currency [Disabled For Vault Mode]"),slotMapping.get(SlotOption.EDIT_CURRENCY));
-                //addItem(createCustomItem(Material.CHEST,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-            break;
-            case CurrencyMode.VANILLA:
-                addItemAndLore(plugin.getCurrency(internalName), 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY),"Current: §a"+plugin.getCurrencyName(internalName), "Drag item here to change");
-                //addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-                //addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-            break;
-            case CurrencyMode.CUSTOM:
-                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Custom Currency",1),slotMapping.get(SlotOption.EDIT_CURRENCY));
-                //addItem(createEnchantedItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-                //addItem(createCustomItem(Material.ENDER_CHEST,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-                break;
-            default:
-            addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-            //addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-            break;
+    
+        // Get the selected currency
+        ItemStack currencyItem = plugin.getCurrency(internalName, false);
+        String currencyName = plugin.getCurrencyName(internalName);
+    
+        // Display the selected currency
+        addItemAndLore(currencyItem.getType(), 1, "Select Currency",
+            slotMapping.get(SlotOption.EDIT_CURRENCY),
+            "Current: §a" + currencyName,
+            "Drag item here to change");
+    
+        // Duplicate the selected currency in the example slot (for clarity)
+        ItemStack exampleCurrency = currencyItem.clone();
+        ItemMeta meta = exampleCurrency.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName("§eExample: " + currencyName);
+            exampleCurrency.setItemMeta(meta);
         }
-            // Chip Sizes
-            for (int i = 1; i <= 5; i++) {
-                int chipValue = plugin.getConfig().contains("dealers." + internalName + ".chip-sizes.size" + i)
-                    ? plugin.getConfig().getInt("dealers." + internalName + ".chip-sizes.size" + i)
-                    : 1; // Default to 1 if missing
-                addItemAndLore(plugin.getCurrency(internalName), chipValue, "Edit Chip Size #" + i,  slotMapping.get(SlotOption.valueOf("CHIP_SIZE" + i)), "Current: §a" + chipValue);
-    } 
+        addItem(exampleCurrency, slotMapping.get(SlotOption.EDIT_CURRENCY) + 1);
+    
+        // Update chip sizes using the selected currency
+        updateChipButtons();
     }
+    
+    private void updateChipButtons() {
+        String internalName = DealerVillager.getInternalName(dealer);
+        Inventory inv = getInventory();
+        if (inv == null) return;
+    
+        ItemStack currencyItem = plugin.getCurrency(internalName, false);
+    
+        for (int i = 1; i <= 5; i++) {
+            int chipValue = plugin.getConfig().contains("dealers." + internalName + ".chip-sizes.size" + i)
+                ? plugin.getConfig().getInt("dealers." + internalName + ".chip-sizes.size" + i)
+                : 1; // Default to 1 if missing
+    
+            addItemAndLore(currencyItem.getType(), chipValue, "Edit Chip Size #" + i,
+                slotMapping.get(SlotOption.valueOf("CHIP_SIZE" + i)),
+                "Current: §a" + chipValue);
+        }
+    }
+    
+    
 
     private void handleEditChipSize(Player player,int chipInd) {
         chipIndex=chipInd;
@@ -894,113 +907,114 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
 
 
-
-private void handleEditCurrency(Player player, InventoryClickEvent event) {
-    UUID playerId = player.getUniqueId();
-    AdminInventory adminInv = adminInventories.get(playerId);
-
-    if (adminInv.currencyMode == CurrencyMode.VAULT) {
-        switch (messPref) {
-            case STANDARD:
-                player.sendMessage("§cCurrency selection is disabled in VAULT mode.");
-                break;
-            case VERBOSE:
-                player.sendMessage("§cCurrency selection is disabled in VAULT mode. Planned for the future.");
-                break;
-            case NONE:
-                break;
-        }
-        return;
-    }
-
-    ItemStack cursorItem = event.getCursor(); // Item being dragged
-
-    if (cursorItem != null && cursorItem.getType() != Material.AIR) {
-        ItemStack selectedItem = cursorItem.clone();
-        selectedItem.setAmount(1); // Store a single reference item
-
-        // Extract material, display name, and NBT data
-        Material selectedMaterial = selectedItem.getType();
-        String rawName = selectedMaterial.name();
-
-        String displayName = Arrays.stream(rawName.split("_"))
-                .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
-                .collect(Collectors.joining(" "));
-
-        if (selectedItem.getItemMeta() != null && selectedItem.getItemMeta().hasDisplayName()) {
-            displayName = selectedItem.getItemMeta().getDisplayName();
-        }
-
-        // Extract and save NBT data using NBTHelper
-        String nbtData = NBTHelper.getNBTString(selectedItem);
-
-        // Load `data/currencies.yml`
-        File currencyFile = new File(plugin.getDataFolder(), "data/currencies.yml");
-        FileConfiguration currencyConfig = YamlConfiguration.loadConfiguration(currencyFile);
-
-        // Check if this currency already exists
-        boolean currencyExists = false;
-        ConfigurationSection currenciesSection = currencyConfig.getConfigurationSection("currencies");
-
-        if (currenciesSection != null) {
-            for (String key : currenciesSection.getKeys(false)) {
-                String existingMaterial = currencyConfig.getString("currencies." + key + ".material");
-                String existingNBT = currencyConfig.getString("currencies." + key + ".nbt");
-
-                if (existingMaterial != null && existingNBT != null
-                        && existingMaterial.equals(selectedMaterial.name())
-                        && existingNBT.equals(nbtData)) {
-                    currencyExists = true;
+    private void handleEditCurrency(Player player, InventoryClickEvent event) {
+        UUID playerId = player.getUniqueId();
+        AdminInventory adminInv = adminInventories.get(playerId);
+    
+        if (adminInv.currencyMode == CurrencyMode.VAULT) {
+            switch (messPref) {
+                case STANDARD:
+                    player.sendMessage("§cCurrency selection is disabled in VAULT mode.");
                     break;
+                case VERBOSE:
+                    player.sendMessage("§cCurrency selection is disabled in VAULT mode. Planned for the future.");
+                    break;
+                case NONE:
+                    break;
+            }
+            return;
+        }
+    
+        ItemStack cursorItem = event.getCursor(); // Item being dragged
+    
+        if (cursorItem != null && cursorItem.getType() != Material.AIR) {
+            ItemStack selectedItem = cursorItem.clone();
+            selectedItem.setAmount(1); // Store a single reference item
+    
+            // Extract material, display name, and NBT data
+            Material selectedMaterial = selectedItem.getType();
+            String rawName = selectedMaterial.name();
+    
+            String displayName = Arrays.stream(rawName.split("_"))
+                    .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
+                    .collect(Collectors.joining(" "));
+    
+            if (selectedItem.getItemMeta() != null && selectedItem.getItemMeta().hasDisplayName()) {
+                displayName = selectedItem.getItemMeta().getDisplayName();
+            }
+    
+            // Extract and save NBT data using NBTHelper
+            String nbtData = NBTHelper.getNBTString(selectedItem);
+    
+            // Load `data/currencies.yml`
+            File currencyFile = new File(plugin.getDataFolder(), "data/currencies.yml");
+            FileConfiguration currencyConfig = YamlConfiguration.loadConfiguration(currencyFile);
+    
+            // Check if this currency already exists
+            boolean currencyExists = false;
+            ConfigurationSection currenciesSection = currencyConfig.getConfigurationSection("currencies");
+    
+            if (currenciesSection != null) {
+                for (String key : currenciesSection.getKeys(false)) {
+                    String existingMaterial = currencyConfig.getString("currencies." + key + ".material");
+                    String existingNBT = currencyConfig.getString("currencies." + key + ".nbt");
+    
+                    if (existingMaterial != null && existingNBT != null
+                            && existingMaterial.equals(selectedMaterial.name())
+                            && existingNBT.equals(nbtData)) {
+                        currencyExists = true;
+                        break;
+                    }
                 }
             }
+    
+            // If currency doesn't exist, add it to the global list
+            if (!currencyExists) {
+                String newCurrencyKey = "currencies.currency" + (currenciesSection != null ? currenciesSection.getKeys(false).size() + 1 : 1);
+                currencyConfig.set(newCurrencyKey + ".material", selectedMaterial.name());
+                currencyConfig.set(newCurrencyKey + ".name", displayName);
+                currencyConfig.set(newCurrencyKey + ".nbt", nbtData);
+            }
+    
+            // Update the dealer's selected currency in `dealers.yml`
+            String internalName = DealerVillager.getInternalName(dealer);
+            File dealerFile = new File(plugin.getDataFolder(), "data/dealers.yml");
+            FileConfiguration dealerConfig = YamlConfiguration.loadConfiguration(dealerFile);
+    
+            String dealerPath = "dealers." + internalName + ".currency";
+            dealerConfig.set(dealerPath + ".material", selectedMaterial.name());
+            dealerConfig.set(dealerPath + ".name", displayName);
+            dealerConfig.set(dealerPath + ".nbt", nbtData);
+    
+            try {
+                currencyConfig.save(currencyFile);
+                dealerConfig.save(dealerFile);
+            } catch (IOException e) {
+                plugin.getLogger().severe("Could not save currency data!");
+            }
+    
+            // Update inventory display
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                updateCurrencyButtons();
+                updateChipButtons();
+                player.updateInventory();
+            }, 1L);
+    
+            plugin.reloadDealerVillager(dealer);
+            switch (messPref) {
+                case STANDARD:
+                    player.sendMessage("§aCurrency updated.");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§aCurrency updated to: " + ChatColor.YELLOW + displayName + "§a (" + ChatColor.YELLOW + selectedMaterial.name() + "§a).");
+                    break;
+                case NONE:
+                    break;
+            }
+            event.setCancelled(true);
         }
-
-        // If currency doesn't exist, add it to the global list
-        if (!currencyExists) {
-            String newCurrencyKey = "currencies.currency" + (currenciesSection != null ? currenciesSection.getKeys(false).size() + 1 : 1);
-            currencyConfig.set(newCurrencyKey + ".material", selectedMaterial.name());
-            currencyConfig.set(newCurrencyKey + ".name", displayName);
-            currencyConfig.set(newCurrencyKey + ".nbt", nbtData);
-        }
-
-        // Update the dealer's selected currency in `dealers.yml`
-        String internalName = DealerVillager.getInternalName(dealer);
-        File dealerFile = new File(plugin.getDataFolder(), "data/dealers.yml");
-        FileConfiguration dealerConfig = YamlConfiguration.loadConfiguration(dealerFile);
-
-        String dealerPath = "dealers." + internalName + ".currency";
-        dealerConfig.set(dealerPath + ".material", selectedMaterial.name());
-        dealerConfig.set(dealerPath + ".name", displayName);
-        dealerConfig.set(dealerPath + ".nbt", nbtData);
-
-        try {
-            currencyConfig.save(currencyFile);
-            dealerConfig.save(dealerFile);
-        } catch (IOException e) {
-            plugin.getLogger().severe("Could not save currency data!");
-        }
-
-        // Update inventory display
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            updateCurrencyButtons();
-            player.updateInventory();
-        }, 1L);
-
-        plugin.reloadDealerVillager(dealer);
-        switch (messPref) {
-            case STANDARD:
-                player.sendMessage("§aCurrency updated.");
-                break;
-            case VERBOSE:
-                player.sendMessage("§aCurrency updated to: " + ChatColor.YELLOW + displayName + "§a (" + ChatColor.YELLOW + selectedMaterial.name() + "§a).");
-                break;
-            case NONE:
-                break;
-        }
-        event.setCancelled(true);
     }
-}
+    
 
 
 /* 

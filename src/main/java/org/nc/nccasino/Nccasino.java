@@ -17,6 +17,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.ConfigurationSection;
@@ -26,6 +27,8 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.Listener;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -34,6 +37,7 @@ import org.nc.nccasino.commands.CommandTabCompleter;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
 import org.nc.nccasino.helpers.Metrics;
+import org.nc.nccasino.helpers.NBTHelper;
 import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.listeners.DealerDeathHandler;
 import org.nc.nccasino.listeners.DealerEventListener;
@@ -391,6 +395,41 @@ public final class Nccasino extends JavaPlugin implements Listener {
         String materialName = getConfig().getString("dealers." + internalName + ".currency.material", "EMERALD").toUpperCase();
         return Material.matchMaterial(materialName);
     }
+
+    public ItemStack getCurrency(String dealerInternalName,Boolean vault) {
+        if(!vault){
+    File dealerFile = new File(getDataFolder(), "data/dealers.yml");
+    FileConfiguration dealerConfig = YamlConfiguration.loadConfiguration(dealerFile);
+
+    String dealerPath = "dealers." + dealerInternalName + ".currency";
+    String materialName = dealerConfig.getString(dealerPath + ".material", "UNKNOWN");
+    String displayName = dealerConfig.getString(dealerPath + ".name", "Unknown Currency");
+    String nbtData = dealerConfig.getString(dealerPath + ".nbt", "");
+
+    if (materialName.equals("UNKNOWN")) {
+        return new ItemStack(Material.BARRIER);
+    }
+
+    Material material = Material.getMaterial(materialName);
+    if (material == null) {
+        return new ItemStack(Material.BARRIER);
+    }
+
+    ItemStack item = new ItemStack(material);
+    if (!nbtData.isEmpty()) {
+        item = NBTHelper.applyNBTFromString(item, nbtData);
+    }
+
+    ItemMeta meta = item.getItemMeta();
+    if (meta != null) {
+        meta.setDisplayName(ChatColor.YELLOW + displayName);
+        item.setItemMeta(meta);
+    }
+
+    return item;}
+    return null;
+}
+
 
     public String getCurrencyName(String internalName) {
         return getConfig().getString("dealers." + internalName + ".currency.name", "Emerald");
