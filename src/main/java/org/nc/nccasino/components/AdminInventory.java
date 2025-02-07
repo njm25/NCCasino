@@ -328,26 +328,7 @@ public class AdminInventory extends DealerInventory {
         if (clickedTop) {
                 handleClick(slot, player,event);
         }
-        else {
-            // 4) Player clicked in their BOTTOM inventory
-            if (event.isShiftClick()) {
-                // By default, SHIFT-click will attempt to move items into the top inventory
-                event.setCancelled(true);
-                switch(messPref){
-                    case STANDARD:{
-                        player.sendMessage("§cShift-click disabled.");
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§cShift-click is disabled for the admin inventory.");
-                        break;}
-                    default:{
-                        break;}
-                }
-            }
-            else{
-
-            }
-        }
+    
     }
     
     /**
