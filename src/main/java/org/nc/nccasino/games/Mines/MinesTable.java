@@ -22,19 +22,18 @@ import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitTask;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.SoundHelper;
 
-public class MinesTable implements InventoryHolder, Listener {
+public class MinesTable extends DealerInventory {
     // Game state management
     public enum GameState {
         PLACING_WAGER,
@@ -42,7 +41,6 @@ public class MinesTable implements InventoryHolder, Listener {
         PLAYING,
         GAME_OVER
     }
-    private final Inventory inventory;
     private final UUID playerId;
     private final Player player;
     private final Nccasino plugin;
@@ -128,12 +126,12 @@ public class MinesTable implements InventoryHolder, Listener {
     // Field to keep track of selected mine count slot
     private int selectedMineSlot = -1;
     public MinesTable(Player player,  Nccasino plugin, String internalName, MinesInventory minesInventory) {
+        super(player.getUniqueId(), 54, "Mines");
         this.playerId = player.getUniqueId();
         this.player = player;
         this.plugin = plugin;
         this.internalName = internalName;
         this.minesInventory = minesInventory;
-        this.inventory = Bukkit.createInventory(this, 54, "Mines");
         this.chipValues = new LinkedHashMap<>();
         // Initialize game state
         this.gameState = GameState.PLACING_WAGER;
@@ -1531,7 +1529,7 @@ public class MinesTable implements InventoryHolder, Listener {
         }
     }
 
-    private ItemStack createCustomItem(Material material, String name, int amount) {
+    public ItemStack createCustomItem(Material material, String name, int amount) {
         ItemStack itemStack = new ItemStack(material, amount);
         ItemMeta meta = itemStack.getItemMeta();
         if (meta != null) {
@@ -1541,22 +1539,22 @@ public class MinesTable implements InventoryHolder, Listener {
         return itemStack;
     }
 
-    private ItemStack createEnchantedItem(Material material, String name, int amount) {
-        ItemStack itemStack = new ItemStack(material, amount);
-        ItemMeta meta = itemStack.getItemMeta();
-        if (meta != null) {
-            
-            meta.setDisplayName(name);
-           
-            // Add a harmless enchantment to make the item glow
-            meta.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
-            
-            // Hide the enchantment's lore for a clean look
-            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
-            itemStack.setItemMeta(meta);
+    public ItemStack createEnchantedItem(Material material, String name, int amount) {
+            ItemStack itemStack = new ItemStack(material, amount);
+            ItemMeta meta = itemStack.getItemMeta();
+            if (meta != null) {
+                
+                meta.setDisplayName(name);
+               
+                // Add a harmless enchantment to make the item glow
+                meta.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
+                
+                // Hide the enchantment's lore for a clean look
+                meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+                itemStack.setItemMeta(meta);
+            }
+            return itemStack;
         }
-        return itemStack;
-    }
     
     
 private void setMode(int modeIndex) {
