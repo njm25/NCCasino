@@ -171,7 +171,9 @@ public class DealerInteractListener implements Listener {
         if (event.getInventory().getHolder() instanceof AdminInventory || event.getSlot() == -999) {
             return;
         }
-        if (event.getInventory().getHolder() instanceof DealerInventory) {
+        if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
+            return;
+        } else if (event.getInventory().getHolder() instanceof DealerInventory) {
             event.setCancelled(true);
             DealerInventory dealerInventory = (DealerInventory) event.getInventory().getHolder();
             dealerInventory.handleClick(event.getSlot(), player, event);
