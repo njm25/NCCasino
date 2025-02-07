@@ -71,7 +71,6 @@ public class MinesInventory extends DealerInventory {
     @EventHandler
     public void handleClick(InventoryClickEvent event) {
         if (event.getInventory().getHolder() != this) return;
-        event.setCancelled(true);
     }                                                                                                                      
   
     public void removeTable(UUID playerId) {

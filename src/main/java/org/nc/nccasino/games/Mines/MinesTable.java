@@ -360,7 +360,6 @@ public class MinesTable implements InventoryHolder, Listener {
     @EventHandler
     public void handleClick(InventoryClickEvent event) {
         if (!(event.getInventory().getHolder() instanceof MinesTable)) return;
-        event.setCancelled(true);  // Prevent default click actions
 
         if (!event.getWhoClicked().getUniqueId().equals(playerId)) return;
 

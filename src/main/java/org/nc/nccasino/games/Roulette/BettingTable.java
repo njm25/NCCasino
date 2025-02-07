@@ -618,7 +618,6 @@ public class BettingTable implements InventoryHolder, Listener {
         if (event.getInventory().getHolder() != this) return;
 
         Player player = (Player) event.getWhoClicked();
-        event.setCancelled(true);
 
         if (betsClosed) {
             return;

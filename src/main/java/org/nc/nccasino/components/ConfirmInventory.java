@@ -48,7 +48,6 @@ public class ConfirmInventory extends DealerInventory {
 
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
-        event.setCancelled(true); // Prevent unintended item movement
 
         UUID playerId = player.getUniqueId();
 

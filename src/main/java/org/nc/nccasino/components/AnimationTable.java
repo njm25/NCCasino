@@ -211,8 +211,6 @@ public class AnimationTable extends DealerInventory {
         if (!playerUUID.equals(playerId)) return;
         if (event.getInventory().getHolder() != this) return;
 
-        event.setCancelled(true);
-
         if (clickAllowed.getOrDefault(playerUUID, false) && !animationStopped.get(playerUUID)) {
             if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
             stopAnimation(player);
