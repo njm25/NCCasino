@@ -13,12 +13,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -27,9 +25,8 @@ import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.helpers.Preferences;
 import java.util.*;
 
-public class BettingTable implements InventoryHolder, Listener {
+public class BettingTable extends DealerInventory {
     public static final Set<Player> switchingPlayers = new HashSet<>();
-    private final Inventory inventory;
     private final UUID playerId;
     private final UUID dealerId;
     private final Villager dealer;
@@ -46,6 +43,7 @@ public class BettingTable implements InventoryHolder, Listener {
     private boolean betsClosed=false;
     private int countdown1=30;
     public BettingTable(Player player, Villager dealer, Nccasino plugin, Stack<Pair<String, Integer>> existingBets, String internalName,RouletteInventory rouletteInventory,int countdown) {
+        super(player.getUniqueId(), 54, "Your Betting Table");
         this.countdown1=countdown;
         this.playerId = player.getUniqueId();
         this.dealerId = DealerVillager.getUniqueId(dealer);
@@ -53,7 +51,6 @@ public class BettingTable implements InventoryHolder, Listener {
         this.plugin = plugin;
         this.internalName = internalName;
         this.rouletteInventory = rouletteInventory;
-        this.inventory = Bukkit.createInventory(this, 54, "Your Betting Table");
         this.pageNum = 1;
     
         this.chipValues = new HashMap<>();
@@ -320,7 +317,7 @@ public class BettingTable implements InventoryHolder, Listener {
     
 
     
-    private ItemStack createCustomItem(Material material, String name, int amount) {
+    public ItemStack createCustomItem(Material material, String name, int amount) {
         if (amount <= 0) {
             throw new IllegalArgumentException("Amount must be greater than 0 for " + name);
         }
@@ -618,7 +615,6 @@ public class BettingTable implements InventoryHolder, Listener {
         if (event.getInventory().getHolder() != this) return;
 
         Player player = (Player) event.getWhoClicked();
-        event.setCancelled(true);
 
         if (betsClosed) {
             return;
@@ -1191,7 +1187,7 @@ private void saveBetsToRoulette(Player player) {
         return this.inventory;
     }
 
-    private ItemStack createEnchantedItem(Material material, String name, int amount) {
+    public ItemStack createEnchantedItem(Material material, String name, int amount) {
         ItemStack itemStack = new ItemStack(material, amount);
         ItemMeta meta = itemStack.getItemMeta();
         if (meta != null) {

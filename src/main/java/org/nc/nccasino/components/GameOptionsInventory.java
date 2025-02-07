@@ -89,7 +89,6 @@ public class GameOptionsInventory extends DealerInventory {
 
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
-        event.setCancelled(true); // Prevent unintended item movement
         if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
             return;
         }

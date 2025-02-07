@@ -94,7 +94,6 @@ public class PlayerMenu extends DealerInventory {
 
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
-        event.setCancelled(true);
         if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
             return;
         }

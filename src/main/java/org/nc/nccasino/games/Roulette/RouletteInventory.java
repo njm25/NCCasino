@@ -348,7 +348,6 @@ public class RouletteInventory extends DealerInventory {
         if (event.getInventory().getHolder() != this) return;
 
         Player player = (Player) event.getWhoClicked();
-        event.setCancelled(true);
 
         int slot = event.getRawSlot();
         handleGameMenuClick(slot, player);

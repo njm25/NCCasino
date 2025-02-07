@@ -30,6 +30,7 @@ public class DealerInteractListener implements Listener {
     private final Nccasino plugin;
     public static Set<Player> activeAnimations = new HashSet<>();
     private Villager villager;
+        
 
     public DealerInteractListener(Nccasino plugin) {
         this.plugin = plugin;
@@ -168,10 +169,26 @@ public class DealerInteractListener implements Listener {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         Player player = (Player) event.getWhoClicked();
-        if (event.getInventory().getHolder() instanceof AdminInventory) {
+
+        if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory()) && event.getInventory().getHolder() instanceof DealerInventory) {
+            // By default, SHIFT-click will attempt to move items into the top inventory
+            if(event.isShiftClick()){
+                event.setCancelled(true);
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting())
+                {
+                    case VERBOSE:{
+                        player.sendMessage("§cShift-click is disabled.");
+                        break;}
+                    default:{
+                        break;}
+                }
+            }
             return;
         }
-        if (event.getInventory().getHolder() instanceof DealerInventory) {
+        else if (event.getClickedInventory() != null && event.getInventory().getHolder() instanceof DealerInventory) {
+            if(event.getSlot() == -999){
+                return;
+            }
             event.setCancelled(true);
             DealerInventory dealerInventory = (DealerInventory) event.getInventory().getHolder();
             dealerInventory.handleClick(event.getSlot(), player, event);
@@ -181,10 +198,15 @@ public class DealerInteractListener implements Listener {
     @EventHandler
     public void onInventoryDrag(InventoryDragEvent event) {
         Inventory topInventory = event.getView().getTopInventory();
-        if (topInventory.getHolder() instanceof AdminInventory) {
-            event.setCancelled(true);
+        if (event.getInventory().getHolder() instanceof DealerInventory){
+            for (int slot : event.getRawSlots()) {
+                if (slot < topInventory.getSize()) {
+                    event.setCancelled(true);
+                    return;
+                }
+            }
         }
-    }
+    }   
 
     private String getGamePermission(String gameType) {
         if (gameType == null) return null;
