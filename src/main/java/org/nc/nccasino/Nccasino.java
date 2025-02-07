@@ -15,7 +15,7 @@ import java.util.UUID;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
+import io.github.cdimascio.dotenv.Dotenv;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -84,14 +84,14 @@ public final class Nccasino extends JavaPlugin implements Listener {
         // Load any pre-existing dealer villagers from config
         loadDealerVillagers();
 
-
+        Dotenv dotenv = Dotenv.load();
+        int pluginId = Integer.parseInt(dotenv.get("BSTATS_PLUGIN_ID"));
         //bStats support
-        int pluginId = 24579; // <-- Replace with the id of your plugin!
         @SuppressWarnings("unused")
         Metrics metrics = new Metrics(this, pluginId);
         
 
-        getLogger().info("NCcasino plugin enabled!");
+        getLogger().info("NCCasino plugin enabled!");
     }
 
     private void loadDealerVillagers() {

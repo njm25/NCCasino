@@ -22,7 +22,8 @@ repositories {
 
 dependencies {
     compileOnly("org.spigotmc:spigot-api:1.21.4-R0.1-SNAPSHOT")
-    implementation files('libs/lib-1.0-SNAPSHOT.jar')     
+    implementation files('libs/lib-1.0-SNAPSHOT.jar')    
+    implementation 'io.github.cdimascio:java-dotenv:5.2.2' 
 }
 
 def targetJavaVersion = 21
