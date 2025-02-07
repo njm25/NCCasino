@@ -100,6 +100,9 @@ public class GameOptionsInventory extends DealerInventory {
             Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);
 
             SlotOption option = getKeyByValue(slotMapping, slot);
+            if (option == null) {
+                return;
+            }
             String gameType;
             switch (option) {
                 case BLACKJACK:
