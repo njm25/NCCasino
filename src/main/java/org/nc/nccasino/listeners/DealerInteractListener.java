@@ -168,7 +168,7 @@ public class DealerInteractListener implements Listener {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         Player player = (Player) event.getWhoClicked();
-        if (event.getInventory().getHolder() instanceof AdminInventory) {
+        if (event.getInventory().getHolder() instanceof AdminInventory || event.getSlot() == -999) {
             return;
         }
         if (event.getInventory().getHolder() instanceof DealerInventory) {
