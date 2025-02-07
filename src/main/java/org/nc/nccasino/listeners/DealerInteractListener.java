@@ -183,10 +183,13 @@ public class DealerInteractListener implements Listener {
     @EventHandler
     public void onInventoryDrag(InventoryDragEvent event) {
         Inventory topInventory = event.getView().getTopInventory();
-        if (topInventory.getHolder() instanceof AdminInventory) {
-            event.setCancelled(true);
+        for (int slot : event.getRawSlots()) {
+            if (slot < topInventory.getSize()) {
+                event.setCancelled(true);
+                return;
+            }
         }
-    }
+    }   
 
     private String getGamePermission(String gameType) {
         if (gameType == null) return null;
