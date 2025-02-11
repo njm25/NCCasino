@@ -327,31 +327,6 @@ public class AdminInventory extends DealerInventory {
         return villagers;
     }
     
-    @EventHandler
-    public void onInventoryClick(InventoryClickEvent event) {
-        Player player = (Player) event.getWhoClicked();
-        UUID playerId = player.getUniqueId();
-    
-        // 1) Make sure this event is for an AdminInventory
-        if (!adminInventories.containsKey(playerId)) return;
-        AdminInventory adminInv = adminInventories.get(playerId);
-        if (adminInv == null) return;
-    
-        Inventory topInv = adminInv.getInventory();
-        if (topInv == null) return;
-        if(player.getOpenInventory().getTopInventory() != this.getInventory()){return;}
-        // 2) Check where they clicked
-        if (event.getClickedInventory() == null) return; // clicked outside any inventory
-        boolean clickedTop = event.getClickedInventory().equals(topInv);
-        int slot = event.getSlot();
-    
-        // 3) If user clicked inside the TOP (admin) inventory:
-        if (clickedTop) {
-                handleClick(slot, player,event);
-        }
-    
-    }
-    
     /**
      * Handle inventory clicks for AdminInventory.
      */
