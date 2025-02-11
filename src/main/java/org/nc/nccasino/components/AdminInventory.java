@@ -231,7 +231,7 @@ public class AdminInventory extends DealerInventory {
         addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
         addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
-        addItemAndLore(BIOME_MATERIALS.getOrDefault(dealer.getVillagerType(), Material.GRASS_BLOCK), 1, "Cycle Villager Biome", slotMapping.get(SlotOption.CHANGE_BIOME), "Current: §a" + dealer.getVillagerType().toString());
+        addItemAndLore(BIOME_MATERIALS.getOrDefault(dealer.getVillagerType(), Material.GRASS_BLOCK), 1, "Edit Villager Biome", slotMapping.get(SlotOption.CHANGE_BIOME), "Current: §a" + dealer.getVillagerType().toString());
 
         ItemStack head=createPlayerHeadItem(player, 1);
         setCustomItemMeta(head,"Player Menu");
@@ -505,7 +505,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         dealer.setVillagerType(newBiome);
 
 
-    addItemAndLore(BIOME_MATERIALS.getOrDefault(dealer.getVillagerType(), Material.GRASS_BLOCK), 1, "Cycle Villager Biome", slotMapping.get(SlotOption.CHANGE_BIOME), "Current: §a" + dealer.getVillagerType().toString());
+    addItemAndLore(BIOME_MATERIALS.getOrDefault(dealer.getVillagerType(), Material.GRASS_BLOCK), 1, "Edit Villager Biome", slotMapping.get(SlotOption.CHANGE_BIOME), "Current: §a" + dealer.getVillagerType().toString());
        switch(messPref){
                 case VERBOSE:{
                     player.sendMessage("§aVillager biome changed to: " + ChatColor.YELLOW + newBiome.toString());
