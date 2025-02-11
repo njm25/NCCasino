@@ -774,21 +774,25 @@ public class BettingTable extends DealerInventory {
             ItemStack heldItem = player.getItemOnCursor();
             Material currencyType = plugin.getCurrency(internalName);
             double wagerAmount = 0;
-            boolean dragToDrop = false;
+            boolean usedHeldItem = false;
         
             if (heldItem != null && heldItem.getType() == currencyType) {
                 wagerAmount = heldItem.getAmount();
-                player.setItemOnCursor(null); // Remove the stack from the cursor
-                dragToDrop = true;
+                usedHeldItem = true;
             } else {
-                dragToDrop = false;
                 wagerAmount = selectedWager;
             }
         
             // Ensure the player has selected a valid wager
             if (wagerAmount > 0) {
-                if (hasEnoughWager(player, wagerAmount)) {
-                    if (!dragToDrop) removeWagerFromInventory(player, wagerAmount);
+                boolean canBet = usedHeldItem || hasEnoughWager(player, wagerAmount);
+        
+                if (canBet) {
+                    if (usedHeldItem) {
+                        player.setItemOnCursor(null); // Remove the held stack
+                    } else {
+                        removeWagerFromInventory(player, wagerAmount);
+                    }
         
                     switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                         case STANDARD:
@@ -799,6 +803,7 @@ public class BettingTable extends DealerInventory {
                         case NONE:
                             break;
                     }
+        
                     if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
                         player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
         
@@ -843,7 +848,7 @@ public class BettingTable extends DealerInventory {
             }
             return;
         }
-        
+                
         if (slot == 45) {
            if (!betStack.isEmpty()) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){

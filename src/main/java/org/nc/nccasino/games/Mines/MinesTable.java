@@ -580,37 +580,31 @@ public class MinesTable extends DealerInventory {
             ItemStack heldItem = player.getItemOnCursor();
             Material currencyType = plugin.getCurrency(internalName);
             double wagerAmount = 0;
-
-            boolean dragToDrop = false;
+            boolean usedHeldItem = false;
         
             if (heldItem != null && heldItem.getType() == currencyType) {
                 wagerAmount = heldItem.getAmount();
-                player.setItemOnCursor(null); // Remove the stack from the cursor
-                dragToDrop = true;
+                usedHeldItem = true;
             } else {
-                dragToDrop = false;
                 wagerAmount = selectedWager;
             }
         
             // Ensure the player has selected a valid wager
             if (wagerAmount > 0) {
-                // Check if the player has enough currency to place the bet
-                if (hasEnoughCurrency(player, (int) wagerAmount)) {
-                    double newBetAmount = wagerAmount;
-                    betStack.push(newBetAmount);
-
-                    if(!dragToDrop){
+                boolean canBet = usedHeldItem || hasEnoughCurrency(player, (int) wagerAmount);
+        
+                if (canBet) {
+                    // If the player was holding the item, remove it from the cursor
+                    if (usedHeldItem) {
+                        player.setItemOnCursor(null);
+                    } else {
                         removeWagerFromInventory(player, (int) wagerAmount);
                     }
         
-                    // Deduct currency from player inventory
+                    double newBetAmount = wagerAmount;
+                    betStack.push(newBetAmount);
         
-                    double totalBet = 0;
-                    for (double t : betStack) {
-                        totalBet += t;
-                    }
-        
-                    // Update the lore of the item in slot 52 with the cumulative bet amount
+                    double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
                     updateBetLore(53, totalBet);
         
                     if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
@@ -628,8 +622,6 @@ public class MinesTable extends DealerInventory {
         
                     wager = newBetAmount;
                     wagerPlaced = true;
-        
-                    // Update "Start Game" lever visibility
                     updateStartGameLever(true);
                 } else {
                     switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
