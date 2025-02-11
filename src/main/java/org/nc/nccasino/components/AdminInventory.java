@@ -85,7 +85,8 @@ public class AdminInventory extends DealerInventory {
         CHIP_SIZE4,
         CHIP_SIZE5,
         PM,
-        EXIT
+        EXIT,
+        CHANGE_BIOME
 
     }
 
@@ -102,10 +103,10 @@ public class AdminInventory extends DealerInventory {
         put(SlotOption.EDIT_GAME_TYPE, 0);
         put(SlotOption.GAME_OPTIONS, 2);
         put(SlotOption.EDIT_ANIMATION_MESSAGE, 8);
-
+        put(SlotOption.CHANGE_BIOME, 31); 
         // put(SlotOption.USE_VAULT, 28);   
         put(SlotOption.EDIT_CURRENCY, 13);
-        put(SlotOption.TOGGLE_CURRENCY_MODE, 31);
+        //put(SlotOption.TOGGLE_CURRENCY_MODE, 31);
         put(SlotOption.EXIT, 36);
         put(SlotOption.PM, 38);
 
@@ -117,6 +118,26 @@ public class AdminInventory extends DealerInventory {
         put(SlotOption.CHIP_SIZE4, 23);
         put(SlotOption.CHIP_SIZE5, 24);
 
+    }};
+
+    private static final List<Villager.Type> VILLAGER_BIOMES = Arrays.asList(
+        Villager.Type.DESERT,
+        Villager.Type.JUNGLE,
+        Villager.Type.PLAINS,
+        Villager.Type.SAVANNA,
+        Villager.Type.SNOW,
+        Villager.Type.SWAMP,
+        Villager.Type.TAIGA
+    );
+    
+    private static final Map<Villager.Type, Material> BIOME_MATERIALS = new HashMap<>() {{
+        put(Villager.Type.DESERT, Material.SAND);
+        put(Villager.Type.JUNGLE, Material.JUNGLE_LOG);
+        put(Villager.Type.PLAINS, Material.GRASS_BLOCK);
+        put(Villager.Type.SAVANNA, Material.ACACIA_LOG);
+        put(Villager.Type.SNOW, Material.SNOW_BLOCK);
+        put(Villager.Type.SWAMP, Material.MANGROVE_LOG);
+        put(Villager.Type.TAIGA, Material.SPRUCE_LOG);
     }};
 
     /**
@@ -210,7 +231,7 @@ public class AdminInventory extends DealerInventory {
         addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
         addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
-
+        addItemAndLore(BIOME_MATERIALS.getOrDefault(dealer.getVillagerType(), Material.GRASS_BLOCK), 1, "Cycle Villager Biome", slotMapping.get(SlotOption.CHANGE_BIOME), "Current: §a" + dealer.getVillagerType().toString());
 
         ItemStack head=createPlayerHeadItem(player, 1);
         setCustomItemMeta(head,"Player Menu");
@@ -421,6 +442,10 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                         handleExit(player);
                         if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
+                    case CHANGE_BIOME:
+                        cycleBiome(player);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        break;
                     default:
                     switch(messPref){
                         case STANDARD:{
@@ -480,6 +505,24 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     private void handleExit(Player player) {
         player.closeInventory();
         delete();
+    }
+
+    private void cycleBiome(Player player) {
+        Villager.Type currentBiome = dealer.getVillagerType();
+        int index = VILLAGER_BIOMES.indexOf(currentBiome);
+        Villager.Type newBiome = VILLAGER_BIOMES.get((index + 1) % VILLAGER_BIOMES.size());
+
+        dealer.setVillagerType(newBiome);
+
+
+    addItemAndLore(BIOME_MATERIALS.getOrDefault(dealer.getVillagerType(), Material.GRASS_BLOCK), 1, "Cycle Villager Biome", slotMapping.get(SlotOption.CHANGE_BIOME), "Current: §a" + dealer.getVillagerType().toString());
+       switch(messPref){
+                case VERBOSE:{
+                    player.sendMessage("§aVillager biome changed to: " + ChatColor.YELLOW + newBiome.toString());
+                    break;}
+                default:{
+                    break;}
+            }
     }
 
     // ----- Option handlers -----
