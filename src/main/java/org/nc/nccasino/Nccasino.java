@@ -119,6 +119,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 }
             });
         }
+                Bukkit.getScheduler().runTaskLater(this, () -> {
 
         // After ensuring chunks are loaded, update existing Villagers
         Bukkit.getWorlds().forEach(world -> {
@@ -148,6 +149,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 }
             }
         });
+    } , 5L);
     }
 
      public Preferences getPreferences(UUID playerId) {
