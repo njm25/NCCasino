@@ -333,7 +333,7 @@ public class MinesTable extends DealerInventory {
         }
 
         // Add cash out button with potential winnings in lore
-        ItemStack cashOutButton = createCustomItem(Material.EMERALD, "Cash Out", 1);
+        ItemStack cashOutButton = createCustomItem(plugin.getCurrency(internalName), "Cash Out", 1);
         updateCashOutLore(cashOutButton);
         inventory.setItem(49, cashOutButton);
     }
@@ -442,7 +442,7 @@ public class MinesTable extends DealerInventory {
                 int x = index % gridSize;
                 int y = index / gridSize;
                 handleTileSelection(x, y);
-            } else if (clickedItem != null && clickedItem.getType() == Material.EMERALD) {
+            } else if (clickedItem != null && clickedItem.getType() == plugin.getCurrency(internalName)) {
                 cashOut();
             }
         }
@@ -852,7 +852,6 @@ public class MinesTable extends DealerInventory {
     private void placeMines() {
         Random random = new Random();
         int minesPlaced = 0;
-
         while (minesPlaced < minesCount) {
             int x = random.nextInt(gridSize);
             int y = random.nextInt(gridSize);
@@ -975,7 +974,7 @@ public class MinesTable extends DealerInventory {
         if (isMine) {
             tile = createCustomItem(Material.TNT, "Mine", 1); 
         } else {
-            tile = createCustomItem(Material.EMERALD, "Safe", 1);
+            tile = createCustomItem(plugin.getCurrency(internalName), "Safe", 1);
         }
         inventory.setItem(slot, tile);
     }
@@ -1230,7 +1229,7 @@ public class MinesTable extends DealerInventory {
                         int index = y * 9 + x;
                         if (index >= 0 && index < inventory.getSize()) {
                             // Overwrite every tile with an emerald
-                            setTileAtSlot(index, Material.EMERALD, "MMMMMoney!!");
+                            setTileAtSlot(index, plugin.getCurrency(internalName), "MMMMMoney!!");
                             anyTilesSetToEmerald = true;
                         }
                     }
