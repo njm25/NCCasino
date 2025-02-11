@@ -434,7 +434,7 @@ public class MinesTable extends DealerInventory {
         }
         
         if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
-            handleWagerPlacement(clickedItem, slot);
+            handleWagerPlacement(clickedItem, slot, event);
         } else if (gameState == GameState.PLAYING) {
             // Adjusted to handle grid slots
             int index = gridSlotList.indexOf(slot);
@@ -536,7 +536,7 @@ public class MinesTable extends DealerInventory {
                type == Material.PURPLE_STAINED_GLASS_PANE;
     }
 
-    private void handleWagerPlacement(ItemStack clickedItem, int slot) {
+    private void handleWagerPlacement(ItemStack clickedItem, int slot, InventoryClickEvent event) {
         if (clickedItem == null || !clickedItem.hasItemMeta()) return;
 
         String itemName = clickedItem.getItemMeta().getDisplayName();
@@ -576,70 +576,92 @@ public class MinesTable extends DealerInventory {
             } 
         }
         if (itemName.equals("Click here to place bet")) {
-            // Handle bet placement (slot 52 - Paper item)
-            if (selectedWager > 0) {
+            // Check if the player is holding the currency item
+            ItemStack heldItem = player.getItemOnCursor();
+            Material currencyType = plugin.getCurrency(internalName);
+            double wagerAmount = 0;
+
+            boolean dragToDrop = false;
+        
+            if (heldItem != null && heldItem.getType() == currencyType) {
+                wagerAmount = heldItem.getAmount();
+                player.setItemOnCursor(null); // Remove the stack from the cursor
+                dragToDrop = true;
+            } else {
+                dragToDrop = false;
+                wagerAmount = selectedWager;
+            }
+        
+            // Ensure the player has selected a valid wager
+            if (wagerAmount > 0) {
                 // Check if the player has enough currency to place the bet
-                if (hasEnoughCurrency(player, (int) selectedWager)) {
-                    double newBetAmount = selectedWager;
+                if (hasEnoughCurrency(player, (int) wagerAmount)) {
+                    double newBetAmount = wagerAmount;
                     betStack.push(newBetAmount);
+
+                    if(!dragToDrop){
+                        removeWagerFromInventory(player, (int) wagerAmount);
+                    }
+        
                     // Deduct currency from player inventory
-                    removeWagerFromInventory(player, (int) selectedWager);
+        
                     double totalBet = 0;
                     for (double t : betStack) {
-                     totalBet += t;
+                        totalBet += t;
                     }
+        
                     // Update the lore of the item in slot 52 with the cumulative bet amount
                     updateBetLore(53, totalBet);
-                     if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
-                     switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                        case STANDARD:{
-                            break;}
-                        case VERBOSE:{
-                            player.sendMessage("§aBet placed: " + newBetAmount);                            
-                            break;     
-                        }
-                            case NONE:{
+        
+                    if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
+                        player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
+        
+                    switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                        case STANDARD:
                             break;
-                        }
-                    } 
-
+                        case VERBOSE:
+                            player.sendMessage("§aBet placed: " + newBetAmount);
+                            break;
+                        case NONE:
+                            break;
+                    }
+        
                     wager = newBetAmount;
                     wagerPlaced = true;
+        
                     // Update "Start Game" lever visibility
                     updateStartGameLever(true);
                 } else {
-                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                        case STANDARD:{
+                    switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                        case STANDARD:
                             player.sendMessage("§cInvalid action.");
-                            break;}
-                        case VERBOSE:{
-                            player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s.");
-                            break;     
-                        }
-                            case NONE:{
                             break;
-                        }
-                    } 
-                     if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
+                        case VERBOSE:
+                            player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s.");
+                            break;
+                        case NONE:
+                            break;
+                    }
+                    if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
                 }
             } else {
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
+                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                    case STANDARD:
                         player.sendMessage("§cInvalid action.");
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§cSelect a wager amount first.");
-                        break;     
-                    }
-                        case NONE:{
                         break;
-                    }
-                } 
-                 if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
+                    case VERBOSE:
+                        player.sendMessage("§cSelect a wager amount first.");
+                        break;
+                    case NONE:
+                        break;
+                }
+                if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             }
             return;
         }
-
+        
         if (itemName.startsWith("Mines: ")) {
             // Handle mine selection
             String[] parts = itemName.split(": ");
