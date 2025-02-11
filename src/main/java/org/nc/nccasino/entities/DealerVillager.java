@@ -3,6 +3,7 @@ package org.nc.nccasino.entities;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
@@ -298,7 +299,11 @@ public class DealerVillager {
         if (dealerId == null) return;
 
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
-
+        Location loc = villager.getLocation();
+        var world = loc.getWorld();
+        int chunkX = loc.getChunk().getX();
+        int chunkZ = loc.getChunk().getZ();
+    
         DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
         if (dealerInventory != null) {
             dealerInventory.delete();
@@ -310,12 +315,27 @@ public class DealerVillager {
             plugin.saveConfig();
         }
 
+    
         // Remove the persistent data & the entity itself
         deleteAllPersistentData(dataContainer);
         villager.remove();
 
         // Finally remove from DealerVillager map
         removeDealerFromMap(dealerId);
+
+        
+        boolean hasOtherDealers = false;
+        for (Entity entity : world.getChunkAt(chunkX, chunkZ).getEntities()) {
+            if (entity instanceof Villager otherVillager && isDealerVillager(otherVillager)) {
+                hasOtherDealers = true;
+                break;
+            }
+        }
+
+        if (!hasOtherDealers && world.isChunkForceLoaded(chunkX, chunkZ)) {
+            world.setChunkForceLoaded(chunkX, chunkZ, false);
+            plugin.getLogger().info("Un-force-loaded chunk: " + chunkX + ", " + chunkZ);
+        }
     }
 
     private static void deleteAllPersistentData(PersistentDataContainer container) {
