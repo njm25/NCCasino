@@ -19,6 +19,7 @@ import org.nc.nccasino.components.AnimationTable;
 import org.nc.nccasino.components.PlayerMenu;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.helpers.Preferences.MessageSetting;
 import org.nc.nccasino.helpers.SoundHelper;
 
 import java.util.HashSet;
@@ -172,9 +173,13 @@ public class DealerInteractListener implements Listener {
 
         if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory()) && event.getInventory().getHolder() instanceof DealerInventory) {
             // By default, SHIFT-click will attempt to move items into the top inventory
-            if(event.isShiftClick()){
+
+            MessageSetting settings = plugin.getPreferences(player.getUniqueId()).getMessageSetting();
+            
+            if(event.isShiftClick() && !(event.getInventory().getHolder() instanceof AdminInventory)){
+                    
                 event.setCancelled(true);
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting())
+                switch(settings)
                 {
                     case VERBOSE:{
                         player.sendMessage("§cShift-click is disabled.");
@@ -183,6 +188,7 @@ public class DealerInteractListener implements Listener {
                         break;}
                 }
             }
+        
             return;
         }
         else if (event.getClickedInventory() != null && event.getInventory().getHolder() instanceof DealerInventory) {
@@ -198,9 +204,18 @@ public class DealerInteractListener implements Listener {
     @EventHandler
     public void onInventoryDrag(InventoryDragEvent event) {
         Inventory topInventory = event.getView().getTopInventory();
+        Player player = (Player) event.getWhoClicked();
         if (event.getInventory().getHolder() instanceof DealerInventory){
             for (int slot : event.getRawSlots()) {
                 if (slot < topInventory.getSize()) {
+                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting())
+                    {
+                        case VERBOSE:{
+                            player.sendMessage("§cCannot drag in here.");
+                            break;}
+                        default:{
+                            break;}
+                    }
                     event.setCancelled(true);
                     return;
                 }
