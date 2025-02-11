@@ -334,7 +334,6 @@ public class DealerVillager {
 
         if (!hasOtherDealers && world.isChunkForceLoaded(chunkX, chunkZ)) {
             world.setChunkForceLoaded(chunkX, chunkZ, false);
-            plugin.getLogger().info("Un-force-loaded chunk: " + chunkX + ", " + chunkZ);
         }
     }
 
