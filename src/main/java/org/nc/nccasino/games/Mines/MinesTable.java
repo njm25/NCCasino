@@ -851,14 +851,19 @@ public class MinesTable extends DealerInventory {
 
     private void placeMines() {
         Random random = new Random();
-        int minesPlaced = 0;
-
-        while (minesPlaced < minesCount) {
-            int x = random.nextInt(gridSize);
-            int y = random.nextInt(gridSize);
-            if (!mineGrid[x][y]) {
-                mineGrid[x][y] = true;
-                minesPlaced++;
+    
+        if (minesCount == 1) {
+            mineGrid[1][3] = true;
+        }
+        else{
+            int minesPlaced = 0;
+            while (minesPlaced < minesCount) {
+                int x = random.nextInt(gridSize);
+                int y = random.nextInt(gridSize);
+                if (!mineGrid[x][y]) {
+                    mineGrid[x][y] = true;
+                    minesPlaced++;
+                }
             }
         }
     }
