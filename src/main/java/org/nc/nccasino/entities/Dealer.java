@@ -55,16 +55,24 @@ public class Dealer {
     private static void initializeDealer(Mob mob, Location location, String name,
                                            String internalName, String gameType) {
 
-        mob.setAI(true);
+       
         mob.setInvulnerable(true);
         mob.setCustomName(name);
         mob.setCustomNameVisible(true);
-        if (mob instanceof Villager){
-            ((Villager) mob).setProfession(Villager.Profession.NONE);
-        }
         mob.setGravity(false);
         mob.setSilent(true);
         mob.setCollidable(false);
+        if (mob instanceof Villager){
+            ((Villager) mob).setProfession(Villager.Profession.NONE);
+            //mob.setAI(true);
+        }
+       
+            mob.setAI(false);
+            startLookingAtPlayers(mob);
+
+     
+
+        
 
         // Unique ID for referencing this Dealer
         UUID uniqueId = UUID.randomUUID();
@@ -84,6 +92,95 @@ public class Dealer {
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
         initializeInventory(mob, uniqueId, name, plugin);
     }
+    
+    public static void startLookingAtPlayers(Mob mob) {
+        new BukkitRunnable() {
+            private Player currentTarget = null;
+            private float bodyYaw = mob.getLocation().getYaw(); // Track body's current yaw
+            private static final float MIN_TURN_SPEED = 0.5f;  // Slowest speed
+            private static final float MAX_TURN_SPEED = 4.0f;  // Fastest speed
+            private static final float SMOOTH_FACTOR = 0.2f;   // Controls acceleration
+            private static final double SWITCH_THRESHOLD = 0.5; // Prevent erratic target switching
+    
+            @Override
+            public void run() {
+                if (mob.isDead() || !mob.isValid()) {
+                    cancel();
+                    return;
+                }
+    
+                Player nearest = getNearestPlayer(mob);
+    
+                // Only switch if new target is noticeably closer
+                if (nearest != null) {
+                    if (currentTarget == null || nearest.getLocation().distance(mob.getLocation()) < currentTarget.getLocation().distance(mob.getLocation()) - SWITCH_THRESHOLD) {
+                        currentTarget = nearest;
+                    }
+                }
+    
+                if (currentTarget != null) {
+                    Location mobLoc = mob.getLocation();
+                    Location targetLoc = currentTarget.getLocation();
+    
+                    double dx = targetLoc.getX() - mobLoc.getX();
+                    double dz = targetLoc.getZ() - mobLoc.getZ();
+    
+                    // Calculate target yaw
+                    float targetYaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+    
+                    // Instantly set head direction
+                    mobLoc.setYaw(targetYaw);
+                    mob.teleport(mobLoc);
+    
+                    // Calculate dynamic turn speed based on angle difference
+                    float angleDiff = ((targetYaw - bodyYaw + 540) % 360) - 180;
+                    float turnSpeed = Math.max(MIN_TURN_SPEED, Math.abs(angleDiff) * SMOOTH_FACTOR);
+                    turnSpeed = Math.min(turnSpeed, MAX_TURN_SPEED);
+    
+                    // Smoothly adjust body yaw
+                    bodyYaw = lerpAngle(bodyYaw, targetYaw, turnSpeed);
+                    
+                    // Apply body yaw separately
+                    setBodyYaw(mob, bodyYaw);
+                }
+            }
+        }.runTaskTimer(JavaPlugin.getProvidingPlugin(Dealer.class), 0L, 1L); // Runs every tick
+    }
+    
+    /**
+     * Linearly interpolates between angles for smooth motion.
+     */
+    private static float lerpAngle(float current, float target, float speed) {
+        float diff = ((target - current + 540) % 360) - 180; // Ensures shortest rotation path
+        return current + Math.min(Math.max(diff, -speed), speed); // Move by speed amount
+    }
+    
+    /**
+     * Adjusts the body yaw without affecting head movement.
+     */
+    private static void setBodyYaw(Mob mob, float yaw) {
+        Location mobLoc = mob.getLocation();
+        mobLoc.setYaw(yaw);
+        mob.teleport(mobLoc);
+    }
+    
+    
+    
+    /**
+     * Get the nearest player within range.
+     */
+    private static Player getNearestPlayer(Mob mob) {
+        return mob.getWorld().getNearbyEntities(mob.getLocation(), 10, 10, 10)
+            .stream()
+            .filter(e -> e instanceof Player)
+            .map(e -> (Player) e)
+            .min((p1, p2) -> Double.compare(p1.getLocation().distance(mob.getLocation()), 
+                                            p2.getLocation().distance(mob.getLocation())))
+            .orElse(null);
+    }
+    
+    
+    
 
     public static void initializeInventory(Mob mob, UUID uniqueId, String name, Nccasino plugin) {
         PersistentDataContainer dataContainer = mob.getPersistentDataContainer();

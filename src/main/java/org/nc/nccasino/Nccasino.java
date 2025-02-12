@@ -145,6 +145,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
                         String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
                         Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+                        Dealer.startLookingAtPlayers(mob);
                     }
                 }
             }
