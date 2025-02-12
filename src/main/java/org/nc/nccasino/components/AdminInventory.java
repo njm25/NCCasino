@@ -103,9 +103,9 @@ public class AdminInventory extends DealerInventory {
         put(SlotOption.EDIT_GAME_TYPE, 0);
         put(SlotOption.GAME_OPTIONS, 2);
         put(SlotOption.EDIT_ANIMATION_MESSAGE, 8);
-        put(SlotOption.CHANGE_BIOME, 31); 
+        put(SlotOption.CHANGE_BIOME, 4); 
         // put(SlotOption.USE_VAULT, 28);   
-        put(SlotOption.EDIT_CURRENCY, 13);
+        put(SlotOption.EDIT_CURRENCY, 31);
         //put(SlotOption.TOGGLE_CURRENCY_MODE, 31);
         put(SlotOption.EXIT, 36);
         put(SlotOption.PM, 38);
@@ -231,7 +231,7 @@ public class AdminInventory extends DealerInventory {
         addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
         addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
-        addItemAndLore(BIOME_MATERIALS.getOrDefault(dealer.getVillagerType(), Material.GRASS_BLOCK), 1, "Cycle Villager Biome", slotMapping.get(SlotOption.CHANGE_BIOME), "Current: §a" + dealer.getVillagerType().toString());
+        addItemAndLore(BIOME_MATERIALS.getOrDefault(dealer.getVillagerType(), Material.GRASS_BLOCK), 1, "Edit Villager Biome", slotMapping.get(SlotOption.CHANGE_BIOME), "Current: §a" + dealer.getVillagerType().toString());
 
         ItemStack head=createPlayerHeadItem(player, 1);
         setCustomItemMeta(head,"Player Menu");
@@ -327,29 +327,19 @@ public class AdminInventory extends DealerInventory {
         return villagers;
     }
     
+    
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         Player player = (Player) event.getWhoClicked();
-        UUID playerId = player.getUniqueId();
-    
-        // 1) Make sure this event is for an AdminInventory
-        if (!adminInventories.containsKey(playerId)) return;
-        AdminInventory adminInv = adminInventories.get(playerId);
-        if (adminInv == null) return;
-    
-        Inventory topInv = adminInv.getInventory();
-        if (topInv == null) return;
-        if(player.getOpenInventory().getTopInventory() != this.getInventory()){return;}
-        // 2) Check where they clicked
-        if (event.getClickedInventory() == null) return; // clicked outside any inventory
-        boolean clickedTop = event.getClickedInventory().equals(topInv);
-        int slot = event.getSlot();
-    
-        // 3) If user clicked inside the TOP (admin) inventory:
-        if (clickedTop) {
-                handleClick(slot, player,event);
+
+        if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory()) && event.getInventory().getHolder() instanceof AdminInventory) {
+            // By default, SHIFT-click will attempt to move items into the top inventory
+            if(event.isShiftClick()){
+                ItemStack item = event.getCurrentItem();
+                handleDrag(item, player, event); 
+            }
+            return;
         }
-    
     }
     
     /**
@@ -515,7 +505,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         dealer.setVillagerType(newBiome);
 
 
-    addItemAndLore(BIOME_MATERIALS.getOrDefault(dealer.getVillagerType(), Material.GRASS_BLOCK), 1, "Cycle Villager Biome", slotMapping.get(SlotOption.CHANGE_BIOME), "Current: §a" + dealer.getVillagerType().toString());
+    addItemAndLore(BIOME_MATERIALS.getOrDefault(dealer.getVillagerType(), Material.GRASS_BLOCK), 1, "Edit Villager Biome", slotMapping.get(SlotOption.CHANGE_BIOME), "Current: §a" + dealer.getVillagerType().toString());
        switch(messPref){
                 case VERBOSE:{
                     player.sendMessage("§aVillager biome changed to: " + ChatColor.YELLOW + newBiome.toString());
@@ -665,7 +655,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 //addItem(createCustomItem(Material.CHEST,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
             break;
             case CurrencyMode.VANILLA:
-                addItemAndLore(plugin.getCurrency(internalName), 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY),"Current: §a"+plugin.getCurrencyName(internalName), "Drag item here to change");
+                addItemAndLore(plugin.getCurrency(internalName), 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY),"Current: §a"+plugin.getCurrencyName(internalName), "Drag or shift-click item here to change");
                 //addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
                 //addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
             break;
@@ -933,9 +923,14 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         }
     
         ItemStack cursorItem = event.getCursor(); // Item being dragged
-    
-        if (cursorItem != null && cursorItem.getType() != Material.AIR) {
-            ItemStack selectedItem = cursorItem.clone();
+        handleDrag(cursorItem, player, event);
+    }
+
+
+    private void handleDrag(ItemStack item, Player player, InventoryClickEvent event){
+
+        if (item != null && item.getType() != Material.AIR) {
+            ItemStack selectedItem = item.clone();
             selectedItem.setAmount(1); // Store a single reference item
     
             // Extract material and custom name
