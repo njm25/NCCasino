@@ -63,6 +63,7 @@ public class MobSelectionInventory extends DealerInventory {
                 } catch (IllegalArgumentException ignored) {}
             }
         }
+        spawnEggList.sort((m1, m2) -> m1.name().compareTo(m2.name()));
     }
 
     public MobSelectionInventory(Player player, Nccasino plugin, UUID dealerId, Consumer<Player> returnToAdmin, String returnName) {
@@ -222,9 +223,18 @@ public class MobSelectionInventory extends DealerInventory {
     }
 
     private static String formatEntityName(String entityName) {
-        return entityName.replace("_", " ").toLowerCase();
+        String[] words = entityName.toLowerCase().split("_");
+        StringBuilder formattedName = new StringBuilder();
+    
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                formattedName.append(Character.toUpperCase(word.charAt(0)))
+                             .append(word.substring(1))
+                             .append(" ");
+            }
+        }
+    
+        return formattedName.toString().trim();
     }
-
-
 
 }
