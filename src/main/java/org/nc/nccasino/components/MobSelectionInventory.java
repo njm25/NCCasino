@@ -172,8 +172,6 @@ public class MobSelectionInventory extends DealerInventory {
 
         // Restore dealer settings
         restoreDealerSettings(internalName,selectedType);
-        player.sendMessage(ChatColor.GREEN + "Dealer changed to " + ChatColor.YELLOW + formatEntityName(selectedType.name()));
-        player.closeInventory();
     }
 
     @EventHandler
@@ -212,14 +210,47 @@ public class MobSelectionInventory extends DealerInventory {
         //Dealer.removeDealer(dealer);
        // DealerInventory.unregisterAllListeners(dealer);
         // Remove dealer data from YAML
-
         
         //delete();
-        Bukkit.dispatchCommand(player, "ncc delete " + Dealer.getInternalName(dealer));
+        ConfirmInventory confirmInventory = new ConfirmInventory(
+            dealerId,
+            "Reset config to default?",
+            (uuid) -> {
+                // Confirm action
+                
+
+                Bukkit.dispatchCommand(player, "ncc delete " + Dealer.getInternalName(dealer));
+                
+                plugin.saveDefaultDealerConfig(internalName);
+                Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
+                player.sendMessage(ChatColor.GREEN + "Dealer changed to " + ChatColor.YELLOW + formatEntityName(selectedType.name()));
+                player.closeInventory();
+                if (!plugin.getConfig().contains("dealers." + internalName + ".stand-on-17") && gameType.equals("Blackjack")) {
+                    plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+                } else {
+                    int hasStand17Config = plugin.getConfig().getInt("dealers." + internalName + ".stand-on-17");
+                    if (hasStand17Config > 100 || hasStand17Config < 0) {
+                        plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+                    }
+                }
+
         
-        Mob newDealer = Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
-        Dealer.updateGameType(newDealer, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
-        delete();
+                this.delete();
+            },
+            (uuid) -> {
+                // Dent action
+                Bukkit.dispatchCommand(player, "ncc delete " + Dealer.getInternalName(dealer));
+                Mob newDealer = Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
+                Dealer.updateGameType(newDealer, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+                player.sendMessage(ChatColor.GREEN + "Dealer changed to " + ChatColor.YELLOW + formatEntityName(selectedType.name()));
+                player.closeInventory();
+                this.delete();
+            },
+            plugin
+            );
+        
+        player.openInventory(confirmInventory.getInventory());
+    
     }
 
     private static String formatEntityName(String entityName) {
