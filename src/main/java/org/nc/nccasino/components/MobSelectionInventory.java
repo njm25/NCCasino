@@ -4,7 +4,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
@@ -15,13 +14,10 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataContainer;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.DealerInventory;
-import org.nc.nccasino.listeners.DealerDeathHandler;
-import org.nc.nccasino.listeners.DealerEventListener;
-import org.nc.nccasino.listeners.DealerInteractListener;
+
 
 import java.util.function.Consumer;
 import java.util.UUID;
@@ -212,46 +208,17 @@ public class MobSelectionInventory extends DealerInventory {
         String currencyName = plugin.getConfig().getString("dealers." + internalName + ".currency.name");
         //DealerInventory.unregisterAllListeners(dealer);
 
-        Dealer.removeDealer(dealer);
+        //Dealer.removeDealer(dealer);
        // DealerInventory.unregisterAllListeners(dealer);
         // Remove dealer data from YAML
 
         
         //delete();
-        //Bukkit.dispatchCommand(player, "ncc delete " + Dealer.getInternalName(dealer));
+        Bukkit.dispatchCommand(player, "ncc delete " + Dealer.getInternalName(dealer));
         
         Mob newDealer = Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
-        List<UUID> dealerIdsToDelete = new ArrayList<>(DealerInventory.inventories.keySet());
-
-        // Delete them
-        for (UUID dealerId : dealerIdsToDelete) {
-            DealerInventory inv = DealerInventory.getInventory(dealerId);
-            if (inv != null) {
-                System.out.println("id"+dealerId+" "+"inv"+inv);
-            }
-        }
-
-/* 
-
-        // Delete them
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-
-            DealerInventory inv = DealerInventory.getInventory(newDealer.getUniqueId());
-            if (inv != null) {
-                System.out.println("got1");
-                inv.delete();
-            }
-        },1L);*/
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-
         Dealer.updateGameType(newDealer, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
         delete();
-
-    },20L);
-        //DealerInteractListener.unregisterAll();
-       // plugin.getServer().getPluginManager().
-        //        plugin.getServer().getPluginManager().registerEvents(new DealerInteractListener(plugin), plugin);
-
     }
 
     private static String formatEntityName(String entityName) {
