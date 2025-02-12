@@ -3,8 +3,8 @@ package org.nc.nccasino.entities;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Villager;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -91,7 +91,7 @@ public class DealerInventory implements InventoryHolder, Listener {
         DealerInventory existing = inventories.get(dealerId);
         
         if (existing != null) {
-            Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
+            Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     if (player.getOpenInventory().getTopInventory().getHolder().equals(existing)) {
@@ -122,8 +122,8 @@ public class DealerInventory implements InventoryHolder, Listener {
         // handleClick(slot, player);
     }
 
-    public static void unregisterAllListeners(Villager villager) {
-        HandlerList.unregisterAll(inventories.get(villager.getUniqueId()));
+    public static void unregisterAllListeners(Mob mob) {
+        HandlerList.unregisterAll(inventories.get(mob.getUniqueId()));
     }
 
     // Add item with a custom name to the inventory

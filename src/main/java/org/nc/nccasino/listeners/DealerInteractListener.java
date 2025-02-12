@@ -4,8 +4,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
-import org.bukkit.entity.Villager;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -18,7 +18,7 @@ import org.nc.nccasino.components.AdminInventory;
 import org.nc.nccasino.components.AnimationTable;
 import org.nc.nccasino.components.PlayerMenu;
 import org.nc.nccasino.entities.DealerInventory;
-import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.Preferences.MessageSetting;
 import org.nc.nccasino.helpers.SoundHelper;
 
@@ -30,7 +30,7 @@ import java.util.UUID;
 public class DealerInteractListener implements Listener {
     private final Nccasino plugin;
     public static Set<Player> activeAnimations = new HashSet<>();
-    private Villager villager;
+    private Mob dealer;
         
 
     public DealerInteractListener(Nccasino plugin) {
@@ -40,13 +40,13 @@ public class DealerInteractListener implements Listener {
     @EventHandler
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         Entity clickedEntity = event.getRightClicked();
-        if (!(clickedEntity instanceof Villager)) return;
-        this.villager = (Villager) clickedEntity;
-        if (!DealerVillager.isDealerVillager(villager)) return;
+        if (!(clickedEntity instanceof Mob)) return;
+        this.dealer = (Mob) clickedEntity;
+        if (!Dealer.isDealer(dealer)) return;
         
         Player player = event.getPlayer();
-        UUID dealerId = DealerVillager.getUniqueId(villager);
-        String internalName = DealerVillager.getInternalName(villager);
+        UUID dealerId = Dealer.getUniqueId(dealer);
+        String internalName = Dealer.getInternalName(dealer);
 
         // Check if dealer has a game type defined
         if (!plugin.getConfig().contains("dealers." + internalName + ".game")) {
@@ -63,25 +63,25 @@ public class DealerInteractListener implements Listener {
         }
 
         List<String> occupations = AdminInventory.playerOccupations(player.getUniqueId());
-        List<Villager> villagers = AdminInventory.getOccupiedVillagers(player.getUniqueId())
+        List<Mob> mobs = AdminInventory.getOccupiedDealers(player.getUniqueId())
             .stream()
             .filter(v -> v != null && !v.isDead() && v.isValid()) // Ensure valid villagers
             .toList();
 
-        if (!occupations.isEmpty() && !villagers.isEmpty()) {
+        if (!occupations.isEmpty() && !mobs.isEmpty()) {
             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             }
             for (int i = 0; i < occupations.size(); i++) {
-                if (i >= villagers.size()) {
+                if (i >= mobs.size()) {
                     break; // Prevent index mismatch
                 }
                 String occupation = occupations.get(i);
-                Villager villager = villagers.get(i);
+                Mob mob = mobs.get(i);
                 
-                String villagerName = (villager != null) ? DealerVillager.getInternalName(villager) : "unknown villager";
+                String mobName = (mob != null) ? Dealer.getInternalName(mob) : "unknown dealer";
                 Nccasino.sendErrorMessage(player, "Please finish editing " + occupation + " for '" +
-                    ChatColor.YELLOW + villagerName + ChatColor.RED + "'.");
+                    ChatColor.YELLOW + mobName + ChatColor.RED + "'.");
             }
             return;
         }
@@ -139,11 +139,11 @@ public class DealerInteractListener implements Listener {
 
     private boolean shouldPlayAnimation(Player player, UUID dealerId) {
         return !activeAnimations.contains(player) &&
-               plugin.getConfig().contains("dealers." + DealerVillager.getInternalName(villager) + ".animation-message");
+               plugin.getConfig().contains("dealers." + Dealer.getInternalName(dealer) + ".animation-message");
     }
 
     private void startAnimation(Player player, DealerInventory dealerInventory, UUID dealerId) {
-        String animationMessage = plugin.getConfig().getString("dealers." + DealerVillager.getInternalName(villager) + ".animation-message");
+        String animationMessage = plugin.getConfig().getString("dealers." + Dealer.getInternalName(dealer) + ".animation-message");
         activeAnimations.add(player);
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {

@@ -12,12 +12,12 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.UUID;
 
+import org.bukkit.entity.Mob;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -31,7 +31,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.nc.VSE.MultiChannelEngine;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
-import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.objects.Pair;
 import org.nc.nccasino.helpers.Preferences;
@@ -464,14 +464,14 @@ private void openBettingTable(Player player) {
     switchingPlayers.add(player); // Mark the player as switching inventories
 
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        Villager dealer = (Villager) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-            .filter(entity -> entity instanceof Villager)
-            .map(entity -> (Villager) entity)
-            .filter(v -> DealerVillager.isDealerVillager(v) && DealerVillager.getUniqueId(v).equals(this.dealerId))
+        Mob dealer = (Mob) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
+            .filter(entity -> entity instanceof Mob)
+            .map(entity -> (Mob) entity)
+            .filter(v -> Dealer.isDealer(v) && Dealer.getUniqueId(v).equals(this.dealerId))
             .findFirst().orElse(null);
         if (dealer != null) {
             Stack<Pair<String, Integer>> bets = getPlayerBets(player.getUniqueId());
-            String internalName = DealerVillager.getInternalName(dealer);
+            String internalName = Dealer.getInternalName(dealer);
             BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets, internalName, this, globalCountdown);
             Tables.put(player, bettingTable);
             player.openInventory(bettingTable.getInventory());

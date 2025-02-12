@@ -6,12 +6,12 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Villager;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
-import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
 
 import java.io.File;
@@ -30,7 +30,7 @@ public class GameOptionsInventory extends DealerInventory {
     private final Nccasino plugin;
     private final String internalName;
     private final Boolean editing;
-    private final Villager dealer;
+    private final Mob dealer;
     private final Consumer<UUID> ret;
 
     private enum SlotOption {
@@ -54,10 +54,10 @@ public class GameOptionsInventory extends DealerInventory {
         initializeMenu();
     }
 
-    public GameOptionsInventory(Nccasino plugin, Villager dealer, Consumer<UUID> ret) {
+    public GameOptionsInventory(Nccasino plugin, Mob dealer, Consumer<UUID> ret) {
         super(UUID.randomUUID(), 9, "Edit Game Type");
         this.plugin = plugin;
-        this.internalName = DealerVillager.getInternalName(dealer);
+        this.internalName = Dealer.getInternalName(dealer);
         this.editing = true;
         this.ret = ret;
         this.dealer = dealer;
@@ -158,7 +158,7 @@ public class GameOptionsInventory extends DealerInventory {
     private void createDealer(Player player, String gameType) {
         Location location = player.getLocation();
         plugin.saveDefaultDealerConfig(internalName);
-        DealerVillager.spawnDealer(plugin, location, "Dealer Villager", internalName, gameType);
+        Dealer.spawnDealer(plugin, location, "Dealer", internalName, gameType);
 
         Location centeredLocation = location.getBlock().getLocation().add(0.5, 0.0, 0.5);
         // Save dealer data
@@ -200,13 +200,13 @@ public class GameOptionsInventory extends DealerInventory {
     }
 
     private void editDealer(Player player, String gameType){
-        if (!DealerVillager.isDealerVillager(dealer)) {
+        if (!Dealer.isDealer(dealer)) {
             return;
         }
     
-        UUID dealerId = DealerVillager.getUniqueId(dealer);
+        UUID dealerId = Dealer.getUniqueId(dealer);
 
-        String internalName = DealerVillager.getInternalName(dealer);
+        String internalName = Dealer.getInternalName(dealer);
 
 
         ConfirmInventory confirmInventory = new ConfirmInventory(
@@ -215,7 +215,7 @@ public class GameOptionsInventory extends DealerInventory {
             (uuid) -> {
                 // Confirm action
 
-                DealerVillager.switchGame(dealer, gameType, player, true);
+                Dealer.switchGame(dealer, gameType, player, true);
                 player.closeInventory();
 
                 if (!plugin.getConfig().contains("dealers." + internalName + ".stand-on-17") && gameType.equals("Blackjack")) {
@@ -232,7 +232,7 @@ public class GameOptionsInventory extends DealerInventory {
             },
             (uuid) -> {
                 // Dent action
-                DealerVillager.switchGame(dealer, gameType, player, false);
+                Dealer.switchGame(dealer, gameType, player, false);
                 player.closeInventory();
                 this.delete();
             },

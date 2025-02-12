@@ -1,7 +1,7 @@
 package org.nc.nccasino.games.Roulette;
 
 import org.nc.nccasino.entities.DealerInventory;
-import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.TableGenerator;
 import org.nc.nccasino.objects.Pair;
 import org.bukkit.Bukkit;
@@ -9,8 +9,8 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Villager;
 
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -29,7 +29,7 @@ public class BettingTable extends DealerInventory {
     public static final Set<Player> switchingPlayers = new HashSet<>();
     private final UUID playerId;
     private final UUID dealerId;
-    private final Villager dealer;
+    private final Mob dealer;
     private final Nccasino plugin;
     private final String internalName;
     private final RouletteInventory rouletteInventory;
@@ -42,11 +42,11 @@ public class BettingTable extends DealerInventory {
     private boolean clickAllowed = true;
     private boolean betsClosed=false;
     private int countdown1=30;
-    public BettingTable(Player player, Villager dealer, Nccasino plugin, Stack<Pair<String, Integer>> existingBets, String internalName,RouletteInventory rouletteInventory,int countdown) {
+    public BettingTable(Player player, Mob dealer, Nccasino plugin, Stack<Pair<String, Integer>> existingBets, String internalName,RouletteInventory rouletteInventory,int countdown) {
         super(player.getUniqueId(), 54, "Your Betting Table");
         this.countdown1=countdown;
         this.playerId = player.getUniqueId();
-        this.dealerId = DealerVillager.getUniqueId(dealer);
+        this.dealerId = Dealer.getUniqueId(dealer);
         this.dealer = dealer;
         this.plugin = plugin;
         this.internalName = internalName;
@@ -938,7 +938,7 @@ public class BettingTable extends DealerInventory {
                     break;
                 }
             } 
-            UUID dealerId = DealerVillager.getUniqueId(dealer);
+            UUID dealerId = Dealer.getUniqueId(dealer);
             DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
             
             if (dealerInventory == null) {
@@ -1165,9 +1165,9 @@ private boolean isValidSlotPage2(int slot) {
         }
     }
 
-    private void openRouletteInventory(Villager dealer, Player player) {
+    private void openRouletteInventory(Mob dealer, Player player) {
         saveBetsToRoulette(player);
-        UUID dealerId = DealerVillager.getUniqueId(dealer);
+        UUID dealerId = Dealer.getUniqueId(dealer);
         DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
         if (dealerInventory == null) {
             plugin.getLogger().warning("Error: Unable to find Roulette inventory for dealer ID: " + dealerId);
@@ -1190,7 +1190,7 @@ private boolean isValidSlotPage2(int slot) {
     }
 
 private void saveBetsToRoulette(Player player) {
-    Villager dealer = (Villager) Bukkit.getEntity(dealerId);
+    Mob dealer = (Mob) Bukkit.getEntity(dealerId);
     if (dealer != null) {
         rouletteInventory.updatePlayerBets(playerId, betStack, player);
     } else {

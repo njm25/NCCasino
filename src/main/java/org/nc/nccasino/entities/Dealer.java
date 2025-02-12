@@ -5,6 +5,7 @@ import org.bukkit.Location;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.persistence.PersistentDataContainer;
@@ -22,55 +23,57 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class DealerVillager {
+public class Dealer {
     // Static map of DealerVillager references
-    public static final Map<UUID, DealerVillager> dealers = new HashMap<>();
+    public static final Map<UUID, Dealer> dealers = new HashMap<>();
 
     private static final NamespacedKey DEALER_KEY =
-        new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_villager");
+        new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "dealer_villager");
     private static final NamespacedKey UNIQUE_ID_KEY =
-        new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_unique_id");
+        new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "dealer_unique_id");
     private static final NamespacedKey NAME_KEY =
-        new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_name");
+        new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "dealer_name");
     private static final NamespacedKey GAME_TYPE_KEY =
-        new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "dealer_game_type");
+        new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "dealer_game_type");
     private static final NamespacedKey INTERNAL_NAME_KEY =
-        new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "internal_name");
+        new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "internal_name");
     private static final NamespacedKey ANIMATION_MESSAGE_KEY =
-        new NamespacedKey(JavaPlugin.getProvidingPlugin(DealerVillager.class), "animation_message");
+        new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "animation_message");
 
     /**
      * Helper: Spawn a new Dealer Villager at a location.
      */
-    public static Villager spawnDealer(JavaPlugin plugin, Location location, String name,
+    public static Mob spawnDealer(JavaPlugin plugin, Location location, String name,
                                        String internalName, String gameType) {
         Location centeredLocation = location.getBlock().getLocation().add(0.5, 0.0, 0.5);
-        Villager villager = (Villager) centeredLocation.getWorld().spawnEntity(centeredLocation, EntityType.VILLAGER);
+        Mob mob = (Mob) centeredLocation.getWorld().spawnEntity(centeredLocation, EntityType.VILLAGER);
 
-        initializeVillager(villager, centeredLocation, name, internalName, gameType);
-        return villager;
+        initializeVillager(mob, centeredLocation, name, internalName, gameType);
+        return mob;
     }
 
-    private static void initializeVillager(Villager villager, Location location, String name,
+    private static void initializeVillager(Mob mob, Location location, String name,
                                            String internalName, String gameType) {
 
-        villager.setAI(true);
-        villager.setInvulnerable(true);
-        villager.setCustomName(name);
-        villager.setCustomNameVisible(true);
-        villager.setProfession(Villager.Profession.NONE);
-        villager.setGravity(false);
-        villager.setSilent(true);
-        villager.setCollidable(false);
+        mob.setAI(true);
+        mob.setInvulnerable(true);
+        mob.setCustomName(name);
+        mob.setCustomNameVisible(true);
+        if (mob instanceof Villager){
+            ((Villager) mob).setProfession(Villager.Profession.NONE);
+        }
+        mob.setGravity(false);
+        mob.setSilent(true);
+        mob.setCollidable(false);
 
         // Unique ID for referencing this Dealer
         UUID uniqueId = UUID.randomUUID();
 
         AttributeInstance movementSpeedAttribute =
-            villager.getAttribute(AttributeHelper.getAttributeSafely("MOVEMENT_SPEED"));
+        mob.getAttribute(AttributeHelper.getAttributeSafely("MOVEMENT_SPEED"));
         movementSpeedAttribute.setBaseValue(0.0);
 
-        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+        PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
         dataContainer.set(DEALER_KEY, PersistentDataType.BYTE, (byte) 1);
         dataContainer.set(UNIQUE_ID_KEY, PersistentDataType.STRING, uniqueId.toString());
         dataContainer.set(NAME_KEY, PersistentDataType.STRING, name);
@@ -78,12 +81,12 @@ public class DealerVillager {
         dataContainer.set(INTERNAL_NAME_KEY, PersistentDataType.STRING, internalName);
         dataContainer.set(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING, "NCCasino - " + gameType);
 
-        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
-        initializeInventory(villager, uniqueId, name, plugin);
+        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
+        initializeInventory(mob, uniqueId, name, plugin);
     }
 
-    public static void initializeInventory(Villager villager, UUID uniqueId, String name, Nccasino plugin) {
-        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+    public static void initializeInventory(Mob mob, UUID uniqueId, String name, Nccasino plugin) {
+        PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
         String gameType = dataContainer.get(GAME_TYPE_KEY, PersistentDataType.STRING);
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
         int defaultTimer = 0;
@@ -136,59 +139,59 @@ public class DealerVillager {
         plugin.saveConfig();
 
         DealerInventory.updateInventory(uniqueId, inventory);
-        setName(villager, name);
+        setName(mob, name);
     }
 
-    public static boolean isDealerVillager(Villager villager) {
-        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+    public static boolean isDealer(Mob mob) {
+        PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
         return dataContainer.has(DEALER_KEY, PersistentDataType.BYTE);
     }
 
-    public static UUID getUniqueId(Villager villager) {
-        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+    public static UUID getUniqueId(Mob mob) {
+        PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
         String uuidString = dataContainer.get(UNIQUE_ID_KEY, PersistentDataType.STRING);
         return (uuidString != null) ? UUID.fromString(uuidString) : null;
     }
 
-    public static String getName(Villager villager) {
-        return villager.getPersistentDataContainer().get(NAME_KEY, PersistentDataType.STRING);
+    public static String getName(Mob mob) {
+        return mob.getPersistentDataContainer().get(NAME_KEY, PersistentDataType.STRING);
     }
 
-    public static void setName(Villager villager, String name) {
-        villager.setCustomName(name);
-        villager.getPersistentDataContainer().set(NAME_KEY, PersistentDataType.STRING, name);
+    public static void setName(Mob mob, String name) {
+        mob.setCustomName(name);
+        mob.getPersistentDataContainer().set(NAME_KEY, PersistentDataType.STRING, name);
     }
 
-    public static String getInternalName(Villager villager) {
-        return villager.getPersistentDataContainer().get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
+    public static String getInternalName(Mob mob) {
+        return mob.getPersistentDataContainer().get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
     }
 
-    public static String getAnimationMessage(Villager villager) {
-        return villager.getPersistentDataContainer().get(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING);
+    public static String getAnimationMessage(Mob mob) {
+        return mob.getPersistentDataContainer().get(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING);
     }
 
-    public static void setAnimationMessage(Villager villager, String animationMessage) {
-        villager.getPersistentDataContainer().set(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING, animationMessage);
+    public static void setAnimationMessage(Mob mob, String animationMessage) {
+        mob.getPersistentDataContainer().set(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING, animationMessage);
     }
 
-    public static void openDealerInventory(Villager villager, Player player) {
-        UUID dealerId = getUniqueId(villager);
+    public static void openDealerInventory(Mob mob, Player player) {
+        UUID dealerId = getUniqueId(mob);
         if (dealerId != null) {
             DealerInventory dealerInventory = DealerInventory.getOrCreateInventory(dealerId);
             player.openInventory(dealerInventory.getInventory());
         }
     }
 
-    public static void switchGame(Villager villager, String gameName, Player player, Boolean resetToDefault) {
-        UUID dealerId = getUniqueId(villager);
+    public static void switchGame(Mob mob, String gameName, Player player, Boolean resetToDefault) {
+        UUID dealerId = getUniqueId(mob);
         if (dealerId == null) return;
 
-        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
+        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
         DealerInventory newInventory;
         String newName;
         int defaultTimer = 0;
 
-        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+        PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
 // do chip sizes specificially before because bj initalizes them and theyll get reset otherwise
         if(resetToDefault){
@@ -228,8 +231,8 @@ public class DealerVillager {
             plugin.getConfig().set("dealers." + internalName + ".animation-message", "NCCasino - " + gameName);
             plugin.getConfig().set("dealers." + internalName + ".currency.material", "EMERALD");
             plugin.getConfig().set("dealers." + internalName + ".currency.name", "Emerald");
-            setAnimationMessage(villager, gameName);
-            setName(villager, newName);
+            setAnimationMessage(mob, gameName);
+            setName(mob, newName);
            
         }
         plugin.saveConfig();
@@ -247,15 +250,15 @@ public class DealerVillager {
         }
     }
 
-    public static void updateGameType(Villager villager, String gameName, int timer, String anmsg, String newName, List<Integer> chipSizes, String currencyMaterial, String currencyName) {
-        UUID dealerId = getUniqueId(villager);
+    public static void updateGameType(Mob mob, String gameName, int timer, String anmsg, String newName, List<Integer> chipSizes, String currencyMaterial, String currencyName) {
+        UUID dealerId = getUniqueId(mob);
         if (dealerId == null) return;
 
-        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
+        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
         DealerInventory newInventory;
-        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+        PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
-        setName(villager, newName);
+        setName(mob, newName);
 
         // Update the game type & animation message
         dataContainer.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameName);
@@ -293,13 +296,13 @@ public class DealerVillager {
  
     }
 
-    public static void removeDealer(Villager villager) {
-        PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
-        UUID dealerId = getUniqueId(villager);
+    public static void removeDealer(Mob mob) {
+        PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
+        UUID dealerId = getUniqueId(mob);
         if (dealerId == null) return;
 
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
-        Location loc = villager.getLocation();
+        Location loc = mob.getLocation();
         var world = loc.getWorld();
         int chunkX = loc.getChunk().getX();
         int chunkZ = loc.getChunk().getZ();
@@ -309,7 +312,7 @@ public class DealerVillager {
             dealerInventory.delete();
         }
 
-        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
+        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
         if (internalName != null) {
             plugin.getConfig().set("dealers." + internalName, null);
             plugin.saveConfig();
@@ -318,7 +321,7 @@ public class DealerVillager {
     
         // Remove the persistent data & the entity itself
         deleteAllPersistentData(dataContainer);
-        villager.remove();
+        mob.remove();
 
         // Finally remove from DealerVillager map
         removeDealerFromMap(dealerId);
@@ -326,7 +329,7 @@ public class DealerVillager {
         
         boolean hasOtherDealers = false;
         for (Entity entity : world.getChunkAt(chunkX, chunkZ).getEntities()) {
-            if (entity instanceof Villager otherVillager && isDealerVillager(otherVillager)) {
+            if (entity instanceof Mob otherVillager && isDealer(otherVillager)) {
                 hasOtherDealers = true;
                 break;
             }
@@ -343,7 +346,7 @@ public class DealerVillager {
         }
     }
 
-    public static void registerDealer(UUID dealerId, DealerVillager dealer) {
+    public static void registerDealer(UUID dealerId, Dealer dealer) {
         dealers.put(dealerId, dealer);
     }
 
@@ -352,26 +355,26 @@ public class DealerVillager {
     }
 
     /**
-     * Clears out all the DealerVillager references from the static map.
+     * Clears out all the Dealer references from the static map.
      * Useful in onDisable().
      */
     public static void cleanupAllDealers() {
         dealers.clear();
     }
 
-    private final Villager villager;
+    private final Mob mob;
 
-    public DealerVillager(Villager villager) {
-        this.villager = villager;
-        dealers.put(villager.getUniqueId(), this);
+    public Dealer(Mob mob) {
+        this.mob = mob;
+        dealers.put(mob.getUniqueId(), this);
     }
 
-    public Villager getVillager() {
-        return villager;
+    public Mob getMob() {
+        return mob;
     }
 
-    public static Villager getVillagerFromId(UUID dealerId) {
-        DealerVillager dealer = dealers.get(dealerId);
-        return (dealer != null) ? dealer.getVillager() : null;
+    public static Mob getMobFromId(UUID dealerId) {
+        Dealer dealer = dealers.get(dealerId);
+        return (dealer != null) ? dealer.getMob() : null;
     }
 }
