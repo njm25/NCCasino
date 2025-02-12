@@ -47,6 +47,8 @@ public class DealerInteractListener implements Listener {
         Player player = event.getPlayer();
         UUID dealerId = Dealer.getUniqueId(dealer);
         String internalName = Dealer.getInternalName(dealer);
+        System.out.println("Player " + player.getName() + " interacted with Dealer: " + internalName + " (" + dealerId + ")");
+
 
         // Check if dealer has a game type defined
         if (!plugin.getConfig().contains("dealers." + internalName + ".game")) {

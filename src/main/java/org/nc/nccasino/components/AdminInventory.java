@@ -87,7 +87,8 @@ public class AdminInventory extends DealerInventory {
         CHIP_SIZE5,
         PM,
         EXIT,
-        CHANGE_BIOME
+        CHANGE_BIOME,
+        MOB_SELECTION
 
     }
 
@@ -196,6 +197,8 @@ public class AdminInventory extends DealerInventory {
     slotMapping.put(SlotOption.CHIP_SIZE3, 22);
     slotMapping.put(SlotOption.CHIP_SIZE4, 23);
     slotMapping.put(SlotOption.CHIP_SIZE5, 24);
+    slotMapping.put(SlotOption.MOB_SELECTION, 13);
+
    }
 
 
@@ -260,7 +263,8 @@ public class AdminInventory extends DealerInventory {
 
         addItem(head,slotMapping.get(SlotOption.PM) );
         updateCurrencyButtons();
-        
+        addItemAndLore(Material.EGG, 1, "Change Dealer Mob", slotMapping.get(SlotOption.MOB_SELECTION), "Current: §a" + dealer.getType().toString());
+
     }
 
   
@@ -452,6 +456,10 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                         cycleBiome(player);
                         if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
                         break;
+                    case MOB_SELECTION:
+                        handleMobSelection(player);
+                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        break;
                     default:
                     switch(messPref){
                         case STANDARD:{
@@ -482,6 +490,18 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             }
            
         }
+    }
+    private void handleMobSelection(Player player) {
+        MobSelectionInventory mobSelectionInventory = new MobSelectionInventory(player, plugin, dealerId, (p) -> {
+            if (adminInventories.containsKey(player.getUniqueId())) {
+                player.openInventory(adminInventories.get(player.getUniqueId()).getInventory());
+            } else {
+                AdminInventory newAdminInventory = new AdminInventory(dealerId, player, plugin);
+                player.openInventory(newAdminInventory.getInventory());
+            }
+        }, Dealer.getInternalName(dealer) + "'s Admin Menu");
+
+        player.openInventory(mobSelectionInventory.getInventory());
     }
 
     private void handlePlayerMenu(Player player) {

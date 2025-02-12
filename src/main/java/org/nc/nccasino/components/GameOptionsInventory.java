@@ -6,6 +6,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -158,8 +159,7 @@ public class GameOptionsInventory extends DealerInventory {
     private void createDealer(Player player, String gameType) {
         Location location = player.getLocation();
         plugin.saveDefaultDealerConfig(internalName);
-        Dealer.spawnDealer(plugin, location, "Dealer", internalName, gameType);
-
+        Dealer.spawnDealer(plugin, location, "Dealer", internalName, gameType, EntityType.VILLAGER);
         Location centeredLocation = location.getBlock().getLocation().add(0.5, 0.0, 0.5);
         // Save dealer data
         File dealersFile = new File(plugin.getDataFolder(), "data/dealers.yaml");

@@ -28,7 +28,7 @@ public class Dealer {
     public static final Map<UUID, Dealer> dealers = new HashMap<>();
 
     private static final NamespacedKey DEALER_KEY =
-        new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "dealer");
+        new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "dealer_villager");
     private static final NamespacedKey UNIQUE_ID_KEY =
         new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "dealer_unique_id");
     private static final NamespacedKey NAME_KEY =
@@ -44,10 +44,9 @@ public class Dealer {
      * Helper: Spawn a new Dealer at a location.
      */
     public static Mob spawnDealer(JavaPlugin plugin, Location location, String name,
-                                       String internalName, String gameType) {
+                                       String internalName, String gameType, EntityType type) {
         Location centeredLocation = location.getBlock().getLocation().add(0.5, 0.0, 0.5);
-        Mob mob = (Mob) centeredLocation.getWorld().spawnEntity(centeredLocation, EntityType.VILLAGER);
-
+        Mob mob = (Mob) centeredLocation.getWorld().spawnEntity(centeredLocation, type);
         initializeDealer(mob, centeredLocation, name, internalName, gameType);
         return mob;
     }
@@ -309,9 +308,17 @@ public class Dealer {
     
         DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
         if (dealerInventory != null) {
-            dealerInventory.delete();
-        }
+            //System.out.println("yah"+dealerInventory);
+            if( DealerInventory.inventories.get(dealerId)!=null){
+            //System.out.println("yahasdas"+DealerInventory.inventories.get(dealerId)); 
+                DealerInventory.inventories.remove(dealerId);
+            }
+        
+                dealerInventory.delete();
+        
 
+        }
+     
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
         if (internalName != null) {
             plugin.getConfig().set("dealers." + internalName, null);

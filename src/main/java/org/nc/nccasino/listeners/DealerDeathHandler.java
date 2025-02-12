@@ -24,7 +24,7 @@ public class DealerDeathHandler implements Listener {
     public void onDealerDeath(EntityDeathEvent event) {
         if (event.getEntity() instanceof Mob mob) {
             PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
-            NamespacedKey dealerKey = new NamespacedKey(plugin, "dealer");
+            NamespacedKey dealerKey = new NamespacedKey(plugin, "dealer_villager");
 
             // Check if the mob is a dealer
             if (dataContainer.has(dealerKey, PersistentDataType.BYTE)) {
