@@ -87,7 +87,6 @@ public class DealerInventory implements InventoryHolder, Listener {
      * Update (or set) the inventory for a given Dealer.
      */
     public static void updateInventory(UUID dealerId, DealerInventory newInventory) {
-        System.out.println("updateInv"+dealerId+" asd"+newInventory);     
 
         // If an old inventory exists for the same ID, remove it
         DealerInventory existing = inventories.get(dealerId);
