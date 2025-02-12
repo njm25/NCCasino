@@ -40,6 +40,7 @@ public class Dealer {
     private static final NamespacedKey ANIMATION_MESSAGE_KEY =
         new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "animation_message");
 
+
     /**
      * Helper: Spawn a new Dealer at a location.
      */

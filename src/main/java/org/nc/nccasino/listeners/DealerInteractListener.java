@@ -32,7 +32,7 @@ public class DealerInteractListener implements Listener {
     public static Set<Player> activeAnimations = new HashSet<>();
     private Mob dealer;
         
-
+    private final Set<String> recentInteractions = new HashSet<>();
     public DealerInteractListener(Nccasino plugin) {
         this.plugin = plugin;
     }
@@ -41,10 +41,20 @@ public class DealerInteractListener implements Listener {
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         Entity clickedEntity = event.getRightClicked();
         if (!(clickedEntity instanceof Mob)) return;
-        this.dealer = (Mob) clickedEntity;
-        if (!Dealer.isDealer(dealer)) return;
-        
         Player player = event.getPlayer();
+        this.dealer = (Mob) clickedEntity;
+        String interactionKey = player.getUniqueId() + ":" + clickedEntity.getUniqueId();
+
+        // Prevent duplicate interactions from the same player-entity pair
+        if (recentInteractions.contains(interactionKey)) {
+            return;
+        }
+        recentInteractions.add(interactionKey);
+        // Schedule removal after a short delay
+        Bukkit.getScheduler().runTaskLater(plugin, () -> recentInteractions.remove(interactionKey), 1L);
+
+
+
         UUID dealerId = Dealer.getUniqueId(dealer);
         String internalName = Dealer.getInternalName(dealer);
         System.out.println("Player " + player.getName() + " interacted with Dealer: " + internalName + " (" + dealerId + ")");
