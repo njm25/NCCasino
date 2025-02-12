@@ -363,7 +363,7 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
                 handleLeaveChair(player);
                 player.closeInventory();
             } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots (10, 19, 28)
-                handleBetClick(slot, player);
+                handleBetClick(slot, player, event);
             } else if (slot >= 47 && slot <= 51) { // Chip selection
                 handleChipSelection(player, event.getCurrentItem());
             } 
@@ -960,97 +960,100 @@ private void removePlayerData(UUID playerId) {
         }
     }
     
-    // Handle bet click
-    private void handleBetClick(int slot, Player player) {
+    private void handleBetClick(int slot, Player player, InventoryClickEvent event) {
         UUID playerId = player.getUniqueId();
-        double selectedWager = getSelectedWager(player.getUniqueId());
-    
+        double selectedWager = getSelectedWager(playerId);
+        Material currencyType = plugin.getCurrency(internalName);
+        
         // Ensure the player is sitting before placing a bet
         if (!playerSeats.containsKey(playerId)) {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
+            switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                case STANDARD:
                     player.sendMessage("§cSit to bet.");
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§cMust be seated to bet.");
-                    break;     
-
-                }
-                    case NONE:{
                     break;
-                }
+                case VERBOSE:
+                    player.sendMessage("§cMust be seated to bet.");
+                    break;
+                case NONE:
+                    break;
             }
-             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
     
         // Ensure the player can only bet on their own paper
         int chairSlot = playerSeats.get(playerId);
         int betSlot = chairSlot + 1; // Paper is always right next to the chair
-    
+        
         if (slot != betSlot) {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
+            switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                case STANDARD:
                     player.sendMessage("§cNot your betting paper");
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§cCannot bet on someone else.");
-                    break;     
-
-                }
-                    case NONE:{
                     break;
-                }
+                case VERBOSE:
+                    player.sendMessage("§cCannot bet on someone else.");
+                    break;
+                case NONE:
+                    break;
             }
-             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
     
-        // Place the bet if valid
-        if (selectedWager > 0 && hasEnoughWager(player, selectedWager)) {
+        // Check if the player is holding the currency item
+        ItemStack heldItem = event.getCursor();
+        if (heldItem != null && heldItem.getType() == currencyType) {
+            int amount = heldItem.getAmount();
+            double totalWager = amount;
+    
+            if (totalWager > 0) {
+                player.setItemOnCursor(null); // Remove the stack from the cursor
+                Map<Integer, Double> bets = playerBets.computeIfAbsent(playerId, k -> new HashMap<>());
+                double currentBet = bets.getOrDefault(betSlot, 0.0);
+                bets.put(betSlot, currentBet + totalWager);
+                updateItemLore(betSlot, bets.get(betSlot));
+                lastBetAmounts.computeIfAbsent(playerId, k -> new ArrayList<>()).add(totalWager);
+    
+                if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
+                    player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
+    
+                if (countdownTaskId == -1) {
+                    startCountdownTimer();
+                }
+                return;
+            }
+        } else if (selectedWager > 0 && hasEnoughWager(player, selectedWager)) {
             removeWagerFromInventory(player, selectedWager);
             Map<Integer, Double> bets = playerBets.computeIfAbsent(playerId, k -> new HashMap<>());
             double currentBet = bets.getOrDefault(betSlot, 0.0);
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§aPlaced bet of "+selectedWager+".");
-                    break;     
-
-                }
-                    case NONE:{
-                    break;
-                }
-            }
             bets.put(betSlot, currentBet + selectedWager);
             updateItemLore(betSlot, bets.get(betSlot));
+            lastBetAmounts.computeIfAbsent(playerId, k -> new ArrayList<>()).add(selectedWager);
     
-            lastBetAmounts.computeIfAbsent(playerId, k -> new ArrayList<>()).add(selectedWager); // Store the last bet amount
+            if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
+                player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
     
-             if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f);
-    
-            if (countdownTaskId == -1) { // Start the countdown if it's not already started
+            if (countdownTaskId == -1) {
                 startCountdownTimer();
             }
         } else {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
+            switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                case STANDARD:
                     player.sendMessage("§cInvalid action.");
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§cToo broke to place bet.");
-                    break;     
-
-                }
-                    case NONE:{
                     break;
-                }
+                case VERBOSE:
+                    player.sendMessage("§cToo broke to place bet.");
+                    break;
+                case NONE:
+                    break;
             }
-             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         }
     }
-
+    
     private void handleUndoAllBets(Player player) {
         if (gameActive) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){

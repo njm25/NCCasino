@@ -769,70 +769,86 @@ public class BettingTable extends DealerInventory {
             }
             return;
         }
-        
         if ((pageNum == 1 && isValidSlotPage1(slot)) || (pageNum == 2 && isValidSlotPage2(slot))) {
-            if (selectedWager > 0) {
-                if (hasEnoughWager(player, selectedWager)) {
-                    removeWagerFromInventory(player, selectedWager);
-                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                        case STANDARD:{
-                            break;}
-                        case VERBOSE:{
-                            player.sendMessage("§6Put " + (int)selectedWager + " on " + itemName);
-                                                        break;     
-                        }
-                            case NONE:{
+            // Check if the player is holding the currency item
+            ItemStack heldItem = player.getItemOnCursor();
+            Material currencyType = plugin.getCurrency(internalName);
+            double wagerAmount = 0;
+            boolean usedHeldItem = false;
+        
+            if (heldItem != null && heldItem.getType() == currencyType) {
+                wagerAmount = heldItem.getAmount();
+                usedHeldItem = true;
+            } else {
+                wagerAmount = selectedWager;
+            }
+        
+            // Ensure the player has selected a valid wager
+            if (wagerAmount > 0) {
+                boolean canBet = usedHeldItem || hasEnoughWager(player, wagerAmount);
+        
+                if (canBet) {
+                    if (usedHeldItem) {
+                        player.setItemOnCursor(null); // Remove the held stack
+                    } else {
+                        removeWagerFromInventory(player, wagerAmount);
+                    }
+        
+                    switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                        case STANDARD:
                             break;
-                        }
-                    } 
-                     if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
-
-                    betStack.push(new Pair<>(itemName, (int) selectedWager));
-                    
+                        case VERBOSE:
+                            player.sendMessage("§6Put " + (int) wagerAmount + " on " + itemName);
+                            break;
+                        case NONE:
+                            break;
+                    }
+        
+                    if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
+                        player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
+        
+                    betStack.push(new Pair<>(itemName, (int) wagerAmount));
+        
                     complicatedDifficultHiddenSecretBackdoor(betStack);
                     rouletteInventory.updatePlayerBets(playerId, betStack, player);
                     updateAllLore();
-                    if(allin){
-                        allin=false;
-                     inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG,"All In",1 ));
-   
+        
+                    if (allin) {
+                        allin = false;
+                        inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
                     }
-                    
-                  //  updateAllRelatedSlots(slot, itemName);
+        
                 } else {
-                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                        case STANDARD:{
+                    switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                        case STANDARD:
                             player.sendMessage("§cInvalid action.");
-
-                            break;}
-                        case VERBOSE:{
-                            player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s");
-                            break;     
-                        }
-                            case NONE:{
                             break;
-                        }
-                    } 
-                     if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
+                        case VERBOSE:
+                            player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s");
+                            break;
+                        case NONE:
+                            break;
+                    }
+                    if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
                 }
             } else {
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
+                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                    case STANDARD:
                         player.sendMessage("§cInvalid action.");
-
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§cNo wager selected");
-                        break;     
-                    }
-                        case NONE:{
                         break;
-                    }
-                } 
-                 if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
+                    case VERBOSE:
+                        player.sendMessage("§cNo wager selected");
+                        break;
+                    case NONE:
+                        break;
+                }
+                if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             }
             return;
         }
+                
         if (slot == 45) {
            if (!betStack.isEmpty()) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
