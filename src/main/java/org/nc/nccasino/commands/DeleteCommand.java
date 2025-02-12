@@ -133,8 +133,6 @@ public class DeleteCommand implements CasinoCommand {
                 plugin.getLogger().severe("Failed to save dealers.yaml while removing dealer: " + internalName);
                 e.printStackTrace();
             }
-        } else {
-            plugin.getLogger().warning("Attempted to remove a non-existent dealer: " + internalName);
         }
     }
 
