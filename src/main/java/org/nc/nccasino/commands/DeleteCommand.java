@@ -48,7 +48,7 @@ public class DeleteCommand implements CasinoCommand {
         List<String> occupations = AdminInventory.playerOccupations(player.getUniqueId());
         List<Mob> mobs = AdminInventory.getOccupiedDealers(player.getUniqueId())
             .stream()
-            .filter(v -> v != null && !v.isDead() && v.isValid()) // Ensure valid villagers
+            .filter(v -> v != null && !v.isDead() && v.isValid()) // Ensure valid mobs
             .toList();
 
         if (!occupations.isEmpty() && !mobs.isEmpty()) {
@@ -62,7 +62,7 @@ public class DeleteCommand implements CasinoCommand {
                 String occupation = occupations.get(i);
                 Mob mob = mobs.get(i);
                 
-                String mobName = (mob != null) ? Dealer.getInternalName(mob) : "unknown villager";
+                String mobName = (mob != null) ? Dealer.getInternalName(mob) : "unknown mob";
                 Nccasino.sendErrorMessage(player, "Please finish editing " + occupation + " for '" +
                     ChatColor.YELLOW + mobName + ChatColor.RED + "'.");
             }

@@ -24,11 +24,11 @@ import java.util.Map;
 import java.util.UUID;
 
 public class Dealer {
-    // Static map of DealerVillager references
+    // Static map of Dealer references
     public static final Map<UUID, Dealer> dealers = new HashMap<>();
 
     private static final NamespacedKey DEALER_KEY =
-        new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "dealer_villager");
+        new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "dealer");
     private static final NamespacedKey UNIQUE_ID_KEY =
         new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "dealer_unique_id");
     private static final NamespacedKey NAME_KEY =
@@ -41,18 +41,18 @@ public class Dealer {
         new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "animation_message");
 
     /**
-     * Helper: Spawn a new Dealer Villager at a location.
+     * Helper: Spawn a new Dealer at a location.
      */
     public static Mob spawnDealer(JavaPlugin plugin, Location location, String name,
                                        String internalName, String gameType) {
         Location centeredLocation = location.getBlock().getLocation().add(0.5, 0.0, 0.5);
         Mob mob = (Mob) centeredLocation.getWorld().spawnEntity(centeredLocation, EntityType.VILLAGER);
 
-        initializeVillager(mob, centeredLocation, name, internalName, gameType);
+        initializeDealer(mob, centeredLocation, name, internalName, gameType);
         return mob;
     }
 
-    private static void initializeVillager(Mob mob, Location location, String name,
+    private static void initializeDealer(Mob mob, Location location, String name,
                                            String internalName, String gameType) {
 
         mob.setAI(true);
@@ -323,13 +323,13 @@ public class Dealer {
         deleteAllPersistentData(dataContainer);
         mob.remove();
 
-        // Finally remove from DealerVillager map
+        // Finally remove from Dealer map
         removeDealerFromMap(dealerId);
 
         
         boolean hasOtherDealers = false;
         for (Entity entity : world.getChunkAt(chunkX, chunkZ).getEntities()) {
-            if (entity instanceof Mob otherVillager && isDealer(otherVillager)) {
+            if (entity instanceof Mob otherMob && isDealer(otherMob)) {
                 hasOtherDealers = true;
                 break;
             }

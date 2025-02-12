@@ -317,7 +317,7 @@ public class BlackjackAdminInventory extends DealerInventory {
                 String internalName = Dealer.getInternalName(dealer);
                 plugin.getConfig().set("dealers." + internalName + ".timer", Integer.parseInt(newTimer));
                 plugin.saveConfig();
-                plugin.reloadDealerVillager(dealer);
+                plugin.reloadDealer(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
@@ -360,7 +360,7 @@ public class BlackjackAdminInventory extends DealerInventory {
                 String internalName = Dealer.getInternalName(dealer);
                 plugin.getConfig().set("dealers." + internalName + ".stand-on-17", Integer.parseInt(newTimer));
                 plugin.saveConfig();
-                plugin.reloadDealerVillager(dealer);
+                plugin.reloadDealer(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
@@ -403,7 +403,7 @@ public class BlackjackAdminInventory extends DealerInventory {
                 String internalName = Dealer.getInternalName(dealer);
                 plugin.getConfig().set("dealers." + internalName + ".number-of-decks", Integer.parseInt(newDecks));
                 plugin.saveConfig();
-                plugin.reloadDealerVillager(dealer);
+                plugin.reloadDealer(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{

@@ -492,11 +492,9 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
                     AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
                     player.openInventory(adminInventory.getInventory());
-                    //localVillager.remove(player.getUniqueId());
                 } else {
                     AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
                     player.openInventory(adminInventory.getInventory());
-                    //localVillager.remove(player.getUniqueId());
                 }
             },
                 Dealer.getInternalName(dealer) + "'s Admin Menu"
@@ -642,7 +640,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         
         // Update the config
         if (dealer != null) {
-            String internalName = DealerVillager.getInternalName(dealer);
+            String internalName = Dealer.getInternalName(dealer);
             plugin.getConfig().set("dealers." + internalName + ".currency.mode", next.name());
             plugin.saveConfig();
         }
@@ -974,7 +972,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 player.updateInventory(); // Ensure client sees the change immediately
             }, 1L);
     
-            plugin.reloadDealerVillager(dealer);
+            plugin.reloadDealer(dealer);
             switch(messPref){
                 case STANDARD:{
                     player.sendMessage("§aCurrency updated.");
@@ -1014,7 +1012,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 plugin.getConfig().set("dealers." + internalName + ".display-name", newName);
                 plugin.saveConfig();
                 dealer.setCustomNameVisible(true);
-                plugin.reloadDealerVillager(dealer);
+                plugin.reloadDealer(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(messPref){
                     case STANDARD:{
@@ -1057,7 +1055,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 String internalName = Dealer.getInternalName(dealer);
                 plugin.getConfig().set("dealers." + internalName + ".timer", Integer.parseInt(newTimer));
                 plugin.saveConfig();
-                plugin.reloadDealerVillager(dealer);
+                plugin.reloadDealer(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(messPref){
                     case STANDARD:{
@@ -1098,7 +1096,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 String internalName = Dealer.getInternalName(dealer);
                 plugin.getConfig().set("dealers." + internalName + ".animation-message", newAmsg);
                 plugin.saveConfig();
-                plugin.reloadDealerVillager(dealer);
+                plugin.reloadDealer(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(messPref){
                     case STANDARD:{
@@ -1139,7 +1137,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 String internalName = Dealer.getInternalName(dealer);
                 plugin.getConfig().set("dealers." + internalName + ".chip-sizes.size" + chipIndex,Integer.parseInt(newChipSize));
                 plugin.saveConfig();
-                plugin.reloadDealerVillager(dealer);
+                plugin.reloadDealer(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(messPref){
                     case STANDARD:{

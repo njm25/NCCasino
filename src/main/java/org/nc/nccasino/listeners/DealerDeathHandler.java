@@ -24,17 +24,17 @@ public class DealerDeathHandler implements Listener {
     public void onDealerDeath(EntityDeathEvent event) {
         if (event.getEntity() instanceof Mob mob) {
             PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
-            NamespacedKey dealerKey = new NamespacedKey(plugin, "dealer_villager");
+            NamespacedKey dealerKey = new NamespacedKey(plugin, "dealer");
 
-            // Check if the villager is a dealer
+            // Check if the mob is a dealer
             if (dataContainer.has(dealerKey, PersistentDataType.BYTE)) {
                 // Get the internal name and unique ID of the dealer
                 String internalName = dataContainer.get(new NamespacedKey(plugin, "internal_name"), PersistentDataType.STRING);
                 String uniqueId = dataContainer.get(new NamespacedKey(plugin, "dealer_unique_id"), PersistentDataType.STRING);
 
-                // Remove the DealerVillager object from any tracking collections
+                // Remove the Dealer object from any tracking collections
                 if (uniqueId != null) {
-                    Dealer.removeDealer(mob); // Custom method to remove the DealerVillager instance
+                    Dealer.removeDealer(mob); // Custom method to remove the Dealer instance
                 }
 
                 // Remove dealer's entry from the configuration
@@ -43,7 +43,7 @@ public class DealerDeathHandler implements Listener {
                     plugin.saveConfig();
                 }
 
-                // Get the player who killed the villager, if applicable
+                // Get the player who killed the mob, if applicable
                 if (event.getEntity().getKiller() instanceof Player killer) {
                     // Send the removal message to the killer
                     killer.sendMessage(ChatColor.RED + "Dealer '" 

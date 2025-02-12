@@ -80,8 +80,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
             this.getCommand("ncc").setTabCompleter(new CommandTabCompleter(this));
         }
 
-        // Load any pre-existing dealer villagers from config
-        loadDealerVillagers();
+        // Load any pre-existing dealer mob from config
+        loadDealers();
 
         int pluginId = 24579;
         //bStats support
@@ -92,7 +92,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         getLogger().info("NCCasino plugin enabled!");
     }
 
-    private void loadDealerVillagers() {
+    private void loadDealers() {
         File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
         if (!dealersFile.exists()) {
             getLogger().warning("The dealers.yaml file does not exist at " + dealersFile.getPath());
@@ -121,7 +121,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         }
                 Bukkit.getScheduler().runTaskLater(this, () -> {
 
-        // After ensuring chunks are loaded, update existing Villagers
+        // After ensuring chunks are loaded, update existing mobs
         Bukkit.getWorlds().forEach(world -> {
             for (Entity entity : world.getEntities()) {
                 if (entity instanceof Mob mob) {
@@ -221,8 +221,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
     }
     
 
-    public void addInventory(UUID villagerId, DealerInventory inv) {
-        inventories.putIfAbsent(villagerId, inv);
+    public void addInventory(UUID mobId, DealerInventory inv) {
+        inventories.putIfAbsent(mobId, inv);
     }
 
     // Load currency material and name from config
@@ -245,8 +245,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         return currencyName;
     }
 
-    private void reinitializeDealerVillagers() {
-        getLogger().info("Entered reinitializeDealerVillagers.");
+    private void reinitializeDealers() {
         Bukkit.getWorlds().forEach(world -> {
             for (Entity entity : world.getEntities()) {
                 if (entity instanceof Mob mob) {
@@ -277,7 +276,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         });
     }
 
-    public void reloadDealerVillager(Mob mob) {
+    public void reloadDealer(Mob mob) {
         if (!Dealer.isDealer(mob)) {
             return;
         }
@@ -313,7 +312,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     }
 
-    private void reloadDealerVillagers() {
+    private void reloadDealers() {
         // Collect dealer IDs first
         List<UUID> dealerIdsToDelete = new ArrayList<>(DealerInventory.inventories.keySet());
 
@@ -411,11 +410,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     public void reinitializeDealerConfigurations() {
         getLogger().info("Reinitializing dealer configurations...");
-        reinitializeDealerVillagers();
+        reinitializeDealers();
     }
 
     public void reloadDealerConfigurations() {
-        reloadDealerVillagers();
+        reloadDealers();
     }
 
     public static void sendErrorMessage(Player player, String msg){

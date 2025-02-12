@@ -187,11 +187,9 @@ public class PlayerMenu extends DealerInventory {
                             if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
                                 AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
                                 player.openInventory(adminInventory.getInventory());
-                                //localVillager.remove(player.getUniqueId());
                             } else {
                                 AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
                                 player.openInventory(adminInventory.getInventory());
-                                //localVillager.remove(player.getUniqueId());
                             }
                         },
                             returnName

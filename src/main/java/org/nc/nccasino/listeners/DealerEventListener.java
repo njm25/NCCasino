@@ -12,8 +12,8 @@ public class DealerEventListener implements Listener {
 
     @EventHandler
     public void onEntityDamage(EntityDamageEvent event) {
-        if (event.getEntity() instanceof Mob villager) {
-            if (Dealer.isDealer(villager)) {
+        if (event.getEntity() instanceof Mob mob) {
+            if (Dealer.isDealer(mob)) {
                 event.setCancelled(true);
             }
         }
