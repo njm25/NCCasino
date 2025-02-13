@@ -20,8 +20,10 @@ import org.nc.nccasino.entities.DealerInventory;
 
 
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.UUID;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,8 +65,15 @@ public class MobSelectionInventory extends DealerInventory {
                 } catch (IllegalArgumentException ignored) {}
             }
         }
-        spawnEggList.sort((m1, m2) -> m1.name().compareTo(m2.name()));
+    
+        // Sort based on natural word order instead of strict ASCII order
+        spawnEggList.sort((m1, m2) -> {
+            String name1 = formatEntityName(spawnEggToEntity.get(m1).name());
+            String name2 = formatEntityName(spawnEggToEntity.get(m2).name());
+            return name1.compareToIgnoreCase(name2);
+        });
     }
+    
 
     public MobSelectionInventory(Player player, Nccasino plugin, UUID dealerId, Consumer<Player> returnToAdmin, String returnName) {
         super(player.getUniqueId(), 54, "Select Mob for " +  Dealer.getInternalName((Mob) player.getWorld()
@@ -253,19 +262,10 @@ public class MobSelectionInventory extends DealerInventory {
     
     }
 
-    private static String formatEntityName(String entityName) {
-        String[] words = entityName.toLowerCase().split("_");
-        StringBuilder formattedName = new StringBuilder();
-    
-        for (String word : words) {
-            if (!word.isEmpty()) {
-                formattedName.append(Character.toUpperCase(word.charAt(0)))
-                             .append(word.substring(1))
-                             .append(" ");
-            }
-        }
-    
-        return formattedName.toString().trim();
-    }
+private static String formatEntityName(String entityName) {
+    return Arrays.stream(entityName.toLowerCase().replace("_", " ").split(" "))
+                 .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1))
+                 .collect(Collectors.joining(" "));
+}
 
 }
