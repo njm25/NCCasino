@@ -2,8 +2,10 @@ package org.nc.nccasino.listeners;
 
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityCombustEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityTransformEvent;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Villager;
 import org.nc.nccasino.entities.Dealer;
@@ -27,6 +29,15 @@ public class DealerEventListener implements Listener {
             }
         }
     }
+
+    @EventHandler
+    public void onEntityCombust(EntityCombustEvent event) {
+        Entity entity = event.getEntity();
+        if (entity instanceof Mob && Dealer.isDealer((Mob) entity)) {
+                event.setCancelled(true);
+        }
+    }
+
 }
 
 
