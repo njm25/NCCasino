@@ -5,13 +5,15 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.AreaEffectCloudApplyEvent;
 import org.bukkit.event.entity.EntityCombustEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityDropItemEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.entity.EntityPortalEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.event.entity.EntityTransformEvent;
 import org.bukkit.event.entity.PotionSplashEvent;
 
-import java.util.List;
 
+import java.util.List;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Fox;
 import org.bukkit.entity.LivingEntity;
@@ -79,6 +81,20 @@ public class DealerEventListener implements Listener {
             }
         }
     }
+
+    @EventHandler
+    public void onEntityDropItem(EntityDropItemEvent event) {
+        if (Dealer.isDealer((Mob)event.getEntity())) {
+            event.setCancelled(true); // Cancels all natural item drops
+        }
+    }
+    @EventHandler
+    public void onEntityPortal(EntityPortalEvent event) {
+        if (event.getEntity() instanceof Mob && Dealer.isDealer((Mob) event.getEntity())) {
+            event.setCancelled(true);
+        }
+    }
+
 
 }
 
