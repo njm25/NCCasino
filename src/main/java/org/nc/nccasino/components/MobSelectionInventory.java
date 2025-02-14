@@ -4,6 +4,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
@@ -17,7 +19,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.DealerInventory;
-
+import org.nc.nccasino.helpers.SoundHelper;
 
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -43,15 +45,13 @@ public class MobSelectionInventory extends DealerInventory {
     private enum SlotOption {
         EXIT,
         RETURN,
-        PREVIOUS_PAGE,
-        NEXT_PAGE
+        PAGE_TOGGLE
     }
 
     private final Map<SlotOption, Integer> slotMapping = Map.of(
-        SlotOption.EXIT, 49,
-        SlotOption.RETURN, 48,
-        SlotOption.PREVIOUS_PAGE, 45,
-        SlotOption.NEXT_PAGE, 53
+        SlotOption.EXIT, 53,
+        SlotOption.RETURN, 45,
+        SlotOption.PAGE_TOGGLE, 49
     );
 
     static {
@@ -78,7 +78,7 @@ public class MobSelectionInventory extends DealerInventory {
     
 
     public MobSelectionInventory(Player player, Nccasino plugin, UUID dealerId, Consumer<Player> returnToAdmin, String returnName) {
-        super(player.getUniqueId(), 54, "Select Mob for " +  Dealer.getInternalName((Mob) player.getWorld()
+        super(player.getUniqueId(), 54, "Select Model for " +  Dealer.getInternalName((Mob) player.getWorld()
         .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
         .filter(entity -> entity instanceof Mob)
         .map(entity -> (Mob) entity)
@@ -126,14 +126,13 @@ public class MobSelectionInventory extends DealerInventory {
 
         // Navigation & Utility Buttons
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit", slotMapping.get(SlotOption.EXIT));
-        addItemAndLore(Material.BARRIER, 1, "Return to " + returnName, slotMapping.get(SlotOption.RETURN));
+        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnName, slotMapping.get(SlotOption.RETURN));
 
-        // Pagination Buttons
+        // Single Slot Pagination Button (Switches Between Next & Previous)
         if (currentPage > 1) {
-            addItemAndLore(Material.ARROW, 1, "Previous Page", slotMapping.get(SlotOption.PREVIOUS_PAGE));
-        }
-        if (currentPage < (int) Math.ceil(spawnEggList.size() / (double) PAGE_SIZE)) {
-            addItemAndLore(Material.ARROW, 1, "Next Page", slotMapping.get(SlotOption.NEXT_PAGE));
+            addItemAndLore(Material.ARROW, 1, "Previous Page", slotMapping.get(SlotOption.PAGE_TOGGLE));
+        } else if (currentPage < (int) Math.ceil(spawnEggList.size() / (double) PAGE_SIZE)) {
+            addItemAndLore(Material.ARROW, 1, "Next Page", slotMapping.get(SlotOption.PAGE_TOGGLE));
         }
     }
 
@@ -144,43 +143,37 @@ public class MobSelectionInventory extends DealerInventory {
         }
         event.setCancelled(true);
 
+        if (slot == slotMapping.get(SlotOption.PAGE_TOGGLE)) {
+            if (currentPage > 1) {
+                currentPage--;
+            } else if (currentPage < (int) Math.ceil(spawnEggList.size() / (double) PAGE_SIZE)) {
+                currentPage++;
+            }
+            updateMenu();
+            if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+        }
+        if (slot == slotMapping.get(SlotOption.EXIT)) {
+            player.closeInventory();
+            if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+            return;
+        }
+        if (slot == slotMapping.get(SlotOption.RETURN)) {
+            player.closeInventory();
+            returnToAdmin.accept(player);
+            if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+            return;
+        }
         ItemStack clickedItem = event.getCurrentItem();
         if (clickedItem == null) return;
 
-        // Handle page navigation
-        if (clickedItem.getType() == Material.ARROW) {
-            if (event.getSlot() == slotMapping.get(SlotOption.PREVIOUS_PAGE) && currentPage > 1) {
-                currentPage--;
-                updateMenu();
-            } else if (event.getSlot() == slotMapping.get(SlotOption.NEXT_PAGE) &&
-                    currentPage < (int) Math.ceil(spawnEggList.size() / (double) PAGE_SIZE)) {
-                currentPage++;
-                updateMenu();
-            }
-            return;
-        }
 
-        // Handle Exit
-        if (clickedItem.getType() == Material.SPRUCE_DOOR) {
-            player.closeInventory();
-            return;
-        }
-
-        // Handle Return
-        if (clickedItem.getType() == Material.BARRIER) {
-            player.closeInventory();
-            returnToAdmin.accept(player);
-            return;
-        }
-
-        // Handle Mob Selection
         if (!spawnEggToEntity.containsKey(clickedItem.getType())) return;
 
         EntityType selectedType = spawnEggToEntity.get(clickedItem.getType());
         String internalName = Dealer.getInternalName(dealer);
 
 
-
+        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
         // Restore dealer settings
         restoreDealerSettings(internalName,selectedType);
     }
