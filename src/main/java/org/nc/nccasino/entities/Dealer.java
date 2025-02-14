@@ -7,6 +7,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Shulker;
 import org.bukkit.entity.Villager;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
@@ -67,7 +68,12 @@ public class Dealer {
             ((Villager) mob).setProfession(Villager.Profession.NONE);
             //mob.setAI(true);
         }
-        mob.setAI(false);
+        if (mob instanceof Shulker){
+            mob.setAI(true);
+        }
+        else{
+            mob.setAI(false);
+        }
         startLookingAtPlayers(mob);
         mob.setPersistent(true);
         mob.setRemoveWhenFarAway(false);
