@@ -263,7 +263,7 @@ public class AdminInventory extends DealerInventory {
 
         addItem(head,slotMapping.get(SlotOption.PM) );
         updateCurrencyButtons();
-        addItemAndLore(Material.EGG, 1, "Change Dealer Mob", slotMapping.get(SlotOption.MOB_SELECTION), "Current: §a" + dealer.getType().toString());
+        addItemAndLore(Material.EGG, 1, "Change Dealer Model", slotMapping.get(SlotOption.MOB_SELECTION), "Current: §a" + dealer.getType().toString());
 
     }
 
