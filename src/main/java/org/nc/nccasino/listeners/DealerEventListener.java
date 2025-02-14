@@ -9,15 +9,20 @@ import org.bukkit.event.entity.EntityDropItemEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityPortalEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
+import org.bukkit.event.entity.EntityTeleportEvent;
 import org.bukkit.event.entity.EntityTransformEvent;
 import org.bukkit.event.entity.PotionSplashEvent;
-
+import org.bukkit.event.entity.ProjectileLaunchEvent;
 
 import java.util.List;
+
+import org.bukkit.entity.Enderman;
+import org.bukkit.entity.Endermite;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Fox;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
+import org.bukkit.entity.Shulker;
 import org.nc.nccasino.entities.Dealer;
 
 public class DealerEventListener implements Listener {
@@ -95,6 +100,25 @@ public class DealerEventListener implements Listener {
         }
     }
 
+    @EventHandler
+    public void onShulkerShoot(ProjectileLaunchEvent event) {
+        if (event.getEntity().getShooter() instanceof Shulker shulker) {
+            if (Dealer.isDealer(shulker)) {
+                event.setCancelled(true); // Stop the projectile from being launched
+            }
+        }
+    }
+
+    @EventHandler
+    public void onEntityTeleport(EntityTeleportEvent event) {
+        Entity entity = event.getEntity();
+        
+        if (entity instanceof Shulker || entity instanceof Enderman || entity instanceof Endermite) {
+            if (Dealer.isDealer((Mob) entity)) {
+                event.setCancelled(true); // Prevent teleporting
+            }
+        }
+    }
 
 }
 
