@@ -60,7 +60,7 @@ public class MobSelectionInventory extends DealerInventory {
                 try {
                     String entityName = material.name().replace("_SPAWN_EGG", "");
                     EntityType entityType = EntityType.valueOf(entityName);
-                    if (entityType != EntityType.ENDER_DRAGON) {
+                    if (entityType != EntityType.ENDER_DRAGON&& entityType != EntityType.WITHER) {
                         spawnEggToEntity.put(material, entityType);
                         spawnEggList.add(material);
                     }
