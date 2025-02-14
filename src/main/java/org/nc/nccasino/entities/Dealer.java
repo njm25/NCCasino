@@ -67,10 +67,10 @@ public class Dealer {
             ((Villager) mob).setProfession(Villager.Profession.NONE);
             //mob.setAI(true);
         }
-       
-            mob.setAI(false);
-            startLookingAtPlayers(mob);
-
+        mob.setAI(false);
+        startLookingAtPlayers(mob);
+        mob.setPersistent(true);
+        mob.setRemoveWhenFarAway(false);
      
 
         
