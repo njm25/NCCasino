@@ -387,23 +387,23 @@ public class AdminInventory extends DealerInventory {
                 switch (option) {
                     case EDIT_DISPLAY_NAME:
                         handleEditDealerName(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        playDefaultSound(player);
                         break;
                     case EDIT_GAME_TYPE:
                         handleSelectGameType(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        playDefaultSound(player);
                         break;
                     case MOVE_DEALER:
                         handleMoveDealer(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        playDefaultSound(player);
                         break;
                     case DELETE_DEALER:
                         handleDeleteDealer(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        playDefaultSound(player);
                         break;
                     case EDIT_CURRENCY:
                         handleEditCurrency(player,event);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        playDefaultSound(player);
                         break;
                         /* 
                     case USE_VAULT:
@@ -414,51 +414,51 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                      case TOGGLE_CURRENCY_MODE:
                      /*
                         handleToggleCurrencyMode(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        playDefaultSound(player);
                     */  break;
                     case GAME_OPTIONS:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     handleGameOptions(player,currentGame);
                         break;
                     case EDIT_ANIMATION_MESSAGE:
                         handleAnimationMessage(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        playDefaultSound(player);
                         break;
                     case CHIP_SIZE1:
                         handleEditChipSize(player,1);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        playDefaultSound(player);
                         break;
                     case CHIP_SIZE2:
                         handleEditChipSize(player,2);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        playDefaultSound(player);
                         break;
                     case CHIP_SIZE3:
                         handleEditChipSize(player,3);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        playDefaultSound(player);
                         break;
                     case CHIP_SIZE4:
                         handleEditChipSize(player,4);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        playDefaultSound(player);
                         break;
                     case CHIP_SIZE5:
                         handleEditChipSize(player,5);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        playDefaultSound(player);
                         break;
                     case PM:
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        playDefaultSound(player);
                         handlePlayerMenu(player);
                         break;
                     case EXIT:
                         handleExit(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        playDefaultSound(player);
                         break;
                     case CHANGE_BIOME:
                         cycleBiome(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        playDefaultSound(player);
                         break;
                     case MOB_SELECTION:
                         handleMobSelection(player);
-                        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                        playDefaultSound(player);
                         break;
                     default:
                     switch(messPref){

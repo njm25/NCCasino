@@ -4,8 +4,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
@@ -13,7 +11,6 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Dealer;
-import org.nc.nccasino.helpers.SoundHelper;
 
 import java.io.File;
 import java.io.IOException;
@@ -103,23 +100,23 @@ public class GameOptionsInventory extends DealerInventory {
             String gameType;
             switch (option) {
                 case BLACKJACK:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     gameType = "Blackjack";
                     break;
                 case ROULETTE:
-                 if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                 playDefaultSound(player);
                     gameType = "Roulette";
                     break;
                 case MINES:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     gameType = "Mines";
                     break;
                 case EXIT:
                     handleExit(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     return; 
                 case RETURN:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     executeReturn();
                     return;
                 default:

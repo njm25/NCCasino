@@ -175,24 +175,24 @@ public class BlackjackAdminInventory extends DealerInventory {
             if(option!=null){
             switch (option) {
                 case RETURN:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     executeReturn();
                     break;
                 case EDIT_TIMER:
                     handleEditTimer(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     break;
                 case STAND_17:
                     handleEditStand(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     break;   
                 case NUMBER_OF_DECKS:
                     handleEditDecks(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     break; 
                 case EXIT:
                     handleExit(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     break;   
                 default:
                     if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 

@@ -58,11 +58,11 @@ public class ConfirmInventory extends DealerInventory {
 
             switch (slot) {
                 case 0:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     executeConfirm();
                     break;
                 case 8:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     executeCancel();
                     break;
                 default:
