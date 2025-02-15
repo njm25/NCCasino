@@ -5,9 +5,11 @@ import org.bukkit.Location;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.MagmaCube;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Shulker;
+import org.bukkit.entity.Slime;
 import org.bukkit.entity.Villager;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
@@ -46,18 +48,35 @@ public class Dealer {
     /**
      * Helper: Spawn a new Dealer at a location.
      */
-    public static Mob spawnDealer(JavaPlugin plugin, Location location, String name,
-                                       String internalName, String gameType, EntityType type) {
+    public static Mob spawnDealer(JavaPlugin plugin, Location location, String name, String internalName, String gameType, EntityType type) {
         Location centeredLocation = location.getBlock().getLocation().add(0.5, 0.0, 0.5);
         Mob mob = (Mob) centeredLocation.getWorld().spawnEntity(centeredLocation, type);
         initializeDealer(mob, centeredLocation, name, internalName, gameType);
         return mob;
     }
 
-    private static void initializeDealer(Mob mob, Location location, String name,
-                                           String internalName, String gameType) {
-
-       
+    private static void initializeDealer(Mob mob, Location location, String name, String internalName, String gameType) {
+        if (mob instanceof org.bukkit.entity.LivingEntity livingEntity) {
+            var equipment = livingEntity.getEquipment();
+            if (equipment != null) { // Ensure the entity has equipment
+                equipment.setItemInMainHand(null);
+                equipment.setItemInOffHand(null);
+                equipment.setHelmet(null);
+                equipment.setChestplate(null);
+                equipment.setLeggings(null);
+                equipment.setBoots(null);
+            }
+        }
+        if (mob.getVehicle() != null) {
+        mob.getVehicle().removePassenger(mob);
+        }
+        if (!mob.getPassengers().isEmpty()) {
+            for (Entity passenger : mob.getPassengers()) {
+                passenger.remove(); 
+            }
+            mob.eject(); 
+        }
+        mob.setInvisible(false);                                    
         mob.setInvulnerable(true);
         mob.setCustomName(name);
         mob.setCustomNameVisible(true);
@@ -67,6 +86,12 @@ public class Dealer {
         if (mob instanceof Villager){
             ((Villager) mob).setProfession(Villager.Profession.NONE);
             //mob.setAI(true);
+        }
+        if (mob instanceof Slime){
+            ((Slime)mob).setSize(3);
+        }
+        if (mob instanceof MagmaCube){
+            ((MagmaCube)mob).setSize(3);
         }
         if (mob instanceof Shulker){
             mob.setAI(true);
