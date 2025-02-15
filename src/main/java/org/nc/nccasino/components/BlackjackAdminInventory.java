@@ -10,8 +10,8 @@ import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -19,7 +19,7 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
-import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
 import net.md_5.bungee.api.ChatColor;
 
@@ -30,7 +30,7 @@ public class BlackjackAdminInventory extends DealerInventory {
     private final Map<UUID, Boolean> clickAllowed = new HashMap<>(); // Track click state per player
     private Nccasino plugin;
     private String returnName;
-    private Villager dealer;
+    private Mob dealer;
     public static final Map<UUID, BlackjackAdminInventory> BAInventories = new HashMap<>();
 
     private enum SlotOption {
@@ -54,15 +54,15 @@ public class BlackjackAdminInventory extends DealerInventory {
         this.dealerId = dealerId;
         this.plugin = plugin;
         this.returnName=returnName;
-        this.dealer = DealerVillager.getVillagerFromId(dealerId);
+        this.dealer = Dealer.getMobFromId(dealerId);
         if (this.dealer == null) {
             // Attempt to find a nearby Dealer if not found above
-            this.dealer = (Villager) player.getWorld()
+            this.dealer = (Mob) player.getWorld()
                 .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                .filter(entity -> entity instanceof Villager)
-                .map(entity -> (Villager) entity)
-                .filter(v -> DealerVillager.isDealerVillager(v)
-                             && DealerVillager.getUniqueId(v).equals(this.dealerId))
+                .filter(entity -> entity instanceof Mob)
+                .map(entity -> (Mob) entity)
+                .filter(v -> Dealer.isDealer(v)
+                             && Dealer.getUniqueId(v).equals(this.dealerId))
                 .findFirst().orElse(null);
         }
         registerListener();
@@ -95,7 +95,7 @@ public class BlackjackAdminInventory extends DealerInventory {
     }
 
     private void initalizeMenu(){
-        String internalName = DealerVillager.getInternalName(dealer);
+        String internalName = Dealer.getInternalName(dealer);
         FileConfiguration config = plugin.getConfig();
         int currentTimer = config.contains("dealers." + internalName + ".timer")? config.getInt("dealers." + internalName + ".timer"): 10; 
         int standOn17Chance = config.getInt("dealers." + internalName + ".stand-on-17", 100);
@@ -175,24 +175,24 @@ public class BlackjackAdminInventory extends DealerInventory {
             if(option!=null){
             switch (option) {
                 case RETURN:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     executeReturn();
                     break;
                 case EDIT_TIMER:
                     handleEditTimer(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     break;
                 case STAND_17:
                     handleEditStand(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     break;   
                 case NUMBER_OF_DECKS:
                     handleEditDecks(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     break; 
                 case EXIT:
                     handleExit(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     break;   
                 default:
                     if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
@@ -240,7 +240,7 @@ public class BlackjackAdminInventory extends DealerInventory {
 
     private void handleEditStand(Player player) {
         UUID playerId = player.getUniqueId();
-        AdminInventory.localVillager.put(playerId, dealer);
+        AdminInventory.localMob.put(playerId, dealer);
         AdminInventory.standOn17Mode.put(playerId, dealer);
         player.closeInventory();
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -259,7 +259,7 @@ public class BlackjackAdminInventory extends DealerInventory {
 
     private void handleEditDecks(Player player) {
         UUID playerId = player.getUniqueId();
-        AdminInventory.localVillager.put(playerId, dealer);
+        AdminInventory.localMob.put(playerId, dealer);
         AdminInventory.decksEditMode.put(playerId, dealer);
         player.closeInventory();
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -279,7 +279,7 @@ public class BlackjackAdminInventory extends DealerInventory {
 
     private void handleEditTimer(Player player) {
         UUID playerId = player.getUniqueId();
-        AdminInventory.localVillager.put(playerId, dealer);
+        AdminInventory.localMob.put(playerId, dealer);
         AdminInventory.timerEditMode.put(playerId, dealer);
         player.closeInventory();
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -314,10 +314,10 @@ public class BlackjackAdminInventory extends DealerInventory {
                 return;
             }
             if (dealer != null) {
-                String internalName = DealerVillager.getInternalName(dealer);
+                String internalName = Dealer.getInternalName(dealer);
                 plugin.getConfig().set("dealers." + internalName + ".timer", Integer.parseInt(newTimer));
                 plugin.saveConfig();
-                plugin.reloadDealerVillager(dealer);
+                plugin.reloadDealer(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
@@ -330,7 +330,7 @@ public class BlackjackAdminInventory extends DealerInventory {
                         break;
                     }
                 }
-                AdminInventory.localVillager.remove(playerId);
+                AdminInventory.localMob.remove(playerId);
             } else {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
@@ -357,10 +357,10 @@ public class BlackjackAdminInventory extends DealerInventory {
                 return;
             }
             if (dealer != null) {
-                String internalName = DealerVillager.getInternalName(dealer);
+                String internalName = Dealer.getInternalName(dealer);
                 plugin.getConfig().set("dealers." + internalName + ".stand-on-17", Integer.parseInt(newTimer));
                 plugin.saveConfig();
-                plugin.reloadDealerVillager(dealer);
+                plugin.reloadDealer(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
@@ -373,7 +373,7 @@ public class BlackjackAdminInventory extends DealerInventory {
                         break;
                     }
                 }
-                AdminInventory.localVillager.remove(playerId);
+                AdminInventory.localMob.remove(playerId);
             } else {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
@@ -400,10 +400,10 @@ public class BlackjackAdminInventory extends DealerInventory {
                 return;
             }
             if (dealer != null) {
-                String internalName = DealerVillager.getInternalName(dealer);
+                String internalName = Dealer.getInternalName(dealer);
                 plugin.getConfig().set("dealers." + internalName + ".number-of-decks", Integer.parseInt(newDecks));
                 plugin.saveConfig();
-                plugin.reloadDealerVillager(dealer);
+                plugin.reloadDealer(dealer);
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
@@ -416,7 +416,7 @@ public class BlackjackAdminInventory extends DealerInventory {
                         break;
                     }
                 }
-                AdminInventory.localVillager.remove(playerId);
+                AdminInventory.localMob.remove(playerId);
             } else {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{

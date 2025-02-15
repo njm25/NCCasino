@@ -22,8 +22,8 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Villager;
 import org.bukkit.event.Listener;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
@@ -31,7 +31,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.commands.CommandExecution;
 import org.nc.nccasino.commands.CommandTabCompleter;
 import org.nc.nccasino.entities.DealerInventory;
-import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.Metrics;
 import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.listeners.DealerDeathHandler;
@@ -80,8 +80,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
             this.getCommand("ncc").setTabCompleter(new CommandTabCompleter(this));
         }
 
-        // Load any pre-existing dealer villagers from config
-        loadDealerVillagers();
+        // Load any pre-existing dealer mob from config
+        loadDealers();
 
         int pluginId = 24579;
         //bStats support
@@ -92,7 +92,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         getLogger().info("NCCasino plugin enabled!");
     }
 
-    private void loadDealerVillagers() {
+    private void loadDealers() {
         File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
         if (!dealersFile.exists()) {
             getLogger().warning("The dealers.yaml file does not exist at " + dealersFile.getPath());
@@ -121,13 +121,13 @@ public final class Nccasino extends JavaPlugin implements Listener {
         }
                 Bukkit.getScheduler().runTaskLater(this, () -> {
 
-        // After ensuring chunks are loaded, update existing Villagers
+        // After ensuring chunks are loaded, update existing mobs
         Bukkit.getWorlds().forEach(world -> {
             for (Entity entity : world.getEntities()) {
-                if (entity instanceof Villager villager) {
-                    if (DealerVillager.isDealerVillager(villager)) {
-                        villager.setCollidable(false);
-                        String internalName = DealerVillager.getInternalName(villager);
+                if (entity instanceof Mob mob) {
+                    if (Dealer.isDealer(mob)) {
+                        mob.setCollidable(false);
+                        String internalName = Dealer.getInternalName(mob);
                         String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
@@ -144,7 +144,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 
                         String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
                         String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
-                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+                        Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+                        Dealer.startLookingAtPlayers(mob);
                     }
                 }
             }
@@ -221,8 +222,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
     }
     
 
-    public void addInventory(UUID villagerId, DealerInventory inv) {
-        inventories.putIfAbsent(villagerId, inv);
+    public void addInventory(UUID mobId, DealerInventory inv) {
+        inventories.putIfAbsent(mobId, inv);
     }
 
     // Load currency material and name from config
@@ -245,13 +246,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
         return currencyName;
     }
 
-    private void reinitializeDealerVillagers() {
-        getLogger().info("Entered reinitializeDealerVillagers.");
+    private void reinitializeDealers() {
         Bukkit.getWorlds().forEach(world -> {
             for (Entity entity : world.getEntities()) {
-                if (entity instanceof Villager villager) {
-                    if (DealerVillager.isDealerVillager(villager)) {
-                        String internalName = DealerVillager.getInternalName(villager);
+                if (entity instanceof Mob mob) {
+                    if (Dealer.isDealer(mob)) {
+                        String internalName = Dealer.getInternalName(mob);
 
                         String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
@@ -268,21 +268,21 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 
                         String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
                         String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
-                        DealerVillager.updateGameType(villager, gameType, timer, animationMessage, name, chipSizes, currencyMaterial, currencyName);
-                        DealerVillager.setName(villager, gameType + " Dealer");
-                        DealerVillager.setAnimationMessage(villager, animationMessage);
+                        Dealer.updateGameType(mob, gameType, timer, animationMessage, name, chipSizes, currencyMaterial, currencyName);
+                        Dealer.setName(mob, gameType + " Dealer");
+                        Dealer.setAnimationMessage(mob, animationMessage);
                     }
                 }
             }
         });
     }
 
-    public void reloadDealerVillager(Villager villager) {
-        if (!DealerVillager.isDealerVillager(villager)) {
+    public void reloadDealer(Mob mob) {
+        if (!Dealer.isDealer(mob)) {
             return;
         }
 
-        String internalName = DealerVillager.getInternalName(villager);
+        String internalName = Dealer.getInternalName(mob);
         String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
@@ -308,12 +308,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
         String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
         String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
-        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+        Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
 
 
     }
 
-    private void reloadDealerVillagers() {
+    private void reloadDealers() {
         // Collect dealer IDs first
         List<UUID> dealerIdsToDelete = new ArrayList<>(DealerInventory.inventories.keySet());
 
@@ -328,9 +328,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
         // Refresh each dealer from config
         Bukkit.getWorlds().forEach(world -> {
             for (Entity entity : world.getEntities()) {
-                if (entity instanceof Villager villager) {
-                    if (DealerVillager.isDealerVillager(villager)) {
-                        String internalName = DealerVillager.getInternalName(villager);
+                if (entity instanceof Mob mob) {
+                    if (Dealer.isDealer(mob)) {
+                        String internalName = Dealer.getInternalName(mob);
                         String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
                         int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
@@ -357,7 +357,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
                         String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
                         String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
-                        DealerVillager.updateGameType(villager, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+                        Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
                     }
                 }
             }
@@ -411,25 +411,25 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     public void reinitializeDealerConfigurations() {
         getLogger().info("Reinitializing dealer configurations...");
-        reinitializeDealerVillagers();
+        reinitializeDealers();
     }
 
     public void reloadDealerConfigurations() {
-        reloadDealerVillagers();
+        reloadDealers();
     }
 
     public static void sendErrorMessage(Player player, String msg){
         player.sendMessage("§c" + msg);
     }
 
-    public Villager getDealerByInternalName(String internalName) {
+    public Mob getDealerByInternalName(String internalName) {
         for (var world : Bukkit.getWorlds()) {
             for (Entity entity : world.getEntities()) {
-                if (entity instanceof Villager villager) {
-                    PersistentDataContainer dataContainer = villager.getPersistentDataContainer();
+                if (entity instanceof Mob mov) {
+                    PersistentDataContainer dataContainer = mov.getPersistentDataContainer();
                     String storedInternalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
                     if (internalName.equals(storedInternalName)) {
-                        return villager;
+                        return mov;
                     }
                 }
             }

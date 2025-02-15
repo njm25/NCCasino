@@ -1,6 +1,6 @@
 package org.nc.nccasino.helpers;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.entities.Dealer;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.bukkit.Sound;
@@ -9,7 +9,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class SoundHelper {
     public static Sound getSoundSafely(String name,Player player) {
-        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(DealerVillager.class);
+        Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
         if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
                     // Convert to lowercase and ensure proper namespaced format
         NamespacedKey key = NamespacedKey.minecraft(name.toLowerCase());

@@ -113,7 +113,7 @@ public class PlayerMenu extends DealerInventory {
 
                     break;
                 case RETURN:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     if (returnToAdmin != null) {
                         returnToAdmin.accept(player);
                     }
@@ -134,11 +134,11 @@ public class PlayerMenu extends DealerInventory {
                     break;
                 case STATS:
                     //handleMoveDealer(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     break;
                 case PREFERENCES:
                     handlePreferencesMenu(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     break;
                 default:
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -187,11 +187,9 @@ public class PlayerMenu extends DealerInventory {
                             if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
                                 AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
                                 player.openInventory(adminInventory.getInventory());
-                                //localVillager.remove(player.getUniqueId());
                             } else {
                                 AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
                                 player.openInventory(adminInventory.getInventory());
-                                //localVillager.remove(player.getUniqueId());
                             }
                         },
                             returnName

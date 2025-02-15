@@ -7,14 +7,14 @@ import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Villager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.components.AdminInventory;
 import org.nc.nccasino.components.GameOptionsInventory;
-import org.nc.nccasino.entities.DealerVillager;
+import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.bukkit.entity.Mob;
 
 public class CreateCommand implements CasinoCommand {
     private final JavaPlugin plugin;
@@ -33,25 +33,25 @@ public class CreateCommand implements CasinoCommand {
         Player player = (Player) sender;
                 
         List<String> occupations = AdminInventory.playerOccupations(player.getUniqueId());
-        List<Villager> villagers = AdminInventory.getOccupiedVillagers(player.getUniqueId())
+        List<Mob> mobs = AdminInventory.getOccupiedDealers(player.getUniqueId())
             .stream()
-            .filter(v -> v != null && !v.isDead() && v.isValid()) // Ensure valid villagers
+            .filter(v -> v != null && !v.isDead() && v.isValid()) // Ensure valid mob
             .toList();
 
-        if (!occupations.isEmpty() && !villagers.isEmpty()) {
+        if (!occupations.isEmpty() && !mobs.isEmpty()) {
             if (SoundHelper.getSoundSafely("entity.villager.no",player) != null) {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             }
             for (int i = 0; i < occupations.size(); i++) {
-                if (i >= villagers.size()) {
+                if (i >= mobs.size()) {
                     break; // Prevent index mismatch
                 }
                 String occupation = occupations.get(i);
-                Villager villager = villagers.get(i);
+                Mob mob = mobs.get(i);
                 
-                String villagerName = (villager != null) ? DealerVillager.getInternalName(villager) : "unknown villager";
+                String mobName = (mob != null) ? Dealer.getInternalName(mob) : "unknown dealer";
                 Nccasino.sendErrorMessage(player, "Please finish editing " + occupation + " for '" +
-                    ChatColor.YELLOW + villagerName + ChatColor.RED + "'.");
+                    ChatColor.YELLOW + mobName + ChatColor.RED + "'.");
             }
             return true;
         }
