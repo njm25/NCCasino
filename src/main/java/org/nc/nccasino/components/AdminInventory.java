@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -19,7 +20,6 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -87,7 +87,7 @@ public class AdminInventory extends DealerInventory {
         CHIP_SIZE5,
         PM,
         EXIT,
-        CHANGE_BIOME,
+        //CHANGE_BIOME,
         MOB_SELECTION
 
     }
@@ -102,26 +102,7 @@ public class AdminInventory extends DealerInventory {
     // The slot positions of each option in the inventory
     private final Map<SlotOption, Integer> slotMapping = new HashMap<>();
 
-    private static final List<Villager.Type> VILLAGER_BIOMES = Arrays.asList(
-        Villager.Type.DESERT,
-        Villager.Type.JUNGLE,
-        Villager.Type.PLAINS,
-        Villager.Type.SAVANNA,
-        Villager.Type.SNOW,
-        Villager.Type.SWAMP,
-        Villager.Type.TAIGA
-    );
-    
-    private static final Map<Villager.Type, Material> BIOME_MATERIALS = new HashMap<>() {{
-        put(Villager.Type.DESERT, Material.SAND);
-        put(Villager.Type.JUNGLE, Material.JUNGLE_LOG);
-        put(Villager.Type.PLAINS, Material.GRASS_BLOCK);
-        put(Villager.Type.SAVANNA, Material.ACACIA_LOG);
-        put(Villager.Type.SNOW, Material.SNOW_BLOCK);
-        put(Villager.Type.SWAMP, Material.MANGROVE_LOG);
-        put(Villager.Type.TAIGA, Material.SPRUCE_LOG);
-    }};
-
+   
     
 
 
@@ -179,11 +160,6 @@ public class AdminInventory extends DealerInventory {
     slotMapping.put(SlotOption.EDIT_GAME_TYPE, 0);
     slotMapping.put(SlotOption.GAME_OPTIONS, 2);
     slotMapping.put(SlotOption.EDIT_ANIMATION_MESSAGE, 8);
-
-    if(dealer instanceof Villager){
-        slotMapping.put(SlotOption.CHANGE_BIOME, 4); 
-    }
- 
     // put(SlotOption.USE_VAULT, 28);   
     slotMapping.put(SlotOption.EDIT_CURRENCY, 31);
     //put(SlotOption.TOGGLE_CURRENCY_MODE, 31);
@@ -248,10 +224,6 @@ public class AdminInventory extends DealerInventory {
         addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
 
-        if (dealer instanceof Villager){
-            addItemAndLore(BIOME_MATERIALS.getOrDefault(((Villager) dealer).getVillagerType(), Material.GRASS_BLOCK), 1, "Edit Villager Biome", slotMapping.get(SlotOption.CHANGE_BIOME), "Current: §a" + ((Villager) dealer).getVillagerType().toString());
-        }
-
         ItemStack head=createPlayerHeadItem(player, 1);
         setCustomItemMeta(head,"Player Menu");
         ItemMeta meta = head.getItemMeta();
@@ -263,10 +235,15 @@ public class AdminInventory extends DealerInventory {
 
         addItem(head,slotMapping.get(SlotOption.PM) );
         updateCurrencyButtons();
-        addItemAndLore(Material.EGG, 1, "Change Dealer Model", slotMapping.get(SlotOption.MOB_SELECTION), "Current: §a" + dealer.getType().toString());
+        Material mobEgg = MobSelectionInventory.getSpawnEggFor(dealer.getType());
+
+        // Now display that egg item in the slot
+        addItemAndLore(mobEgg, 1, "Edit Dealer Mob", 
+            slotMapping.get(SlotOption.MOB_SELECTION), 
+            "Current: §a" + formatEntityName(dealer.getType().toString())
+        );
 
     }
-
   
     /**
      * Returns whether the player is currently editing something else (rename, timer, etc.).
@@ -452,10 +429,6 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                         handleExit(player);
                         playDefaultSound(player);
                         break;
-                    case CHANGE_BIOME:
-                        cycleBiome(player);
-                        playDefaultSound(player);
-                        break;
                     case MOB_SELECTION:
                         handleMobSelection(player);
                         playDefaultSound(player);
@@ -529,24 +502,6 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     private void handleExit(Player player) {
         player.closeInventory();
         delete();
-    }
-
-    private void cycleBiome(Player player) {
-        Villager.Type currentBiome = ((Villager) dealer).getVillagerType();
-        int index = VILLAGER_BIOMES.indexOf(currentBiome);
-        Villager.Type newBiome = VILLAGER_BIOMES.get((index + 1) % VILLAGER_BIOMES.size());
-
-        ((Villager) dealer).setVillagerType(newBiome);
-
-
-    addItemAndLore(BIOME_MATERIALS.getOrDefault(((Villager) dealer).getVillagerType(), Material.GRASS_BLOCK), 1, "Edit Villager Biome", slotMapping.get(SlotOption.CHANGE_BIOME), "Current: §a" + ((Villager) dealer).getVillagerType().toString());
-       switch(messPref){
-                case VERBOSE:{
-                    player.sendMessage("§aVillager biome changed to: " + ChatColor.YELLOW + newBiome.toString());
-                    break;}
-                default:{
-                    break;}
-            }
     }
 
     // ----- Option handlers -----
@@ -1394,6 +1349,12 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         playerHead.setItemMeta(skullMeta);
     }
     return playerHead;
+}
+
+private static String formatEntityName(String entityName) {
+    return Arrays.stream(entityName.toLowerCase().replace("_", " ").split(" "))
+                 .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1))
+                 .collect(Collectors.joining(" "));
 }
 
 }
