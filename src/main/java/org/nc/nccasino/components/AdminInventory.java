@@ -18,8 +18,23 @@ import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Axolotl;
+import org.bukkit.entity.Cat;
+import org.bukkit.entity.Fox;
+import org.bukkit.entity.Frog;
+import org.bukkit.entity.MagmaCube;
 import org.bukkit.entity.Mob;
+import org.bukkit.entity.MushroomCow;
+import org.bukkit.entity.Panda;
+import org.bukkit.entity.Parrot;
+import org.bukkit.entity.PiglinBrute;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Rabbit;
+import org.bukkit.entity.Sheep;
+import org.bukkit.entity.Slime;
+import org.bukkit.entity.Villager;
+import org.bukkit.entity.WanderingTrader;
+import org.bukkit.entity.ZombieVillager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -238,10 +253,8 @@ public class AdminInventory extends DealerInventory {
         Material mobEgg = MobSelectionInventory.getSpawnEggFor(dealer.getType());
 
         // Now display that egg item in the slot
-        addItemAndLore(mobEgg, 1, "Edit Dealer Mob", 
-            slotMapping.get(SlotOption.MOB_SELECTION), 
-            "Current: §a" + formatEntityName(dealer.getType().toString())
-        );
+        List<String> lore = getMobSelectionLore(dealer);
+        addItemAndLore(mobEgg, 1, "Edit Dealer Mob", slotMapping.get(SlotOption.MOB_SELECTION), lore.toArray(new String[0]));
 
     }
   
@@ -1349,12 +1362,76 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         playerHead.setItemMeta(skullMeta);
     }
     return playerHead;
-}
+    }
 
-private static String formatEntityName(String entityName) {
-    return Arrays.stream(entityName.toLowerCase().replace("_", " ").split(" "))
-                 .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1))
-                 .collect(Collectors.joining(" "));
-}
+    private static String formatEntityName(String entityName) {
+        return Arrays.stream(entityName.toLowerCase().replace("_", " ").split(" "))
+                     .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1))
+                     .collect(Collectors.joining(" "));
+    }
 
+    private List<String> getMobSelectionLore(Mob mob) {
+        List<String> lore = new ArrayList<>();
+
+        // Add Current Mob
+        lore.add("Current Mob: §a" + formatEntityName(mob.getType().toString()));
+
+        // Add Variant (if applicable)
+        String variant = getCurrentVariant(mob);
+        if (!variant.isEmpty()) {
+            lore.add("Current Variant: §a" + variant);
+        }
+
+        // Add Age or Size (if applicable)
+        String sizeOrAge = getCurrentSizeOrAge(mob);
+        if (!sizeOrAge.isEmpty()) {
+            lore.add(sizeOrAge);
+        }
+
+        return lore;
+    }
+
+    private String getCurrentVariant(Mob mob) {
+    if (mob instanceof Cat cat) {
+        return formatEntityName(cat.getCatType().toString());
+    } else if (mob instanceof Fox fox) {
+        return formatEntityName(fox.getFoxType().toString());
+    } else if (mob instanceof Frog frog) {
+        return formatEntityName(frog.getVariant().toString());
+    } else if (mob instanceof Parrot parrot) {
+        return formatEntityName(parrot.getVariant().toString());
+    } else if (mob instanceof Rabbit rabbit) {
+        return formatEntityName(rabbit.getRabbitType().toString());
+    } else if (mob instanceof Axolotl axolotl) {
+        return formatEntityName(axolotl.getVariant().toString());
+    } else if (mob instanceof MushroomCow mooshroom) {
+        return formatEntityName(mooshroom.getVariant().toString());
+    } else if (mob instanceof Panda panda) {
+        return formatEntityName(panda.getMainGene().toString());
+    } else if (mob instanceof Villager villager) {
+        return formatEntityName(villager.getVillagerType().toString());
+    } else if (mob instanceof ZombieVillager zombieVillager) {
+        return formatEntityName(zombieVillager.getVillagerType().toString());
+    } else if (mob instanceof Sheep sheep) {
+        return formatEntityName(sheep.getColor().toString());
+    }
+    return "";
+    }
+
+    private String getCurrentSizeOrAge(Mob mob) {
+    if (mob instanceof Slime slime && !(mob instanceof MagmaCube)) {
+        return "Current Size: §a" + getSizeCategory(slime.getSize());
+    } else if (mob instanceof MagmaCube magmaCube) {
+        return "Current Size: §a" + getSizeCategory(magmaCube.getSize());
+    } else if (mob instanceof org.bukkit.entity.Ageable ageable&&!(mob instanceof Parrot) &&!(mob instanceof Frog) &&!(mob instanceof PiglinBrute) &&!(mob instanceof WanderingTrader)) {
+        return "Current Age: §a" + (ageable.isAdult() ? "Adult" : "Baby");
+    }
+    return "";
+    }
+
+    private String getSizeCategory(int size) {
+        if (size <= 1) return "Small";
+        if (size == 2) return "Medium";
+        return "Large"; // Default for size 3 and above
+    }
 }
