@@ -221,7 +221,6 @@ public class DealerInteractListener implements Listener {
         UUID playerId = player.getUniqueId();
 
         if(!(event.getInventory().getHolder() instanceof DealerInventory)) return;
-        event.setCancelled(true);
         if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
             // By default, SHIFT-click will attempt to move items into the top inventory
 
@@ -229,6 +228,7 @@ public class DealerInteractListener implements Listener {
             
             if(event.isShiftClick() && !(event.getInventory().getHolder() instanceof AdminMenu)){
                     
+                event.setCancelled(true);
                 switch(settings)
                 {
                     case VERBOSE:{
@@ -245,6 +245,8 @@ public class DealerInteractListener implements Listener {
             if(event.getSlot() == -999){
                 return;
             }
+            
+            event.setCancelled(true);
             if (clickAllowed.getOrDefault(playerId, true)) {
                 clickAllowed.put(playerId, false); // Prevent rapid clicking
                 Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);
