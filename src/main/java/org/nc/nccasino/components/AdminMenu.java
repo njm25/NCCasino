@@ -156,7 +156,6 @@ public class AdminMenu extends Menu {
     slotMapping.put(SlotOption.CHIP_SIZE4, 23);
     slotMapping.put(SlotOption.CHIP_SIZE5, 24);
     slotMapping.put(SlotOption.MOB_SELECTION, 13);
-    slotMapping.put(SlotOption.TEST_MENU, 35);
 
    }
 
@@ -208,7 +207,6 @@ public class AdminMenu extends Menu {
         addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
         addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
-        addItemAndLore(Material.GRASS_BLOCK, 1, "Test Menu",  slotMapping.get(SlotOption.TEST_MENU));
 
         ItemStack head=createPlayerHeadItem(player, 1);
         setCustomItemMeta(head,"Player Menu");
