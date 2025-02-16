@@ -318,7 +318,7 @@ public class Dealer {
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
         DealerInventory newInventory;
         String newName;
-        int defaultTimer = 0;
+        int defaultTimer = 30;
 
         PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);

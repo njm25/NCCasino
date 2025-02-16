@@ -165,7 +165,7 @@ public class DealerInteractListener implements Listener {
             Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
             String internalName = Dealer.getInternalName(mob);
             String gameType = plugin.getConfig().getString("dealers." + internalName + ".game", "Menu");
-            int timer = plugin.getConfig().getInt("dealers." + internalName + ".timer", 0);
+            int timer = plugin.getConfig().getInt("dealers." + internalName + ".timer", 30);
             String anmsg = plugin.getConfig().getString("dealers." + internalName + ".animation-message", "NCCasino");
             List<Integer> chipSizes = new ArrayList<>();
             ConfigurationSection chipSizeSection = plugin.getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
