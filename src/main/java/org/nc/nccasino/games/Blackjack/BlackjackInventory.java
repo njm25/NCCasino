@@ -78,14 +78,23 @@ public class BlackjackInventory extends DealerInventory {
             nccasino.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
         } else {
             // Retrieve the current value
-            int hasStand17Config = nccasino.getConfig().getInt("dealers." + internalName + ".stand-on-17");
+            String value = plugin.getConfig().getString("dealers." + internalName + ".stand-on-17", "100").trim();
+            int standOn17Chance;
+            
+            try {
+                standOn17Chance = Integer.parseInt(value);
+            } catch (NumberFormatException e) {
+                standOn17Chance = 100; // Default
+                plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+                plugin.saveConfig();
+            }
         
             // Check if the value is greater than 100 or less than 0
-            if (hasStand17Config > 100 ) {
+            if (standOn17Chance > 100 ) {
                 // Reset the value to 100
                 nccasino.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
             }
-            else if(hasStand17Config < 0){
+            else if(standOn17Chance < 0){
                 nccasino.getConfig().set("dealers." + internalName + ".stand-on-17", 0);
 
             }
@@ -1521,20 +1530,33 @@ private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long
     }
     final int[] mutableDealerCardSum = {dealerCardSum}; // Wrap the dealerCardSum in an array to make it mutable
     Nccasino nccasino = (Nccasino) plugin;
-    int standOn17Chance;
-    // Ensure the stand-on-17 percentage is valid
+
+
+
+    int standOn17Chance=100;
+
     if (!nccasino.getConfig().contains("dealers." + internalName + ".stand-on-17")) {
         // If the key doesn't exist, set it to 100
         nccasino.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
-        standOn17Chance = 100;
     } else {
         // Retrieve the current value
-        standOn17Chance = nccasino.getConfig().getInt("dealers." + internalName + ".stand-on-17");
+        String value = plugin.getConfig().getString("dealers." + internalName + ".stand-on-17", "100").trim();
+        
+        try {
+            standOn17Chance = Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            standOn17Chance = 100; // Default
+            plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+            plugin.saveConfig();
+        }
     
         // Check if the value is greater than 100 or less than 0
-        if (standOn17Chance > 100 || standOn17Chance < 0) {
+        if (standOn17Chance > 100 ) {
             // Reset the value to 100
             nccasino.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+        }
+        else if(standOn17Chance < 0){
+            nccasino.getConfig().set("dealers." + internalName + ".stand-on-17", 0);
 
         }
     }
