@@ -134,7 +134,7 @@ public class MobSelectionMenu extends Menu {
             player, 
             plugin, 
             dealerId, 
-            "Select Model for " +  
+            "Select Mob for " +  
                 Dealer.getInternalName((Mob) player.getWorld()
                 .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
                 .filter(entity -> entity instanceof Mob)
@@ -152,11 +152,7 @@ public class MobSelectionMenu extends Menu {
                      && Dealer.getUniqueId(v).equals(this.dealerId))
         .findFirst().orElse(null);
 
-        slotMapping.put(SlotOption.EXIT, 53);
-        slotMapping.put(SlotOption.RETURN, 45);
-        slotMapping.put(SlotOption.PAGE_TOGGLE, 49);
-        slotMapping.put(SlotOption.VARIANT, 47);
-        slotMapping.put(SlotOption.AGE_TOGGLE, 51);
+     
 
         initializeMenu();
     }
@@ -179,7 +175,10 @@ public class MobSelectionMenu extends Menu {
             }
             inventory.setItem(i, item);
         }
-
+        slotMapping.put(SlotOption.EXIT, 53);
+        slotMapping.put(SlotOption.RETURN, 45);
+       
+        slotMapping.put(SlotOption.PAGE_TOGGLE, 49);
         // Navigation & Utility Buttons
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit", slotMapping.get(SlotOption.EXIT));
         addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnMessage, slotMapping.get(SlotOption.RETURN));
@@ -190,8 +189,16 @@ public class MobSelectionMenu extends Menu {
         } else if (currentPage < (int) Math.ceil(spawnEggList.size() / (double) PAGE_SIZE)) {
             addItemAndLore(Material.ARROW, 1, "Next Page", slotMapping.get(SlotOption.PAGE_TOGGLE));
         }
-        updateVariantButton();
-        updateAgeButton(); 
+ 
+        if(isComplicatedVariant(dealer)||hasSingleVariant(dealer)){
+            slotMapping.put(SlotOption.VARIANT, 47);
+            updateVariantButton();
+        }
+        if(isAgeable(dealer)){
+            slotMapping.put(SlotOption.AGE_TOGGLE, 51);
+            updateAgeButton(); 
+        }
+        
         
     }
 

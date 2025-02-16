@@ -13,14 +13,15 @@ import org.bukkit.event.entity.EntityTeleportEvent;
 import org.bukkit.event.entity.EntityTransformEvent;
 import org.bukkit.event.entity.PotionSplashEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
+import org.bukkit.projectiles.ProjectileSource;
 
 import java.util.List;
 
-import org.bukkit.entity.Enderman;
-import org.bukkit.entity.Endermite;
+
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
+import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Shulker;
 import org.nc.nccasino.entities.Dealer;
 
@@ -52,12 +53,13 @@ public class DealerEventListener implements Listener {
         }
     }
 
-    //regular splash potion
     @EventHandler
     public void onPotionSplash(PotionSplashEvent event) {
         for (LivingEntity entity : event.getAffectedEntities()) {
-            if (entity instanceof Mob && Dealer.isDealer((Mob) entity)) {
-                event.setIntensity(entity, 0); // Nullify the effect
+            if (entity instanceof Mob mob && Dealer.isDealer(mob)) {
+                if (event.getAffectedEntities().contains(entity)) { // Ensure the entity is still in the list
+                    event.setIntensity(entity, 0); // Nullify the effect
+                }
             }
         }
     }
@@ -86,7 +88,7 @@ public class DealerEventListener implements Listener {
 
     @EventHandler
     public void onEntityDropItem(EntityDropItemEvent event) {
-        if (Dealer.isDealer((Mob)event.getEntity())) {
+        if (event.getEntity() instanceof Mob &&Dealer.isDealer((Mob)event.getEntity())) {
             event.setCancelled(true); // Cancels all natural item drops
         }
     }
@@ -97,9 +99,12 @@ public class DealerEventListener implements Listener {
         }
     }
 
-    @EventHandler
+     @EventHandler
     public void onShulkerShoot(ProjectileLaunchEvent event) {
-        if (event.getEntity().getShooter() instanceof Shulker shulker) {
+        Projectile projectile = event.getEntity();
+        ProjectileSource shooter = projectile.getShooter();
+
+        if (shooter instanceof Shulker shulker) {
             if (Dealer.isDealer(shulker)) {
                 event.setCancelled(true); // Stop the projectile from being launched
             }
@@ -110,12 +115,13 @@ public class DealerEventListener implements Listener {
     public void onEntityTeleport(EntityTeleportEvent event) {
         Entity entity = event.getEntity();
         
-        if (entity instanceof Shulker || entity instanceof Enderman || entity instanceof Endermite) {
-            if (Dealer.isDealer((Mob) entity)) {
+        if (entity instanceof Mob mob) { // Ensure only Mobs are checked
+            if (Dealer.isDealer(mob)) {
                 event.setCancelled(true); // Prevent teleporting
             }
         }
     }
+
 
 }
 
