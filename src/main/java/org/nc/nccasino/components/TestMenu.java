@@ -28,22 +28,21 @@ public class TestMenu extends Menu {
         initializeMenu();
     }
 
-    @Override
     protected void initializeMenu() {
-
-        addItemAndLore(
-            Material.PAPER, 
-            1, 
-            "Option One", 
-            slotMapping.get(SlotOption.TEST_OPTION_ONE), 
-            "Click to print a message."
-        );
-        addItemAndLore(Material.BOOK, 
-            1, 
-            "Option Two", 
-            slotMapping.get(SlotOption.TEST_OPTION_TWO), 
-            "Click to print another message."
-        );
+ 
+         addItemAndLore(
+             Material.PAPER, 
+             1, 
+             "Option One", 
+             slotMapping.get(SlotOption.TEST_OPTION_ONE), 
+             "Click to print a message."
+         );
+         addItemAndLore(Material.BOOK, 
+             1, 
+             "Option Two", 
+             slotMapping.get(SlotOption.TEST_OPTION_TWO), 
+             "Click to print another message."
+         );
     }
 
     @Override
