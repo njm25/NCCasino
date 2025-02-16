@@ -47,7 +47,6 @@ public class MinesTable extends DealerInventory {
     private final String internalName;
     private final MinesInventory minesInventory;
     private final Map<String, Double> chipValues;
-    private Boolean clickAllowed = true;
     private double selectedWager;
     private final Deque<Double> betStack = new ArrayDeque<>();
     public Boolean closeFlag = false;
@@ -365,22 +364,6 @@ public class MinesTable extends DealerInventory {
         ItemStack clickedItem = event.getCurrentItem();
         if (clickedItem == null) return;
 
-        boolean isEasterEggGlass;
-        isEasterEggGlass = isEasterEggGlass(clickedItem);
-        if (!isEasterEggGlass && !clickAllowed) {
-            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case STANDARD -> player.sendMessage("§cPlease wait before clicking mines again!");
-                case VERBOSE -> player.sendMessage("§cPlease wait before clicking again!");
-                case NONE -> {}
-            }
-            return;
-        }
-
-        if (!isEasterEggGlass) {
-            clickAllowed = false;
-            Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed = true, 5L);  // 5 ticks delay
-        }
-
         if (slot == 0) { // Instrument Button
             instrumentIndex = (instrumentIndex + 1) % instruments.length;
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -523,17 +506,6 @@ public class MinesTable extends DealerInventory {
              if (SoundHelper.getSoundSafely("entity.lightning_bolt.thunder", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER,1.0f, 1.0f);
             return;
         }
-    }
-    private boolean isEasterEggGlass(ItemStack item) {
-        if (item == null) return false;
-        Material type = item.getType();
-        
-        return type == Material.RED_STAINED_GLASS_PANE ||
-               type == Material.ORANGE_STAINED_GLASS_PANE ||
-               type == Material.YELLOW_STAINED_GLASS_PANE ||
-               type == Material.LIME_STAINED_GLASS_PANE ||
-               type == Material.BLUE_STAINED_GLASS_PANE ||
-               type == Material.PURPLE_STAINED_GLASS_PANE;
     }
 
     private void handleWagerPlacement(ItemStack clickedItem, int slot, InventoryClickEvent event) {
