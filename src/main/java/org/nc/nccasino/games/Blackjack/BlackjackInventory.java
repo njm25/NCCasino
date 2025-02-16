@@ -81,9 +81,13 @@ public class BlackjackInventory extends DealerInventory {
             int hasStand17Config = nccasino.getConfig().getInt("dealers." + internalName + ".stand-on-17");
         
             // Check if the value is greater than 100 or less than 0
-            if (hasStand17Config > 100 || hasStand17Config < 0) {
+            if (hasStand17Config > 100 ) {
                 // Reset the value to 100
                 nccasino.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+            }
+            else if(hasStand17Config < 0){
+                nccasino.getConfig().set("dealers." + internalName + ".stand-on-17", 0);
+
             }
         }
 
@@ -100,6 +104,10 @@ public class BlackjackInventory extends DealerInventory {
             if (currentDecks <= 0) {
                 numberOfDecks = 6;
                 plugin.getConfig().set("dealers." + internalName + ".number-of-decks", 6);
+            }
+            else if (currentDecks>10000){
+                numberOfDecks = 10000;
+                plugin.getConfig().set("dealers." + internalName + ".number-of-decks", 10000);
             }
             else{
                 numberOfDecks=currentDecks;
