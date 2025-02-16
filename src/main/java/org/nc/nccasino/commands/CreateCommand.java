@@ -71,7 +71,7 @@ public class CreateCommand implements CasinoCommand {
         }
 
         // Open the Game Options Inventory
-        GameOptionsMenu inventory = new GameOptionsMenu((Nccasino)plugin, internalName);
+        GameOptionsMenu inventory = new GameOptionsMenu(player, (Nccasino)plugin, internalName);
         player.openInventory(inventory.getInventory());
 
         sender.sendMessage(ChatColor.GREEN + "Choose a game type for the dealer '" +

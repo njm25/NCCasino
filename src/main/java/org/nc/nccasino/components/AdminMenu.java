@@ -822,7 +822,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
     private void handleSelectGameType(Player player) {
         // Open the Game Options Inventory
-        GameOptionsMenu inventory = new GameOptionsMenu(plugin, dealer,
+        GameOptionsMenu inventory = new GameOptionsMenu(player, plugin, dealer,
         (uuid) -> {
         
             // Cancel action: re-open the AdminInventory
@@ -1259,16 +1259,6 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     }
 
   
-    /**
-     * Provide user feedback if an action is disallowed.
-     */
-    private void denyAction(Player player, String message) {
-        if (SoundHelper.getSoundSafely("entity.villager.no",player) != null) {
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
-        }
-        player.sendMessage("§c" + message);
-    }
-
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
