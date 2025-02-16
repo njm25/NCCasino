@@ -46,6 +46,7 @@ public class DealerInteractListener implements Listener {
         if (!(clickedEntity instanceof Mob)) return;
         Player player = event.getPlayer();
         this.dealer = (Mob) clickedEntity;
+        if(!Dealer.isDealer(dealer)) return;
         String interactionKey = player.getUniqueId() + ":" + clickedEntity.getUniqueId();
 
         // Prevent duplicate interactions from the same player-entity pair
