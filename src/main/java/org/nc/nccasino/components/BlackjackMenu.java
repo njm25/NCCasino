@@ -279,147 +279,87 @@ public class BlackjackMenu extends DealerInventory {
         }
     }
 
-      @EventHandler
+    @EventHandler
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
+        String message = event.getMessage().trim();
 
-        if (BAInventories.get(playerId) == null){
+        if (BAInventories.get(playerId) == null) {
             cleanup();
             return;
         }
          if (AdminMenu.timerEditMode.get(playerId) != null) {
             event.setCancelled(true);
-            String newTimer = event.getMessage().trim();
-
-            if (newTimer.isEmpty() || !newTimer.matches("\\d+") || Integer.parseInt(newTimer) <= 0) {
-                denyAction(player, "Please enter a positive number.");
-                return;
-            }
-            if (dealer != null) {
-                String internalName = Dealer.getInternalName(dealer);
-                plugin.getConfig().set("dealers." + internalName + ".timer", Integer.parseInt(newTimer));
-                plugin.saveConfig();
-                plugin.reloadDealer(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage("§aDealer timer updated.");
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
-                        break;}
-                    case NONE:{
-                        break;
-                    }
-                }
-                AdminMenu.localMob.remove(playerId);
-            } else {
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage("§cCould not find dealer.");
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§cCould not find blackjack settings dealer.");
-                        break;}
-                    case NONE:{
-                        break;
-                    }
-                }
-            }
-
-                
-            cleanup();
-        }
-        else if(AdminMenu.standOn17Mode.get(playerId) != null) {
+            handleNumericInput(player, message, "timer", 1, 10000, "Dealer timer updated");
+        } 
+        else if (AdminMenu.standOn17Mode.get(playerId) != null) {
             event.setCancelled(true);
-            String newTimer = event.getMessage().trim();
-
-            if (newTimer.isEmpty() || !newTimer.matches("\\d+") || Integer.parseInt(newTimer) < 0|| Integer.parseInt(newTimer) >100) {
-                denyAction(player, "Please enter a number between 0 and 100");
-                return;
-            }
-            if (dealer != null) {
-                String internalName = Dealer.getInternalName(dealer);
-                plugin.getConfig().set("dealers." + internalName + ".stand-on-17", Integer.parseInt(newTimer));
-                plugin.saveConfig();
-                plugin.reloadDealer(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage("§cDealer stand on 17 chance updated.");
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§aDealer stand on 17 chance updated to: " + ChatColor.YELLOW + newTimer + "§a.");
-                        break;}
-                    case NONE:{
-                        break;
-                    }
-                }
-                AdminMenu.localMob.remove(playerId);
-            } else {
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage("§cCould not find dealer.");
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§cCould not find blackjack settings dealer.");
-                        break;}
-                    case NONE:{
-                        break;
-                    }
-                }
-            }
-
-                
-            cleanup();
-        }
-        else if(AdminMenu.decksEditMode.get(playerId) != null) {
+            handleNumericInput(player, message, "stand-on-17", 0, 100, "Dealer stand on 17 chance updated");
+        } 
+        else if (AdminMenu.decksEditMode.get(playerId) != null) {
             event.setCancelled(true);
-            String newDecks = event.getMessage().trim();
-
-            if (newDecks.isEmpty() || !newDecks.matches("\\d+") || Integer.parseInt(newDecks) <= 0) {
-                denyAction(player, "Please enter a postive number");
-                return;
-            }
-            if (dealer != null) {
-                String internalName = Dealer.getInternalName(dealer);
-                plugin.getConfig().set("dealers." + internalName + ".number-of-decks", Integer.parseInt(newDecks));
-                plugin.saveConfig();
-                plugin.reloadDealer(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage("§aDealer number of decks updated.");
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§aDealer number of decks updated to: " + ChatColor.YELLOW + newDecks + "§a.");
-                        break;}
-                    case NONE:{
-                        break;
-                    }
-                }
-                AdminMenu.localMob.remove(playerId);
-            } else {
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage("§cCould not find dealer.");
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§cCould not find blackjack settings dealer.");
-                        break;}
-                    case NONE:{
-                        break;
-                    }
-                }
-            }
-
-                
-            cleanup();
+            handleNumericInput(player, message, "number-of-decks", 1, 10000, "Dealer number of decks updated");
         }
-
     }
     
+    private void handleNumericInput(Player player, String input, String configPath, long min, long max, String standardMessage) {
+        if (input.isEmpty() || !input.matches("\\d+")) {
+            denyAction(player, "Please enter a valid positive integer.");
+            return;
+        }
+
+        long value;
+        try {
+            value = Long.parseLong(input);
+        } catch (NumberFormatException e) {
+            denyAction(player, "Invalid number format.");
+            return;
+        }
+
+        if (value < min || value > max) {
+            denyAction(player, "Please enter a number between " + min + " and " + max + ".");
+            return;
+        }
+
+        if (dealer != null) {
+            String internalName = Dealer.getInternalName(dealer);
+            plugin.getConfig().set("dealers." + internalName + "." + configPath, value);
+            plugin.saveConfig();
+            plugin.reloadDealer(dealer);
+
+            if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§a" + standardMessage+".");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§a" + standardMessage + " to: " + ChatColor.YELLOW + value + "§a.");
+                    break;
+                case NONE:
+                    break;
+            }
+
+            AdminMenu.localMob.remove(player.getUniqueId());
+        } else {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§cCould not find dealer.");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§cCould not find blackjack settings dealer.");
+                    break;
+                case NONE:
+                    break;
+            }
+        }
+
+        cleanup();
+    }
+
     private void denyAction(Player player, String message) {
         if (SoundHelper.getSoundSafely("entity.villager.no",player) != null) {
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);

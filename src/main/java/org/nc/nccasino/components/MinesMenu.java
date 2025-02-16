@@ -216,60 +216,79 @@ public class MinesMenu extends DealerInventory {
         }
     }
 
-      @EventHandler
+    @EventHandler
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        if (MAInventories.get(playerId) == null){
+        if (!MAInventories.containsKey(playerId)) {
             cleanup();
             return;
         }
-         if (AdminMenu.editMinesMode.get(playerId) != null) {
+
+        if (AdminMenu.editMinesMode.get(playerId) != null) {
             event.setCancelled(true);
-            String newTimer = event.getMessage().trim();
+            handleNumericInput(player, event.getMessage().trim(), "default-mines", 1, 24, "Dealer default mines updated");
+        }
+    }
 
-            if (newTimer.isEmpty() || !newTimer.matches("\\d+") || Integer.parseInt(newTimer) <= 0|| Integer.parseInt(newTimer) >24 ) {
-                denyAction(player, "Please enter a default # of mines between 1 and 24.");
-                return;
-            }
-            if (dealer != null) {
-                String internalName = Dealer.getInternalName(dealer);
-                plugin.getConfig().set("dealers." + internalName + ".default-mines", Integer.parseInt(newTimer));
-                plugin.saveConfig();
-                plugin.reloadDealer(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage("§aDefault # of mines updated.");
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§aDefault # of mines updated to: " + ChatColor.YELLOW + newTimer + "§a.");
-                        break;}
-                    case NONE:{
-                        break;
-                    }
-                }
-            } else {
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage("§cCould not find dealer.");
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§cCould not find dealer for mines settings.");
-                        break;}
-                    case NONE:{
-                        break;
-                    }
-                }
-            }
-
-            AdminMenu.localMob.remove(playerId);
-
-            cleanup();
+    private void handleNumericInput(Player player, String input, String configPath, long min, long max, String standardMessage) {
+        if (input.isEmpty() || !input.matches("\\d+")) {
+            denyAction(player, "Please enter a valid positive integer.");
+            return;
         }
 
+        long value;
+        try {
+            value = Long.parseLong(input);
+        } catch (NumberFormatException e) {
+            denyAction(player, "Invalid number format.");
+            return;
+        }
+
+        if (value < min || value > max) {
+            denyAction(player, "Please enter a number between " + min + " and " + max + ".");
+            return;
+        }
+
+        if (dealer != null) {
+            String internalName = Dealer.getInternalName(dealer);
+            plugin.getConfig().set("dealers." + internalName + "." + configPath, value);
+            plugin.saveConfig();
+            plugin.reloadDealer(dealer);
+
+            if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§a" + standardMessage + ".");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§a" + standardMessage + " to: " + ChatColor.YELLOW + value + "§a.");
+                    break;
+                case NONE:
+                    break;
+            }
+
+            AdminMenu.localMob.remove(player.getUniqueId());
+        } else {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§cCould not find dealer.");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§cCould not find mines settings dealer.");
+                    break;
+                case NONE:
+                    break;
+            }
+        }
+
+        cleanup();
     }
+
     private void denyAction(Player player, String message) {
         if (SoundHelper.getSoundSafely("entity.villager.no",player) != null) {
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);

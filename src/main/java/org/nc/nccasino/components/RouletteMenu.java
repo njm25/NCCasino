@@ -217,60 +217,79 @@ public class RouletteMenu extends DealerInventory {
         }  
     }
 
-      @EventHandler
+    @EventHandler
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        if (RAInventories.get(playerId) == null){
+        if (!RAInventories.containsKey(playerId)) {
             cleanup();
             return;
         }
-         if (AdminMenu.timerEditMode.get(playerId) != null) {
+
+        if (AdminMenu.timerEditMode.get(playerId) != null) {
             event.setCancelled(true);
-            String newTimer = event.getMessage().trim();
+            handleNumericInput(player, event.getMessage().trim(), "timer", 1, 10000, "Dealer timer updated");
+        }
+    }
 
-            if (newTimer.isEmpty() || !newTimer.matches("\\d+") || Integer.parseInt(newTimer) <= 0) {
-                denyAction(player, "Please enter a positive number.");
-                return;
-            }
-            if (dealer != null) {
-                String internalName = Dealer.getInternalName(dealer);
-                plugin.getConfig().set("dealers." + internalName + ".timer", Integer.parseInt(newTimer));
-                plugin.saveConfig();
-                plugin.reloadDealer(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage("§aDealer timer updated.");
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
-                        break;}
-                    case NONE:{
-                        break;
-                    }
-                }  
-            } else {
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage("§cCould not find dealer.");
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§cCould not find dealer for roulette settings.");
-                        break;}
-                    case NONE:{
-                        break;
-                    }
-                }
-            }
-
-            AdminMenu.localMob.remove(playerId);
-
-            cleanup();
+    private void handleNumericInput(Player player, String input, String configPath, long min, long max, String standardMessage) {
+        if (input.isEmpty() || !input.matches("\\d+")) {
+            denyAction(player, "Please enter a valid positive integer.");
+            return;
         }
 
+        long value;
+        try {
+            value = Long.parseLong(input);
+        } catch (NumberFormatException e) {
+            denyAction(player, "Invalid number format.");
+            return;
+        }
+
+        if (value < min || value > max) {
+            denyAction(player, "Please enter a number between " + min + " and " + max + ".");
+            return;
+        }
+
+        if (dealer != null) {
+            String internalName = Dealer.getInternalName(dealer);
+            plugin.getConfig().set("dealers." + internalName + "." + configPath, value);
+            plugin.saveConfig();
+            plugin.reloadDealer(dealer);
+
+            if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§a" + standardMessage + ".");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§a" + standardMessage + " to: " + ChatColor.YELLOW + value + "§a.");
+                    break;
+                case NONE:
+                    break;
+            }
+
+            AdminMenu.localMob.remove(player.getUniqueId());
+        } else {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§cCould not find dealer.");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§cCould not find roulette settings dealer.");
+                    break;
+                case NONE:
+                    break;
+            }
+        }
+
+        cleanup();
     }
+
     private void denyAction(Player player, String message) {
         if (SoundHelper.getSoundSafely("entity.villager.no",player) != null) {
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
