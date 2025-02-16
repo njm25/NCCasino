@@ -151,7 +151,6 @@ public class GameOptionsInventory extends DealerInventory {
         dealersConfig.set(path + ".world", location.getWorld().getName());
         dealersConfig.set(path + ".chunkX", chunk.getX());
         dealersConfig.set(path + ".chunkZ", chunk.getZ());
-        dealersConfig.set(path + ".gameType", gameType);
 
         try {
             dealersConfig.save(dealersFile);
