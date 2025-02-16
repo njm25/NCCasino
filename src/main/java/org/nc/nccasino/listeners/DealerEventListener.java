@@ -79,7 +79,7 @@ public class DealerEventListener implements Listener {
 
     @EventHandler
     public void onEntityPickupItem(EntityPickupItemEvent event) {
-            if (Dealer.isDealer((Mob)event.getEntity())) {
+            if (event.getEntity() instanceof Mob&& Dealer.isDealer((Mob)event.getEntity())) {
                 event.setCancelled(true); // Prevent dealer foxes from picking up items
         }
     }
