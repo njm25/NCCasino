@@ -14,6 +14,7 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.nc.nccasino.Nccasino;
@@ -125,7 +126,7 @@ public class MinesMenu extends Menu {
 
 
     @Override
-    protected void handleCustomClick(SlotOption option, Player player) {
+    protected void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
         UUID playerId = player.getUniqueId();
         if (!MAInventories.containsKey(playerId)) return;
         //event.setCancelled(true); // Default behavior: prevent unintended interactions

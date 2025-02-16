@@ -6,6 +6,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
@@ -79,7 +80,7 @@ public class GameOptionsMenu extends Menu {
     }
 
     @Override
-    protected void handleCustomClick(SlotOption option, Player player) {
+    protected void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
   
         String gameType;
         switch (option) {

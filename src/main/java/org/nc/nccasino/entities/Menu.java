@@ -8,6 +8,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.components.MobSelectionMenu;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,7 +38,10 @@ public abstract class Menu extends DealerInventory {
         STAND_17,
         NUMBER_OF_DECKS,
         YES,
-        NO
+        NO,
+        PAGE_TOGGLE,
+        VARIANT,
+        AGE_TOGGLE
     }
 
     protected final Map<SlotOption, Integer> slotMapping = new HashMap<>();
@@ -83,22 +87,24 @@ public abstract class Menu extends DealerInventory {
     protected abstract void initializeMenu();
 
     @Override
-    public void handleClick(int slot, Player player, InventoryClickEvent event) {
+    public void handleClick(int slot, Player player, InventoryClickEvent event) {     
+        if (this instanceof MobSelectionMenu) {
+            ((MobSelectionMenu) this).handleEntityClick(player, event);
+        }
         SlotOption option = getKeyByValue(slotMapping, slot);
         if (option == null) return;
         
         switch (option) {
             case EXIT -> handleExit(player);
             case RETURN -> executeReturn(player);
-            default -> handleCustomClick(option, player);
+            default -> handleCustomClick(option, player, event);
         }
     }
     
     /**
      * Handles custom slot actions that subclasses should implement.
      */
-    protected abstract void handleCustomClick(SlotOption option, Player player);
-    
+    protected abstract void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event);
     
     /**
      * Handles returning to the previous menu if a return callback exists.

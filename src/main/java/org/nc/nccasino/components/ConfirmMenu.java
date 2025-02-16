@@ -7,6 +7,7 @@ import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.helpers.SoundHelper;
@@ -51,7 +52,7 @@ public class ConfirmMenu extends Menu {
 
 
     @Override
-    protected void handleCustomClick(SlotOption option, Player player) {
+    protected void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
         switch (option) {
             case YES:
                 playDefaultSound(player);
