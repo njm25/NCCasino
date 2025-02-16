@@ -14,6 +14,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.components.AdminMenu;
 import org.nc.nccasino.components.AnimationMessage;
@@ -238,8 +239,12 @@ public class DealerInteractListener implements Listener {
                         break;}
                 }
             }
-        
-            return;
+            else if(event.isShiftClick() && event.getInventory().getHolder() instanceof AdminMenu){
+                AdminMenu menu = (AdminMenu) event.getInventory().getHolder();
+                ItemStack item = event.getCurrentItem();
+                menu.handleDrag(item, player, event); 
+                return;
+            }
         }
         else if (event.getClickedInventory() != null) {
             if(event.getSlot() == -999){

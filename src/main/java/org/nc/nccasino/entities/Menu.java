@@ -41,7 +41,25 @@ public abstract class Menu extends DealerInventory {
         NO,
         PAGE_TOGGLE,
         VARIANT,
-        AGE_TOGGLE
+        AGE_TOGGLE,
+        EDIT_DISPLAY_NAME,
+        EDIT_GAME_TYPE,
+        MOVE_DEALER,
+        DELETE_DEALER,
+        TOGGLE_CURRENCY_MODE,
+        EDIT_CURRENCY,
+        //USE_VAULT,
+        GAME_OPTIONS,
+        EDIT_ANIMATION_MESSAGE,
+        CHIP_SIZE1,
+        CHIP_SIZE2,
+        CHIP_SIZE3,
+        CHIP_SIZE4,
+        CHIP_SIZE5,
+        PM,
+        //CHANGE_BIOME,
+        MOB_SELECTION,
+        TEST_MENU
     }
 
     protected final Map<SlotOption, Integer> slotMapping = new HashMap<>();
@@ -50,6 +68,7 @@ public abstract class Menu extends DealerInventory {
     protected final Nccasino plugin;
     protected final Consumer<Player> returnCallback;
     protected final String returnMessage;
+    protected final Player player;
     protected final Map<UUID, Boolean> clickAllowed = new HashMap<>();
 
     /**
@@ -74,6 +93,7 @@ public abstract class Menu extends DealerInventory {
         this.ownerId = player.getUniqueId();
         this.plugin = plugin;
         this.returnMessage = returnMessage;
+        this.player = player;
         this.returnCallback = returnCallback;
 
         // Register this menu as an event listener
