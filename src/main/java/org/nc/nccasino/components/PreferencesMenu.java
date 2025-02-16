@@ -2,6 +2,7 @@ package org.nc.nccasino.components;
 
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.helpers.Preferences;
@@ -38,7 +39,7 @@ public class PreferencesMenu extends Menu {
     }
 
     @Override
-    protected void handleCustomClick(SlotOption option, Player player) {
+    protected void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
         UUID playerId = player.getUniqueId();
         Preferences preferences = plugin.getPreferences(playerId);
         switch (option) {

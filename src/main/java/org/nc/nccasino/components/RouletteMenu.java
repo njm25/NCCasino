@@ -14,6 +14,7 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.nc.nccasino.Nccasino;
@@ -123,7 +124,7 @@ public class RouletteMenu extends Menu {
 
 
     @Override
-    public void handleCustomClick(SlotOption option, Player player) {
+    public void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
         UUID playerId = player.getUniqueId();
         if (!RAInventories.containsKey(playerId)) return;
 
