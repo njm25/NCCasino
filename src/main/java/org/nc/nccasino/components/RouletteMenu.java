@@ -290,13 +290,6 @@ public class RouletteMenu extends DealerInventory {
         cleanup();
     }
 
-    private void denyAction(Player player, String message) {
-        if (SoundHelper.getSoundSafely("entity.villager.no",player) != null) {
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
-        }
-        player.sendMessage("§c" + message);
-    }
-    
     public void delete() {
         cleanup();
    
