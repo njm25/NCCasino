@@ -14,42 +14,23 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
-import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.entities.DealerInventory;
+import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
 import net.md_5.bungee.api.ChatColor;
 
-public class BlackjackMenu extends DealerInventory {
-    private final UUID ownerId;
-    private final Consumer<UUID> ret;
+public class BlackjackMenu extends Menu {
     private UUID dealerId;
     private Nccasino plugin;
     private String returnName;
     private Mob dealer;
     public static final Map<UUID, BlackjackMenu> BAInventories = new HashMap<>();
 
-    private enum SlotOption {
-        RETURN,
-        EDIT_TIMER,
-        STAND_17,
-        NUMBER_OF_DECKS,
-        EXIT
-     }
-     private final Map<SlotOption, Integer> slotMapping = new HashMap<>() {{
-        put(SlotOption.EXIT, 0);
-        put(SlotOption.RETURN, 1);
-        put(SlotOption.EDIT_TIMER, 2);
-        put(SlotOption.STAND_17, 3);
-        put(SlotOption.NUMBER_OF_DECKS, 4);
-     }};
-
-    public BlackjackMenu(UUID dealerId,Player player, String title, Consumer<UUID> ret, Nccasino plugin,String returnName) {
-        super(player.getUniqueId(), 9, title);
-        this.ret = ret;
+    public BlackjackMenu(UUID dealerId,Player player, String title, Consumer<Player> ret, Nccasino plugin,String returnName) {
+        super(player, plugin, dealerId, title, 9, returnName, ret);
         this.dealerId = dealerId;
         this.plugin = plugin;
         this.returnName=returnName;
@@ -64,21 +45,22 @@ public class BlackjackMenu extends DealerInventory {
                              && Dealer.getUniqueId(v).equals(this.dealerId))
                 .findFirst().orElse(null);
         }
-        registerListener();
-        this.ownerId = player.getUniqueId();  // Store the player's ID
+
+        slotMapping.put(SlotOption.EXIT, 0);
+        slotMapping.put(SlotOption.RETURN, 1);
+        slotMapping.put(SlotOption.EDIT_TIMER, 2);
+        slotMapping.put(SlotOption.STAND_17, 3);
+        slotMapping.put(SlotOption.NUMBER_OF_DECKS, 4);
 
         BAInventories.put(this.ownerId, this);
-        initalizeMenu();
-    }
-
-    private void registerListener() {
-        Bukkit.getPluginManager().registerEvents(this, plugin);
+        initializeMenu();
     }
 
     private void unregisterListener() {
         InventoryCloseEvent.getHandlerList().unregister(this);
     }
 
+    @Override
     public void cleanup() {
         // 1) Unregister all event handlers for this instance
         HandlerList.unregisterAll(this);
@@ -90,9 +72,11 @@ public class BlackjackMenu extends DealerInventory {
         AdminMenu.timerEditMode.remove(ownerId);
         AdminMenu.standOn17Mode.remove(ownerId);
         AdminMenu.decksEditMode.remove(ownerId);
+        this.delete();
     }
 
-    private void initalizeMenu(){
+    @Override
+    protected void initializeMenu(){
         String internalName = Dealer.getInternalName(dealer);
         FileConfiguration config = plugin.getConfig();
         int currentTimer = config.contains("dealers." + internalName + ".timer")? config.getInt("dealers." + internalName + ".timer"): 10; 
@@ -152,27 +136,11 @@ public class BlackjackMenu extends DealerInventory {
         }
     }
 
-    public void executeReturn() {
-        ret.accept(dealerId);
-        delete();
-    }
-
-
     @Override
-    public void handleClick(int slot, Player player, InventoryClickEvent event) {
+    protected void handleCustomClick(SlotOption option, Player player) {
         UUID playerId = player.getUniqueId();
         if (!BAInventories.containsKey(playerId)) return;
-        //event.setCancelled(true); // Default behavior: prevent unintended interactions
-
-        if (event.getClickedInventory() == null) return; 
-
-        SlotOption option = getKeyByValue(slotMapping, slot);
-        if(option!=null){
         switch (option) {
-            case RETURN:
-                playDefaultSound(player);
-                executeReturn();
-                break;
             case EDIT_TIMER:
                 handleEditTimer(player);
                 playDefaultSound(player);
@@ -184,11 +152,7 @@ public class BlackjackMenu extends DealerInventory {
             case NUMBER_OF_DECKS:
                 handleEditDecks(player);
                 playDefaultSound(player);
-                break; 
-            case EXIT:
-                handleExit(player);
-                playDefaultSound(player);
-                break;   
+                break;  
             default:
                 if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -203,22 +167,7 @@ public class BlackjackMenu extends DealerInventory {
                     }
                 }
                 break;
-            }
         }
-    }
-
-    private void handleExit(Player player) {
-        player.closeInventory();
-        delete();
-    }
-
-    public static <K, V> K getKeyByValue(Map<K, V> map, V value) {
-        for (Map.Entry<K, V> entry : map.entrySet()) {
-            if (entry.getValue().equals(value)) {
-                return entry.getKey();
-            }
-        }
-        return null; 
     }
 
     private void handleEditStand(Player player) {
@@ -359,13 +308,4 @@ public class BlackjackMenu extends DealerInventory {
 
         cleanup();
     }
-
-    
-    public void delete() {
-        cleanup();
-   
-        super.delete(); 
-        // super.delete() removes from DealerInventory.inventories & clears the Inventory
-    }
-
 }
