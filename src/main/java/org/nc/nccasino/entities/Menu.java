@@ -32,7 +32,8 @@ public abstract class Menu extends DealerInventory {
         BLACKJACK,
         ROULETTE,
         MINES,
-        EDIT_MINES
+        EDIT_MINES,
+        EDIT_TIMER,
     }
 
     protected final Map<SlotOption, Integer> slotMapping = new HashMap<>();
