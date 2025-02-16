@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class AnimationTable extends DealerInventory {
+public class AnimationMessage extends DealerInventory {
     private final MultiChannelEngine mce;
     private final Inventory inventory;
     private final UUID playerId;
@@ -36,7 +36,7 @@ public class AnimationTable extends DealerInventory {
 
    
 
-    public AnimationTable(Player player, Nccasino plugin, String animationMessage, int index) {
+    public AnimationMessage(Player player, Nccasino plugin, String animationMessage, int index) {
         super(player.getUniqueId(), 54, "");
 
         this.playerId = player.getUniqueId();

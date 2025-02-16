@@ -23,14 +23,14 @@ import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
 import net.md_5.bungee.api.ChatColor;
 
-public class BlackjackAdminInventory extends DealerInventory {
+public class BlackjackMenu extends DealerInventory {
     private final UUID ownerId;
     private final Consumer<UUID> ret;
     private UUID dealerId;
     private Nccasino plugin;
     private String returnName;
     private Mob dealer;
-    public static final Map<UUID, BlackjackAdminInventory> BAInventories = new HashMap<>();
+    public static final Map<UUID, BlackjackMenu> BAInventories = new HashMap<>();
 
     private enum SlotOption {
         RETURN,
@@ -47,7 +47,7 @@ public class BlackjackAdminInventory extends DealerInventory {
         put(SlotOption.NUMBER_OF_DECKS, 4);
      }};
 
-    public BlackjackAdminInventory(UUID dealerId,Player player, String title, Consumer<UUID> ret, Nccasino plugin,String returnName) {
+    public BlackjackMenu(UUID dealerId,Player player, String title, Consumer<UUID> ret, Nccasino plugin,String returnName) {
         super(player.getUniqueId(), 9, title);
         this.ret = ret;
         this.dealerId = dealerId;
@@ -87,9 +87,9 @@ public class BlackjackAdminInventory extends DealerInventory {
         BAInventories.remove(ownerId);
 
         // 3) Remove player references from the specialized maps
-        AdminInventory.timerEditMode.remove(ownerId);
-        AdminInventory.standOn17Mode.remove(ownerId);
-        AdminInventory.decksEditMode.remove(ownerId);
+        AdminMenu.timerEditMode.remove(ownerId);
+        AdminMenu.standOn17Mode.remove(ownerId);
+        AdminMenu.decksEditMode.remove(ownerId);
     }
 
     private void initalizeMenu(){
@@ -108,22 +108,22 @@ public class BlackjackAdminInventory extends DealerInventory {
 
     public boolean isPlayerOccupied(UUID playerId){
         return 
-            !AdminInventory.timerEditMode.containsKey(playerId) &&
-            !AdminInventory.standOn17Mode.containsKey(playerId) &&
-            !AdminInventory.decksEditMode.containsKey(playerId);
+            !AdminMenu.timerEditMode.containsKey(playerId) &&
+            !AdminMenu.standOn17Mode.containsKey(playerId) &&
+            !AdminMenu.decksEditMode.containsKey(playerId);
     }
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
         Player player = (Player) event.getPlayer();
         UUID playerId = player.getUniqueId();
-        if(event.getInventory().getHolder() instanceof BlackjackAdminInventory){
+        if(event.getInventory().getHolder() instanceof BlackjackMenu){
         // Check if the player has an active AdminInventory
             if (BAInventories.containsKey(playerId)) {
                     // Check if the player is currently editing something
                 if (isPlayerOccupied(playerId)) {
                     // Remove the AdminInventory and clean up references
-                    BlackjackAdminInventory inventory = BAInventories.remove(playerId);
+                    BlackjackMenu inventory = BAInventories.remove(playerId);
 
                     if (inventory != null) {
                         inventory.cleanup();
@@ -137,10 +137,10 @@ public class BlackjackAdminInventory extends DealerInventory {
                 }
 
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    if (player.getOpenInventory().getTopInventory().getHolder() instanceof AdminInventory) {
+                    if (player.getOpenInventory().getTopInventory().getHolder() instanceof AdminMenu) {
                         return;
                     }
-                    AdminInventory temp=AdminInventory.adminInventories.get(player.getUniqueId());
+                    AdminMenu temp=AdminMenu.adminInventories.get(player.getUniqueId());
                     if(temp!=null){
                         if(temp.getDealerId()==dealerId){
                             temp.delete();
@@ -223,8 +223,8 @@ public class BlackjackAdminInventory extends DealerInventory {
 
     private void handleEditStand(Player player) {
         UUID playerId = player.getUniqueId();
-        AdminInventory.localMob.put(playerId, dealer);
-        AdminInventory.standOn17Mode.put(playerId, dealer);
+        AdminMenu.localMob.put(playerId, dealer);
+        AdminMenu.standOn17Mode.put(playerId, dealer);
         player.closeInventory();
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
@@ -242,8 +242,8 @@ public class BlackjackAdminInventory extends DealerInventory {
 
     private void handleEditDecks(Player player) {
         UUID playerId = player.getUniqueId();
-        AdminInventory.localMob.put(playerId, dealer);
-        AdminInventory.decksEditMode.put(playerId, dealer);
+        AdminMenu.localMob.put(playerId, dealer);
+        AdminMenu.decksEditMode.put(playerId, dealer);
         player.closeInventory();
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
@@ -262,8 +262,8 @@ public class BlackjackAdminInventory extends DealerInventory {
 
     private void handleEditTimer(Player player) {
         UUID playerId = player.getUniqueId();
-        AdminInventory.localMob.put(playerId, dealer);
-        AdminInventory.timerEditMode.put(playerId, dealer);
+        AdminMenu.localMob.put(playerId, dealer);
+        AdminMenu.timerEditMode.put(playerId, dealer);
         player.closeInventory();
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
@@ -288,7 +288,7 @@ public class BlackjackAdminInventory extends DealerInventory {
             cleanup();
             return;
         }
-         if (AdminInventory.timerEditMode.get(playerId) != null) {
+         if (AdminMenu.timerEditMode.get(playerId) != null) {
             event.setCancelled(true);
             String newTimer = event.getMessage().trim();
 
@@ -313,7 +313,7 @@ public class BlackjackAdminInventory extends DealerInventory {
                         break;
                     }
                 }
-                AdminInventory.localMob.remove(playerId);
+                AdminMenu.localMob.remove(playerId);
             } else {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
@@ -331,7 +331,7 @@ public class BlackjackAdminInventory extends DealerInventory {
                 
             cleanup();
         }
-        else if(AdminInventory.standOn17Mode.get(playerId) != null) {
+        else if(AdminMenu.standOn17Mode.get(playerId) != null) {
             event.setCancelled(true);
             String newTimer = event.getMessage().trim();
 
@@ -356,7 +356,7 @@ public class BlackjackAdminInventory extends DealerInventory {
                         break;
                     }
                 }
-                AdminInventory.localMob.remove(playerId);
+                AdminMenu.localMob.remove(playerId);
             } else {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
@@ -374,7 +374,7 @@ public class BlackjackAdminInventory extends DealerInventory {
                 
             cleanup();
         }
-        else if(AdminInventory.decksEditMode.get(playerId) != null) {
+        else if(AdminMenu.decksEditMode.get(playerId) != null) {
             event.setCancelled(true);
             String newDecks = event.getMessage().trim();
 
@@ -399,7 +399,7 @@ public class BlackjackAdminInventory extends DealerInventory {
                         break;
                     }
                 }
-                AdminInventory.localMob.remove(playerId);
+                AdminMenu.localMob.remove(playerId);
             } else {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{

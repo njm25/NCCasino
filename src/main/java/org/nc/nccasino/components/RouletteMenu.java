@@ -23,14 +23,14 @@ import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
 import net.md_5.bungee.api.ChatColor;
 
-public class RouletteAdminInventory extends DealerInventory {
+public class RouletteMenu extends DealerInventory {
     private final UUID ownerId;
     private final Consumer<UUID> ret;
     private UUID dealerId;
     private Nccasino plugin;
     private String returnName;
     private Mob dealer;
-    public static final Map<UUID, RouletteAdminInventory> RAInventories = new HashMap<>();
+    public static final Map<UUID, RouletteMenu> RAInventories = new HashMap<>();
 
 
     private enum SlotOption {
@@ -44,7 +44,7 @@ public class RouletteAdminInventory extends DealerInventory {
         put(SlotOption.EDIT_TIMER, 2);
      }};
 
-    public RouletteAdminInventory(UUID dealerId,Player player, String title, Consumer<UUID> ret, Nccasino plugin,String returnName) {
+    public RouletteMenu(UUID dealerId,Player player, String title, Consumer<UUID> ret, Nccasino plugin,String returnName) {
         super(player.getUniqueId(), 9, title);
         this.ret = ret;
         this.dealerId = dealerId;
@@ -84,7 +84,7 @@ public class RouletteAdminInventory extends DealerInventory {
         RAInventories.remove(ownerId);
 
         // 3) Remove player references from the specialized maps
-        AdminInventory.timerEditMode.remove(ownerId);
+        AdminMenu.timerEditMode.remove(ownerId);
     }
 
     private void initalizeMenu(){
@@ -102,13 +102,13 @@ public class RouletteAdminInventory extends DealerInventory {
     public void onInventoryClose(InventoryCloseEvent event) {
         Player player = (Player) event.getPlayer();
         UUID playerId = player.getUniqueId();
-        if(event.getInventory().getHolder() instanceof RouletteAdminInventory){
+        if(event.getInventory().getHolder() instanceof RouletteMenu){
         // Check if the player has an active AdminInventory
             if (RAInventories.containsKey(playerId)) {
                     // Check if the player is currently editing something
-                if (!AdminInventory.timerEditMode.containsKey(playerId)) {
+                if (!AdminMenu.timerEditMode.containsKey(playerId)) {
                     // Remove the AdminInventory and clean up references
-                    RouletteAdminInventory inventory = RAInventories.remove(playerId);
+                    RouletteMenu inventory = RAInventories.remove(playerId);
 
                     if (inventory != null) {
                         inventory.cleanup();
@@ -122,10 +122,10 @@ public class RouletteAdminInventory extends DealerInventory {
                 }
 
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    if (player.getOpenInventory().getTopInventory().getHolder() instanceof AdminInventory) {
+                    if (player.getOpenInventory().getTopInventory().getHolder() instanceof AdminMenu) {
                         return;
                     }
-                    AdminInventory temp=AdminInventory.adminInventories.get(player.getUniqueId());
+                    AdminMenu temp=AdminMenu.adminInventories.get(player.getUniqueId());
                     if(temp!=null){
                         if(temp.getDealerId()==dealerId){
                             temp.delete();
@@ -200,8 +200,8 @@ public class RouletteAdminInventory extends DealerInventory {
 
     private void handleEditTimer(Player player) {
         UUID playerId = player.getUniqueId();
-        AdminInventory.localMob.put(player.getUniqueId(), dealer);
-        AdminInventory.timerEditMode.put(playerId, dealer);
+        AdminMenu.localMob.put(player.getUniqueId(), dealer);
+        AdminMenu.timerEditMode.put(playerId, dealer);
         player.closeInventory();
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
@@ -226,7 +226,7 @@ public class RouletteAdminInventory extends DealerInventory {
             cleanup();
             return;
         }
-         if (AdminInventory.timerEditMode.get(playerId) != null) {
+         if (AdminMenu.timerEditMode.get(playerId) != null) {
             event.setCancelled(true);
             String newTimer = event.getMessage().trim();
 
@@ -265,7 +265,7 @@ public class RouletteAdminInventory extends DealerInventory {
                 }
             }
 
-            AdminInventory.localMob.remove(playerId);
+            AdminMenu.localMob.remove(playerId);
 
             cleanup();
         }

@@ -21,7 +21,7 @@ import java.util.function.Consumer;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
-public class GameOptionsInventory extends DealerInventory {
+public class GameOptionsMenu extends DealerInventory {
 
     private final Nccasino plugin;
     private final String internalName;
@@ -37,7 +37,7 @@ public class GameOptionsInventory extends DealerInventory {
         MINES
     }
   private final Map<SlotOption, Integer> slotMapping = new HashMap<>();
-    public GameOptionsInventory(Nccasino plugin, String internalName) {
+    public GameOptionsMenu(Nccasino plugin, String internalName) {
         super(UUID.randomUUID(), 9, "Select Game Type");
         this.plugin = plugin;
         this.internalName = internalName;
@@ -50,7 +50,7 @@ public class GameOptionsInventory extends DealerInventory {
         initializeMenu();
     }
 
-    public GameOptionsInventory(Nccasino plugin, Mob dealer, Consumer<UUID> ret) {
+    public GameOptionsMenu(Nccasino plugin, Mob dealer, Consumer<UUID> ret) {
         super(UUID.randomUUID(), 9, "Edit Game Type");
         this.plugin = plugin;
         this.internalName = Dealer.getInternalName(dealer);
@@ -185,7 +185,7 @@ public class GameOptionsInventory extends DealerInventory {
         String internalName = Dealer.getInternalName(dealer);
 
 
-        ConfirmInventory confirmInventory = new ConfirmInventory(
+        ConfirmMenu confirmInventory = new ConfirmMenu(
             dealerId,
             "Reset config to default?",
             (uuid) -> {

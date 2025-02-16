@@ -23,14 +23,14 @@ import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
 import net.md_5.bungee.api.ChatColor;
 
-public class MinesAdminInventory extends DealerInventory {
+public class MinesMenu extends DealerInventory {
     private final UUID ownerId;
     private final Consumer<UUID> ret;
     private UUID dealerId;
     private Nccasino plugin;
     private String returnName;
     private Mob dealer;
-    public static final Map<UUID, MinesAdminInventory> MAInventories = new HashMap<>();
+    public static final Map<UUID, MinesMenu> MAInventories = new HashMap<>();
 
 
     private enum SlotOption {
@@ -44,7 +44,7 @@ public class MinesAdminInventory extends DealerInventory {
         put(SlotOption.EDIT_MINES, 2);
      }};
 
-    public MinesAdminInventory(UUID dealerId,Player player, String title, Consumer<UUID> ret, Nccasino plugin,String returnName) {
+    public MinesMenu(UUID dealerId,Player player, String title, Consumer<UUID> ret, Nccasino plugin,String returnName) {
         super(player.getUniqueId(), 9, title);
         this.ret = ret;
         this.dealerId = dealerId;
@@ -84,7 +84,7 @@ public class MinesAdminInventory extends DealerInventory {
         MAInventories.remove(ownerId);
 
         // 3) Remove player references from the specialized maps
-        AdminInventory.editMinesMode.remove(ownerId);
+        AdminMenu.editMinesMode.remove(ownerId);
     }
 
     private void initalizeMenu(){
@@ -101,13 +101,13 @@ public class MinesAdminInventory extends DealerInventory {
     public void onInventoryClose(InventoryCloseEvent event) {
         Player player = (Player) event.getPlayer();
         UUID playerId = player.getUniqueId();
-        if(event.getInventory().getHolder() instanceof MinesAdminInventory){
+        if(event.getInventory().getHolder() instanceof MinesMenu){
         // Check if the player has an active AdminInventory
             if (MAInventories.containsKey(playerId)) {
                     // Check if the player is currently editing something
-                if (!AdminInventory.editMinesMode.containsKey(playerId)) {
+                if (!AdminMenu.editMinesMode.containsKey(playerId)) {
                     // Remove the AdminInventory and clean up references
-                    MinesAdminInventory inventory = MAInventories.remove(playerId);
+                    MinesMenu inventory = MAInventories.remove(playerId);
 
                     if (inventory != null) {
                         inventory.cleanup();
@@ -121,10 +121,10 @@ public class MinesAdminInventory extends DealerInventory {
                 }
 
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    if (player.getOpenInventory().getTopInventory().getHolder() instanceof AdminInventory) {
+                    if (player.getOpenInventory().getTopInventory().getHolder() instanceof AdminMenu) {
                         return;
                     }
-                    AdminInventory temp=AdminInventory.adminInventories.get(player.getUniqueId());
+                    AdminMenu temp=AdminMenu.adminInventories.get(player.getUniqueId());
                     if(temp!=null){
                         if(temp.getDealerId()==dealerId){
                             temp.delete();
@@ -199,8 +199,8 @@ public class MinesAdminInventory extends DealerInventory {
 
     private void handleEditMines(Player player) {
         UUID playerId = player.getUniqueId();
-        AdminInventory.localMob.put(player.getUniqueId(), dealer);
-        AdminInventory.editMinesMode.put(playerId, dealer);
+        AdminMenu.localMob.put(player.getUniqueId(), dealer);
+        AdminMenu.editMinesMode.put(playerId, dealer);
         player.closeInventory();
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
@@ -225,7 +225,7 @@ public class MinesAdminInventory extends DealerInventory {
             cleanup();
             return;
         }
-         if (AdminInventory.editMinesMode.get(playerId) != null) {
+         if (AdminMenu.editMinesMode.get(playerId) != null) {
             event.setCancelled(true);
             String newTimer = event.getMessage().trim();
 
@@ -264,7 +264,7 @@ public class MinesAdminInventory extends DealerInventory {
                 }
             }
 
-            AdminInventory.localMob.remove(playerId);
+            AdminMenu.localMob.remove(playerId);
 
             cleanup();
         }

@@ -11,13 +11,13 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.SoundHelper;
-public class ConfirmInventory extends DealerInventory {
+public class ConfirmMenu extends DealerInventory {
     private final Consumer<UUID> confirm;
     private final Consumer<UUID> cancel;
     private UUID dealerId;
     private Nccasino plugin;
 
-    public ConfirmInventory(UUID dealerId, String title, Consumer<UUID> confirm, Consumer<UUID> cancel, Nccasino plugin) {
+    public ConfirmMenu(UUID dealerId, String title, Consumer<UUID> confirm, Consumer<UUID> cancel, Nccasino plugin) {
         super(dealerId, 9, title);
         this.confirm = confirm;
         this.cancel = cancel;

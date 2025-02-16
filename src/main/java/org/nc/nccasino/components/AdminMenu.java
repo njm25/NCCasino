@@ -54,7 +54,7 @@ import org.nc.nccasino.helpers.SoundHelper;
 
 import net.md_5.bungee.api.ChatColor;
 
-public class AdminInventory extends DealerInventory {
+public class AdminMenu extends DealerInventory {
 
     /**
      * We store a reference to the "owner" Player's UUID so we know
@@ -78,7 +78,7 @@ public class AdminInventory extends DealerInventory {
     private static final Map<UUID, Mob> currencyEditMode = new HashMap<>();
     public static final Map<UUID, Mob> decksEditMode = new HashMap<>();
     // All active AdminInventories by player ID
-    public static final Map<UUID, AdminInventory> adminInventories = new HashMap<>();
+    public static final Map<UUID, AdminMenu> adminInventories = new HashMap<>();
     private Preferences.MessageSetting messPref;
     // Tracks which dealer is being edited by which player
     public static final Map<UUID, Mob> localMob = new HashMap<>();
@@ -123,7 +123,7 @@ public class AdminInventory extends DealerInventory {
     /**
      * Constructor: creates an AdminInventory for a specific dealer, owned by a specific player.
      */
-    public AdminInventory(UUID dealerId, Player player, Nccasino plugin) {
+    public AdminMenu(UUID dealerId, Player player, Nccasino plugin) {
         super(player.getUniqueId(), 45, 
         
             Dealer.getInternalName((Mob) player.getWorld()
@@ -249,7 +249,7 @@ public class AdminInventory extends DealerInventory {
 
         addItem(head,slotMapping.get(SlotOption.PM) );
         updateCurrencyButtons();
-        Material mobEgg = MobSelectionInventory.getSpawnEggFor(dealer.getType());
+        Material mobEgg = MobSelectionMenu.getSpawnEggFor(dealer.getType());
 
         // Now display that egg item in the slot
         List<String> lore = getMobSelectionLore(dealer);
@@ -341,7 +341,7 @@ public class AdminInventory extends DealerInventory {
     public void onInventoryClick(InventoryClickEvent event) {
         Player player = (Player) event.getWhoClicked();
 
-        if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory()) && event.getInventory().getHolder() instanceof AdminInventory) {
+        if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory()) && event.getInventory().getHolder() instanceof AdminMenu) {
             // By default, SHIFT-click will attempt to move items into the top inventory
             if(event.isShiftClick()){
                 ItemStack item = event.getCurrentItem();
@@ -459,11 +459,11 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
     }
     private void handleMobSelection(Player player) {
-        MobSelectionInventory mobSelectionInventory = new MobSelectionInventory(player, plugin, dealerId, (p) -> {
+        MobSelectionMenu mobSelectionInventory = new MobSelectionMenu(player, plugin, dealerId, (p) -> {
             if (adminInventories.containsKey(player.getUniqueId())) {
                 player.openInventory(adminInventories.get(player.getUniqueId()).getInventory());
             } else {
-                AdminInventory newAdminInventory = new AdminInventory(dealerId, player, plugin);
+                AdminMenu newAdminInventory = new AdminMenu(dealerId, player, plugin);
                 player.openInventory(newAdminInventory.getInventory());
             }
         }, Dealer.getInternalName(dealer) + "'s Admin Menu");
@@ -476,11 +476,11 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             PlayerMenu pm = new PlayerMenu(player, plugin,dealerId, (p) -> {
 
 
-                if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
-                    AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+                    AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
                     player.openInventory(adminInventory.getInventory());
                 } else {
-                    AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                    AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
                     player.openInventory(adminInventory.getInventory());
                 }
             },
@@ -502,18 +502,18 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     private void handleGameOptions(Player player, String currentGame) {
         switch(currentGame){
             case "Mines":{
-                MinesAdminInventory minesAdminInventory = new MinesAdminInventory(
+                MinesMenu minesAdminInventory = new MinesMenu(
                     dealerId,
                     player,
                     Dealer.getInternalName(dealer)+ "'s Mines Settings",
                     (uuid) -> {
 
                         // Cancel action: re-open the AdminInventory
-                        if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
-                            AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                        if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
                             player.openInventory(adminInventory.getInventory());
                         } else {
-                            AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                            AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
                             player.openInventory(adminInventory.getInventory());
                         }
         
@@ -531,18 +531,18 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 break;
             }
             case "Roulette":{
-                RouletteAdminInventory rouletteAdminInventory = new RouletteAdminInventory(
+                RouletteMenu rouletteAdminInventory = new RouletteMenu(
                     dealerId,
                     player,
                     Dealer.getInternalName(dealer)+ "'s Roulette Settings",
                     (uuid) -> {
         
                         // Cancel action: re-open the AdminInventory
-                        if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
-                            AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                        if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
                             player.openInventory(adminInventory.getInventory());
                         } else {
-                            AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                            AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
                             player.openInventory(adminInventory.getInventory());
                         }
         
@@ -561,18 +561,18 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 break;
             }
             case "Blackjack":{
-                BlackjackAdminInventory blackjackAdminInventory = new BlackjackAdminInventory(
+                BlackjackMenu blackjackAdminInventory = new BlackjackMenu(
                     dealerId,
                     player,
                     Dealer.getInternalName(dealer)+ "'s Blackjack Settings",
                     (uuid) -> {
         
                         // Cancel action: re-open the AdminInventory
-                        if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
-                            AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                        if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
                             player.openInventory(adminInventory.getInventory());
                         } else {
-                            AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                            AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
                             player.openInventory(adminInventory.getInventory());
                         }
         
@@ -800,15 +800,15 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
     private void handleSelectGameType(Player player) {
         // Open the Game Options Inventory
-        GameOptionsInventory inventory = new GameOptionsInventory(plugin, dealer,
+        GameOptionsMenu inventory = new GameOptionsMenu(plugin, dealer,
         (uuid) -> {
         
             // Cancel action: re-open the AdminInventory
-            if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
-                AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+            if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+                AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
                 player.openInventory(adminInventory.getInventory());
             } else {
-                AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
                 player.openInventory(adminInventory.getInventory());
             }
 
@@ -843,7 +843,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
         if (deleteItem != null && deleteItem.getType() == Material.BARRIER) {
             // Open confirmation inventory
-            ConfirmInventory confirmInventory = new ConfirmInventory(
+            ConfirmMenu confirmInventory = new ConfirmMenu(
                     dealerId,
                     "Are you sure?",
                     (uuid) -> {
@@ -869,12 +869,12 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     (uuid) -> {
 
                         // Cancel action: re-open the AdminInventory
-                        if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
-                            AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                        if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
                             player.openInventory(adminInventory.getInventory());
                             localMob.remove(player.getUniqueId());
                         } else {
-                            AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                            AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
                             player.openInventory(adminInventory.getInventory());
                             localMob.remove(player.getUniqueId());
                         }
@@ -889,7 +889,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
     private void handleEditCurrency(Player player, InventoryClickEvent event) {
         UUID playerId = player.getUniqueId();
-        AdminInventory adminInv = adminInventories.get(playerId);
+        AdminMenu adminInv = adminInventories.get(playerId);
         
         if (adminInv.currencyMode == CurrencyMode.VAULT) {
             switch(messPref){
@@ -1164,7 +1164,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     String path = "dealers." + Dealer.getInternalName(dealer);
                     dealersConfig.set(path + ".chunkX", chunk.getX());
                     dealersConfig.set(path + ".chunkZ", chunk.getZ());
-                    dealersConfig.set(path + ".world", dealer.getWorld().getName());
+                    // Optionally store world name if needed
+                    // dealersConfig.set(path + ".world", dealer.getWorld().getName());
 
                     try {
                         dealersConfig.save(dealersFile);
@@ -1251,10 +1252,10 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
         Player player = (Player) event.getPlayer();
         UUID playerId = player.getUniqueId();
-        if(player.getOpenInventory().getTopInventory().getHolder() instanceof AdminInventory){
+        if(player.getOpenInventory().getTopInventory().getHolder() instanceof AdminMenu){
             return;
         }
-        if(!(event.getInventory().getHolder() instanceof AdminInventory)){
+        if(!(event.getInventory().getHolder() instanceof AdminMenu)){
             return;
         }
         // Check if the player has an active AdminInventory
@@ -1263,7 +1264,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             // Check if the player is currently editing something
             if (!isPlayerOccupied(playerId)) {
                 // Remove the AdminInventory and clean up references
-                AdminInventory inventory = adminInventories.remove(playerId);
+                AdminMenu inventory = adminInventories.remove(playerId);
                 
                 if (inventory != null) {
                     inventory.unregisterListener();

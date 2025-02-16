@@ -15,8 +15,8 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.Inventory;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.components.AdminInventory;
-import org.nc.nccasino.components.AnimationTable;
+import org.nc.nccasino.components.AdminMenu;
+import org.nc.nccasino.components.AnimationMessage;
 import org.nc.nccasino.components.PlayerMenu;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Dealer;
@@ -80,8 +80,8 @@ public class DealerInteractListener implements Listener {
             return;
         }
 
-        List<String> occupations = AdminInventory.playerOccupations(player.getUniqueId());
-        List<Mob> mobs = AdminInventory.getOccupiedDealers(player.getUniqueId())
+        List<String> occupations = AdminMenu.playerOccupations(player.getUniqueId());
+        List<Mob> mobs = AdminMenu.getOccupiedDealers(player.getUniqueId())
             .stream()
             .filter(v -> v != null && !v.isDead() && v.isValid()) // Ensure valid villagers
             .toList();
@@ -132,8 +132,8 @@ public class DealerInteractListener implements Listener {
     }
 
     private void handleAdminInventory(Player player, UUID dealerId) {
-        if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
-            AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+        if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+            AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
 
             if (adminInventory.getDealerId().equals(dealerId)) {
                 player.openInventory(adminInventory.getInventory());
@@ -141,7 +141,7 @@ public class DealerInteractListener implements Listener {
                 Bukkit.getLogger().warning("Error: adminInventory's dealerId does not match the dealerId of entity interacted with");
             }
         } else {
-            AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+            AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
             player.openInventory(adminInventory.getInventory());
         }
     }
@@ -205,7 +205,7 @@ public class DealerInteractListener implements Listener {
         activeAnimations.add(player);
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
+            AnimationMessage animationTable = new AnimationMessage(player, plugin, animationMessage, 0);
             player.openInventory(animationTable.getInventory());
 
             animationTable.animateMessage(player, () -> afterAnimationComplete(player, dealerInventory));
@@ -237,7 +237,7 @@ public class DealerInteractListener implements Listener {
 
             MessageSetting settings = plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             
-            if(event.isShiftClick() && !(event.getInventory().getHolder() instanceof AdminInventory)){
+            if(event.isShiftClick() && !(event.getInventory().getHolder() instanceof AdminMenu)){
                     
                 switch(settings)
                 {

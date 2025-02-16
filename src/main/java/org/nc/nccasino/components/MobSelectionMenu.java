@@ -49,7 +49,7 @@ import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.DealerInventory;
 
-public class MobSelectionInventory extends DealerInventory {
+public class MobSelectionMenu extends DealerInventory {
     private final UUID ownerId;
     private final Consumer<Player> returnToAdmin;
     private final Nccasino plugin;
@@ -153,7 +153,7 @@ public class MobSelectionInventory extends DealerInventory {
         return entityToSpawnEgg.getOrDefault(type, Material.EGG);
     }
 
-    public MobSelectionInventory(Player player, Nccasino plugin, UUID dealerId, Consumer<Player> returnToAdmin, String returnName) {
+    public MobSelectionMenu(Player player, Nccasino plugin, UUID dealerId, Consumer<Player> returnToAdmin, String returnName) {
         super(player.getUniqueId(), 54, "Select Model for " +  Dealer.getInternalName((Mob) player.getWorld()
         .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
         .filter(entity -> entity instanceof Mob)
@@ -216,7 +216,7 @@ public class MobSelectionInventory extends DealerInventory {
 
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
-        if (event.getClickedInventory() == null || !(event.getInventory().getHolder() instanceof MobSelectionInventory)) {
+        if (event.getClickedInventory() == null || !(event.getInventory().getHolder() instanceof MobSelectionMenu)) {
             return;
         }
 
@@ -274,7 +274,7 @@ public class MobSelectionInventory extends DealerInventory {
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (event.getInventory().getHolder() instanceof MobSelectionInventory) {
+            if (event.getInventory().getHolder() instanceof MobSelectionMenu) {
                 if (event.getPlayer().getUniqueId().equals(ownerId)) {
                     HandlerList.unregisterAll(this);
                     super.delete();
@@ -301,7 +301,7 @@ public class MobSelectionInventory extends DealerInventory {
         chipSizes.sort(Integer::compareTo);
         String currencyMaterial = plugin.getConfig().getString("dealers." + internalName + ".currency.material");
         String currencyName = plugin.getConfig().getString("dealers." + internalName + ".currency.name");
-        ConfirmInventory confirmInventory = new ConfirmInventory(
+        ConfirmMenu confirmInventory = new ConfirmMenu(
             dealerId,
             "Reset config to default?",
             (uuid) -> {

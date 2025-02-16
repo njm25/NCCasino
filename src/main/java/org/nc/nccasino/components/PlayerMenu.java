@@ -152,7 +152,7 @@ public class PlayerMenu extends DealerInventory {
     }
 
     private void handlePreferencesMenu(Player player) {
-        PreferencesInventory pm = new PreferencesInventory(player, plugin,dealerId, (p) -> {
+        PreferencesMenu pm = new PreferencesMenu(player, plugin,dealerId, (p) -> {
 
 
             if (PlayerMenu.playerMenus.containsKey(player.getUniqueId())) {
@@ -162,11 +162,11 @@ public class PlayerMenu extends DealerInventory {
                 if(player.hasPermission("nccasino.playermenu")){
                     if (player.hasPermission("nccasino.adminmenu")){
                         PlayerMenu pmen = new PlayerMenu(player,plugin,dealerId,(a) -> {
-                            if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
-                                AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+                            if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+                                AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
                                 player.openInventory(adminInventory.getInventory());
                             } else {
-                                AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+                                AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
                                 player.openInventory(adminInventory.getInventory());
                             }
                         },

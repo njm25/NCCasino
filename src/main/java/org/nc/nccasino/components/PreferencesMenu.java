@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-public class PreferencesInventory extends DealerInventory {
+public class PreferencesMenu extends DealerInventory {
     private enum SlotOption {
         EXIT,
         RETURN,
@@ -38,14 +38,14 @@ public class PreferencesInventory extends DealerInventory {
         }
     };
     // Keep track of currently open PlayerMenus per-player
-    public static final Map<UUID, PreferencesInventory> preferencesInventories = new HashMap<>();
+    public static final Map<UUID, PreferencesMenu> preferencesInventories = new HashMap<>();
     private final UUID ownerId;
     private final UUID dealerId;
     private final Nccasino plugin;
     private final Consumer<Player> returnToPM;
 
 
-    public PreferencesInventory(Player player, Nccasino plugin,UUID dealerId, Consumer<Player> returnToPM) {
+    public PreferencesMenu(Player player, Nccasino plugin,UUID dealerId, Consumer<Player> returnToPM) {
         super(player.getUniqueId(), 9, "Preferences");
         this.dealerId=dealerId;
         this.ownerId = player.getUniqueId();
@@ -164,12 +164,12 @@ public class PreferencesInventory extends DealerInventory {
         if (event.getInventory().getHolder() instanceof PlayerMenu) {
             if (event.getPlayer().getUniqueId().equals(ownerId)) {
                 // Defer removing from static map so we don't get concurrency issues
-                if(event.getPlayer().getOpenInventory().getTopInventory().getHolder() instanceof PreferencesInventory){
+                if(event.getPlayer().getOpenInventory().getTopInventory().getHolder() instanceof PreferencesMenu){
                     return;
                 }
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     if (preferencesInventories.containsKey(ownerId)) {
-                        PreferencesInventory menu = preferencesInventories.get(ownerId);
+                        PreferencesMenu menu = preferencesInventories.get(ownerId);
                         if (menu != null && menu.equals(this)) {
                             // Remove from map
                             preferencesInventories.remove(ownerId);
