@@ -1164,8 +1164,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     String path = "dealers." + Dealer.getInternalName(dealer);
                     dealersConfig.set(path + ".chunkX", chunk.getX());
                     dealersConfig.set(path + ".chunkZ", chunk.getZ());
-                    // Optionally store world name if needed
-                    // dealersConfig.set(path + ".world", dealer.getWorld().getName());
+                    dealersConfig.set(path + ".world", dealer.getWorld().getName());
 
                     try {
                         dealersConfig.save(dealersFile);
