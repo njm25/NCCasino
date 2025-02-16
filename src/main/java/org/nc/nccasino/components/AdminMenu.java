@@ -822,7 +822,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
     private void handleSelectGameType(Player player) {
         // Open the Game Options Inventory
-        GameOptionsMenu inventory = new GameOptionsMenu(plugin, dealer,
+        GameOptionsMenu inventory = new GameOptionsMenu(player, plugin, dealer,
         (uuid) -> {
         
             // Cancel action: re-open the AdminInventory
