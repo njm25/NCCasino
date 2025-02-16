@@ -159,6 +159,7 @@ public class GameOptionsMenu extends Menu {
 
 
         ConfirmMenu confirmInventory = new ConfirmMenu(
+            player,
             dealerId,
             "Reset config to default?",
             (uuid) -> {

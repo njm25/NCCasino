@@ -866,6 +866,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         if (deleteItem != null && deleteItem.getType() == Material.BARRIER) {
             // Open confirmation inventory
             ConfirmMenu confirmInventory = new ConfirmMenu(
+                    player,
                     dealerId,
                     "Are you sure?",
                     (uuid) -> {

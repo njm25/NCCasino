@@ -36,6 +36,8 @@ public abstract class Menu extends DealerInventory {
         EDIT_TIMER,
         STAND_17,
         NUMBER_OF_DECKS,
+        YES,
+        NO
     }
 
     protected final Map<SlotOption, Integer> slotMapping = new HashMap<>();

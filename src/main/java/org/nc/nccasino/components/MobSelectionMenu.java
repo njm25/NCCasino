@@ -302,6 +302,7 @@ public class MobSelectionMenu extends DealerInventory {
         String currencyMaterial = plugin.getConfig().getString("dealers." + internalName + ".currency.material");
         String currencyName = plugin.getConfig().getString("dealers." + internalName + ".currency.name");
         ConfirmMenu confirmInventory = new ConfirmMenu(
+            player,
             dealerId,
             "Reset config to default?",
             (uuid) -> {
