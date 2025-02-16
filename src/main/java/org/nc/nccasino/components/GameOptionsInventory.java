@@ -1,11 +1,8 @@
 package org.nc.nccasino.components;
 
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
@@ -13,7 +10,6 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Dealer;
-import org.nc.nccasino.helpers.SoundHelper;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,7 +23,6 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 public class GameOptionsInventory extends DealerInventory {
 
-    private final Map<UUID, Boolean> clickAllowed = new HashMap<>();
     private final Nccasino plugin;
     private final String internalName;
     private final Boolean editing;
@@ -93,56 +88,38 @@ public class GameOptionsInventory extends DealerInventory {
         if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
             return;
         }
-        UUID playerId = player.getUniqueId();
 
-        if (clickAllowed.getOrDefault(playerId, true)) {
-            clickAllowed.put(playerId, false); // Prevent rapid clicking
-            Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);
-
-            SlotOption option = getKeyByValue(slotMapping, slot);
-            String gameType;
-            switch (option) {
-                case BLACKJACK:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-                    gameType = "Blackjack";
-                    break;
-                case ROULETTE:
-                 if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-                    gameType = "Roulette";
-                    break;
-                case MINES:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-                    gameType = "Mines";
-                    break;
-                case EXIT:
-                    handleExit(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-                    return; 
-                case RETURN:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-                    executeReturn();
-                    return;
-                default:
-                    return;
-            }
-            if (!editing){
-                createDealer(player, gameType);
-            }
-            else{
-                editDealer(player, gameType);
-            }
-        } else {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage("§cPlease wait before clicking again!");
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§cPlease wait before clicking game options menu again!");
-                    break;}
-                case NONE:{
-                    break;
-                }
-            }
+        SlotOption option = getKeyByValue(slotMapping, slot);
+        String gameType;
+        switch (option) {
+            case BLACKJACK:
+                playDefaultSound(player);
+                gameType = "Blackjack";
+                break;
+            case ROULETTE:
+                playDefaultSound(player);
+                gameType = "Roulette";
+                break;
+            case MINES:
+                playDefaultSound(player);
+                gameType = "Mines";
+                break;
+            case EXIT:
+                handleExit(player);
+                playDefaultSound(player);
+                return; 
+            case RETURN:
+                playDefaultSound(player);
+                executeReturn();
+                return;
+            default:
+                return;
+        }
+        if (!editing){
+            createDealer(player, gameType);
+        }
+        else{
+            editDealer(player, gameType);
         }
     }
 

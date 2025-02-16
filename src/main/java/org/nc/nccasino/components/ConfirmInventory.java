@@ -1,11 +1,8 @@
 package org.nc.nccasino.components;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -18,7 +15,6 @@ public class ConfirmInventory extends DealerInventory {
     private final Consumer<UUID> confirm;
     private final Consumer<UUID> cancel;
     private UUID dealerId;
-    private final Map<UUID, Boolean> clickAllowed = new HashMap<>(); // Track click state per player
     private Nccasino plugin;
 
     public ConfirmInventory(UUID dealerId, String title, Consumer<UUID> confirm, Consumer<UUID> cancel, Nccasino plugin) {
@@ -49,49 +45,29 @@ public class ConfirmInventory extends DealerInventory {
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
 
-        UUID playerId = player.getUniqueId();
-
-        if (clickAllowed.getOrDefault(playerId, true)) {
-            clickAllowed.put(playerId, false); // Prevent rapid clicking
-            Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);
-
-
-            switch (slot) {
-                case 0:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-                    executeConfirm();
-                    break;
-                case 8:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-                    executeCancel();
-                    break;
-                default:
-                    if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
-                    player.closeInventory();
-                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                        case STANDARD:{
-                            player.sendMessage("§cInvalid option selected.");
-                            break;}
-                        case VERBOSE:{
-                            player.sendMessage("§cInvalid confirm menu option selected.");
-                            break;}
-                        case NONE:{break;
-                        }
+        switch (slot) {
+            case 0:
+                playDefaultSound(player);
+                executeConfirm();
+                break;
+            case 8:
+                playDefaultSound(player);
+                executeCancel();
+                break;
+            default:
+                if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+                player.closeInventory();
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cInvalid option selected.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cInvalid confirm menu option selected.");
+                        break;}
+                    case NONE:{break;
                     }
-                    break;
-            }
-        } else {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage("§cPlease wait before clicking again!");
-                                        break;}
-                case VERBOSE:{
-                    player.sendMessage("§cPlease wait before clicking confirm menu again!");
-                                        break;}
-                case NONE:{break;
                 }
-            }
-         
+                break;
         }
     }
 

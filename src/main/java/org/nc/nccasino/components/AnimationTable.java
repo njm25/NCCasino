@@ -29,7 +29,6 @@ public class AnimationTable extends DealerInventory {
     private final String animationMessage;
     private final Map<UUID, Integer> animationTasks;
     private final Map<UUID, Boolean> animationCompleted;
-    private final Map<UUID, Boolean> clickAllowed;
     private final Map<UUID, Boolean> animationStopped; // Track if animation is already stopped
     private final Map<UUID, Runnable> animationCallbacks;
     private Boolean closedManually = false;
@@ -46,7 +45,6 @@ public class AnimationTable extends DealerInventory {
         this.inventory = Bukkit.createInventory(this, 54, animationMessage);
         this.animationTasks = new HashMap<>();
         this.animationCompleted = new HashMap<>();
-        this.clickAllowed = new HashMap<>();
         this.animationCallbacks = new HashMap<>();
         this.animationStopped = new HashMap<>();
         this.mce = new MultiChannelEngine(plugin);
@@ -69,7 +67,6 @@ public class AnimationTable extends DealerInventory {
         animationCallbacks.put(playerUUID, onAnimationComplete);
         animationStopped.put(playerUUID, false);
         animationCompleted.put(playerUUID, false);
-        clickAllowed.put(playerUUID, true);
 
         int[][] fullt = parseMessage(animationMessage);
         startBlockAnimation(player, onAnimationComplete, fullt);
@@ -182,7 +179,6 @@ public class AnimationTable extends DealerInventory {
     }
     private void stopAnimation(Player player) {
         UUID playerUUID = player.getUniqueId();
-        clickAllowed.put(playerUUID, false);
 
         if (animationTasks.containsKey(playerUUID)) {
             int taskId = animationTasks.get(playerUUID);
@@ -211,12 +207,10 @@ public class AnimationTable extends DealerInventory {
         if (!playerUUID.equals(playerId)) return;
         if (event.getInventory().getHolder() != this) return;
 
-        if (clickAllowed.getOrDefault(playerUUID, false) && !animationStopped.get(playerUUID)) {
-            if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-            stopAnimation(player);
-            if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
-            mce.removePlayerFromAllChannels(player);
-        }
+        playDefaultSound(player);
+        stopAnimation(player);
+        if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
+        mce.removePlayerFromAllChannels(player);
     }
 
     @EventHandler

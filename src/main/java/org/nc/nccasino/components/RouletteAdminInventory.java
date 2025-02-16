@@ -27,7 +27,6 @@ public class RouletteAdminInventory extends DealerInventory {
     private final UUID ownerId;
     private final Consumer<UUID> ret;
     private UUID dealerId;
-    private final Map<UUID, Boolean> clickAllowed = new HashMap<>(); // Track click state per player
     private Nccasino plugin;
     private String returnName;
     private Mob dealer;
@@ -86,7 +85,6 @@ public class RouletteAdminInventory extends DealerInventory {
 
         // 3) Remove player references from the specialized maps
         AdminInventory.timerEditMode.remove(ownerId);
-        clickAllowed.remove(ownerId);
     }
 
     private void initalizeMenu(){
@@ -152,51 +150,38 @@ public class RouletteAdminInventory extends DealerInventory {
         //event.setCancelled(true); // Default behavior: prevent unintended interactions
 
         if (event.getClickedInventory() == null) return; 
-        if (clickAllowed.getOrDefault(playerId, true)) {
-            clickAllowed.put(playerId, false); // Prevent rapid clicking
-            Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);
 
-            SlotOption option = getKeyByValue(slotMapping, slot);
-            if(option!=null){
-            switch (option) {
-                case RETURN:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-                    executeReturn();
-                    break;
-                case EDIT_TIMER:
-                    handleEditTimer(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-                    break;
-                case EXIT:
-                    handleExit(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-                    break;
-                default:
-                    if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
-                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                        case STANDARD:{
-                            player.sendMessage("§cInvalid option selected.");
-                            break;}
-                        case VERBOSE:{
-                            player.sendMessage("§cInvalid roulette settings option selected.");
-                            break;}
-                        case NONE:{
-                            break;
-                        }
-                    }                    break;
-            }}
-        } else {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage("§cPlease wait before clicking again!");
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§cPlease wait before clicking roulette settings again!");
-                    break;}
-                case NONE:{
-                    break;
-                }
-            }        }
+        SlotOption option = getKeyByValue(slotMapping, slot);
+        if(option!=null){
+        switch (option) {
+            case RETURN:
+                playDefaultSound(player);
+                executeReturn();
+                break;
+            case EDIT_TIMER:
+                handleEditTimer(player);
+                playDefaultSound(player);
+                break;
+            case EXIT:
+                handleExit(player);
+                playDefaultSound(player);
+                break;
+            default:
+                if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cInvalid option selected.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cInvalid roulette settings option selected.");
+                        break;}
+                    case NONE:{
+                        break;
+                    }
+                }                    
+                break;
+            }
+        }
     }
 
     private void handleExit(Player player) {

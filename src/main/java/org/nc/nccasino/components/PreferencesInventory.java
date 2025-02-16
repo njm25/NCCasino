@@ -39,7 +39,6 @@ public class PreferencesInventory extends DealerInventory {
     };
     // Keep track of currently open PlayerMenus per-player
     public static final Map<UUID, PreferencesInventory> preferencesInventories = new HashMap<>();
-    private final Map<UUID, Boolean> clickAllowed = new HashMap<>();
     private final UUID ownerId;
     private final UUID dealerId;
     private final Nccasino plugin;
@@ -92,11 +91,7 @@ public class PreferencesInventory extends DealerInventory {
         }
         UUID playerId = player.getUniqueId();
         Preferences preferences = plugin.getPreferences(playerId);
-        if (clickAllowed.getOrDefault(playerId, true)) {
-            // Throttle clicking slightly to prevent spam
-        clickAllowed.put(playerId, false);
         SlotOption option = getKeyByValue(slotMapping, slot);
-        Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);
         if (option != null) {
             switch (option) {
                 case EXIT:
@@ -106,7 +101,7 @@ public class PreferencesInventory extends DealerInventory {
 
                     break;
                 case RETURN:
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     if (returnToPM != null) {
                         returnToPM.accept(player);
                     }
@@ -129,13 +124,13 @@ public class PreferencesInventory extends DealerInventory {
                     preferences.toggleSound();
                     updatePreferencesMenu();
                     //handleMoveDealer(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     break;
                 case MESSAGES:
                     preferences.cycleMessageSetting();
                     updatePreferencesMenu();
                     //handleDeleteDealer(player);
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
+                    playDefaultSound(player);
                     break;
                 default:
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -152,22 +147,6 @@ public class PreferencesInventory extends DealerInventory {
                     break;
             }
         }
-
-    
-    } else {
-        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-            case STANDARD:{
-                player.sendMessage("§cPlease wait before clicking again!");
-                break;}
-            case VERBOSE:{
-                player.sendMessage("§cPlease wait before clicking player menu again!");
-                break;}
-            case NONE:{
-                break;
-            }
-        }
-    }
-       
     }
 
     private void updatePreferencesMenu() {

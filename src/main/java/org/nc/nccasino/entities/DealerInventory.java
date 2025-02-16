@@ -3,6 +3,8 @@ package org.nc.nccasino.entities;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
@@ -15,6 +17,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.helpers.SoundHelper;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -273,6 +276,15 @@ public class DealerInventory implements InventoryHolder, Listener {
         return itemStack;
     }
 
+    public static <K, V> K getKeyByValue(Map<K, V> map, V value) {
+        for (Map.Entry<K, V> entry : map.entrySet()) {
+            if (entry.getValue().equals(value)) {
+                return entry.getKey();
+            }
+        }
+        return null; 
+    }
+
     // Example: Add an item to a player's inventory with custom lore
     public void addPlayerInventoryItemWithLore(Inventory playerInventory, Material material, String name, List<String> lore, int slot) {
         ItemStack itemStack = createCustomItem(material, name);
@@ -289,5 +301,9 @@ public class DealerInventory implements InventoryHolder, Listener {
         for (Inventory playerInventory : playerInventories) {
             addPlayerInventoryItemWithLore(playerInventory, material, name, lore, slot);
         }
+    }
+
+    public void playDefaultSound(Player player){
+        if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
     }
 }
