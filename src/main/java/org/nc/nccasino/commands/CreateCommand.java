@@ -10,8 +10,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.components.AdminInventory;
-import org.nc.nccasino.components.GameOptionsInventory;
+import org.nc.nccasino.components.AdminMenu;
+import org.nc.nccasino.components.GameOptionsMenu;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.bukkit.entity.Mob;
@@ -32,8 +32,8 @@ public class CreateCommand implements CasinoCommand {
 
         Player player = (Player) sender;
                 
-        List<String> occupations = AdminInventory.playerOccupations(player.getUniqueId());
-        List<Mob> mobs = AdminInventory.getOccupiedDealers(player.getUniqueId())
+        List<String> occupations = AdminMenu.playerOccupations(player.getUniqueId());
+        List<Mob> mobs = AdminMenu.getOccupiedDealers(player.getUniqueId())
             .stream()
             .filter(v -> v != null && !v.isDead() && v.isValid()) // Ensure valid mob
             .toList();
@@ -71,7 +71,7 @@ public class CreateCommand implements CasinoCommand {
         }
 
         // Open the Game Options Inventory
-        GameOptionsInventory inventory = new GameOptionsInventory((Nccasino)plugin, internalName);
+        GameOptionsMenu inventory = new GameOptionsMenu(player, (Nccasino)plugin, internalName);
         player.openInventory(inventory.getInventory());
 
         sender.sendMessage(ChatColor.GREEN + "Choose a game type for the dealer '" +

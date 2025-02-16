@@ -306,4 +306,12 @@ public class DealerInventory implements InventoryHolder, Listener {
     public void playDefaultSound(Player player){
         if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
     }
+
+    
+    protected void denyAction(Player player, String message) {
+        if (SoundHelper.getSoundSafely("entity.villager.no",player) != null) {
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+        }
+        player.sendMessage("§c" + message);
+    }
 }

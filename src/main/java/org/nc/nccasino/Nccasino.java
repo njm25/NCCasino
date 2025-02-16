@@ -130,7 +130,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         String internalName = Dealer.getInternalName(mob);
                         String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
-                        int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
+                        int timer = getConfig().getInt("dealers." + internalName + ".timer", 30);
                         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
                         List<Integer> chipSizes = new ArrayList<>();
                         ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
@@ -255,7 +255,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
                         String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
-                        int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
+                        int timer = getConfig().getInt("dealers." + internalName + ".timer", 30);
                         String animationMessage = getConfig().getString("dealers." + internalName + ".animation-message");
                         List<Integer> chipSizes = new ArrayList<>();
                         ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
@@ -285,7 +285,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         String internalName = Dealer.getInternalName(mob);
         String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
-        int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
+        int timer = getConfig().getInt("dealers." + internalName + ".timer", 30);
         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
         List<Integer> chipSizes = new ArrayList<>();
         ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
@@ -333,7 +333,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         String internalName = Dealer.getInternalName(mob);
                         String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
-                        int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
+                        int timer = getConfig().getInt("dealers." + internalName + ".timer", 30);
                         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
                         List<Integer> chipSizes = new ArrayList<>();
                         ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
@@ -374,7 +374,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         if (!getConfig().contains(path)) {
             getConfig().set(path + ".display-name", "Dealer");
             getConfig().set(path + ".game", "Menu");
-            getConfig().set(path + ".timer", 0);
+            getConfig().set(path + ".timer", 30);
             getConfig().set(path + ".animation-message", "NCCASINO");
             getConfig().set(path + ".currency.material", "EMERALD");
             getConfig().set(path + ".currency.name", "Emerald");
@@ -406,7 +406,19 @@ public final class Nccasino extends JavaPlugin implements Listener {
     }
 
     public int getTimer(String internalName) {
-        return getConfig().getInt("dealers." + internalName + ".timer", 0);
+        String timerValue = getConfig().getString("dealers." + internalName + ".timer", "30").trim();
+    
+        long timer;
+        try {
+            timer = Long.parseLong(timerValue);
+        } catch (NumberFormatException e) {
+            return 30; 
+        }
+    
+        if (timer < 0) return 0;      
+        if (timer > 10000) return 10000; 
+    
+        return (int) timer; 
     }
 
     public void reinitializeDealerConfigurations() {

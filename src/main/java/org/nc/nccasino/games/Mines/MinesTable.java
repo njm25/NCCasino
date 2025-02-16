@@ -139,23 +139,32 @@ public class MinesTable extends DealerInventory {
 
         loadChipValuesFromConfig();
 
-        // Start the animation first, then return to this table once animation completes
-        if (!plugin.getConfig().contains("dealers." + internalName + ".default-mines")) {
+        String rawValue = plugin.getConfig().getString("dealers." + internalName + ".default-mines", "3");
 
-            plugin.getConfig().set("dealers." + internalName + ".default-mines", 3);
-        } else {
-            // Retrieve the current value
-            int defaultMines = plugin.getConfig().getInt("dealers." + internalName + ".default-mines");
-        
-            // Check if the value is greater than 100 or less than 0
-            if (defaultMines > 24 || defaultMines < 1) {
-                // Reset the value to 100
-                plugin.getConfig().set("dealers." + internalName + ".default-mines", 3);
-            }
-            else{
-                minesCount=defaultMines;
-            }
+        int defaultMines;
+        try {
+            defaultMines = Integer.parseInt(rawValue);
+        } catch (NumberFormatException e) {
+            defaultMines = 3; // Reset to default if it's not a valid number
         }
+        
+        // Ensure it's within the valid range (1 to 24)
+        if (defaultMines < 1)
+        {
+            defaultMines = 1;
+  
+        }
+        else if( defaultMines > 24) {
+            defaultMines = 24;
+        }
+        
+        // Update config if necessary
+        if (!rawValue.equals(String.valueOf(defaultMines))) {
+            plugin.getConfig().set("dealers." + internalName + ".default-mines", defaultMines);
+            plugin.saveConfig();
+        }
+        
+        minesCount = defaultMines;
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
                 break;}

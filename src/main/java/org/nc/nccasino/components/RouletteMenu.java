@@ -18,35 +18,20 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.entities.DealerInventory;
+import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
 import net.md_5.bungee.api.ChatColor;
 
-public class RouletteAdminInventory extends DealerInventory {
-    private final UUID ownerId;
-    private final Consumer<UUID> ret;
+public class RouletteMenu extends Menu {
     private UUID dealerId;
     private Nccasino plugin;
     private String returnName;
     private Mob dealer;
-    public static final Map<UUID, RouletteAdminInventory> RAInventories = new HashMap<>();
+    public static final Map<UUID, RouletteMenu> RAInventories = new HashMap<>();
 
-
-    private enum SlotOption {
-        RETURN,
-        EDIT_TIMER,
-        EXIT
-     }
-     private final Map<SlotOption, Integer> slotMapping = new HashMap<>() {{
-        put(SlotOption.EXIT, 0);
-        put(SlotOption.RETURN, 1);
-        put(SlotOption.EDIT_TIMER, 2);
-     }};
-
-    public RouletteAdminInventory(UUID dealerId,Player player, String title, Consumer<UUID> ret, Nccasino plugin,String returnName) {
-        super(player.getUniqueId(), 9, title);
-        this.ret = ret;
+    public RouletteMenu(UUID dealerId,Player player, String title, Consumer<Player> ret, Nccasino plugin,String returnName) {
+        super(player, plugin, dealerId, title, 9, title, ret);
         this.dealerId = dealerId;
         this.plugin = plugin;
         this.returnName=returnName;
@@ -61,21 +46,19 @@ public class RouletteAdminInventory extends DealerInventory {
                              && Dealer.getUniqueId(v).equals(this.dealerId))
                 .findFirst().orElse(null);
         }
-        registerListener();
-        this.ownerId = player.getUniqueId();  // Store the player's ID
-
         RAInventories.put(this.ownerId, this);
-        initalizeMenu();
-    }
-
-    private void registerListener() {
-        Bukkit.getPluginManager().registerEvents(this, plugin);
+        
+        slotMapping.put(SlotOption.EXIT, 0);
+        slotMapping.put(SlotOption.RETURN, 1);
+        slotMapping.put(SlotOption.EDIT_TIMER, 2);
+        initializeMenu();
     }
 
     private void unregisterListener() {
         InventoryCloseEvent.getHandlerList().unregister(this);
     }
 
+    @Override
     public void cleanup() {
         // 1) Unregister all event handlers for this instance
         HandlerList.unregisterAll(this);
@@ -84,10 +67,12 @@ public class RouletteAdminInventory extends DealerInventory {
         RAInventories.remove(ownerId);
 
         // 3) Remove player references from the specialized maps
-        AdminInventory.timerEditMode.remove(ownerId);
+        AdminMenu.timerEditMode.remove(ownerId);
+        this.delete();
     }
 
-    private void initalizeMenu(){
+    @Override
+    protected void initializeMenu(){
         String internalName = Dealer.getInternalName(dealer);
         FileConfiguration config = plugin.getConfig();
         int currentTimer = config.contains("dealers." + internalName + ".timer")
@@ -102,13 +87,13 @@ public class RouletteAdminInventory extends DealerInventory {
     public void onInventoryClose(InventoryCloseEvent event) {
         Player player = (Player) event.getPlayer();
         UUID playerId = player.getUniqueId();
-        if(event.getInventory().getHolder() instanceof RouletteAdminInventory){
+        if(event.getInventory().getHolder() instanceof RouletteMenu){
         // Check if the player has an active AdminInventory
             if (RAInventories.containsKey(playerId)) {
                     // Check if the player is currently editing something
-                if (!AdminInventory.timerEditMode.containsKey(playerId)) {
+                if (!AdminMenu.timerEditMode.containsKey(playerId)) {
                     // Remove the AdminInventory and clean up references
-                    RouletteAdminInventory inventory = RAInventories.remove(playerId);
+                    RouletteMenu inventory = RAInventories.remove(playerId);
 
                     if (inventory != null) {
                         inventory.cleanup();
@@ -122,10 +107,10 @@ public class RouletteAdminInventory extends DealerInventory {
                 }
 
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    if (player.getOpenInventory().getTopInventory().getHolder() instanceof AdminInventory) {
+                    if (player.getOpenInventory().getTopInventory().getHolder() instanceof AdminMenu) {
                         return;
                     }
-                    AdminInventory temp=AdminInventory.adminInventories.get(player.getUniqueId());
+                    AdminMenu temp=AdminMenu.adminInventories.get(player.getUniqueId());
                     if(temp!=null){
                         if(temp.getDealerId()==dealerId){
                             temp.delete();
@@ -137,33 +122,15 @@ public class RouletteAdminInventory extends DealerInventory {
         }
     }
 
-    public void executeReturn() {
-        ret.accept(dealerId);
-        delete();
-    }
-
 
     @Override
-    public void handleClick(int slot, Player player, InventoryClickEvent event) {
+    public void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
         UUID playerId = player.getUniqueId();
         if (!RAInventories.containsKey(playerId)) return;
-        //event.setCancelled(true); // Default behavior: prevent unintended interactions
 
-        if (event.getClickedInventory() == null) return; 
-
-        SlotOption option = getKeyByValue(slotMapping, slot);
-        if(option!=null){
         switch (option) {
-            case RETURN:
-                playDefaultSound(player);
-                executeReturn();
-                break;
             case EDIT_TIMER:
                 handleEditTimer(player);
-                playDefaultSound(player);
-                break;
-            case EXIT:
-                handleExit(player);
                 playDefaultSound(player);
                 break;
             default:
@@ -180,28 +147,13 @@ public class RouletteAdminInventory extends DealerInventory {
                     }
                 }                    
                 break;
-            }
         }
-    }
-
-    private void handleExit(Player player) {
-        player.closeInventory();
-        delete();
-    }
-
-    public static <K, V> K getKeyByValue(Map<K, V> map, V value) {
-        for (Map.Entry<K, V> entry : map.entrySet()) {
-            if (entry.getValue().equals(value)) {
-                return entry.getKey();
-            }
-        }
-        return null; 
     }
 
     private void handleEditTimer(Player player) {
         UUID playerId = player.getUniqueId();
-        AdminInventory.localMob.put(player.getUniqueId(), dealer);
-        AdminInventory.timerEditMode.put(playerId, dealer);
+        AdminMenu.localMob.put(player.getUniqueId(), dealer);
+        AdminMenu.timerEditMode.put(playerId, dealer);
         player.closeInventory();
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
@@ -217,72 +169,77 @@ public class RouletteAdminInventory extends DealerInventory {
         }  
     }
 
-      @EventHandler
+    @EventHandler
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        if (RAInventories.get(playerId) == null){
+        if (!RAInventories.containsKey(playerId)) {
             cleanup();
             return;
         }
-         if (AdminInventory.timerEditMode.get(playerId) != null) {
+
+        if (AdminMenu.timerEditMode.get(playerId) != null) {
             event.setCancelled(true);
-            String newTimer = event.getMessage().trim();
+            handleNumericInput(player, event.getMessage().trim(), "timer", 1, 10000, "Dealer timer updated");
+        }
+    }
 
-            if (newTimer.isEmpty() || !newTimer.matches("\\d+") || Integer.parseInt(newTimer) <= 0) {
-                denyAction(player, "Please enter a positive number.");
-                return;
-            }
-            if (dealer != null) {
-                String internalName = Dealer.getInternalName(dealer);
-                plugin.getConfig().set("dealers." + internalName + ".timer", Integer.parseInt(newTimer));
-                plugin.saveConfig();
-                plugin.reloadDealer(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage("§aDealer timer updated.");
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
-                        break;}
-                    case NONE:{
-                        break;
-                    }
-                }  
-            } else {
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage("§cCould not find dealer.");
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§cCould not find dealer for roulette settings.");
-                        break;}
-                    case NONE:{
-                        break;
-                    }
-                }
-            }
-
-            AdminInventory.localMob.remove(playerId);
-
-            cleanup();
+    private void handleNumericInput(Player player, String input, String configPath, long min, long max, String standardMessage) {
+        if (input.isEmpty() || !input.matches("\\d+")) {
+            denyAction(player, "Please enter a valid positive integer.");
+            return;
         }
 
-    }
-    private void denyAction(Player player, String message) {
-        if (SoundHelper.getSoundSafely("entity.villager.no",player) != null) {
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+        long value;
+        try {
+            value = Long.parseLong(input);
+        } catch (NumberFormatException e) {
+            denyAction(player, "Invalid number format.");
+            return;
         }
-        player.sendMessage("§c" + message);
-    }
-    
-    public void delete() {
+
+        if (value < min || value > max) {
+            denyAction(player, "Please enter a number between " + min + " and " + max + ".");
+            return;
+        }
+
+        if (dealer != null) {
+            String internalName = Dealer.getInternalName(dealer);
+            plugin.getConfig().set("dealers." + internalName + "." + configPath, value);
+            plugin.saveConfig();
+            plugin.reloadDealer(dealer);
+
+            if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§a" + standardMessage + ".");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§a" + standardMessage + " to: " + ChatColor.YELLOW + value + "§a.");
+                    break;
+                case NONE:
+                    break;
+            }
+
+            AdminMenu.localMob.remove(player.getUniqueId());
+        } else {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§cCould not find dealer.");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§cCould not find roulette settings dealer.");
+                    break;
+                case NONE:
+                    break;
+            }
+        }
+
         cleanup();
-   
-        super.delete(); 
-        // super.delete() removes from DealerInventory.inventories & clears the Inventory
     }
 
 }

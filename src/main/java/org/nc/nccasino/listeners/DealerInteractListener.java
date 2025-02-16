@@ -14,9 +14,10 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.components.AdminInventory;
-import org.nc.nccasino.components.AnimationTable;
+import org.nc.nccasino.components.AdminMenu;
+import org.nc.nccasino.components.AnimationMessage;
 import org.nc.nccasino.components.PlayerMenu;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Dealer;
@@ -80,8 +81,8 @@ public class DealerInteractListener implements Listener {
             return;
         }
 
-        List<String> occupations = AdminInventory.playerOccupations(player.getUniqueId());
-        List<Mob> mobs = AdminInventory.getOccupiedDealers(player.getUniqueId())
+        List<String> occupations = AdminMenu.playerOccupations(player.getUniqueId());
+        List<Mob> mobs = AdminMenu.getOccupiedDealers(player.getUniqueId())
             .stream()
             .filter(v -> v != null && !v.isDead() && v.isValid()) // Ensure valid villagers
             .toList();
@@ -117,23 +118,13 @@ public class DealerInteractListener implements Listener {
     }
 
     private void handlePlayerMenu(Player player, UUID dealerId) {
-        if (PlayerMenu.playerMenus.containsKey(player.getUniqueId())) {
-            PlayerMenu playerMenu = PlayerMenu.playerMenus.get(player.getUniqueId());
-
-            if (playerMenu.getDealerId().equals(dealerId)) {
-                player.openInventory(playerMenu.getInventory());
-            } else {
-                Bukkit.getLogger().warning("Error: playerMenu's dealerId does not match the dealerId of entity interacted with");
-            }
-        } else {
-            PlayerMenu playerMenu = new PlayerMenu(player,plugin,dealerId);
-            player.openInventory(playerMenu.getInventory());
-        }
+        PlayerMenu playerMenu = new PlayerMenu(player,plugin,dealerId);
+        player.openInventory(playerMenu.getInventory());
     }
 
     private void handleAdminInventory(Player player, UUID dealerId) {
-        if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
-            AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
+        if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+            AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
 
             if (adminInventory.getDealerId().equals(dealerId)) {
                 player.openInventory(adminInventory.getInventory());
@@ -141,7 +132,7 @@ public class DealerInteractListener implements Listener {
                 Bukkit.getLogger().warning("Error: adminInventory's dealerId does not match the dealerId of entity interacted with");
             }
         } else {
-            AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
+            AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
             player.openInventory(adminInventory.getInventory());
         }
     }
@@ -165,7 +156,7 @@ public class DealerInteractListener implements Listener {
             Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
             String internalName = Dealer.getInternalName(mob);
             String gameType = plugin.getConfig().getString("dealers." + internalName + ".game", "Menu");
-            int timer = plugin.getConfig().getInt("dealers." + internalName + ".timer", 0);
+            int timer = plugin.getConfig().getInt("dealers." + internalName + ".timer", 30);
             String anmsg = plugin.getConfig().getString("dealers." + internalName + ".animation-message", "NCCasino");
             List<Integer> chipSizes = new ArrayList<>();
             ConfigurationSection chipSizeSection = plugin.getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
@@ -205,7 +196,7 @@ public class DealerInteractListener implements Listener {
         activeAnimations.add(player);
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            AnimationTable animationTable = new AnimationTable(player, plugin, animationMessage, 0);
+            AnimationMessage animationTable = new AnimationMessage(player, plugin, animationMessage, 0);
             player.openInventory(animationTable.getInventory());
 
             animationTable.animateMessage(player, () -> afterAnimationComplete(player, dealerInventory));
@@ -231,14 +222,14 @@ public class DealerInteractListener implements Listener {
         UUID playerId = player.getUniqueId();
 
         if(!(event.getInventory().getHolder() instanceof DealerInventory)) return;
-        event.setCancelled(true);
         if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
             // By default, SHIFT-click will attempt to move items into the top inventory
 
             MessageSetting settings = plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             
-            if(event.isShiftClick() && !(event.getInventory().getHolder() instanceof AdminInventory)){
+            if(event.isShiftClick() && !(event.getInventory().getHolder() instanceof AdminMenu)){
                     
+                event.setCancelled(true);
                 switch(settings)
                 {
                     case VERBOSE:{
@@ -248,13 +239,19 @@ public class DealerInteractListener implements Listener {
                         break;}
                 }
             }
-        
-            return;
+            else if(event.isShiftClick() && event.getInventory().getHolder() instanceof AdminMenu){
+                AdminMenu menu = (AdminMenu) event.getInventory().getHolder();
+                ItemStack item = event.getCurrentItem();
+                menu.handleDrag(item, player, event); 
+                return;
+            }
         }
         else if (event.getClickedInventory() != null) {
             if(event.getSlot() == -999){
                 return;
             }
+            
+            event.setCancelled(true);
             if (clickAllowed.getOrDefault(playerId, true)) {
                 clickAllowed.put(playerId, false); // Prevent rapid clicking
                 Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);

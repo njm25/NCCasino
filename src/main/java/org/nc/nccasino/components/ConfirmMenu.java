@@ -9,28 +9,37 @@ import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.entities.DealerInventory;
+import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.helpers.SoundHelper;
-public class ConfirmInventory extends DealerInventory {
+public class ConfirmMenu extends Menu {
     private final Consumer<UUID> confirm;
     private final Consumer<UUID> cancel;
     private UUID dealerId;
     private Nccasino plugin;
 
-    public ConfirmInventory(UUID dealerId, String title, Consumer<UUID> confirm, Consumer<UUID> cancel, Nccasino plugin) {
-        super(dealerId, 9, title);
+    public ConfirmMenu(
+        Player player, 
+        UUID dealerId, 
+        String title, 
+        Consumer<UUID> confirm, 
+        Consumer<UUID> cancel, 
+        Nccasino plugin
+    ) {
+        super(player, plugin, dealerId, title, 9, title, null);
         this.confirm = confirm;
         this.cancel = cancel;
         this.dealerId = dealerId;
         this.plugin = plugin;
+        slotMapping.put(SlotOption.YES, 0);
+        slotMapping.put(SlotOption.NO, 8);
 
-        initalizeMenu();
+        initializeMenu();
     }
 
-    private void initalizeMenu(){
-        
-        addItem(createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Yes"), 0);
-        addItem(createCustomItem(Material.RED_STAINED_GLASS_PANE, "No"), 8);
+    @Override
+    protected void initializeMenu(){
+        addItem(createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Yes"), slotMapping.get(SlotOption.YES));
+        addItem(createCustomItem(Material.RED_STAINED_GLASS_PANE, "No"), slotMapping.get(SlotOption.NO));
     }
 
     public void executeConfirm() {
@@ -43,14 +52,13 @@ public class ConfirmInventory extends DealerInventory {
 
 
     @Override
-    public void handleClick(int slot, Player player, InventoryClickEvent event) {
-
-        switch (slot) {
-            case 0:
+    protected void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
+        switch (option) {
+            case YES:
                 playDefaultSound(player);
                 executeConfirm();
                 break;
-            case 8:
+            case NO:
                 playDefaultSound(player);
                 executeCancel();
                 break;

@@ -2,67 +2,36 @@ package org.nc.nccasino.components;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.entities.DealerInventory;
-import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.entities.Menu;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-public class PlayerMenu extends DealerInventory {
-    private enum SlotOption {
-        EXIT,
-        RETURN,
-        PREFERENCES,
-        STATS
-    }
+public class PlayerMenu extends Menu {
 
-    private Map<SlotOption, Integer> slotMapping;
-    // Keep track of currently open PlayerMenus per-player
-    public static final Map<UUID, PlayerMenu> playerMenus = new HashMap<>();
-    private final UUID ownerId;
-    private final UUID dealerId;
-    private final Nccasino plugin;
+
     private final boolean fromAdmin;
-    private final Consumer<Player> returnToAdmin;
-    private final String returnName;
 
     public PlayerMenu(Player player, Nccasino plugin,UUID dealerId, Consumer<Player> returnToAdmin, String returnName) {
-        super(player.getUniqueId(), 9, "Player Menu");
-        this.dealerId=dealerId;
-        this.ownerId = player.getUniqueId();
-        this.plugin = plugin;
+        super(player, plugin,dealerId, "Player Menu", 9, returnName, returnToAdmin);
         this.fromAdmin = (returnToAdmin != null);
-        this.returnToAdmin = returnToAdmin;
-        this.returnName = returnName;
 
-        // Keep track of this menu in the static map
-        playerMenus.put(ownerId, this);
-        slotMapping=  new HashMap<>(){
-            {
-                if(fromAdmin){
-                    put(SlotOption.RETURN, 1);
-                    put(SlotOption.EXIT, 0);
-                    put(SlotOption.PREFERENCES, 2);
-                    put(SlotOption.STATS, 3);
-                }
-                else{
-                    put(SlotOption.EXIT, 0);
-                    put(SlotOption.PREFERENCES, 1);
-                    put(SlotOption.STATS, 2);
-                }
         
-            }
-                };
+        if(fromAdmin){
+            slotMapping.put(SlotOption.RETURN, 1);
+            slotMapping.put(SlotOption.EXIT, 0);
+            slotMapping.put(SlotOption.PREFERENCES, 2);
+            slotMapping.put(SlotOption.STATS, 3);
+        }
+        else{
+            slotMapping.put(SlotOption.EXIT, 0);
+            slotMapping.put(SlotOption.PREFERENCES, 1);
+            slotMapping.put(SlotOption.STATS, 2);
+        }
+        
         // Build the actual contents
         initializeMenu();
 
@@ -74,170 +43,80 @@ public class PlayerMenu extends DealerInventory {
         this(player, plugin,dealerId, null, null);
     }
 
-    public UUID getDealerId(){
-        return dealerId;
-    }
-
     /**
      * Populate our Player Menu items.
      */
-    private void initializeMenu() {
+    @Override
+    protected void initializeMenu() {
         addItemAndLore(Material.BOOK, 1, "Statistics",  slotMapping.get(SlotOption.STATS), "§cComing soon...");
         addItemAndLore(Material.WRITABLE_BOOK, 1, "Preferences",  slotMapping.get(SlotOption.PREFERENCES));
 
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
         if (fromAdmin) {       
-            addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnName,  slotMapping.get(SlotOption.RETURN));
+            addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnMessage,  slotMapping.get(SlotOption.RETURN));
         }
     }
 
     @Override
-    public void handleClick(int slot, Player player, InventoryClickEvent event) {
-        if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
-            return;
-        }
+    protected void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
 
-        SlotOption option = getKeyByValue(slotMapping, slot);
-        if (option != null) {
-            switch (option) {
-                case EXIT:
-                    player.closeInventory();
-                    if(SoundHelper.getSoundSafely("item.flintandsteel.use",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);
-                    if(SoundHelper.getSoundSafely("block.wooden_door.close",player)!=null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE, SoundCategory.MASTER,1.0f, 1.0f);  
-
-                    break;
-                case RETURN:
-                    playDefaultSound(player);
-                    if (returnToAdmin != null) {
-                        returnToAdmin.accept(player);
+        switch (option) {
+            case STATS:
+                //handleMoveDealer(player);
+                playDefaultSound(player);
+                break;
+            case PREFERENCES:
+                handlePreferencesMenu(player);
+                playDefaultSound(player);
+                break;
+            default:
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cInvalid option selected.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cInvalid player menu option selected.");
+                        break;}
+                    case NONE:{
+                        break;
                     }
-                    else {
-                        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                            case STANDARD:{
-                                player.sendMessage("§cNo return callback was set!");
-                                break;}
-                            case VERBOSE:{
-                                player.sendMessage("§cNo return callback was set for player menu!");
-                                break;}
-                            case NONE:{
-                                break;
-                            }
-                        }
-                        player.closeInventory();
-                    }
-                    break;
-                case STATS:
-                    //handleMoveDealer(player);
-                    playDefaultSound(player);
-                    break;
-                case PREFERENCES:
-                    handlePreferencesMenu(player);
-                    playDefaultSound(player);
-                    break;
-                default:
-                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                        case STANDARD:{
-                            player.sendMessage("§cInvalid option selected.");
-                            break;}
-                        case VERBOSE:{
-                            player.sendMessage("§cInvalid player menu option selected.");
-                            break;}
-                        case NONE:{
-                            break;
-                        }
-                    }
-                    break;
-            }
+                }
+                break;
         }
     }
 
     private void handlePreferencesMenu(Player player) {
-        PreferencesInventory pm = new PreferencesInventory(player, plugin,dealerId, (p) -> {
-
-
-            if (PlayerMenu.playerMenus.containsKey(player.getUniqueId())) {
-                PlayerMenu adminInventory = PlayerMenu.playerMenus.get(player.getUniqueId());
-                player.openInventory(adminInventory.getInventory());
-            } else {
-                if(player.hasPermission("nccasino.playermenu")){
-                    if (player.hasPermission("nccasino.adminmenu")){
-                        PlayerMenu pmen = new PlayerMenu(player,plugin,dealerId,(a) -> {
-                            if (AdminInventory.adminInventories.containsKey(player.getUniqueId())) {
-                                AdminInventory adminInventory = AdminInventory.adminInventories.get(player.getUniqueId());
-                                player.openInventory(adminInventory.getInventory());
-                            } else {
-                                AdminInventory adminInventory = new AdminInventory(dealerId, player, plugin);
-                                player.openInventory(adminInventory.getInventory());
-                            }
-                        },
-                            returnName
-                        );
-                            player.openInventory(pmen.getInventory());
-                    }
-                    else{
-                        PlayerMenu adminInventory = new PlayerMenu(player,plugin,dealerId);
+        PreferencesMenu pm = new PreferencesMenu(player, plugin,dealerId, (p) -> {
+        if(player.hasPermission("nccasino.playermenu")){
+            if (player.hasPermission("nccasino.adminmenu")){
+                PlayerMenu pmen = new PlayerMenu(player,plugin,dealerId,(a) -> {
+                    if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+                        AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
+                        player.openInventory(adminInventory.getInventory());
+                    } else {
+                        AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
                         player.openInventory(adminInventory.getInventory());
                     }
-                    
-                }
-                else{
+                },
+                    returnMessage
+                );
+                    player.openInventory(pmen.getInventory());
+            }
+            else{
                 PlayerMenu adminInventory = new PlayerMenu(player,plugin,dealerId);
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
-
                 player.openInventory(adminInventory.getInventory());
-            },2L);
             }
-            }
-        });
-        player.openInventory(pm.getInventory());
-    }
-
-    /**
-     * When the menu is closed, clean up if needed.
-     */
-    @EventHandler
-    public void onInventoryClose(InventoryCloseEvent event) {
+            
+        }
+        else{
+        PlayerMenu adminInventory = new PlayerMenu(player,plugin,dealerId);
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
 
-        if (event.getInventory().getHolder() instanceof PlayerMenu) {
-            if (event.getPlayer().getUniqueId().equals(ownerId)) {
-                if(event.getPlayer().getOpenInventory().getTopInventory().getHolder() instanceof PlayerMenu){
-                    return;
-                }
-                // Defer removing from static map so we don't get concurrency issues
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    if (playerMenus.containsKey(ownerId)) {
-                        PlayerMenu menu = playerMenus.get(ownerId);
-                        if (menu != null && menu.equals(this)) {
-                            // Remove from map
-                            playerMenus.remove(ownerId);
-                            // Unregister
-                            cleanup();
-                        }
-                    }
-                }, 1L);
-            }
-        }
-    }, 4L);
-
+        player.openInventory(adminInventory.getInventory());
+    },2L);
     }
-
-    /**
-     * Cleanup references and unregister. 
-     * Then call super.delete() to remove from DealerInventory.inventories.
-     */
-    private void cleanup() {
-        HandlerList.unregisterAll(this);
-        super.delete();
-    }
-
-    public static <K, V> K getKeyByValue(Map<K, V> map, V value) {
-        for (Map.Entry<K, V> entry : map.entrySet()) {
-            if (entry.getValue().equals(value)) {
-                return entry.getKey();
-            }
-        }
-        return null; 
+        });
+        player.openInventory(pm.getInventory());
     }
 
 }

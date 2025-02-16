@@ -18,35 +18,21 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.entities.DealerInventory;
+import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
+
 import net.md_5.bungee.api.ChatColor;
 
-public class MinesAdminInventory extends DealerInventory {
-    private final UUID ownerId;
-    private final Consumer<UUID> ret;
+public class MinesMenu extends Menu {
     private UUID dealerId;
     private Nccasino plugin;
     private String returnName;
     private Mob dealer;
-    public static final Map<UUID, MinesAdminInventory> MAInventories = new HashMap<>();
+    public static final Map<UUID, MinesMenu> MAInventories = new HashMap<>();
 
-
-    private enum SlotOption {
-        RETURN,
-        EDIT_MINES,
-        EXIT
-     }
-     private final Map<SlotOption, Integer> slotMapping = new HashMap<>() {{
-        put(SlotOption.EXIT, 0);
-        put(SlotOption.RETURN, 1);
-        put(SlotOption.EDIT_MINES, 2);
-     }};
-
-    public MinesAdminInventory(UUID dealerId,Player player, String title, Consumer<UUID> ret, Nccasino plugin,String returnName) {
-        super(player.getUniqueId(), 9, title);
-        this.ret = ret;
+    public MinesMenu(UUID dealerId,Player player, String title, Consumer<Player> ret, Nccasino plugin,String returnName) {
+        super(player, plugin,dealerId, title, 9, returnName, ret);
         this.dealerId = dealerId;
         this.plugin = plugin;
         this.returnName=returnName;
@@ -61,21 +47,21 @@ public class MinesAdminInventory extends DealerInventory {
                              && Dealer.getUniqueId(v).equals(this.dealerId))
                 .findFirst().orElse(null);
         }
-        registerListener();
-        this.ownerId = player.getUniqueId();  // Store the player's ID
 
+        
+        slotMapping.put(SlotOption.EXIT, 0);
+        slotMapping.put(SlotOption.RETURN, 1);
+        slotMapping.put(SlotOption.EDIT_MINES, 2);
         MAInventories.put(this.ownerId, this);
-        initalizeMenu();
+        initializeMenu();
     }
 
-    private void registerListener() {
-        Bukkit.getPluginManager().registerEvents(this, plugin);
-    }
 
     private void unregisterListener() {
         InventoryCloseEvent.getHandlerList().unregister(this);
     }
 
+    @Override
     public void cleanup() {
         // 1) Unregister all event handlers for this instance
         HandlerList.unregisterAll(this);
@@ -84,10 +70,12 @@ public class MinesAdminInventory extends DealerInventory {
         MAInventories.remove(ownerId);
 
         // 3) Remove player references from the specialized maps
-        AdminInventory.editMinesMode.remove(ownerId);
+        AdminMenu.editMinesMode.remove(ownerId);
+        this.delete();
     }
 
-    private void initalizeMenu(){
+    @Override
+    protected void initializeMenu(){
         String internalName = Dealer.getInternalName(dealer);
         FileConfiguration config = plugin.getConfig();
         int defaultMines = config.getInt("dealers." + internalName + ".default-mines", 3);
@@ -101,13 +89,13 @@ public class MinesAdminInventory extends DealerInventory {
     public void onInventoryClose(InventoryCloseEvent event) {
         Player player = (Player) event.getPlayer();
         UUID playerId = player.getUniqueId();
-        if(event.getInventory().getHolder() instanceof MinesAdminInventory){
+        if(event.getInventory().getHolder() instanceof MinesMenu){
         // Check if the player has an active AdminInventory
             if (MAInventories.containsKey(playerId)) {
                     // Check if the player is currently editing something
-                if (!AdminInventory.editMinesMode.containsKey(playerId)) {
+                if (!AdminMenu.editMinesMode.containsKey(playerId)) {
                     // Remove the AdminInventory and clean up references
-                    MinesAdminInventory inventory = MAInventories.remove(playerId);
+                    MinesMenu inventory = MAInventories.remove(playerId);
 
                     if (inventory != null) {
                         inventory.cleanup();
@@ -121,10 +109,10 @@ public class MinesAdminInventory extends DealerInventory {
                 }
 
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    if (player.getOpenInventory().getTopInventory().getHolder() instanceof AdminInventory) {
+                    if (player.getOpenInventory().getTopInventory().getHolder() instanceof AdminMenu) {
                         return;
                     }
-                    AdminInventory temp=AdminInventory.adminInventories.get(player.getUniqueId());
+                    AdminMenu temp=AdminMenu.adminInventories.get(player.getUniqueId());
                     if(temp!=null){
                         if(temp.getDealerId()==dealerId){
                             temp.delete();
@@ -136,34 +124,18 @@ public class MinesAdminInventory extends DealerInventory {
         }
     }
 
-    public void executeReturn() {
-        ret.accept(dealerId);
-        delete();
-    }
-
 
     @Override
-    public void handleClick(int slot, Player player, InventoryClickEvent event) {
+    protected void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
         UUID playerId = player.getUniqueId();
         if (!MAInventories.containsKey(playerId)) return;
         //event.setCancelled(true); // Default behavior: prevent unintended interactions
 
-        if (event.getClickedInventory() == null) return; 
     
-        SlotOption option = getKeyByValue(slotMapping, slot);
-        if(option!=null){
         switch (option) {
-            case RETURN:
-                playDefaultSound(player);
-                executeReturn();
-                break;
             case EDIT_MINES:
             handleEditMines(player);
             playDefaultSound(player);
-                break;
-            case EXIT:
-                handleExit(player);
-                playDefaultSound(player);
                 break;
             default:
                 if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
@@ -179,28 +151,13 @@ public class MinesAdminInventory extends DealerInventory {
                     }
                 }
                 break;
-            }
         }
-    }
-
-    private void handleExit(Player player) {
-        player.closeInventory();
-        delete();
-    }
-
-    public static <K, V> K getKeyByValue(Map<K, V> map, V value) {
-        for (Map.Entry<K, V> entry : map.entrySet()) {
-            if (entry.getValue().equals(value)) {
-                return entry.getKey();
-            }
-        }
-        return null; 
     }
 
     private void handleEditMines(Player player) {
         UUID playerId = player.getUniqueId();
-        AdminInventory.localMob.put(player.getUniqueId(), dealer);
-        AdminInventory.editMinesMode.put(playerId, dealer);
+        AdminMenu.localMob.put(player.getUniqueId(), dealer);
+        AdminMenu.editMinesMode.put(playerId, dealer);
         player.closeInventory();
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
@@ -216,72 +173,78 @@ public class MinesAdminInventory extends DealerInventory {
         }
     }
 
-      @EventHandler
+    @EventHandler
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        if (MAInventories.get(playerId) == null){
+        if (!MAInventories.containsKey(playerId)) {
             cleanup();
             return;
         }
-         if (AdminInventory.editMinesMode.get(playerId) != null) {
+
+        if (AdminMenu.editMinesMode.get(playerId) != null) {
             event.setCancelled(true);
-            String newTimer = event.getMessage().trim();
-
-            if (newTimer.isEmpty() || !newTimer.matches("\\d+") || Integer.parseInt(newTimer) <= 0|| Integer.parseInt(newTimer) >24 ) {
-                denyAction(player, "Please enter a default # of mines between 1 and 24.");
-                return;
-            }
-            if (dealer != null) {
-                String internalName = Dealer.getInternalName(dealer);
-                plugin.getConfig().set("dealers." + internalName + ".default-mines", Integer.parseInt(newTimer));
-                plugin.saveConfig();
-                plugin.reloadDealer(dealer);
-                if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage("§aDefault # of mines updated.");
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§aDefault # of mines updated to: " + ChatColor.YELLOW + newTimer + "§a.");
-                        break;}
-                    case NONE:{
-                        break;
-                    }
-                }
-            } else {
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage("§cCould not find dealer.");
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§cCould not find dealer for mines settings.");
-                        break;}
-                    case NONE:{
-                        break;
-                    }
-                }
-            }
-
-            AdminInventory.localMob.remove(playerId);
-
-            cleanup();
+            handleNumericInput(player, event.getMessage().trim(), "default-mines", 1, 24, "Dealer default mines updated");
         }
-
     }
-    private void denyAction(Player player, String message) {
-        if (SoundHelper.getSoundSafely("entity.villager.no",player) != null) {
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+
+    private void handleNumericInput(Player player, String input, String configPath, long min, long max, String standardMessage) {
+        if (input.isEmpty() || !input.matches("\\d+")) {
+            denyAction(player, "Please enter a valid positive integer.");
+            return;
         }
-        player.sendMessage("§c" + message);
+
+        long value;
+        try {
+            value = Long.parseLong(input);
+        } catch (NumberFormatException e) {
+            denyAction(player, "Invalid number format.");
+            return;
+        }
+
+        if (value < min || value > max) {
+            denyAction(player, "Please enter a number between " + min + " and " + max + ".");
+            return;
+        }
+
+        if (dealer != null) {
+            String internalName = Dealer.getInternalName(dealer);
+            plugin.getConfig().set("dealers." + internalName + "." + configPath, value);
+            plugin.saveConfig();
+            plugin.reloadDealer(dealer);
+
+            if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§a" + standardMessage + ".");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§a" + standardMessage + " to: " + ChatColor.YELLOW + value + "§a.");
+                    break;
+                case NONE:
+                    break;
+            }
+
+            AdminMenu.localMob.remove(player.getUniqueId());
+        } else {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§cCould not find dealer.");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§cCould not find mines settings dealer.");
+                    break;
+                case NONE:
+                    break;
+            }
+        }
+
+        cleanup();
     }
     
-    public void delete() {
-        cleanup();
-   
-        super.delete(); 
-        // super.delete() removes from DealerInventory.inventories & clears the Inventory
-    }
 
 }

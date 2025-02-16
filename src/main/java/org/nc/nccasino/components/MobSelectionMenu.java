@@ -39,44 +39,20 @@ import org.bukkit.entity.TropicalFish;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.WanderingTrader;
 import org.bukkit.entity.ZombieVillager;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Dealer;
-import org.nc.nccasino.entities.DealerInventory;
+import org.nc.nccasino.entities.Menu;
 
-public class MobSelectionInventory extends DealerInventory {
-    private final UUID ownerId;
-    private final Consumer<Player> returnToAdmin;
-    private final Nccasino plugin;
-    private final String returnName;
+public class MobSelectionMenu extends Menu {
     private final Mob dealer;
     private int currentPage = 1;
     private static final int PAGE_SIZE = 45;
     private static final Map<Material, EntityType> spawnEggToEntity = new HashMap<>();
     private static final Map<EntityType, Material> entityToSpawnEgg = new HashMap<>();
     private static final List<Material> spawnEggList = new ArrayList<>();
-    private UUID dealerId;
-    private final Player player;
-    private enum SlotOption {
-        EXIT,
-        RETURN,
-        PAGE_TOGGLE,
-        VARIANT,
-        AGE_TOGGLE
-    }
-
-    private final Map<SlotOption, Integer> slotMapping = Map.of(
-        SlotOption.EXIT, 53,
-        SlotOption.RETURN, 45,
-        SlotOption.PAGE_TOGGLE, 49,
-        SlotOption.VARIANT, 47,
-        SlotOption.AGE_TOGGLE, 51
-    );
 
     private static final List<Villager.Type> VILLAGER_BIOMES = Arrays.asList(
         Villager.Type.DESERT,
@@ -153,15 +129,21 @@ public class MobSelectionInventory extends DealerInventory {
         return entityToSpawnEgg.getOrDefault(type, Material.EGG);
     }
 
-    public MobSelectionInventory(Player player, Nccasino plugin, UUID dealerId, Consumer<Player> returnToAdmin, String returnName) {
-        super(player.getUniqueId(), 54, "Select Model for " +  Dealer.getInternalName((Mob) player.getWorld()
-        .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-        .filter(entity -> entity instanceof Mob)
-        .map(entity -> (Mob) entity)
-        .filter(v -> Dealer.isDealer(v)
-                    && Dealer.getUniqueId(v).equals(dealerId))
-        .findFirst().orElse(null)));
-        this.dealerId = dealerId;
+    public MobSelectionMenu(Player player, Nccasino plugin, UUID dealerId, Consumer<Player> returnToAdmin, String returnName) {
+        super(
+            player, 
+            plugin, 
+            dealerId, 
+            "Select Model for " +  
+                Dealer.getInternalName((Mob) player.getWorld()
+                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
+                .filter(entity -> entity instanceof Mob)
+                .map(entity -> (Mob) entity)
+                .filter(v -> Dealer.isDealer(v) && Dealer.getUniqueId(v).equals(dealerId)).findFirst().orElse(null)), 
+            54, 
+            returnName, 
+            returnToAdmin
+        ); 
         this.dealer = (Mob) player.getWorld()
         .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
         .filter(entity -> entity instanceof Mob)
@@ -169,20 +151,18 @@ public class MobSelectionInventory extends DealerInventory {
         .filter(v -> Dealer.isDealer(v)
                      && Dealer.getUniqueId(v).equals(this.dealerId))
         .findFirst().orElse(null);
-        this.ownerId = player.getUniqueId();
-        this.plugin = plugin;
-        this.player=player;
-        this.returnName = returnName;
-        this.returnToAdmin = returnToAdmin;
-        registerListener();
-        updateMenu();
+
+        slotMapping.put(SlotOption.EXIT, 53);
+        slotMapping.put(SlotOption.RETURN, 45);
+        slotMapping.put(SlotOption.PAGE_TOGGLE, 49);
+        slotMapping.put(SlotOption.VARIANT, 47);
+        slotMapping.put(SlotOption.AGE_TOGGLE, 51);
+
+        initializeMenu();
     }
 
-    private void registerListener() {
-        Bukkit.getPluginManager().registerEvents(this, plugin);
-    }
-
-    private void updateMenu() {
+    @Override
+    protected void initializeMenu() {
         inventory.clear();
         int startIndex = (currentPage - 1) * PAGE_SIZE;
 
@@ -202,7 +182,7 @@ public class MobSelectionInventory extends DealerInventory {
 
         // Navigation & Utility Buttons
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit", slotMapping.get(SlotOption.EXIT));
-        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnName, slotMapping.get(SlotOption.RETURN));
+        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnMessage, slotMapping.get(SlotOption.RETURN));
 
         // Single Slot Pagination Button (Switches Between Next & Previous)
         if (currentPage > 1) {
@@ -212,78 +192,49 @@ public class MobSelectionInventory extends DealerInventory {
         }
         updateVariantButton();
         updateAgeButton(); 
+        
     }
 
     @Override
-    public void handleClick(int slot, Player player, InventoryClickEvent event) {
-        if (event.getClickedInventory() == null || !(event.getInventory().getHolder() instanceof MobSelectionInventory)) {
-            return;
+    protected void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
+        switch (option) {
+            case PAGE_TOGGLE:
+                if (currentPage > 1) {
+                    currentPage--;
+                } else if (currentPage < (int) Math.ceil(spawnEggList.size() / (double) PAGE_SIZE)) {
+                    currentPage++;
+                }
+                initializeMenu();
+                playDefaultSound(player);
+                return;
+            case VARIANT:
+                handleVariantClick(player);
+                playDefaultSound(player);
+                break;
+            case AGE_TOGGLE:
+                handleAgeToggle(player);
+                playDefaultSound(player);
+                return;
+            default:
+                return;
         }
+    }
+    
 
-        event.setCancelled(true);
-        
-        SlotOption option = getKeyByValue(slotMapping, slot);
-        if(option!=null){
-            switch (option) {
-                case PAGE_TOGGLE:
-                    if (currentPage > 1) {
-                        currentPage--;
-                    } else if (currentPage < (int) Math.ceil(spawnEggList.size() / (double) PAGE_SIZE)) {
-                        currentPage++;
-                    }
-                    updateMenu();
-                    playDefaultSound(player);
-                    return;
-                case EXIT: 
-                    player.closeInventory();
-                    playDefaultSound(player);
-                    return;
-                case RETURN: 
-                    returnToAdmin.accept(player);
-                    playDefaultSound(player);
-                    return;
-                case VARIANT:
-                    handleVariantClick(player);
-                    playDefaultSound(player);
-                    break;
-                case AGE_TOGGLE :
-                    handleAgeToggle(player);
-                    playDefaultSound(player);
-                    return;
-                    
-            }
-        }
-
-        
-
+    public void handleEntityClick(Player player, InventoryClickEvent event) {
         ItemStack clickedItem = event.getCurrentItem();
-        if (clickedItem == null) return;
-
-
-        if (!spawnEggToEntity.containsKey(clickedItem.getType())) return;
-
+        if (clickedItem == null || !spawnEggToEntity.containsKey(clickedItem.getType())) return;
+    
         EntityType selectedType = spawnEggToEntity.get(clickedItem.getType());
         String internalName = Dealer.getInternalName(dealer);
-
-
+    
         playDefaultSound(player);
-        // Restore dealer settings
-        restoreDealerSettings(internalName,selectedType);
+        restoreDealerSettings(internalName, selectedType,player);
     }
+    
+    
 
-    @EventHandler
-    public void onInventoryClose(InventoryCloseEvent event) {
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (event.getInventory().getHolder() instanceof MobSelectionInventory) {
-                if (event.getPlayer().getUniqueId().equals(ownerId)) {
-                    HandlerList.unregisterAll(this);
-                    super.delete();
-                }
-            }
-        }, 4L);
-    }
-
-    private void restoreDealerSettings(String internalName, EntityType selectedType) {
+    private void restoreDealerSettings(String internalName, EntityType selectedType, Player player) {
         Location loc = dealer.getLocation();
         
         String name = plugin.getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
@@ -301,7 +252,8 @@ public class MobSelectionInventory extends DealerInventory {
         chipSizes.sort(Integer::compareTo);
         String currencyMaterial = plugin.getConfig().getString("dealers." + internalName + ".currency.material");
         String currencyName = plugin.getConfig().getString("dealers." + internalName + ".currency.name");
-        ConfirmInventory confirmInventory = new ConfirmInventory(
+        ConfirmMenu confirmInventory = new ConfirmMenu(
+            player,
             dealerId,
             "Reset config to default?",
             (uuid) -> {
@@ -351,9 +303,11 @@ public class MobSelectionInventory extends DealerInventory {
 
     private void handleVariantClick(Player player) {
         if (isComplicatedVariant(dealer)) {
+                playDefaultSound(player);
                openVariantMenu(player, dealer);
            }
            else if (hasSingleVariant(dealer)) {
+                playDefaultSound(player);
                cycleSingleVariant(player, dealer);
            }
            else {
@@ -556,8 +510,11 @@ public class MobSelectionInventory extends DealerInventory {
         }
         if(isAgeable(dealer)){
         // It's Ageable, so cast and toggle
+        
+        playDefaultSound(player);
         org.bukkit.entity.Ageable ageable = (org.bukkit.entity.Ageable) dealer;
         if (ageable.isAdult()) {
+            
             ageable.setBaby();
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case VERBOSE -> player.sendMessage("§a"+formatEntityName(ageable.getType().toString())+" set to "+ChatColor.YELLOW+ "baby§a.");
@@ -728,4 +685,5 @@ public class MobSelectionInventory extends DealerInventory {
         }
         return 0; // fallback
     }
+
 }

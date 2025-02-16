@@ -8,54 +8,49 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.entities.DealerInventory;
+import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
-public class GameOptionsInventory extends DealerInventory {
+public class GameOptionsMenu extends Menu {
 
     private final Nccasino plugin;
     private final String internalName;
     private final Boolean editing;
     private final Mob dealer;
-    private final Consumer<UUID> ret;
 
-    private enum SlotOption {
-        EXIT,
-        RETURN,
-        BLACKJACK,
-        ROULETTE,
-        MINES
-    }
-  private final Map<SlotOption, Integer> slotMapping = new HashMap<>();
-    public GameOptionsInventory(Nccasino plugin, String internalName) {
-        super(UUID.randomUUID(), 9, "Select Game Type");
+    public GameOptionsMenu(Player player, Nccasino plugin, String internalName) {
+        super(player, plugin, UUID.randomUUID(), "Select Game Type", 9, "", null);
         this.plugin = plugin;
         this.internalName = internalName;
         this.editing = false;
         this.dealer = null;
-        this.ret = null;
         slotMapping.put(SlotOption.BLACKJACK, 0);
         slotMapping.put(SlotOption.ROULETTE, 1);
         slotMapping.put(SlotOption.MINES, 2);
         initializeMenu();
     }
 
-    public GameOptionsInventory(Nccasino plugin, Mob dealer, Consumer<UUID> ret) {
-        super(UUID.randomUUID(), 9, "Edit Game Type");
+    public GameOptionsMenu(Player player, Nccasino plugin, Mob dealer, Consumer<Player> ret) {
+        super(
+            player, 
+            plugin, 
+            UUID.randomUUID(), 
+            "Edit Game Type", 
+            9, 
+            "Return to " + Dealer.getInternalName(dealer) + "'s Admin Menu", 
+            ret
+        );
         this.plugin = plugin;
         this.internalName = Dealer.getInternalName(dealer);
         this.editing = true;
-        this.ret = ret;
         this.dealer = dealer;
 
         slotMapping.put(SlotOption.EXIT, 0);
@@ -67,7 +62,8 @@ public class GameOptionsInventory extends DealerInventory {
        initializeMenu();
     }
 
-    private void initializeMenu() {
+    @Override
+    protected void initializeMenu() {
 
         if (editing){
             addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to "+internalName +"'s Admin Menu",  slotMapping.get(SlotOption.RETURN));
@@ -84,12 +80,8 @@ public class GameOptionsInventory extends DealerInventory {
     }
 
     @Override
-    public void handleClick(int slot, Player player, InventoryClickEvent event) {
-        if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
-            return;
-        }
-
-        SlotOption option = getKeyByValue(slotMapping, slot);
+    protected void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
+  
         String gameType;
         switch (option) {
             case BLACKJACK:
@@ -104,14 +96,6 @@ public class GameOptionsInventory extends DealerInventory {
                 playDefaultSound(player);
                 gameType = "Mines";
                 break;
-            case EXIT:
-                handleExit(player);
-                playDefaultSound(player);
-                return; 
-            case RETURN:
-                playDefaultSound(player);
-                executeReturn();
-                return;
             default:
                 return;
         }
@@ -121,16 +105,6 @@ public class GameOptionsInventory extends DealerInventory {
         else{
             editDealer(player, gameType);
         }
-    }
-
-    private void executeReturn(){
-        ret.accept(dealerId);
-        delete();
-    }
-
-    private void handleExit(Player player){
-        player.closeInventory();
-        delete();
     }
 
     private void createDealer(Player player, String gameType) {
@@ -151,7 +125,6 @@ public class GameOptionsInventory extends DealerInventory {
         dealersConfig.set(path + ".world", location.getWorld().getName());
         dealersConfig.set(path + ".chunkX", chunk.getX());
         dealersConfig.set(path + ".chunkZ", chunk.getZ());
-        dealersConfig.set(path + ".gameType", gameType);
 
         try {
             dealersConfig.save(dealersFile);
@@ -186,7 +159,8 @@ public class GameOptionsInventory extends DealerInventory {
         String internalName = Dealer.getInternalName(dealer);
 
 
-        ConfirmInventory confirmInventory = new ConfirmInventory(
+        ConfirmMenu confirmInventory = new ConfirmMenu(
+            player,
             dealerId,
             "Reset config to default?",
             (uuid) -> {
@@ -217,14 +191,6 @@ public class GameOptionsInventory extends DealerInventory {
             );
         player.openInventory(confirmInventory.getInventory());
     }    
-    
-    public static <K, V> K getKeyByValue(Map<K, V> map, V value) {
-        for (Map.Entry<K, V> entry : map.entrySet()) {
-            if (entry.getValue().equals(value)) {
-                return entry.getKey();
-            }
-        }
-        return null; 
-    }
+
 
 }

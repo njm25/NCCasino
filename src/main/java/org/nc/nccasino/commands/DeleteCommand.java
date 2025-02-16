@@ -17,7 +17,7 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.components.AdminInventory;
+import org.nc.nccasino.components.AdminMenu;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
@@ -45,8 +45,8 @@ public class DeleteCommand implements CasinoCommand {
         
         Player player = (Player) sender;
 
-        List<String> occupations = AdminInventory.playerOccupations(player.getUniqueId());
-        List<Mob> mobs = AdminInventory.getOccupiedDealers(player.getUniqueId())
+        List<String> occupations = AdminMenu.playerOccupations(player.getUniqueId());
+        List<Mob> mobs = AdminMenu.getOccupiedDealers(player.getUniqueId())
             .stream()
             .filter(v -> v != null && !v.isDead() && v.isValid()) // Ensure valid mobs
             .toList();
@@ -69,7 +69,7 @@ public class DeleteCommand implements CasinoCommand {
             return true;
         }
         
-        AdminInventory.deleteAssociatedAdminInventories((Player) sender);
+        AdminMenu.deleteAssociatedAdminInventories((Player) sender);
 
         if (internalName.equals("*")) {
             // Delete all known dealers
