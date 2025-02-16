@@ -149,7 +149,7 @@ public class MinesAdminInventory extends DealerInventory {
         //event.setCancelled(true); // Default behavior: prevent unintended interactions
 
         if (event.getClickedInventory() == null) return; 
-
+    
         SlotOption option = getKeyByValue(slotMapping, slot);
         if(option!=null){
         switch (option) {
