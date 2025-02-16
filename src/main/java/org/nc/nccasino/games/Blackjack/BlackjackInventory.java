@@ -46,7 +46,6 @@ public class BlackjackInventory extends DealerInventory {
     private final Map<UUID, Map<Integer, Double>> playerBets; // Track player bets by slot number
     private final Map<UUID, List<Double>> lastBetAmounts; // Track the last bet amounts placed by the player
     private boolean gameActive; // Track whether the game is active
-    private final Map<UUID, Boolean> clickAllowed = new HashMap<>(); // Track click state per player
     private int countdownTaskId; // Task ID for the countdown timer
     private UUID currentPlayerId; // Track the current player
     private Iterator<UUID> playerIterator; // Iterator for player turns
@@ -277,150 +276,134 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
     }
     UUID playerId = player.getUniqueId();
 
-    if (clickAllowed.getOrDefault(playerId, true)) {
-        clickAllowed.put(playerId, false); // Set click allowed to false for this player
-        Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L); // Delay for click handling
-        if (gameActive) { // Game is active, handle player actions
-            if (playerId.equals(currentPlayerId)) {
-                handlePlayerAction(player, slot);
-            } else if (slot == 53) { // Handle leave chair
-                handleLeaveChairDuringGame(player);
-                player.closeInventory();}
-            else if (isPlayerHeadSlot(slot, player)) { // Handle clicking own player head
-                    handleLeaveChair(player); // Leave chair but stay in inventory
-            }
-            else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage("§cInvalid action.");
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§cCan't bet during a game.");
-                    break;}
-                case NONE:{
-                    break;
-                }
-            }
-                 if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
-            }
-            else if (slot == 0){
-                                // 1 in 1000 chance
-                if (Math.random() < 0.001) { 
-                                    // Spawn the firework at the player's location
-                    Firework firework = (Firework) player.getLocation().getWorld().spawnEntity(player.getLocation(), EntityType.FIREWORK_ROCKET);
-
-                    // Customize the firework
-                    FireworkMeta fireworkMeta = firework.getFireworkMeta();
-
-                    FireworkEffect effect = FireworkEffect.builder()
-                            .with(FireworkEffect.Type.CREEPER) // Explosion shape: Creeper head
-                            .withColor(Color.GREEN)           // Primary color
-                            .withFade(Color.BLACK)            // Fade color
-                            .flicker(true)                    // Flicker effect
-                            .trail(true)                      // Trail effect
-                            .build();
-                
-                    fireworkMeta.addEffect(effect);
-                    fireworkMeta.setPower(2); // Flight duration
-                    firework.setFireworkMeta(fireworkMeta);
-                
-                    // Do NOT call firework.detonate(), let the firework fly naturally
-                }
-                
-                 if (SoundHelper.getSoundSafely("entity.creeper.hurt", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
-            }
-        }
-         else { // Handle clicks in the game menu before the game starts
-            if (isPlayerHeadSlot(slot, player)) { // Handle clicking own player head
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§aLeft chair.");
-                        break;     
-        
-                    }
-                        case NONE:{
-                        break;
-                    }
-                }
+    if (gameActive) { // Game is active, handle player actions
+        if (playerId.equals(currentPlayerId)) {
+            handlePlayerAction(player, slot);
+        } else if (slot == 53) { // Handle leave chair
+            handleLeaveChairDuringGame(player);
+            player.closeInventory();}
+        else if (isPlayerHeadSlot(slot, player)) { // Handle clicking own player head
                 handleLeaveChair(player); // Leave chair but stay in inventory
-            }
-            else if (slot >= 9 && slot <= 27 && slot % 9 == 0) { // Chair slots (9, 18, 27)
-                handleChairClick(slot, player);
-            } else if (slot == 53) { // Leave chair
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage("§aLeft game.");
-                        break;     
-                    }
-                        case NONE:{
-                        break;
-                    }
-                }
-                handleLeaveChair(player);
-                player.closeInventory();
-            } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots (10, 19, 28)
-                handleBetClick(slot, player, event);
-            } else if (slot >= 47 && slot <= 51) { // Chip selection
-                handleChipSelection(player, event.getCurrentItem());
-            } 
-            else if (slot == 0){
-
-                // 1 in 1000 chance
-                if (Math.random() < 0.001) { 
-                                    // Spawn the firework at the player's location
-                    Firework firework = (Firework) player.getLocation().getWorld().spawnEntity(player.getLocation(), EntityType.FIREWORK_ROCKET);
-
-                    // Customize the firework
-                    FireworkMeta fireworkMeta = firework.getFireworkMeta();
-
-                    FireworkEffect effect = FireworkEffect.builder()
-                            .with(FireworkEffect.Type.CREEPER) // Explosion shape: Creeper head
-                            .withColor(Color.GREEN)           // Primary color
-                            .withFade(Color.BLACK)            // Fade color
-                            .flicker(true)                    // Flicker effect
-                            .trail(true)                      // Trail effect
-                            .build();
-                
-                    fireworkMeta.addEffect(effect);
-                    fireworkMeta.setPower(2); // Flight duration
-                    firework.setFireworkMeta(fireworkMeta);
-                
-                    // Do NOT call firework.detonate(), let the firework fly naturally
-                }
-                
-                 if (SoundHelper.getSoundSafely("entity.creeper.hurt", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
-            } else {
-                switch (slot) {
-                    case 45:
-
-
-                        handleUndoAllBets(player);
-                        break;
-                    case 46:
-                        handleUndoLastBet(player);
-                        break;
-                    case 52:
-                        handleAllIn(player);
-                    default:
-                        // Handle other slots if needed
-                        break;
-                }
-            }
         }
-    } else {
+        else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-        player.sendMessage("§cPlease wait before clicking again!");
+                player.sendMessage("§cInvalid action.");
                 break;}
             case VERBOSE:{
-                player.sendMessage("§cPlease wait before clicking blackjack again!");
+                player.sendMessage("§cCan't bet during a game.");
                 break;}
             case NONE:{
                 break;
+            }
+        }
+                if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+        }
+        else if (slot == 0){
+                            // 1 in 1000 chance
+            if (Math.random() < 0.001) { 
+                                // Spawn the firework at the player's location
+                Firework firework = (Firework) player.getLocation().getWorld().spawnEntity(player.getLocation(), EntityType.FIREWORK_ROCKET);
+
+                // Customize the firework
+                FireworkMeta fireworkMeta = firework.getFireworkMeta();
+
+                FireworkEffect effect = FireworkEffect.builder()
+                        .with(FireworkEffect.Type.CREEPER) // Explosion shape: Creeper head
+                        .withColor(Color.GREEN)           // Primary color
+                        .withFade(Color.BLACK)            // Fade color
+                        .flicker(true)                    // Flicker effect
+                        .trail(true)                      // Trail effect
+                        .build();
+            
+                fireworkMeta.addEffect(effect);
+                fireworkMeta.setPower(2); // Flight duration
+                firework.setFireworkMeta(fireworkMeta);
+            
+                // Do NOT call firework.detonate(), let the firework fly naturally
+            }
+            
+                if (SoundHelper.getSoundSafely("entity.creeper.hurt", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
+        }
+    }
+        else { // Handle clicks in the game menu before the game starts
+        if (isPlayerHeadSlot(slot, player)) { // Handle clicking own player head
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aLeft chair.");
+                    break;     
+    
+                }
+                    case NONE:{
+                    break;
+                }
+            }
+            handleLeaveChair(player); // Leave chair but stay in inventory
+        }
+        else if (slot >= 9 && slot <= 27 && slot % 9 == 0) { // Chair slots (9, 18, 27)
+            handleChairClick(slot, player);
+        } else if (slot == 53) { // Leave chair
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aLeft game.");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            }
+            handleLeaveChair(player);
+            player.closeInventory();
+        } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots (10, 19, 28)
+            handleBetClick(slot, player, event);
+        } else if (slot >= 47 && slot <= 51) { // Chip selection
+            handleChipSelection(player, event.getCurrentItem());
+        } 
+        else if (slot == 0){
+
+            // 1 in 1000 chance
+            if (Math.random() < 0.001) { 
+                                // Spawn the firework at the player's location
+                Firework firework = (Firework) player.getLocation().getWorld().spawnEntity(player.getLocation(), EntityType.FIREWORK_ROCKET);
+
+                // Customize the firework
+                FireworkMeta fireworkMeta = firework.getFireworkMeta();
+
+                FireworkEffect effect = FireworkEffect.builder()
+                        .with(FireworkEffect.Type.CREEPER) // Explosion shape: Creeper head
+                        .withColor(Color.GREEN)           // Primary color
+                        .withFade(Color.BLACK)            // Fade color
+                        .flicker(true)                    // Flicker effect
+                        .trail(true)                      // Trail effect
+                        .build();
+            
+                fireworkMeta.addEffect(effect);
+                fireworkMeta.setPower(2); // Flight duration
+                firework.setFireworkMeta(fireworkMeta);
+            
+                // Do NOT call firework.detonate(), let the firework fly naturally
+            }
+            
+                if (SoundHelper.getSoundSafely("entity.creeper.hurt", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
+        } else {
+            switch (slot) {
+                case 45:
+
+
+                    handleUndoAllBets(player);
+                    break;
+                case 46:
+                    handleUndoLastBet(player);
+                    break;
+                case 52:
+                    handleAllIn(player);
+                default:
+                    // Handle other slots if needed
+                    break;
             }
         }
     }
@@ -664,8 +647,7 @@ private void handleHit(Player player) {
            
             } else {
                 
-                    playerTurnActive.put(playerId, true); // Allow more actions since the player hasn't busted
-                    allowPlayerActions(player); // Continue player's turn with delay
+                playerTurnActive.put(playerId, true); // Allow more actions since the player hasn't busted
                
             }
         }, 40L); // The delay should be enough to ensure that the card has been added
@@ -715,7 +697,6 @@ private void handleDoubleDown(Player player) {
                 }
             }
             playerTurnActive.put(playerId, true); // Allow more actions since the double down failed
-            allowPlayerActions(player); // Continue player's turn
             return;
         }
 
@@ -1451,9 +1432,6 @@ private void startNextPlayerTurn() {
             // Set player's turn as active
             playerTurnActive.put(currentPlayerId, true);
 
-            // Allow the player to take actions (Hit, Stand, Double Down, Insurance)
-            allowPlayerActions(currentPlayer);
-
             return;
         }
     }
@@ -1477,12 +1455,6 @@ private void startNextPlayerTurn() {
 
     // No more players left, proceed to the dealer's turn
     startDealerTurn();
-}
-
-private void allowPlayerActions(Player player) {
-    // Enable relevant slots for actions
-    clickAllowed.putIfAbsent(player.getUniqueId(), true);
-
 }
 
 

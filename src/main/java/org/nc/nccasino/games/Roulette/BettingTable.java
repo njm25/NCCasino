@@ -39,7 +39,6 @@ public class BettingTable extends DealerInventory {
     private final Map<String, Double> chipValues;
     private final Stack<Pair<String, Integer>> betStack;
     private Stack<Pair<String, Integer>> testStack;
-    private boolean clickAllowed = true;
     private boolean betsClosed=false;
     private int countdown1=30;
     public BettingTable(Player player, Mob dealer, Nccasino plugin, Stack<Pair<String, Integer>> existingBets, String internalName,RouletteInventory rouletteInventory,int countdown) {
@@ -619,25 +618,6 @@ public class BettingTable extends DealerInventory {
         if (betsClosed) {
             return;
         }
-
-        if (!clickAllowed) {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage("§cInvalid action.");
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§cPlease wait before clicking again!");
-                    break;     
-                }
-                    case NONE:{
-                    break;
-                }
-            } 
-            return;
-        }
-        clickAllowed = false;
-
-        Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed = true, 5L);
 
         int slot = event.getRawSlot();
         ItemStack clickedItem = event.getCurrentItem();

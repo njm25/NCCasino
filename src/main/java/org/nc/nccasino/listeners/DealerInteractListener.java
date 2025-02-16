@@ -22,8 +22,10 @@ import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.Preferences.MessageSetting;
 import org.nc.nccasino.helpers.SoundHelper;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -31,7 +33,8 @@ public class DealerInteractListener implements Listener {
     private final Nccasino plugin;
     public static Set<Player> activeAnimations = new HashSet<>();
     private Mob dealer;
-        
+    private final Map<UUID, Boolean> clickAllowed = new HashMap<>(); // Track click state per player
+
     private final Set<String> recentInteractions = new HashSet<>();
     public DealerInteractListener(Nccasino plugin) {
         this.plugin = plugin;
@@ -182,15 +185,17 @@ public class DealerInteractListener implements Listener {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         Player player = (Player) event.getWhoClicked();
+        UUID playerId = player.getUniqueId();
 
-        if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory()) && event.getInventory().getHolder() instanceof DealerInventory) {
+        if(!(event.getInventory().getHolder() instanceof DealerInventory)) return;
+        event.setCancelled(true);
+        if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
             // By default, SHIFT-click will attempt to move items into the top inventory
 
             MessageSetting settings = plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             
             if(event.isShiftClick() && !(event.getInventory().getHolder() instanceof AdminInventory)){
                     
-                event.setCancelled(true);
                 switch(settings)
                 {
                     case VERBOSE:{
@@ -203,13 +208,30 @@ public class DealerInteractListener implements Listener {
         
             return;
         }
-        else if (event.getClickedInventory() != null && event.getInventory().getHolder() instanceof DealerInventory) {
+        else if (event.getClickedInventory() != null) {
             if(event.getSlot() == -999){
                 return;
             }
-            event.setCancelled(true);
-            DealerInventory dealerInventory = (DealerInventory) event.getInventory().getHolder();
-            dealerInventory.handleClick(event.getSlot(), player, event);
+            if (clickAllowed.getOrDefault(playerId, true)) {
+                clickAllowed.put(playerId, false); // Prevent rapid clicking
+                Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);
+
+                DealerInventory dealerInventory = (DealerInventory) event.getInventory().getHolder();
+                dealerInventory.handleClick(event.getSlot(), player, event);
+            }
+            else{
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cPlease wait before clicking again!");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cPlease wait before clicking again!");
+                        break;}
+                    case NONE:{
+                        break;
+                    }
+                }
+            }    
         }
     }
 
