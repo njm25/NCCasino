@@ -17,8 +17,7 @@ import org.bukkit.projectiles.ProjectileSource;
 
 import java.util.List;
 
-import org.bukkit.entity.Enderman;
-import org.bukkit.entity.Endermite;
+
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
