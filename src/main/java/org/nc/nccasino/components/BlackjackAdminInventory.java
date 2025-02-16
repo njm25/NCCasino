@@ -27,7 +27,6 @@ public class BlackjackAdminInventory extends DealerInventory {
     private final UUID ownerId;
     private final Consumer<UUID> ret;
     private UUID dealerId;
-    private final Map<UUID, Boolean> clickAllowed = new HashMap<>(); // Track click state per player
     private Nccasino plugin;
     private String returnName;
     private Mob dealer;
@@ -91,7 +90,6 @@ public class BlackjackAdminInventory extends DealerInventory {
         AdminInventory.timerEditMode.remove(ownerId);
         AdminInventory.standOn17Mode.remove(ownerId);
         AdminInventory.decksEditMode.remove(ownerId);
-        clickAllowed.remove(ownerId);
     }
 
     private void initalizeMenu(){
@@ -167,59 +165,44 @@ public class BlackjackAdminInventory extends DealerInventory {
         //event.setCancelled(true); // Default behavior: prevent unintended interactions
 
         if (event.getClickedInventory() == null) return; 
-        if (clickAllowed.getOrDefault(playerId, true)) {
-            clickAllowed.put(playerId, false); // Prevent rapid clicking
-            Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);
 
-            SlotOption option = getKeyByValue(slotMapping, slot);
-            if(option!=null){
-            switch (option) {
-                case RETURN:
-                    playDefaultSound(player);
-                    executeReturn();
-                    break;
-                case EDIT_TIMER:
-                    handleEditTimer(player);
-                    playDefaultSound(player);
-                    break;
-                case STAND_17:
-                    handleEditStand(player);
-                    playDefaultSound(player);
-                    break;   
-                case NUMBER_OF_DECKS:
-                    handleEditDecks(player);
-                    playDefaultSound(player);
-                    break; 
-                case EXIT:
-                    handleExit(player);
-                    playDefaultSound(player);
-                    break;   
-                default:
-                    if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
-                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                        case STANDARD:{
-                            player.sendMessage("§cInvalid option selected.");
-                            break;}
-                        case VERBOSE:{
-                            player.sendMessage("§cInvalid blackjack settings option selected.");
-                            break;}
-                        case NONE:{
-                            break;
-                        }
+        SlotOption option = getKeyByValue(slotMapping, slot);
+        if(option!=null){
+        switch (option) {
+            case RETURN:
+                playDefaultSound(player);
+                executeReturn();
+                break;
+            case EDIT_TIMER:
+                handleEditTimer(player);
+                playDefaultSound(player);
+                break;
+            case STAND_17:
+                handleEditStand(player);
+                playDefaultSound(player);
+                break;   
+            case NUMBER_OF_DECKS:
+                handleEditDecks(player);
+                playDefaultSound(player);
+                break; 
+            case EXIT:
+                handleExit(player);
+                playDefaultSound(player);
+                break;   
+            default:
+                if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cInvalid option selected.");
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cInvalid blackjack settings option selected.");
+                        break;}
+                    case NONE:{
+                        break;
                     }
-                    break;
-            }}
-        } else {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage("§cPlease wait before clicking again!");
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§cPlease wait before clicking mines settings again!");
-                    break;}
-                case NONE:{
-                    break;
                 }
+                break;
             }
         }
     }
