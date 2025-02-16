@@ -117,18 +117,8 @@ public class DealerInteractListener implements Listener {
     }
 
     private void handlePlayerMenu(Player player, UUID dealerId) {
-        if (PlayerMenu.playerMenus.containsKey(player.getUniqueId())) {
-            PlayerMenu playerMenu = PlayerMenu.playerMenus.get(player.getUniqueId());
-
-            if (playerMenu.getDealerId().equals(dealerId)) {
-                player.openInventory(playerMenu.getInventory());
-            } else {
-                Bukkit.getLogger().warning("Error: playerMenu's dealerId does not match the dealerId of entity interacted with");
-            }
-        } else {
-            PlayerMenu playerMenu = new PlayerMenu(player,plugin,dealerId);
-            player.openInventory(playerMenu.getInventory());
-        }
+        PlayerMenu playerMenu = new PlayerMenu(player,plugin,dealerId);
+        player.openInventory(playerMenu.getInventory());
     }
 
     private void handleAdminInventory(Player player, UUID dealerId) {

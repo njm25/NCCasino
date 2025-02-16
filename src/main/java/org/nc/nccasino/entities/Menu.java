@@ -26,7 +26,9 @@ public abstract class Menu extends DealerInventory {
         TEST_OPTION_ONE,
         TEST_OPTION_TWO,
         SOUNDS,
-        MESSAGES
+        MESSAGES,
+        PREFERENCES,
+        STATS
     }
 
     protected final Map<SlotOption, Integer> slotMapping = new HashMap<>();
