@@ -102,7 +102,8 @@ public class AdminMenu extends DealerInventory {
         PM,
         EXIT,
         //CHANGE_BIOME,
-        MOB_SELECTION
+        MOB_SELECTION,
+        TEST_MENU
 
     }
 
@@ -188,6 +189,7 @@ public class AdminMenu extends DealerInventory {
     slotMapping.put(SlotOption.CHIP_SIZE4, 23);
     slotMapping.put(SlotOption.CHIP_SIZE5, 24);
     slotMapping.put(SlotOption.MOB_SELECTION, 13);
+    slotMapping.put(SlotOption.TEST_MENU, 35);
 
    }
 
@@ -237,6 +239,7 @@ public class AdminMenu extends DealerInventory {
         addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
         addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
+        addItemAndLore(Material.GRASS_BLOCK, 1, "Test Menu",  slotMapping.get(SlotOption.TEST_MENU));
 
         ItemStack head=createPlayerHeadItem(player, 1);
         setCustomItemMeta(head,"Player Menu");
@@ -441,6 +444,10 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     handleMobSelection(player);
                     playDefaultSound(player);
                     break;
+                case TEST_MENU:
+                    handleTestMenu(player);
+                    playDefaultSound(player);
+                    break;
                 default:
                 switch(messPref){
                     case STANDARD:{
@@ -492,6 +499,21 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             player.sendMessage(ChatColor.RED + "You do not have permission to use the player menu.");
         }
     }
+
+    private void handleTestMenu(Player player) {
+        String returnMessage = "Return to "+ Dealer.getInternalName(dealer) + "'s Admin Menu";
+        TestMenu testMenu = new TestMenu(player, plugin, dealerId, returnMessage,(p) -> {
+            if (adminInventories.containsKey(player.getUniqueId())) {
+                player.openInventory(adminInventories.get(player.getUniqueId()).getInventory());
+            } else {
+                AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
+                player.openInventory(adminInventory.getInventory());
+            }
+        });
+    
+        player.openInventory(testMenu.getInventory());
+    }
+    
 
     private void handleExit(Player player) {
         player.closeInventory();

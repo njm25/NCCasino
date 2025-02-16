@@ -1,6 +1,7 @@
 package org.nc.nccasino.entities;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
@@ -21,7 +22,9 @@ public abstract class Menu extends DealerInventory {
 
     protected enum SlotOption {
         EXIT,
-        RETURN
+        RETURN,
+        TEST_OPTION_ONE,
+        TEST_OPTION_TWO
     }
 
     protected final Map<SlotOption, Integer> slotMapping = new HashMap<>();
@@ -59,8 +62,6 @@ public abstract class Menu extends DealerInventory {
         // Register this menu as an event listener
         Bukkit.getPluginManager().registerEvents(this, plugin);
 
-        // Initialize the menu (subclasses should override)
-        initializeMenu();
     }
 
     /**
@@ -123,8 +124,26 @@ public abstract class Menu extends DealerInventory {
 
     
     private void handleExit(Player player) {
+        playDefaultSound(player);
         player.closeInventory();
         delete();
     }
+
+    protected void addExitReturn() {
+        slotMapping.put(SlotOption.EXIT, 8);
+        slotMapping.put(SlotOption.RETURN, 0);
+        addItemAndLore(
+            Material.SPRUCE_DOOR, 
+            1, 
+            "Exit", 
+            slotMapping.get(SlotOption.EXIT)
+        );
+        addItemAndLore(
+            Material.MAGENTA_GLAZED_TERRACOTTA, 
+            1, 
+            returnMessage, 
+            slotMapping.get(SlotOption.RETURN)
+        );
+    }   
 
 }
