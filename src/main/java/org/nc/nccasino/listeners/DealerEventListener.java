@@ -19,7 +19,6 @@ import java.util.List;
 import org.bukkit.entity.Enderman;
 import org.bukkit.entity.Endermite;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.Fox;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Shulker;
@@ -80,10 +79,8 @@ public class DealerEventListener implements Listener {
 
     @EventHandler
     public void onEntityPickupItem(EntityPickupItemEvent event) {
-        if (event.getEntity() instanceof Fox fox) {
-            if (Dealer.isDealer(fox)) {
+            if (Dealer.isDealer((Mob)event.getEntity())) {
                 event.setCancelled(true); // Prevent dealer foxes from picking up items
-            }
         }
     }
 
