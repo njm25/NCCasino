@@ -3,16 +3,13 @@ package org.nc.nccasino.commands;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -72,45 +69,25 @@ public class DeleteCommand implements CasinoCommand {
         AdminMenu.deleteAssociatedAdminInventories((Player) sender);
 
         if (internalName.equals("*")) {
-            // Delete all known dealers
-            int count = killAllDealers();
-            // Clear all entries in the YAML file
-            clearAllDealerData();
-            sender.sendMessage(ChatColor.GREEN + "Deleted " + count + " dealers.");
+            plugin.executeOnAllDealers(sender, true);
             return true;
         }
-
-        Mob mob = plugin.getDealerByInternalName(internalName);
-
-        if (mob == null) {
-            sender.sendMessage(ChatColor.RED + "Dealer with internal name '" + ChatColor.YELLOW + internalName + ChatColor.RED + "' not found.");
-            return true;
-        }
-
-        Dealer.removeDealer(mob);
-        DealerInventory.unregisterAllListeners(mob);
-        // Remove dealer data from YAML
-        removeDealerData(internalName);
         
-        sender.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName + ChatColor.GREEN + "' has been deleted.");
+
+        plugin.executeOnDealer(internalName, () -> {
+            Mob mob = plugin.getDealerByInternalName(internalName);
+            if (mob == null) {
+                sender.sendMessage(ChatColor.RED + "Dealer with internal name '" + ChatColor.YELLOW + internalName + ChatColor.RED + "' not found.");
+                return;
+            }
+            Dealer.removeDealer(mob);
+            DealerInventory.unregisterAllListeners(mob);
+            removeDealerData(internalName);
+            
+            sender.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName + ChatColor.GREEN + "' has been deleted.");
+        });
 
         return true;
-    }
-
-    private int killAllDealers() {
-        int deletedCount = 0;
-        for (var world : Bukkit.getWorlds()) {
-            for (Entity entity : world.getEntities()) {
-                if (entity instanceof Mob mob) {
-                    if (Dealer.isDealer(mob)) {
-                        Dealer.removeDealer(mob);
-                        DealerInventory.unregisterAllListeners(mob);
-                        deletedCount++;
-                    }
-                }
-            }
-        }
-        return deletedCount;
     }
 
     private void removeDealerData(String internalName) {
@@ -133,19 +110,6 @@ public class DeleteCommand implements CasinoCommand {
                 plugin.getLogger().severe("Failed to save dealers.yaml while removing dealer: " + internalName);
                 e.printStackTrace();
             }
-        }
-    }
-
-    private void clearAllDealerData() {
-        Set<String> keys = dealersConfig.getKeys(false);
-        for (String key : keys) {
-            dealersConfig.set(key, null);
-        }
-        try {
-            dealersConfig.save(dealersFile);
-        } catch (IOException e) {
-            plugin.getLogger().severe("Failed to save dealers.yaml while clearing all dealer data");
-            e.printStackTrace();
         }
     }
 }

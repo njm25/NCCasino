@@ -120,11 +120,11 @@ public class GameOptionsMenu extends Menu {
 
         FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
 
-        var chunk = location.getChunk();
         String path = "dealers." + internalName;
         dealersConfig.set(path + ".world", location.getWorld().getName());
-        dealersConfig.set(path + ".chunkX", chunk.getX());
-        dealersConfig.set(path + ".chunkZ", chunk.getZ());
+        dealersConfig.set(path + ".X", centeredLocation.getX());
+        dealersConfig.set(path + ".Y", centeredLocation.getY());
+        dealersConfig.set(path + ".Z", centeredLocation.getZ());
 
         try {
             dealersConfig.save(dealersFile);

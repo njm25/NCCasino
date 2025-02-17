@@ -15,6 +15,7 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.NamespacedKey;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.games.Blackjack.BlackjackInventory;
@@ -30,6 +31,7 @@ import java.util.UUID;
 public class Dealer {
     // Static map of Dealer references
     public static final Map<UUID, Dealer> dealers = new HashMap<>();
+    private static final Map<UUID, BukkitTask> lookAtTasks = new HashMap<>();
 
     private static final NamespacedKey DEALER_KEY =
         new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "dealer_villager");
@@ -126,57 +128,60 @@ public class Dealer {
     }
     
     public static void startLookingAtPlayers(Mob mob) {
-        new BukkitRunnable() {
+        UUID mobId = mob.getUniqueId();
+
+        // Cancel any existing task for this mob
+        if (lookAtTasks.containsKey(mobId)) {
+            lookAtTasks.get(mobId).cancel();
+        }
+
+        BukkitTask task = new BukkitRunnable() {
             private Player currentTarget = null;
-            private float bodyYaw = mob.getLocation().getYaw(); // Track body's current yaw
-            private static final float MIN_TURN_SPEED = 0.5f;  // Slowest speed
-            private static final float MAX_TURN_SPEED = 4.0f;  // Fastest speed
-            private static final float SMOOTH_FACTOR = 0.2f;   // Controls acceleration
-            private static final double SWITCH_THRESHOLD = 0.5; // Prevent erratic target switching
-    
+            private float bodyYaw = mob.getLocation().getYaw();
+            private static final float MIN_TURN_SPEED = 0.5f;
+            private static final float MAX_TURN_SPEED = 4.0f;
+            private static final float SMOOTH_FACTOR = 0.2f;
+            private static final double SWITCH_THRESHOLD = 0.5;
+
             @Override
             public void run() {
                 if (mob.isDead() || !mob.isValid()) {
                     cancel();
+                    lookAtTasks.remove(mobId); // Cleanup task reference
                     return;
                 }
-    
+
                 Player nearest = getNearestPlayer(mob);
-    
-                // Only switch if new target is noticeably closer
+
                 if (nearest != null) {
                     if (currentTarget == null || nearest.getLocation().distance(mob.getLocation()) < currentTarget.getLocation().distance(mob.getLocation()) - SWITCH_THRESHOLD) {
                         currentTarget = nearest;
                     }
                 }
-    
+
                 if (currentTarget != null) {
                     Location mobLoc = mob.getLocation();
                     Location targetLoc = currentTarget.getLocation();
-    
+
                     double dx = targetLoc.getX() - mobLoc.getX();
                     double dz = targetLoc.getZ() - mobLoc.getZ();
-    
-                    // Calculate target yaw
+
                     float targetYaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
-    
-                    // Instantly set head direction
+
                     mobLoc.setYaw(targetYaw);
                     mob.teleport(mobLoc);
-    
-                    // Calculate dynamic turn speed based on angle difference
+
                     float angleDiff = ((targetYaw - bodyYaw + 540) % 360) - 180;
                     float turnSpeed = Math.max(MIN_TURN_SPEED, Math.abs(angleDiff) * SMOOTH_FACTOR);
                     turnSpeed = Math.min(turnSpeed, MAX_TURN_SPEED);
-    
-                    // Smoothly adjust body yaw
+
                     bodyYaw = lerpAngle(bodyYaw, targetYaw, turnSpeed);
-                    
-                    // Apply body yaw separately
                     setBodyYaw(mob, bodyYaw);
                 }
             }
-        }.runTaskTimer(JavaPlugin.getProvidingPlugin(Dealer.class), 0L, 1L); // Runs every tick
+        }.runTaskTimer(JavaPlugin.getProvidingPlugin(Dealer.class), 0L, 1L);
+
+        lookAtTasks.put(mobId, task);
     }
     
     /**
@@ -425,16 +430,13 @@ public class Dealer {
  
     }
 
-    public static void removeDealer(Mob mob) {
+    public static Boolean removeDealer(Mob mob) {
         PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
         UUID dealerId = getUniqueId(mob);
-        if (dealerId == null) return;
+        if (dealerId == null) return false;
 
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
-        Location loc = mob.getLocation();
-        var world = loc.getWorld();
-        int chunkX = loc.getChunk().getX();
-        int chunkZ = loc.getChunk().getZ();
+
     
         DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);
         if (dealerInventory != null) {
@@ -462,19 +464,7 @@ public class Dealer {
 
         // Finally remove from Dealer map
         removeDealerFromMap(dealerId);
-
-        
-        boolean hasOtherDealers = false;
-        for (Entity entity : world.getChunkAt(chunkX, chunkZ).getEntities()) {
-            if (entity instanceof Mob otherMob && isDealer(otherMob)) {
-                hasOtherDealers = true;
-                break;
-            }
-        }
-
-        if (!hasOtherDealers && world.isChunkForceLoaded(chunkX, chunkZ)) {
-            world.setChunkForceLoaded(chunkX, chunkZ, false);
-        }
+        return true;
     }
 
     private static void deleteAllPersistentData(PersistentDataContainer container) {

@@ -1,5 +1,6 @@
 package org.nc.nccasino.components;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -17,6 +18,8 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Axolotl;
 import org.bukkit.entity.Cat;
 import org.bukkit.entity.Cat.Type;
@@ -44,6 +47,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Menu;
 
 public class MobSelectionMenu extends Menu {
@@ -242,7 +246,32 @@ public class MobSelectionMenu extends Menu {
     
 
     private void restoreDealerSettings(String internalName, EntityType selectedType, Player player) {
-        Location loc = dealer.getLocation();
+        File dealersFile = new File(plugin.getDataFolder(), "data/dealers.yaml");
+        if (!dealersFile.exists()) {
+            player.sendMessage(ChatColor.RED + "Dealers data file not found!");
+            return;
+        }
+
+         FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
+
+         // Read dealer location from dealers.yaml
+         String worldName = dealersConfig.getString("dealers." + internalName + ".world");
+         double x = dealersConfig.getDouble("dealers." + internalName + ".X");
+         double y = dealersConfig.getDouble("dealers." + internalName + ".Y");
+         double z = dealersConfig.getDouble("dealers." + internalName + ".Z");
+
+        if (worldName == null) {
+            player.sendMessage(ChatColor.RED + "Failed to retrieve dealer location.");
+            return;
+        }
+    
+        var world = Bukkit.getWorld(worldName);
+        if (world == null) {
+            player.sendMessage(ChatColor.RED + "World '" + worldName + "' does not exist.");
+            return;
+        }
+        
+        Location loc = new Location(world, x, y, z);
         
         String name = plugin.getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
         String gameType = plugin.getConfig().getString("dealers." + internalName + ".game", "Menu");
@@ -265,12 +294,23 @@ public class MobSelectionMenu extends Menu {
             "Reset config to default?",
             (uuid) -> {
                 // Confirm action
-                
-
-                Bukkit.dispatchCommand(player, "ncc delete " + Dealer.getInternalName(dealer));
-                
+                   Mob oldDealer = plugin.getDealerByInternalName(internalName);
+                    if (oldDealer != null) {
+                        Dealer.removeDealer(oldDealer);
+                        DealerInventory.unregisterAllListeners(oldDealer);
+                    }
+                    AdminMenu.deleteAssociatedAdminInventories(player);                
                 plugin.saveDefaultDealerConfig(internalName);
                 Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
+                dealersConfig.set("dealers." + internalName + ".world", worldName);
+                dealersConfig.set("dealers." + internalName + ".X", x);
+                dealersConfig.set("dealers." + internalName + ".Y", y);
+                dealersConfig.set("dealers." + internalName + ".Z", z);
+                try {
+                    dealersConfig.save(dealersFile);
+                } catch (Exception e) {
+                    player.sendMessage(ChatColor.RED + "Failed to save dealer data: " + e.getMessage());
+                }
                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                     case STANDARD -> player.sendMessage(ChatColor.GREEN + "Dealer changed.");
                     case VERBOSE  ->player.sendMessage(ChatColor.GREEN + "Dealer changed to " + ChatColor.YELLOW + formatEntityName(selectedType.name())+"§a.");
@@ -290,9 +330,24 @@ public class MobSelectionMenu extends Menu {
             },
             (uuid) -> {
                 // Dent action
-                Bukkit.dispatchCommand(player, "ncc delete " + Dealer.getInternalName(dealer));
+
+                Mob oldDealer = plugin.getDealerByInternalName(internalName);
+                if (oldDealer != null) {
+                    Dealer.removeDealer(oldDealer);
+                    DealerInventory.unregisterAllListeners(oldDealer);
+                }
+                AdminMenu.deleteAssociatedAdminInventories(player);
                 Mob newDealer = Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
                 Dealer.updateGameType(newDealer, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+                dealersConfig.set("dealers." + internalName + ".world", worldName);
+                dealersConfig.set("dealers." + internalName + ".X", x);
+                dealersConfig.set("dealers." + internalName + ".Y", y);
+                dealersConfig.set("dealers." + internalName + ".Z", z);
+                try {
+                    dealersConfig.save(dealersFile);
+                } catch (Exception e) {
+                    player.sendMessage(ChatColor.RED + "Failed to save dealer data: " + e.getMessage());
+                }
                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                     case STANDARD -> player.sendMessage(ChatColor.GREEN + "Dealer changed.");
                     case VERBOSE  ->player.sendMessage(ChatColor.GREEN + "Dealer changed to " + ChatColor.YELLOW + formatEntityName(selectedType.name())+"§a.");
