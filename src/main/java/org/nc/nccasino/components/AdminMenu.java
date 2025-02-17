@@ -10,8 +10,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -47,8 +47,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.helpers.SoundHelper;
 
@@ -78,6 +78,8 @@ public class AdminMenu extends Menu {
     private Preferences.MessageSetting messPref;
     // Tracks which dealer is being edited by which player
     public static final Map<UUID, Mob> localMob = new HashMap<>();
+    private final Map<UUID, Boolean> movingDealers = new HashMap<>();
+
 
 
         private enum CurrencyMode {
@@ -1093,75 +1095,123 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             cleanup();
         }
     }
-
+    
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
-
-        if (adminInventories.get(playerId) == null){
+    
+        if (!moveMode.containsKey(playerId)) {
             return;
         }
-
-        if (moveMode.get(playerId) != null) {
-
-            if (event.getClickedBlock() != null) {
-                Location newLocation = event.getClickedBlock().getLocation().add(0.5, 1, 0.5);
-
-                if (dealer != null) {
-                    dealer.teleport(newLocation);
-
-                    // Save new location to your dealers.yaml
-                    File dealersFile = new File(plugin.getDataFolder(), "data/dealers.yaml");
-                    if (!dealersFile.getParentFile().exists()) {
-                        dealersFile.getParentFile().mkdirs();
-                    }
-                    FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
-                    var chunk = dealer.getLocation().getChunk();
-
-                    String path = "dealers." + Dealer.getInternalName(dealer);
-                    dealersConfig.set(path + ".chunkX", chunk.getX());
-                    dealersConfig.set(path + ".chunkZ", chunk.getZ());
-                    // Optionally store world name if needed
-                    // dealersConfig.set(path + ".world", dealer.getWorld().getName());
-
-                    try {
-                        dealersConfig.save(dealersFile);
-                    } catch (IOException e) {
-                        plugin.getLogger().severe("Failed to save dealer location to " + dealersFile.getPath());
-                        e.printStackTrace();
-                    }
-                    plugin.saveConfig();
-                    if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
-                    switch(messPref){
-                        case STANDARD:{
-                            player.sendMessage("§aDealer moved to new location.");
-                            break;}
-                        case VERBOSE:{
-                            player.sendMessage("§aDealer moved to new location x: " +ChatColor.YELLOW+newLocation.getX()+"§a y: "+ChatColor.YELLOW+newLocation.getY()+ "§a z: "+ChatColor.YELLOW+newLocation.getZ()+ "§a.");
-                            break;}
-                        case NONE:{break;
-                        }
-                    } 
-                } else {
-                    switch(messPref){
-                        case STANDARD:{
-                            player.sendMessage("§cCould not find dealer.");
-                            break;}
-                        case VERBOSE:{
-                            player.sendMessage("§cCould not find dealer for admin menu chat response.");
-                            break;}
-                        case NONE:{break;
-                        }
-                    } 
-                }
-
-                cleanup();
+        if (adminInventories.get(playerId) == null) {
+            return;
+        }
+    
+        if (event.getClickedBlock() != null) {
+            Location newLocation = event.getClickedBlock().getLocation().add(0.5, 1, 0.5);
+            UUID dealerId = dealer.getUniqueId();
+    
+            // Prevent duplicate move executions using atomic check
+            if (movingDealers.putIfAbsent(dealerId, true) != null) {
+                player.sendMessage("§cDealer is already being moved. Please wait.");
+                return;
             }
+    
+            // Force-load chunk
+            newLocation.getChunk().setForceLoaded(true);
+    
+            // Start teleport attempt sequence
+            attemptTeleport(player, newLocation, dealerId, 1);
+    
             event.setCancelled(true);
-                
         }
     }
+    
+    private void attemptTeleport(Player player, Location newLocation, UUID dealerId, int attempt) {
+        // Ensure dealer is still in moving state
+        if (!movingDealers.containsKey(dealerId)) {
+            return; // Already teleported or canceled
+        }
+    
+        Chunk chunk = newLocation.getChunk();
+        if (!chunk.isLoaded()) {
+            chunk.load();
+        }
+    
+        // Successful teleport
+        if (chunk.isLoaded() && dealer != null && dealer.getUniqueId().equals(dealerId)) {
+            dealer.teleport(newLocation);
+            saveDealerLocation(newLocation);
+    
+            if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null) {
+                player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+    
+            switch (messPref) {
+                case STANDARD:
+                    player.sendMessage("§aDealer moved to new location.");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§aDealer moved to x: " + ChatColor.YELLOW + newLocation.getX() +
+                            "§a y: " + ChatColor.YELLOW + newLocation.getY() +
+                            "§a z: " + ChatColor.YELLOW + newLocation.getZ() + "§a.");
+                    break;
+                case NONE:
+                    break;
+            }
+    
+            // Mark move as complete
+            movingDealers.remove(dealerId);
+            moveMode.remove(player.getUniqueId());
+            cleanup();
+            return;
+        }
+    
+        // Retry at increasing intervals
+        if (attempt == 1) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> attemptTeleport(player, newLocation, dealerId, 10), 10L);
+        } else if (attempt == 10) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> attemptTeleport(player, newLocation, dealerId, 30), 30L);
+        } else {
+            switch (messPref) {
+                case STANDARD:
+                    player.sendMessage("§cFailed to move dealer. Chunk did not load.");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§cFailed to move dealer. Chunk did not load after 30 ticks.");
+                    break;
+                case NONE:
+                    break;
+            }
+            movingDealers.remove(dealerId); // Ensure cleanup only occurs once
+        }
+    }
+    
+
+    private void saveDealerLocation(Location newLocation) {
+        File dealersFile = new File(plugin.getDataFolder(), "data/dealers.yaml");
+        if (!dealersFile.getParentFile().exists()) {
+            dealersFile.getParentFile().mkdirs();
+        }
+
+        FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
+        String path = "dealers." + Dealer.getInternalName(dealer);
+        dealersConfig.set(path + ".world", dealer.getWorld().getName());
+        dealersConfig.set(path + ".X", newLocation.getX());
+        dealersConfig.set(path + ".Y", newLocation.getY());
+        dealersConfig.set(path + ".Z", newLocation.getZ());
+
+        try {
+            dealersConfig.save(dealersFile);
+        } catch (IOException e) {
+            plugin.getLogger().severe("Failed to save dealer location to " + dealersFile.getPath());
+            e.printStackTrace();
+        }
+        plugin.saveConfig();
+    }
+
+
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
