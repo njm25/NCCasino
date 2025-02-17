@@ -9,15 +9,21 @@ import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.Chunk;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.World;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -36,9 +42,12 @@ import org.nc.nccasino.helpers.Metrics;
 import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.listeners.DealerDeathHandler;
 import org.nc.nccasino.listeners.DealerEventListener;
+import org.nc.nccasino.listeners.DealerInitializeListener;
 import org.nc.nccasino.listeners.DealerInteractListener;
 
+
 public final class Nccasino extends JavaPlugin implements Listener {
+    private final Set<String> currentlyDeletingChunks = new HashSet<>();
     private Map<UUID, Preferences> playerPreferences = new HashMap<>();
     private File preferencesFile;
     private FileConfiguration preferencesConfig;
@@ -73,6 +82,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new DealerDeathHandler(this), this);
         getServer().getPluginManager().registerEvents(new DealerEventListener(), this);
+        getServer().getPluginManager().registerEvents(new DealerInitializeListener(this), this); // Register the chunk listener
+
 
         // Register the command executor
         if (this.getCommand("ncc") != null) {
@@ -81,7 +92,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         }
 
         // Load any pre-existing dealer mob from config
-        loadDealers();
+        initializeDealersIfLoaded();
 
         int pluginId = 24579;
         //bStats support
@@ -92,66 +103,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         getLogger().info("NCCasino plugin enabled!");
     }
 
-    private void loadDealers() {
-        File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
-        if (!dealersFile.exists()) {
-            getLogger().warning("The dealers.yaml file does not exist at " + dealersFile.getPath());
-            return;
-        }
 
-        FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
-
-        if (dealersConfig.contains("dealers")) {
-            dealersConfig.getConfigurationSection("dealers").getKeys(false).forEach(internalName -> {
-                String path = "dealers." + internalName;
-                int chunkX = dealersConfig.getInt(path + ".chunkX");
-                int chunkZ = dealersConfig.getInt(path + ".chunkZ");
-                String worldName = dealersConfig.getString(path + ".world");
-                var world = Bukkit.getWorld(worldName);
-
-                if (world == null) {
-                    return;
-                }
-
-                // Force-load the chunk if not already
-                if (!world.isChunkForceLoaded(chunkX, chunkZ)) {
-                    world.setChunkForceLoaded(chunkX, chunkZ, true);
-                }
-            });
-        }
-                Bukkit.getScheduler().runTaskLater(this, () -> {
-
-        // After ensuring chunks are loaded, update existing mobs
-        Bukkit.getWorlds().forEach(world -> {
-            for (Entity entity : world.getEntities()) {
-                if (entity instanceof Mob mob) {
-                    if (Dealer.isDealer(mob)) {
-                        mob.setCollidable(false);
-                        String internalName = Dealer.getInternalName(mob);
-                        String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
-                        String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
-                        int timer = getConfig().getInt("dealers." + internalName + ".timer", 30);
-                        String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
-                        List<Integer> chipSizes = new ArrayList<>();
-                        ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
-                        
-                        if (chipSizeSection != null) {
-                            for (String key : chipSizeSection.getKeys(false)) {
-                                chipSizes.add(getConfig().getInt("dealers." + internalName + ".chip-sizes." + key));
-                            }
-                        }
-                        chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
-                
-                        String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
-                        String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
-                        Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
-                        Dealer.startLookingAtPlayers(mob);
-                    }
-                }
-            }
-        });
-    } , 5L);
-    }
 
      public Preferences getPreferences(UUID playerId) {
         return playerPreferences.computeIfAbsent(playerId, id -> {
@@ -199,7 +151,66 @@ public final class Nccasino extends JavaPlugin implements Listener {
         }
     }
     
-    
+    private void initializeDealersIfLoaded() {
+    File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
+    if (!dealersFile.exists()) {
+        getLogger().warning("The dealers.yaml file does not exist at " + dealersFile.getPath());
+        return;
+    }
+
+    FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
+    if (!dealersConfig.contains("dealers")) {
+        return;
+    }
+
+    for (String internalName : dealersConfig.getConfigurationSection("dealers").getKeys(false)) {
+        String path = "dealers." + internalName;
+        String worldName = dealersConfig.getString(path + ".world");
+        int x = dealersConfig.getInt(path + ".x");
+        int y = dealersConfig.getInt(path + ".y");
+        int z = dealersConfig.getInt(path + ".z");
+        
+        var world = Bukkit.getWorld(worldName);
+        if (world == null) continue;
+
+        Chunk chunk = world.getChunkAt(x >> 4, z >> 4); // Get the chunk the dealer is in
+        if (chunk.isLoaded()) {
+            reloadDealerAtLocation(world, x, y, z, internalName);
+        }
+    }
+}
+
+
+private void reloadDealerAtLocation(org.bukkit.World world, int x, int y, int z, String internalName) {
+    for (Entity entity : world.getEntities()) {
+        if (entity instanceof Mob mob) {
+            if (Dealer.isDealer(mob) && mob.getLocation().getBlockX() == x 
+                && mob.getLocation().getBlockY() == y 
+                && mob.getLocation().getBlockZ() == z) {
+                
+                getLogger().info("Reloaded dealer: " + internalName + " at " + x + ", " + y + ", " + z);
+                String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
+                String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
+                int timer = getConfig().getInt("dealers." + internalName + ".timer", 30);
+                String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
+                List<Integer> chipSizes = new ArrayList<>();
+                ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
+
+                if (chipSizeSection != null) {
+                    for (String key : chipSizeSection.getKeys(false)) {
+                        chipSizes.add(getConfig().getInt("dealers." + internalName + ".chip-sizes." + key));
+                    }
+                }
+                chipSizes.sort(Integer::compareTo);
+
+                String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
+                String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
+                Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+                Dealer.startLookingAtPlayers(mob);
+            }
+        }
+    }
+}
 
     public void savePreferences() {
         if (preferencesConfig == null || preferencesFile == null) {
@@ -295,22 +306,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
             }
         }
         chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
-
-        // Example special case for Blackjack
-        if (!getConfig().contains("dealers." + internalName + ".stand-on-17") && "Blackjack".equals(gameType)) {
-            getConfig().set("dealers." + internalName + ".stand-on-17", 100);
-        } else {
-            int hasStand17Config = getConfig().getInt("dealers." + internalName + ".stand-on-17");
-            if (hasStand17Config > 100 || hasStand17Config < 0) {
-                getConfig().set("dealers." + internalName + ".stand-on-17", 100);
-            }
-        }
-
         String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
         String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
         Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
-
-
+        Dealer.startLookingAtPlayers(mob);
     }
 
     private void reloadDealers() {
@@ -324,6 +323,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 inv.delete();
             }
         }
+        DealerInventory.inventories.clear(); // Ensure the inventory map is empty
 
         // Refresh each dealer from config
         Bukkit.getWorlds().forEach(world -> {
@@ -343,21 +343,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
                             }
                         }
                         chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
-                
-                        // Example special-case check
-                        if (!getConfig().contains("dealers." + internalName + ".stand-on-17")
-                            && "Blackjack".equals(gameType)) {
-                            getConfig().set("dealers." + internalName + ".stand-on-17", 100);
-                        } else {
-                            int hasStand17Config = getConfig().getInt("dealers." + internalName + ".stand-on-17");
-                            if (hasStand17Config > 100 || hasStand17Config < 0) {
-                                getConfig().set("dealers." + internalName + ".stand-on-17", 100);
-                            }
-                        }
-
                         String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
                         String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
                         Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+                        Dealer.startLookingAtPlayers(mob);
                     }
                 }
             }
@@ -509,4 +498,195 @@ public final class Nccasino extends JavaPlugin implements Listener {
         Matcher matcher = pattern.matcher(htmlContent);
         return matcher.find() ? matcher.group(1) : null;
     }
+
+    public void executeOnDealer(String internalName, Runnable action) {
+        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+            File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
+            FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile); // Reload fresh config
+        
+            if (!dealersConfig.contains("dealers." + internalName)) {
+                getLogger().warning("Dealer '" + internalName + "' not found in YAML.");
+                return;
+            }
+        
+            String worldName = dealersConfig.getString("dealers." + internalName + ".world");
+            double x = dealersConfig.getDouble("dealers." + internalName + ".X");
+            double z = dealersConfig.getDouble("dealers." + internalName + ".Z");
+        
+            World world = Bukkit.getWorld(worldName);
+            if (world == null) {
+                getLogger().warning("World '" + worldName + "' not found for dealer '" + internalName + "'.");
+                return;
+            }
+        
+            int chunkX = (int) x >> 4;
+            int chunkZ = (int) z >> 4;
+        
+            world.setChunkForceLoaded(chunkX, chunkZ, true);
+        
+            Bukkit.getScheduler().runTaskLater(this, () -> {
+                if (world.isChunkLoaded(chunkX, chunkZ)) {
+                    Mob mob = getDealerByInternalName(internalName);
+                    if (mob != null) {
+                        action.run();
+                    } else {
+                        getLogger().warning("Dealer '" + internalName + "' could not be found in chunk.");
+                    }
+                    Bukkit.getScheduler().runTaskLater(this, () -> {
+                        if (world.isChunkForceLoaded(chunkX, chunkZ)) {
+                            world.setChunkForceLoaded(chunkX, chunkZ, false);
+                        }
+                    }, 100L);
+                
+                } else {
+                    Bukkit.getScheduler().runTaskLater(this, () -> {
+                        if (world.isChunkLoaded(chunkX, chunkZ)) {
+                            Mob mob = getDealerByInternalName(internalName);
+                            if (mob != null) {
+                                action.run();
+                            } else {
+                                getLogger().warning("Dealer '" + internalName + "' could not be found in chunk.");
+                            }
+                        
+                        
+                        } else {
+                            getLogger().warning("Chunk could not be loaded for dealer '" + internalName + "'. Skipping.");
+                        }
+                        Bukkit.getScheduler().runTaskLater(this, () -> {
+                            if (world.isChunkForceLoaded(chunkX, chunkZ)) {
+                                world.setChunkForceLoaded(chunkX, chunkZ, false);
+                            }
+                        }, 100L);
+                    
+                    }, 30L);
+                }
+            
+            
+            }, 10L);
+        });
+    }
+    
+    public void executeOnAllDealers(CommandSender sender, boolean sendMessageOnCompletion) {
+        File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
+        FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
+    
+        if (!dealersConfig.contains("dealers")||dealersConfig.getConfigurationSection("dealers").getKeys(false).isEmpty()) {
+            sender.sendMessage(ChatColor.RED + "No dealers found.");
+            return;
+        }
+    
+        Map<String, List<String>> dealersByChunk = new HashMap<>();
+        for (String internalName : dealersConfig.getConfigurationSection("dealers").getKeys(false)) {
+            String worldName = dealersConfig.getString("dealers." + internalName + ".world");
+            double x = dealersConfig.getDouble("dealers." + internalName + ".X");
+            double z = dealersConfig.getDouble("dealers." + internalName + ".Z");
+        
+            String chunkKey = worldName + ":" + ((int) x >> 4) + "," + ((int) z >> 4);
+            dealersByChunk.computeIfAbsent(chunkKey, k -> new ArrayList<>()).add(internalName);
+        }
+    
+        int totalChunks = dealersByChunk.size();
+        int[] processedChunks = {0};
+        int[] totalDeleted = {0}; // Track total dealers removed
+    
+        for (Map.Entry<String, List<String>> entry : dealersByChunk.entrySet()) {
+            String[] chunkParts = entry.getKey().split(":");
+            String worldName = chunkParts[0];
+            int chunkX = Integer.parseInt(chunkParts[1].split(",")[0]);
+            int chunkZ = Integer.parseInt(chunkParts[1].split(",")[1]);
+        
+            World world = Bukkit.getWorld(worldName);
+            if (world == null) {
+                getLogger().warning("World '" + worldName + "' not found for chunk " + entry.getKey());
+                continue;
+            }
+        
+            List<String> internalNames = entry.getValue();
+            addDeletingChunk(world, chunkX, chunkZ);
+            world.setChunkForceLoaded(chunkX, chunkZ, true);
+        
+            Bukkit.getScheduler().runTaskLater(this, () -> {
+                if (!world.isChunkLoaded(chunkX, chunkZ)) {
+                    Bukkit.getScheduler().runTaskLater(this, () -> {
+                        if (!world.isChunkLoaded(chunkX, chunkZ)) {
+                            getLogger().warning("Chunk (" + chunkX + ", " + chunkZ + ") did not load in time.");
+                            removeDeletingChunk(world, chunkX, chunkZ); // Cleanup after deletion
+                            return;
+                        }
+                        deleteDealersInChunk(world, chunkX, chunkZ, internalNames, sender, totalChunks, processedChunks, sendMessageOnCompletion, totalDeleted);
+                    }, 20L);
+                } else {
+                    deleteDealersInChunk(world, chunkX, chunkZ, internalNames, sender, totalChunks, processedChunks, sendMessageOnCompletion, totalDeleted);
+                }
+            }, 10L);
+        }
+    }
+    
+    private void deleteDealersInChunk(World world, int chunkX, int chunkZ, List<String> internalNames, CommandSender sender, int totalChunks, int[] processedChunks, boolean sendMessageOnCompletion, int[] totalDeleted) {
+        for (String internalName : internalNames) {
+            Mob mob = getDealerByInternalName(internalName);
+            if (mob != null) {
+                if (Dealer.removeDealer(mob)) {
+                    DealerInventory.unregisterAllListeners(mob);
+                    removeDealerData(internalName);
+                    totalDeleted[0]++;
+                }
+            } else {
+                getLogger().warning("Dealer '" + internalName + "' could not be found in chunk.");
+            }
+        }
+    
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            if (world.isChunkForceLoaded(chunkX, chunkZ)) {
+                world.setChunkForceLoaded(chunkX, chunkZ, false);
+            }
+            removeDeletingChunk(world, chunkX, chunkZ); // Cleanup after deletion
+        }, 100L);
+    
+        synchronized (processedChunks) {
+            processedChunks[0]++;
+            if (processedChunks[0] == totalChunks && sendMessageOnCompletion) {
+                Bukkit.getScheduler().runTask(this, () ->
+                    sender.sendMessage(ChatColor.GREEN + "Deleted " + totalDeleted[0] + " dealers.")
+                );
+            }
+        }
+    }
+    
+    
+    private void removeDealerData(String internalName) {
+        File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
+        FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile); // Reload fresh config
+    
+        internalName = internalName.trim(); // Sanitize input
+        String path = "dealers." + internalName;
+    
+        if (!dealersConfig.contains(path)) {
+            return;
+        }
+    
+        dealersConfig.set(path, null); // Remove dealer
+    
+        try {
+            dealersConfig.save(dealersFile); // Save updated YAML
+        } catch (IOException e) {
+            getLogger().severe("Failed to save dealers.yaml while removing dealer: " + internalName);
+            e.printStackTrace();
+        }
+    }
+    
+    public boolean isChunkBeingDeleted(World world, int chunkX, int chunkZ) {
+        return currentlyDeletingChunks.contains(world.getName() + ":" + chunkX + "," + chunkZ);
+    }
+    
+    public void addDeletingChunk(World world, int chunkX, int chunkZ) {
+        currentlyDeletingChunks.add(world.getName() + ":" + chunkX + "," + chunkZ);
+    }
+    
+    public void removeDeletingChunk(World world, int chunkX, int chunkZ) {
+        currentlyDeletingChunks.remove(world.getName() + ":" + chunkX + "," + chunkZ);
+    }
+    
+    
+    
 }
