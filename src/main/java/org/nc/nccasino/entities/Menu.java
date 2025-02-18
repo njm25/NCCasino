@@ -94,7 +94,6 @@ public abstract class Menu extends DealerInventory {
     protected final Consumer<Player> returnCallback;
     protected final String returnMessage;
     protected final Player player;
-    protected final Map<UUID, Boolean> clickAllowed = new HashMap<>();
 
     /**
      * Constructor for a menu component.
