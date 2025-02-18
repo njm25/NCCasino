@@ -569,13 +569,13 @@ public final class Nccasino extends JavaPlugin implements Listener {
                             if (world.isChunkForceLoaded(chunkX, chunkZ)) {
                                 world.setChunkForceLoaded(chunkX, chunkZ, false);
                             }
-                        }, 100L);
+                        }, 40L);
                     
-                    }, 30L);
+                    }, 10L);
                 }
             
             
-            }, 10L);
+            }, 1L);
         });
     }
     
@@ -627,11 +627,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
                             return;
                         }
                         deleteDealersInChunk(world, chunkX, chunkZ, internalNames, sender, totalChunks, processedChunks, sendMessageOnCompletion, totalDeleted);
-                    }, 20L);
+                    }, 10L);
                 } else {
                     deleteDealersInChunk(world, chunkX, chunkZ, internalNames, sender, totalChunks, processedChunks, sendMessageOnCompletion, totalDeleted);
                 }
-            }, 10L);
+            }, 1L);
         }
     }
     
@@ -654,7 +654,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 world.setChunkForceLoaded(chunkX, chunkZ, false);
             }
             removeDeletingChunk(world, chunkX, chunkZ); // Cleanup after deletion
-        }, 100L);
+        }, 40L);
     
         synchronized (processedChunks) {
             processedChunks[0]++;
