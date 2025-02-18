@@ -609,17 +609,15 @@ public class BettingTable extends DealerInventory {
     
 
 
-    @EventHandler
-    public void handleClick(InventoryClickEvent event) {
+    @Override
+    public void handleClick(int slot, Player player, InventoryClickEvent event) {
         if (event.getInventory().getHolder() != this) return;
 
-        Player player = (Player) event.getWhoClicked();
 
         if (betsClosed) {
             return;
         }
 
-        int slot = event.getRawSlot();
         ItemStack clickedItem = event.getCurrentItem();
         if (clickedItem == null || clickedItem.getItemMeta() == null) {
             return;

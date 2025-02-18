@@ -343,13 +343,10 @@ public class RouletteInventory extends DealerInventory {
         }
     }
     
-    @EventHandler
-    public void handleClick(InventoryClickEvent event) {
+    @Override
+    public void handleClick(int slot, Player player, InventoryClickEvent event) {
         if (event.getInventory().getHolder() != this) return;
 
-        Player player = (Player) event.getWhoClicked();
-
-        int slot = event.getRawSlot();
         handleGameMenuClick(slot, player);
     }
 

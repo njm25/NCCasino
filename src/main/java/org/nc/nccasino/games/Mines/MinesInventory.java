@@ -4,7 +4,6 @@ import org.nc.nccasino.entities.DealerInventory;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.nc.nccasino.Nccasino;
 import org.bukkit.event.HandlerList;
@@ -67,12 +66,6 @@ public class MinesInventory extends DealerInventory {
 
     }
 
-
-    @EventHandler
-    public void handleClick(InventoryClickEvent event) {
-        if (event.getInventory().getHolder() != this) return;
-    }                                                                                                                      
-  
     public void removeTable(UUID playerId) {
         Tables.remove(playerId);  // Remove by UUID
         interactionLocks.remove(playerId);  // Clear interaction lock on removal
