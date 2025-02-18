@@ -22,27 +22,49 @@ import java.util.function.Consumer;
 public abstract class Menu extends DealerInventory {
 
     protected enum SlotOption {
+
+        // Default options
         EXIT,
         RETURN,
-        TEST_OPTION_ONE,
-        TEST_OPTION_TWO,
-        TEST_OPTION_THREE,
+
+        // Complex variant menu
+        COMPLEX_VAR_1,
+        COMPLEX_VAR_2,
+        COMPLEX_VAR_3,
+        
+        // Preferences menu
         SOUNDS,
         MESSAGES,
+
+        // Player menu
         PREFERENCES,
         STATS,
+
+        // Game options menu
         BLACKJACK,
         ROULETTE,
         MINES,
-        EDIT_MINES,
+
+        
+        // Default game settings
         EDIT_TIMER,
+        
+        // Mines settings menu
+        EDIT_MINES,
+
+        // Blackjack settings menu
         STAND_17,
         NUMBER_OF_DECKS,
+
         YES,
         NO,
+
+        // Mob selection menu
         PAGE_TOGGLE,
         VARIANT,
         AGE_TOGGLE,
+
+        // Admin menu
         EDIT_DISPLAY_NAME,
         EDIT_GAME_TYPE,
         MOVE_DEALER,
@@ -60,6 +82,8 @@ public abstract class Menu extends DealerInventory {
         PM,
         //CHANGE_BIOME,
         MOB_SELECTION,
+
+        // Test buttons
         TEST_MENU
     }
 

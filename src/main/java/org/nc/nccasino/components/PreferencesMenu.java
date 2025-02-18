@@ -13,10 +13,10 @@ import java.util.function.Consumer;
 public class PreferencesMenu extends Menu {
     public PreferencesMenu(Player player, Nccasino plugin,UUID dealerId, Consumer<Player> returnToPM) {
         super(player, plugin, dealerId, "Preferences", 9, "Return to Player Menu", returnToPM);
-        slotMapping.put(SlotOption.RETURN, 1);
-        slotMapping.put(SlotOption.EXIT, 0);
-        slotMapping.put(SlotOption.SOUNDS, 2);
-        slotMapping.put(SlotOption.MESSAGES, 3);
+        slotMapping.put(SlotOption.RETURN, 0);
+        slotMapping.put(SlotOption.EXIT, 8);
+        slotMapping.put(SlotOption.SOUNDS, 1);
+        slotMapping.put(SlotOption.MESSAGES, 2);
         // Build the actual contents
         initializeMenu();
 

@@ -144,9 +144,9 @@ public class ComplexVariantMenu extends Menu {
         // Let’s define the slots we’ll use. In your SlotOption enum, you might not
         // have a perfect name for each, so we’ll re-use the *TEST_OPTION_* placeholders.
         // Or you can add new ones if you prefer.
-        slotMapping.put(SlotOption.TEST_OPTION_ONE, 1);   // Llama Color / Horse Color / Fish Pattern
-        slotMapping.put(SlotOption.TEST_OPTION_TWO, 2);   // Llama Decor / Horse Style / Fish BodyColor
-        slotMapping.put(SlotOption.TEST_OPTION_THREE, 3); // Possibly used only for Fish PatternColor
+        slotMapping.put(SlotOption.COMPLEX_VAR_1, 1);   // Llama Color / Horse Color / Fish Pattern
+        slotMapping.put(SlotOption.COMPLEX_VAR_2, 2);   // Llama Decor / Horse Style / Fish BodyColor
+        slotMapping.put(SlotOption.COMPLEX_VAR_3, 3); // Possibly used only for Fish PatternColor
 
         // Provide Exit & Return in same style as your TestMenu
         addExitReturn();
@@ -166,7 +166,7 @@ public class ComplexVariantMenu extends Menu {
                 LLAMA_TERRACOTTA_MAP.get(llama.getColor()),
                 1,
                 "Cycle Llama Color",
-                slotMapping.get(SlotOption.TEST_OPTION_ONE),
+                slotMapping.get(SlotOption.COMPLEX_VAR_1),
                 "Current: §a" + formatName(llama.getColor().name())
             );
 
@@ -178,7 +178,7 @@ public class ComplexVariantMenu extends Menu {
                 currentCarpet != null ? currentCarpet : Material.BARRIER,
                 1,
                 "Cycle Llama Decor",
-                slotMapping.get(SlotOption.TEST_OPTION_TWO),
+                slotMapping.get(SlotOption.COMPLEX_VAR_2),
                 "Current: §a" + carpetName
             );
         }
@@ -188,7 +188,7 @@ public class ComplexVariantMenu extends Menu {
                 HORSE_COLOR_MAP.get(horse.getColor()),
                 1,
                 "Cycle Horse Color",
-                slotMapping.get(SlotOption.TEST_OPTION_ONE),
+                slotMapping.get(SlotOption.COMPLEX_VAR_1),
                 "Current: §a" + formatName(horse.getColor().name())
             );
 
@@ -197,7 +197,7 @@ public class ComplexVariantMenu extends Menu {
                 HORSE_STYLE_MAP.get(horse.getStyle()),
                 1,
                 "Cycle Horse Style",
-                slotMapping.get(SlotOption.TEST_OPTION_TWO),
+                slotMapping.get(SlotOption.COMPLEX_VAR_2),
                 "Current: §a" + formatName(horse.getStyle().name())
             );
         }
@@ -207,7 +207,7 @@ public class ComplexVariantMenu extends Menu {
                 FISH_PATTERN_TERRACOTTA_MAP.get(fish.getPattern()),
                 1,
                 "Cycle Fish Pattern",
-                slotMapping.get(SlotOption.TEST_OPTION_ONE),
+                slotMapping.get(SlotOption.COMPLEX_VAR_1),
                 "Current: §a" + formatName(fish.getPattern().name())
             );
             // 2) Fish Body Color
@@ -215,7 +215,7 @@ public class ComplexVariantMenu extends Menu {
                 DYE_MATERIAL_MAP.get(fish.getBodyColor()),
                 1,
                 "Cycle Body Color",
-                slotMapping.get(SlotOption.TEST_OPTION_TWO),
+                slotMapping.get(SlotOption.COMPLEX_VAR_2),
                 "Current: §a" + formatName(fish.getBodyColor().name())
             );
             // 3) Fish Pattern Color
@@ -223,7 +223,7 @@ public class ComplexVariantMenu extends Menu {
                 DYE_MATERIAL_MAP.get(fish.getPatternColor()),
                 1,
                 "Cycle Pattern Color",
-                slotMapping.get(SlotOption.TEST_OPTION_THREE),
+                slotMapping.get(SlotOption.COMPLEX_VAR_3),
                 "Current: §a" + formatName(fish.getPatternColor().name())
             );
         }
@@ -233,7 +233,7 @@ public class ComplexVariantMenu extends Menu {
                 Material.BARRIER,
                 1,
                 "No Complex Variants",
-                slotMapping.get(SlotOption.TEST_OPTION_ONE),
+                slotMapping.get(SlotOption.COMPLEX_VAR_1),
                 ChatColor.RED + "Mob is not Llama, Horse, or TropicalFish."
             );
         }
@@ -245,31 +245,31 @@ public class ComplexVariantMenu extends Menu {
     protected void handleCustomClick(SlotOption option, org.bukkit.entity.Player player, InventoryClickEvent event) {
         // Llama
         if (dealer instanceof Llama llama) {
-            if (option == SlotOption.TEST_OPTION_ONE) {
+            if (option == SlotOption.COMPLEX_VAR_1) {
                 cycleLlamaColor(player, llama);
             }
-            else if (option == SlotOption.TEST_OPTION_TWO) {
+            else if (option == SlotOption.COMPLEX_VAR_2) {
                 cycleLlamaDecor(player, llama);
             }
         }
         // Horse
         else if (dealer instanceof Horse horse) {
-            if (option == SlotOption.TEST_OPTION_ONE) {
+            if (option == SlotOption.COMPLEX_VAR_1) {
                 cycleHorseColor(player, horse);
             }
-            else if (option == SlotOption.TEST_OPTION_TWO) {
+            else if (option == SlotOption.COMPLEX_VAR_2) {
                 cycleHorseStyle(player, horse);
             }
         }
         // TropicalFish
         else if (dealer instanceof TropicalFish fish) {
-            if (option == SlotOption.TEST_OPTION_ONE) {
+            if (option == SlotOption.COMPLEX_VAR_1) {
                 cycleFishPattern(player, fish);
             }
-            else if (option == SlotOption.TEST_OPTION_TWO) {
+            else if (option == SlotOption.COMPLEX_VAR_2) {
                 cycleFishBodyColor(player, fish);
             }
-            else if (option == SlotOption.TEST_OPTION_THREE) {
+            else if (option == SlotOption.COMPLEX_VAR_3) {
                 cycleFishPatternColor(player, fish);
             }
         }

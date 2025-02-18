@@ -48,9 +48,9 @@ public class RouletteMenu extends Menu {
         }
         RAInventories.put(this.ownerId, this);
         
-        slotMapping.put(SlotOption.EXIT, 0);
-        slotMapping.put(SlotOption.RETURN, 1);
-        slotMapping.put(SlotOption.EDIT_TIMER, 2);
+        slotMapping.put(SlotOption.EXIT, 8);
+        slotMapping.put(SlotOption.RETURN, 0);
+        slotMapping.put(SlotOption.EDIT_TIMER, 1);
         initializeMenu();
     }
 

@@ -161,7 +161,7 @@ public class AdminMenu extends Menu {
     slotMapping.put(SlotOption.CHIP_SIZE3, 22);
     slotMapping.put(SlotOption.CHIP_SIZE4, 23);
     slotMapping.put(SlotOption.CHIP_SIZE5, 24);
-    slotMapping.put(SlotOption.MOB_SELECTION, 13);
+    slotMapping.put(SlotOption.MOB_SELECTION, 4);
 
    }
 
@@ -206,7 +206,7 @@ public class AdminMenu extends Menu {
             break;
         }
         
-        addItemAndLore(Material.BOOK, 1, "Game-Specific Options",  slotMapping.get(SlotOption.GAME_OPTIONS), "Current: §a" + currentGame);
+        addItemAndLore(Material.BOOK, 1, currentGame + " Settings",  slotMapping.get(SlotOption.GAME_OPTIONS));
         
         addItemAndLore(Material.RED_STAINED_GLASS_PANE, 1, "Edit Animation Message",  slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE), "Current: §a" + currentAnimationMessage);
        /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
@@ -1353,7 +1353,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             lore.addAll(getComplexVariantDetails(mob));
         } else {
             String variant = getCurrentVariant(mob);
-            if (variant.isEmpty()) {
+            if (!variant.isEmpty()) {
                 lore.add("Current Variant: §a" + variant);
             }
         }

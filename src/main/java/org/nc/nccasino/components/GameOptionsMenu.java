@@ -35,6 +35,7 @@ public class GameOptionsMenu extends Menu {
         slotMapping.put(SlotOption.BLACKJACK, 0);
         slotMapping.put(SlotOption.ROULETTE, 1);
         slotMapping.put(SlotOption.MINES, 2);
+        slotMapping.put(SlotOption.EXIT, 8);
         initializeMenu();
     }
 
@@ -53,11 +54,11 @@ public class GameOptionsMenu extends Menu {
         this.editing = true;
         this.dealer = dealer;
 
-        slotMapping.put(SlotOption.EXIT, 0);
-        slotMapping.put(SlotOption.RETURN, 1);
-        slotMapping.put(SlotOption.BLACKJACK, 2);
-        slotMapping.put(SlotOption.ROULETTE, 3);
-        slotMapping.put(SlotOption.MINES, 4);
+        slotMapping.put(SlotOption.EXIT, 8);
+        slotMapping.put(SlotOption.RETURN, 0);
+        slotMapping.put(SlotOption.BLACKJACK, 1);
+        slotMapping.put(SlotOption.ROULETTE, 2);
+        slotMapping.put(SlotOption.MINES, 3);
     
        initializeMenu();
     }
@@ -76,6 +77,7 @@ public class GameOptionsMenu extends Menu {
             addItemAndLore(Material.CREEPER_HEAD, 1, "Blackjack",  slotMapping.get(SlotOption.BLACKJACK));
             addItemAndLore(Material.ENDER_PEARL, 1, "Roulette",  slotMapping.get(SlotOption.ROULETTE));
             addItemAndLore(Material.TNT, 1, "Mines",  slotMapping.get(SlotOption.MINES));
+            addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
         }
     }
 
