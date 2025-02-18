@@ -198,10 +198,11 @@ public class MobSelectionMenu extends Menu {
             slotMapping.put(SlotOption.VARIANT, 47);
             updateVariantButton();
         }
-        if(isAgeable(dealer)){
+        if (isAgeable(dealer) || dealer instanceof Slime || dealer instanceof MagmaCube) {
             slotMapping.put(SlotOption.AGE_TOGGLE, 51);
             updateAgeButton(); 
         }
+        
         
         
     }
@@ -381,11 +382,21 @@ public class MobSelectionMenu extends Menu {
            }
        }
    
-    private void openVariantMenu(Player player, Mob dealer) {
-           // You'll build out a Llama/Horse/TropicalFish inventory here
-          // player.closeInventory();
-         player.sendMessage(ChatColor.YELLOW + "[DEBUG] Opening specialized variant menu soon...");
-     }
+       private void openVariantMenu(Player player, Mob dealer) {
+        ComplexVariantMenu cvm = new ComplexVariantMenu(
+            player,
+            plugin,
+            dealerId,
+            "Return to Mob Selection",
+            // This is your return callback: re-open MobSelectionMenu
+            (p) -> {
+                // Open this same MobSelectionMenu again
+                p.openInventory(MobSelectionMenu.this.getInventory());
+            },
+            dealer
+        );
+        player.openInventory(cvm.getInventory());
+    }
 
     private void cycleSingleVariant(Player player, Mob mob) {
         if (mob instanceof Cat cat) {
@@ -532,12 +543,14 @@ public class MobSelectionMenu extends Menu {
         }
     
         if (isComplicatedVariant(dealer)) {
+            List<String> details = getComplexVariantDetails(dealer);
+
             addItemAndLore(
                 Material.WRITABLE_BOOK,
                 1,
-                "Open Variant Menu",
+                "Open "+ formatEntityName(dealer.getType().toString())+" Variant Menu",
                 slot,
-                "Current: §a" + dealer.getType().toString()
+                details.toArray(new String[0])
             );
             return;
         }
@@ -591,18 +604,18 @@ public class MobSelectionMenu extends Menu {
         }
     }
         if (dealer instanceof Slime slime&&!(dealer instanceof MagmaCube)) {
-            int newSize = (slime.getSize() % 3) + 1; // Cycle through 1 → 2 → 3 → 1
+            int newSize = (slime.getSize() % 30) + 1; // Cycle through 1 → 2 → 3 → 1
             slime.setSize(newSize);
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case VERBOSE -> player.sendMessage("§aSlime size set to " + ChatColor.YELLOW + getSizeCategory(newSize) + "§a.");
+                case VERBOSE -> player.sendMessage("§aSlime size set to " + ChatColor.YELLOW + newSize + "§a.");
                 default -> {}
             }
         } 
         else if (dealer instanceof MagmaCube magmaCube) {
-            int newSize = (magmaCube.getSize() % 3) + 1;
+            int newSize = (magmaCube.getSize() % 30) + 1;
             magmaCube.setSize(newSize);
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case VERBOSE -> player.sendMessage("§aMagma Cube size set to " + ChatColor.YELLOW + getSizeCategory(newSize) + "§a.");
+                case VERBOSE -> player.sendMessage("§aMagma Cube size set to " + ChatColor.YELLOW + newSize + "§a.");
                 default -> {}
             }
         }
@@ -618,9 +631,8 @@ public class MobSelectionMenu extends Menu {
         // Check if this mob is "Ageable" in the Bukkit API
         if (isAgeable(dealer)) {
             org.bukkit.entity.Ageable ageable = (org.bukkit.entity.Ageable) dealer;
-    
-            // Display a MILK_BUCKET or something symbolic for toggling age
-            Material icon = Material.MILK_BUCKET;
+            boolean isAdult = ageable.isAdult();
+            Material icon = isAdult ? Material.DRAGON_HEAD : Material.DRAGON_EGG;
     
             String currentAgeText = ageable.isAdult() ? "Adult" : "Baby";
             addItemAndLore(
@@ -638,7 +650,7 @@ public class MobSelectionMenu extends Menu {
                 1,
                 "Toggle Size",
                 slot,
-                "Current: §a" + getSizeCategory(currentSize)
+                "Current: §a" + currentSize
             );
         }
         else if (dealer instanceof MagmaCube magmaCube) {
@@ -648,7 +660,7 @@ public class MobSelectionMenu extends Menu {
                 1,
                 "Toggle Size",
                 slot,
-                "Current: §a" + getSizeCategory(currentSize)
+                "Current: §a" + currentSize
             );
         }
 
@@ -727,12 +739,6 @@ public class MobSelectionMenu extends Menu {
             || (mob instanceof TropicalFish);
     }
 
-    private String getSizeCategory(int size) {
-        if (size <= 1) return "Small";
-        if (size == 2) return "Medium";
-        return "Large"; // Default for size 3 and above
-    }
-
     private static String formatEntityName(String entityName) {
         return Arrays.stream(entityName.toLowerCase().replace("_", " ").split(" "))
                      .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1))
@@ -748,4 +754,27 @@ public class MobSelectionMenu extends Menu {
         return 0; // fallback
     }
 
+    private List<String> getComplexVariantDetails(Mob mob) {
+        List<String> details = new ArrayList<>();
+        if (mob instanceof Llama llama) {
+            details.add("Current Color: §a" + formatEntityName(llama.getColor().toString()));
+            details.add("Current Decor: §a" + getLlamaCarpetName(llama));
+        } else if (mob instanceof Horse horse) {
+            details.add("Current Color: §a" + formatEntityName(horse.getColor().toString()));
+            details.add("Current Style: §a" + formatEntityName(horse.getStyle().toString()));
+        } else if (mob instanceof TropicalFish fish) {
+            details.add("Current Pattern: §a" + formatEntityName(fish.getPattern().toString()));
+            details.add("Current Body Color: §a" + formatEntityName(fish.getBodyColor().toString()));
+            details.add("Current Pattern Color: §a" + formatEntityName(fish.getPatternColor().toString()));
+        }
+        return details;
+        }
+    
+    private String getLlamaCarpetName(Llama llama) {
+        if (llama.getInventory().getDecor() != null) {
+            return formatEntityName(llama.getInventory().getDecor().getType().toString().replace("_CARPET", ""));
+        }
+        return "None";
+    }
+    
 }

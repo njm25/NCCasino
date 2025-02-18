@@ -26,6 +26,7 @@ public abstract class Menu extends DealerInventory {
         RETURN,
         TEST_OPTION_ONE,
         TEST_OPTION_TWO,
+        TEST_OPTION_THREE,
         SOUNDS,
         MESSAGES,
         PREFERENCES,
