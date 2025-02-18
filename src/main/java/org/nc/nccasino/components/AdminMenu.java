@@ -51,6 +51,7 @@ import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.listeners.DealerEventListener;
 
 import net.md_5.bungee.api.ChatColor;
 
@@ -1141,7 +1142,10 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     
         // Successful teleport
         if (chunk.isLoaded() && dealer != null && dealer.getUniqueId().equals(dealerId)) {
+             DealerEventListener.allowAdminTeleport(dealer.getUniqueId()); // Allow this teleport
+            dealer.setAI(true);
             dealer.teleport(newLocation);
+            dealer.setAI(false);
             saveDealerLocation(newLocation);
     
             if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null) {

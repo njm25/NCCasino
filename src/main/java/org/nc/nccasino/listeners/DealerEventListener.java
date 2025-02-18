@@ -15,9 +15,13 @@ import org.bukkit.event.entity.PotionSplashEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.projectiles.ProjectileSource;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
-
+import org.bukkit.entity.Enderman;
+import org.bukkit.entity.Endermite;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
@@ -26,6 +30,10 @@ import org.bukkit.entity.Shulker;
 import org.nc.nccasino.entities.Dealer;
 
 public class DealerEventListener implements Listener {
+private static final Set<UUID> adminTriggeredTeleports = new HashSet<>();
+    public static void allowAdminTeleport(UUID entityId) {
+        adminTriggeredTeleports.add(entityId);
+    }
 
     @EventHandler
     public void onEntityDamage(EntityDamageEvent event) {
@@ -111,17 +119,19 @@ public class DealerEventListener implements Listener {
         }
     }
 
-    @EventHandler
+  @EventHandler
     public void onEntityTeleport(EntityTeleportEvent event) {
         Entity entity = event.getEntity();
-        
-        if (entity instanceof Mob mob) { // Ensure only Mobs are checked
+        if (entity instanceof Mob mob && (mob instanceof Enderman || mob instanceof Endermite || mob instanceof Shulker)) {
             if (Dealer.isDealer(mob)) {
-                event.setCancelled(true); // Prevent teleporting
+                if (adminTriggeredTeleports.contains(entity.getUniqueId())) {
+                    adminTriggeredTeleports.remove(entity.getUniqueId());
+                    return; // Allow the teleport
+                }
+                event.setCancelled(true);
             }
         }
     }
-
 
 }
 
