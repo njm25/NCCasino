@@ -20,15 +20,15 @@ public class DealerInitializeListener implements Listener {
     @EventHandler
     public void onChunkLoad(ChunkLoadEvent event) {
         Chunk chunk = event.getChunk();
-        // Loop through all entities in the chunk
-        for (Entity entity : chunk.getEntities()) {
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    if (entity instanceof Mob mob && Dealer.isDealer(mob)) {
-                        plugin.reloadDealer(mob); // Initialize dealer if found
-                    }
-                }, 5L); // Delay to ensure the entity is fully loaded
-            
-        }
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            // Loop through all entities in the chunk
+            for (Entity entity : chunk.getEntities()) {
+                        if (entity instanceof Mob mob && Dealer.isDealer(mob)) {
+                            plugin.reloadDealer(mob); // Initialize dealer if found
+                            Dealer.startLookingAtPlayers(mob);
+                        }
+            }
+        }, 1L);
     }
 
 }

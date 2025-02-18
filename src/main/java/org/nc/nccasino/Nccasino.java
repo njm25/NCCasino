@@ -19,7 +19,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Chunk;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
@@ -30,6 +29,8 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Shulker;
+import org.bukkit.entity.Villager;
 import org.bukkit.event.Listener;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
@@ -152,64 +153,76 @@ public final class Nccasino extends JavaPlugin implements Listener {
     }
     
     private void initializeDealersIfLoaded() {
-    File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
-    if (!dealersFile.exists()) {
-        getLogger().warning("The dealers.yaml file does not exist at " + dealersFile.getPath());
-        return;
-    }
 
-    FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
-    if (!dealersConfig.contains("dealers")) {
-        return;
-    }
+        Bukkit.getWorlds().forEach(world -> {
+            for (Entity entity : world.getEntities()) {
+                if (entity instanceof Mob mob) {
+                    if (Dealer.isDealer(mob)) {
 
-    for (String internalName : dealersConfig.getConfigurationSection("dealers").getKeys(false)) {
-        String path = "dealers." + internalName;
-        String worldName = dealersConfig.getString(path + ".world");
-        int x = dealersConfig.getInt(path + ".x");
-        int y = dealersConfig.getInt(path + ".y");
-        int z = dealersConfig.getInt(path + ".z");
-        
-        var world = Bukkit.getWorld(worldName);
-        if (world == null) continue;
-
-        Chunk chunk = world.getChunkAt(x >> 4, z >> 4); // Get the chunk the dealer is in
-        if (chunk.isLoaded()) {
-            reloadDealerAtLocation(world, x, y, z, internalName);
-        }
-    }
-}
-
-
-private void reloadDealerAtLocation(org.bukkit.World world, int x, int y, int z, String internalName) {
-    for (Entity entity : world.getEntities()) {
-        if (entity instanceof Mob mob) {
-            if (Dealer.isDealer(mob) && mob.getLocation().getBlockX() == x 
-                && mob.getLocation().getBlockY() == y 
-                && mob.getLocation().getBlockZ() == z) {
+                        mob.setCollidable(false);
+                        String internalName = Dealer.getInternalName(mob);
+                        String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
+                        String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
+                        int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
+                        String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
+                        List<Integer> chipSizes = new ArrayList<>();
+                        ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
+                        
+                        if (chipSizeSection != null) {
+                            for (String key : chipSizeSection.getKeys(false)) {
+                                chipSizes.add(getConfig().getInt("dealers." + internalName + ".chip-sizes." + key));
+                            }
+                        }
+                        chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
                 
-                getLogger().info("Reloaded dealer: " + internalName + " at " + x + ", " + y + ", " + z);
-                String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
-                String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
-                int timer = getConfig().getInt("dealers." + internalName + ".timer", 30);
-                String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
-                List<Integer> chipSizes = new ArrayList<>();
-                ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
-
-                if (chipSizeSection != null) {
-                    for (String key : chipSizeSection.getKeys(false)) {
-                        chipSizes.add(getConfig().getInt("dealers." + internalName + ".chip-sizes." + key));
+                        String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
+                        String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
+                        Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+                        if (mob instanceof org.bukkit.entity.LivingEntity livingEntity) {
+                            var equipment = livingEntity.getEquipment();
+                            if (equipment != null) { // Ensure the entity has equipment
+                                equipment.setItemInMainHand(null);
+                                equipment.setItemInOffHand(null);
+                                equipment.setHelmet(null);
+                                equipment.setChestplate(null);
+                                equipment.setLeggings(null);
+                                equipment.setBoots(null);
+                            }
+                        }
+                        if (mob.getVehicle() != null) {
+                        mob.getVehicle().removePassenger(mob);
+                        }
+                        if (!mob.getPassengers().isEmpty()) {
+                            for (Entity passenger : mob.getPassengers()) {
+                                passenger.remove(); 
+                            }
+                            mob.eject(); 
+                        }
+                        mob.setInvisible(false);                                    
+                        mob.setInvulnerable(true);
+                        mob.setCustomName(name);
+                        mob.setCustomNameVisible(true);
+                        mob.setGravity(false);
+                        mob.setSilent(true);
+                        mob.setCollidable(false);
+                        if (mob instanceof Villager){
+                            ((Villager) mob).setProfession(Villager.Profession.NONE);
+                            //mob.setAI(true);
+                        }
+                        if (mob instanceof Shulker){
+                            mob.setAI(true);
+                        }
+                        else{
+                            mob.setAI(false);
+                        }
+                        Dealer.startLookingAtPlayers(mob);
+                        mob.setPersistent(true);
+                        mob.setRemoveWhenFarAway(false);
+                    
                     }
                 }
-                chipSizes.sort(Integer::compareTo);
-
-                String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
-                String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
-                Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
-                Dealer.startLookingAtPlayers(mob);
             }
-        }
-    }
+        });
 }
 
     public void savePreferences() {

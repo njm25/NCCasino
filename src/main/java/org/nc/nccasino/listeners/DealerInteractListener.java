@@ -140,7 +140,7 @@ public class DealerInteractListener implements Listener {
     private void handleDealerInventory(Player player, UUID dealerId) {
         DealerInventory dealerInventory = DealerInventory.inventories.get(dealerId);
         if (dealerInventory == null) {
-            Bukkit.getLogger().warning("Error: tried to open null dealerInventory for dealerId " + dealerId);
+            //Bukkit.getLogger().warning("Error: tried to open null dealerInventory for dealerId " + dealerId);
             Mob mob =  (Mob) player.getWorld()
                 .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
                 .filter(entity -> entity instanceof Mob)
@@ -149,12 +149,13 @@ public class DealerInteractListener implements Listener {
                              && Dealer.getUniqueId(v).equals(dealerId))
                 .findFirst().orElse(null);
             if (mob == null) {
-                Bukkit.getLogger().warning("Error: Dealer mob not found for dealerId " + dealerId);
+                //Bukkit.getLogger().warning("Error: Dealer mob not found for dealerId " + dealerId);
                 return;
             }
 
             Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
             String internalName = Dealer.getInternalName(mob);
+            String name = plugin.getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
             String gameType = plugin.getConfig().getString("dealers." + internalName + ".game", "Menu");
             int timer = plugin.getConfig().getInt("dealers." + internalName + ".timer", 30);
             String anmsg = plugin.getConfig().getString("dealers." + internalName + ".animation-message", "NCCasino");
@@ -171,7 +172,9 @@ public class DealerInteractListener implements Listener {
             String currencyName = plugin.getConfig().getString("dealers." + internalName + ".currency.name", "Emerald");
 
             // Restore dealer inventory
-            Dealer.updateGameType(mob, gameType, timer, anmsg, internalName, chipSizes, currencyMaterial, currencyName);
+            Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+            Dealer.startLookingAtPlayers(mob);
+
             dealerInventory = DealerInventory.getInventory(dealerId);
 
             if (dealerInventory == null) {
