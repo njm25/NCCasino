@@ -22,6 +22,8 @@ import org.bukkit.entity.Axolotl;
 import org.bukkit.entity.Cat;
 import org.bukkit.entity.Fox;
 import org.bukkit.entity.Frog;
+import org.bukkit.entity.Horse;
+import org.bukkit.entity.Llama;
 import org.bukkit.entity.MagmaCube;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.MushroomCow;
@@ -32,6 +34,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Rabbit;
 import org.bukkit.entity.Sheep;
 import org.bukkit.entity.Slime;
+import org.bukkit.entity.TropicalFish;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.WanderingTrader;
 import org.bukkit.entity.ZombieVillager;
@@ -1343,22 +1346,19 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
     private List<String> getMobSelectionLore(Mob mob) {
         List<String> lore = new ArrayList<>();
-
-        // Add Current Mob
         lore.add("Current Mob: §a" + formatEntityName(mob.getType().toString()));
-
-        // Add Variant (if applicable)
-        String variant = getCurrentVariant(mob);
-        if (!variant.isEmpty()) {
-            lore.add("Current Variant: §a" + variant);
-        }
-
-        // Add Age or Size (if applicable)
-        String sizeOrAge = getCurrentSizeOrAge(mob);
+            String sizeOrAge = getCurrentSizeOrAge(mob);
         if (!sizeOrAge.isEmpty()) {
             lore.add(sizeOrAge);
         }
-
+            if (isComplicatedVariant(mob)) {
+            lore.addAll(getComplexVariantDetails(mob));
+        } else {
+            String variant = getCurrentVariant(mob);
+            if (variant.isEmpty()) {
+                lore.add("Current Variant: §a" + variant);
+            }
+        }
         return lore;
     }
 
@@ -1389,20 +1389,43 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     return "";
     }
 
+    private List<String> getComplexVariantDetails(Mob mob) {
+    List<String> details = new ArrayList<>();
+    if (mob instanceof Llama llama) {
+        details.add("Current Color: §a" + formatEntityName(llama.getColor().toString()));
+        details.add("Current Decor: §a" + getLlamaCarpetName(llama));
+    } else if (mob instanceof Horse horse) {
+        details.add("Current Color: §a" + formatEntityName(horse.getColor().toString()));
+        details.add("Current Style: §a" + formatEntityName(horse.getStyle().toString()));
+    } else if (mob instanceof TropicalFish fish) {
+        details.add("Current Pattern: §a" + formatEntityName(fish.getPattern().toString()));
+        details.add("Current Body Color: §a" + formatEntityName(fish.getBodyColor().toString()));
+        details.add("Current Pattern Color: §a" + formatEntityName(fish.getPatternColor().toString()));
+    }
+    return details;
+    }
+
+    private String getLlamaCarpetName(Llama llama) {
+        if (llama.getInventory().getDecor() != null) {
+            return formatEntityName(llama.getInventory().getDecor().getType().toString().replace("_CARPET", ""));
+        }
+        return "None";
+    }
+
+    private boolean isComplicatedVariant(Mob mob) {
+        return (mob instanceof Llama)
+            || (mob instanceof Horse)
+            || (mob instanceof TropicalFish);
+    }
+
     private String getCurrentSizeOrAge(Mob mob) {
     if (mob instanceof Slime slime && !(mob instanceof MagmaCube)) {
-        return "Current Size: §a" + getSizeCategory(slime.getSize());
+        return "Current Size: §a" + slime.getSize();
     } else if (mob instanceof MagmaCube magmaCube) {
-        return "Current Size: §a" + getSizeCategory(magmaCube.getSize());
+        return "Current Size: §a" + magmaCube.getSize();
     } else if (mob instanceof org.bukkit.entity.Ageable ageable&&!(mob instanceof Parrot) &&!(mob instanceof Frog) &&!(mob instanceof PiglinBrute) &&!(mob instanceof WanderingTrader)) {
         return "Current Age: §a" + (ageable.isAdult() ? "Adult" : "Baby");
     }
     return "";
-    }
-
-    private String getSizeCategory(int size) {
-        if (size <= 1) return "Small";
-        if (size == 2) return "Medium";
-        return "Large"; // Default for size 3 and above
     }
 }
