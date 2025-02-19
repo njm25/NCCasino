@@ -22,6 +22,7 @@ import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.games.Blackjack.BlackjackInventory;
 import org.nc.nccasino.games.Mines.MinesInventory;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
+import org.nc.nccasino.games.TestGame.TestServer;
 import org.nc.nccasino.helpers.AttributeHelper;
 
 import java.util.HashMap;
@@ -261,6 +262,10 @@ public class Dealer {
                 inventory = new MinesInventory(uniqueId, plugin, internalName);
                 name = "Mines Dealer";
                 break;
+            case "Test Game":
+                inventory = new TestServer(uniqueId, plugin, internalName);
+                name = "Test Game Dealer";
+                break;
             default:
                 defaultTimer = 10;
                 inventory = new BlackjackInventory(uniqueId, plugin, internalName);
@@ -361,6 +366,11 @@ public class Dealer {
                 newInventory = new MinesInventory(dealerId, plugin, internalName);
                 newName = "Mines Dealer";
                 break;
+            case "Test Game":
+                newInventory = new TestServer(dealerId, plugin, internalName);
+                newName = "Test Game Dealer";
+                defaultTimer = 10;
+                break;
             default:
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);
                 newName = "Blackjack Dealer";
@@ -430,6 +440,9 @@ public class Dealer {
                 break;
             case "Mines":
                 newInventory = new MinesInventory(dealerId, plugin, internalName);
+                break;            
+            case "Test Game":
+                newInventory = new TestServer(dealerId, plugin, internalName);
                 break;
             default:
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);

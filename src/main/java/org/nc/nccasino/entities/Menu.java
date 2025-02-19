@@ -44,7 +44,7 @@ public abstract class Menu extends DealerInventory {
         BLACKJACK,
         ROULETTE,
         MINES,
-
+        TEST_GAME,
         
         // Default game settings
         EDIT_TIMER,

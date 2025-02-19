@@ -306,6 +306,7 @@ public class DealerInteractListener implements Listener {
             case "roulette": return "nccasino.games.roulette";
             case "mines": return "nccasino.games.mines";
             case "blackjack": return "nccasino.games.blackjack";
+            case "test game": return "nccasino.adminmenu";
             default: return null;
         }
     }

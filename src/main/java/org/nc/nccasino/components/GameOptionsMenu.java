@@ -35,6 +35,7 @@ public class GameOptionsMenu extends Menu {
         slotMapping.put(SlotOption.BLACKJACK, 0);
         slotMapping.put(SlotOption.ROULETTE, 1);
         slotMapping.put(SlotOption.MINES, 2);
+        slotMapping.put(SlotOption.TEST_GAME, 3);
         slotMapping.put(SlotOption.EXIT, 8);
         initializeMenu();
     }
@@ -59,6 +60,8 @@ public class GameOptionsMenu extends Menu {
         slotMapping.put(SlotOption.BLACKJACK, 1);
         slotMapping.put(SlotOption.ROULETTE, 2);
         slotMapping.put(SlotOption.MINES, 3);
+        slotMapping.put(SlotOption.TEST_GAME, 4);
+        
     
        initializeMenu();
     }
@@ -71,11 +74,13 @@ public class GameOptionsMenu extends Menu {
             addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
             addItemAndLore(Material.CREEPER_HEAD, 1, "Blackjack",  slotMapping.get(SlotOption.BLACKJACK));
             addItemAndLore(Material.ENDER_PEARL, 1, "Roulette",  slotMapping.get(SlotOption.ROULETTE));
+            addItemAndLore(Material.ENDER_PEARL, 1, "Test Game",  slotMapping.get(SlotOption.TEST_GAME));
             addItemAndLore(Material.TNT, 1, "Mines",  slotMapping.get(SlotOption.MINES));
         }
         else{
             addItemAndLore(Material.CREEPER_HEAD, 1, "Blackjack",  slotMapping.get(SlotOption.BLACKJACK));
             addItemAndLore(Material.ENDER_PEARL, 1, "Roulette",  slotMapping.get(SlotOption.ROULETTE));
+            addItemAndLore(Material.ENDER_PEARL, 1, "Test Game",  slotMapping.get(SlotOption.TEST_GAME));
             addItemAndLore(Material.TNT, 1, "Mines",  slotMapping.get(SlotOption.MINES));
             addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
         }
@@ -97,6 +102,10 @@ public class GameOptionsMenu extends Menu {
             case MINES:
                 playDefaultSound(player);
                 gameType = "Mines";
+                break;
+            case TEST_GAME:
+                playDefaultSound(player);
+                gameType = "Test Game";
                 break;
             default:
                 return;
