@@ -41,6 +41,7 @@ import org.bukkit.entity.Slime;
 import org.bukkit.entity.TropicalFish;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.WanderingTrader;
+import org.bukkit.entity.Wolf;
 import org.bukkit.entity.ZombieVillager;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
@@ -69,12 +70,11 @@ public class MobSelectionMenu extends Menu {
     );
     
     private static final Map<Villager.Type, Material> BIOME_MATERIALS = new HashMap<>() {{
-        
-        put(Villager.Type.DESERT, Material.SAND);
+        put(Villager.Type.DESERT, Material.CACTUS);
         put(Villager.Type.JUNGLE, Material.JUNGLE_LOG);
-        put(Villager.Type.PLAINS, Material.GRASS_BLOCK);
+        put(Villager.Type.PLAINS, Material.OAK_LOG);
         put(Villager.Type.SAVANNA, Material.ACACIA_LOG);
-        put(Villager.Type.SNOW, Material.SNOW_BLOCK);
+        put(Villager.Type.SNOW, Material.PALE_OAK_LOG);
         put(Villager.Type.SWAMP, Material.MANGROVE_LOG);
         put(Villager.Type.TAIGA, Material.SPRUCE_LOG);
     }};
@@ -99,6 +99,82 @@ public class MobSelectionMenu extends Menu {
         Frog.Variant.COLD
     };  
 
+    private static final List<DyeColor> SHEEP_COLOR_ORDER = List.of(
+    DyeColor.WHITE, // Default
+
+    // Smooth ROYGBIV with blending colors
+    DyeColor.RED, DyeColor.PINK, DyeColor.ORANGE, 
+    DyeColor.YELLOW, DyeColor.LIME, DyeColor.GREEN, 
+    DyeColor.CYAN, DyeColor.LIGHT_BLUE, DyeColor.BLUE, 
+    DyeColor.PURPLE, DyeColor.MAGENTA,
+
+    // Remaining colors
+    DyeColor.GRAY, DyeColor.LIGHT_GRAY, DyeColor.BROWN, DyeColor.BLACK
+)   ;
+
+
+    private static final Map<DyeColor, Material> DYE_MATERIAL_MAP = new HashMap<>() {{
+        put(DyeColor.WHITE, Material.WHITE_DYE);
+        put(DyeColor.ORANGE, Material.ORANGE_DYE);
+        put(DyeColor.MAGENTA, Material.MAGENTA_DYE);
+        put(DyeColor.LIGHT_BLUE, Material.LIGHT_BLUE_DYE);
+        put(DyeColor.YELLOW, Material.YELLOW_DYE);
+        put(DyeColor.LIME, Material.LIME_DYE);
+        put(DyeColor.PINK, Material.PINK_DYE);
+        put(DyeColor.GRAY, Material.GRAY_DYE);
+        put(DyeColor.LIGHT_GRAY, Material.LIGHT_GRAY_DYE);
+        put(DyeColor.CYAN, Material.CYAN_DYE);
+        put(DyeColor.PURPLE, Material.PURPLE_DYE);
+        put(DyeColor.BLUE, Material.BLUE_DYE);
+        put(DyeColor.BROWN, Material.BROWN_DYE);
+        put(DyeColor.GREEN, Material.GREEN_DYE);
+        put(DyeColor.RED, Material.RED_DYE);
+        put(DyeColor.BLACK, Material.BLACK_DYE);
+    }};
+
+    private static final Map<Class<? extends Mob>, Material[]> VARIANT_ITEMS = new HashMap<>() {{
+        put(Cat.class, new Material[]{
+            Material.BROWN_GLAZED_TERRACOTTA, Material.PINK_GLAZED_TERRACOTTA, Material.ORANGE_GLAZED_TERRACOTTA, Material.LIGHT_GRAY_GLAZED_TERRACOTTA, 
+            Material.GRAY_GLAZED_TERRACOTTA, Material.LIME_GLAZED_TERRACOTTA, Material.YELLOW_GLAZED_TERRACOTTA, Material.LIGHT_BLUE_GLAZED_TERRACOTTA,
+            Material.WHITE_GLAZED_TERRACOTTA, Material.PURPLE_GLAZED_TERRACOTTA, Material.BLACK_GLAZED_TERRACOTTA
+        }); // 11 variants
+    
+        put(Fox.class, new Material[]{
+            Material.ORANGE_DYE, Material.WHITE_DYE
+        }); // 2 variants
+    
+        put(Frog.class, new Material[]{
+            Material.ORANGE_DYE, Material.GRAY_DYE, Material.GREEN_DYE
+        }); // 3 variants
+    
+        put(Parrot.class, new Material[]{
+            Material.RED_DYE, Material.BLUE_DYE, Material.GREEN_DYE, Material.CYAN_DYE, Material.GRAY_DYE
+        }); // 5 variants
+    
+        put(Rabbit.class, new Material[]{
+            Material.BROWN_DYE, Material.WHITE_DYE, Material.BLACK_DYE, Material.BIRCH_LOG, 
+            Material.YELLOW_DYE, Material.FROGSPAWN, Material.BONE
+        }); // 6 variants
+    
+        put(Axolotl.class, new Material[]{
+            Material.PINK_DYE, Material.BROWN_DYE, Material.YELLOW_DYE, Material.CYAN_DYE, Material.BLUE_DYE
+        }); // 5 variants
+    
+        put(MushroomCow.class, new Material[]{
+            Material.RED_MUSHROOM, Material.BROWN_MUSHROOM
+        }); // 2 variants
+    
+        put(Panda.class, new Material[]{
+            Material.BLACK_WOOL, Material.BROWN_WOOL
+        }); // 2 variants
+    
+        put(Sheep.class, new Material[]{
+            Material.WHITE_WOOL, Material.ORANGE_WOOL, Material.MAGENTA_WOOL, Material.LIGHT_BLUE_WOOL,
+            Material.YELLOW_WOOL, Material.LIME_WOOL, Material.PINK_WOOL, Material.GRAY_WOOL,
+            Material.LIGHT_GRAY_WOOL, Material.CYAN_WOOL, Material.PURPLE_WOOL, Material.BLUE_WOOL,
+            Material.BROWN_WOOL, Material.GREEN_WOOL, Material.RED_WOOL, Material.BLACK_WOOL
+        }); // 16 colors
+    }};
 
     static {
         for (Material material : Material.values()) {
@@ -121,6 +197,13 @@ public class MobSelectionMenu extends Menu {
             }
         }
     
+        // Manually add the Giant with a Zombie Head
+        spawnEggToEntity.put(Material.ZOMBIE_HEAD, EntityType.GIANT);
+        entityToSpawnEgg.put(EntityType.GIANT, Material.ZOMBIE_HEAD);
+        spawnEggList.add(Material.ZOMBIE_HEAD);
+        spawnEggToEntity.put(Material.ENCHANTED_BOOK, EntityType.ILLUSIONER);
+        entityToSpawnEgg.put(EntityType.ILLUSIONER, Material.ENCHANTED_BOOK);
+        spawnEggList.add(Material.ENCHANTED_BOOK);
         // Sort the spawnEggList, etc. (unchanged)
         spawnEggList.sort((m1, m2) -> {
             String name1 = formatEntityName(spawnEggToEntity.get(m1).name());
@@ -128,6 +211,7 @@ public class MobSelectionMenu extends Menu {
             return name1.compareToIgnoreCase(name2);
         });
     }
+    
 
     public static Material getSpawnEggFor(EntityType type) {
         return entityToSpawnEgg.getOrDefault(type, Material.EGG);
@@ -175,8 +259,14 @@ public class MobSelectionMenu extends Menu {
             ItemStack item = new ItemStack(material);
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
-                meta.setDisplayName(ChatColor.YELLOW + formatEntityName(entityType.name()));
-                item.setItemMeta(meta);
+                if (entityType == EntityType.ILLUSIONER) {
+                    meta.setDisplayName(ChatColor.YELLOW + "Illusioner");
+                    meta.setLore(null); // Remove default enchantment lore
+                    item.setItemMeta(meta);
+                } else {
+                    meta.setDisplayName(ChatColor.YELLOW + formatEntityName(entityType.name()));
+                    item.setItemMeta(meta);
+                }
             }
             inventory.setItem(i, item);
         }
@@ -475,14 +565,30 @@ public class MobSelectionMenu extends Menu {
             cycleZombieVillagerType(player, zombieVillager);
         }
          else if (mob instanceof Sheep sheep) {
-        List<DyeColor> colors = List.of(DyeColor.values());
-        int index = colors.indexOf(sheep.getColor());
-        sheep.setColor(colors.get((index + 1) % colors.size()));
-        sendVariantUpdateMessage(player, sheep.getColor(),mob);
-        }
+            int index = SHEEP_COLOR_ORDER.indexOf(sheep.getColor());
+            sheep.setColor(SHEEP_COLOR_ORDER.get((index + 1) % SHEEP_COLOR_ORDER.size()));
+            sendVariantUpdateMessage(player, sheep.getColor(), mob);            
+        }else if (mob instanceof Wolf wolf) {
+            List<DyeColor> colors = List.of(DyeColor.values());
         
-        // Add more if you have more single-variant mob classes
-
+            if (!wolf.isTamed()) {
+                // If untamed, tame and set the first collar color
+                wolf.setTamed(true);
+                wolf.setCollarColor(colors.get(0));
+                sendVariantUpdateMessage(player, colors.get(0), mob);
+            } else {
+                // If tamed, cycle through the colors, untame if removing the collar
+                int index = colors.indexOf(wolf.getCollarColor());
+                if (index == colors.size() - 1) {
+                    wolf.setTamed(false); // If cycling past last color, untame the wolf
+                    sendVariantUpdateMessage(player, "Untamed", mob);
+                } else {
+                    DyeColor nextColor = colors.get((index + 1) % colors.size());
+                    wolf.setCollarColor(nextColor);
+                    sendVariantUpdateMessage(player, nextColor, mob);
+                }
+            }
+        }
         else {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case VERBOSE -> player.sendMessage("§cMob type " +ChatColor.YELLOW+formatEntityName(mob.getType().toString())  + "§c does not have any variants.");
@@ -540,8 +646,20 @@ public class MobSelectionMenu extends Menu {
             );
             return;
         }
+        else if  (dealer instanceof ZombieVillager villager) {
+            Villager.Type vt = villager.getVillagerType();
+            Material mat = BIOME_MATERIALS.getOrDefault(vt, Material.GRASS_BLOCK);
+            addItemAndLore(
+                mat, 
+                1,
+                "Edit " + formatEntityName(dealer.getType().toString()) + " Variant",
+                slot,
+                "Current: §a" + formatEntityName(vt.toString())
+            );
+            return;
+        }
     
-        if (isComplicatedVariant(dealer)) {
+        else if (isComplicatedVariant(dealer)) {
             List<String> details = getComplexVariantDetails(dealer);
 
             addItemAndLore(
@@ -553,10 +671,35 @@ public class MobSelectionMenu extends Menu {
             );
             return;
         }
-    
-        if (hasSingleVariant(dealer)) {
+        else if (dealer instanceof Wolf wolf) {
+            if (!wolf.isTamed()) {
+                addItemAndLore(
+                    Material.BARRIER,
+                    1,
+                    "Edit " + formatEntityName(dealer.getType().toString()) + " Collar Color",
+                    slotMapping.get(SlotOption.VARIANT),
+                     "Current: §aNone"
+                );
+                return;
+            }
+        
+            DyeColor currentColor = wolf.getCollarColor();
+            Material dyeMaterial = DYE_MATERIAL_MAP.getOrDefault(currentColor, Material.GRAY_DYE);
+            
             addItemAndLore(
-                Material.REPEATER,
+                dyeMaterial,
+                1,
+                "Edit " + formatEntityName(dealer.getType().toString()) + " Collar Color",
+                slotMapping.get(SlotOption.VARIANT),
+                "Current: §a" + formatEntityName(currentColor.toString())
+            );
+            return;
+        }
+        
+        else  if (hasSingleVariant(dealer)) {
+            Material variantItem = getVariantItem(dealer);
+            addItemAndLore(
+                variantItem,
                 1,
                 "Edit " + formatEntityName(dealer.getType().toString()) + " Variant",
                 slot,
@@ -566,6 +709,33 @@ public class MobSelectionMenu extends Menu {
         }
     }
 
+    private Material getVariantItem(Mob mob) {
+        // Check manually instead of using VARIANT_ITEMS.get(mob.getClass())
+        if (mob instanceof Cat cat) {
+            return VARIANT_ITEMS.get(Cat.class)[indexOf(CAT_TYPES, cat.getCatType())];
+        } else if (mob instanceof Fox fox) {
+            return VARIANT_ITEMS.get(Fox.class)[indexOf(Fox.Type.values(), fox.getFoxType())];
+        } else if (mob instanceof Frog frog) {
+            return VARIANT_ITEMS.get(Frog.class)[indexOf(FROG_VARIANTS, frog.getVariant())];
+        } else if (mob instanceof Parrot parrot) {
+            return VARIANT_ITEMS.get(Parrot.class)[indexOf(Parrot.Variant.values(), parrot.getVariant())];
+        } else if (mob instanceof Rabbit rabbit) {
+            return VARIANT_ITEMS.get(Rabbit.class)[indexOf(Rabbit.Type.values(), rabbit.getRabbitType())];
+        } else if (mob instanceof Axolotl axolotl) {
+            return VARIANT_ITEMS.get(Axolotl.class)[indexOf(Axolotl.Variant.values(), axolotl.getVariant())];
+        } else if (mob instanceof MushroomCow mooshroom) {
+            return VARIANT_ITEMS.get(MushroomCow.class)[indexOf(MushroomCow.Variant.values(), mooshroom.getVariant())];
+        } else if (mob instanceof Panda panda) {
+            return VARIANT_ITEMS.get(Panda.class)[panda.getMainGene() == Panda.Gene.BROWN ? 1 : 0];
+        } else if (mob instanceof Sheep sheep) {
+            return VARIANT_ITEMS.get(Sheep.class)[indexOf(DyeColor.values(), sheep.getColor())];
+        }
+    
+        return Material.BARRIER; // Default if not found
+    }
+    
+
+    
     private void handleAgeToggle(Player player) {
         if (dealer == null) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
@@ -712,6 +882,8 @@ public class MobSelectionMenu extends Menu {
             return formatEntityName(zombieVillager.getVillagerType().toString());
         } else if (mob instanceof Sheep sheep) {
             return formatEntityName(sheep.getColor().toString());
+        }else if (mob instanceof Wolf wolf) {
+            return formatEntityName(wolf.getCollarColor().toString());
         }
 
         return "Unknown";
@@ -728,7 +900,9 @@ public class MobSelectionMenu extends Menu {
             || (mob instanceof Panda)
             || (mob instanceof Villager)
             || (mob instanceof ZombieVillager)
-            || (mob instanceof Sheep);
+            || (mob instanceof Sheep)
+            || (mob instanceof Wolf);
+            
     }
 
         private boolean isComplicatedVariant(Mob mob) {
