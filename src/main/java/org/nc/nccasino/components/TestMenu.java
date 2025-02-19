@@ -21,8 +21,8 @@ public class TestMenu extends Menu {
         super(player, plugin, dealerId, "Test Menu", 9, returnMessage, returnCallback);
         
         // Initialize slot mappings
-        slotMapping.put(SlotOption.TEST_OPTION_ONE, 2);
-        slotMapping.put(SlotOption.TEST_OPTION_TWO, 3);
+        slotMapping.put(SlotOption.COMPLEX_VAR_1, 2);
+        slotMapping.put(SlotOption.COMPLEX_VAR_2, 3);
 
         // Build the actual menu items
         addExitReturn();
@@ -35,13 +35,13 @@ public class TestMenu extends Menu {
              Material.PAPER, 
              1, 
              "Option One", 
-             slotMapping.get(SlotOption.TEST_OPTION_ONE), 
+             slotMapping.get(SlotOption.COMPLEX_VAR_1), 
              "Click to print a message."
          );
          addItemAndLore(Material.BOOK, 
              1, 
              "Option Two", 
-             slotMapping.get(SlotOption.TEST_OPTION_TWO), 
+             slotMapping.get(SlotOption.COMPLEX_VAR_2), 
              "Click to print another message."
          );
     }
@@ -49,10 +49,10 @@ public class TestMenu extends Menu {
     @Override
     protected void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
         switch (option) {
-            case TEST_OPTION_ONE:
+            case COMPLEX_VAR_1:
                 player.sendMessage("You clicked Option One!");
                 break;
-            case TEST_OPTION_TWO:
+            case COMPLEX_VAR_2:
                 player.sendMessage("You clicked Option Two!");
                 break;
             default:

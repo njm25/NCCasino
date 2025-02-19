@@ -47,11 +47,11 @@ public class BlackjackMenu extends Menu {
                 .findFirst().orElse(null);
         }
 
-        slotMapping.put(SlotOption.EXIT, 0);
-        slotMapping.put(SlotOption.RETURN, 1);
-        slotMapping.put(SlotOption.EDIT_TIMER, 2);
-        slotMapping.put(SlotOption.STAND_17, 3);
-        slotMapping.put(SlotOption.NUMBER_OF_DECKS, 4);
+        slotMapping.put(SlotOption.EXIT, 8);
+        slotMapping.put(SlotOption.RETURN, 0);
+        slotMapping.put(SlotOption.EDIT_TIMER, 1);
+        slotMapping.put(SlotOption.STAND_17, 2);
+        slotMapping.put(SlotOption.NUMBER_OF_DECKS, 3);
 
         BAInventories.put(this.ownerId, this);
         initializeMenu();

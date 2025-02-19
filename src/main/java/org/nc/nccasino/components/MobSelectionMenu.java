@@ -138,12 +138,13 @@ public class MobSelectionMenu extends Menu {
             player, 
             plugin, 
             dealerId, 
-            "Select Mob for " +  
                 Dealer.getInternalName((Mob) player.getWorld()
                 .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
                 .filter(entity -> entity instanceof Mob)
                 .map(entity -> (Mob) entity)
-                .filter(v -> Dealer.isDealer(v) && Dealer.getUniqueId(v).equals(dealerId)).findFirst().orElse(null)), 
+                .filter(v -> Dealer.isDealer(v) && Dealer.getUniqueId(v).equals(dealerId)).findFirst().orElse(null))
+                + "'s Mob Settings"
+                , 
             54, 
             returnName, 
             returnToAdmin
@@ -366,11 +367,9 @@ public class MobSelectionMenu extends Menu {
 
     private void handleVariantClick(Player player) {
         if (isComplicatedVariant(dealer)) {
-                playDefaultSound(player);
                openVariantMenu(player, dealer);
            }
            else if (hasSingleVariant(dealer)) {
-                playDefaultSound(player);
                cycleSingleVariant(player, dealer);
            }
            else {
@@ -503,7 +502,7 @@ public class MobSelectionMenu extends Menu {
         addItemAndLore(
             BIOME_MATERIALS.getOrDefault(newBiome, Material.GRASS_BLOCK),
             1,
-            "Toggle " + formatEntityName(dealer.getType().toString()) + " Variant",
+            "Edit " + formatEntityName(dealer.getType().toString()) + " Variant",
             slotMapping.get(SlotOption.VARIANT),
             "Current: §a" + formatEntityName(newBiome.toString())
         );
@@ -535,7 +534,7 @@ public class MobSelectionMenu extends Menu {
             addItemAndLore(
                 mat, 
                 1,
-                "Toggle " + formatEntityName(dealer.getType().toString()) + " Variant",
+                "Edit " + formatEntityName(dealer.getType().toString()) + " Variant",
                 slot,
                 "Current: §a" + formatEntityName(vt.toString())
             );
@@ -559,7 +558,7 @@ public class MobSelectionMenu extends Menu {
             addItemAndLore(
                 Material.REPEATER,
                 1,
-                "Toggle " + formatEntityName(dealer.getType().toString()) + " Variant",
+                "Edit " + formatEntityName(dealer.getType().toString()) + " Variant",
                 slot,
                 "Current: §a" + getVariantName(dealer)
             );
@@ -586,7 +585,6 @@ public class MobSelectionMenu extends Menu {
         if(isAgeable(dealer)){
         // It's Ageable, so cast and toggle
         
-        playDefaultSound(player);
         org.bukkit.entity.Ageable ageable = (org.bukkit.entity.Ageable) dealer;
         if (ageable.isAdult()) {
             
@@ -638,7 +636,7 @@ public class MobSelectionMenu extends Menu {
             addItemAndLore(
                 icon,
                 1,
-                "Toggle Age",
+                "Edit Age",
                 slot,
                 "Current: §a" + currentAgeText
             );
@@ -648,7 +646,7 @@ public class MobSelectionMenu extends Menu {
             addItemAndLore(
                 Material.SLIME_BALL,
                 1,
-                "Toggle Size",
+                "Edit Size",
                 slot,
                 "Current: §a" + currentSize
             );
@@ -658,7 +656,7 @@ public class MobSelectionMenu extends Menu {
             addItemAndLore(
                 Material.MAGMA_CREAM,
                 1,
-                "Toggle Size",
+                "Edit Size",
                 slot,
                 "Current: §a" + currentSize
             );

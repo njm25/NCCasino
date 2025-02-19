@@ -49,9 +49,9 @@ public class MinesMenu extends Menu {
         }
 
         
-        slotMapping.put(SlotOption.EXIT, 0);
-        slotMapping.put(SlotOption.RETURN, 1);
-        slotMapping.put(SlotOption.EDIT_MINES, 2);
+        slotMapping.put(SlotOption.EXIT, 8);
+        slotMapping.put(SlotOption.RETURN, 0);
+        slotMapping.put(SlotOption.EDIT_MINES, 1);
         MAInventories.put(this.ownerId, this);
         initializeMenu();
     }

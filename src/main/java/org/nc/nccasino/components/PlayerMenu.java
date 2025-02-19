@@ -21,15 +21,15 @@ public class PlayerMenu extends Menu {
 
         
         if(fromAdmin){
-            slotMapping.put(SlotOption.RETURN, 1);
-            slotMapping.put(SlotOption.EXIT, 0);
-            slotMapping.put(SlotOption.PREFERENCES, 2);
-            slotMapping.put(SlotOption.STATS, 3);
-        }
-        else{
-            slotMapping.put(SlotOption.EXIT, 0);
+            slotMapping.put(SlotOption.RETURN, 0);
+            slotMapping.put(SlotOption.EXIT, 8);
             slotMapping.put(SlotOption.PREFERENCES, 1);
             slotMapping.put(SlotOption.STATS, 2);
+        }
+        else{
+            slotMapping.put(SlotOption.EXIT, 8);
+            slotMapping.put(SlotOption.PREFERENCES, 0);
+            slotMapping.put(SlotOption.STATS, 1);
         }
         
         // Build the actual contents

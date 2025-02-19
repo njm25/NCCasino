@@ -154,7 +154,11 @@ public class Dealer {
                 Player nearest = getNearestPlayer(mob);
 
                 if (nearest != null) {
-                    if (currentTarget == null || nearest.getLocation().distance(mob.getLocation()) < currentTarget.getLocation().distance(mob.getLocation()) - SWITCH_THRESHOLD) {
+                    if (currentTarget == null || 
+                        (nearest.getWorld().equals(mob.getWorld()) && 
+                         currentTarget.getWorld().equals(mob.getWorld()) && 
+                         nearest.getLocation().distance(mob.getLocation()) < 
+                         currentTarget.getLocation().distance(mob.getLocation()) - SWITCH_THRESHOLD)) {
                         currentTarget = nearest;
                     }
                 }

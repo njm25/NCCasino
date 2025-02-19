@@ -363,13 +363,12 @@ public class MinesTable extends DealerInventory {
     }
 
     @SuppressWarnings("null")
-    @EventHandler
-    public void handleClick(InventoryClickEvent event) {
+    @Override
+    public void handleClick(int slot, Player player, InventoryClickEvent event) {
         if (!(event.getInventory().getHolder() instanceof MinesTable)) return;
 
         if (!event.getWhoClicked().getUniqueId().equals(playerId)) return;
 
-        int slot = event.getRawSlot();
         ItemStack clickedItem = event.getCurrentItem();
         if (clickedItem == null) return;
 
