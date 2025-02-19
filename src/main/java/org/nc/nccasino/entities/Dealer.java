@@ -7,6 +7,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.MagmaCube;
 import org.bukkit.entity.Mob;
+import org.bukkit.entity.Panda;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Shulker;
 import org.bukkit.entity.Slime;
@@ -94,6 +95,11 @@ public class Dealer {
         }
         if (mob instanceof MagmaCube){
             ((MagmaCube)mob).setSize(3);
+        }
+        if (mob instanceof Panda ){
+            ((Panda)mob).setMainGene(Panda.Gene.NORMAL);
+            ((Panda)mob).setHiddenGene(Panda.Gene.NORMAL);
+
         }
         if (mob instanceof Shulker){
             mob.setAI(true);
