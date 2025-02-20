@@ -290,8 +290,10 @@ public class BaccaratServer extends Server {
     
         gameState = GameState.RUNNING;
         updateTimerDisplay(-1); // Remove timer UI
-        dealInitialCards();
-        evaluateHands();
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            dealInitialCards();
+        }, 20L);
+        //evaluateHands();
     
   
     }
@@ -323,12 +325,27 @@ public class BaccaratServer extends Server {
             bankerHand.add(deck.dealCard());
             broadcastUpdate("DEAL_CARDS", Arrays.asList(bankerHand.get(1)));
             updateHandTotals();
-            evaluateHands();
         }, 80L);
+
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (playerHand.size() >= 2 && bankerHand.size() >= 2) {
+                evaluateHands();
+            } else {
+                Bukkit.getLogger().warning("evaluateHands() called too early, retrying...");
+                Bukkit.getScheduler().runTaskLater(plugin, this::evaluateHands, 20L);
+            }
+        }, 100L);
+    
+      
     }
     
     
     private void evaluateHands() {
+         if (playerHand.size() < 2 || bankerHand.size() < 2) {
+            Bukkit.getLogger().warning("evaluateHands called too early! Delaying...");
+            Bukkit.getScheduler().runTaskLater(plugin, this::evaluateHands, 20L);
+            return;
+        }
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             int playerTotal = getBaccaratHandValue(playerHand);
             int bankerTotal = getBaccaratHandValue(bankerHand);
@@ -352,19 +369,19 @@ public class BaccaratServer extends Server {
     
                     // Now decide if banker draws
                     handleBankerDraw(newPlayerTotal, bankerTotal, playerThirdCard);
-                }, 40L);
+                }, 20L);
             } else {
                 // If the player does not draw, check if banker should draw
                 handleBankerDraw(playerTotal, bankerTotal, null);
             }
-        }, 40L);
+        }, 20L);
     }
     
     private void handleBankerDraw(int playerTotal, int bankerTotal, Integer playerThirdCard) {
         boolean bankerDraws = shouldBankerDraw(playerTotal, bankerTotal, playerThirdCard);
         
         if (bankerDraws) {
-            drawBankerCard();
+                drawBankerCard();
         } else {
             Bukkit.getScheduler().runTaskLater(plugin, this::determineWinner, 40L);
         }
@@ -377,7 +394,7 @@ public class BaccaratServer extends Server {
             broadcastUpdate("BANKER_DRAW", bankerHand.get(bankerHand.size() - 1));
             updateHandTotals();
             Bukkit.getScheduler().runTaskLater(plugin, this::determineWinner, 40L);
-        }, 40L);
+        }, 20L);
     }
     
     private void updateHandTotals() {
@@ -543,7 +560,7 @@ private void resetGame() {
         broadcastUpdate("CLEAR_CARDS", null);
         broadcastUpdate("UPDATE_HAND_TOTALS", new int[]{-1, -1});
         startTimer();
-    }, 200L); // Delay before resetting for UI effects
+    }, 100L); // Delay before resetting for UI effects
 }
 
 
