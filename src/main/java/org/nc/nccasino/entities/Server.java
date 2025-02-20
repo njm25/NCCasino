@@ -25,14 +25,6 @@ public abstract class Server extends DealerInventory {
 
     protected final Map<UUID, SessionState> clientStates = new HashMap<>();
 
-    /**
-     * Constructs a new Server instance.
-     *
-     * @param dealerId  Unique ID for the dealer
-     * @param size      Size of the inventory (slots)
-     * @param title     Title for the server inventory (if used)
-     * @param plugin    Main plugin reference
-     */
     public Server(UUID dealerId, int size, String title, Nccasino plugin, String internalName) {
         super(dealerId, size, title);
         this.plugin = plugin;
