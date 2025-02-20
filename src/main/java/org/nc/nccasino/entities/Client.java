@@ -31,29 +31,10 @@ public abstract class Client extends DealerInventory {
     protected final Nccasino plugin;
     protected final String internalName;
 
-    /**
-     * The betting stack. Each placed bet pushes onto the stack; undo operations pop.
-     */
     protected final Deque<Double> betStack = new ArrayDeque<>();
-
-    /**
-     * If the user re-bets, we replicate their previous wager after the game ends.
-     */
     protected boolean rebetEnabled = false;
-
-    /**
-     * Tracks the currently selected wager (chips).
-     */
     protected double selectedWager = 0.0;
-
-    /**
-     * The collection of chip values loaded from config (like Mines).
-     */
     protected final Map<String, Double> chipValues = new LinkedHashMap<>();
-
-    /**
-     * Constructor for base client. 
-     */
     public Client(Server server, Player player, int size, String title,
                   Nccasino plugin, String internalName)
     {
@@ -80,10 +61,6 @@ public abstract class Client extends DealerInventory {
         setupBettingRow(); // Build the chips, rebet toggle, etc.
     }
 
-    /**
-     * --- FROM MINES TABLE ---
-     * Load the "chips" from config, as Mines does, storing into chipValues.
-     */
     private void loadChipValuesFromConfig() {
         Map<String, Double> temp = new HashMap<>();
         for (int i = 1; i <= 5; i++) {
@@ -99,16 +76,7 @@ public abstract class Client extends DealerInventory {
             .forEachOrdered(e -> chipValues.put(e.getKey(), e.getValue()));
     }
 
-    /**
-     * Creates the 'betting row' at the bottom of the inventory
-     * with:
-     *  - Chips in slots 47..51
-     *  - Paper in 53 ("Click here to place bet")
-     *  - Rebet: slot 43
-     *  - Undo All: slot 45
-     *  - Undo Last: slot 46
-     *  - All In: slot 52
-     */
+
     private void setupBettingRow() {
         // 1) Build the chips (slots 47..51)
         int chipSlot = 47;
@@ -143,16 +111,11 @@ public abstract class Client extends DealerInventory {
         }
     }
 
-    /**
-     * If your server changes states, the client can respond (like Mines).
-     */
     public void onServerStateChange(Server.SessionState oldState, Server.SessionState newState) {
         // Do nothing by default
     }
 
-    /**
-     * Called by the plugin. If the user clicks inside this inventory:
-     */
+
     @Override
     public void handleClick(int slot, Player clicker, InventoryClickEvent event) {
         if (!clicker.getUniqueId().equals(player.getUniqueId())) return;
@@ -166,28 +129,10 @@ public abstract class Client extends DealerInventory {
         }
     }
 
-    /**
-     * By default, the 'betting row' is in these slots:
-     *  - 43 for rebet
-     *  - 45 for undo all
-     *  - 46 for undo last
-     *  - 47..51 for chips
-     *  - 52 for all in
-     *  - 53 for 'click here to place bet'
-     */
     protected boolean isBetSlot(int slot) {
         return slot >= 43 && slot <= 53; // This covers rebet(43), chips(47-51), all in(52), place bet(53), etc.
     }
 
-    /**
-     * Replicates Mines logic for bet slots:
-     *  - slot 43: toggle rebet
-     *  - slot 45: undo all
-     *  - slot 46: undo last
-     *  - slot 52: all in
-     *  - slot 47..51: user selected a chip
-     *  - slot 53: 'Click here to place bet'
-     */
     protected void handleBet(int slot, Player player, InventoryClickEvent event) {
         event.setCancelled(true);
 
@@ -261,15 +206,8 @@ public abstract class Client extends DealerInventory {
         }
     }
 
-    /**
-     * Called for any clicks that are not recognized as bet slots.
-     */
     protected abstract void handleClientSpecificClick(int slot, Player player, InventoryClickEvent event);
 
-    /**
-     * The 'Click here to place bet' logic from Mines. 
-     * Checks if the user is holding the currency or using selectedWager.
-     */
     private void handleBetPlacement() {
         // Check if user is holding the currency item
         ItemStack heldItem = player.getItemOnCursor();
@@ -305,10 +243,6 @@ public abstract class Client extends DealerInventory {
         betStack.push(wagerAmount);
     }
 
-    /**
-     * We replicate the 'All In' logic from Mines:
-     * Sums how many currency items the user has, removes them, pushes onto bet stack.
-     */
     protected void placeAllInBet() {
         Material cMat = getCurrencyMaterial();
         int count = Arrays.stream(player.getInventory().getContents())
@@ -328,10 +262,6 @@ public abstract class Client extends DealerInventory {
         betStack.push((double) count);
     }
 
-    /**
-     * Undo last bet. 
-     * EXACT logic from Mines: pop from betStack, refund to user.
-     */
     protected void undoLastBet() {
         if (!betStack.isEmpty()) {
             double last = betStack.pop();
@@ -339,9 +269,6 @@ public abstract class Client extends DealerInventory {
         }
     }
 
-    /**
-     * Undo all bets: pop everything from betStack, refund each.
-     */
     protected void undoAllBets() {
         while (!betStack.isEmpty()) {
             double b = betStack.pop();
@@ -349,26 +276,16 @@ public abstract class Client extends DealerInventory {
         }
     }
 
-    /**
-     * Called when toggling rebet
-     */
     protected void toggleRebet() {
         rebetEnabled = !rebetEnabled;
     }
 
-    /**
-     * Updates the item in slot 43 to reflect rebet status.
-     */
     protected void updateRebetToggle() {
         Material mat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
         String name = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
         inventory.setItem(43, createCustomItem(mat, name, 1));
     }
 
-    /**
-     * Utility from Mines: updates the lore on 'Click here to place bet' (slot 53)
-     * with the current total bet amount.
-     */
     protected void updateBetLore(int slot, double totalBet) {
         ItemStack item = inventory.getItem(slot);
         if (item != null && item.hasItemMeta()) {
@@ -386,20 +303,11 @@ public abstract class Client extends DealerInventory {
         }
     }
 
-    // ================== MINES UTILITY METHODS PULLED IN ===================
-
-    /**
-     * Returns true if player has at least 'amount' currency items.
-     * from Mines: hasEnoughCurrency
-     */
     protected boolean hasEnoughCurrency(Player player, int amount) {
         if (amount <= 0) return true;
         return getTotalCurrency(player) >= amount;
     }
 
-    /**
-     * Sums how many currency items the user has. from Mines
-     */
     protected int getTotalCurrency(Player player) {
         return Arrays.stream(player.getInventory().getContents())
             .filter(Objects::nonNull)
@@ -408,28 +316,16 @@ public abstract class Client extends DealerInventory {
             .sum();
     }
 
-    /**
-     * Removes 'amount' items of getCurrencyMaterial from the player's inventory.
-     * from Mines
-     */
     protected void removeCurrencyFromInventory(Player player, int amount) {
         if (amount <= 0) return;
         player.getInventory().removeItem(new ItemStack(getCurrencyMaterial(), amount));
     }
 
-    /**
-     * Refunds the user 'amount' currency items. from Mines
-     */
     protected void refundCurrency(Player player, int amount) {
         if (amount <= 0) return;
         player.getInventory().addItem(new ItemStack(getCurrencyMaterial(), amount));
     }
 
-    // ===================== ALREADY EXISTING CODE (Unmodified) =====================
-
-    /**
-     * Must be overridden to specify your currency (like plugin.getCurrency(internalName))
-     */
     protected Material getCurrencyMaterial(){
         return plugin.getCurrency(internalName);
     }
@@ -466,9 +362,6 @@ public abstract class Client extends DealerInventory {
         return player.getUniqueId();
     }
 
-    /**
-     * For sending events (like 'SLOT_CLICKED') to the server.
-     */
     protected void sendUpdateToServer(String eventType, Object data) {
         if (server != null) {
             Bukkit.getLogger().info("[Client] Sending update to server: " + eventType + " | Data: " + data);
@@ -476,12 +369,7 @@ public abstract class Client extends DealerInventory {
         }
     }
 
-    /**
-     * For receiving updates from the server (like 'UPDATE_UI'), used in Mines or TestGame.
-     */
     public void onServerUpdate(String eventType, Object data) {
         Bukkit.getLogger().info("[Client] Received server update: " + eventType + " | Data: " + data);
     }
-
-
 }
