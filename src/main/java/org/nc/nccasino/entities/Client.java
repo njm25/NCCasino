@@ -41,11 +41,6 @@ public abstract class Client extends DealerInventory {
         setupBettingRow();
     }
 
-    /**
-     * Called once when creating the client, 
-     * to set up any additional UI or placeholders. 
-     * Already calls setupBettingRow() in constructor.
-     */
     public void initializeUI() {
         setupBettingRow(); // Build the chips, rebet toggle, etc.
     }
@@ -310,7 +305,7 @@ public abstract class Client extends DealerInventory {
         player.getInventory().removeItem(new ItemStack(getCurrencyMaterial(), amount));
     }
 
-    protected void refundCurrency(Player player, int amount) {
+    public void refundCurrency(Player player, int amount) {
         if (amount <= 0) return;
         player.getInventory().addItem(new ItemStack(getCurrencyMaterial(), amount));
     }
