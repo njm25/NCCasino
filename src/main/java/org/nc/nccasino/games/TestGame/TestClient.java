@@ -27,8 +27,8 @@ public class TestClient extends Client {
     }
 
     @Override
-    public void initializeUI() {
-        super.initializeUI();
+    public void initializeUI(boolean rebetSwitch) {
+        super.initializeUI(rebetSwitch);
         refreshUI();
     }
 
@@ -59,7 +59,7 @@ public class TestClient extends Client {
     private void refreshUI() {
         inventory.clear();
         // Rebuild the base bet row from the parent
-        super.initializeUI();
+        super.initializeUI(false);
 
         TestServer testServer = (TestServer) server;
         TestServer.GameState gameState = testServer.getGameState();
