@@ -38,11 +38,13 @@ public abstract class Client extends DealerInventory {
 
         // Register event listener & set up the 'betting row' 
         registerListener();
-        setupBettingRow();
+        setupBettingRow(false);
     }
-
-    public void initializeUI() {
-        setupBettingRow(); // Build the chips, rebet toggle, etc.
+    public Player getPlayer(){
+        return player;
+    }
+    public void initializeUI(boolean RebetSwitch) {
+            setupBettingRow(RebetSwitch);
     }
 
     private void loadChipValuesFromConfig() {
@@ -61,7 +63,7 @@ public abstract class Client extends DealerInventory {
     }
 
 
-    private void setupBettingRow() {
+    private void setupBettingRow(Boolean switchBoolean) {
         // 1) Build the chips (slots 47..51)
         int chipSlot = 47;
         for (Map.Entry<String, Double> entry : chipValues.entrySet()) {
@@ -70,14 +72,14 @@ public abstract class Client extends DealerInventory {
             inventory.setItem(chipSlot, createCustomItem(getCurrencyMaterial(), chipName, (int) chipVal));
             chipSlot++;
         }
-
+        if(!switchBoolean){
         // 2) Paper in slot 53: "Click here to place bet"
-        inventory.setItem(53, createCustomItem(Material.PAPER, "Click here to place bet", 1));
-
+        inventory.setItem(53, createCustomItem(Material.PAPER, "Click here to place bet", 1));}
+        int slot=switchBoolean?53:43;
         // 3) Rebet: slot 43
         Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
         String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
-        inventory.setItem(43, createCustomItem(rebetMat, rebetName, 1));
+        inventory.setItem(slot, createCustomItem(rebetMat, rebetName, 1));
 
         // 4) Undo All: slot 45
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
@@ -192,7 +194,7 @@ public abstract class Client extends DealerInventory {
 
     protected abstract void handleClientSpecificClick(int slot, Player player, InventoryClickEvent event);
 
-    private void handleBetPlacement() {
+    protected void handleBetPlacement() {
         // Check if user is holding the currency item
         ItemStack heldItem = player.getItemOnCursor();
         Material currencyMat = getCurrencyMaterial();

@@ -19,6 +19,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.NamespacedKey;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.games.Baccarat.BaccaratServer;
 import org.nc.nccasino.games.Blackjack.BlackjackInventory;
 import org.nc.nccasino.games.Mines.MinesInventory;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
@@ -262,6 +263,11 @@ public class Dealer {
                 inventory = new MinesInventory(uniqueId, plugin, internalName);
                 name = "Mines Dealer";
                 break;
+            case "Baccarat":
+                inventory = new BaccaratServer(uniqueId, plugin, internalName);
+                name = "Baccarat Dealer";
+                defaultTimer = 30;
+                break;
             case "Test Game":
                 inventory = new TestServer(uniqueId, plugin, internalName);
                 name = "Test Game Dealer";
@@ -366,6 +372,11 @@ public class Dealer {
                 newInventory = new MinesInventory(dealerId, plugin, internalName);
                 newName = "Mines Dealer";
                 break;
+            case "Baccarat":
+                newInventory = new BaccaratServer(dealerId, plugin, internalName);
+                newName = "Baccarat Dealer";
+                defaultTimer = 30;
+                break;
             case "Test Game":
                 newInventory = new TestServer(dealerId, plugin, internalName);
                 newName = "Test Game Dealer";
@@ -440,7 +451,10 @@ public class Dealer {
                 break;
             case "Mines":
                 newInventory = new MinesInventory(dealerId, plugin, internalName);
-                break;            
+                break;   
+            case "Baccarat":
+                newInventory = new BaccaratServer(dealerId, plugin, internalName);
+                break;         
             case "Test Game":
                 newInventory = new TestServer(dealerId, plugin, internalName);
                 break;
