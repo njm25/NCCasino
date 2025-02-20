@@ -13,17 +13,6 @@ import org.nc.nccasino.Nccasino;
 
 import java.util.*;
 
-/**
- * Base Client class for ANY game. 
- * Now contains full Mines-style betting logic:
- *  - Chips in slots 47..51
- *  - Paper "Click here to place bet" in slot 53
- *  - Rebet toggle in slot 43
- *  - Undo All (45), Undo Last (46), All In (52)
- *  - Lore updates ("Wager: ...")
- *  - rebetEnabled logic
- *  - No code from onServerUpdate or sendUpdateToServer is removed.
- */
 public abstract class Client extends DealerInventory {
 
     protected final Server server;
