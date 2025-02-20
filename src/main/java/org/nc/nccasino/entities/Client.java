@@ -7,7 +7,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
@@ -25,7 +24,7 @@ import java.util.*;
  *  - rebetEnabled logic
  *  - No code from onServerUpdate or sendUpdateToServer is removed.
  */
-public abstract class Client extends DealerInventory implements Listener {
+public abstract class Client extends DealerInventory {
 
     protected final Server server;
     protected final Player player;
