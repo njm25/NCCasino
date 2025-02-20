@@ -163,7 +163,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         String internalName = Dealer.getInternalName(mob);
                         String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
-                        int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
+                        int timer = getConfig().getInt("dealers." + internalName + ".timer", 30);
                         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
                         List<Integer> chipSizes = new ArrayList<>();
                         ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");

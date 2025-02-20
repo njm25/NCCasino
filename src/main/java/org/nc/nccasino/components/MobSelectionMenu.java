@@ -367,7 +367,7 @@ public class MobSelectionMenu extends Menu {
         
         String name = plugin.getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
         String gameType = plugin.getConfig().getString("dealers." + internalName + ".game", "Menu");
-        int timer = plugin.getConfig().getInt("dealers." + internalName + ".timer", 0);
+        int timer = plugin.getConfig().getInt("dealers." + internalName + ".timer", 30);
         String anmsg = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
         List<Integer> chipSizes = new ArrayList<>();
 
@@ -416,7 +416,14 @@ public class MobSelectionMenu extends Menu {
                         plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
                     }
                 }
-
+                if (!plugin.getConfig().contains("dealers." + internalName + ".default-mines") && gameType.equals("Mines")) {
+                    plugin.getConfig().set("dealers." + internalName + ".default-mines", 3);
+                } else {
+                    int deafultMines = plugin.getConfig().getInt("dealers." + internalName + ".default-mines");
+                    if (deafultMines > 24 || deafultMines < 1) {
+                        plugin.getConfig().set("dealers." + internalName + ".default-mines", 3);
+                    }
+                }
         
                 this.delete();
             },

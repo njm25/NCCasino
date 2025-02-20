@@ -136,35 +136,37 @@ public class MinesTable extends DealerInventory {
         this.gameState = GameState.PLACING_WAGER;
         this.safePicks = 0;
         this.gameOver = false;
+        int defMines;
 
         loadChipValuesFromConfig();
+        if (!plugin.getConfig().contains("dealers." + internalName + ".default-mines")) {
+            // If the key doesn't exist, set it to 100
+            plugin.getConfig().set("dealers." + internalName + ".default-mines", 3);
+            defMines=3;
+        } else {
+            // Retrieve the current value
+            String value = plugin.getConfig().getString("dealers." + internalName + ".default-mines", "3").trim();
+            
+            try {
+                defMines = Integer.parseInt(value);
+            } catch (NumberFormatException e) {
+                defMines = 3; // Default
+                plugin.getConfig().set("dealers." + internalName + ".default-mines", 3);
+                plugin.saveConfig();
+            }
+        
+            // Check if the value is greater than 100 or less than 0
+            if (defMines > 24 ) {
+                // Reset the value to 100
+                plugin.getConfig().set("dealers." + internalName + ".default-mines", 24);
+            }
+            else if(defMines < 1){
+                plugin.getConfig().set("dealers." + internalName + ".default-mines", 1);
 
-        String rawValue = plugin.getConfig().getString("dealers." + internalName + ".default-mines", "3");
-
-        int defaultMines;
-        try {
-            defaultMines = Integer.parseInt(rawValue);
-        } catch (NumberFormatException e) {
-            defaultMines = 3; // Reset to default if it's not a valid number
+            }
         }
         
-        // Ensure it's within the valid range (1 to 24)
-        if (defaultMines < 1)
-        {
-            defaultMines = 1;
-  
-        }
-        else if( defaultMines > 24) {
-            defaultMines = 24;
-        }
-        
-        // Update config if necessary
-        if (!rawValue.equals(String.valueOf(defaultMines))) {
-            plugin.getConfig().set("dealers." + internalName + ".default-mines", defaultMines);
-            plugin.saveConfig();
-        }
-        
-        minesCount = defaultMines;
+        minesCount = defMines;
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
                 break;}
