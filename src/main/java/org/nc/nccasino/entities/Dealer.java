@@ -266,7 +266,7 @@ public class Dealer {
             case "Baccarat":
                 inventory = new BaccaratServer(uniqueId, plugin, internalName);
                 name = "Baccarat Dealer";
-                defaultTimer = 30;
+                defaultTimer = 10;
                 break;
             case "Test Game":
                 inventory = new TestServer(uniqueId, plugin, internalName);
@@ -375,7 +375,7 @@ public class Dealer {
             case "Baccarat":
                 newInventory = new BaccaratServer(dealerId, plugin, internalName);
                 newName = "Baccarat Dealer";
-                defaultTimer = 30;
+                defaultTimer = 10;
                 break;
             case "Test Game":
                 newInventory = new TestServer(dealerId, plugin, internalName);

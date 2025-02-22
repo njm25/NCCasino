@@ -35,6 +35,7 @@ public class BaccaratMenu extends Menu {
         this.dealerId = dealerId;
         this.plugin = plugin;
         this.returnName=returnName;
+        
         this.dealer = Dealer.getMobFromId(dealerId);
         if (this.dealer == null) {
             // Attempt to find a nearby Dealer if not found above
@@ -48,6 +49,7 @@ public class BaccaratMenu extends Menu {
         }
         RAInventories.put(this.ownerId, this);
         
+        slotMapping.put(SlotOption.NUMBER_OF_DECKS, 2);
         slotMapping.put(SlotOption.EXIT, 8);
         slotMapping.put(SlotOption.RETURN, 0);
         slotMapping.put(SlotOption.EDIT_TIMER, 1);
@@ -68,7 +70,14 @@ public class BaccaratMenu extends Menu {
 
         // 3) Remove player references from the specialized maps
         AdminMenu.timerEditMode.remove(ownerId);
+        AdminMenu.decksEditMode.remove(ownerId);
         this.delete();
+    }
+    
+    public boolean isPlayerOccupied(UUID playerId){
+        return 
+            !AdminMenu.timerEditMode.containsKey(playerId) &&
+            !AdminMenu.decksEditMode.containsKey(playerId);
     }
 
     @Override
@@ -78,6 +87,10 @@ public class BaccaratMenu extends Menu {
         int currentTimer = config.contains("dealers." + internalName + ".timer")
         ? config.getInt("dealers." + internalName + ".timer")
         : 10; // Default to 10 if missing
+        
+        int numberOfDecks = config.getInt("dealers." + internalName + ".number-of-decks", 6);
+        
+        addItemAndLore(Material.RED_STAINED_GLASS_PANE, numberOfDecks, "Edit Number of Decks", slotMapping.get(SlotOption.NUMBER_OF_DECKS), "Current: §a" + numberOfDecks);
         addItemAndLore(Material.CLOCK, currentTimer, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Current: §a" + currentTimer);
         addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to "+returnName,  slotMapping.get(SlotOption.RETURN));
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
@@ -91,7 +104,7 @@ public class BaccaratMenu extends Menu {
         // Check if the player has an active AdminInventory
             if (RAInventories.containsKey(playerId)) {
                     // Check if the player is currently editing something
-                if (!AdminMenu.timerEditMode.containsKey(playerId)) {
+                if (isPlayerOccupied(playerId)) {
                     // Remove the AdminInventory and clean up references
                     BaccaratMenu inventory = RAInventories.remove(playerId);
 
@@ -133,6 +146,11 @@ public class BaccaratMenu extends Menu {
                 handleEditTimer(player);
                 playDefaultSound(player);
                 break;
+                
+            case NUMBER_OF_DECKS:
+                handleEditDecks(player);
+                playDefaultSound(player);
+                break;  
             default:
                 if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -169,6 +187,25 @@ public class BaccaratMenu extends Menu {
         }  
     }
 
+    private void handleEditDecks(Player player) {
+        UUID playerId = player.getUniqueId();
+        AdminMenu.localMob.put(playerId, dealer);
+        AdminMenu.decksEditMode.put(playerId, dealer);
+        player.closeInventory();
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage("§aType new number in chat.");
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§aType the new number of decks.");
+                break;}
+            case NONE:{
+                player.sendMessage("§aType new value.");
+                break;
+            }
+        }
+    }
+
     @EventHandler
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
@@ -178,10 +215,16 @@ public class BaccaratMenu extends Menu {
             cleanup();
             return;
         }
+        
+        String message = event.getMessage().trim();
 
         if (AdminMenu.timerEditMode.get(playerId) != null) {
             event.setCancelled(true);
-            handleNumericInput(player, event.getMessage().trim(), "timer", 1, 10000, "Dealer timer updated");
+            handleNumericInput(player, message, "timer", 1, 10000, "Dealer timer updated");
+        }
+        else if (AdminMenu.decksEditMode.get(playerId) != null) {
+            event.setCancelled(true);
+            handleNumericInput(player, message, "number-of-decks", 1, 10000, "Dealer number of decks updated");
         }
     }
 
