@@ -25,8 +25,8 @@ public abstract class Server extends DealerInventory {
 
     protected final Map<UUID, SessionState> clientStates = new HashMap<>();
 
-    public Server(UUID dealerId, int size, String title, Nccasino plugin, String internalName) {
-        super(dealerId, size, title);
+    public Server(UUID dealerId, String title, Nccasino plugin, String internalName) {
+        super(dealerId, 9, title);
         this.plugin = plugin;
         this.internalName = internalName;
         registerListener();

@@ -33,10 +33,10 @@ public abstract class Client extends DealerInventory {
     protected double selectedWager = 0.0;
     protected final Map<String, Double> chipValues = new LinkedHashMap<>();
     
-    public Client(Server server, Player player, int size, String title,
+    public Client(Server server, Player player, String title,
                   Nccasino plugin, String internalName)
     {
-        super(player.getUniqueId(), size, title);
+        super(player.getUniqueId(), 54, title);
         this.server = server;
         this.player = player;
         this.plugin = plugin;

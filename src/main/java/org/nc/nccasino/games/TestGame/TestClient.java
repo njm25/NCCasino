@@ -23,7 +23,7 @@ public class TestClient extends Client {
 
     public TestClient(TestServer server, Player player, Nccasino plugin, String internalName) {
         // 54‐slot inventory with "Two Player Bet Game"
-        super(server, player, 54, "Two Player Bet Game", plugin, internalName);
+        super(server, player, "Two Player Bet Game", plugin, internalName);
     }
 
     @Override

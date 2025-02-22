@@ -33,7 +33,7 @@ public class TestServer extends Server {
     private GameState gameState = GameState.LOBBY;
 
     public TestServer(UUID dealerId, Nccasino plugin, String internalName) {
-        super(dealerId, 27, "Test Game Server", plugin, internalName);
+        super(dealerId, "Test Game Server", plugin, internalName);
     }
 
     /**

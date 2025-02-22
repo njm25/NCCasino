@@ -29,12 +29,12 @@ public class BaccaratServer extends Server {
     private List<Card> bankerHand = new ArrayList<>();
     private String currentWinString=null;
     public BaccaratServer(UUID dealerId, Nccasino plugin, String internalName) {
-        super(dealerId, 27, "Baccarat Server", plugin, internalName);
+        super(dealerId, "Baccarat Server", plugin, internalName);
         this.timeLeft = plugin.getTimer(internalName); // Load timer from config
         int numberOfDecks;
 
         if (!plugin.getConfig().contains("dealers." + internalName + ".number-of-decks")) {
-            numberOfDecks = 6;
+            numberOfDecks = 8;
             plugin.getConfig().set("dealers." + internalName + ".number-of-decks", numberOfDecks);
         } else {
             // Retrieve the current value
@@ -42,12 +42,12 @@ public class BaccaratServer extends Server {
         
             // Check if the value is less than 1
             if (currentDecks <= 0) {
-                numberOfDecks = 6;
-                plugin.getConfig().set("dealers." + internalName + ".number-of-decks", 6);
+                numberOfDecks = 8;
+                plugin.getConfig().set("dealers." + internalName + ".number-of-decks", numberOfDecks);
             }
             else if (currentDecks>10000){
                 numberOfDecks = 10000;
-                plugin.getConfig().set("dealers." + internalName + ".number-of-decks", 10000);
+                plugin.getConfig().set("dealers." + internalName + ".number-of-decks", numberOfDecks);
             }
             else{
                 numberOfDecks=currentDecks;

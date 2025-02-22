@@ -60,7 +60,7 @@ public class BaccaratClient extends Client {
     protected final Map<Integer,BetOption> betMapping = new HashMap<>();
 
         public BaccaratClient(BaccaratServer server, Player player, Nccasino plugin, String internalName) {
-            super(server, player, 54, "Baccarat", plugin, internalName);
+            super(server, player, "Baccarat", plugin, internalName);
             slotMapping.put(53,SlotOption.EXIT );
             slotMapping.put(52,SlotOption.ALLIN);
             slotMapping.put(51,SlotOption.WAGER1);
