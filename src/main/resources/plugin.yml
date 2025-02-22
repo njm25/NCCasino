@@ -50,6 +50,7 @@ permissions:
       nccasino.games.blackjack: true
       nccasino.games.roulette: true
       nccasino.games.mines: true
+      nccasino.games.baccarat: true
 
   nccasino.games.blackjack:
     description: Allows playing blackjack
@@ -61,6 +62,10 @@ permissions:
 
   nccasino.games.mines:
     description: Allows playing mines
+    default: true
+
+  nccasino.games.baccarat:
+    description: Allows playing baccarat
     default: true
 
   nccasino.adminmenu:

@@ -1347,6 +1347,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         amsgEditMode.remove(ownerId);
         chipEditMode.remove(ownerId);
         localMob.remove(ownerId);
+        currencyEditMode.remove(ownerId);
     }
 
     public static void deleteAssociatedAdminInventories(Player player) {
