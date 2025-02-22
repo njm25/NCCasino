@@ -228,7 +228,14 @@ public class MinesTable extends DealerInventory {
         // Fill remaining slots with placeholders
         for (int i = 0; i < inventory.getSize(); i++) {
             if (inventory.getItem(i) == null) {
-                inventory.setItem(i, createCustomItem(Material.GRAY_STAINED_GLASS_PANE, " ", 1));
+                ItemStack item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+                ItemMeta meta = item.getItemMeta();
+                if (meta != null) {
+                    meta.setDisplayName("§r"); // Resets to vanilla name (no display)
+                    meta.setLore(null); // Ensure no lore
+                    item.setItemMeta(meta);
+                }
+                inventory.setItem(i, item);
             }
         }
         updateRebetToggle();
@@ -275,7 +282,14 @@ public class MinesTable extends DealerInventory {
     // Utility method to place stained glass panes in specific slots
     private void setGlassPane(Material material, int[] slots) {
         for (int slot : slots) {
-            inventory.setItem(slot, createCustomItem(material, " ", 1));
+            ItemStack item = new ItemStack(material);
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                meta.setDisplayName("§r"); // Resets to vanilla name (no display)
+                meta.setLore(null); // Ensure no lore
+                item.setItemMeta(meta);
+            }
+            inventory.setItem(slot, item);
         }
     }
 

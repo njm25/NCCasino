@@ -1727,7 +1727,11 @@ private void fillDecorativeSlots(int[] slots, Material material) {
     for (int slot : slots) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(material == Material.BROWN_STAINED_GLASS_PANE ? "Outer Rim" : "Inside Rim");
+        if (meta != null) {
+            meta.setDisplayName("§r"); // Resets to vanilla name (no display)
+            meta.setLore(null); // Ensure no lore
+            item.setItemMeta(meta);
+        }
         item.setItemMeta(meta);
         inventory.setItem(slot, item);
     }
