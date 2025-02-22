@@ -32,7 +32,6 @@ public class BaccaratClient extends Client {
     private final int[] bankerCardSlots = {25, 24, 23};  // Right to left
     private final List<Card> playerHand = new ArrayList<>();
     private final List<Card> bankerHand = new ArrayList<>();
-    private boolean rebetEnabled = false; // Default to false
     private boolean catchingUp=false;
     protected enum SlotOption {
         EXIT,

@@ -194,6 +194,7 @@ public abstract class Client extends DealerInventory {
 
     protected abstract void handleClientSpecificClick(int slot, Player player, InventoryClickEvent event);
 
+
     protected void handleBetPlacement() {
         // Check if user is holding the currency item
         ItemStack heldItem = player.getItemOnCursor();
