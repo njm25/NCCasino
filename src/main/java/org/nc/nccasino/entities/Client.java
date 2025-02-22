@@ -2,16 +2,24 @@ package org.nc.nccasino.entities;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.objects.Card;
+import org.nc.nccasino.objects.Rank;
+import org.nc.nccasino.objects.Suit;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public abstract class Client extends DealerInventory {
 
@@ -24,6 +32,7 @@ public abstract class Client extends DealerInventory {
     protected boolean rebetEnabled = false;
     protected double selectedWager = 0.0;
     protected final Map<String, Double> chipValues = new LinkedHashMap<>();
+    
     public Client(Server server, Player player, int size, String title,
                   Nccasino plugin, String internalName)
     {
@@ -125,7 +134,7 @@ public abstract class Client extends DealerInventory {
         // Rebet
         if (slot == 43) {
             rebetEnabled = !rebetEnabled;
-            updateRebetToggle();
+            updateRebetToggle(slot);
             return;
         }
 
@@ -267,11 +276,178 @@ public abstract class Client extends DealerInventory {
         rebetEnabled = !rebetEnabled;
     }
 
-    protected void updateRebetToggle() {
-        Material mat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
-        String name = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
-        inventory.setItem(43, createCustomItem(mat, name, 1));
+    protected void updateRebetToggle(int index) {
+        Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
+        String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
+        inventory.setItem(index, createCustomItem(rebetMat, rebetName, 1));
+        player.updateInventory();
     }
+
+    protected static String formatCurrencyName(String entityName) {
+        return Arrays.stream(entityName.toLowerCase().replace("_", " ").split(" "))
+                     .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1))
+                     .collect(Collectors.joining(" "));
+    }
+
+    
+    protected void setCardItem(int slot, Card card) {
+        Material material = (card.getSuit() == Suit.HEARTS || card.getSuit() == Suit.DIAMONDS) 
+                            ? Material.RED_STAINED_GLASS_PANE : Material.BLACK_STAINED_GLASS_PANE;
+        ItemStack cardItem = new ItemStack(material, getCardValueStackSize(card));
+        ItemMeta meta = cardItem.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(card.getRank() + " of " + card.getSuit());
+            cardItem.setItemMeta(meta);
+        }
+        inventory.setItem(slot, cardItem);
+    }
+
+    protected void applyStaticEnchantment(int[] slots, Material material, String message) {
+        for (int slot : slots) {
+            ItemStack item = new ItemStack(material);
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                meta.setDisplayName(message);
+                meta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
+                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+                item.setItemMeta(meta);
+            }
+            inventory.setItem(slot, item);
+        }
+        player.updateInventory();
+    }
+
+
+    protected boolean hasEnoughWager(Player player, double amount) {
+        int requiredAmount = (int) Math.ceil(amount);
+        return player.getInventory().containsAtLeast(new ItemStack(plugin.getCurrency(internalName)), requiredAmount);
+    }
+
+    
+    protected void removeWagerFromInventory(Player player, double amount) {
+        int requiredAmount = (int) Math.ceil(amount);
+        player.getInventory().removeItem(new ItemStack(plugin.getCurrency(internalName), requiredAmount));
+    }
+
+    
+    protected void creditPlayer(Player player, double amount) {
+        Material currencyMaterial = plugin.getCurrency(internalName);
+        if (currencyMaterial == null) {
+            player.sendMessage("Error: Currency material is not set. Unable to credit winnings.");
+            return;
+        }
+    
+        int fullStacks = (int) amount / 64;
+        int remainder = (int) amount % 64;
+        int totalLeftoverAmount = 0;
+        HashMap<Integer, ItemStack> leftover;
+    
+        // Try adding full stacks
+        for (int i = 0; i < fullStacks; i++) {
+            ItemStack stack = new ItemStack(currencyMaterial, 64);
+            leftover = player.getInventory().addItem(stack);
+            if (!leftover.isEmpty()) {
+                totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
+            }
+        }
+    
+        // Try adding remainder
+        if (remainder > 0) {
+            ItemStack remainderStack = new ItemStack(currencyMaterial, remainder);
+            leftover = player.getInventory().addItem(remainderStack);
+            if (!leftover.isEmpty()) {
+                totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
+            }
+        }
+    
+        if (totalLeftoverAmount > 0) {
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+    
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
+            dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
+        }
+    }
+    
+    private void dropExcessItems(Player player, int amount, Material currencyMaterial) {
+        while (amount > 0) {
+            int dropAmount = Math.min(amount, 64);
+            player.getWorld().dropItemNaturally(player.getLocation(), new ItemStack(currencyMaterial, dropAmount));
+            amount -= dropAmount;
+        }
+    }
+
+
+    private int getCardValueStackSize(Card card) {
+        Rank rank = card.getRank();
+        return switch (rank) {
+            case ACE -> 1;
+            case TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE -> rank.ordinal() + 2;
+            default -> 10;
+        };
+    }
+    protected abstract void reapplyPreviousBets();
+
+    protected void updateSelectedWager(int slot) {
+        ItemStack clicked = inventory.getItem(slot);
+        if (clicked == null || !clicked.hasItemMeta()) return;
+
+        boolean isAllIn = (slot == 52);
+        selectedWager = isAllIn ? getTotalCurrency(player) : chipValues.getOrDefault(clicked.getItemMeta().getDisplayName(), 0.0);
+
+        if (isAllIn) {
+            if (SoundHelper.getSoundSafely("entity.lightning_bolt.thunder", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+        } else {
+            if (SoundHelper.getSoundSafely("item.flintandsteel.use", player) != null) {
+                player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+        }
+
+        // Loop through wager slots (chips & All In) to update enchantment
+        for (int s = 47; s <= 52; s++) {
+            ItemStack chip = inventory.getItem(s);
+            if (chip != null && chip.hasItemMeta()) {
+                ItemMeta meta = chip.getItemMeta();
+                String chipName = meta.getDisplayName();
+                double chipValue = chipValues.getOrDefault(chipName, 0.0);
+
+                if (s == slot) {
+                    inventory.setItem(s, createEnchantedItem(
+                        s == 52 ? Material.SNIFFER_EGG : getCurrencyMaterial(),
+                        isAllIn ? "All In (" + (int) selectedWager + ")" : chipName,
+                        s == 52 ? 1 : (int) chipValue
+                    ));
+                } else {
+                    inventory.setItem(s, createCustomItem(
+                        s == 52 ? Material.SNIFFER_EGG : getCurrencyMaterial(),
+                        s == 52 ? "All In" : chipName,
+                        s == 52 ? 1 : (int) chipValue
+                    ));
+                }
+            }
+        }
+
+        // **Reset Sniffer Egg after "All In" is placed**
+        if (isAllIn) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
+                player.updateInventory();
+            }, 20L); // Delay to ensure reset after UI update
+        }
+    }
+
+
 
     protected void updateBetLore(int slot, double totalBet) {
         ItemStack item = inventory.getItem(slot);

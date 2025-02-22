@@ -47,6 +47,12 @@ public class TestClient extends Client {
         }
     }
 
+    @Override
+    protected void reapplyPreviousBets() {
+        // TODO Auto-generated method stub
+        
+    }
+
     /**
      * (Re)builds the entire UI. We remove everything and then add:
      *  - Two seat items at slots 10 and 12

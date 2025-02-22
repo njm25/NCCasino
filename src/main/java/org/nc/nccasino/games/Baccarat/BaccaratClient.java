@@ -8,7 +8,6 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -21,17 +20,17 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
-import org.nc.nccasino.entities.Server;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.objects.Card;
-import org.nc.nccasino.objects.Rank;
-import org.nc.nccasino.objects.Suit;
 
 public class BaccaratClient extends Client {
     private final int[] playerCardSlots = {19, 20, 21};  // Left to right
     private final int[] bankerCardSlots = {25, 24, 23};  // Right to left
     private final List<Card> playerHand = new ArrayList<>();
     private final List<Card> bankerHand = new ArrayList<>();
+    
+    protected final Map<BetOption, List<Double>> previousBets = new HashMap<>();
+    protected final Map<BetOption, Deque<Double>> betStacks = new HashMap<>();
     private boolean catchingUp=false;
     protected enum SlotOption {
         EXIT,
@@ -59,9 +58,7 @@ public class BaccaratClient extends Client {
     }
     protected final Map<Integer,SlotOption> slotMapping = new HashMap<>();
     protected final Map<Integer,BetOption> betMapping = new HashMap<>();
-    private final Map<BetOption, List<Double>> previousBets = new HashMap<>();
 
-    private final Map<BetOption, Deque<Double>> betStacks = new HashMap<>();
         public BaccaratClient(BaccaratServer server, Player player, Nccasino plugin, String internalName) {
             super(server, player, 54, "Baccarat", plugin, internalName);
             slotMapping.put(53,SlotOption.EXIT );
@@ -167,8 +164,6 @@ public class BaccaratClient extends Client {
         }
         player.updateInventory();
         sendUpdateToServer("INVENTORY_OPEN", null);
-        // 2) Then do any custom UI for TestClient (the "stateItem" in slot 13)
-        updateUI(server.getServerState());
     }
 
     private ItemStack createDealerSkull(String name) {
@@ -179,11 +174,6 @@ public class BaccaratClient extends Client {
             skull.setItemMeta(meta);
         }
         return skull;
-    }
-
-    @Override
-    public void onServerStateChange(Server.SessionState oldState, Server.SessionState newState) {
-        updateUI(newState);
     }
 
     @SuppressWarnings("unchecked")
@@ -352,27 +342,6 @@ public class BaccaratClient extends Client {
         player.updateInventory();
     }
 
-    private void setCardItem(int slot, Card card) {
-        Material material = (card.getSuit() == Suit.HEARTS || card.getSuit() == Suit.DIAMONDS) 
-                            ? Material.RED_STAINED_GLASS_PANE : Material.BLACK_STAINED_GLASS_PANE;
-        ItemStack cardItem = new ItemStack(material, getCardValueStackSize(card));
-        ItemMeta meta = cardItem.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(card.getRank() + " of " + card.getSuit());
-            cardItem.setItemMeta(meta);
-        }
-        inventory.setItem(slot, cardItem);
-    }
-
-    private int getCardValueStackSize(Card card) {
-        Rank rank = card.getRank();
-        return switch (rank) {
-            case ACE -> 1;
-            case TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE -> rank.ordinal() + 2;
-            default -> 10;
-        };
-    }
-
     private void showGameResult(String result) {
         if (result.equals("PLAYER_WINS")) {
             animateWinningHand(new int[]{10, 11, 12}, Material.LIGHT_BLUE_STAINED_GLASS_PANE, "Player Wins!");
@@ -423,24 +392,6 @@ public class BaccaratClient extends Client {
         }, 100L);
     }
     
-    
-    private void applyStaticEnchantment(int[] slots, Material material, String message) {
-        for (int slot : slots) {
-            ItemStack item = new ItemStack(material);
-            ItemMeta meta = item.getItemMeta();
-            if (meta != null) {
-                meta.setDisplayName(message);
-                meta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
-                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-                item.setItemMeta(meta);
-            }
-            inventory.setItem(slot, item);
-        }
-        player.updateInventory();
-    }
-
-
-    
     private void updateTimerUI(int seconds) {
         if (seconds <= 0) {
             ItemStack item = new ItemStack(Material.LIME_STAINED_GLASS_PANE);
@@ -465,8 +416,6 @@ public class BaccaratClient extends Client {
         player.updateInventory();
     }
 
-    private void updateUI(Server.SessionState state) {
-    }
 
         @Override
     protected boolean isBetSlot(int slot) {
@@ -615,123 +564,6 @@ public class BaccaratClient extends Client {
         // Update all slots of the same bet type
         updateBetDisplay(betType);
     }
-
-    private boolean hasEnoughWager(Player player, double amount) {
-        int requiredAmount = (int) Math.ceil(amount);
-        return player.getInventory().containsAtLeast(new ItemStack(plugin.getCurrency(internalName)), requiredAmount);
-    }
-
-    private void removeWagerFromInventory(Player player, double amount) {
-        int requiredAmount = (int) Math.ceil(amount);
-        player.getInventory().removeItem(new ItemStack(plugin.getCurrency(internalName), requiredAmount));
-    }
-
-    private void creditPlayer(Player player, double amount) {
-        Material currencyMaterial = plugin.getCurrency(internalName);
-        if (currencyMaterial == null) {
-            player.sendMessage("Error: Currency material is not set. Unable to credit winnings.");
-            return;
-        }
-    
-        int fullStacks = (int) amount / 64;
-        int remainder = (int) amount % 64;
-        int totalLeftoverAmount = 0;
-        HashMap<Integer, ItemStack> leftover;
-    
-        // Try adding full stacks
-        for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = new ItemStack(currencyMaterial, 64);
-            leftover = player.getInventory().addItem(stack);
-            if (!leftover.isEmpty()) {
-                totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-            }
-        }
-    
-        // Try adding remainder
-        if (remainder > 0) {
-            ItemStack remainderStack = new ItemStack(currencyMaterial, remainder);
-            leftover = player.getInventory().addItem(remainderStack);
-            if (!leftover.isEmpty()) {
-                totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-            }
-        }
-    
-        if (totalLeftoverAmount > 0) {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
-    
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
-                    break;     
-                }
-                    case NONE:{
-                    break;
-                }
-            } 
-            dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
-        }
-    }
-    
-    private void dropExcessItems(Player player, int amount, Material currencyMaterial) {
-        while (amount > 0) {
-            int dropAmount = Math.min(amount, 64);
-            player.getWorld().dropItemNaturally(player.getLocation(), new ItemStack(currencyMaterial, dropAmount));
-            amount -= dropAmount;
-        }
-    }
-
-    private void updateSelectedWager(int slot) {
-        ItemStack clicked = inventory.getItem(slot);
-        if (clicked == null || !clicked.hasItemMeta()) return;
-
-        boolean isAllIn = (slot == 52);
-        selectedWager = isAllIn ? getTotalCurrency(player) : chipValues.getOrDefault(clicked.getItemMeta().getDisplayName(), 0.0);
-
-        if (isAllIn) {
-            if (SoundHelper.getSoundSafely("entity.lightning_bolt.thunder", player) != null) {
-                player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER, 1.0f, 1.0f);
-            }
-        } else {
-            if (SoundHelper.getSoundSafely("item.flintandsteel.use", player) != null) {
-                player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER, 1.0f, 1.0f);
-            }
-        }
-
-        // Loop through wager slots (chips & All In) to update enchantment
-        for (int s = 47; s <= 52; s++) {
-            ItemStack chip = inventory.getItem(s);
-            if (chip != null && chip.hasItemMeta()) {
-                ItemMeta meta = chip.getItemMeta();
-                String chipName = meta.getDisplayName();
-                double chipValue = chipValues.getOrDefault(chipName, 0.0);
-
-                if (s == slot) {
-                    inventory.setItem(s, createEnchantedItem(
-                        s == 52 ? Material.SNIFFER_EGG : getCurrencyMaterial(),
-                        isAllIn ? "All In (" + (int) selectedWager + ")" : chipName,
-                        s == 52 ? 1 : (int) chipValue
-                    ));
-                } else {
-                    inventory.setItem(s, createCustomItem(
-                        s == 52 ? Material.SNIFFER_EGG : getCurrencyMaterial(),
-                        s == 52 ? "All In" : chipName,
-                        s == 52 ? 1 : (int) chipValue
-                    ));
-                }
-            }
-        }
-
-        // **Reset Sniffer Egg after "All In" is placed**
-        if (isAllIn) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
-                player.updateInventory();
-            }, 20L); // Delay to ensure reset after UI update
-        }
-    }
-
     
     private void refreshAllBetDisplays() {
         for (BetOption betType : betStacks.keySet()) {
@@ -781,15 +613,7 @@ public class BaccaratClient extends Client {
         player.updateInventory();
     }
 
-    private BetOption getLastBetType() {
-        for (BetOption type : betStacks.keySet()) {
-            if (!betStacks.get(type).isEmpty()) {
-                return type;
-            }
-        }
-        return null;
-    }
-
+    @Override
     public void reapplyPreviousBets() {
         if (!rebetEnabled) return;
         
@@ -802,7 +626,7 @@ public class BaccaratClient extends Client {
                 player.sendMessage("§cInsufficient funds to reapply all bets. Rebet disabled.");
                 rebetEnabled = false;
                 previousBets.clear();
-                updateRebetButton(); // Update the UI if rebet gets disabled
+                updateRebetToggle(53); // Update the UI if rebet gets disabled
                 return;
             }
         
@@ -819,17 +643,13 @@ public class BaccaratClient extends Client {
         refreshAllBetDisplays();
     }
 
-    private void updateRebetButton() {
-        Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
-        String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
-        inventory.setItem(53, createCustomItem(rebetMat, rebetName, 1));
-        player.updateInventory();
-    }
-
-    private static String formatCurrencyName(String entityName) {
-        return Arrays.stream(entityName.toLowerCase().replace("_", " ").split(" "))
-                     .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1))
-                     .collect(Collectors.joining(" "));
+    private BetOption getLastBetType() {
+        for (BetOption type : betStacks.keySet()) {
+            if (!betStacks.get(type).isEmpty()) {
+                return type;
+            }
+        }
+        return null;
     }
 
     @Override
