@@ -10,11 +10,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
@@ -31,6 +33,7 @@ public class BaccaratClient extends Client {
     private final List<Card> playerHand = new ArrayList<>();
     private final List<Card> bankerHand = new ArrayList<>();
     private boolean rebetEnabled = false; // Default to false
+    private boolean catchingUp=false;
     protected enum SlotOption {
         EXIT,
         ALLIN,
@@ -109,7 +112,14 @@ public class BaccaratClient extends Client {
         // Table layout
         int[] tableSlots = {0, 1, 2, 3, 5, 6, 7, 8, 9, 13, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 35, 36, 44};
         for (int slot : tableSlots) {
-            inventory.setItem(slot, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "", 1));
+            ItemStack item = new ItemStack(Material.LIME_STAINED_GLASS_PANE);
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                meta.setDisplayName("§r"); // Resets to vanilla name (no display)
+                meta.setLore(null); // Ensure no lore
+                item.setItemMeta(meta);
+            }
+            inventory.setItem(slot, item);
         }
         
         // Dealer slot
@@ -157,6 +167,7 @@ public class BaccaratClient extends Client {
             inventory.setItem(slot, createCustomItem(Material.MAGENTA_STAINED_GLASS_PANE, "Banker Pair - 11:1", 1));
         }
         player.updateInventory();
+        sendUpdateToServer("INVENTORY_OPEN", null);
         // 2) Then do any custom UI for TestClient (the "stateItem" in slot 13)
         updateUI(server.getServerState());
     }
@@ -207,18 +218,27 @@ public class BaccaratClient extends Client {
                 }
         
                 displayCards();
+                if (!catchingUp) {
+                    if (SoundHelper.getSoundSafely("block.soul_soil.step", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
+                }
             }
             break;
             case "PLAYER_DRAW":
                 if (data instanceof Card) {
                     playerHand.add((Card) data);
                     displayCards();
+                    if (!catchingUp) {
+                        if (SoundHelper.getSoundSafely("block.soul_soil.step", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
+                    }
                 }
                 break;
             case "BANKER_DRAW":
                 if (data instanceof Card) {
                     bankerHand.add((Card) data);
                     displayCards();
+                    if (!catchingUp) {
+                        if (SoundHelper.getSoundSafely("block.soul_soil.step", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
+                    }
                 }
                 break;
             case "UPDATE_HAND_TOTALS":
@@ -238,7 +258,13 @@ public class BaccaratClient extends Client {
                 displayCards(); // Ensure UI updates properly
                 updateHandTotalDisplay(-1, -1); // Reset hand total UI
                 break;
-            
+            case "CATCHUP_START":
+                catchingUp = true;
+                break;
+            case "CATCHUP_COMPLETE":
+                catchingUp = false;
+                break;
+    
         }
     }
 
@@ -292,14 +318,28 @@ public class BaccaratClient extends Client {
         if(playerHand.isEmpty()){
             int[] tableSlots = {19,20,21};
             for (int slot : tableSlots) {
-                inventory.setItem(slot, createCustomItem(Material.LIME_STAINED_GLASS_PANE, " ", 1));
+                ItemStack item = new ItemStack(Material.LIME_STAINED_GLASS_PANE);
+                ItemMeta meta = item.getItemMeta();
+                if (meta != null) {
+                    meta.setDisplayName("§r"); // Resets to vanilla name (no display)
+                    meta.setLore(null); // Ensure no lore
+                    item.setItemMeta(meta);
+                }
+                inventory.setItem(slot, item);
             }
             
         }
         if(bankerHand.isEmpty()){
             int[] tableSlots = {23,24,25};
             for (int slot : tableSlots) {
-                inventory.setItem(slot, createCustomItem(Material.LIME_STAINED_GLASS_PANE, " ", 1));
+                ItemStack item = new ItemStack(Material.LIME_STAINED_GLASS_PANE);
+                ItemMeta meta = item.getItemMeta();
+                if (meta != null) {
+                    meta.setDisplayName("§r"); // Resets to vanilla name (no display)
+                    meta.setLore(null); // Ensure no lore
+                    item.setItemMeta(meta);
+                }
+                inventory.setItem(slot, item);
             }
             
         }
@@ -335,35 +375,83 @@ public class BaccaratClient extends Client {
     }
 
     private void showGameResult(String result) {
-        String displayMessage;
-        Material material;
-        switch (result) {
-            case "PLAYER_WINS":
-                displayMessage = "§bPlayer Wins!";
-                material = Material.BLUE_WOOL;
-                break;
-            case "BANKER_WINS":
-                displayMessage = "§cBanker Wins!";
-                material = Material.RED_WOOL;
-                break;
-            default:
-                displayMessage = "§eIt's a Tie!";
-                material = Material.YELLOW_WOOL;
-                break;
+        if (result.equals("PLAYER_WINS")) {
+            animateWinningHand(new int[]{10, 11, 12}, Material.LIGHT_BLUE_STAINED_GLASS_PANE, "Player Wins!");
+        } else if (result.equals("BANKER_WINS")) {
+            animateWinningHand(new int[]{14, 15, 16}, Material.PINK_STAINED_GLASS_PANE, "Banker Wins!");
+        } else {
+            applyStaticEnchantment(new int[]{10, 11, 12, 14, 15, 16}, Material.YELLOW_STAINED_GLASS_PANE, "It's a Tie!");
         }
-        ItemStack resultItem = new ItemStack(material);
-        ItemMeta meta = resultItem.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(displayMessage);
-            resultItem.setItemMeta(meta);
-        }
-        inventory.setItem(22, resultItem);  // Display result in center slot
+    
         player.updateInventory();
     }
+
+    private void animateWinningHand(int[] slots, Material material, String message) {
+        int[] index = {0}; // Track which slot to enchant
+        int taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+            // Reset all slots to normal first
+            for (int slot : slots) {
+                ItemStack item = new ItemStack(material);
+                ItemMeta meta = item.getItemMeta();
+                if (meta != null) {
+                    meta.setDisplayName(message);
+                    item.setItemMeta(meta);
+                }
+                inventory.setItem(slot, item);
+            }
+    
+            // Apply enchantment to the current slot
+            int currentSlot = slots[index[0]];
+            ItemStack enchantedItem = new ItemStack(material);
+            ItemMeta enchantedMeta = enchantedItem.getItemMeta();
+            if (enchantedMeta != null) {
+                enchantedMeta.setDisplayName(message);
+                enchantedMeta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
+                enchantedMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+                enchantedItem.setItemMeta(enchantedMeta);
+            }
+            inventory.setItem(currentSlot, enchantedItem);
+    
+            player.updateInventory();
+            index[0] = (index[0] + 1) % slots.length; // Move to the next slot
+    
+        }, 0L, 3L); // Runs every 10 ticks (0.5 seconds)
+    
+        // Stop animation after 5 seconds
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            Bukkit.getScheduler().cancelTask(taskId);
+            applyStaticEnchantment(slots, material, message);
+        }, 100L);
+    }
+    
+    
+    private void applyStaticEnchantment(int[] slots, Material material, String message) {
+        for (int slot : slots) {
+            ItemStack item = new ItemStack(material);
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                meta.setDisplayName(message);
+                meta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
+                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+                item.setItemMeta(meta);
+            }
+            inventory.setItem(slot, item);
+        }
+        player.updateInventory();
+    }
+
+
     
     private void updateTimerUI(int seconds) {
-        if (seconds < 0) {
-            inventory.setItem(22, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "", 1));
+        if (seconds <= 0) {
+            ItemStack item = new ItemStack(Material.LIME_STAINED_GLASS_PANE);
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                meta.setDisplayName("§r"); // Resets to vanilla name (no display)
+                meta.setLore(null); // Ensure no lore
+                item.setItemMeta(meta);
+            }
+            inventory.setItem(22, item);
             return;
         }
     
@@ -598,16 +686,20 @@ public class BaccaratClient extends Client {
     private void updateSelectedWager(int slot) {
         ItemStack clicked = inventory.getItem(slot);
         if (clicked == null || !clicked.hasItemMeta()) return;
-    
-        // Determine selected wager
+
         boolean isAllIn = (slot == 52);
         selectedWager = isAllIn ? getTotalCurrency(player) : chipValues.getOrDefault(clicked.getItemMeta().getDisplayName(), 0.0);
-        if(isAllIn){
-            if (SoundHelper.getSoundSafely("entity.lightning_bolt.thunder", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER, 1.0f, 1.0f);
+
+        if (isAllIn) {
+            if (SoundHelper.getSoundSafely("entity.lightning_bolt.thunder", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+        } else {
+            if (SoundHelper.getSoundSafely("item.flintandsteel.use", player) != null) {
+                player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
         }
-        else{
-            if (SoundHelper.getSoundSafely("item.flintandsteel.use", player) != null) player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER, 1.0f, 1.0f);    
-        }
+
         // Loop through wager slots (chips & All In) to update enchantment
         for (int s = 47; s <= 52; s++) {
             ItemStack chip = inventory.getItem(s);
@@ -615,25 +707,32 @@ public class BaccaratClient extends Client {
                 ItemMeta meta = chip.getItemMeta();
                 String chipName = meta.getDisplayName();
                 double chipValue = chipValues.getOrDefault(chipName, 0.0);
-    
+
                 if (s == slot) {
-                    // Highlight selected wager or All In (display amount only when clicked)
                     inventory.setItem(s, createEnchantedItem(
                         s == 52 ? Material.SNIFFER_EGG : getCurrencyMaterial(),
-                        isAllIn ? "All In (" + (int) selectedWager+")" : chipName,
-                        s == 52 ? 1 : (int) chipValue // Stack size 1 for Sniffer Egg
+                        isAllIn ? "All In (" + (int) selectedWager + ")" : chipName,
+                        s == 52 ? 1 : (int) chipValue
                     ));
                 } else {
-                    // Reset others (All In should display just "All In" when not clicked)
                     inventory.setItem(s, createCustomItem(
                         s == 52 ? Material.SNIFFER_EGG : getCurrencyMaterial(),
-                        s == 52 ? "All In" : chipName, // Only show amount when clicked
+                        s == 52 ? "All In" : chipName,
                         s == 52 ? 1 : (int) chipValue
                     ));
                 }
             }
         }
+
+        // **Reset Sniffer Egg after "All In" is placed**
+        if (isAllIn) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
+                player.updateInventory();
+            }, 20L); // Delay to ensure reset after UI update
+        }
     }
+
     
     private void refreshAllBetDisplays() {
         for (BetOption betType : betStacks.keySet()) {
@@ -642,41 +741,45 @@ public class BaccaratClient extends Client {
     }
 
     private void updateBetDisplay(BetOption betType) {
-    double playerTotal = betStacks.getOrDefault(betType, new ArrayDeque<>())
-                                  .stream().mapToDouble(Double::doubleValue).sum();
-    double totalBet = ((BaccaratServer) server).getTotalBetForType(betType);
-    int numBettors = ((BaccaratServer) server).getBettorCountForType(betType);
-    
-    // Set currency name dynamically (Modify `getCurrencyName()` if needed)
-    String currencyName = formatCurrencyName(plugin.getCurrencyName());
-    
-    // Determine singular/plural format
-    String playerBetText = (int) playerTotal > 0 
-        ? "Your Bet: " + (int) playerTotal + " " + currencyName + ((int) playerTotal > 1 ? "s" : "") 
-        : null; // If 0, don't show "No bet placed"
-    
-    String bettorSymbol = numBettors > 1 ? "👥" : "👤";
-    
-    for (int slot : betMapping.keySet()) {
-        if (betMapping.get(slot) == betType) {
-            ItemStack item = inventory.getItem(slot);
-            if (item != null) {
-                ItemMeta meta = item.getItemMeta();
-                if (meta != null) {
-                    // Build lore list dynamically
-                    List<String> loreLines = new ArrayList<>();
-                    if (playerBetText != null) {
-                        loreLines.add(playerBetText);
+        double playerTotal = betStacks.getOrDefault(betType, new ArrayDeque<>())
+                                      .stream().mapToDouble(Double::doubleValue).sum();
+        double totalBet = ((BaccaratServer) server).getTotalBetForType(betType);
+        int numBettors = ((BaccaratServer) server).getBettorCountForType(betType);
+
+        // Set currency name dynamically
+        String currencyName = formatCurrencyName(plugin.getCurrencyName());
+
+        // Determine singular/plural format
+        String playerBetText = (int) playerTotal > 0 
+            ? "Your Bet: " + (int) playerTotal + " " + currencyName + ((int) playerTotal > 1 ? "s" : "") 
+            : null; // If 0, don't show anything
+
+        String totalBetText = (int) totalBet > 0 
+            ? "Total " + (numBettors > 1 ? "👥 " : "👤 ") + numBettors + " - " + (int) totalBet + " " + currencyName + ((int) totalBet > 1 ? "s" : "")
+            : null; // If 0, don't show anything
+
+        for (int slot : betMapping.keySet()) {
+            if (betMapping.get(slot) == betType) {
+                ItemStack item = inventory.getItem(slot);
+                if (item != null) {
+                    ItemMeta meta = item.getItemMeta();
+                    if (meta != null) {
+                        // Build lore list dynamically
+                        List<String> loreLines = new ArrayList<>();
+                        if (playerBetText != null) {
+                            loreLines.add(playerBetText);
+                        }
+                        if (totalBetText != null) {
+                            loreLines.add(totalBetText);
+                        }
+
+                        meta.setLore(loreLines.isEmpty() ? null : loreLines);
+                        item.setItemMeta(meta);
                     }
-                    loreLines.add("Total " + bettorSymbol + " " + numBettors + " - " + (int) totalBet + " " + currencyName + ((int) totalBet > 1 ? "s" : ""));
-                    
-                    meta.setLore(loreLines);
-                    item.setItemMeta(meta);
                 }
             }
         }
-    }
-    player.updateInventory();
+        player.updateInventory();
     }
 
     private BetOption getLastBetType() {

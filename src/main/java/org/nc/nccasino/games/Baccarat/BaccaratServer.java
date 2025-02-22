@@ -27,7 +27,7 @@ public class BaccaratServer extends Server {
     private Deck deck;
     private List<Card> playerHand = new ArrayList<>();
     private List<Card> bankerHand = new ArrayList<>();
-
+    private String currentWinString=null;
     public BaccaratServer(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, 27, "Baccarat Server", plugin, internalName);
         this.timeLeft = plugin.getTimer(internalName); // Load timer from config
@@ -61,45 +61,67 @@ public class BaccaratServer extends Server {
         BaccaratClient client = new BaccaratClient(this, player, plugin, internalName);
         client.initializeUI(true);
         clients.put(player.getUniqueId(), client);
-        if (gameState == GameState.RUNNING) {
-            client.onServerUpdate("UPDATE_TIMER", timeLeft);
-            client.onServerUpdate("DEAL_CARDS", new ArrayList<>(playerHand)); // Send player hand
-            client.onServerUpdate("DEAL_CARDS", new ArrayList<>(bankerHand)); // Send banker hand
     
-            // If a third card was drawn, send updates for that as well
+        // Send current hand totals (if hands are empty, this will send {-1, -1})
+        int playerTotal = getBaccaratHandValue(playerHand);
+        int bankerTotal = getBaccaratHandValue(bankerHand);
+        client.onServerUpdate("UPDATE_HAND_TOTALS", new int[]{playerTotal, bankerTotal});
+    
+        // If game is running, send the correct game state
+        if (gameState == GameState.RUNNING) {
+            client.onServerUpdate("CATCHUP_START", null);
+
+            client.onServerUpdate("UPDATE_TIMER", timeLeft);
+    
+            // **Send cards in the correct sequence, one at a time**
+            if (playerHand.size() > 0) {
+                client.onServerUpdate("DEAL_CARDS", Arrays.asList(playerHand.get(0)));
+            }
+            if (bankerHand.size() > 0) {
+                client.onServerUpdate("DEAL_CARDS", Arrays.asList(bankerHand.get(0)));
+            }
+            if (playerHand.size() > 1) {
+                client.onServerUpdate("DEAL_CARDS", Arrays.asList(playerHand.get(1)));
+            }
+            if (bankerHand.size() > 1) {
+                client.onServerUpdate("DEAL_CARDS", Arrays.asList(bankerHand.get(1)));
+            }
+    
+            // Send third-card draws if applicable
             if (playerHand.size() == 3) {
                 client.onServerUpdate("PLAYER_DRAW", playerHand.get(2));
             }
             if (bankerHand.size() == 3) {
                 client.onServerUpdate("BANKER_DRAW", bankerHand.get(2));
             }
+            if(currentWinString!=null){
+               client.onServerUpdate("RESULT", currentWinString);
+            }
+            client.onServerUpdate("CATCHUP_COMPLETE", null);
+
         }
     
-        // Send current game state
-        setClientState(player.getUniqueId(), (gameState == GameState.RUNNING) ? SessionState.IN_PROGRESS : SessionState.LOBBY);
-    
-        // Send bets & results to the client
+        // Send current bet displays
+        Map<BaccaratClient.BetOption, Double> playerCurrentBets = playerBets.getOrDefault(player.getUniqueId(), new HashMap<>());
         for (BaccaratClient.BetOption betType : totalBets.keySet()) {
             double totalBet = totalBets.get(betType);
-            double playerBet = playerBets.getOrDefault(player.getUniqueId(), new HashMap<>()).getOrDefault(betType, 0.0);
+            double playerBet = playerCurrentBets.getOrDefault(betType, 0.0);
             client.onServerUpdate("UPDATE_BET_DISPLAY", new BetDisplayData(betType, playerBet, totalBet));
         }
+    
+    
+    
         Bukkit.getLogger().info(" clients.size(): " + clients.size() + " | gameState: " + gameState);
-
-         if (clients.size() == 1 && gameState == GameState.WAITING) {
+    
+        // Start timer if this is the first player joining
+        if (clients.size() == 1 && gameState == GameState.WAITING) {
             startTimer();
         }
     
-        // If the game is running, send timer update & display current state
-        if (gameState == GameState.RUNNING) {
-            client.onServerUpdate("UPDATE_TIMER", timeLeft);
-           // client.onServerUpdate("GAME_PROGRESS", getGameStateData()); // Send current drawing state
-        }
-
-       
-    
         return client;
     }
+    
+        
     
     
     @Override
@@ -405,7 +427,7 @@ public class BaccaratServer extends Server {
     }
     
     private int getBaccaratHandValue(List<Card> hand) {
-        if (hand.isEmpty()) return 0; // Prevent IndexOutOfBoundsException
+        if (hand.isEmpty()) return -1; // Prevent IndexOutOfBoundsException
         int total = 0;
         for (Card card : hand) {
             total += getCardValue(card);
@@ -444,6 +466,7 @@ public class BaccaratServer extends Server {
         }
     
         broadcastUpdate("RESULT", result);
+        currentWinString=result;
         processPayouts(result);
     
         // Save the current bets before the game resets
@@ -552,6 +575,7 @@ private void dropExcessItems(Player player, int amount, Material currencyMateria
 
 private void resetGame() {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        currentWinString=null;
         playerBets.clear();
         totalBets.clear();
         playerHand.clear();
