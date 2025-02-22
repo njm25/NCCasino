@@ -1180,9 +1180,10 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         // Successful teleport
         if (chunk.isLoaded() && dealer != null && dealer.getUniqueId().equals(dealerId)) {
              DealerEventListener.allowAdminTeleport(dealer.getUniqueId()); // Allow this teleport
+             dealer.setAI(true);
             dealer.teleport(newLocation);
             saveDealerLocation(newLocation);
-    
+            dealer.setAI(false);
             if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null) {
                 player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER, 1.0f, 1.0f);
             }
