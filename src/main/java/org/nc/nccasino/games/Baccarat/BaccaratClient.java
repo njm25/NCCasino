@@ -28,10 +28,11 @@ public class BaccaratClient extends Client {
     private final int[] bankerCardSlots = {25, 24, 23};  // Right to left
     private final List<Card> playerHand = new ArrayList<>();
     private final List<Card> bankerHand = new ArrayList<>();
-    
+    private int taskId=-1;
     protected final Map<BetOption, List<Double>> previousBets = new HashMap<>();
     protected final Map<BetOption, Deque<Double>> betStacks = new HashMap<>();
     private boolean catchingUp=false;
+
     protected enum SlotOption {
         EXIT,
         ALLIN,
@@ -246,6 +247,7 @@ public class BaccaratClient extends Client {
                 bankerHand.clear();
                 displayCards(); // Ensure UI updates properly
                 updateHandTotalDisplay(-1, -1); // Reset hand total UI
+                if(taskId!=-1)Bukkit.getScheduler().cancelTask(taskId);
                 break;
             case "CATCHUP_START":
                 catchingUp = true;
@@ -356,7 +358,7 @@ public class BaccaratClient extends Client {
 
     private void animateWinningHand(int[] slots, Material material, String message) {
         int[] index = {0}; // Track which slot to enchant
-        int taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+        taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
             // Reset all slots to normal first
             for (int slot : slots) {
                 ItemStack item = new ItemStack(material);
@@ -387,8 +389,8 @@ public class BaccaratClient extends Client {
     
         // Stop animation after 5 seconds
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            Bukkit.getScheduler().cancelTask(taskId);
-            applyStaticEnchantment(slots, material, message);
+            if(taskId!=-1)Bukkit.getScheduler().cancelTask(taskId);
+           //applyStaticEnchantment(slots, material, message);
         }, 100L);
     }
     
