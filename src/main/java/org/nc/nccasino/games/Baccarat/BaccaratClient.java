@@ -182,9 +182,12 @@ public class BaccaratClient extends Client {
     public void onServerUpdate(String eventType, Object data) {
         switch (eventType) {
             case "UPDATE_BET_DISPLAY":
-                if (data instanceof BetDisplayData betData) {
-                    updateBetDisplay(betData.betType);
-                }
+            if (data instanceof BetDisplayData betData) {
+                betStacks.putIfAbsent(betData.betType, new ArrayDeque<>());
+                betStacks.get(betData.betType).clear();
+                betStacks.get(betData.betType).push(betData.playerTotal);
+                updateBetDisplay(betData.betType);
+            }
                 break;
     
             case "RESET_BETS":
