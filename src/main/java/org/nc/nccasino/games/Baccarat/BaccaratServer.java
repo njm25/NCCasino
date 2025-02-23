@@ -18,10 +18,9 @@ import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Deck;
 
 public class BaccaratServer extends Server {
-    private enum GameState { WAITING, RUNNING, PAUSED }
     private final Map<BaccaratClient.BetOption, Double> totalBets = new HashMap<>();
     private final Map<UUID, Map<BaccaratClient.BetOption, Double>> playerBets = new HashMap<>();
-    private GameState gameState = GameState.WAITING;
+   
     private int countdownTaskId = -1;
     private int timeLeft;
     private Deck deck;
@@ -131,19 +130,73 @@ public class BaccaratServer extends Server {
     
         switch (eventType) {
             case "PLACE_BET":
+            if (gameState == GameState.WAITING) {     
                 if (data instanceof BetData) {
                     BetData bet = (BetData) data;
                     processBet(player, bet.betType, bet.amount);
                 }
+            }
+            else {
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cInvalid action.");
+        
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cBets are closed, cannot place bet.");
+                        break;     
+                    }
+                        case NONE:{
+                        break;
+                    }
+                } 
+                return;
+            }
                 break;
             case "UNDO_BET":
+            if (gameState == GameState.WAITING) {     
                 if (data instanceof BetData) {
                     BetData bet = (BetData) data;
                     undoLastBet(player, bet.betType, bet.amount);
                 }
+            }
+            else {
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cInvalid action.");
+        
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cBets are closed, cannot undo bet.");
+                        break;     
+                    }
+                        case NONE:{
+                        break;
+                    }
+                } 
+                return;
+            }
                 break;
             case "UNDO_ALL_BETS":
+            if (gameState == GameState.WAITING) {     
                 undoAllBets(player);
+            }
+            else {
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage("§cInvalid action.");
+        
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage("§cBets are closed, cannot undo bet.");
+                        break;     
+                    }
+                        case NONE:{
+                        break;
+                    }
+                } 
+                return;
+            }
                 break;
             case "INVENTORY_OPEN":
                 if (gameState == GameState.PAUSED) {
@@ -241,7 +294,7 @@ public class BaccaratServer extends Server {
     private void startTimer() {
         if (countdownTaskId != -1) return; // Timer is already running
 
-        gameState = GameState.RUNNING;
+        gameState = GameState.WAITING;
         timeLeft = plugin.getTimer(internalName);
               // Trigger rebet for all clients if enabled
               for (Client client : clients.values()) {
@@ -260,6 +313,7 @@ public class BaccaratServer extends Server {
                     pauseGame();
                     return;
                 }
+                gameState = GameState.RUNNING;
 
                 // Otherwise, start the game
                 startGame();
@@ -269,7 +323,7 @@ public class BaccaratServer extends Server {
             updateTimerDisplay(timeLeft);
             timeLeft--;
 
-            if (timeLeft <= 3) {
+            if (timeLeft <= 6) {
                 playCountdownSound();
             }
 
@@ -310,7 +364,6 @@ public class BaccaratServer extends Server {
             return; // Do nothing, just wait for players to return
         }
     
-        gameState = GameState.RUNNING;
         updateTimerDisplay(-1); // Remove timer UI
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             dealInitialCards();
@@ -584,7 +637,7 @@ private void resetGame() {
         broadcastUpdate("CLEAR_CARDS", null);
         broadcastUpdate("UPDATE_HAND_TOTALS", new int[]{-1, -1});
         startTimer();
-    }, 100L); // Delay before resetting for UI effects
+    }, 70L); // Delay before resetting for UI effects
 }
 
 

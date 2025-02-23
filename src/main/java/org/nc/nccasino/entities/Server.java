@@ -25,11 +25,23 @@ public abstract class Server extends DealerInventory {
 
     protected final Map<UUID, SessionState> clientStates = new HashMap<>();
 
+    public enum GameState { WAITING, RUNNING, PAUSED }
+
+    protected GameState gameState = GameState.WAITING;
+
     public Server(UUID dealerId, String title, Nccasino plugin, String internalName) {
         super(dealerId, 9, title);
         this.plugin = plugin;
         this.internalName = internalName;
         registerListener();
+    }
+
+    public GameState getGameState() {
+        return gameState;
+    }
+
+    protected void setGameState(GameState newState) {
+        gameState = newState;
     }
 
     public enum SessionState {

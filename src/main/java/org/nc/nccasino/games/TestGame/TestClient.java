@@ -68,7 +68,7 @@ public class TestClient extends Client {
         super.initializeUI(false);
 
         TestServer testServer = (TestServer) server;
-        TestServer.GameState gameState = testServer.getGameState();
+        TestServer.TestGameState gameState = testServer.getTestGameState();
 
         // Render seat1
         UUID seat1 = testServer.getSeat1();
@@ -109,7 +109,7 @@ public class TestClient extends Client {
 
         // If I'm occupant of seat2 and game state == WAITING_FOR_ACCEPT, show an ACCEPT button
         if (seat2 != null && seat2.equals(player.getUniqueId()) 
-                && gameState == TestServer.GameState.WAITING_FOR_ACCEPT) {
+                && gameState == TestServer.TestGameState.WAITING_FOR_ACCEPT) {
             double seat1Bet = testServer.getSeat1Bet();
             ItemStack acceptBet = createCustomItem(
                     Material.LIME_WOOL, 
@@ -120,7 +120,7 @@ public class TestClient extends Client {
         }
 
         // If game is COMPLETED, show a reset button
-        if (gameState == TestServer.GameState.COMPLETED) {
+        if (gameState == TestServer.TestGameState.COMPLETED) {
             ItemStack resetButton = createCustomItem(Material.BARRIER, "Reset Game", 1);
             inventory.setItem(RESET_SLOT, resetButton);
         }
@@ -140,7 +140,7 @@ public class TestClient extends Client {
         event.setCancelled(true);
 
         TestServer testServer = (TestServer) server;
-        TestServer.GameState gameState = testServer.getGameState();
+        TestServer.TestGameState gameState = testServer.getTestGameState();
 
         if (slot == SEAT1_SLOT) {
             // Attempt to sit in seat1
@@ -154,7 +154,7 @@ public class TestClient extends Client {
             // Accept bet if I'm seat2 occupant
             sendUpdateToServer("ACCEPT_BET", null);
         }
-        else if (slot == RESET_SLOT && gameState == TestServer.GameState.COMPLETED) {
+        else if (slot == RESET_SLOT && gameState == TestServer.TestGameState.COMPLETED) {
             // Attempt to reset
             sendUpdateToServer("RESET", null);
         }
@@ -162,7 +162,7 @@ public class TestClient extends Client {
             // The "place bet" slot in the bet row. We'll override its default 
             // so that only seat1 occupant in LOBBY can place a bet.
             // We'll basically call the parent's handleBet but then also let the server know.
-            if (isSeat1Occupant() && gameState == TestServer.GameState.LOBBY) {
+            if (isSeat1Occupant() && gameState == TestServer.TestGameState.LOBBY) {
                 super.handleBet(slot, player, event); // This does the normal currency removal and push to betStack
                 double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
                 if (totalBet > 0) {

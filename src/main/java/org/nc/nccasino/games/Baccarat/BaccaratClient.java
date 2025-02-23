@@ -20,6 +20,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
+import org.nc.nccasino.entities.Server;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.objects.Card;
 
@@ -434,12 +435,27 @@ public class BaccaratClient extends Client {
     protected void handleBet(int slot, Player player, InventoryClickEvent event) {
         event.setCancelled(true);
 
+  
         // Handle Wager & All In Selection
         if (slot >= 47 && slot <= 52) {
             updateSelectedWager(slot);
             return;
         }
 
+        if (((BaccaratServer) server).getGameState() != Server.GameState.WAITING) {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§cInvalid action.");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§cBets are closed.");
+                    break;
+                case NONE:
+                    break;
+            }
+            return;
+        }
+        
         // Undo All Bets
         if (slot == 45) {
             if (betStacks.isEmpty()) {

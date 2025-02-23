@@ -24,13 +24,13 @@ public class TestServer extends Server {
 
     // Define different server states
     // Feel free to rename or adjust these as needed.
-    public enum GameState {
+    public enum TestGameState {
         LOBBY,              // No one seated or partial seating
         WAITING_FOR_ACCEPT, // Seat1 placed a bet, waiting for seat2 to accept
         COMPLETED           // Round finished, can reset or remain seated
     }
 
-    private GameState gameState = GameState.LOBBY;
+    private TestGameState testGameState = TestGameState.LOBBY;
 
     public TestServer(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, "Test Game Server", plugin, internalName);
@@ -125,10 +125,10 @@ public class TestServer extends Server {
         }
     
         // If seats were newly occupied and game was COMPLETED, optionally reset
-        if (gameState == GameState.COMPLETED) {
+        if (testGameState == TestGameState.COMPLETED) {
             seat1Bet = 0.0;
             seat2Bet = 0.0;
-            gameState = GameState.LOBBY;
+            testGameState = TestGameState.LOBBY;
         }
     }
 
@@ -141,13 +141,13 @@ public class TestServer extends Server {
             // Only seat1 occupant is allowed to place the initial bet
             return;
         }
-        if (gameState != GameState.LOBBY) {
+        if (testGameState != TestGameState.LOBBY) {
             return; // Can't place bet if not in LOBBY
         }
         seat1Bet = amount;
         // Move state to WAITING_FOR_ACCEPT if seat2 occupant exists
         if (seat2 != null) {
-            gameState = GameState.WAITING_FOR_ACCEPT;
+            testGameState = TestGameState.WAITING_FOR_ACCEPT;
         }
     }
 
@@ -159,7 +159,7 @@ public class TestServer extends Server {
             // Only seat2 occupant can accept
             return;
         }
-        if (gameState != GameState.WAITING_FOR_ACCEPT) {
+        if (testGameState != TestGameState.WAITING_FOR_ACCEPT) {
             return; 
         }
 
@@ -208,7 +208,7 @@ public class TestServer extends Server {
             }
         }
 
-        gameState = GameState.COMPLETED;
+        testGameState = TestGameState.COMPLETED;
     }
 
     /**
@@ -219,7 +219,7 @@ public class TestServer extends Server {
         seat2 = null;
         seat1Bet = 0.0;
         seat2Bet = 0.0;
-        gameState = GameState.LOBBY;
+        testGameState = TestGameState.LOBBY;
     }
 
     /**
@@ -247,5 +247,5 @@ public class TestServer extends Server {
     public UUID getSeat2() { return seat2; }
     public double getSeat1Bet() { return seat1Bet; }
     public double getSeat2Bet() { return seat2Bet; }
-    public GameState getGameState() { return gameState; }
+    public TestGameState getTestGameState() {return testGameState;}
 }
