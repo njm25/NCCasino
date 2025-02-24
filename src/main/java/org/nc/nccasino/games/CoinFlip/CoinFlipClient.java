@@ -30,20 +30,13 @@ public class CoinFlipClient extends Client {
         this.chairOneOccupant = null;
         this.chairTwoOccupant = null;
 
-        initializeUI(false, true);
-        
-    }
-
-    @Override
-    public void initializeUI(boolean rebetSwitch, boolean betSlip) {
-        super.initializeUI(rebetSwitch, betSlip);
         slotMapping.put(SlotOption.HANDLE_CHAIR_1,20);
         slotMapping.put(SlotOption.HANDLE_CHAIR_2, 24);
 
         slotMapping.put(SlotOption.HANDLE_SUBMIT_BET, 43);
 
         sendUpdateToServer("GET_CHAIRS", null);
- 
+        
     }
 
     /*
@@ -135,6 +128,9 @@ public class CoinFlipClient extends Client {
 
     private void handlePlayerOneSit(Object data){
         Player playerData = (Player) data; // Use the PlayerData wrapper class
+        if(playerData.getUniqueId().equals(player.getUniqueId())){
+            initializeUI(false, true);
+        }
         chairOneOccupant = playerData;
         inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1), 
         createPlayerHead(playerData.getUniqueId(), playerData.getDisplayName()));
@@ -149,6 +145,9 @@ public class CoinFlipClient extends Client {
     }
 
     private void handlePlayerOneLeave(){
+        if(chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
+            clearBettingRow();
+        }
         chairOneOccupant = null;
         addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
         if(chairTwoOccupant == null){

@@ -604,4 +604,16 @@ public abstract class Client extends DealerInventory {
     }
 
     public abstract void onServerUpdate(String eventType, Object data);
+
+    protected void clearBettingRow(){
+        inventory.setItem(53, null);
+        inventory.setItem(52, null);
+        inventory.setItem(51, null);
+        inventory.setItem(50, null);
+        inventory.setItem(49, null);
+        inventory.setItem(48, null);
+        inventory.setItem(47, null);
+        inventory.setItem(46, null);
+        inventory.setItem(45, null);
+    }
 }
