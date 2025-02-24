@@ -205,6 +205,8 @@ public abstract class Client extends DealerInventory {
             double total = betStack.stream().mapToDouble(Double::doubleValue).sum();
             updateBetLore(53, total);
         }
+
+   
     }
 
     protected abstract void handleClientSpecificClick(int slot, Player player, InventoryClickEvent event);
@@ -222,6 +224,37 @@ public abstract class Client extends DealerInventory {
             usedHeldItem = true;
         } else {
             wagerAmount = selectedWager; 
+        }
+
+        if (selectedWager <= 0) {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§cInvalid action.");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§cSelect a wager amount first.");
+                    break;
+                case NONE:
+                    break;
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            return;
+        }
+        if (!hasEnoughWager(player, selectedWager)) {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§cInvalid action.");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§cNot enough currency to place bet.");
+                    break;
+                case NONE:
+                    break;
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            return;
         }
 
         if (wagerAmount <= 0) {
