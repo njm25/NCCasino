@@ -25,7 +25,9 @@ import org.nc.nccasino.objects.Deck;
 public class BaccaratServer extends Server {
     private final Map<BaccaratClient.BetOption, Double> totalBets = new HashMap<>();
     private final Map<UUID, Map<BaccaratClient.BetOption, Double>> playerBets = new HashMap<>();
-   
+    private final Map<Integer, UUID> seatMap = new HashMap<>(); // Maps seat slot to player UUID
+    private final List<UUID> seatedPlayers = new ArrayList<>();
+
     private int countdownTaskId = -1;
     private int timeLeft;
     private Deck deck;
@@ -71,6 +73,7 @@ public class BaccaratServer extends Server {
         int bankerTotal = getBaccaratHandValue(bankerHand);
         client.onServerUpdate("UPDATE_HAND_TOTALS", new int[]{playerTotal, bankerTotal});
         client.onServerUpdate("UPDATE_TIMER", timeLeft);
+        sendSeatUpdates();
 
         // If game is running, send the correct game state
         if (gameState == GameState.RUNNING) {
@@ -133,6 +136,12 @@ public class BaccaratServer extends Server {
         Player player = client.getPlayer();
     
         switch (eventType) {
+            case "PLAYER_LEFT_BEFORE_START":
+            if (gameState == GameState.WAITING) {
+                removeFromSeat(player);
+                undoAllBets(player);
+            }
+            break;
             case "PLACE_BET":
             if (gameState == GameState.WAITING) {     
                 if (data instanceof BetData) {
@@ -202,6 +211,12 @@ public class BaccaratServer extends Server {
                 return;
             }
                 break;
+            case "SEAT_CLICK":
+                if (data instanceof Integer slot) {
+                    handleSeatClick(player, slot);
+                }
+                break;
+
             case "INVENTORY_OPEN":
                 if (gameState == GameState.PAUSED) {
                     Bukkit.broadcastMessage("Game resumed as a player has rejoined.");
@@ -215,6 +230,52 @@ public class BaccaratServer extends Server {
                     pauseGame();
                 }
                 break;
+        }
+    }
+
+    private void handleSeatClick(Player player, int slot) {
+        UUID playerId = player.getUniqueId();
+
+        if (seatMap.containsKey(slot)) {
+            if (seatMap.get(slot).equals(playerId)) {
+                // Player clicked their own seat -> Leave and refund
+                removeFromSeat(player);
+                player.sendMessage("§eYou left your seat.");
+            }
+        } else if (seatedPlayers.contains(playerId)) {
+            player.sendMessage("§cYou're already seated.");
+        } else {
+            seatPlayer(player, slot);
+        }
+    }
+
+    private void seatPlayer(Player player, int slot) {
+        UUID playerId = player.getUniqueId();
+
+        seatedPlayers.add(playerId);
+        seatMap.put(slot, playerId);
+        sendSeatUpdates();
+    }
+
+    private void removeFromSeat(Player player) {
+        UUID playerId = player.getUniqueId();
+
+        seatedPlayers.remove(playerId);
+        seatMap.values().removeIf(id -> id.equals(playerId));
+
+        if (playerBets.containsKey(playerId)) {
+            double totalRefund = playerBets.get(playerId).values().stream().mapToDouble(Double::doubleValue).sum();
+            creditPlayer(player, totalRefund);
+        }
+        undoAllBets(player);
+        sendSeatUpdates();
+    }
+
+    private void sendSeatUpdates() {
+        for (Client client : clients.values()) {
+            if (client instanceof BaccaratClient baccaratClient) {
+                baccaratClient.onServerUpdate("UPDATE_SEATS", new HashMap<>(seatMap));
+            }
         }
     }
     
@@ -252,13 +313,21 @@ public class BaccaratServer extends Server {
         }
     
         totalBets.computeIfPresent(betType, (k, v) -> (v - amount) <= 0 ? null : v - amount);
-
-        broadcastUpdate("UPDATE_BET_DISPLAY", new BetDisplayData(
-            betType, 
-            playerBets.get(playerId).getOrDefault(betType, 0.0), 
-            totalBets.getOrDefault(betType, 0.0)
-        ));
+    
+        // Update bet displays correctly for EACH player
+        for (Client c : clients.values()) {
+            if (c instanceof BaccaratClient baccaratClient) {
+                UUID clientId = c.getPlayer().getUniqueId();
+    
+                baccaratClient.onServerUpdate("UPDATE_BET_DISPLAY", new BetDisplayData(
+                    betType, 
+                    playerBets.getOrDefault(clientId, new HashMap<>()).getOrDefault(betType, 0.0), // THEIR personal bet
+                    totalBets.getOrDefault(betType, 0.0) // Correct total bet
+                ));
+            }
+        }
     }
+    
     
     private void undoAllBets(Player player) {
         UUID playerId = player.getUniqueId();
@@ -270,12 +339,24 @@ public class BaccaratServer extends Server {
         }        
     
         playerBets.remove(playerId);
-        broadcastUpdate("RESET_BETS", null);
+    
+        // Send bet reset only to **this player**
+        getOrCreateClient(player).onServerUpdate("RESET_BETS", null);
+    
+        // Send total bet update to **ALL players**
+        for (BaccaratClient.BetOption betType : BaccaratClient.BetOption.values()) {
+            broadcastUpdate("UPDATE_BET_DISPLAY", new BetDisplayData(
+                betType, 
+                0.0, 
+                totalBets.getOrDefault(betType, 0.0)
+            ));
+        }
     
         if (playerBets.isEmpty() && clients.isEmpty()) {
             pauseGame();
         }
     }
+    
     
     public double getTotalBetForType(BaccaratClient.BetOption betType) {
         return totalBets.getOrDefault(betType, 0.0);
@@ -656,6 +737,20 @@ private void resetGame() {
         broadcastUpdate("RESET_BETS", null);
         broadcastUpdate("CLEAR_CARDS", null);
         broadcastUpdate("UPDATE_HAND_TOTALS", new int[]{-1, -1});
+
+        List<UUID> toRemove = new ArrayList<>();
+        for (UUID playerId : seatedPlayers) {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player == null || !clients.containsKey(playerId)) {
+                toRemove.add(playerId);
+            }
+        }
+        for (UUID playerId : toRemove) {
+            seatedPlayers.remove(playerId);
+            seatMap.values().removeIf(id -> id.equals(playerId));
+        }
+        sendSeatUpdates();
+        
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
         startTimer();
         }, 10L);

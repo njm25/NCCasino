@@ -8,6 +8,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -18,6 +19,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
@@ -34,7 +36,9 @@ public class BaccaratClient extends Client {
     protected final Map<BetOption, Deque<Double>> betStacks = new HashMap<>();
     private boolean catchingUp=false;
     protected final List<BetData> betHistory = new ArrayList<>();
-
+     private final Map<Integer, UUID> seatMap = new HashMap<>();
+    private final int[] seatSlots = {37, 38, 39, 40, 41, 42, 43};
+    
     protected enum SlotOption {
         EXIT,
         ALLIN,
@@ -168,8 +172,38 @@ public class BaccaratClient extends Client {
         for (int slot : bankerPairSlots) {
             inventory.setItem(slot, createCustomItem(Material.MAGENTA_STAINED_GLASS_PANE, "Banker Pair - 11:1", 1));
         }
+        setupSeats();
+
         player.updateInventory();
         sendUpdateToServer("INVENTORY_OPEN", null);
+    }
+
+    private void setupSeats() {
+        for (int slot : seatSlots) {
+            inventory.setItem(slot, createSeatItem(slot));
+        }
+    }
+
+    private ItemStack createSeatItem(int slot) {
+        if (seatMap.containsKey(slot)) {
+            UUID playerId = seatMap.get(slot);
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null) {
+                return createPlayerHead(player.getName(), playerId);
+            }
+        }
+        return createCustomItem(Material.OAK_STAIRS, "§eClick to sit", 1);
+    }
+
+    private ItemStack createPlayerHead(String playerName, UUID playerId) {
+        ItemStack skull = new ItemStack(Material.PLAYER_HEAD);
+        SkullMeta meta = (SkullMeta) skull.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName("§a" + playerName);
+            meta.setOwningPlayer(Bukkit.getOfflinePlayer(playerId));
+            skull.setItemMeta(meta);
+        }
+        return skull;
     }
 
     private ItemStack createDealerSkull(String name) {
@@ -266,7 +300,14 @@ public class BaccaratClient extends Client {
             case "CATCHUP_COMPLETE":
                 catchingUp = false;
                 break;
-    
+            case "UPDATE_SEATS":
+                if (data instanceof Map){
+                    seatMap.clear();
+                    seatMap.putAll((Map<Integer, UUID>) data);
+                    setupSeats();
+                    player.updateInventory(); 
+                }
+                break;
         }
     }
 
@@ -453,6 +494,20 @@ public class BaccaratClient extends Client {
                     break;
                 case VERBOSE:
                     player.sendMessage("§cBets are closed.");
+                    break;
+                case NONE:
+                    break;
+            }
+            return;
+        }
+
+        if (!seatMap.containsValue(player.getUniqueId())) {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§cInvalid action.");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§cMust be seated to place bet.");
                     break;
                 case NONE:
                     break;
@@ -715,13 +770,20 @@ public class BaccaratClient extends Client {
         }
         }
 
-    @Override
-    protected void handleClientSpecificClick(int slot, Player player, InventoryClickEvent event) {
-    }
-
+        @Override
+        protected void handleClientSpecificClick(int slot, Player player, InventoryClickEvent event) {
+            if (Arrays.stream(seatSlots).anyMatch(s -> s == slot)) {
+                sendUpdateToServer("SEAT_CLICK", slot);
+            }
+        }
     @Override
     public void handleClientInventoryClose() {
-        sendUpdateToServer("INVENTORY_CLOSE", null);
+    sendUpdateToServer("INVENTORY_CLOSE", null);
+
+    // Remove player from seat and refund bets if game hasn't started
+    if (((BaccaratServer) server).getGameState() == Server.GameState.WAITING) {
+        sendUpdateToServer("PLAYER_LEFT_BEFORE_START", null);
+    }
         super.handleClientInventoryClose(); // Calls base logic to remove the client
     }
 
