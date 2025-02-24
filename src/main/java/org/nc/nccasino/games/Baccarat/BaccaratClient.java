@@ -584,7 +584,20 @@ public class BaccaratClient extends Client {
      
 
         if (!betMapping.containsKey(slot)) return; // Not a bet slot
-        if (selectedWager <= 0) {
+        ItemStack cursorItem = event.getCursor();
+        boolean isDraggingCurrency = (cursorItem != null && cursorItem.getType() == plugin.getCurrency(internalName));
+    
+        // Get bet amount
+        double betAmount;
+        if (isDraggingCurrency) {
+            betAmount = cursorItem.getAmount(); // Use entire stack amount
+        } else {
+            betAmount = selectedWager;
+        }
+
+
+
+        if (betAmount <= 0) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
                     player.sendMessage("§cInvalid action.");
@@ -599,29 +612,41 @@ public class BaccaratClient extends Client {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
-        if (!hasEnoughWager(player, selectedWager)) {
-            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case STANDARD:
-                    player.sendMessage("§cInvalid action.");
-                    break;
-                case VERBOSE:
-                    player.sendMessage("§cNot enough currency to place bet.");
-                    break;
-                case NONE:
-                    break;
+        if (!isDraggingCurrency) {
+            if (!hasEnoughWager(player, betAmount)) {
+                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                    case STANDARD:
+                        player.sendMessage("§cInvalid action.");
+                        break;
+                    case VERBOSE:
+                        player.sendMessage("§cNot enough currency to place bet.");
+                        break;
+                    case NONE:
+                        break;
+                }
+                if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+                return;
             }
-            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
-            return;
         }
         if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
         BetOption betType = betMapping.get(slot);
-        betHistory.add(new BetData(betType, selectedWager)); // Maintain exact bet order
+
+
+        betHistory.add(new BetData(betType, betAmount)); // Maintain exact bet order
         betStacks.putIfAbsent(betType, new ArrayDeque<>());
-        betStacks.get(betType).push(selectedWager);
-        removeWagerFromInventory(player, selectedWager);
+        betStacks.get(betType).push(betAmount);
+
+
+
+        if (isDraggingCurrency) {
+        player.setItemOnCursor(null); // Remove held stack
+        } else {
+        removeWagerFromInventory(player, betAmount);
+         }
+
         // Send bet to server
-        sendUpdateToServer("PLACE_BET", new BetData(betType, selectedWager));
+        sendUpdateToServer("PLACE_BET", new BetData(betType, betAmount));
         
         // Update all slots of the same bet type
         updateBetDisplay(betType,((BaccaratServer) server).getTotalBetForType(betType));

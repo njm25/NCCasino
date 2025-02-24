@@ -5,15 +5,20 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
+import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Deck;
 
@@ -342,15 +347,6 @@ public class BaccaratServer extends Server {
     private void updateTimerDisplay(int seconds) {
         broadcastUpdate("UPDATE_TIMER", seconds);
     }
-    
-    private void playCountdownSound() {
-        for (Client client : clients.values()) {
-            Player player = client.getPlayer();
-            if (player != null) {
-                player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.0f);
-            }
-        }
-    }
 
     private void startGame() {
         if (clients.isEmpty() && totalBets.isEmpty()) {
@@ -533,10 +529,12 @@ public class BaccaratServer extends Server {
         if (player == null) continue;
 
         double payout = 0.0;
+        double totalBet = 0.0;
         Map<BaccaratClient.BetOption, Double> bets = playerBets.get(playerId);
         
         for (BaccaratClient.BetOption betType : bets.keySet()) {
             double wager = bets.get(betType);
+            totalBet += wager; 
             switch (betType) {
                 case PLAYER:
                     if (result.equals("PLAYER_WINS")) payout += wager * 2;
@@ -559,6 +557,23 @@ public class BaccaratServer extends Server {
         if (payout > 0) {
             creditPlayer(player, payout);
         }
+
+        if (payout > totalBet) {
+            player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
+            Random random = new Random();
+            float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
+            for (int i = 0; i < 3; i++) {
+                float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
+                 if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER,1.0f,chosenPitch);
+            }
+        } else if (payout == totalBet) {
+            if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
+            player.getWorld().spawnParticle(Particle.SCRAPE, player.getLocation(), 20); 
+        } else {
+        if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
+        player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
+        }
+
     }
 
     resetGame();
