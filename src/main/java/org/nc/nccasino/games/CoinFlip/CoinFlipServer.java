@@ -12,12 +12,14 @@ public class CoinFlipServer extends Server {
 
     protected Player chairOneOccupant;
     protected Player chairTwoOccupant;
+    protected int chairOneBet;
     
     public CoinFlipServer(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, plugin, internalName);
             
         this.chairOneOccupant = null;
         this.chairTwoOccupant = null;
+        this.chairOneBet = 0;
     }
 
     @Override
@@ -41,11 +43,13 @@ public class CoinFlipServer extends Server {
                 if(chairTwoOccupant != null){
                     chairOneOccupant = chairTwoOccupant;
                     chairTwoOccupant = null;
+                    chairOneBet = 0;
                     broadcastUpdate("PLAYER_LEAVE_TWO", null);
                     broadcastUpdate("PLAYER_LEAVE_ONE", null);
                     broadcastUpdate("PLAYER_SIT_ONE", chairOneOccupant);
                 } else {
                     chairOneOccupant = null;
+                    chairOneBet = 0;
                     broadcastUpdate("PLAYER_LEAVE_ONE", null);
                 }
                 break;
@@ -53,10 +57,29 @@ public class CoinFlipServer extends Server {
                 chairTwoOccupant = null;
                 broadcastUpdate("PLAYER_LEAVE_TWO", null);
                 break;
+            case "PLAYER_SUBMIT_BET":
+                if(chairOneOccupant != null){
+                    if(chairOneBet == 0){
+                        chairOneBet = (int) data;
+                        broadcastUpdate("PLAYER_SUBMIT_BET", data);
+                    }
+                    else{
+                        chairOneBet = 0;
+                        broadcastUpdate("PLAYER_CANCEL_BET", null);
+                    }
+                }
+                break;
+            case "PLAYER_ACCEPT_BET":
+                if(chairTwoOccupant != null && chairOneBet != 0){
+                    broadcastUpdate("PLAYER_ACCEPT_BET", null);
+                }
+                break;
+            
             case "GET_CHAIRS":
                 Object[] chairs = {
                     (chairOneOccupant != null) ? chairOneOccupant : null,
-                    (chairTwoOccupant != null) ? chairTwoOccupant : null
+                    (chairTwoOccupant != null) ? chairTwoOccupant : null,
+                    chairOneBet,
                 };
                 client.onServerUpdate("GET_CHAIRS", chairs);
                 break;

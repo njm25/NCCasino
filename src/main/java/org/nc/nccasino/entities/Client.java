@@ -32,6 +32,7 @@ public abstract class Client extends DealerInventory {
     public boolean rebetEnabled = false;
     protected double selectedWager = 0.0;
     protected final Map<String, Double> chipValues = new LinkedHashMap<>();
+    protected boolean bettingEnabled = false;
     
     public Client(Server server, Player player, String title,
                   Nccasino plugin, String internalName)
@@ -72,6 +73,7 @@ public abstract class Client extends DealerInventory {
 
 
     private void setupBettingRow(Boolean rebetSwitch, boolean betSlip) {
+        bettingEnabled = true;
         // 1) Build the chips (slots 47..51)
         rebetEnabled = rebetSwitch; 
         int chipSlot = 47;
@@ -119,7 +121,9 @@ public abstract class Client extends DealerInventory {
 
         // If it's one of the bet slots (chips, rebet, etc.), handle it:
         if (isBetSlot(slot)) {
-            handleBet(slot, clicker, event);
+            if(bettingEnabled) {
+                handleBet(slot, clicker, event);
+            }
         } else {
             // Otherwise, let game-specific logic handle it
             handleClientSpecificClick(slot, clicker, event);
@@ -127,7 +131,7 @@ public abstract class Client extends DealerInventory {
     }
 
     protected boolean isBetSlot(int slot) {
-        return slot >= 43 && slot <= 53; // This covers rebet(43), chips(47-51), all in(52), place bet(53), etc.
+        return slot >= 45 && slot <= 53; // This covers rebet(43), chips(47-51), all in(52), place bet(53), etc.
     }
 
     protected void handleBet(int slot, Player player, InventoryClickEvent event) {
@@ -227,7 +231,7 @@ public abstract class Client extends DealerInventory {
             wagerAmount = selectedWager; 
         }
 
-        if (selectedWager <= 0) {
+        if (selectedWager <= 0 && !usedHeldItem) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
                     player.sendMessage("§cInvalid action.");
@@ -242,7 +246,7 @@ public abstract class Client extends DealerInventory {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
-        if (!hasEnoughWager(player, selectedWager)) {
+        if (!hasEnoughWager(player, selectedWager) && !usedHeldItem) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
                     player.sendMessage("§cInvalid action.");
@@ -260,12 +264,6 @@ public abstract class Client extends DealerInventory {
 
         if (wagerAmount <= 0) {
             // Possibly send a message to the user "Invalid action" or "Select a wager first."
-            return;
-        }
-
-        // Check if user has enough currency
-        if (!hasEnoughCurrency(player, (int)wagerAmount) && !usedHeldItem) {
-            // Possibly message "Not enough currency"
             return;
         }
 
@@ -606,6 +604,8 @@ public abstract class Client extends DealerInventory {
     public abstract void onServerUpdate(String eventType, Object data);
 
     protected void clearBettingRow(){
+        
+        bettingEnabled = false;
         inventory.setItem(53, null);
         inventory.setItem(52, null);
         inventory.setItem(51, null);
