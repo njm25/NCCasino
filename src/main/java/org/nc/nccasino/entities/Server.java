@@ -29,8 +29,8 @@ public abstract class Server extends DealerInventory {
 
     protected GameState gameState = GameState.WAITING;
 
-    public Server(UUID dealerId, String title, Nccasino plugin, String internalName) {
-        super(dealerId, 9, title);
+    public Server(UUID dealerId, Nccasino plugin, String internalName) {
+        super(dealerId, 9, "");
         this.plugin = plugin;
         this.internalName = internalName;
         registerListener();

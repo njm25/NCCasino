@@ -28,7 +28,7 @@ public class BaccaratServer extends Server {
     private List<Card> bankerHand = new ArrayList<>();
     private String currentWinString=null;
     public BaccaratServer(UUID dealerId, Nccasino plugin, String internalName) {
-        super(dealerId, "Baccarat Server", plugin, internalName);
+        super(dealerId, plugin, internalName);
         this.timeLeft = plugin.getTimer(internalName); // Load timer from config
         int numberOfDecks;
 

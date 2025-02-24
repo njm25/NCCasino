@@ -10,7 +10,7 @@ import org.nc.nccasino.entities.Server;
 public class CoinFlipServer extends Server {
 
     public CoinFlipServer(UUID dealerId, Nccasino plugin, String internalName) {
-        super(dealerId, "", plugin, internalName);
+        super(dealerId, plugin, internalName);
     }
 
     @Override
