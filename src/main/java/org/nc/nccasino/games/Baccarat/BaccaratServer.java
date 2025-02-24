@@ -65,12 +65,12 @@ public class BaccaratServer extends Server {
         int playerTotal = getBaccaratHandValue(playerHand);
         int bankerTotal = getBaccaratHandValue(bankerHand);
         client.onServerUpdate("UPDATE_HAND_TOTALS", new int[]{playerTotal, bankerTotal});
-    
+        client.onServerUpdate("UPDATE_TIMER", timeLeft);
+
         // If game is running, send the correct game state
         if (gameState == GameState.RUNNING) {
             client.onServerUpdate("CATCHUP_START", null);
-
-            client.onServerUpdate("UPDATE_TIMER", timeLeft);
+            
     
             // **Send cards in the correct sequence, one at a time**
             if (playerHand.size() > 0) {
@@ -235,20 +235,18 @@ public class BaccaratServer extends Server {
         }
     }
     
-    
-
     private void undoLastBet(Player player, BaccaratClient.BetOption betType, double amount) {
         UUID playerId = player.getUniqueId();
         if (!playerBets.containsKey(playerId) || !playerBets.get(playerId).containsKey(betType)) return;
-
+    
         double remaining = playerBets.get(playerId).get(betType) - amount;
         if (remaining <= 0) {
             playerBets.get(playerId).remove(betType);
         } else {
             playerBets.get(playerId).put(betType, remaining);
         }
-
-        totalBets.put(betType, Math.max(0, totalBets.get(betType) - amount));
+    
+        totalBets.computeIfPresent(betType, (k, v) -> (v - amount) <= 0 ? null : v - amount);
 
         broadcastUpdate("UPDATE_BET_DISPLAY", new BetDisplayData(
             betType, 
@@ -256,19 +254,19 @@ public class BaccaratServer extends Server {
             totalBets.getOrDefault(betType, 0.0)
         ));
     }
-
+    
     private void undoAllBets(Player player) {
         UUID playerId = player.getUniqueId();
         if (!playerBets.containsKey(playerId)) return;
-
-        for (BaccaratClient.BetOption betType : playerBets.get(playerId).keySet()) {
+    
+        for (BaccaratClient.BetOption betType : new ArrayList<>(playerBets.get(playerId).keySet())) {
             double amount = playerBets.get(playerId).get(betType);
-            totalBets.put(betType, Math.max(0, totalBets.getOrDefault(betType, 0.0) - amount));
-        }
-
+            totalBets.computeIfPresent(betType, (k, v) -> (v - amount) <= 0 ? null : v - amount);
+        }        
+    
         playerBets.remove(playerId);
         broadcastUpdate("RESET_BETS", null);
-
+    
         if (playerBets.isEmpty() && clients.isEmpty()) {
             pauseGame();
         }
@@ -303,7 +301,6 @@ public class BaccaratServer extends Server {
             if (timeLeft <= 0) {
                 Bukkit.getScheduler().cancelTask(countdownTaskId);
                 countdownTaskId = -1;
-
                 // If no viewers and no bets, PAUSE instead of restarting timer
                 if (clients.isEmpty() && totalBets.isEmpty()) {
                     Bukkit.broadcastMessage("No viewers and no bets - pausing game.");
@@ -521,7 +518,7 @@ public class BaccaratServer extends Server {
     
         // Save the current bets before the game resets
         for (Client client : clients.values()) {
-            if (client instanceof BaccaratClient) {
+            if (client instanceof BaccaratClient &&client.rebetEnabled) {
                 ((BaccaratClient) client).saveCurrentBets();
             }
         }
@@ -633,7 +630,9 @@ private void resetGame() {
         broadcastUpdate("RESET_BETS", null);
         broadcastUpdate("CLEAR_CARDS", null);
         broadcastUpdate("UPDATE_HAND_TOTALS", new int[]{-1, -1});
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
         startTimer();
+        }, 10L);
     }, 70L); // Delay before resetting for UI effects
 }
 
