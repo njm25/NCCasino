@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
@@ -34,7 +35,7 @@ public class CoinFlipClient extends Client {
     private final String clickHereToSit = "Click here to sit";
     private boolean gameActive = false;
     private boolean betAccepted = false;
-    
+
     public CoinFlipClient(Server server, Player player, Nccasino plugin, String internalName) {
         super(server, player, "Coin Flip", plugin, internalName);
         this.chairOneOccupant = null;
@@ -134,7 +135,9 @@ public class CoinFlipClient extends Client {
             if(betAmount>0){
                 int amount = betAmount;
                 betAccepted = handlePlayerTwoAccept(amount);
-                sendUpdateToServer("PLAYER_ACCEPT_BET", betAccepted);
+                if (betAccepted){
+                    sendUpdateToServer("PLAYER_ACCEPT_BET", betAccepted);
+                }
             }
         }
     }
@@ -179,6 +182,9 @@ public class CoinFlipClient extends Client {
                 break;
             case "GET_CHAIRS":
                 handleGetChairs(data);
+                break;
+            case "ANIMATION_FINISHED":
+                handleAnimationFinished();
                 break;
             default:
                 break;
@@ -345,6 +351,25 @@ public class CoinFlipClient extends Client {
 
     private void handleWinner(int winner){
         inventory.setItem(44, null);
+        startFlipAnimation(winner);
+    }
+
+    private void handleAnimationFinished(){
+
+        gameActive = false;
+        betAmount = 0;
+        betStack.clear();
+        populateGlassPattern();
+        if(chairOneOccupant!=null && chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
+            
+            bettingEnabled = true;
+            initializeUI(rebetEnabled, bettingEnabled);
+            updateBetLore(53, 0);
+            resetPlayerOneUI();
+        }
+        else if(chairTwoOccupant!=null && chairTwoOccupant.getUniqueId().equals(player.getUniqueId())){
+            resetPlayerTwoUI();
+        }
     }
 
     /*
@@ -411,14 +436,26 @@ public class CoinFlipClient extends Client {
         int[] limeSlots = {10, 11, 12, 13, 14, 15, 16, 19, 21, 22, 23, 25, 28, 29, 30, 32, 33, 34};
     
         // Define slot positions for black stained glass panes
-        int[] blackSlots = {
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 
-            9, 17, 
-            18, 26, 
-            27, 35, 
-            37, 38, 39, 40, 41, 42, 43,
-            45, 46, 47, 48, 49, 50, 51, 52, 53
-        };
+        int[] blackSlots;
+        if (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(player.getUniqueId())) {
+            blackSlots = new int[]{
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 
+                9, 17, 
+                18, 26, 
+                27, 35, 
+                37, 38, 39, 40, 41, 42, 43,
+            };
+        } else {
+            blackSlots = new int[]{
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 
+                9, 17, 
+                18, 26, 
+                27, 35, 
+                37, 38, 39, 40, 41, 42, 43,
+                45, 46, 47, 48, 49, 50, 51, 52, 53
+            };
+        }
+        
     
         // Place black stained glass panes
         for (int slot : blackSlots) {
@@ -430,7 +467,7 @@ public class CoinFlipClient extends Client {
             addItemAndLore(limePane, 1, paneName, slot);
         }
 
-        addItemAndLore(Material.SUNFLOWER, 1, "Coin", 31);
+        createCoin(31);
 
     }
 
@@ -464,5 +501,69 @@ public class CoinFlipClient extends Client {
     private void updatePotChest(){
         addItemAndLore(Material.CHEST, 1, "Pot", 40, "Current: §a" + betAmount);
     }
+
+    private int flipTask = -1;
+    private final int[] flipSlots = {22, 13, 4, 13, 22}; // Flip animation slots
+    private final int[] finalSlots = {21, 23}; // Final decision slots
+    private Material formerMaterial;
+
+    private void createCoin(int slot){
+        if(inventory.getItem(slot) != null){
+            formerMaterial = inventory.getItem(slot).getType();
+        }
+        addItemAndLore(Material.SUNFLOWER, 1, "Coin", slot);
+    }
+
+    private void startFlipAnimation(int winner) {
+        addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, "", 31);
+        if (flipTask != -1) return; // Prevent multiple animations from running
+
+        new BukkitRunnable() {
+            int index = 0;
+            int lastSlot = -1;
+
+            @Override
+            public void run() {
+                if (index < flipSlots.length) {
+                    int slot = flipSlots[index];
+
+                    // Restore former material at the last slot
+                    if (lastSlot != -1 && formerMaterial != null) {
+                        addItemAndLore(formerMaterial, 1, "", lastSlot);
+                    }
+
+                    // Save current material before placing the coin
+                    if (inventory.getItem(slot) != null) {
+                        formerMaterial = inventory.getItem(slot).getType();
+                    }
+
+                    createCoin(slot);
+                    lastSlot = slot;
+                    index++;
+                } else {
+                    // Restore final slot before placing the winning coin
+                    if (lastSlot != -1 && formerMaterial != null) {
+                        addItemAndLore(formerMaterial, 1, "", lastSlot);
+                    }
+
+                    // Place the final coin in the winner's slot
+                    int finalSlot = finalSlots[winner]; // 0 -> 21, 1 -> 23
+                    createCoin(finalSlot);
+
+                    flipTask = -1; // Reset task ID
+                    cancel();
+                    //run task later
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            sendUpdateToServer("ANIMATION_FINISHED", winner);
+                        }
+                    }.runTaskLater(plugin, 20L);
+
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 2L); // Runs every 2 ticks
+    }
+
 
 }

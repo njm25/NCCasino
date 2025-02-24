@@ -175,4 +175,9 @@ public abstract class Server extends DealerInventory {
             }
         }
     }
+    
+    public boolean hasClient(UUID playerUuid) {
+        return clients.containsKey(playerUuid);
+    }
+    
 }

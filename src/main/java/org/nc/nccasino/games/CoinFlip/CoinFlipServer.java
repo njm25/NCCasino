@@ -89,7 +89,34 @@ public class CoinFlipServer extends Server {
                     startTimer();
                 }
                 break;
-            
+            case "ANIMATION_FINISHED":
+                if(gameActive){
+                    if(chairOneOccupant !=null && !hasClient(chairOneOccupant.getUniqueId())){
+                        if(chairTwoOccupant != null){
+                            chairOneOccupant = chairTwoOccupant;
+                            chairTwoOccupant = null;
+                            betAmount = 0;
+                            broadcastUpdate("PLAYER_LEAVE_TWO", null);
+                            broadcastUpdate("PLAYER_LEAVE_ONE", null);
+                            broadcastUpdate("PLAYER_SIT_ONE", chairOneOccupant);
+                        } else {
+                            chairOneOccupant = null;
+                            betAmount = 0;
+                            broadcastUpdate("PLAYER_LEAVE_ONE", null);
+                        }
+                    }
+                    if(chairTwoOccupant !=null && !hasClient(chairTwoOccupant.getUniqueId())){
+                        chairTwoOccupant = null;
+                        broadcastUpdate("PLAYER_LEAVE_TWO", null);
+                    }
+                    
+                    broadcastUpdate("ANIMATION_FINISHED", data);
+                    gameActive = false;
+                    betAmount = 0; 
+                    timeLeft = 0;
+                    countdownTaskId = -1;
+                }
+                break;
             case "GET_CHAIRS":
                 Object[] chairs = {
                     (chairOneOccupant != null) ? chairOneOccupant : null,
