@@ -21,6 +21,7 @@ import org.bukkit.NamespacedKey;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.games.Baccarat.BaccaratServer;
 import org.nc.nccasino.games.Blackjack.BlackjackInventory;
+import org.nc.nccasino.games.CoinFlip.CoinFlipServer;
 import org.nc.nccasino.games.Mines.MinesInventory;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
 import org.nc.nccasino.games.TestGame.TestServer;
@@ -272,6 +273,10 @@ public class Dealer {
                 inventory = new TestServer(uniqueId, plugin, internalName);
                 name = "Test Game Dealer";
                 break;
+            case "Coin Flip":
+                inventory = new CoinFlipServer(uniqueId, plugin, internalName);
+                name = "Coin Flip Dealer";
+                break;
             default:
                 defaultTimer = 10;
                 inventory = new BlackjackInventory(uniqueId, plugin, internalName);
@@ -382,6 +387,11 @@ public class Dealer {
                 newName = "Test Game Dealer";
                 defaultTimer = 10;
                 break;
+            case "Coin Flip":
+                newInventory = new CoinFlipServer(dealerId, plugin, internalName);
+                newName = "Coin Flip Dealer";
+                defaultTimer = 10;
+                break;
             default:
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);
                 newName = "Blackjack Dealer";
@@ -457,6 +467,9 @@ public class Dealer {
                 break;         
             case "Test Game":
                 newInventory = new TestServer(dealerId, plugin, internalName);
+                break;            
+            case "Coin Flip":
+                newInventory = new CoinFlipServer(dealerId, plugin, internalName);
                 break;
             default:
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);

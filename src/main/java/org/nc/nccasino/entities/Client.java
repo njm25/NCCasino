@@ -47,13 +47,12 @@ public abstract class Client extends DealerInventory {
 
         // Register event listener & set up the 'betting row' 
         registerListener();
-        setupBettingRow(false);
     }
     public Player getPlayer(){
         return player;
     }
-    public void initializeUI(boolean RebetSwitch) {
-            setupBettingRow(RebetSwitch);
+    public void initializeUI(boolean rebetSwitch, boolean betSlip) {
+        setupBettingRow(rebetSwitch, betSlip);
     }
 
     private void loadChipValuesFromConfig() {
@@ -72,7 +71,7 @@ public abstract class Client extends DealerInventory {
     }
 
 
-    private void setupBettingRow(Boolean switchBoolean) {
+    private void setupBettingRow(Boolean rebetSwitch, boolean betSlip) {
         // 1) Build the chips (slots 47..51)
         int chipSlot = 47;
         for (Map.Entry<String, Double> entry : chipValues.entrySet()) {
@@ -81,15 +80,17 @@ public abstract class Client extends DealerInventory {
             inventory.setItem(chipSlot, createCustomItem(getCurrencyMaterial(), chipName, (int) chipVal));
             chipSlot++;
         }
-        if(!switchBoolean){
+        if(betSlip){
+            // 2) Paper in slot 53: "Click here to place bet"
+            inventory.setItem(53, createCustomItem(Material.PAPER, "Click here to place bet", 1));
+        }
+        if(rebetSwitch){
         // 2) Paper in slot 53: "Click here to place bet"
-        inventory.setItem(53, createCustomItem(Material.PAPER, "Click here to place bet", 1));}
-        int slot=switchBoolean?53:43;
         // 3) Rebet: slot 43
         Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
         String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
-        inventory.setItem(slot, createCustomItem(rebetMat, rebetName, 1));
-
+        inventory.setItem(43, createCustomItem(rebetMat, rebetName, 1));
+        }
         // 4) Undo All: slot 45
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
 
@@ -130,7 +131,12 @@ public abstract class Client extends DealerInventory {
 
     protected void handleBet(int slot, Player player, InventoryClickEvent event) {
         event.setCancelled(true);
-
+ 
+        // Handle Wager & All In Selection
+        if (slot >= 47 && slot <= 52) {
+            updateSelectedWager(slot);
+            return;
+        }
         // Rebet
         if (slot == 43) {
             rebetEnabled = !rebetEnabled;
@@ -235,7 +241,7 @@ public abstract class Client extends DealerInventory {
         } else {
             removeCurrencyFromInventory(player, (int)wagerAmount);
         }
-
+        if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
         betStack.push(wagerAmount);
     }
 
@@ -259,6 +265,25 @@ public abstract class Client extends DealerInventory {
     }
 
     protected void undoLastBet() {
+        if (betStack.isEmpty()) {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§cInvalid action.");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§cNo bets to undo.");
+                    break;
+                case NONE:
+                    break;
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            return;
+        }
+        if (SoundHelper.getSoundSafely("ui.toast.in", player) != null)
+            player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
+        if (SoundHelper.getSoundSafely("ui.toast.out", player) != null)
+            player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
         if (!betStack.isEmpty()) {
             double last = betStack.pop();
             refundCurrency(player, (int) last);
@@ -266,6 +291,23 @@ public abstract class Client extends DealerInventory {
     }
 
     protected void undoAllBets() {
+        if (betStack.isEmpty()) {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§cInvalid action.");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§cNo bets to undo.");
+                    break;
+                case NONE:
+                    break;
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            return;
+        }
+        if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null)
+        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER, 1.0f, 1.0f);
         while (!betStack.isEmpty()) {
             double b = betStack.pop();
             refundCurrency(player, (int) b);
@@ -395,7 +437,10 @@ public abstract class Client extends DealerInventory {
             default -> 10;
         };
     }
-    protected abstract void reapplyPreviousBets();
+
+    protected void reapplyPreviousBets(){
+
+    }
 
     protected void updateSelectedWager(int slot) {
         ItemStack clicked = inventory.getItem(slot);
@@ -436,14 +481,6 @@ public abstract class Client extends DealerInventory {
                     ));
                 }
             }
-        }
-
-        // **Reset Sniffer Egg after "All In" is placed**
-        if (isAllIn) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
-                player.updateInventory();
-            }, 20L); // Delay to ensure reset after UI update
         }
     }
 

@@ -46,6 +46,7 @@ public abstract class Menu extends DealerInventory {
         MINES,
         BACCARAT,
         TEST_GAME,
+        COIN_FLIP,
         
         // Default game settings
         EDIT_TIMER,

@@ -58,7 +58,7 @@ public class BaccaratServer extends Server {
     @Override
     protected Client createClientForPlayer(Player player) {
         BaccaratClient client = new BaccaratClient(this, player, plugin, internalName);
-        client.initializeUI(true);
+        client.initializeUI(true, false);
         clients.put(player.getUniqueId(), client);
     
         // Send current hand totals (if hands are empty, this will send {-1, -1})

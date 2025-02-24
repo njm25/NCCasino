@@ -104,9 +104,12 @@ public class BaccaratClient extends Client {
     }
 
     @Override
-    public void initializeUI(boolean switchRebet) {
-        super.initializeUI(true);
-    
+    public void initializeUI(boolean switchRebet, boolean betSlip) {
+        super.initializeUI(true, betSlip);
+        
+        Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
+        String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
+        inventory.setItem(53, createCustomItem(rebetMat, rebetName, 1));
         // Table layout
         int[] tableSlots = {0, 1, 2, 3, 5, 6, 7, 8, 9, 13, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 35, 36, 44};
         for (int slot : tableSlots) {
@@ -434,14 +437,11 @@ public class BaccaratClient extends Client {
         @Override
     protected void handleBet(int slot, Player player, InventoryClickEvent event) {
         event.setCancelled(true);
-
-  
         // Handle Wager & All In Selection
         if (slot >= 47 && slot <= 52) {
             updateSelectedWager(slot);
             return;
         }
-
         if (((BaccaratServer) server).getGameState() != Server.GameState.WAITING) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:

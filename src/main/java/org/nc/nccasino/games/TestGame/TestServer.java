@@ -43,7 +43,7 @@ public class TestServer extends Server {
     @Override
     protected Client createClientForPlayer(Player player) {
         TestClient client = new TestClient(this, player, plugin, internalName);
-        client.initializeUI(false);
+        client.initializeUI(false, true);
         return client;
     }
 

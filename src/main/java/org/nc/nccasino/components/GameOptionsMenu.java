@@ -36,7 +36,7 @@ public class GameOptionsMenu extends Menu {
         slotMapping.put(SlotOption.ROULETTE, 1);
         slotMapping.put(SlotOption.MINES, 2);
         slotMapping.put(SlotOption.BACCARAT, 3);
-        slotMapping.put(SlotOption.TEST_GAME, 4);
+        slotMapping.put(SlotOption.COIN_FLIP, 4);
         slotMapping.put(SlotOption.EXIT, 8);
         initializeMenu();
     }
@@ -62,7 +62,7 @@ public class GameOptionsMenu extends Menu {
         slotMapping.put(SlotOption.ROULETTE, 2);
         slotMapping.put(SlotOption.MINES, 3);
         slotMapping.put(SlotOption.BACCARAT, 4);
-        slotMapping.put(SlotOption.TEST_GAME, 5);
+        slotMapping.put(SlotOption.COIN_FLIP, 5);
         
     
        initializeMenu();
@@ -77,13 +77,13 @@ public class GameOptionsMenu extends Menu {
             addItemAndLore(Material.CREEPER_HEAD, 1, "Blackjack",  slotMapping.get(SlotOption.BLACKJACK));
             addItemAndLore(Material.ENDER_PEARL, 1, "Roulette",  slotMapping.get(SlotOption.ROULETTE));
             addItemAndLore(Material.SKELETON_SKULL, 1, "Baccarat",  slotMapping.get(SlotOption.BACCARAT));
-            addItemAndLore(Material.WHITE_CANDLE, 1, "Test Game",  slotMapping.get(SlotOption.TEST_GAME));
+            addItemAndLore(Material.SUNFLOWER, 1, "Coin Flip",  slotMapping.get(SlotOption.COIN_FLIP));
             addItemAndLore(Material.TNT, 1, "Mines",  slotMapping.get(SlotOption.MINES));
         }
         else{
             addItemAndLore(Material.CREEPER_HEAD, 1, "Blackjack",  slotMapping.get(SlotOption.BLACKJACK));
             addItemAndLore(Material.ENDER_PEARL, 1, "Roulette",  slotMapping.get(SlotOption.ROULETTE));
-            addItemAndLore(Material.WHITE_CANDLE, 1, "Test Game",  slotMapping.get(SlotOption.TEST_GAME));
+            addItemAndLore(Material.SUNFLOWER, 1, "Coin Flip",  slotMapping.get(SlotOption.COIN_FLIP));
             addItemAndLore(Material.SKELETON_SKULL, 1, "Baccarat",  slotMapping.get(SlotOption.BACCARAT));
             addItemAndLore(Material.TNT, 1, "Mines",  slotMapping.get(SlotOption.MINES));
             addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
@@ -114,6 +114,10 @@ public class GameOptionsMenu extends Menu {
             case TEST_GAME:
                 playDefaultSound(player);
                 gameType = "Test Game";
+                break;
+            case COIN_FLIP:
+                playDefaultSound(player);
+                gameType = "Coin Flip";
                 break;
             default:
                 return;

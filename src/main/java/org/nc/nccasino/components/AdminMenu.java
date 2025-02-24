@@ -206,6 +206,10 @@ public class AdminMenu extends Menu {
                 addItemAndLore(Material.SKELETON_SKULL, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
                 break;
             }
+            case "Coin Flip":{
+                addItemAndLore(Material.SUNFLOWER, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
+                break;
+            }
             default:
             break;
         }
