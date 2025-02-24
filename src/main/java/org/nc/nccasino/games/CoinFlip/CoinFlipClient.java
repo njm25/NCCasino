@@ -4,11 +4,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
+import org.nc.nccasino.helpers.SoundHelper;
 
 public class CoinFlipClient extends Client {
 
@@ -28,6 +33,7 @@ public class CoinFlipClient extends Client {
 
     private final String clickHereToSit = "Click here to sit";
     private boolean gameActive = false;
+    private boolean betAccepted = false;
     
     public CoinFlipClient(Server server, Player player, Nccasino plugin, String internalName) {
         super(server, player, "Coin Flip", plugin, internalName);
@@ -125,7 +131,11 @@ public class CoinFlipClient extends Client {
                 }
             }
         } else if (chairTwoOccupant !=null && chairTwoOccupant.getUniqueId().equals(player.getUniqueId())) {
-            sendUpdateToServer("PLAYER_ACCEPT_BET", null);
+            if(betAmount>0){
+                int amount = betAmount;
+                betAccepted = handlePlayerTwoAccept(amount);
+                sendUpdateToServer("PLAYER_ACCEPT_BET", betAccepted);
+            }
         }
     }
 
@@ -159,7 +169,13 @@ public class CoinFlipClient extends Client {
                 handleCancelBet();
                 break;
             case "PLAYER_ACCEPT_BET":
-                handleAcceptBet();
+                handleAcceptBet((Boolean) data);
+                break;
+            case "UPDATE_TIMER":
+                updateTimerUI((int) data);
+                break;
+            case "WINNER":
+                handleWinner((int) data);
                 break;
             case "GET_CHAIRS":
                 handleGetChairs(data);
@@ -270,11 +286,66 @@ public class CoinFlipClient extends Client {
         hidePotChest();
     }
 
-    private void  handleAcceptBet(){
-        System.out.println("Bet accepted");
-        gameActive = true;
+    private void handleAcceptBet(Boolean accepted){
+        if(accepted){
+            betAmount = betAmount * 2;
+            updatePotChest();
+            gameActive = true;
+            System.out.println("Bet accepted");
+        }
+    }
+    
+    protected Boolean handlePlayerTwoAccept(int amount) {
+        double wagerAmount = 0;
+        wagerAmount = amount; 
+
+        if (!hasEnoughWager(player, wagerAmount)) {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§cInvalid action.");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§cNot enough currency to place bet.");
+                    break;
+                case NONE:
+                    break;
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            return false;
+        }
+
+        if (wagerAmount <= 0) {
+            // Possibly send a message to the user "Invalid action" or "Select a wager first."
+            return false;
+        }
+        
+        removeCurrencyFromInventory(player, (int)wagerAmount);
+        if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
+        betStack.push(wagerAmount);
+        return true;
+        
+    }
+        
+    private void updateTimerUI(int seconds) {
+        if (seconds <= 0) {
+            inventory.setItem(44, null);
+            return;
+        }
+    
+        ItemStack timerItem = new ItemStack(Material.CLOCK, Math.min(seconds, 64));
+        ItemMeta meta = timerItem.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName("§eTime Left: " + seconds + "s");
+            timerItem.setItemMeta(meta);
+        }
+    
+        inventory.setItem(44, timerItem);
     }
 
+    private void handleWinner(int winner){
+        inventory.setItem(44, null);
+    }
 
     /*
      * 
@@ -291,6 +362,10 @@ public class CoinFlipClient extends Client {
         Player chairTwo = (dataArr.length > 1 && dataArr[1] instanceof Player) ? (Player) dataArr[1] : null;
         int betAmount = (dataArr.length > 2 && dataArr[2] instanceof Integer) ? (int) dataArr[2] : 0;
         gameActive = (dataArr.length > 3 && dataArr[3] instanceof Boolean) ? (boolean) dataArr[3] : false;
+        int timeLeft = (dataArr.length > 4 && dataArr[4] instanceof Integer) ? (int) dataArr[4] : 0;
+        if(timeLeft > 0){
+            updateTimerUI(timeLeft);
+        }
         if (chairOne == null && chairTwo == null) {
             addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
         } else if (chairOne != null && chairTwo != null) {
@@ -384,6 +459,10 @@ public class CoinFlipClient extends Client {
 
     private void hidePotChest(){
         addItemAndLore(Material.BLACK_STAINED_GLASS_PANE, 1, "", 40);
+    }
+
+    private void updatePotChest(){
+        addItemAndLore(Material.CHEST, 1, "Pot", 40, "Current: §a" + betAmount);
     }
 
 }
