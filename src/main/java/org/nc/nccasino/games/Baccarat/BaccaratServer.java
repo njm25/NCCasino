@@ -213,26 +213,29 @@ public class BaccaratServer extends Server {
         }
     }
     
-    /* 
-    private GameStateData getGameStateData() {
-        return new GameStateData(gameState, totalBets, currentDrawingState); 
-    }*/
-    
-    
-
-    
     private void processBet(Player player, BaccaratClient.BetOption betType, double amount) {
         UUID playerId = player.getUniqueId();
         playerBets.putIfAbsent(playerId, new HashMap<>());
-        playerBets.get(playerId).put(betType, playerBets.get(playerId).getOrDefault(betType, 0.0) + amount);
-        totalBets.put(betType, totalBets.getOrDefault(betType, 0.0) + amount);
-
-        broadcastUpdate("UPDATE_BET_DISPLAY", new BetDisplayData(
-            betType, 
-            playerBets.get(playerId).get(betType), 
-            totalBets.get(betType)
-        ));
+    
+        // Accumulate this player's bet correctly
+        playerBets.get(playerId).merge(betType, amount, Double::sum);
+    
+        // Accumulate total bets correctly
+        totalBets.merge(betType, amount, Double::sum);
+    
+        // Broadcast a single update to ALL players
+        for (Client c : clients.values()) {
+            if (c instanceof BaccaratClient baccaratClient) {
+                baccaratClient.onServerUpdate("UPDATE_BET_DISPLAY", new BetDisplayData(
+                    betType, 
+                    playerBets.getOrDefault(c.getPlayer().getUniqueId(), new HashMap<>()).getOrDefault(betType, 0.0), // Their personal bet
+                    totalBets.get(betType) // Correct total bet
+                ));
+            }
+        }
     }
+    
+    
 
     private void undoLastBet(Player player, BaccaratClient.BetOption betType, double amount) {
         UUID playerId = player.getUniqueId();

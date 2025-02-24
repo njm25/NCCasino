@@ -188,11 +188,16 @@ public class BaccaratClient extends Client {
             case "UPDATE_BET_DISPLAY":
             if (data instanceof BetDisplayData betData) {
                 betStacks.putIfAbsent(betData.betType, new ArrayDeque<>());
+        
+                // Update player's own bet
                 betStacks.get(betData.betType).clear();
                 betStacks.get(betData.betType).push(betData.playerTotal);
-                updateBetDisplay(betData.betType);
+        
+                // Update total bets correctly
+                updateBetDisplay(betData.betType, betData.totalBets);
             }
-                break;
+            break;
+        
     
             case "RESET_BETS":
                 betStacks.clear();
@@ -511,7 +516,7 @@ public class BaccaratClient extends Client {
             double removedBet = betStacks.get(lastBetType).pop();
             creditPlayer(player, removedBet);
             sendUpdateToServer("UNDO_BET", new BetData(lastBetType, removedBet));
-            updateBetDisplay(lastBetType);
+            updateBetDisplay(lastBetType,((BaccaratServer) server).getTotalBetForType(lastBetType));
             if (SoundHelper.getSoundSafely("ui.toast.in", player) != null)
                 player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
             if (SoundHelper.getSoundSafely("ui.toast.out", player) != null)
@@ -583,40 +588,30 @@ public class BaccaratClient extends Client {
         sendUpdateToServer("PLACE_BET", new BetData(betType, selectedWager));
         
         // Update all slots of the same bet type
-        updateBetDisplay(betType);
+        updateBetDisplay(betType,((BaccaratServer) server).getTotalBetForType(betType));
     }
     
     private void refreshAllBetDisplays() {
         for (BetOption betType : betStacks.keySet()) {
-            updateBetDisplay(betType);
+            updateBetDisplay(betType,((BaccaratServer) server).getTotalBetForType(betType));
         }
     }
 
-    private void updateBetDisplay(BetOption betType) {
+    private void updateBetDisplay(BetOption betType, double totalBet) {
         double playerTotal = betStacks.getOrDefault(betType, new ArrayDeque<>())
                                       .stream().mapToDouble(Double::doubleValue).sum();
-        double totalBet = ((BaccaratServer) server).getTotalBetForType(betType);
         int numBettors = ((BaccaratServer) server).getBettorCountForType(betType);
-
-        // Set currency name dynamically
         String currencyName = formatCurrencyName(plugin.getCurrencyName());
-
-        // Determine singular/plural format
-        String playerBetText = (int) playerTotal > 0 
-            ? "Your Bet: " + (int) playerTotal + " " + currencyName + ((int) playerTotal > 1 ? "s" : "") 
-            : null; // If 0, don't show anything
-
-        String totalBetText = (int) totalBet > 0 
-            ? "Total " + (numBettors > 1 ? "👥 " : "👤 ") + numBettors + " - " + (int) totalBet + " " + currencyName + ((int) totalBet > 1 ? "s" : "")
-            : null; // If 0, don't show anything
-
+    
+        String playerBetText = playerTotal > 0 ? "Your Bet: " + (int) playerTotal + " " + currencyName : null;
+        String totalBetText = totalBet > 0 ? (numBettors > 1 ? "👥 " : "👤 ") + numBettors + " - " + (int) totalBet + " " + currencyName : null;
+    
         for (int slot : betMapping.keySet()) {
             if (betMapping.get(slot) == betType) {
                 ItemStack item = inventory.getItem(slot);
                 if (item != null) {
                     ItemMeta meta = item.getItemMeta();
                     if (meta != null) {
-                        // Build lore list dynamically
                         List<String> loreLines = new ArrayList<>();
                         if (playerBetText != null) {
                             loreLines.add(playerBetText);
@@ -624,7 +619,6 @@ public class BaccaratClient extends Client {
                         if (totalBetText != null) {
                             loreLines.add(totalBetText);
                         }
-
                         meta.setLore(loreLines.isEmpty() ? null : loreLines);
                         item.setItemMeta(meta);
                     }
@@ -633,6 +627,7 @@ public class BaccaratClient extends Client {
         }
         player.updateInventory();
     }
+    
 
     @Override
     public void reapplyPreviousBets() {
