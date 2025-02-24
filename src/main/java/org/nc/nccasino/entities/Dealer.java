@@ -276,6 +276,7 @@ public class Dealer {
             case "Coin Flip":
                 inventory = new CoinFlipServer(uniqueId, plugin, internalName);
                 name = "Coin Flip Dealer";
+                defaultTimer = 3;
                 break;
             default:
                 defaultTimer = 10;
@@ -390,7 +391,7 @@ public class Dealer {
             case "Coin Flip":
                 newInventory = new CoinFlipServer(dealerId, plugin, internalName);
                 newName = "Coin Flip Dealer";
-                defaultTimer = 10;
+                defaultTimer = 3;
                 break;
             default:
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);

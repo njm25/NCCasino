@@ -531,6 +531,36 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
                 break;
             }
+            case "Coin Flip":{
+                CoinFlipMenu rouletteAdminInventory = new CoinFlipMenu(
+                    dealerId,
+                    player,
+                    Dealer.getInternalName(dealer)+ "'s Coin Flip Settings",
+                    (uuid) -> {
+        
+                        // Cancel action: re-open the AdminInventory
+                        if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
+                            player.openInventory(adminInventory.getInventory());
+                        } else {
+                            AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
+                            player.openInventory(adminInventory.getInventory());
+                        }
+        
+                    },
+                    plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
+            );
+            switch(messPref){
+                case VERBOSE:{
+                    //player.sendMessage("§aRoulette Settings Opened.");
+                    break;}
+                default:{
+                    break;}
+            }
+                player.openInventory(rouletteAdminInventory.getInventory());
+
+                break;
+            }
             case "Baccarat":{
                 BaccaratMenu baccaratMenuAdminInventory = new BaccaratMenu(
                     dealerId,
