@@ -29,7 +29,7 @@ public abstract class Client extends DealerInventory {
     protected final String internalName;
 
     protected final Deque<Double> betStack = new ArrayDeque<>();
-    protected boolean rebetEnabled = false;
+    public boolean rebetEnabled = false;
     protected double selectedWager = 0.0;
     protected final Map<String, Double> chipValues = new LinkedHashMap<>();
     
