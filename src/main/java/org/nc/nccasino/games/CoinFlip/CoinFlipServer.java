@@ -55,8 +55,8 @@ public class CoinFlipServer extends Server {
                 break;
             case "GET_CHAIRS":
                 Object[] chairs = {
-                    (chairOneOccupant != null) ? new PlayerData(chairOneOccupant) : null,
-                    (chairTwoOccupant != null) ? new PlayerData(chairTwoOccupant) : null
+                    (chairOneOccupant != null) ? chairOneOccupant : null,
+                    (chairTwoOccupant != null) ? chairTwoOccupant : null
                 };
                 client.onServerUpdate("GET_CHAIRS", chairs);
                 break;

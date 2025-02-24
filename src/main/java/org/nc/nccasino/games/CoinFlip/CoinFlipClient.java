@@ -163,31 +163,31 @@ public class CoinFlipClient extends Client {
 
     private void handleGetChairs(Object data){
         Object[] occupants = (Object[]) data;
-        PlayerData chairOne = (occupants.length > 0 && occupants[0] instanceof PlayerData) ? (PlayerData) occupants[0] : null;
-        PlayerData chairTwo = (occupants.length > 1 && occupants[1] instanceof PlayerData) ? (PlayerData) occupants[1] : null;
+        Player chairOne = (occupants.length > 0 && occupants[0] instanceof Player) ? (Player) occupants[0] : null;
+        Player chairTwo = (occupants.length > 1 && occupants[1] instanceof Player) ? (Player) occupants[1] : null;
         if (chairOne == null && chairTwo == null) {
             addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
         } else if (chairOne != null && chairTwo != null) {
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1), 
-                createPlayerHead(chairOne.getPlayer().getUniqueId(), chairOne.getPlayer().getDisplayName()));
+                createPlayerHead(chairOne.getUniqueId(), chairOne.getDisplayName()));
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2), 
-                createPlayerHead(chairTwo.getPlayer().getUniqueId(), chairTwo.getPlayer().getDisplayName()));
+                createPlayerHead(chairTwo.getUniqueId(), chairTwo.getDisplayName()));
 
-            Player player1 = chairOne.getPlayer();
-            Player player2 = chairTwo.getPlayer();
+            Player player1 = chairOne;
+            Player player2 = chairTwo;
 
             chairOneOccupant = player1;
             chairTwoOccupant = player2;
         } else if (chairOne != null) {
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1), 
-                createPlayerHead(chairOne.getPlayer().getUniqueId(), chairOne.getPlayer().getDisplayName()));
-            Player player = chairOne.getPlayer();
+                createPlayerHead(chairOne.getUniqueId(), chairOne.getDisplayName()));
+            Player player = chairOne;
             chairOneOccupant = player;
             addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_2));
         } else {
             addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2), 
-                createPlayerHead(chairTwo.getPlayer().getUniqueId(), chairTwo.getPlayer().getDisplayName()));
+                createPlayerHead(chairTwo.getUniqueId(), chairTwo.getDisplayName()));
         }
     }
 
