@@ -557,7 +557,18 @@ public class BaccaratServer extends Server {
         if (payout > 0) {
             creditPlayer(player, payout);
         }
-
+        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage("§a§lPaid "+ (int)payout+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s"));
+                break;}
+            case VERBOSE:{
+                player.sendMessage("§a§lPaid "+ (int)payout+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s")  + "\n §r§a§o(profit of "+(int)Math.abs(payout-totalBet)+")");
+                break;     
+            }
+                case NONE:{
+                break;
+            }
+        } 
         if (payout > totalBet) {
             player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
             Random random = new Random();
