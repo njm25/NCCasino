@@ -13,6 +13,7 @@ public class CoinFlipServer extends Server {
     protected Player chairOneOccupant;
     protected Player chairTwoOccupant;
     protected int chairOneBet;
+    protected Boolean gameActive;
     
     public CoinFlipServer(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, plugin, internalName);
@@ -20,6 +21,7 @@ public class CoinFlipServer extends Server {
         this.chairOneOccupant = null;
         this.chairTwoOccupant = null;
         this.chairOneBet = 0;
+        this.gameActive = false;
     }
 
     @Override
@@ -72,6 +74,7 @@ public class CoinFlipServer extends Server {
             case "PLAYER_ACCEPT_BET":
                 if(chairTwoOccupant != null && chairOneBet != 0){
                     broadcastUpdate("PLAYER_ACCEPT_BET", null);
+                    gameActive = true;
                 }
                 break;
             
@@ -80,6 +83,7 @@ public class CoinFlipServer extends Server {
                     (chairOneOccupant != null) ? chairOneOccupant : null,
                     (chairTwoOccupant != null) ? chairTwoOccupant : null,
                     chairOneBet,
+                    gameActive,
                 };
                 client.onServerUpdate("GET_CHAIRS", chairs);
                 break;

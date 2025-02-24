@@ -27,6 +27,7 @@ public class CoinFlipClient extends Client {
     protected int betAmount = 0;
 
     private final String clickHereToSit = "Click here to sit";
+    private boolean gameActive = false;
     
     public CoinFlipClient(Server server, Player player, Nccasino plugin, String internalName) {
         super(server, player, "Coin Flip", plugin, internalName);
@@ -57,12 +58,15 @@ public class CoinFlipClient extends Client {
         switch(option)
         {
             case HANDLE_CHAIR_1:
+                if (gameActive) return;
                 handleChairOne();
                 break;
             case HANDLE_CHAIR_2:
+                if (gameActive) return;
                 handleChairTwo();
                 break;
             case HANDLE_SUBMIT_BET:
+                if (gameActive) return;
                 handleSubmitBet();
                 break;
             case LEAVE:
@@ -73,11 +77,13 @@ public class CoinFlipClient extends Client {
     
     @Override
     protected void handleClientInventoryClose() {
-        if(player == chairOneOccupant){
-            sendUpdateToServer("PLAYER_LEAVE_ONE", null);
-        }
-        if(player == chairTwoOccupant){
-            sendUpdateToServer("PLAYER_LEAVE_TWO", null);
+        if(!gameActive){
+            if(player == chairOneOccupant){
+                sendUpdateToServer("PLAYER_LEAVE_ONE", null);
+            }
+            if(player == chairTwoOccupant){
+                sendUpdateToServer("PLAYER_LEAVE_TWO", null);
+            }
         }
         super.handleClientInventoryClose();
     }
@@ -168,13 +174,16 @@ public class CoinFlipClient extends Client {
         if(playerData.getUniqueId().equals(player.getUniqueId())){
             initializeUI(false, true);
             resetPlayerOneUI();
+            addItemAndLore(Material.OAK_STAIRS, 1, "Player 2's Seat", slotMapping.get(SlotOption.HANDLE_CHAIR_2));
+        }
+        else{
+            addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_2));
         }
         hidePotChest();
         betAmount = 0;
         chairOneOccupant = playerData;
         inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1), 
         createPlayerHead(playerData.getUniqueId(), playerData.getDisplayName()));
-        addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_2));
     }
 
     private void handlePlayerTwoSit(Object data){
@@ -214,14 +223,16 @@ public class CoinFlipClient extends Client {
     }
 
     private void handlePlayerTwoLeave(){
+        
+        addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_2));
         if(chairTwoOccupant.getUniqueId().equals(player.getUniqueId())){
             clearHandleButton();
         }
         else if(chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
             
+            addItemAndLore(Material.OAK_STAIRS, 1, "Player 2's Seat", slotMapping.get(SlotOption.HANDLE_CHAIR_2));
         }
         chairTwoOccupant = null;
-        addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_2));
     }
 
     private void handleSubmitBet(int data){
@@ -261,7 +272,7 @@ public class CoinFlipClient extends Client {
 
     private void  handleAcceptBet(){
         System.out.println("Bet accepted");
-
+        gameActive = true;
     }
 
 
@@ -279,6 +290,7 @@ public class CoinFlipClient extends Client {
         Player chairOne = (dataArr.length > 0 && dataArr[0] instanceof Player) ? (Player) dataArr[0] : null;
         Player chairTwo = (dataArr.length > 1 && dataArr[1] instanceof Player) ? (Player) dataArr[1] : null;
         int betAmount = (dataArr.length > 2 && dataArr[2] instanceof Integer) ? (int) dataArr[2] : 0;
+        gameActive = (dataArr.length > 3 && dataArr[3] instanceof Boolean) ? (boolean) dataArr[3] : false;
         if (chairOne == null && chairTwo == null) {
             addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
         } else if (chairOne != null && chairTwo != null) {
