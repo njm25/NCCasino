@@ -147,8 +147,10 @@ public class CoinFlipClient extends Client {
     private void handlePlayerOneLeave(){
         if(chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
             clearBettingRow();
-            undoAllBets();
-            updateBetLore(53, 0);
+            if(!betStack.isEmpty()){
+                undoAllBets();
+                updateBetLore(53, 0);
+            }
         }
         chairOneOccupant = null;
         addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
