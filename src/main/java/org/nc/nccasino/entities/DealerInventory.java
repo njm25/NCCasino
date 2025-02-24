@@ -15,6 +15,7 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.helpers.SoundHelper;
@@ -313,5 +314,20 @@ public class DealerInventory implements InventoryHolder, Listener {
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         }
         player.sendMessage("§c" + message);
+    }
+
+    
+    /**
+     * Utility: Create a player head for a specific UUID.
+     */
+    protected ItemStack createPlayerHead(UUID ownerUuid, String displayName) {
+        ItemStack skull = new ItemStack(Material.PLAYER_HEAD, 1);
+        SkullMeta meta = (SkullMeta) skull.getItemMeta();
+        if (meta != null) {
+            meta.setOwningPlayer(Bukkit.getOfflinePlayer(ownerUuid));
+            meta.setDisplayName(displayName);
+            skull.setItemMeta(meta);
+        }
+        return skull;
     }
 }

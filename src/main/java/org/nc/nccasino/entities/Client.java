@@ -73,6 +73,7 @@ public abstract class Client extends DealerInventory {
 
     private void setupBettingRow(Boolean rebetSwitch, boolean betSlip) {
         // 1) Build the chips (slots 47..51)
+        rebetEnabled = rebetSwitch; 
         int chipSlot = 47;
         for (Map.Entry<String, Double> entry : chipValues.entrySet()) {
             String chipName = entry.getKey();
@@ -138,7 +139,7 @@ public abstract class Client extends DealerInventory {
             return;
         }
         // Rebet
-        if (slot == 43) {
+        if (slot == 43 && rebetEnabled) {
             rebetEnabled = !rebetEnabled;
             updateRebetToggle(slot);
             return;
@@ -602,7 +603,5 @@ public abstract class Client extends DealerInventory {
         }
     }
 
-    public void onServerUpdate(String eventType, Object data) {
-        Bukkit.getLogger().info("[Client] Received server update: " + eventType + " | Data: " + data);
-    }
+    public abstract void onServerUpdate(String eventType, Object data);
 }

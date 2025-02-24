@@ -135,7 +135,13 @@ public abstract class Server extends DealerInventory {
         }
     }
 
-    public void onClientUpdate(Client client, String eventType, Object data){}
+    public abstract void onClientUpdate(Client client, String eventType, Object data);
+
+    protected void broadcastUpdate(String eventType, Object data) {
+        for (Client client : clients.values()) {
+            client.onServerUpdate(eventType, data);
+        }
+    }
 
     protected void registerListener() {
         Bukkit.getPluginManager().registerEvents(this, plugin);

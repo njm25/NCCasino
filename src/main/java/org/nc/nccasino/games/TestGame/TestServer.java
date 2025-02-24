@@ -53,7 +53,6 @@ public class TestServer extends Server {
      */
     @Override
     public void onClientUpdate(Client client, String eventType, Object data) {
-        super.onClientUpdate(client, eventType, data);
 
         UUID clientId = client.getOwnerId();
         Player clientPlayer = Bukkit.getPlayer(clientId);

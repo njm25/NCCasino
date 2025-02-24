@@ -125,7 +125,6 @@ public class BaccaratServer extends Server {
     
     @Override
     public void onClientUpdate(Client client, String eventType, Object data) {
-        super.onClientUpdate(client, eventType, data);
         Player player = client.getPlayer();
     
         switch (eventType) {
@@ -221,11 +220,6 @@ public class BaccaratServer extends Server {
     
     
 
-    protected void broadcastUpdate(String eventType, Object data) {
-        for (Client client : clients.values()) {
-            client.onServerUpdate(eventType, data);
-        }
-    }
     
     private void processBet(Player player, BaccaratClient.BetOption betType, double amount) {
         UUID playerId = player.getUniqueId();

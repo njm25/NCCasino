@@ -1,11 +1,9 @@
 package org.nc.nccasino.games.TestGame;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
@@ -41,7 +39,6 @@ public class TestClient extends Client {
 
     @Override
     public void onServerUpdate(String eventType, Object data) {
-        super.onServerUpdate(eventType, data);
         if (eventType.equals("REFRESH_UI")) {
             refreshUI();
         }
@@ -186,17 +183,4 @@ public class TestClient extends Client {
         return seat1 != null && seat1.equals(player.getUniqueId());
     }
 
-    /**
-     * Utility: Create a player head for a specific UUID.
-     */
-    private ItemStack createPlayerHead(UUID ownerUuid, String displayName) {
-        ItemStack skull = new ItemStack(Material.PLAYER_HEAD, 1);
-        SkullMeta meta = (SkullMeta) skull.getItemMeta();
-        if (meta != null) {
-            meta.setOwningPlayer(Bukkit.getOfflinePlayer(ownerUuid));
-            meta.setDisplayName(displayName);
-            skull.setItemMeta(meta);
-        }
-        return skull;
-    }
 }
