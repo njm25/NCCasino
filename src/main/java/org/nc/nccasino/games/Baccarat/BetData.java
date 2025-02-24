@@ -10,4 +10,13 @@ public class BetData implements Serializable {
         this.betType = betType;
         this.amount = amount;
     }
+
+        @Override
+    public String toString() {
+        return "BetData{" +
+               "betType=" + betType +
+               ", amount=" + amount +
+               '}';
+    }
+    
 }
