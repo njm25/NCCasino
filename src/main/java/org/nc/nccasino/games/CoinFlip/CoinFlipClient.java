@@ -98,7 +98,6 @@ public class CoinFlipClient extends Client {
     private void handleChairOne(){
         if (chairOneOccupant == null){
             chairOneOccupant = player;
-            player.sendMessage("You have taken chair one");
             sendUpdateToServer("PLAYER_SIT_ONE", null);
         }
         else if(chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
@@ -113,7 +112,6 @@ public class CoinFlipClient extends Client {
                 return;
             }
             chairTwoOccupant = player;
-            player.sendMessage("You have taken chair one");
             sendUpdateToServer("PLAYER_SIT_TWO", null);
         }
         else if(chairTwoOccupant != null){
@@ -436,26 +434,14 @@ public class CoinFlipClient extends Client {
         int[] limeSlots = {10, 11, 12, 13, 14, 15, 16, 19, 21, 22, 23, 25, 28, 29, 30, 32, 33, 34};
     
         // Define slot positions for black stained glass panes
-        int[] blackSlots;
-        if (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(player.getUniqueId())) {
-            blackSlots = new int[]{
-                0, 1, 2, 3, 4, 5, 6, 7, 8, 
-                9, 17, 
-                18, 26, 
-                27, 35, 
-                37, 38, 39, 40, 41, 42, 43,
-            };
-        } else {
-            blackSlots = new int[]{
-                0, 1, 2, 3, 4, 5, 6, 7, 8, 
-                9, 17, 
-                18, 26, 
-                27, 35, 
-                37, 38, 39, 40, 41, 42, 43,
-                45, 46, 47, 48, 49, 50, 51, 52, 53
-            };
-        }
-        
+        int[] blackSlots = new int[]{
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 
+            9, 17, 
+            18, 26, 
+            27, 35, 
+            37, 38, 39, 40, 41, 42, 43,
+            45, 46, 47, 48, 49, 50, 51, 52, 53
+        };
     
         // Place black stained glass panes
         for (int slot : blackSlots) {
