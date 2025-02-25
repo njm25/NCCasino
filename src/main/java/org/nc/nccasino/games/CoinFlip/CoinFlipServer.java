@@ -89,7 +89,38 @@ public class CoinFlipServer extends Server {
                     startTimer();
                 }
                 break;
-            
+            case "ANIMATION_FINISHED":
+                if(gameActive){
+                    broadcastUpdate("ANIMATION_FINISHED", data);
+                    Player payoutOne = chairOneOccupant;
+                    Player payoutTwo = chairTwoOccupant;
+                    int payout = betAmount;
+                    gameActive = false;
+                    betAmount = 0; 
+                    timeLeft = 0;
+                    countdownTaskId = -1;
+                    handlePayout(payoutOne, payoutTwo, payout, (int) data);
+                    if(chairOneOccupant !=null && !hasClient(chairOneOccupant.getUniqueId())){
+                        if(chairTwoOccupant != null){
+                            chairOneOccupant = chairTwoOccupant;
+                            chairTwoOccupant = null;
+                            betAmount = 0;
+                            broadcastUpdate("PLAYER_LEAVE_TWO", null);
+                            broadcastUpdate("PLAYER_LEAVE_ONE", null);
+                            broadcastUpdate("PLAYER_SIT_ONE", chairOneOccupant);
+                        } else {
+                            chairOneOccupant = null;
+                            betAmount = 0;
+                            broadcastUpdate("PLAYER_LEAVE_ONE", null);
+                        }
+                    }
+                    if(chairTwoOccupant !=null && !hasClient(chairTwoOccupant.getUniqueId())){
+                        chairTwoOccupant = null;
+                        broadcastUpdate("PLAYER_LEAVE_TWO", null);
+                    }
+                    
+                }
+                break;
             case "GET_CHAIRS":
                 Object[] chairs = {
                     (chairOneOccupant != null) ? chairOneOccupant : null,
@@ -100,6 +131,24 @@ public class CoinFlipServer extends Server {
                 };
                 client.onServerUpdate("GET_CHAIRS", chairs);
                 break;
+        }
+    }
+
+    private void handlePayout(Player one, Player two, int payout, int winner) {
+        Player winnerPlayer = (winner == 0) ? one : two;
+        Player loserPlayer = (winner == 0) ? two : one;
+    
+        // Handle payout and messages for the winner
+        if (winnerPlayer != null && payout > 0) {
+            creditPlayer(winnerPlayer, payout);
+            sendPayoutMessage(winnerPlayer, payout, true);
+            applyWinEffects(winnerPlayer);
+        }
+    
+        // Handle losing message and effects for the loser
+        if (loserPlayer != null) {
+            sendPayoutMessage(loserPlayer, payout, false);
+            applyLoseEffects(loserPlayer);
         }
     }
 
@@ -134,6 +183,5 @@ public class CoinFlipServer extends Server {
 
         }, 0L, 20L); // Run every second
     }
-    
-    
+
 }

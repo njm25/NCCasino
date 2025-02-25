@@ -9,12 +9,10 @@ import java.util.Random;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
@@ -669,62 +667,6 @@ public class BaccaratServer extends Server {
     }
 
     resetGame();
-}
-
-private void creditPlayer(Player player, double amount) {
-    Material currencyMaterial = plugin.getCurrency(internalName);
-    if (currencyMaterial == null) {
-        player.sendMessage("Error: Currency material is not set. Unable to credit winnings.");
-        return;
-    }
-
-    int fullStacks = (int) amount / 64;
-    int remainder = (int) amount % 64;
-    int totalLeftoverAmount = 0;
-    HashMap<Integer, ItemStack> leftover;
-
-    // Try adding full stacks
-    for (int i = 0; i < fullStacks; i++) {
-        ItemStack stack = new ItemStack(currencyMaterial, 64);
-        leftover = player.getInventory().addItem(stack);
-        if (!leftover.isEmpty()) {
-            totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-        }
-    }
-
-    // Try adding remainder
-    if (remainder > 0) {
-        ItemStack remainderStack = new ItemStack(currencyMaterial, remainder);
-        leftover = player.getInventory().addItem(remainderStack);
-        if (!leftover.isEmpty()) {
-            totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-        }
-    }
-
-    if (totalLeftoverAmount > 0) {
-        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-            case STANDARD:{
-                player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
-
-                break;}
-            case VERBOSE:{
-                player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
-                break;     
-            }
-                case NONE:{
-                break;
-            }
-        } 
-        dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
-    }
-}
-
-private void dropExcessItems(Player player, int amount, Material currencyMaterial) {
-    while (amount > 0) {
-        int dropAmount = Math.min(amount, 64);
-        player.getWorld().dropItemNaturally(player.getLocation(), new ItemStack(currencyMaterial, dropAmount));
-        amount -= dropAmount;
-    }
 }
 
 private void resetGame() {
