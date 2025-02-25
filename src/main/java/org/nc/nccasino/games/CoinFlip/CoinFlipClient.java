@@ -241,8 +241,10 @@ public class CoinFlipClient extends Client {
     private void handlePlayerTwoSit(Object data){
         Player playerData2 = (Player) data; // Use the PlayerData wrapper class
         if (playerData2.getUniqueId().equals(player.getUniqueId())){
-            String lore = betAmount == 0 ? "§oWaiting for §o" + chairOneOccupant.getDisplayName() + "§o's bet" : "§oClick to accept bet\nCurrent: §a\" + betAmount";
-            String name = betAmount == 0 ? "§oWaiting " : "§oAccept bet";
+            String name = betAmount == 0 ? "§o" + chairOneOccupant.getDisplayName() + "§o's turn" 
+                                            : "§oAccept bet";
+            String lore = betAmount == 0 ? "§oWaiting for their bet" 
+                                            : "§oClick to accept bet\nCurrent: §a\" + betAmount";
             addItemAndLore(Material.LEVER
                 , 1
                 , name
@@ -254,6 +256,15 @@ public class CoinFlipClient extends Client {
                 createPlayerHead(playerData2.getUniqueId(), playerData2.getDisplayName(), "§7§oClick to leave chair"));
         }
         else {
+            if(chairOneOccupant.getUniqueId().equals(player.getUniqueId()) && !gameActive && betAmount > 0){
+                addItemAndLore(
+                    Material.LEVER
+                    , 1
+                    , "§o" + playerData2.getDisplayName() + "§o's turn"
+                    , slotMapping.get(SlotOption.HANDLE_SUBMIT_BET)
+                    , "§oClick to cancel bet"
+                );
+            }   
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2), 
                 createPlayerHead(playerData2.getUniqueId(), playerData2.getDisplayName()));
         }
@@ -274,7 +285,7 @@ public class CoinFlipClient extends Client {
         chairOneOccupant = null;
         addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
         if(chairTwoOccupant == null){
-            inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2), null);
+            addItemAndLore(Material.OAK_STAIRS, 1, "§7§oSeat unavailable", slotMapping.get(SlotOption.HANDLE_CHAIR_2));
         }
     }
 
@@ -285,7 +296,15 @@ public class CoinFlipClient extends Client {
             clearHandleButton();
         }
         else if(chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
-            
+            if(!gameActive && betAmount > 0){
+                addItemAndLore(
+                    Material.LEVER
+                    , 1
+                    , "§oPlayer 2's turn"
+                    , slotMapping.get(SlotOption.HANDLE_SUBMIT_BET)
+                    , "§oClick to cancel bet"
+                );
+            }   
             addItemAndLore(Material.OAK_STAIRS, 1, "§f§oPlayer 2's seat", slotMapping.get(SlotOption.HANDLE_CHAIR_2));
         }
         chairTwoOccupant = null;
@@ -295,17 +314,27 @@ public class CoinFlipClient extends Client {
         betAmount = data;
         if(chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
             if(chairTwoOccupant == null){            
-                addItemAndLore(Material.LEVER, 1, "§oWaiting for Player 2", slotMapping.get(SlotOption.HANDLE_SUBMIT_BET), "§oClick to cancel bet");
+                addItemAndLore(Material.LEVER, 1
+                , "§oPlayer 2's turn"
+                , slotMapping.get(SlotOption.HANDLE_SUBMIT_BET)
+                , "§oClick to cancel bet"
+                );
             }
             else{
-                addItemAndLore(Material.LEVER, 1, "§oWaiting for §o" + chairTwoOccupant.getDisplayName(), slotMapping.get(SlotOption.HANDLE_SUBMIT_BET), "§oClick to cancel bet");
+                addItemAndLore(Material.LEVER, 1
+                , "§o" + chairTwoOccupant.getDisplayName() + "§o's turn"
+                , slotMapping.get(SlotOption.HANDLE_SUBMIT_BET)
+                , "§oClick to cancel bet");
 
             }
             bettingEnabled = false;
             replaceBottomRow();
         }
         else if(chairTwoOccupant != null && chairTwoOccupant.getUniqueId().equals(player.getUniqueId())){
-            addItemAndLore(Material.LEVER, 1, "§oAccept bet", slotMapping.get(SlotOption.HANDLE_SUBMIT_BET), "§oClick to accept bet\nCurrent: §a" + betAmount);
+            addItemAndLore(Material.LEVER
+            , 1, "§oAccept bet"
+            , slotMapping.get(SlotOption.HANDLE_SUBMIT_BET)
+            , "§oClick to accept bet\nCurrent: §a" + betAmount);
         }
         if (SoundHelper.getSoundSafely("block.enchantment_table.use", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f); 
         
@@ -434,6 +463,7 @@ public class CoinFlipClient extends Client {
         }
         if (chairOne == null && chairTwo == null) {
             addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
+            addItemAndLore(Material.OAK_STAIRS, 1, "§7§oSeat unavailable", slotMapping.get(SlotOption.HANDLE_CHAIR_2));
         } else if (chairOne != null && chairTwo != null) {
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1), 
                 createPlayerHead(chairOne.getUniqueId(), chairOne.getDisplayName()));
@@ -445,6 +475,7 @@ public class CoinFlipClient extends Client {
 
             chairOneOccupant = player1;
             chairTwoOccupant = player2;
+            
         } else if (chairOne != null) {
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1), 
                 createPlayerHead(chairOne.getUniqueId(), chairOne.getDisplayName()));
@@ -460,6 +491,7 @@ public class CoinFlipClient extends Client {
             this.betAmount = betAmount;
             addItemAndLore(Material.CHEST, 1, "§oPot", 40, "§oCurrent: §o§a" + betAmount);
         }
+
     }
 
     
@@ -513,7 +545,7 @@ public class CoinFlipClient extends Client {
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1), 
             createPlayerHead(chairOneOccupant.getUniqueId(), chairOneOccupant.getDisplayName(), "§7§oClick to leave chair"));
         }
-        addItemAndLore(Material.LEVER, 1, "§oSubmit bet", slotMapping.get(SlotOption.HANDLE_SUBMIT_BET), "§oClick here to submit your bet");
+        addItemAndLore(Material.LEVER, 1, "§oSubmit bet", slotMapping.get(SlotOption.HANDLE_SUBMIT_BET), "§oClick to submit your bet");
         hidePotChest();
     }
 
@@ -524,9 +556,9 @@ public class CoinFlipClient extends Client {
         }
         addItemAndLore(Material.LEVER
             , 1
-            , "§oWaiting "
+            , "§o" + chairOneOccupant.getDisplayName() + "§o's turn"
             , slotMapping.get(SlotOption.HANDLE_SUBMIT_BET)
-            , "§oWaiting for §o" + chairOneOccupant.getDisplayName() + "§o's bet"
+            , "§oWaiting for their bet"
         );
         hidePotChest();
     }
