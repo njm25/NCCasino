@@ -2,6 +2,7 @@ package org.nc.nccasino.entities;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
@@ -10,7 +11,9 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.components.MobSelectionMenu;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -91,11 +94,12 @@ public abstract class Menu extends DealerInventory {
 
     protected final Map<SlotOption, Integer> slotMapping = new HashMap<>();
     protected final UUID ownerId;
-    protected final UUID dealerId;
+    public final UUID dealerId;
     protected final Nccasino plugin;
     protected final Consumer<Player> returnCallback;
     protected final String returnMessage;
     protected final Player player;
+    public Mob dealer;
 
     /**
      * Constructor for a menu component.
@@ -121,7 +125,18 @@ public abstract class Menu extends DealerInventory {
         this.returnMessage = returnMessage;
         this.player = player;
         this.returnCallback = returnCallback;
-
+        this.dealer = Dealer.getMobFromId(dealerId);
+        if (this.dealer == null) {
+            // Attempt to find a nearby Dealer if not found above
+            this.dealer = (Mob) player.getWorld()
+                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
+                .filter(entity -> entity instanceof Mob)
+                .map(entity -> (Mob) entity)
+                .filter(v -> Dealer.isDealer(v)
+                             && Dealer.getUniqueId(v).equals(this.dealerId))
+                .findFirst().orElse(null);
+        }
+     
         // Register this menu as an event listener
         Bukkit.getPluginManager().registerEvents(this, plugin);
 
@@ -211,4 +226,28 @@ public abstract class Menu extends DealerInventory {
         );
     }   
 
+    public static List<Player> getOpenInventories(UUID dealerId) {
+        List<Player> players = new ArrayList<>();
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.getOpenInventory() == null || player.getOpenInventory().getTopInventory() == null) {
+                continue; // Skip if no inventory is open
+            }
+
+            if (player.getOpenInventory().getTopInventory().getHolder() instanceof Menu menu) {
+                Mob dealer = (Mob) player.getWorld()
+                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
+                .filter(entity -> entity instanceof Mob)
+                .map(entity -> (Mob) entity)
+                .filter(v -> Dealer.isDealer(v)
+                             && Dealer.getUniqueId(v).equals(menu.dealerId))
+                .findFirst().orElse(null);
+                if (Dealer.getUniqueId(dealer).equals(dealerId) || dealer.getUniqueId().equals(dealerId)) {
+                    players.add(player);
+                }
+            }
+        }
+
+        return players;
+    }
 }

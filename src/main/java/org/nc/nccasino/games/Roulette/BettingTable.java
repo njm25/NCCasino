@@ -28,7 +28,7 @@ import java.util.*;
 public class BettingTable extends DealerInventory {
     public static final Set<Player> switchingPlayers = new HashSet<>();
     private final UUID playerId;
-    private final UUID dealerId;
+    public final UUID dealerId;
     private final Mob dealer;
     private final Nccasino plugin;
     private final String internalName;

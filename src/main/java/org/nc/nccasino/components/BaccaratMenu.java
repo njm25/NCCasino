@@ -282,6 +282,7 @@ public class BaccaratMenu extends Menu {
             }
         }
 
+        plugin.deleteAssociatedInventories(dealer);
         cleanup();
     }
 

@@ -285,7 +285,7 @@ public class CoinFlipClient extends Client {
         chairOneOccupant = null;
         addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
         if(chairTwoOccupant == null){
-            addItemAndLore(Material.OAK_STAIRS, 1, "§7§oSeat unavailable", slotMapping.get(SlotOption.HANDLE_CHAIR_2));
+            addItemAndLore(Material.OAK_STAIRS, 1, "§7§oSeat unavailable", slotMapping.get(SlotOption.HANDLE_CHAIR_2), "§oPlease sit in other chair");
         }
     }
 
@@ -337,8 +337,8 @@ public class CoinFlipClient extends Client {
             , "§oClick to accept bet\nCurrent: §a" + betAmount);
         }
         if (SoundHelper.getSoundSafely("block.enchantment_table.use", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f); 
-        
-        addItemAndLore(Material.CHEST, 1, "§oPot", 40, "§oCurrent: §o§a" + betAmount);
+        updatePotChest();
+
     }
                         
     private void handleCancelBet(){
@@ -463,7 +463,7 @@ public class CoinFlipClient extends Client {
         }
         if (chairOne == null && chairTwo == null) {
             addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
-            addItemAndLore(Material.OAK_STAIRS, 1, "§7§oSeat unavailable", slotMapping.get(SlotOption.HANDLE_CHAIR_2));
+            addItemAndLore(Material.OAK_STAIRS, 1, "§7§oSeat unavailable", slotMapping.get(SlotOption.HANDLE_CHAIR_2), "§oPlease sit in other chair");
         } else if (chairOne != null && chairTwo != null) {
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1), 
                 createPlayerHead(chairOne.getUniqueId(), chairOne.getDisplayName()));
@@ -489,7 +489,7 @@ public class CoinFlipClient extends Client {
         }
         if(betAmount!=0){
             this.betAmount = betAmount;
-            addItemAndLore(Material.CHEST, 1, "§oPot", 40, "§oCurrent: §o§a" + betAmount);
+            updatePotChest();
         }
 
     }
@@ -568,7 +568,7 @@ public class CoinFlipClient extends Client {
     }
 
     private void updatePotChest(){
-        addItemAndLore(Material.CHEST, 1, "§oPot", 40, "§oCurrent: §o§a" + betAmount);
+        addItemAndLore(Material.CHEST, 1, "§oPot", 40, "§oCurrent: §o§a" + betAmount + " " + getCurrencyMaterial().toString().charAt(0) + getCurrencyMaterial().toString().substring(1).toLowerCase() + (betAmount > 1 ? "s" : ""));
     }
 
     private int flipTask = -1;

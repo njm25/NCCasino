@@ -33,7 +33,7 @@ public class DealerInventory implements InventoryHolder, Listener {
     public static final Map<UUID, DealerInventory> inventories = new HashMap<>();
 
     protected Inventory inventory;
-    protected final UUID dealerId;
+    public UUID dealerId;
 
     // Protected constructor to allow subclassing
     protected DealerInventory(UUID dealerId, int size, String title) {

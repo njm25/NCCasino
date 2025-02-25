@@ -132,6 +132,7 @@ public class DealerInteractListener implements Listener {
                 Bukkit.getLogger().warning("Error: adminInventory's dealerId does not match the dealerId of entity interacted with");
             }
         } else {
+            System.out.println("Dealer id :"+  dealerId);
             AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
             player.openInventory(adminInventory.getInventory());
         }
@@ -183,7 +184,7 @@ public class DealerInteractListener implements Listener {
             }
         }
         if (shouldPlayAnimation(player, dealerId)) {
-            startAnimation(player, dealerInventory, dealerId);
+            startAnimation(dealer, player, dealerInventory, dealerId);
         } else {
             player.openInventory(dealerInventory.getInventory());
         }
@@ -194,12 +195,12 @@ public class DealerInteractListener implements Listener {
                plugin.getConfig().contains("dealers." + Dealer.getInternalName(dealer) + ".animation-message");
     }
 
-    private void startAnimation(Player player, DealerInventory dealerInventory, UUID dealerId) {
+    private void startAnimation(Mob dealer, Player player, DealerInventory dealerInventory, UUID dealerId) {
         String animationMessage = plugin.getConfig().getString("dealers." + Dealer.getInternalName(dealer) + ".animation-message");
         activeAnimations.add(player);
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            AnimationMessage animationTable = new AnimationMessage(player, plugin, animationMessage, 0);
+            AnimationMessage animationTable = new AnimationMessage(dealer, player, plugin, animationMessage, 0);
             player.openInventory(animationTable.getInventory());
 
             animationTable.animateMessage(player, () -> afterAnimationComplete(player, dealerInventory));

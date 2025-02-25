@@ -831,7 +831,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
     private void handleSelectGameType(Player player) {
         // Open the Game Options Inventory
-        GameOptionsMenu inventory = new GameOptionsMenu(player, plugin, dealer,
+        GameOptionsMenu inventory = new GameOptionsMenu(dealerId, player, plugin, dealer,
         (uuid) -> {
         
             // Cancel action: re-open the AdminInventory
@@ -1040,6 +1040,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             }
 
                 
+            plugin.deleteAssociatedInventories(dealer);
             cleanup();
 
         }
@@ -1082,6 +1083,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             }
 
                 
+            plugin.deleteAssociatedInventories(dealer);
             cleanup();
         }
         // Editing dealer animation message
@@ -1124,6 +1126,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             }
 
                 
+            plugin.deleteAssociatedInventories(dealer);
             cleanup();
         }
         else if (chipEditMode.get(playerId) != null) {
@@ -1164,6 +1167,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             }
 
                 
+            plugin.deleteAssociatedInventories(dealer);
             cleanup();
         }
     }
@@ -1238,6 +1242,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             // Mark move as complete
             movingDealers.remove(dealerId);
             moveMode.remove(player.getUniqueId());
+            plugin.deleteAssociatedInventories(dealer);
             cleanup();
             return;
         }

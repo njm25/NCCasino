@@ -65,7 +65,6 @@ public class MinesTable extends DealerInventory {
     private boolean[][] fireGrid; // [6][9] To track which tiles are on fire
     private final List<Integer> scheduledTasks = new ArrayList<>();
     private boolean rebetEnabled = false; 
-
     // Adjusted fields for grid mapping
     private final int[] gridSlots = {
         2, 3, 4, 5, 6,
@@ -124,7 +123,7 @@ public class MinesTable extends DealerInventory {
 
     // Field to keep track of selected mine count slot
     private int selectedMineSlot = -1;
-    public MinesTable(Player player,  Nccasino plugin, String internalName, MinesInventory minesInventory) {
+    public MinesTable(UUID dealerId, Player player,  Nccasino plugin, String internalName, MinesInventory minesInventory) {
         super(player.getUniqueId(), 54, "Mines");
         this.playerId = player.getUniqueId();
         this.player = player;
@@ -137,6 +136,7 @@ public class MinesTable extends DealerInventory {
         this.safePicks = 0;
         this.gameOver = false;
         int defMines;
+        this.dealerId = dealerId;
 
         loadChipValuesFromConfig();
         if (!plugin.getConfig().contains("dealers." + internalName + ".default-mines")) {

@@ -239,6 +239,7 @@ public class CoinFlipMenu extends Menu {
             }
         }
 
+        plugin.deleteAssociatedInventories(dealer);
         cleanup();
     }
 

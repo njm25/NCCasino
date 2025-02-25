@@ -54,7 +54,7 @@ public class MinesInventory extends DealerInventory {
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     if (player.getOpenInventory().getTopInventory().getHolder() == this.getInventory().getHolder()) {
                  
-                        MinesTable minesTable = new MinesTable(player, plugin, internalName, this);
+                        MinesTable minesTable = new MinesTable(dealerId, player, plugin, internalName, this);
                         Tables.put(player.getUniqueId(), minesTable);
                         minesTable.initializeTable();
                         player.openInventory(minesTable.getInventory());

@@ -307,6 +307,7 @@ public class BlackjackMenu extends Menu {
             }
         }
 
+        plugin.deleteAssociatedInventories(dealer);
         cleanup();
     }
 }

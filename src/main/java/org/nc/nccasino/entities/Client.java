@@ -26,7 +26,7 @@ public abstract class Client extends DealerInventory {
     protected final Server server;
     protected final Player player;
     protected final Nccasino plugin;
-    protected final String internalName;
+    public final String internalName;
 
     protected final Deque<Double> betStack = new ArrayDeque<>();
     public boolean rebetEnabled = false;
@@ -615,5 +615,27 @@ public abstract class Client extends DealerInventory {
         inventory.setItem(47, null);
         inventory.setItem(46, null);
         inventory.setItem(45, null);
+    }
+
+    private String getInternalName(){
+        return internalName;
+    }
+
+    public static List<Player> getOpenInventories(String internalName) {
+        List<Player> players = new ArrayList<>();
+        
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.getOpenInventory() == null || player.getOpenInventory().getTopInventory() == null) {
+                continue; // Skip if no inventory is open
+            }
+    
+            if (player.getOpenInventory().getTopInventory().getHolder() instanceof Client client) {
+                if (client.getInternalName().equals(internalName)) {
+                    players.add(player);
+                }
+            }
+        }
+        
+        return players;
     }
 }

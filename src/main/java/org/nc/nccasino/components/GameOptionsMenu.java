@@ -41,11 +41,11 @@ public class GameOptionsMenu extends Menu {
         initializeMenu();
     }
 
-    public GameOptionsMenu(Player player, Nccasino plugin, Mob dealer, Consumer<Player> ret) {
+    public GameOptionsMenu(UUID dealerId, Player player, Nccasino plugin, Mob dealer, Consumer<Player> ret) {
         super(
             player, 
             plugin, 
-            UUID.randomUUID(), 
+            dealerId, 
             "Edit Game Type", 
             9, 
             "Return to " + Dealer.getInternalName(dealer) + "'s Admin Menu", 

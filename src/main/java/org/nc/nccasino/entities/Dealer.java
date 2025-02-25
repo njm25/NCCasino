@@ -348,6 +348,7 @@ public class Dealer {
         if (dealerId == null) return;
 
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
+        plugin.deleteAssociatedInventories(mob);
         DealerInventory newInventory;
         String newName;
         int defaultTimer = 30;

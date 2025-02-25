@@ -239,6 +239,7 @@ public class RouletteMenu extends Menu {
             }
         }
 
+        plugin.deleteAssociatedInventories(dealer);
         cleanup();
     }
 

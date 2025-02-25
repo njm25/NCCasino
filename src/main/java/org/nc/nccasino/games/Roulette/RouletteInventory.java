@@ -121,7 +121,6 @@ public class RouletteInventory extends DealerInventory {
     private final Set<Integer> activeTaskIds = new HashSet<>();
     private BukkitTask miscTask;
     private int miscTaskId;
-
     /////////////////////////////////////////////////////////////////////////////////////////
     private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
 
@@ -137,6 +136,7 @@ public class RouletteInventory extends DealerInventory {
         initializeExtraSlots();
         registerListener();
         plugin.addInventory(dealerId, this);
+        this.dealerId = dealerId;
     }
 
     public MultiChannelEngine getMCE() {

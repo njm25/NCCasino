@@ -52,7 +52,6 @@ import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Menu;
 
 public class MobSelectionMenu extends Menu {
-    private final Mob dealer;
     private int currentPage = 1;
     private static final int PAGE_SIZE = 45;
     private static final Map<Material, EntityType> spawnEggToEntity = new HashMap<>();
@@ -233,14 +232,17 @@ public class MobSelectionMenu extends Menu {
             returnName, 
             returnToAdmin
         ); 
-        this.dealer = (Mob) player.getWorld()
-        .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-        .filter(entity -> entity instanceof Mob)
-        .map(entity -> (Mob) entity)
-        .filter(v -> Dealer.isDealer(v)
-                     && Dealer.getUniqueId(v).equals(this.dealerId))
-        .findFirst().orElse(null);
-
+        this.dealer = Dealer.getMobFromId(dealerId);
+        if (this.dealer == null) {
+            // Attempt to find a nearby Dealer if not found above
+            this.dealer = (Mob) player.getWorld()
+                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
+                .filter(entity -> entity instanceof Mob)
+                .map(entity -> (Mob) entity)
+                .filter(v -> Dealer.isDealer(v)
+                             && Dealer.getUniqueId(v).equals(this.dealerId))
+                .findFirst().orElse(null);
+        }
      
 
         initializeMenu();
@@ -386,77 +388,86 @@ public class MobSelectionMenu extends Menu {
             "Reset config to default?",
             (uuid) -> {
                 // Confirm action
-                   Mob oldDealer = plugin.getDealerByInternalName(internalName);
-                    if (oldDealer != null) {
-                        Dealer.removeDealer(oldDealer);
-                        DealerInventory.unregisterAllListeners(oldDealer);
-                    }
-                    AdminMenu.deleteAssociatedAdminInventories(player);                
-                plugin.saveDefaultDealerConfig(internalName);
-                Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
-                dealersConfig.set("dealers." + internalName + ".world", worldName);
-                dealersConfig.set("dealers." + internalName + ".X", x);
-                dealersConfig.set("dealers." + internalName + ".Y", y);
-                dealersConfig.set("dealers." + internalName + ".Z", z);
-                try {
-                    dealersConfig.save(dealersFile);
-                } catch (Exception e) {
-                    player.sendMessage(ChatColor.RED + "Failed to save dealer data: " + e.getMessage());
-                }
-                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                    case STANDARD -> player.sendMessage(ChatColor.GREEN + "Dealer changed.");
-                    case VERBOSE  ->player.sendMessage(ChatColor.GREEN + "Dealer changed to " + ChatColor.YELLOW + formatEntityName(selectedType.name())+"§a.");
-                    default -> {}
-                }                player.closeInventory();
-                if (!plugin.getConfig().contains("dealers." + internalName + ".stand-on-17") && gameType.equals("Blackjack")) {
-                    plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
-                } else {
-                    int hasStand17Config = plugin.getConfig().getInt("dealers." + internalName + ".stand-on-17");
-                    if (hasStand17Config > 100 || hasStand17Config < 0) {
-                        plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
-                    }
-                }
-                if (!plugin.getConfig().contains("dealers." + internalName + ".default-mines") && gameType.equals("Mines")) {
-                    plugin.getConfig().set("dealers." + internalName + ".default-mines", 3);
-                } else {
-                    int deafultMines = plugin.getConfig().getInt("dealers." + internalName + ".default-mines");
-                    if (deafultMines > 24 || deafultMines < 1) {
-                        plugin.getConfig().set("dealers." + internalName + ".default-mines", 3);
-                    }
-                }
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (dealer != null) {
+                        plugin.deleteAssociatedInventories(dealer);
+                        
+                        // Step 1: Wait 5 ticks to ensure inventories are closed, then remove dealer
+                        Bukkit.getScheduler().runTask(plugin, () -> {
+                            DealerInventory.unregisterAllListeners(dealer);
+                            Dealer.removeDealer(dealer);
         
-                this.delete();
+                            // Step 2: Wait another 5 ticks to ensure dealer is fully removed before spawning new one
+                            Bukkit.getScheduler().runTask(plugin, () -> {
+                                AdminMenu.deleteAssociatedAdminInventories(player);
+                                plugin.saveDefaultDealerConfig(internalName);
+                                Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
+                                dealersConfig.set("dealers." + internalName + ".world", worldName);
+                                dealersConfig.set("dealers." + internalName + ".X", x);
+                                dealersConfig.set("dealers." + internalName + ".Y", y);
+                                dealersConfig.set("dealers." + internalName + ".Z", z);
+        
+                                try {
+                                    dealersConfig.save(dealersFile);
+                                } catch (Exception e) {
+                                    player.sendMessage(ChatColor.RED + "Failed to save dealer data: " + e.getMessage());
+                                }
+        
+                                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                                    case STANDARD -> player.sendMessage(ChatColor.GREEN + "Dealer changed.");
+                                    case VERBOSE -> player.sendMessage(ChatColor.GREEN + "Dealer changed to " + ChatColor.YELLOW + formatEntityName(selectedType.name()) + "§a.");
+                                    default -> {}
+                                }
+        
+                                player.closeInventory();
+                                this.delete();
+                            }); // Ensures dealer is deleted before spawning new one
+                        }); // Ensures inventories are closed before removing dealer
+                    }
+                });
             },
             (uuid) -> {
-                // Dent action
-
-                Mob oldDealer = plugin.getDealerByInternalName(internalName);
-                if (oldDealer != null) {
-                    Dealer.removeDealer(oldDealer);
-                    DealerInventory.unregisterAllListeners(oldDealer);
-                }
-                AdminMenu.deleteAssociatedAdminInventories(player);
-                Mob newDealer = Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
-                Dealer.updateGameType(newDealer, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
-                dealersConfig.set("dealers." + internalName + ".world", worldName);
-                dealersConfig.set("dealers." + internalName + ".X", x);
-                dealersConfig.set("dealers." + internalName + ".Y", y);
-                dealersConfig.set("dealers." + internalName + ".Z", z);
-                try {
-                    dealersConfig.save(dealersFile);
-                } catch (Exception e) {
-                    player.sendMessage(ChatColor.RED + "Failed to save dealer data: " + e.getMessage());
-                }
-                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                    case STANDARD -> player.sendMessage(ChatColor.GREEN + "Dealer changed.");
-                    case VERBOSE  ->player.sendMessage(ChatColor.GREEN + "Dealer changed to " + ChatColor.YELLOW + formatEntityName(selectedType.name())+"§a.");
-                    default -> {}
-                }
-                player.closeInventory();
-                this.delete();
+                // Deny action
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (dealer != null) {
+                        plugin.deleteAssociatedInventories(dealer);
+        
+                        // Step 1: Wait to ensure inventories are closed, then remove dealer
+                        Bukkit.getScheduler().runTask(plugin, () -> {
+                            DealerInventory.unregisterAllListeners(dealer);
+                            Dealer.removeDealer(dealer);
+        
+                            // Step 2: Wait, then spawn new dealer
+                            Bukkit.getScheduler().runTask(plugin, () -> {
+                                AdminMenu.deleteAssociatedAdminInventories(player);
+                                Mob newDealer = Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
+                                Dealer.updateGameType(newDealer, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+                                dealersConfig.set("dealers." + internalName + ".world", worldName);
+                                dealersConfig.set("dealers." + internalName + ".X", x);
+                                dealersConfig.set("dealers." + internalName + ".Y", y);
+                                dealersConfig.set("dealers." + internalName + ".Z", z);
+        
+                                try {
+                                    dealersConfig.save(dealersFile);
+                                } catch (Exception e) {
+                                    player.sendMessage(ChatColor.RED + "Failed to save dealer data: " + e.getMessage());
+                                }
+        
+                                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                                    case STANDARD -> player.sendMessage(ChatColor.GREEN + "Dealer changed.");
+                                    case VERBOSE -> player.sendMessage(ChatColor.GREEN + "Dealer changed to " + ChatColor.YELLOW + formatEntityName(selectedType.name()) + "§a.");
+                                    default -> {}
+                                }
+        
+                                player.closeInventory();
+                                this.delete();
+                            });
+                        });
+                    }
+                });
             },
             plugin
-            );
+        );
         
         player.openInventory(confirmInventory.getInventory());
     
