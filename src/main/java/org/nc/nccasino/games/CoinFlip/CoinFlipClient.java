@@ -593,7 +593,6 @@ public class CoinFlipClient extends Client {
 
                     flipTask = -1; // Reset task ID
                     cancel();
-                    Player winningPlayer = winner == 0 ? chairOneOccupant : chairTwoOccupant;
                     if (SoundHelper.getSoundSafely("block.note_block.chime", player) != null)
                         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 3f, 1.0f); 
 
