@@ -21,6 +21,7 @@ import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.helpers.SoundHelper;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -330,4 +331,23 @@ public class DealerInventory implements InventoryHolder, Listener {
         }
         return skull;
     }
+
+        /**
+    /**
+     * Utility: Create a player head for a specific UUID.
+     */
+    protected ItemStack createPlayerHead(UUID ownerUuid, String displayName, String lore) {
+        ItemStack skull = new ItemStack(Material.PLAYER_HEAD, 1);
+        SkullMeta meta = (SkullMeta) skull.getItemMeta();
+        if (meta != null) {
+            meta.setOwningPlayer(Bukkit.getOfflinePlayer(ownerUuid));
+            meta.setDisplayName(displayName);
+            if (lore != null && !lore.isEmpty()) {
+                meta.setLore(Arrays.asList(lore.split("\n"))); // Format lore into multiple lines
+            }
+            skull.setItemMeta(meta);
+        }
+        return skull;
+    }
+
 }
