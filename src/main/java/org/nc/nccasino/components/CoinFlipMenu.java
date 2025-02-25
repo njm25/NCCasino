@@ -23,14 +23,14 @@ import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
 import net.md_5.bungee.api.ChatColor;
 
-public class RouletteMenu extends Menu {
+public class CoinFlipMenu extends Menu {
     private UUID dealerId;
     private Nccasino plugin;
     private String returnName;
     private Mob dealer;
-    public static final Map<UUID, RouletteMenu> RAInventories = new HashMap<>();
+    public static final Map<UUID, CoinFlipMenu> RAInventories = new HashMap<>();
 
-    public RouletteMenu(UUID dealerId,Player player, String title, Consumer<Player> ret, Nccasino plugin,String returnName) {
+    public CoinFlipMenu(UUID dealerId,Player player, String title, Consumer<Player> ret, Nccasino plugin,String returnName) {
         super(player, plugin, dealerId, title, 9, title, ret);
         this.dealerId = dealerId;
         this.plugin = plugin;
@@ -87,13 +87,13 @@ public class RouletteMenu extends Menu {
     public void onInventoryClose(InventoryCloseEvent event) {
         Player player = (Player) event.getPlayer();
         UUID playerId = player.getUniqueId();
-        if(event.getInventory().getHolder() instanceof RouletteMenu){
+        if(event.getInventory().getHolder() instanceof CoinFlipMenu){
         // Check if the player has an active AdminInventory
             if (RAInventories.containsKey(playerId)) {
                     // Check if the player is currently editing something
                 if (!AdminMenu.timerEditMode.containsKey(playerId)) {
                     // Remove the AdminInventory and clean up references
-                    RouletteMenu inventory = RAInventories.remove(playerId);
+                    CoinFlipMenu inventory = RAInventories.remove(playerId);
 
                     if (inventory != null) {
                         inventory.cleanup();
@@ -140,7 +140,7 @@ public class RouletteMenu extends Menu {
                         player.sendMessage("§cInvalid option selected.");
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cInvalid roulette settings option selected.");
+                        player.sendMessage("§cInvalid coin flip settings option selected.");
                         break;}
                     case NONE:{
                         break;
@@ -232,7 +232,7 @@ public class RouletteMenu extends Menu {
                     player.sendMessage("§cCould not find dealer.");
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cCould not find roulette settings dealer.");
+                    player.sendMessage("§cCould not find coin flip settings dealer.");
                     break;
                 case NONE:
                     break;

@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -17,7 +18,9 @@ import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.listeners.DealerInteractListener;
 import org.nc.VSE.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -36,7 +39,7 @@ public class AnimationMessage extends DealerInventory {
 
    
 
-    public AnimationMessage(Player player, Nccasino plugin, String animationMessage, int index) {
+    public AnimationMessage(Mob dealer, Player player, Nccasino plugin, String animationMessage, int index) {
         super(player.getUniqueId(), 54, "");
 
         this.playerId = player.getUniqueId();
@@ -226,6 +229,23 @@ public class AnimationMessage extends DealerInventory {
         }
     }
 
+    public static List<Player> getOpenInventories(UUID dealerId) {
+        List<Player> players = new ArrayList<>();
+        
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.getOpenInventory() == null || player.getOpenInventory().getTopInventory() == null) {
+                continue; // Skip if no inventory is open
+            }
+
+            if (player.getOpenInventory().getTopInventory().getHolder() instanceof AnimationMessage animationMessage) {
+                
+                if (animationMessage.playerId.equals(player.getUniqueId())) {
+                    players.add(player);
+                }
+            }
+        }
+        return players;
+    }
 
     static {
         // Full alphabet using 6x5 grids for each letter

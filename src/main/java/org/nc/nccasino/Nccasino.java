@@ -32,12 +32,20 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Shulker;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.Listener;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.commands.CommandExecution;
 import org.nc.nccasino.commands.CommandTabCompleter;
+import org.nc.nccasino.components.AnimationMessage;
 import org.nc.nccasino.entities.DealerInventory;
+import org.nc.nccasino.entities.Menu;
+import org.nc.nccasino.games.Blackjack.BlackjackInventory;
+import org.nc.nccasino.games.Mines.MinesTable;
+import org.nc.nccasino.games.Roulette.BettingTable;
+import org.nc.nccasino.games.Roulette.RouletteInventory;
+import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.Metrics;
 import org.nc.nccasino.helpers.Preferences;
@@ -163,7 +171,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         String internalName = Dealer.getInternalName(mob);
                         String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
                         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
-                        int timer = getConfig().getInt("dealers." + internalName + ".timer", 0);
+                        int timer = getConfig().getInt("dealers." + internalName + ".timer", 30);
                         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
                         List<Integer> chipSizes = new ArrayList<>();
                         ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
@@ -305,12 +313,16 @@ public final class Nccasino extends JavaPlugin implements Listener {
         if (!Dealer.isDealer(mob)) {
             return;
         }
-
+    
+        // Delete the associated inventory for this dealer
+        deleteAssociatedInventories(mob);
+    
         String internalName = Dealer.getInternalName(mob);
         String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
         String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
         int timer = getConfig().getInt("dealers." + internalName + ".timer", 30);
         String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
+        
         List<Integer> chipSizes = new ArrayList<>();
         ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
         if (chipSizeSection != null) {
@@ -319,51 +331,83 @@ public final class Nccasino extends JavaPlugin implements Listener {
             }
         }
         chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
+        
         String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
         String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
+        
         Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
         Dealer.startLookingAtPlayers(mob);
     }
-
+    
     private void reloadDealers() {
-        // Collect dealer IDs first
-        List<UUID> dealerIdsToDelete = new ArrayList<>(DealerInventory.inventories.keySet());
-
-        // Delete them
-        for (UUID dealerId : dealerIdsToDelete) {
-            DealerInventory inv = DealerInventory.getInventory(dealerId);
-            if (inv != null) {
-                inv.delete();
-            }
-        }
-        DealerInventory.inventories.clear(); // Ensure the inventory map is empty
-
-        // Refresh each dealer from config
         Bukkit.getWorlds().forEach(world -> {
             for (Entity entity : world.getEntities()) {
                 if (entity instanceof Mob mob) {
-                    if (Dealer.isDealer(mob)) {
-                        String internalName = Dealer.getInternalName(mob);
-                        String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
-                        String gameType = getConfig().getString("dealers." + internalName + ".game", "Menu");
-                        int timer = getConfig().getInt("dealers." + internalName + ".timer", 30);
-                        String anmsg = getConfig().getString("dealers." + internalName + ".animation-message");
-                        List<Integer> chipSizes = new ArrayList<>();
-                        ConfigurationSection chipSizeSection = getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
-                        if (chipSizeSection != null) {
-                            for (String key : chipSizeSection.getKeys(false)) {
-                                chipSizes.add(getConfig().getInt("dealers." + internalName + ".chip-sizes." + key));
-                            }
-                        }
-                        chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
-                        String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
-                        String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
-                        Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
-                        Dealer.startLookingAtPlayers(mob);
+                    reloadDealer(mob); // Now calls the refactored function
+                }
+            }
+        });
+    }
+        
+    public void deleteAssociatedInventories(Mob mob) {
+        UUID dealerId = Dealer.getUniqueId(mob);
+    
+        DealerInventory inv = DealerInventory.getInventory(dealerId);
+        if (inv != null) {
+            inv.delete();
+            DealerInventory.inventories.remove(dealerId);
+        }
+    
+        // Close inventories on the main thread
+        Bukkit.getScheduler().runTask(this, () -> {
+            // Close all player inventories linked to this dealer
+            List<Player> menuPlayers = Menu.getOpenInventories(dealerId);
+            for (Player player : menuPlayers) {
+                player.closeInventory();
+            }
+
+            String internalName = Dealer.getInternalName(mob);
+
+            List<Player> clientPlayers = Client.getOpenInventories(internalName);
+            for (Player player : clientPlayers) {
+                player.closeInventory();
+            }
+
+            // Close all animation inventories linked to this dealer
+            List<Player> animationPlayers = AnimationMessage.getOpenInventories(dealerId);
+            for (Player player : animationPlayers) {
+                player.closeInventory();
+            }
+
+            // Close any players with an open inventory of MinesTable, RouletteInventory, BettingTable, or BlackjackInventory
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                if (player.getOpenInventory() == null || player.getOpenInventory().getTopInventory() == null) {
+                    continue; // Skip if the player has no open inventory
+                }
+
+                Inventory holderInventory = player.getOpenInventory().getTopInventory();
+
+                if (holderInventory.getHolder() instanceof MinesTable minesTable) {
+                    if (minesTable.dealerId.equals(dealerId)) {
+                        player.closeInventory();
+                    }
+                } else if (holderInventory.getHolder() instanceof RouletteInventory rouletteInventory) {
+                    if (rouletteInventory.dealerId.equals(dealerId)) {
+                        player.closeInventory();
+                    }
+                } else if (holderInventory.getHolder() instanceof BettingTable bettingTable) {
+                    if (bettingTable.dealerId.equals(dealerId)) {
+                        player.closeInventory();
+                    }
+                } else if (holderInventory.getHolder() instanceof BlackjackInventory blackjackInventory) {
+                    if (blackjackInventory.dealerId.equals(dealerId)) {
+                        player.closeInventory();
                     }
                 }
             }
         });
+
+
     }
 
     // Utility method to create NamespacedKey instances

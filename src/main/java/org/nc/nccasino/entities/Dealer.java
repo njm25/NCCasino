@@ -19,9 +19,13 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.NamespacedKey;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.components.AdminMenu;
+import org.nc.nccasino.games.Baccarat.BaccaratServer;
 import org.nc.nccasino.games.Blackjack.BlackjackInventory;
+import org.nc.nccasino.games.CoinFlip.CoinFlipServer;
 import org.nc.nccasino.games.Mines.MinesInventory;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
+import org.nc.nccasino.games.TestGame.TestServer;
 import org.nc.nccasino.helpers.AttributeHelper;
 
 import java.util.HashMap;
@@ -261,6 +265,20 @@ public class Dealer {
                 inventory = new MinesInventory(uniqueId, plugin, internalName);
                 name = "Mines Dealer";
                 break;
+            case "Baccarat":
+                inventory = new BaccaratServer(uniqueId, plugin, internalName);
+                name = "Baccarat Dealer";
+                defaultTimer = 10;
+                break;
+            case "Test Game":
+                inventory = new TestServer(uniqueId, plugin, internalName);
+                name = "Test Game Dealer";
+                break;
+            case "Coin Flip":
+                inventory = new CoinFlipServer(uniqueId, plugin, internalName);
+                name = "Coin Flip Dealer";
+                defaultTimer = 3;
+                break;
             default:
                 defaultTimer = 10;
                 inventory = new BlackjackInventory(uniqueId, plugin, internalName);
@@ -331,6 +349,9 @@ public class Dealer {
         if (dealerId == null) return;
 
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
+        
+        AdminMenu.clearAllEditModes(mob);
+        plugin.deleteAssociatedInventories(mob);
         DealerInventory newInventory;
         String newName;
         int defaultTimer = 30;
@@ -360,6 +381,21 @@ public class Dealer {
             case "Mines":
                 newInventory = new MinesInventory(dealerId, plugin, internalName);
                 newName = "Mines Dealer";
+                break;
+            case "Baccarat":
+                newInventory = new BaccaratServer(dealerId, plugin, internalName);
+                newName = "Baccarat Dealer";
+                defaultTimer = 10;
+                break;
+            case "Test Game":
+                newInventory = new TestServer(dealerId, plugin, internalName);
+                newName = "Test Game Dealer";
+                defaultTimer = 10;
+                break;
+            case "Coin Flip":
+                newInventory = new CoinFlipServer(dealerId, plugin, internalName);
+                newName = "Coin Flip Dealer";
+                defaultTimer = 3;
                 break;
             default:
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);
@@ -430,6 +466,15 @@ public class Dealer {
                 break;
             case "Mines":
                 newInventory = new MinesInventory(dealerId, plugin, internalName);
+                break;   
+            case "Baccarat":
+                newInventory = new BaccaratServer(dealerId, plugin, internalName);
+                break;         
+            case "Test Game":
+                newInventory = new TestServer(dealerId, plugin, internalName);
+                break;            
+            case "Coin Flip":
+                newInventory = new CoinFlipServer(dealerId, plugin, internalName);
                 break;
             default:
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);

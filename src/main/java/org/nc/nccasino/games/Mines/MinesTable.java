@@ -65,7 +65,6 @@ public class MinesTable extends DealerInventory {
     private boolean[][] fireGrid; // [6][9] To track which tiles are on fire
     private final List<Integer> scheduledTasks = new ArrayList<>();
     private boolean rebetEnabled = false; 
-
     // Adjusted fields for grid mapping
     private final int[] gridSlots = {
         2, 3, 4, 5, 6,
@@ -124,7 +123,7 @@ public class MinesTable extends DealerInventory {
 
     // Field to keep track of selected mine count slot
     private int selectedMineSlot = -1;
-    public MinesTable(Player player,  Nccasino plugin, String internalName, MinesInventory minesInventory) {
+    public MinesTable(UUID dealerId, Player player,  Nccasino plugin, String internalName, MinesInventory minesInventory) {
         super(player.getUniqueId(), 54, "Mines");
         this.playerId = player.getUniqueId();
         this.player = player;
@@ -136,35 +135,38 @@ public class MinesTable extends DealerInventory {
         this.gameState = GameState.PLACING_WAGER;
         this.safePicks = 0;
         this.gameOver = false;
+        int defMines;
+        this.dealerId = dealerId;
 
         loadChipValuesFromConfig();
+        if (!plugin.getConfig().contains("dealers." + internalName + ".default-mines")) {
+            // If the key doesn't exist, set it to 100
+            plugin.getConfig().set("dealers." + internalName + ".default-mines", 3);
+            defMines=3;
+        } else {
+            // Retrieve the current value
+            String value = plugin.getConfig().getString("dealers." + internalName + ".default-mines", "3").trim();
+            
+            try {
+                defMines = Integer.parseInt(value);
+            } catch (NumberFormatException e) {
+                defMines = 3; // Default
+                plugin.getConfig().set("dealers." + internalName + ".default-mines", 3);
+                plugin.saveConfig();
+            }
+        
+            // Check if the value is greater than 100 or less than 0
+            if (defMines > 24 ) {
+                // Reset the value to 100
+                plugin.getConfig().set("dealers." + internalName + ".default-mines", 24);
+            }
+            else if(defMines < 1){
+                plugin.getConfig().set("dealers." + internalName + ".default-mines", 1);
 
-        String rawValue = plugin.getConfig().getString("dealers." + internalName + ".default-mines", "3");
-
-        int defaultMines;
-        try {
-            defaultMines = Integer.parseInt(rawValue);
-        } catch (NumberFormatException e) {
-            defaultMines = 3; // Reset to default if it's not a valid number
+            }
         }
         
-        // Ensure it's within the valid range (1 to 24)
-        if (defaultMines < 1)
-        {
-            defaultMines = 1;
-  
-        }
-        else if( defaultMines > 24) {
-            defaultMines = 24;
-        }
-        
-        // Update config if necessary
-        if (!rawValue.equals(String.valueOf(defaultMines))) {
-            plugin.getConfig().set("dealers." + internalName + ".default-mines", defaultMines);
-            plugin.saveConfig();
-        }
-        
-        minesCount = defaultMines;
+        minesCount = defMines;
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
                 break;}
@@ -226,7 +228,14 @@ public class MinesTable extends DealerInventory {
         // Fill remaining slots with placeholders
         for (int i = 0; i < inventory.getSize(); i++) {
             if (inventory.getItem(i) == null) {
-                inventory.setItem(i, createCustomItem(Material.GRAY_STAINED_GLASS_PANE, " ", 1));
+                ItemStack item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+                ItemMeta meta = item.getItemMeta();
+                if (meta != null) {
+                    meta.setDisplayName("§r"); // Resets to vanilla name (no display)
+                    meta.setLore(null); // Ensure no lore
+                    item.setItemMeta(meta);
+                }
+                inventory.setItem(i, item);
             }
         }
         updateRebetToggle();
@@ -273,7 +282,14 @@ public class MinesTable extends DealerInventory {
     // Utility method to place stained glass panes in specific slots
     private void setGlassPane(Material material, int[] slots) {
         for (int slot : slots) {
-            inventory.setItem(slot, createCustomItem(material, " ", 1));
+            ItemStack item = new ItemStack(material);
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                meta.setDisplayName("§r"); // Resets to vanilla name (no display)
+                meta.setLore(null); // Ensure no lore
+                item.setItemMeta(meta);
+            }
+            inventory.setItem(slot, item);
         }
     }
 

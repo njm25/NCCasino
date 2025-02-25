@@ -35,15 +35,17 @@ public class GameOptionsMenu extends Menu {
         slotMapping.put(SlotOption.BLACKJACK, 0);
         slotMapping.put(SlotOption.ROULETTE, 1);
         slotMapping.put(SlotOption.MINES, 2);
+        slotMapping.put(SlotOption.BACCARAT, 3);
+        slotMapping.put(SlotOption.COIN_FLIP, 4);
         slotMapping.put(SlotOption.EXIT, 8);
         initializeMenu();
     }
 
-    public GameOptionsMenu(Player player, Nccasino plugin, Mob dealer, Consumer<Player> ret) {
+    public GameOptionsMenu(UUID dealerId, Player player, Nccasino plugin, Mob dealer, Consumer<Player> ret) {
         super(
             player, 
             plugin, 
-            UUID.randomUUID(), 
+            dealerId, 
             "Edit Game Type", 
             9, 
             "Return to " + Dealer.getInternalName(dealer) + "'s Admin Menu", 
@@ -59,6 +61,9 @@ public class GameOptionsMenu extends Menu {
         slotMapping.put(SlotOption.BLACKJACK, 1);
         slotMapping.put(SlotOption.ROULETTE, 2);
         slotMapping.put(SlotOption.MINES, 3);
+        slotMapping.put(SlotOption.BACCARAT, 4);
+        slotMapping.put(SlotOption.COIN_FLIP, 5);
+        
     
        initializeMenu();
     }
@@ -71,11 +76,15 @@ public class GameOptionsMenu extends Menu {
             addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
             addItemAndLore(Material.CREEPER_HEAD, 1, "Blackjack",  slotMapping.get(SlotOption.BLACKJACK));
             addItemAndLore(Material.ENDER_PEARL, 1, "Roulette",  slotMapping.get(SlotOption.ROULETTE));
+            addItemAndLore(Material.SKELETON_SKULL, 1, "Baccarat",  slotMapping.get(SlotOption.BACCARAT));
+            addItemAndLore(Material.SUNFLOWER, 1, "Coin Flip",  slotMapping.get(SlotOption.COIN_FLIP));
             addItemAndLore(Material.TNT, 1, "Mines",  slotMapping.get(SlotOption.MINES));
         }
         else{
             addItemAndLore(Material.CREEPER_HEAD, 1, "Blackjack",  slotMapping.get(SlotOption.BLACKJACK));
             addItemAndLore(Material.ENDER_PEARL, 1, "Roulette",  slotMapping.get(SlotOption.ROULETTE));
+            addItemAndLore(Material.SUNFLOWER, 1, "Coin Flip",  slotMapping.get(SlotOption.COIN_FLIP));
+            addItemAndLore(Material.SKELETON_SKULL, 1, "Baccarat",  slotMapping.get(SlotOption.BACCARAT));
             addItemAndLore(Material.TNT, 1, "Mines",  slotMapping.get(SlotOption.MINES));
             addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
         }
@@ -97,6 +106,18 @@ public class GameOptionsMenu extends Menu {
             case MINES:
                 playDefaultSound(player);
                 gameType = "Mines";
+                break;
+            case BACCARAT:
+                playDefaultSound(player);
+                gameType = "Baccarat";
+                break;
+            case TEST_GAME:
+                playDefaultSound(player);
+                gameType = "Test Game";
+                break;
+            case COIN_FLIP:
+                playDefaultSound(player);
+                gameType = "Coin Flip";
                 break;
             default:
                 return;
@@ -179,6 +200,15 @@ public class GameOptionsMenu extends Menu {
                         plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
                     }
                 }
+                if (!plugin.getConfig().contains("dealers." + internalName + ".default-mines") && gameType.equals("Mines")) {
+                    plugin.getConfig().set("dealers." + internalName + ".default-mines", 3);
+                } else {
+                    int deafultMines = plugin.getConfig().getInt("dealers." + internalName + ".default-mines");
+                    if (deafultMines > 24 || deafultMines < 1) {
+                        plugin.getConfig().set("dealers." + internalName + ".default-mines", 3);
+                    }
+                }
+
 
         
                 this.delete();

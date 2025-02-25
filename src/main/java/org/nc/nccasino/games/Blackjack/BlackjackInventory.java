@@ -59,6 +59,7 @@ public class BlackjackInventory extends DealerInventory {
     private Deck deck; // Declare the deck as a class variable
     private Boolean firstFin=true;
     private Boolean sittable=true;
+    public UUID dealerId;
     public BlackjackInventory(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, 54, "Blackjack Table"); // Using 54 slots for start menu
         this.plugin = plugin; // Store the plugin reference
@@ -71,7 +72,7 @@ public class BlackjackInventory extends DealerInventory {
         this.countdownTaskId = -1; // Initialize countdown task ID
         // Initialize the start menu
         Nccasino nccasino = plugin;
-
+        this.dealerId = dealerId;
         // Check if the configuration key exists
         if (!nccasino.getConfig().contains("dealers." + internalName + ".stand-on-17")) {
             // If the key doesn't exist, set it to 100

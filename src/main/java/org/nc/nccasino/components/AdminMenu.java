@@ -79,11 +79,9 @@ public class AdminMenu extends Menu {
     public static final Map<UUID, Mob> decksEditMode = new HashMap<>();
     // All active AdminInventories by player ID
     public static final Map<UUID, AdminMenu> adminInventories = new HashMap<>();
-    private Preferences.MessageSetting messPref;
     // Tracks which dealer is being edited by which player
     public static final Map<UUID, Mob> localMob = new HashMap<>();
     private final Map<UUID, Boolean> movingDealers = new HashMap<>();
-
 
 
         private enum CurrencyMode {
@@ -132,7 +130,6 @@ public class AdminMenu extends Menu {
 
 //////////VVVVVVVVVVVVVexpand to retrieve mode from config once thats set up
         this.currencyMode = CurrencyMode.VANILLA;
-        this.messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
         adminInventories.put(this.ownerId, this);
         setupSlotMapping();
         initializeMenu();
@@ -170,9 +167,10 @@ public class AdminMenu extends Menu {
      * Registers this inventory as an event listener with the plugin.
      */
     private void registerListener() {
+        HandlerList.unregisterAll(this); // Ensure no duplicate listeners
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
-
+    
     @Override
     protected void initializeMenu() {
 
@@ -200,6 +198,14 @@ public class AdminMenu extends Menu {
             }  
             case"Blackjack":{
                 addItemAndLore(Material.CREEPER_HEAD, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
+                break;
+            }
+            case "Baccarat":{
+                addItemAndLore(Material.SKELETON_SKULL, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
+                break;
+            }
+            case "Coin Flip":{
+                addItemAndLore(Material.SUNFLOWER, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
                 break;
             }
             default:
@@ -396,6 +402,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 playDefaultSound(player);
                 break;
             default:
+            
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch(messPref){
                 case STANDARD:{
                     player.sendMessage("§cInvalid option selected.");    
@@ -483,6 +491,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     },
                     plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
             );
+            
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch(messPref){
                 case VERBOSE:{
                     //player.sendMessage("§aMines Settings Opened.");
@@ -512,6 +522,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     },
                     plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
             );
+            
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch(messPref){
                 case VERBOSE:{
                     //player.sendMessage("§aRoulette Settings Opened.");
@@ -520,6 +532,70 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     break;}
             }
                 player.openInventory(rouletteAdminInventory.getInventory());
+
+                break;
+            }
+            case "Coin Flip":{
+                CoinFlipMenu rouletteAdminInventory = new CoinFlipMenu(
+                    dealerId,
+                    player,
+                    Dealer.getInternalName(dealer)+ "'s Coin Flip Settings",
+                    (uuid) -> {
+        
+                        // Cancel action: re-open the AdminInventory
+                        if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
+                            player.openInventory(adminInventory.getInventory());
+                        } else {
+                            AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
+                            player.openInventory(adminInventory.getInventory());
+                        }
+        
+                    },
+                    plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
+            );
+            
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
+            switch(messPref){
+                case VERBOSE:{
+                    //player.sendMessage("§aRoulette Settings Opened.");
+                    break;}
+                default:{
+                    break;}
+            }
+                player.openInventory(rouletteAdminInventory.getInventory());
+
+                break;
+            }
+            case "Baccarat":{
+                BaccaratMenu baccaratMenuAdminInventory = new BaccaratMenu(
+                    dealerId,
+                    player,
+                    Dealer.getInternalName(dealer)+ "'s Baccarat Settings",
+                    (uuid) -> {
+        
+                        // Cancel action: re-open the AdminInventory
+                        if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
+                            player.openInventory(adminInventory.getInventory());
+                        } else {
+                            AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
+                            player.openInventory(adminInventory.getInventory());
+                        }
+        
+                    },
+                    plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
+            );
+            
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
+            switch(messPref){
+                case VERBOSE:{
+                    //player.sendMessage("Baccarat Settings Opened.");
+                    break;}
+                default:{
+                    break;}
+            }
+                player.openInventory(baccaratMenuAdminInventory.getInventory());
 
                 break;
             }
@@ -542,6 +618,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     },
                     plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
             );
+            
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch(messPref){
                 case VERBOSE:{
                     //player.sendMessage("§aBlackjack Settings Opened.");
@@ -630,6 +708,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         localMob.put(playerId, dealer);
         chipEditMode.put(playerId, dealer);
         player.closeInventory();
+        
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
         switch(chipInd){
         case 1:{
             switch(messPref){
@@ -730,6 +810,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         localMob.put(playerId, dealer);
         amsgEditMode.put(playerId, dealer);
         player.closeInventory();
+        
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
         switch(messPref){
             case STANDARD:{
                 player.sendMessage("§aType new message in chat.");
@@ -748,6 +830,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         nameEditMode.put(playerId, dealer);
         localMob.put(playerId, dealer);
         player.closeInventory();
+        
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
         switch(messPref){
             case STANDARD:{
                 player.sendMessage("§aType new name in chat.");
@@ -763,7 +847,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
     private void handleSelectGameType(Player player) {
         // Open the Game Options Inventory
-        GameOptionsMenu inventory = new GameOptionsMenu(player, plugin, dealer,
+        GameOptionsMenu inventory = new GameOptionsMenu(dealerId, player, plugin, dealer,
         (uuid) -> {
         
             // Cancel action: re-open the AdminInventory
@@ -785,6 +869,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         moveMode.put(playerId, dealer);
         localMob.put(playerId, dealer);
         player.closeInventory();
+        
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
         switch(messPref){
             case STANDARD:{
                 player.sendMessage("§aClick a block to move the dealer.");
@@ -814,7 +900,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                         // Confirm action
                         player.closeInventory();
                         UUID pid = player.getUniqueId();
-
+                        clearAllEditModes(dealer);
                         // Remove editing references
                         nameEditMode.remove(pid);
                         amsgEditMode.remove(pid);
@@ -855,6 +941,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         UUID playerId = player.getUniqueId();
         AdminMenu adminInv = adminInventories.get(playerId);
         
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
         if (adminInv.currencyMode == CurrencyMode.VAULT) {
             switch(messPref){
                 case STANDARD:{
@@ -905,6 +992,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 player.updateInventory(); // Ensure client sees the change immediately
             }, 1L);
     
+            Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             plugin.reloadDealer(dealer);
             switch(messPref){
                 case STANDARD:{
@@ -927,6 +1015,13 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
+        if (this.player.getUniqueId() != playerId) {
+            return;
+        }
+
+        if (!adminInventories.containsKey(playerId)) {
+            return;
+        }
         if (adminInventories.get(playerId) == null){
             return;
         }
@@ -946,6 +1041,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 plugin.saveConfig();
                 dealer.setCustomNameVisible(true);
                 plugin.reloadDealer(dealer);
+                
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(messPref){
                     case STANDARD:{
@@ -958,6 +1055,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     }
                 } 
             } else {
+                
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
                 switch(messPref){
                     case STANDARD:{
                         player.sendMessage("§cCould not find dealer.");
@@ -972,6 +1071,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             }
 
                 
+            clearAllEditModes(dealer);
+            plugin.deleteAssociatedInventories(dealer);
             cleanup();
 
         }
@@ -989,6 +1090,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 plugin.getConfig().set("dealers." + internalName + ".timer", Integer.parseInt(newTimer));
                 plugin.saveConfig();
                 plugin.reloadDealer(dealer);
+                
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(messPref){
                     case STANDARD:{
@@ -1001,6 +1104,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     }
                 } 
             } else {
+                
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
                 switch(messPref){
                     case STANDARD:{
                         player.sendMessage("§cCould not find dealer.");
@@ -1014,6 +1119,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             }
 
                 
+            clearAllEditModes(dealer);
+            plugin.deleteAssociatedInventories(dealer);
             cleanup();
         }
         // Editing dealer animation message
@@ -1030,6 +1137,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 plugin.getConfig().set("dealers." + internalName + ".animation-message", newAmsg);
                 plugin.saveConfig();
                 plugin.reloadDealer(dealer);
+                
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(messPref){
                     case STANDARD:{
@@ -1042,6 +1151,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     }
                 } 
             } else {
+                
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
                 switch(messPref){
                     case STANDARD:{
                         player.sendMessage("§cCould not find dealer.");
@@ -1056,6 +1167,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             }
 
                 
+            clearAllEditModes(dealer);
+            plugin.deleteAssociatedInventories(dealer);
             cleanup();
         }
         else if (chipEditMode.get(playerId) != null) {
@@ -1071,6 +1184,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 plugin.getConfig().set("dealers." + internalName + ".chip-sizes.size" + chipIndex,Integer.parseInt(newChipSize));
                 plugin.saveConfig();
                 plugin.reloadDealer(dealer);
+                
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(messPref){
                     case STANDARD:{
@@ -1083,6 +1198,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     }
                 } 
             } else {
+                
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
                 switch(messPref){
                     case STANDARD:{
                         player.sendMessage("§cCould not find dealer.");
@@ -1096,6 +1213,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             }
 
                 
+            clearAllEditModes(dealer);
+            plugin.deleteAssociatedInventories(dealer);
             cleanup();
         }
     }
@@ -1146,13 +1265,15 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         // Successful teleport
         if (chunk.isLoaded() && dealer != null && dealer.getUniqueId().equals(dealerId)) {
              DealerEventListener.allowAdminTeleport(dealer.getUniqueId()); // Allow this teleport
+             dealer.setAI(true);
             dealer.teleport(newLocation);
             saveDealerLocation(newLocation);
-    
+            dealer.setAI(false);
             if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null) {
                 player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER, 1.0f, 1.0f);
             }
     
+            Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch (messPref) {
                 case STANDARD:
                     player.sendMessage("§aDealer moved to new location.");
@@ -1169,6 +1290,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             // Mark move as complete
             movingDealers.remove(dealerId);
             moveMode.remove(player.getUniqueId());
+            plugin.deleteAssociatedInventories(dealer);
+            clearAllEditModes(dealer);
             cleanup();
             return;
         }
@@ -1179,6 +1302,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         } else if (attempt == 10) {
             Bukkit.getScheduler().runTaskLater(plugin, () -> attemptTeleport(player, newLocation, dealerId, 30), 30L);
         } else {
+            
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch (messPref) {
                 case STANDARD:
                     player.sendMessage("§cFailed to move dealer. Chunk did not load.");
@@ -1224,6 +1349,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         UUID pid = player.getUniqueId();
         if (moveMode.get(pid) != null) {
             event.setCancelled(true);
+            
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch(messPref){
                 case STANDARD:{
                     player.sendMessage("§cCan't do that.");
@@ -1313,7 +1440,27 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         amsgEditMode.remove(ownerId);
         chipEditMode.remove(ownerId);
         localMob.remove(ownerId);
+        currencyEditMode.remove(ownerId);
     }
+
+    public static void clearAllEditModes(Mob mob) {
+        nameEditMode.values().removeIf(mob::equals);
+        timerEditMode.values().removeIf(mob::equals);
+        amsgEditMode.values().removeIf(mob::equals);
+        chipEditMode.values().removeIf(mob::equals);
+        currencyEditMode.values().removeIf(mob::equals);
+    
+        // Unregister any active AdminMenu associated with this Mob
+        adminInventories.entrySet().removeIf(entry -> {
+            AdminMenu menu = entry.getValue();
+            if (menu.dealer.equals(mob)) {
+                HandlerList.unregisterAll(menu);
+                return true;
+            }
+            return false;
+        });
+    }
+    
 
     public static void deleteAssociatedAdminInventories(Player player) {
         if (adminInventories.get(player.getUniqueId()) != null){

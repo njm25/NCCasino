@@ -15,11 +15,13 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.helpers.SoundHelper;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +33,7 @@ public class DealerInventory implements InventoryHolder, Listener {
     public static final Map<UUID, DealerInventory> inventories = new HashMap<>();
 
     protected Inventory inventory;
-    protected final UUID dealerId;
+    public UUID dealerId;
 
     // Protected constructor to allow subclassing
     protected DealerInventory(UUID dealerId, int size, String title) {
@@ -314,4 +316,38 @@ public class DealerInventory implements InventoryHolder, Listener {
         }
         player.sendMessage("§c" + message);
     }
+
+    
+    /**
+     * Utility: Create a player head for a specific UUID.
+     */
+    protected ItemStack createPlayerHead(UUID ownerUuid, String displayName) {
+        ItemStack skull = new ItemStack(Material.PLAYER_HEAD, 1);
+        SkullMeta meta = (SkullMeta) skull.getItemMeta();
+        if (meta != null) {
+            meta.setOwningPlayer(Bukkit.getOfflinePlayer(ownerUuid));
+            meta.setDisplayName(displayName);
+            skull.setItemMeta(meta);
+        }
+        return skull;
+    }
+
+        /**
+    /**
+     * Utility: Create a player head for a specific UUID.
+     */
+    protected ItemStack createPlayerHead(UUID ownerUuid, String displayName, String lore) {
+        ItemStack skull = new ItemStack(Material.PLAYER_HEAD, 1);
+        SkullMeta meta = (SkullMeta) skull.getItemMeta();
+        if (meta != null) {
+            meta.setOwningPlayer(Bukkit.getOfflinePlayer(ownerUuid));
+            meta.setDisplayName(displayName);
+            if (lore != null && !lore.isEmpty()) {
+                meta.setLore(Arrays.asList(lore.split("\n"))); // Format lore into multiple lines
+            }
+            skull.setItemMeta(meta);
+        }
+        return skull;
+    }
+
 }

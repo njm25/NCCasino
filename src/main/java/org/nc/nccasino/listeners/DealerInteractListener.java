@@ -123,14 +123,9 @@ public class DealerInteractListener implements Listener {
     }
 
     private void handleAdminInventory(Player player, UUID dealerId) {
-        if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+        if (AdminMenu.adminInventories.containsKey(player.getUniqueId()) && AdminMenu.adminInventories.get(player.getUniqueId()).getDealerId().equals(dealerId)) {
             AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
-
-            if (adminInventory.getDealerId().equals(dealerId)) {
-                player.openInventory(adminInventory.getInventory());
-            } else {
-                Bukkit.getLogger().warning("Error: adminInventory's dealerId does not match the dealerId of entity interacted with");
-            }
+            player.openInventory(adminInventory.getInventory());
         } else {
             AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
             player.openInventory(adminInventory.getInventory());
@@ -183,7 +178,7 @@ public class DealerInteractListener implements Listener {
             }
         }
         if (shouldPlayAnimation(player, dealerId)) {
-            startAnimation(player, dealerInventory, dealerId);
+            startAnimation(dealer, player, dealerInventory, dealerId);
         } else {
             player.openInventory(dealerInventory.getInventory());
         }
@@ -194,12 +189,12 @@ public class DealerInteractListener implements Listener {
                plugin.getConfig().contains("dealers." + Dealer.getInternalName(dealer) + ".animation-message");
     }
 
-    private void startAnimation(Player player, DealerInventory dealerInventory, UUID dealerId) {
+    private void startAnimation(Mob dealer, Player player, DealerInventory dealerInventory, UUID dealerId) {
         String animationMessage = plugin.getConfig().getString("dealers." + Dealer.getInternalName(dealer) + ".animation-message");
         activeAnimations.add(player);
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            AnimationMessage animationTable = new AnimationMessage(player, plugin, animationMessage, 0);
+            AnimationMessage animationTable = new AnimationMessage(dealer, player, plugin, animationMessage, 0);
             player.openInventory(animationTable.getInventory());
 
             animationTable.animateMessage(player, () -> afterAnimationComplete(player, dealerInventory));
@@ -306,6 +301,9 @@ public class DealerInteractListener implements Listener {
             case "roulette": return "nccasino.games.roulette";
             case "mines": return "nccasino.games.mines";
             case "blackjack": return "nccasino.games.blackjack";
+            case "test game": return "nccasino.adminmenu";
+            case "baccarat" : return "nccasino.games.baccarat";
+            case "coin flip" : return "nccasino.games.coinflip";
             default: return null;
         }
     }
