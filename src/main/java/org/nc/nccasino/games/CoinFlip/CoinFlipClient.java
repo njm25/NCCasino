@@ -241,17 +241,25 @@ public class CoinFlipClient extends Client {
     private void handlePlayerTwoSit(Object data){
         Player playerData2 = (Player) data; // Use the PlayerData wrapper class
         if (playerData2.getUniqueId().equals(player.getUniqueId())){
-            String name = betAmount == 0 ? "§o" + chairOneOccupant.getDisplayName() + "§o's turn" 
-                                            : "§oAccept bet";
-            String lore = betAmount == 0 ? "§oWaiting for their bet" 
-                                            : "§oClick to accept bet\nCurrent: §a\" + betAmount";
-            addItemAndLore(Material.LEVER
+
+            if (betAmount == 0){
+                addItemAndLore(Material.LEVER
                 , 1
-                , name
+                , "§o" + chairOneOccupant.getDisplayName() + "§o's turn" 
                 , slotMapping.get(SlotOption.HANDLE_SUBMIT_BET)
-                , lore
+                , "§oWaiting for their bet" 
             );
-            
+            }
+            else{
+                addItemAndLore(Material.LEVER
+                    , 1
+                    , "§oAccept bet"
+                    , slotMapping.get(SlotOption.HANDLE_SUBMIT_BET)
+                    , "§oClick to accept bet"
+                    , "§oCurrent: §o§a" + betAmount + " " + getCurrencyMaterial().toString().charAt(0) + getCurrencyMaterial().toString().substring(1).toLowerCase() + (betAmount > 1 ? "s" : "")
+                );
+            }
+          
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2), 
                 createPlayerHead(playerData2.getUniqueId(), playerData2.getDisplayName(), "§7§oClick to leave chair"));
         }
@@ -334,7 +342,9 @@ public class CoinFlipClient extends Client {
             addItemAndLore(Material.LEVER
             , 1, "§oAccept bet"
             , slotMapping.get(SlotOption.HANDLE_SUBMIT_BET)
-            , "§oClick to accept bet\nCurrent: §a" + betAmount);
+            , "§oClick to accept bet"
+            , "§oCurrent: §o§a" + betAmount + " " + getCurrencyMaterial().toString().charAt(0) + getCurrencyMaterial().toString().substring(1).toLowerCase() + (betAmount > 1 ? "s" : "")
+            );
         }
         if (SoundHelper.getSoundSafely("block.enchantment_table.use", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f); 
         updatePotChest();

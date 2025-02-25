@@ -98,6 +98,19 @@ public abstract class Server extends DealerInventory {
     protected void handleServerOpen(Player player) {
         Client client = getOrCreateClient(player);
         if (client != null) {
+            String gameType = plugin.getConfig().getString("dealers." + internalName + ".game");
+
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§aWelcome to " + gameType);
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
             player.openInventory(client.getInventory());
         } else {
         }
