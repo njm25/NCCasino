@@ -391,7 +391,7 @@ public class MobSelectionMenu extends Menu {
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     if (dealer != null) {
                         plugin.deleteAssociatedInventories(dealer);
-                        
+                        AdminMenu.clearAllEditModes(dealer);
                         // Step 1: Wait 5 ticks to ensure inventories are closed, then remove dealer
                         Bukkit.getScheduler().runTask(plugin, () -> {
                             DealerInventory.unregisterAllListeners(dealer);
@@ -431,7 +431,7 @@ public class MobSelectionMenu extends Menu {
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     if (dealer != null) {
                         plugin.deleteAssociatedInventories(dealer);
-        
+                        AdminMenu.clearAllEditModes(dealer);
                         // Step 1: Wait to ensure inventories are closed, then remove dealer
                         Bukkit.getScheduler().runTask(plugin, () -> {
                             DealerInventory.unregisterAllListeners(dealer);

@@ -19,6 +19,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.NamespacedKey;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.components.AdminMenu;
 import org.nc.nccasino.games.Baccarat.BaccaratServer;
 import org.nc.nccasino.games.Blackjack.BlackjackInventory;
 import org.nc.nccasino.games.CoinFlip.CoinFlipServer;
@@ -348,6 +349,8 @@ public class Dealer {
         if (dealerId == null) return;
 
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
+        
+        AdminMenu.clearAllEditModes(mob);
         plugin.deleteAssociatedInventories(mob);
         DealerInventory newInventory;
         String newName;

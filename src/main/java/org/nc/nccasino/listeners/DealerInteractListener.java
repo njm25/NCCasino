@@ -123,16 +123,10 @@ public class DealerInteractListener implements Listener {
     }
 
     private void handleAdminInventory(Player player, UUID dealerId) {
-        if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+        if (AdminMenu.adminInventories.containsKey(player.getUniqueId()) && AdminMenu.adminInventories.get(player.getUniqueId()).getDealerId().equals(dealerId)) {
             AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
-
-            if (adminInventory.getDealerId().equals(dealerId)) {
-                player.openInventory(adminInventory.getInventory());
-            } else {
-                Bukkit.getLogger().warning("Error: adminInventory's dealerId does not match the dealerId of entity interacted with");
-            }
+            player.openInventory(adminInventory.getInventory());
         } else {
-            System.out.println("Dealer id :"+  dealerId);
             AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
             player.openInventory(adminInventory.getInventory());
         }

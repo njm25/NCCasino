@@ -882,7 +882,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                         // Confirm action
                         player.closeInventory();
                         UUID pid = player.getUniqueId();
-
+                        clearAllEditModes(dealer);
                         // Remove editing references
                         nameEditMode.remove(pid);
                         amsgEditMode.remove(pid);
@@ -1040,6 +1040,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             }
 
                 
+            clearAllEditModes(dealer);
             plugin.deleteAssociatedInventories(dealer);
             cleanup();
 
@@ -1083,6 +1084,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             }
 
                 
+            clearAllEditModes(dealer);
             plugin.deleteAssociatedInventories(dealer);
             cleanup();
         }
@@ -1126,6 +1128,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             }
 
                 
+            clearAllEditModes(dealer);
             plugin.deleteAssociatedInventories(dealer);
             cleanup();
         }
@@ -1167,6 +1170,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             }
 
                 
+            clearAllEditModes(dealer);
             plugin.deleteAssociatedInventories(dealer);
             cleanup();
         }
@@ -1243,6 +1247,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             movingDealers.remove(dealerId);
             moveMode.remove(player.getUniqueId());
             plugin.deleteAssociatedInventories(dealer);
+            clearAllEditModes(dealer);
             cleanup();
             return;
         }
@@ -1389,6 +1394,25 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         localMob.remove(ownerId);
         currencyEditMode.remove(ownerId);
     }
+
+    public static void clearAllEditModes(Mob mob) {
+        nameEditMode.values().removeIf(mob::equals);
+        timerEditMode.values().removeIf(mob::equals);
+        amsgEditMode.values().removeIf(mob::equals);
+        chipEditMode.values().removeIf(mob::equals);
+        currencyEditMode.values().removeIf(mob::equals);
+    
+        // Unregister any active AdminMenu associated with this Mob
+        adminInventories.entrySet().removeIf(entry -> {
+            AdminMenu menu = entry.getValue();
+            if (menu.dealer.equals(mob)) {
+                HandlerList.unregisterAll(menu);
+                return true;
+            }
+            return false;
+        });
+    }
+    
 
     public static void deleteAssociatedAdminInventories(Player player) {
         if (adminInventories.get(player.getUniqueId()) != null){
