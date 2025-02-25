@@ -2,14 +2,21 @@ package org.nc.nccasino.entities;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.inventory.ItemStack;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.helpers.SoundHelper;
 
 public abstract class Server extends DealerInventory {
 
@@ -175,9 +182,114 @@ public abstract class Server extends DealerInventory {
             }
         }
     }
-    
+
     public boolean hasClient(UUID playerUuid) {
         return clients.containsKey(playerUuid);
     }
+        
+    protected void sendPayoutMessage(Player player, int payout, boolean isWinner) {
+        String currencyName = plugin.getCurrencyName(internalName).toLowerCase();
+        boolean isSingle = Math.abs(payout) == 1;
     
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case STANDARD:
+                player.sendMessage(isWinner
+                        ? "§a§lPaid " + payout + " " + currencyName + (isSingle ? "" : "s")
+                        : "§c§lYou lose!");
+                break;
+            case VERBOSE:
+                int profit = Math.abs(payout / 2);
+                player.sendMessage(isWinner
+                        ? "§a§lPaid " + payout + " " + currencyName + (isSingle ? "" : "s") +
+                          "\n §r§a§o(profit of " + profit + ")"
+                        : "§c§lYou lose!");
+                break;
+            case NONE:
+                break;
+        }
+    }
+    
+    protected void applyWinEffects(Player player) {
+        if (player != null) {
+            player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
+            playRandomPitchSound(player);
+        }
+    }
+    
+    protected void applyLoseEffects(Player player) {
+        if (player != null) {
+            if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
+        }
+    }
+    
+    protected void playRandomPitchSound(Player player) {
+        if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null) {
+            Random random = new Random();
+            float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f, 0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
+            for (int i = 0; i < 3; i++) {
+                float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
+                player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, chosenPitch);
+            }
+        }
+    }
+
+    
+    protected void creditPlayer(Player player, double amount) {
+        Material currencyMaterial = plugin.getCurrency(internalName);
+        if (currencyMaterial == null) {
+            player.sendMessage("Error: Currency material is not set. Unable to credit winnings.");
+            return;
+        }
+
+        int fullStacks = (int) amount / 64;
+        int remainder = (int) amount % 64;
+        int totalLeftoverAmount = 0;
+        HashMap<Integer, ItemStack> leftover;
+
+        // Try adding full stacks
+        for (int i = 0; i < fullStacks; i++) {
+            ItemStack stack = new ItemStack(currencyMaterial, 64);
+            leftover = player.getInventory().addItem(stack);
+            if (!leftover.isEmpty()) {
+                totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
+            }
+        }
+
+        // Try adding remainder
+        if (remainder > 0) {
+            ItemStack remainderStack = new ItemStack(currencyMaterial, remainder);
+            leftover = player.getInventory().addItem(remainderStack);
+            if (!leftover.isEmpty()) {
+                totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
+            }
+        }
+
+        if (totalLeftoverAmount > 0) {
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+                    break;     
+                }
+                    case NONE:{
+                    break;
+                }
+            } 
+            dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
+        }
+    }
+
+    protected void dropExcessItems(Player player, int amount, Material currencyMaterial) {
+        while (amount > 0) {
+            int dropAmount = Math.min(amount, 64);
+            player.getWorld().dropItemNaturally(player.getLocation(), new ItemStack(currencyMaterial, dropAmount));
+            amount -= dropAmount;
+        }
+    }
 }

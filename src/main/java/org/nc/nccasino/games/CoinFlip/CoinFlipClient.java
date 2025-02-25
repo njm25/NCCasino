@@ -212,7 +212,7 @@ public class CoinFlipClient extends Client {
         Player playerData2 = (Player) data; // Use the PlayerData wrapper class
         if (playerData2.getUniqueId().equals(player.getUniqueId())){
 
-            String lore = betAmount == 0 ? "Waiting for " + chairOneOccupant.getDisplayName() + "'s bet" : "Click to accept bet";
+            String lore = betAmount == 0 ? "Waiting for " + chairOneOccupant.getDisplayName() + "'s bet" : "Click to accept bet\nCurrent: §a\" + betAmount";
             String name = betAmount == 0 ? "Waiting " : "Accept Bet";
             addItemAndLore(Material.LEVER
             , 1

@@ -91,6 +91,15 @@ public class CoinFlipServer extends Server {
                 break;
             case "ANIMATION_FINISHED":
                 if(gameActive){
+                    broadcastUpdate("ANIMATION_FINISHED", data);
+                    Player payoutOne = chairOneOccupant;
+                    Player payoutTwo = chairTwoOccupant;
+                    int payout = betAmount;
+                    gameActive = false;
+                    betAmount = 0; 
+                    timeLeft = 0;
+                    countdownTaskId = -1;
+                    handlePayout(payoutOne, payoutTwo, payout, (int) data);
                     if(chairOneOccupant !=null && !hasClient(chairOneOccupant.getUniqueId())){
                         if(chairTwoOccupant != null){
                             chairOneOccupant = chairTwoOccupant;
@@ -110,11 +119,6 @@ public class CoinFlipServer extends Server {
                         broadcastUpdate("PLAYER_LEAVE_TWO", null);
                     }
                     
-                    broadcastUpdate("ANIMATION_FINISHED", data);
-                    gameActive = false;
-                    betAmount = 0; 
-                    timeLeft = 0;
-                    countdownTaskId = -1;
                 }
                 break;
             case "GET_CHAIRS":
@@ -127,6 +131,24 @@ public class CoinFlipServer extends Server {
                 };
                 client.onServerUpdate("GET_CHAIRS", chairs);
                 break;
+        }
+    }
+
+    private void handlePayout(Player one, Player two, int payout, int winner) {
+        Player winnerPlayer = (winner == 0) ? one : two;
+        Player loserPlayer = (winner == 0) ? two : one;
+    
+        // Handle payout and messages for the winner
+        if (winnerPlayer != null && payout > 0) {
+            creditPlayer(winnerPlayer, payout);
+            sendPayoutMessage(winnerPlayer, payout, true);
+            applyWinEffects(winnerPlayer);
+        }
+    
+        // Handle losing message and effects for the loser
+        if (loserPlayer != null) {
+            sendPayoutMessage(loserPlayer, payout, false);
+            applyLoseEffects(loserPlayer);
         }
     }
 
@@ -161,6 +183,5 @@ public class CoinFlipServer extends Server {
 
         }, 0L, 20L); // Run every second
     }
-    
-    
+
 }
