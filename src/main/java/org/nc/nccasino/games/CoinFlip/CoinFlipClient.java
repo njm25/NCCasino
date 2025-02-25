@@ -562,6 +562,10 @@ public class CoinFlipClient extends Client {
             @Override
             public void run() {
                 if (index < flipSlots.length) {
+                    if (SoundHelper.getSoundSafely("ui.toast.in", player) != null)
+                        player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
+                    if (SoundHelper.getSoundSafely("ui.toast.out", player) != null)
+                        player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
                     int slot = flipSlots[index];
 
                     // Restore former material at the last slot
@@ -589,17 +593,21 @@ public class CoinFlipClient extends Client {
 
                     flipTask = -1; // Reset task ID
                     cancel();
+                    Player winningPlayer = winner == 0 ? chairOneOccupant : chairTwoOccupant;
+                    if (SoundHelper.getSoundSafely("block.note_block.chime", player) != null)
+                        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 3f, 1.0f); 
+
                     //run task later
                     new BukkitRunnable() {
                         @Override
                         public void run() {
                             sendUpdateToServer("ANIMATION_FINISHED", winner);
                         }
-                    }.runTaskLater(plugin, 20L);
+                    }.runTaskLater(plugin, 30L);
 
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L); // Runs every 2 ticks
+        }.runTaskTimer(plugin, 0L, 5L); // Runs every 2 ticks
     }
 
 
