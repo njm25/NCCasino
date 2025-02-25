@@ -98,10 +98,15 @@ public class CoinFlipClient extends Client {
     private void handleChairOne(){
         if (chairOneOccupant == null){
             chairOneOccupant = player;
+            if (SoundHelper.getSoundSafely("block.wood.place", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE,SoundCategory.MASTER, 1.0f, 1.0f); 
             sendUpdateToServer("PLAYER_SIT_ONE", null);
         }
         else if(chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
+            if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
             sendUpdateToServer("PLAYER_LEAVE_ONE", null);
+        }
+        else if (chairTwoOccupant != null && chairTwoOccupant.getUniqueId().equals(player.getUniqueId())) {
+            if (SoundHelper.getSoundSafely("entity.player.hurt", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_HURT, SoundCategory.MASTER, 1.0f, 1.0f); 
         }
     }
 
@@ -112,11 +117,17 @@ public class CoinFlipClient extends Client {
                 return;
             }
             chairTwoOccupant = player;
+            if (SoundHelper.getSoundSafely("block.wood.place", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE,SoundCategory.MASTER, 1.0f, 1.0f); 
             sendUpdateToServer("PLAYER_SIT_TWO", null);
         }
         else if(chairTwoOccupant != null){
             if(chairTwoOccupant.getUniqueId().equals(player.getUniqueId())){
+                if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
                 sendUpdateToServer("PLAYER_LEAVE_TWO", null);
+            }
+            else if(chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
+                if (SoundHelper.getSoundSafely("entity.player.hurt", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_HURT, SoundCategory.MASTER, 1.0f, 1.0f); 
+        
             }
         }
     }
@@ -128,6 +139,20 @@ public class CoinFlipClient extends Client {
                 if(totalBet > 0){
                     sendUpdateToServer("PLAYER_SUBMIT_BET", totalBet);
                 }
+            }
+            else {
+                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                    case STANDARD:
+                        player.sendMessage("§cInvalid action.");
+                        break;
+                    case VERBOSE:
+                        player.sendMessage("§oNo bet placed.");
+                        break;
+                    case NONE:
+                        break;
+                }
+                if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             }
         } else if (chairTwoOccupant !=null && chairTwoOccupant.getUniqueId().equals(player.getUniqueId())) {
             if(betAmount>0){
@@ -277,6 +302,7 @@ public class CoinFlipClient extends Client {
         else if(chairTwoOccupant != null && chairTwoOccupant.getUniqueId().equals(player.getUniqueId())){
             addItemAndLore(Material.LEVER, 1, "§oAccept bet", slotMapping.get(SlotOption.HANDLE_SUBMIT_BET), "§oClick to accept bet\nCurrent: §a" + betAmount);
         }
+        if (SoundHelper.getSoundSafely("block.enchantment_table.use", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f); 
         
         addItemAndLore(Material.CHEST, 1, "§oPot", 40, "§oCurrent: §o§a" + betAmount);
     }
@@ -301,7 +327,8 @@ public class CoinFlipClient extends Client {
             betAmount = betAmount * 2;
             updatePotChest();
             gameActive = true;
-            
+            if (SoundHelper.getSoundSafely("block.enchantment_table.use", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f); 
+        
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1), 
                 createPlayerHead(chairOneOccupant.getUniqueId(), chairOneOccupant.getDisplayName()));
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2), 
