@@ -777,6 +777,9 @@ public class BaccaratClient extends Client {
 
         @Override
         protected void handleClientSpecificClick(int slot, Player player, InventoryClickEvent event) {
+            if (inventory.getItem(slot) != null && inventory.getItem(slot).getType() == Material.SKELETON_SKULL) {
+                if (SoundHelper.getSoundSafely("entity.skeleton.hurt", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_SKELETON_HURT, SoundCategory.MASTER, 1.0f, 1.0f); 
+            }
             if (Arrays.stream(seatSlots).anyMatch(s -> s == slot)) {
                 sendUpdateToServer("SEAT_CLICK", slot);
             }
