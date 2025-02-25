@@ -61,6 +61,11 @@ public class CoinFlipClient extends Client {
     @Override
     protected void handleClientSpecificClick(int slot, Player player, InventoryClickEvent event) {
         SlotOption option = getKeyByValue(slotMapping, slot);
+        // if inventory event clicked item is sunflower then get audio safely and play acoin noise
+        if (inventory.getItem(slot) != null && inventory.getItem(slot).getType() == Material.SUNFLOWER) {
+            if (SoundHelper.getSoundSafely("block.note_block.chime", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MASTER, 1.0f, 1.0f); 
+        }
+     
         if (option == null) return;
         switch(option)
         {
