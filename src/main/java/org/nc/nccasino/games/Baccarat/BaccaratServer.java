@@ -252,6 +252,7 @@ public class BaccaratServer extends Server {
                     case NONE:
                         break;
                 }
+                if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
             }
         } else if (seatedPlayers.contains(playerId)) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
@@ -265,6 +266,7 @@ public class BaccaratServer extends Server {
                     break;
             }
         } else {
+            if (SoundHelper.getSoundSafely("block.wood.place", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE,SoundCategory.MASTER, 1.0f, 1.0f); 
             seatPlayer(player, slot);
         }
     }
@@ -286,6 +288,8 @@ public class BaccaratServer extends Server {
         if (playerBets.containsKey(playerId)) {
             double totalRefund = playerBets.get(playerId).values().stream().mapToDouble(Double::doubleValue).sum();
             creditPlayer(player, totalRefund);
+            if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null)
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER, 1.0f, 1.0f);
         }
         undoAllBets(player);
         sendSeatUpdates();
@@ -301,6 +305,7 @@ public class BaccaratServer extends Server {
     
     private void processBet(Player player, BaccaratClient.BetOption betType, double amount) {
         UUID playerId = player.getUniqueId();
+
         playerBets.putIfAbsent(playerId, new HashMap<>());
     
         // Accumulate this player's bet correctly
