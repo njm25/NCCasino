@@ -110,7 +110,7 @@ public class BaccaratClient extends Client {
 
     @Override
     public void initializeUI(boolean switchRebet, boolean betSlip) {
-        super.initializeUI(true, betSlip);
+        super.initializeUI(false, betSlip);
         
         Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
         String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
