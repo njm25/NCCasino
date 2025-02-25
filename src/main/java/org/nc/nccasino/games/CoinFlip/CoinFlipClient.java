@@ -365,6 +365,7 @@ public class CoinFlipClient extends Client {
     private void handleAnimationFinished(){
 
         gameActive = false;
+        betAccepted = false;
         betAmount = 0;
         betStack.clear();
         populateGlassPattern();
