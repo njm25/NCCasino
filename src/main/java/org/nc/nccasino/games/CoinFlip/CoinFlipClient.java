@@ -151,7 +151,7 @@ public class CoinFlipClient extends Client {
                         player.sendMessage("§cInvalid action.");
                         break;
                     case VERBOSE:
-                        player.sendMessage("§oNo bet placed.");
+                        player.sendMessage("§cNo bet placed.");
                         break;
                     case NONE:
                         break;
