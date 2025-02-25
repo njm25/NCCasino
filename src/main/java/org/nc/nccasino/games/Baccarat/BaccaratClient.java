@@ -19,7 +19,6 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
@@ -109,8 +108,8 @@ public class BaccaratClient extends Client {
     }
 
     @Override
-    public void initializeUI(boolean switchRebet, boolean betSlip) {
-        super.initializeUI(false, betSlip);
+    public void initializeUI(boolean switchRebet, boolean betSlip,boolean deafultRebet) {
+        super.initializeUI(switchRebet, betSlip,deafultRebet);
         
         Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
         String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
@@ -183,27 +182,16 @@ public class BaccaratClient extends Client {
             inventory.setItem(slot, createSeatItem(slot));
         }
     }
-
+    
     private ItemStack createSeatItem(int slot) {
         if (seatMap.containsKey(slot)) {
             UUID playerId = seatMap.get(slot);
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
-                return createPlayerHead(player.getName(), playerId);
+                return createPlayerHead(player.getUniqueId(), player.getName());
             }
         }
-        return createCustomItem(Material.OAK_STAIRS, "§eClick to sit", 1);
-    }
-
-    private ItemStack createPlayerHead(String playerName, UUID playerId) {
-        ItemStack skull = new ItemStack(Material.PLAYER_HEAD);
-        SkullMeta meta = (SkullMeta) skull.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName("§a" + playerName);
-            meta.setOwningPlayer(Bukkit.getOfflinePlayer(playerId));
-            skull.setItemMeta(meta);
-        }
-        return skull;
+        return createCustomItem(Material.OAK_STAIRS, "§oClick to sit", 1);
     }
 
     private ItemStack createDealerSkull(String name) {
@@ -232,6 +220,12 @@ public class BaccaratClient extends Client {
                 updateBetDisplay(betData.betType, betData.totalBets);
             }
             break;
+            case "RESTORE_BETS":
+            if (data instanceof List) {
+                restoreBetHistory((List<BetData>) data);
+            }
+            break;
+
             case "RESET_BETS":
                 betStacks.clear();
                 refreshAllBetDisplays();
@@ -501,6 +495,21 @@ public class BaccaratClient extends Client {
             return;
         }
 
+        if (slot == 53) {
+            rebetEnabled = !rebetEnabled;
+            ((BaccaratServer) server).setRebetState(player.getUniqueId(), rebetEnabled);
+
+            // Update rebet toggle UI
+            Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
+            String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
+            inventory.setItem(53, createCustomItem(rebetMat, rebetName, 1));
+        
+            // Play rebet toggle sound
+            if (SoundHelper.getSoundSafely("ui.button.click", player) != null)
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
+            return;
+        }
+
         if (!seatMap.containsValue(player.getUniqueId())) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
@@ -622,20 +631,7 @@ public class BaccaratClient extends Client {
             }
         }
 
-           // Rebet Toggle (Slot 43)
-        if (slot == 53) {
-            rebetEnabled = !rebetEnabled;
-        
-            // Update rebet toggle UI
-            Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
-            String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
-            inventory.setItem(53, createCustomItem(rebetMat, rebetName, 1));
-        
-            // Play rebet toggle sound
-            if (SoundHelper.getSoundSafely("ui.button.click", player) != null)
-                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
-            return;
-        }
+
      
 
         if (!betMapping.containsKey(slot)) return; // Not a bet slot
@@ -753,7 +749,16 @@ public class BaccaratClient extends Client {
             .sum();
     
         if (!hasEnoughWager(player, totalRequired)) {
-            player.sendMessage("§cInsufficient funds to reapply all bets. Rebet disabled.");
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§cRebet Disabled.");
+                    break;
+                case VERBOSE:
+                    player.sendMessage("§cNot enough to place rebet. Rebet disabled.");
+                    break;
+                case NONE:
+                    break;
+            }
             rebetEnabled = false;
             previousBets.clear();
             return;
@@ -776,6 +781,7 @@ public class BaccaratClient extends Client {
                 sendUpdateToServer("SEAT_CLICK", slot);
             }
         }
+
     @Override
     public void handleClientInventoryClose() {
     sendUpdateToServer("INVENTORY_CLOSE", null);
@@ -792,6 +798,24 @@ public class BaccaratClient extends Client {
         previousBets.addAll(betHistory); // Copy exact order
     }
     
+    public void restoreBetHistory(List<BetData> storedHistory) {
+        betStacks.clear();
+        betHistory.clear();
+    
+        for (BetData bet : storedHistory) {
+            BetOption betType = bet.betType;
+            double amount = bet.amount;
+    
+            betStacks.putIfAbsent(betType, new ArrayDeque<>());
+            betStacks.get(betType).push(amount);
+            betHistory.add(bet); // Maintain exact order
+        }
+    
+        // Update UI with correct total bets
+        for (BetOption betType : betStacks.keySet()) {
+            updateBetDisplay(betType, ((BaccaratServer) server).getTotalBetForType(betType));
+        }
+    }
     
     
     

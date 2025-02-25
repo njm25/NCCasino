@@ -25,8 +25,8 @@ public class TestClient extends Client {
     }
 
     @Override
-    public void initializeUI(boolean rebetSwitch, boolean betSlip) {
-        super.initializeUI(rebetSwitch, betSlip);
+    public void initializeUI(boolean rebetSwitch, boolean betSlip, boolean defaultRebet) {
+        super.initializeUI(rebetSwitch, betSlip,defaultRebet);
         refreshUI();
     }
 

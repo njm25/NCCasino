@@ -25,6 +25,7 @@ public class BaccaratServer extends Server {
     private final Map<UUID, Map<BaccaratClient.BetOption, Double>> playerBets = new HashMap<>();
     private final Map<Integer, UUID> seatMap = new HashMap<>(); // Maps seat slot to player UUID
     private final List<UUID> seatedPlayers = new ArrayList<>();
+    private final Map<UUID, Boolean> rebetEnabledMap = new HashMap<>();
 
     private int countdownTaskId = -1;
     private int timeLeft;
@@ -63,7 +64,8 @@ public class BaccaratServer extends Server {
     @Override
     protected Client createClientForPlayer(Player player) {
         BaccaratClient client = new BaccaratClient(this, player, plugin, internalName);
-        client.initializeUI(true, false);
+        boolean rebetStatus = rebetEnabledMap.getOrDefault(player.getUniqueId(), false);
+        client.initializeUI(true, false,rebetStatus);
         clients.put(player.getUniqueId(), client);
     
         // Send current hand totals (if hands are empty, this will send {-1, -1})
@@ -107,17 +109,21 @@ public class BaccaratServer extends Server {
         }
     
         // Send current bet displays
-        Map<BaccaratClient.BetOption, Double> playerCurrentBets = playerBets.getOrDefault(player.getUniqueId(), new HashMap<>());
+        if (playerBets.containsKey(player.getUniqueId()) && gameState == GameState.RUNNING) {
+            List<BetData> storedHistory = new ArrayList<>();
+            for (Map.Entry<BaccaratClient.BetOption, Double> entry : playerBets.get(player.getUniqueId()).entrySet()) {
+                storedHistory.add(new BetData(entry.getKey(), entry.getValue()));
+            }
+            client.onServerUpdate("RESTORE_BETS", storedHistory);
+        }
+        
+        // Send current bet displays
         for (BaccaratClient.BetOption betType : totalBets.keySet()) {
             double totalBet = totalBets.get(betType);
-            double playerBet = playerCurrentBets.getOrDefault(betType, 0.0);
+            double playerBet = playerBets.getOrDefault(player.getUniqueId(), new HashMap<>()).getOrDefault(betType, 0.0);
             client.onServerUpdate("UPDATE_BET_DISPLAY", new BetDisplayData(betType, playerBet, totalBet));
         }
-    
-    
-    
-        Bukkit.getLogger().info(" clients.size(): " + clients.size() + " | gameState: " + gameState);
-    
+        
         // Start timer if this is the first player joining
         if (clients.size() == 1 && gameState == GameState.WAITING) {
             startTimer();
@@ -217,14 +223,12 @@ public class BaccaratServer extends Server {
 
             case "INVENTORY_OPEN":
                 if (gameState == GameState.PAUSED) {
-                    Bukkit.broadcastMessage("Game resumed as a player has rejoined.");
                     startTimer();
                 }
                 resumeGame();
                 break;
             case "INVENTORY_CLOSE":
                 if (clients.isEmpty() && totalBets.isEmpty()) {
-                    Bukkit.broadcastMessage("No players left and no bets - pausing game.");
                     pauseGame();
                 }
                 break;
@@ -238,10 +242,28 @@ public class BaccaratServer extends Server {
             if (seatMap.get(slot).equals(playerId)) {
                 // Player clicked their own seat -> Leave and refund
                 removeFromSeat(player);
-                player.sendMessage("§eYou left your seat.");
+                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                    case STANDARD:
+                        player.sendMessage("§cYou left your seat.");
+                        break;
+                    case VERBOSE:
+                    player.sendMessage("§eYou left your seat, bets refunded.");
+                    break;
+                    case NONE:
+                        break;
+                }
             }
         } else if (seatedPlayers.contains(playerId)) {
-            player.sendMessage("§cYou're already seated.");
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage("§cInvalid action.");
+                    break;
+                case VERBOSE:
+                player.sendMessage("§eYou are already seated.");
+                break;
+                case NONE:
+                    break;
+            }
         } else {
             seatPlayer(player, slot);
         }
@@ -387,7 +409,6 @@ public class BaccaratServer extends Server {
                 countdownTaskId = -1;
                 // If no viewers and no bets, PAUSE instead of restarting timer
                 if (clients.isEmpty() && totalBets.isEmpty()) {
-                    Bukkit.broadcastMessage("No viewers and no bets - pausing game.");
                     pauseGame();
                     return;
                 }
@@ -429,7 +450,6 @@ public class BaccaratServer extends Server {
 
     private void startGame() {
         if (clients.isEmpty() && totalBets.isEmpty()) {
-            Bukkit.broadcastMessage("No players watching and no bets - waiting for player.");
             return; // Do nothing, just wait for players to return
         }
     
@@ -707,4 +727,10 @@ private void resetGame() {
             default -> 0;
         };
     }
+
+    public void setRebetState(UUID playerId, boolean enabled) {
+        rebetEnabledMap.put(playerId, enabled);
+    }
+    
+
 }

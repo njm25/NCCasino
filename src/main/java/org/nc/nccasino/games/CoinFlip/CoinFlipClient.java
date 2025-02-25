@@ -192,7 +192,7 @@ public class CoinFlipClient extends Client {
     private void handlePlayerOneSit(Object data){
         Player playerData = (Player) data; // Use the PlayerData wrapper class
         if(playerData.getUniqueId().equals(player.getUniqueId())){
-            initializeUI(false, true);
+            initializeUI(false, true,false);
             resetPlayerOneUI();
             addItemAndLore(Material.OAK_STAIRS, 1, "Player 2's Seat", slotMapping.get(SlotOption.HANDLE_CHAIR_2));
         }
@@ -282,7 +282,7 @@ public class CoinFlipClient extends Client {
             resetPlayerOneUI();
             bettingEnabled = true;
             betAmount = 0;
-            initializeUI(rebetEnabled, bettingEnabled);
+            initializeUI(rebetEnabled, bettingEnabled,false);
         }
         else if(chairTwoOccupant!= null && chairTwoOccupant.getUniqueId().equals(player.getUniqueId())){
             resetPlayerTwoUI();
@@ -361,7 +361,7 @@ public class CoinFlipClient extends Client {
         if(chairOneOccupant!=null && chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
             
             bettingEnabled = true;
-            initializeUI(rebetEnabled, bettingEnabled);
+            initializeUI(rebetEnabled, bettingEnabled,false);
             updateBetLore(53, 0);
             resetPlayerOneUI();
         }

@@ -52,8 +52,8 @@ public abstract class Client extends DealerInventory {
     public Player getPlayer(){
         return player;
     }
-    public void initializeUI(boolean rebetSwitch, boolean betSlip) {
-        setupBettingRow(rebetSwitch, betSlip);
+    public void initializeUI(boolean rebetSwitch, boolean betSlip,boolean deafultRebet) {
+        setupBettingRow(rebetSwitch, betSlip,deafultRebet);
     }
 
     private void loadChipValuesFromConfig() {
@@ -72,10 +72,10 @@ public abstract class Client extends DealerInventory {
     }
 
 
-    private void setupBettingRow(Boolean rebetSwitch, boolean betSlip) {
+    private void setupBettingRow(Boolean rebetSwitch, boolean betSlip,boolean defaultRebet) {
         bettingEnabled = true;
         // 1) Build the chips (slots 47..51)
-        rebetEnabled = rebetSwitch; 
+        rebetEnabled = defaultRebet; 
         int chipSlot = 47;
         for (Map.Entry<String, Double> entry : chipValues.entrySet()) {
             String chipName = entry.getKey();
@@ -596,7 +596,7 @@ public abstract class Client extends DealerInventory {
 
     protected void sendUpdateToServer(String eventType, Object data) {
         if (server != null) {
-            Bukkit.getLogger().info("[Client] Sending update to server: " + eventType + " | Data: " + data);
+            //Bukkit.getLogger().info("[Client] Sending update to server: " + eventType + " | Data: " + data);
             server.onClientUpdate(this, eventType, data);
         }
     }
