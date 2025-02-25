@@ -178,7 +178,9 @@ public abstract class Server extends DealerInventory {
         for (Client client : clients.values()) {
             Player player = client.getPlayer();
             if (player != null) {
-                player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.0f);
+                if (SoundHelper.getSoundSafely("block.note_block.hat",player) != null) {
+                    player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.0f);
+                }
             }
         }
     }
