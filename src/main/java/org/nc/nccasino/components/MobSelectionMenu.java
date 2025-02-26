@@ -371,6 +371,9 @@ public class MobSelectionMenu extends Menu {
         String gameType = plugin.getConfig().getString("dealers." + internalName + ".game", "Menu");
         int timer = plugin.getConfig().getInt("dealers." + internalName + ".timer", 30);
         String anmsg = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
+
+        Map<String, Object> gameSettings = getGameSpecificSettings(plugin.getConfig(), internalName, gameType);
+
         List<Integer> chipSizes = new ArrayList<>();
 
         ConfigurationSection chipSizeSection = plugin.getConfig().getConfigurationSection("dealers." + internalName + ".chip-sizes");
@@ -442,6 +445,8 @@ public class MobSelectionMenu extends Menu {
                                 AdminMenu.deleteAssociatedAdminInventories(player);
                                 Mob newDealer = Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
                                 Dealer.updateGameType(newDealer, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+                                restoreGameSpecificSettings(plugin.getConfig(), internalName, gameType, gameSettings);
+
                                 dealersConfig.set("dealers." + internalName + ".world", worldName);
                                 dealersConfig.set("dealers." + internalName + ".X", x);
                                 dealersConfig.set("dealers." + internalName + ".Y", y);
@@ -471,6 +476,45 @@ public class MobSelectionMenu extends Menu {
         
         player.openInventory(confirmInventory.getInventory());
     
+    }
+
+    private Map<String, Object> getGameSpecificSettings(FileConfiguration config, String internalName, String gameType) {
+        Map<String, Object> settings = new HashMap<>();
+        String basePath = "dealers." + internalName + ".";
+
+        switch (gameType) {
+            case "Blackjack" -> {
+                settings.put("stand-on-17", config.getInt(basePath + "stand-on-17", 100));
+                settings.put("number-of-decks", config.getInt(basePath + "number-of-decks", 6));
+            }
+            case "Roulette" -> {
+            }
+            case "Mines" -> {
+                settings.put("default-mines", config.getInt(basePath + "default-mines", 3));
+            }
+            case "Baccarat" -> {
+                settings.put("number-of-decks", config.getInt(basePath + "number-of-decks", 8));
+            }
+            case "Coin Flip" -> {
+            }
+        }
+        return settings;
+    }
+
+    private void restoreGameSpecificSettings(FileConfiguration config, String internalName, String gameType, Map<String, Object> settings) {
+        String basePath = "dealers." + internalName + ".";
+
+        settings.forEach((key, value) -> {
+            config.set(basePath + key, value);
+            Bukkit.getLogger().info("Setting " + basePath + key + " = " + value);
+        });
+
+        try {
+            plugin.saveConfig();
+            Bukkit.getLogger().info("Saved dealer settings for " + internalName);
+        } catch (Exception e) {
+            Bukkit.getLogger().severe("Failed to save dealer settings: " + e.getMessage());
+        }
     }
 
     private void handleVariantClick(Player player) {
