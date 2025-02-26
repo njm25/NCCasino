@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -80,11 +81,19 @@ public class DeleteCommand implements CasinoCommand {
                 sender.sendMessage(ChatColor.RED + "Dealer with internal name '" + ChatColor.YELLOW + internalName + ChatColor.RED + "' not found.");
                 return;
             }
-            Dealer.removeDealer(mob);
-            DealerInventory.unregisterAllListeners(mob);
-            removeDealerData(internalName);
             
-            sender.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName + ChatColor.GREEN + "' has been deleted.");
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                plugin.deleteAssociatedInventories(mob);
+
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    Dealer.removeDealer(mob);
+                    DealerInventory.unregisterAllListeners(mob);
+                    removeDealerData(internalName);
+                    sender.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName + ChatColor.GREEN + "' has been deleted.");
+                });
+            });
+
+            
         });
 
         return true;

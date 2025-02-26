@@ -494,6 +494,7 @@ public class CoinFlipClient extends Client {
             addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_2));
         } else {
             addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
+            if (chairTwo != null)
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2), 
                 createPlayerHead(chairTwo.getUniqueId(), chairTwo.getDisplayName()));
         }
