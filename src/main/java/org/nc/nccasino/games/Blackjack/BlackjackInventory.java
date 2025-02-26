@@ -1646,17 +1646,8 @@ private void finishGame() {
                     break;
                 }
             }
-            Random random = new Random();
-            
+            if (SoundHelper.getSoundSafely("ui.toast.challenge_complete", player) != null)player.playSound(player.getLocation(),Sound.UI_TOAST_CHALLENGE_COMPLETE,SoundCategory.MASTER, 1.0f,1.0f);
             player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
-            // We'll pick from a small array of fun pitches
-            float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
-            for (int i = 0; i < 3; i++) {
-                float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
-                 if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER, 1.0f,chosenPitch);
-                // Schedule them slightly apart for a "ding-ding-ding" effect
-            
-            }
             payOut(player, bets, 2.5); // Pay out 2.5x for a blackjack
         } else if (playerCardSum > 21) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
