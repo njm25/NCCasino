@@ -1647,6 +1647,7 @@ private void finishGame() {
                 }
             }
             if (SoundHelper.getSoundSafely("ui.toast.challenge_complete", player) != null)player.playSound(player.getLocation(),Sound.UI_TOAST_CHALLENGE_COMPLETE,SoundCategory.MASTER, 1.0f,1.0f);
+            player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
             payOut(player, bets, 2.5); // Pay out 2.5x for a blackjack
         } else if (playerCardSum > 21) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
