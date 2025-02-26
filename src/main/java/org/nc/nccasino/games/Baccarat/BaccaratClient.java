@@ -640,7 +640,7 @@ public class BaccaratClient extends Client {
     
         // Get bet amount
         double betAmount;
-        if (isDraggingCurrency) {
+        if (isDraggingCurrency && cursorItem !=null) {
             betAmount = cursorItem.getAmount(); // Use entire stack amount
         } else {
             betAmount = selectedWager;
