@@ -31,6 +31,7 @@ import org.nc.nccasino.helpers.AttributeHelper;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 
 public class Dealer {
@@ -139,100 +140,111 @@ public class Dealer {
     
     public static void startLookingAtPlayers(Mob mob) {
         UUID mobId = mob.getUniqueId();
-
-        // Cancel any existing task for this mob
+    
         if (lookAtTasks.containsKey(mobId)) {
             lookAtTasks.get(mobId).cancel();
         }
-
+    
         BukkitTask task = new BukkitRunnable() {
-            private Player currentTarget = null;
+            private final Random random = new Random();
+            private Entity currentTarget = null;
             private float bodyYaw = mob.getLocation().getYaw();
             private static final float MIN_TURN_SPEED = 0.5f;
             private static final float MAX_TURN_SPEED = 4.0f;
             private static final float SMOOTH_FACTOR = 0.2f;
-            private static final double SWITCH_THRESHOLD = 0.5;
-
+            private int targetLockTime = 0;
+            private static final int TARGET_LOCK_DURATION = 175; // Keep target for 5 seconds
+            private boolean idleMode = false;
+            private float idleYaw = bodyYaw;
+    
             @Override
             public void run() {
                 if (mob.isDead() || !mob.isValid()) {
                     cancel();
-                    lookAtTasks.remove(mobId); // Cleanup task reference
+                    lookAtTasks.remove(mobId);
                     return;
                 }
-
-                Player nearest = getNearestPlayer(mob);
-
-                if (nearest != null) {
-                    if (currentTarget == null || 
-                        (nearest.getWorld().equals(mob.getWorld()) && 
-                         currentTarget.getWorld().equals(mob.getWorld()) && 
-                         nearest.getLocation().distance(mob.getLocation()) < 
-                         currentTarget.getLocation().distance(mob.getLocation()) - SWITCH_THRESHOLD)) {
-                        currentTarget = nearest;
+    
+                // Decide whether to enter idle mode (10% chance)
+                if (targetLockTime <= 0) {
+                    if (random.nextDouble() < 0.05) { // 10% chance for idle mode
+                        idleMode = true;
+                        idleYaw = random.nextFloat() * 360.0f; // Pick a random yaw
+                    } else {
+                        idleMode = false;
+                        // 30% chance to look at another dealer/mob instead of a player
+                        currentTarget = (random.nextDouble() < 0.3) ? getNearbyDealerOrMob(mob) : getNearestPlayer(mob);
                     }
+                    targetLockTime = TARGET_LOCK_DURATION;
                 }
-
-                if (currentTarget != null) {
-                    Location mobLoc = mob.getLocation();
+                targetLockTime--;
+    
+                Location mobLoc = mob.getLocation();
+    
+                if (idleMode) {
+                    // Smoothly turn towards random idle yaw
+                    float angleDiff = ((idleYaw - bodyYaw + 540) % 360) - 180;
+                    float turnSpeed = Math.max(MIN_TURN_SPEED, Math.abs(angleDiff) * SMOOTH_FACTOR);
+                    turnSpeed = Math.min(turnSpeed, MAX_TURN_SPEED);
+                    bodyYaw = lerpAngle(bodyYaw, idleYaw, turnSpeed);
+                } else if (currentTarget != null) {
+                    // Normal tracking logic
                     Location targetLoc = currentTarget.getLocation();
-
                     double dx = targetLoc.getX() - mobLoc.getX();
                     double dz = targetLoc.getZ() - mobLoc.getZ();
-
                     float targetYaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
-
-                    mobLoc.setYaw(targetYaw);
-                    mob.teleport(mobLoc);
-
+    
                     float angleDiff = ((targetYaw - bodyYaw + 540) % 360) - 180;
                     float turnSpeed = Math.max(MIN_TURN_SPEED, Math.abs(angleDiff) * SMOOTH_FACTOR);
                     turnSpeed = Math.min(turnSpeed, MAX_TURN_SPEED);
-
                     bodyYaw = lerpAngle(bodyYaw, targetYaw, turnSpeed);
-                    setBodyYaw(mob, bodyYaw);
                 }
+    
+                setBodyYaw(mob, bodyYaw);
             }
         }.runTaskTimer(JavaPlugin.getProvidingPlugin(Dealer.class), 0L, 1L);
-
+    
         lookAtTasks.put(mobId, task);
     }
     
-    /**
-     * Linearly interpolates between angles for smooth motion.
-     */
+    
+
+    private static Entity getNearbyDealerOrMob(Mob mob) {
+        double maxDistance = 20.0;
+    
+        return mob.getWorld().getNearbyEntities(mob.getLocation(), maxDistance, maxDistance, maxDistance)
+            .stream()
+            .filter(e -> e instanceof Mob && e != mob) // Ignore self
+            .min((e1, e2) -> Double.compare(e1.getLocation().distance(mob.getLocation()), 
+                                            e2.getLocation().distance(mob.getLocation())))
+            .orElse(null);
+    }
+    
+    
     private static float lerpAngle(float current, float target, float speed) {
         float diff = ((target - current + 540) % 360) - 180; // Ensures shortest rotation path
         return current + Math.min(Math.max(diff, -speed), speed); // Move by speed amount
     }
     
-    /**
-     * Adjusts the body yaw without affecting head movement.
-     */
     private static void setBodyYaw(Mob mob, float yaw) {
         Location mobLoc = mob.getLocation();
         mobLoc.setYaw(yaw);
         mob.teleport(mobLoc);
     }
     
-    
-    
-    /**
-     * Get the nearest player within range.
-     */
     private static Player getNearestPlayer(Mob mob) {
-        return mob.getWorld().getNearbyEntities(mob.getLocation(), 10, 10, 10)
+        double maxDistance = 20.0;
+    
+        return mob.getWorld().getNearbyEntities(mob.getLocation(), maxDistance, maxDistance, maxDistance)
             .stream()
             .filter(e -> e instanceof Player)
             .map(e -> (Player) e)
+            .filter(player -> player.getLocation().distance(mob.getLocation()) <= maxDistance) // Ensure within range
             .min((p1, p2) -> Double.compare(p1.getLocation().distance(mob.getLocation()), 
                                             p2.getLocation().distance(mob.getLocation())))
             .orElse(null);
     }
     
-    
-    
-
     public static void initializeInventory(Mob mob, UUID uniqueId, String name, Nccasino plugin) {
         PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
         String gameType = dataContainer.get(GAME_TYPE_KEY, PersistentDataType.STRING);
