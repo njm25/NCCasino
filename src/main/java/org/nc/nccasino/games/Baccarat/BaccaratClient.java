@@ -179,11 +179,11 @@ public class BaccaratClient extends Client {
 
     private void setupSeats() {
         for (int slot : seatSlots) {
-            inventory.setItem(slot, createSeatItem(slot));
+            inventory.setItem(slot, createSeatItem(slot,player.getUniqueId()));
         }
     }
     
-    private ItemStack createSeatItem(int slot) {
+    private ItemStack createSeatItem(int slot,UUID viewerId) {
         if (seatMap.containsKey(slot)) {
             UUID playerId = seatMap.get(slot);
             Player player = Bukkit.getPlayer(playerId);
@@ -191,7 +191,9 @@ public class BaccaratClient extends Client {
                 return createPlayerHead(player.getUniqueId(), player.getName());
             }
         }
-        return createCustomItem(Material.OAK_STAIRS, "§oClick to sit", 1);
+        boolean viewerIsSeated = seatMap.containsValue(viewerId);
+        String displayName = viewerIsSeated ? "§oOpen Seat" : "§oClick to Sit";
+        return createCustomItem(Material.OAK_STAIRS, displayName, 1);
     }
 
     private ItemStack createDealerSkull(String name) {
@@ -497,7 +499,6 @@ public class BaccaratClient extends Client {
 
         if (slot == 53) {
             rebetEnabled = !rebetEnabled;
-            ((BaccaratServer) server).setRebetState(player.getUniqueId(), rebetEnabled);
 
             // Update rebet toggle UI
             Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
@@ -765,13 +766,16 @@ public class BaccaratClient extends Client {
         }
     
         betHistory.clear(); // Clear before reapplying
-    
+        System.out.println("prev"+previousBets);
+
         for (BetData bet : previousBets) {
             betHistory.add(bet); // Maintain order
             betStacks.putIfAbsent(bet.betType, new ArrayDeque<>());
-            betStacks.get(bet.betType).push(bet.amount);
+            betStacks.get(bet.betType).addLast(bet.amount); // Add LAST to preserve order
+
             removeWagerFromInventory(player, bet.amount);
             sendUpdateToServer("PLACE_BET", bet);
+            System.out.println("sent"+bet);
         }
         }
 

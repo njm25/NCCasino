@@ -25,7 +25,6 @@ public class BaccaratServer extends Server {
     private final Map<UUID, Map<BaccaratClient.BetOption, Double>> playerBets = new HashMap<>();
     private final Map<Integer, UUID> seatMap = new HashMap<>(); // Maps seat slot to player UUID
     private final List<UUID> seatedPlayers = new ArrayList<>();
-    private final Map<UUID, Boolean> rebetEnabledMap = new HashMap<>();
 
     private int countdownTaskId = -1;
     private int timeLeft;
@@ -64,8 +63,7 @@ public class BaccaratServer extends Server {
     @Override
     protected Client createClientForPlayer(Player player) {
         BaccaratClient client = new BaccaratClient(this, player, plugin, internalName);
-        boolean rebetStatus = rebetEnabledMap.getOrDefault(player.getUniqueId(), false);
-        client.initializeUI(true, false,rebetStatus);
+        client.initializeUI(true, false,false);
         clients.put(player.getUniqueId(), client);
     
         // Send current hand totals (if hands are empty, this will send {-1, -1})
@@ -732,10 +730,5 @@ private void resetGame() {
             default -> 0;
         };
     }
-
-    public void setRebetState(UUID playerId, boolean enabled) {
-        rebetEnabledMap.put(playerId, enabled);
-    }
-    
 
 }
