@@ -212,8 +212,9 @@ public class AdminMenu extends Menu {
             break;
         }
         
-        addItemAndLore(Material.BOOK, 1, currentGame + " Settings",  slotMapping.get(SlotOption.GAME_OPTIONS));
-        
+        List<String> gameSettingsLore = getGameSettingsLore(config, internalName, currentGame);
+        addItemAndLore(Material.BOOK, 1, currentGame + " Settings", slotMapping.get(SlotOption.GAME_OPTIONS), gameSettingsLore.toArray(new String[0]));
+    
         addItemAndLore(Material.RED_STAINED_GLASS_PANE, 1, "Edit Animation Message",  slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE), "Current: §a" + currentAnimationMessage);
        /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
         addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
@@ -238,7 +239,50 @@ public class AdminMenu extends Menu {
         addItemAndLore(mobEgg, 1, "Edit Dealer Mob", slotMapping.get(SlotOption.MOB_SELECTION), lore.toArray(new String[0]));
 
     }
-  
+    
+    private List<String> getGameSettingsLore(FileConfiguration config, String internalName, String gameType) {
+        List<String> lore = new ArrayList<>();
+        
+        switch (gameType) {
+            case "Blackjack":
+                int blackjackTimer = config.getInt("dealers." + internalName + ".timer", 30);
+                int standOn17Chance = config.getInt("dealers." + internalName + ".stand-on-17", 100);
+                int blackjackDecks = config.getInt("dealers." + internalName + ".number-of-decks", 6);
+                lore.add("§7Current Timer: §a" + blackjackTimer);
+                lore.add("§7Current Stand On 17 Chance: §a" + standOn17Chance + "%");
+                lore.add("§7Current # of Decks: §a" + blackjackDecks);
+                break;
+    
+            case "Roulette":
+                int rouletteTimer = config.getInt("dealers." + internalName + ".timer", 30);
+                lore.add("§7Current Timer: §a" + rouletteTimer);
+                break;
+    
+            case "Mines":
+                int defaultMines = config.getInt("dealers." + internalName + ".default-mines", 3);
+                lore.add("§7Current Default # of Mines: §a" + defaultMines);
+                break;
+    
+            case "Baccarat":
+                int baccaratTimer = config.getInt("dealers." + internalName + ".timer", 30);
+                int baccaratDecks = config.getInt("dealers." + internalName + ".number-of-decks", 8);
+                lore.add("§7Current Timer: §a" + baccaratTimer);
+                lore.add("§7Current # of Decks: §a" + baccaratDecks);
+                break;
+    
+            case "Coin Flip":
+                int coinFlipTimer = config.getInt("dealers." + internalName + ".timer", 30);
+                lore.add("§7Current Timer: §a" + coinFlipTimer);
+                break;
+    
+            default:
+                lore.add("§7No settings available.");
+                break;
+        }
+        
+        return lore;
+    }
+    
     /**
      * Returns whether the player is currently editing something else (rename, timer, etc.).
      */
