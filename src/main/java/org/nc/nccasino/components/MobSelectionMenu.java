@@ -484,15 +484,18 @@ public class MobSelectionMenu extends Menu {
 
         switch (gameType) {
             case "Blackjack" -> {
+
                 settings.put("stand-on-17", config.getInt(basePath + "stand-on-17", 100));
                 settings.put("number-of-decks", config.getInt(basePath + "number-of-decks", 6));
             }
             case "Roulette" -> {
+
             }
             case "Mines" -> {
                 settings.put("default-mines", config.getInt(basePath + "default-mines", 3));
             }
             case "Baccarat" -> {
+
                 settings.put("number-of-decks", config.getInt(basePath + "number-of-decks", 8));
             }
             case "Coin Flip" -> {
