@@ -766,7 +766,6 @@ public class BaccaratClient extends Client {
         }
     
         betHistory.clear(); // Clear before reapplying
-        System.out.println("prev"+previousBets);
 
         for (BetData bet : previousBets) {
             betHistory.add(bet); // Maintain order
@@ -775,7 +774,6 @@ public class BaccaratClient extends Client {
 
             removeWagerFromInventory(player, bet.amount);
             sendUpdateToServer("PLACE_BET", bet);
-            System.out.println("sent"+bet);
         }
         }
 

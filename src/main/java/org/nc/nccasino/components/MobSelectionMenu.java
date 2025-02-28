@@ -509,14 +509,12 @@ public class MobSelectionMenu extends Menu {
 
         settings.forEach((key, value) -> {
             config.set(basePath + key, value);
-            Bukkit.getLogger().info("Setting " + basePath + key + " = " + value);
         });
 
         try {
             plugin.saveConfig();
-            Bukkit.getLogger().info("Saved dealer settings for " + internalName);
         } catch (Exception e) {
-            Bukkit.getLogger().severe("Failed to save dealer settings: " + e.getMessage());
+            Bukkit.getLogger().warning("Failed to save dealer settings: " + e.getMessage());
         }
     }
 
