@@ -210,10 +210,14 @@ public class AnimationMessage extends DealerInventory {
         if (!playerUUID.equals(playerId)) return;
         if (event.getInventory().getHolder() != this) return;
 
-        playDefaultSound(player);
-        stopAnimation(player);
-        if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
-        mce.removePlayerFromAllChannels(player);
+        if (event.getClickedInventory() == event.getView().getTopInventory()) {
+            playDefaultSound(player);
+            stopAnimation(player);
+            if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport",player) != null) {
+                player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            mce.removePlayerFromAllChannels(player);
+        }
     }
 
     @EventHandler
