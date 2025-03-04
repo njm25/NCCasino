@@ -80,7 +80,11 @@ public abstract class Client extends DealerInventory {
         for (Map.Entry<String, Double> entry : chipValues.entrySet()) {
             String chipName = entry.getKey();
             double chipVal = entry.getValue();
-            inventory.setItem(chipSlot, createCustomItem(getCurrencyMaterial(), chipName, (int) chipVal));
+            if (chipVal == selectedWager) {
+                inventory.setItem(chipSlot, createEnchantedItem(getCurrencyMaterial(), chipName, (int) chipVal));
+            } else {
+                inventory.setItem(chipSlot, createCustomItem(getCurrencyMaterial(), chipName, (int) chipVal));
+            }
             chipSlot++;
         }
         if(betSlip){
