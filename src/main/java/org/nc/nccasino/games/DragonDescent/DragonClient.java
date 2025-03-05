@@ -449,6 +449,16 @@ public class DragonClient extends Client{
                 }
                 return;
             }
+            else if (slot==3){
+                if (SoundHelper.getSoundSafely("entity.ender_dragon.hurt", player) != null)
+                player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_HURT, SoundCategory.MASTER, 1.0f, 1.0f); 
+            }
+            else if (slot==5){
+                Random random = new Random();
+                float randomPitch = 0.5f + (random.nextFloat() * 1.5f);
+                if (SoundHelper.getSoundSafely("entity.player.burp", player) != null)
+                        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_BURP, SoundCategory.MASTER, 1.0f, randomPitch); 
+            }
             handleGameSettingClick(slot);
             return;
         }
