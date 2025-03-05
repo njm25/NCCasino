@@ -35,7 +35,7 @@ public class DragonClient extends Client{
 
     public DragonClient(DragonServer server, Player player, Nccasino plugin, String internalName) {
         super(server, player, "Dragon Descent", plugin, internalName);
-        initializeUI(true, true,true,40,53);
+        initializeUI(true, true,false,40,53);
         setupPregame();
     }
 
