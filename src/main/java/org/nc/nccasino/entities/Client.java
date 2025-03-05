@@ -126,10 +126,8 @@ public abstract class Client extends DealerInventory {
         if (!clicker.getUniqueId().equals(player.getUniqueId())) return;
 
         // If it's one of the bet slots (chips, rebet, etc.), handle it:
-        if (isBetSlot(slot)) {
-            if(bettingEnabled) {
-                handleBet(slot, clicker, event);
-            }
+        if (bettingEnabled && isBetSlot(slot)) {
+            handleBet(slot, clicker, event);
         } else {
             // Otherwise, let game-specific logic handle it
             handleClientSpecificClick(slot, clicker, event);
