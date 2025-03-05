@@ -57,6 +57,7 @@ public abstract class Client extends DealerInventory {
         return player;
     }
     public void initializeUI(boolean rebetSwitch, boolean betSlip,boolean deafultRebet) {
+        this.betSlip=betSlip;
         setupBettingRow(rebetSwitch, betSlip, deafultRebet);
     }
 

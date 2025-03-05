@@ -602,6 +602,7 @@ public class CoinFlipClient extends Client {
 
             @Override
             public void run() {
+                if (inventory == null) return;
                 if (index < flipSlots.length) {
                     if (SoundHelper.getSoundSafely("ui.toast.in", player) != null)
                         player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
