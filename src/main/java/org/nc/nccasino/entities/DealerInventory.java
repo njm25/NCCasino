@@ -350,4 +350,19 @@ public class DealerInventory implements InventoryHolder, Listener {
         return skull;
     }
 
+    protected ItemStack createPlayerHeadItem(Player player, int stackSize) {
+        if (stackSize <= 0) {
+            throw new IllegalArgumentException("Stack size must be greater than 0 for player head.");
+        }
+    
+        ItemStack playerHead = new ItemStack(Material.PLAYER_HEAD, stackSize);
+        SkullMeta skullMeta = (SkullMeta) playerHead.getItemMeta();
+        if (skullMeta != null) {
+            skullMeta.setOwningPlayer(player);
+            skullMeta.setDisplayName(player.getName());
+            playerHead.setItemMeta(skullMeta);
+        }
+        return playerHead;
+    }
+    
 }
