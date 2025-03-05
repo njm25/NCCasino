@@ -209,13 +209,13 @@ public abstract class Server extends DealerInventory {
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
             case STANDARD:
                 player.sendMessage(isWinner
-                        ? "§a§lPaid " + payout + " " + currencyName + (isSingle ? "" : "s")
+                        ? "§a§lPaid " + (int) payout + " " + currencyName + (isSingle ? "" : "s")
                         : "§c§lYou lose!");
                 break;
             case VERBOSE:
                 player.sendMessage(isWinner
-                        ? "§a§lPaid " + payout + " " + currencyName + (isSingle ? "" : "s") +
-                          "\n §r§a§o(profit of " + profit + ")"
+                        ? "§a§lPaid " + (int) payout + " " + currencyName + (isSingle ? "" : "s") +
+                          "\n §r§a§o(profit of " + (int) profit + ")"
                         : "§c§lYou lose!");
                 break;
             case NONE:

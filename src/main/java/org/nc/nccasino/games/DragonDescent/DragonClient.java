@@ -487,8 +487,11 @@ public class DragonClient extends Client{
         if (floor == (currentFloor - displayOffset)) { 
             moveLocked = true;
             revealRow(floor);
-        
+            if(this.inventory == null) return;
+            boolean playerLost = (gameGrid[displayOffset + floor - 1][safeGridCol] == 0);
+            if (playerLost) gameOverTriggered = true; 
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if(this.inventory == null) return;
                 if (SoundHelper.getSoundSafely("block.cave_vines.step", player) != null)
                     player.playSound(player.getLocation(), Sound.BLOCK_CAVE_VINES_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
                 inventory.setItem(playerX, createCustomItem(Material.VINE, "§aSafe!", 1));
@@ -499,10 +502,10 @@ public class DragonClient extends Client{
                 updatePlayerHead();
         
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    animateDragonSweep(floor, gameGrid[displayOffset + floor - 1][safeGridCol] == 0);
+                    animateDragonSweep(floor, playerLost);
                 }, 10L);
         
-                if (gameGrid[displayOffset + floor - 1][safeGridCol] == 0) {
+                if (playerLost) {
                     renameAllExcept(playerX, "§cOof.");
                 } else {
                     if (currentFloor == numRows) {
