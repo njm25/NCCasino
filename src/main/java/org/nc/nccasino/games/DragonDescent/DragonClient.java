@@ -8,12 +8,15 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
+import org.nc.nccasino.helpers.AttributeHelper;
 import org.nc.nccasino.helpers.SoundHelper;
 
 public class DragonClient extends Client{
@@ -36,6 +39,7 @@ public class DragonClient extends Client{
         setupPregame();
     }
 
+    @SuppressWarnings("removal")
     private void setupPregame() {
         bettingEnabled=true;
         //updateRebetToggle(44);
@@ -51,7 +55,19 @@ public class DragonClient extends Client{
             }
             inventory.setItem(slot, item);
         }
-        inventory.setItem(4, createCustomItem(Material.DRAGON_HEAD, "Start Your Descent", 1));
+        inventory.setItem(3, createCustomItem(Material.DRAGON_HEAD, "Drungus The Dragon", 1));
+        addItem(createCustomItem(Material.DIAMOND_SWORD, "Begin Your Descent?"), 4); // Hit
+        ItemStack item = inventory.getItem(4);
+        ItemMeta meta = item.getItemMeta();
+        assert meta != null;
+        meta.addAttributeModifier(AttributeHelper.getAttributeSafely("ATTACK_DAMAGE"), 
+            new AttributeModifier("foo", 0, AttributeModifier.Operation.MULTIPLY_SCALAR_1));
+        for(ItemFlag flag : ItemFlag.values()) {
+            meta.addItemFlags(flag);
+        }
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+        item.setItemMeta(meta);
+        inventory.setItem(5, createPlayerHeadItem(player, 1));
 
         setupGameSettingRow(9, Material.WHITE_STAINED_GLASS_PANE, "Columns", numColumns, 2, 9);
         setupGameSettingRow(18, Material.VINE, "Vines (Safe Spots per Floor)", numSafeSpots, 1, numColumns - 1);
