@@ -252,7 +252,7 @@ public class AdminMenu extends Menu {
                 int standOn17Chance = config.getInt("dealers." + internalName + ".stand-on-17", 100);
                 int blackjackDecks = config.getInt("dealers." + internalName + ".number-of-decks", 6);
                 lore.add("§7Timer: §a" + blackjackTimer);
-                lore.add("§7Stand On 17 Chance: §a" + standOn17Chance + "%");
+                lore.add("§7Stand on 17 Chance: §a" + standOn17Chance + "%");
                 lore.add("§7# of Decks: §a" + blackjackDecks);
                 break;
     
