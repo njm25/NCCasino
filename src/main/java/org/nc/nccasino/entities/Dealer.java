@@ -173,7 +173,7 @@ public class Dealer {
                     } else {
                         idleMode = false;
                         // 30% chance to look at another dealer/mob instead of a player
-                        currentTarget = (random.nextDouble() < 0.3) ? getNearbyDealerOrMob(mob) : getNearestPlayer(mob);
+                        currentTarget = (random.nextDouble() < 0.1) ? getNearbyDealerOrMob(mob) : getNearestPlayer(mob);
                     }
                     targetLockTime = TARGET_LOCK_DURATION;
                 }
