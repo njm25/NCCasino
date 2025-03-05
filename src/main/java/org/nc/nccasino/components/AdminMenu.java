@@ -252,31 +252,31 @@ public class AdminMenu extends Menu {
                 int blackjackTimer = config.getInt("dealers." + internalName + ".timer", 30);
                 int standOn17Chance = config.getInt("dealers." + internalName + ".stand-on-17", 100);
                 int blackjackDecks = config.getInt("dealers." + internalName + ".number-of-decks", 6);
-                lore.add("§7Current Timer: §a" + blackjackTimer);
-                lore.add("§7Current Stand On 17 Chance: §a" + standOn17Chance + "%");
-                lore.add("§7Current # of Decks: §a" + blackjackDecks);
+                lore.add("§7Timer: §a" + blackjackTimer);
+                lore.add("§7Stand On 17 Chance: §a" + standOn17Chance + "%");
+                lore.add("§7# of Decks: §a" + blackjackDecks);
                 break;
     
             case "Roulette":
                 int rouletteTimer = config.getInt("dealers." + internalName + ".timer", 30);
-                lore.add("§7Current Timer: §a" + rouletteTimer);
+                lore.add("§7Timer: §a" + rouletteTimer);
                 break;
     
             case "Mines":
                 int defaultMines = config.getInt("dealers." + internalName + ".default-mines", 3);
-                lore.add("§7Current Default # of Mines: §a" + defaultMines);
+                lore.add("§7Default # of Mines: §a" + defaultMines);
                 break;
     
             case "Baccarat":
                 int baccaratTimer = config.getInt("dealers." + internalName + ".timer", 30);
                 int baccaratDecks = config.getInt("dealers." + internalName + ".number-of-decks", 8);
-                lore.add("§7Current Timer: §a" + baccaratTimer);
-                lore.add("§7Current # of Decks: §a" + baccaratDecks);
+                lore.add("§7Timer: §a" + baccaratTimer);
+                lore.add("§7# of Decks: §a" + baccaratDecks);
                 break;
     
             case "Coin Flip":
                 int coinFlipTimer = config.getInt("dealers." + internalName + ".timer", 30);
-                lore.add("§7Current Timer: §a" + coinFlipTimer);
+                lore.add("§7Timer: §a" + coinFlipTimer);
                 break;
     
             default:
@@ -1539,7 +1539,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
     private List<String> getMobSelectionLore(Mob mob) {
         List<String> lore = new ArrayList<>();
-        lore.add("Current Mob: §a" + formatEntityName(mob.getType().toString()));
+        lore.add("Mob: §a" + formatEntityName(mob.getType().toString()));
             String sizeOrAge = getCurrentSizeOrAge(mob);
         if (!sizeOrAge.isEmpty()) {
             lore.add(sizeOrAge);
@@ -1549,7 +1549,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         } else {
             String variant = getCurrentVariant(mob);
             if (!variant.isEmpty()) {
-                lore.add("Current Variant: §a" + variant);
+                lore.add("Variant: §a" + variant);
             }
         }
         return lore;
@@ -1613,11 +1613,11 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
     private String getCurrentSizeOrAge(Mob mob) {
     if (mob instanceof Slime slime && !(mob instanceof MagmaCube)) {
-        return "Current Size: §a" + slime.getSize();
+        return "Size: §a" + slime.getSize();
     } else if (mob instanceof MagmaCube magmaCube) {
-        return "Current Size: §a" + magmaCube.getSize();
+        return "Size: §a" + magmaCube.getSize();
     } else if (mob instanceof org.bukkit.entity.Ageable ageable&&!(mob instanceof Parrot) &&!(mob instanceof Frog) &&!(mob instanceof PiglinBrute) &&!(mob instanceof WanderingTrader)) {
-        return "Current Age: §a" + (ageable.isAdult() ? "Adult" : "Baby");
+        return "Age: §a" + (ageable.isAdult() ? "Adult" : "Baby");
     }
     return "";
     }
