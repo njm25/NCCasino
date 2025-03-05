@@ -26,6 +26,7 @@ public class DragonClient extends Client{
     private boolean moveLocked = false; 
     private final List<Integer> taskIDs = new ArrayList<>();
     private boolean gameOverTriggered = false;
+    private boolean playerLost = false;
     private int displayOffset = 0; 
     private int floorsCleared = 0; 
 
@@ -277,7 +278,6 @@ public class DragonClient extends Client{
     }
     
     private void animateDragonSweep(int floor, boolean gameOver) {
-        if (gameOverTriggered) return; // Stop if gameOver has already begun
         int actualFloor = displayOffset + (floor - 1);
 
         int rowStart = floor * 9;
@@ -316,7 +316,7 @@ public class DragonClient extends Client{
     
             int thisDelay = col * 2; // each col is 2 ticks later
             maxDelay.set(Math.max(maxDelay.get(), thisDelay));
-    
+            if (this.inventory == null) return;
             int taskID = Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (gameOverTriggered) return;
                     if (lastPlacedSlot.get() != -1) {
@@ -488,8 +488,8 @@ public class DragonClient extends Client{
             moveLocked = true;
             revealRow(floor);
             if(this.inventory == null) return;
-            boolean playerLost = (gameGrid[displayOffset + floor - 1][safeGridCol] == 0);
-            if (playerLost) gameOverTriggered = true; 
+            boolean gameOver = (gameGrid[displayOffset + floor - 1][safeGridCol] == 0);
+            if (gameOver) playerLost = true; 
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if(this.inventory == null) return;
                 if (SoundHelper.getSoundSafely("block.cave_vines.step", player) != null)
@@ -502,10 +502,10 @@ public class DragonClient extends Client{
                 updatePlayerHead();
         
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    animateDragonSweep(floor, playerLost);
+                    animateDragonSweep(floor, gameOver);
                 }, 10L);
         
-                if (playerLost) {
+                if (gameOver) {
                     renameAllExcept(playerX, "§cOof.");
                 } else {
                     if (currentFloor == numRows) {
@@ -701,7 +701,7 @@ public class DragonClient extends Client{
             server.applyWinEffects(player);
         }
         
-        gameOverTriggered=true;
+        playerLost=true;
         Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 40L); // 40 ticks = 2 seconds
     }
 
@@ -715,6 +715,7 @@ public class DragonClient extends Client{
         }
         taskIDs.clear();
         floorsCleared=0;
+        playerLost=false;
         gameOverTriggered = false; // Reset game state
         moveLocked = false;
         displayOffset = 0;
@@ -752,7 +753,7 @@ public class DragonClient extends Client{
 
     @Override
     protected void handleClientInventoryClose() {
-        if(!bettingEnabled && !gameOverTriggered){
+        if(!bettingEnabled && !playerLost){
             moveLocked=true;
             cashOut();
         }
