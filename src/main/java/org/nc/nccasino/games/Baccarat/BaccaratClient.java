@@ -188,7 +188,11 @@ public class BaccaratClient extends Client {
             UUID playerId = seatMap.get(slot);
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
-                return createPlayerHead(player.getUniqueId(), player.getName());
+                if (playerId.equals(viewerId)) {
+                    return createPlayerHead(player.getUniqueId(), player.getName(), "§7§oClick to leave chair");
+                } else {
+                    return createPlayerHead(player.getUniqueId(), player.getName());
+                }
             }
         }
         boolean viewerIsSeated = seatMap.containsValue(viewerId);
