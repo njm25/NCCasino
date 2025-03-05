@@ -48,7 +48,6 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.Menu;
@@ -1514,21 +1513,6 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         if (adminInventories.get(player.getUniqueId()) != null){
             adminInventories.remove(player.getUniqueId());
         }
-    }
-
-    private ItemStack createPlayerHeadItem(Player player, int stackSize) {
-    if (stackSize <= 0) {
-        throw new IllegalArgumentException("Stack size must be greater than 0 for player head.");
-    }
-
-    ItemStack playerHead = new ItemStack(Material.PLAYER_HEAD, stackSize);
-    SkullMeta skullMeta = (SkullMeta) playerHead.getItemMeta();
-    if (skullMeta != null) {
-        skullMeta.setOwningPlayer(player);
-        skullMeta.setDisplayName(player.getName());
-        playerHead.setItemMeta(skullMeta);
-    }
-    return playerHead;
     }
 
     private static String formatEntityName(String entityName) {
