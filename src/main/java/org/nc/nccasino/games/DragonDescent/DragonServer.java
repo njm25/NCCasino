@@ -13,15 +13,14 @@ public class DragonServer extends Server {
         super(dealerId, plugin, internalName);
     }
 
-        @Override
+    @Override
     protected Client createClientForPlayer(Player player) {
         DragonClient client = new DragonClient(this, player, plugin, internalName);
-        client.initializeUI(true, true,false);
         clients.put(player.getUniqueId(), client);
         return client;
     }
     
-        @Override
+    @Override
     public void onClientUpdate(Client client, String eventType, Object data) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'onClientUpdate'");

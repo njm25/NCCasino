@@ -33,6 +33,7 @@ public abstract class Client extends DealerInventory {
     protected double selectedWager = 0.0;
     protected final Map<String, Double> chipValues = new LinkedHashMap<>();
     protected boolean bettingEnabled = false;
+    protected boolean rebetSwitch = false;
     
     public Client(Server server, Player player, String title,
                   Nccasino plugin, String internalName)
@@ -53,7 +54,7 @@ public abstract class Client extends DealerInventory {
         return player;
     }
     public void initializeUI(boolean rebetSwitch, boolean betSlip,boolean deafultRebet) {
-        setupBettingRow(rebetSwitch, betSlip,deafultRebet);
+        setupBettingRow(rebetSwitch, betSlip, deafultRebet);
     }
 
     private void loadChipValuesFromConfig() {
@@ -76,6 +77,7 @@ public abstract class Client extends DealerInventory {
         bettingEnabled = true;
         // 1) Build the chips (slots 47..51)
         rebetEnabled = defaultRebet; 
+        this.rebetSwitch = rebetSwitch;
         int chipSlot = 47;
         for (Map.Entry<String, Double> entry : chipValues.entrySet()) {
             String chipName = entry.getKey();
@@ -93,10 +95,10 @@ public abstract class Client extends DealerInventory {
         }
         if(rebetSwitch){
         // 2) Paper in slot 53: "Click here to place bet"
-        // 3) Rebet: slot 43
+        // 3) Rebet: slot 44
         Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
         String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
-        inventory.setItem(43, createCustomItem(rebetMat, rebetName, 1));
+        inventory.setItem(44, createCustomItem(rebetMat, rebetName, 1));
         }
         // 4) Undo All: slot 45
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
@@ -135,7 +137,9 @@ public abstract class Client extends DealerInventory {
     }
 
     protected boolean isBetSlot(int slot) {
-        return slot >= 45 && slot <= 53; // This covers rebet(43), chips(47-51), all in(52), place bet(53), etc.
+        int start = rebetSwitch ? 44 : 45;
+        int end = 53;
+        return slot >= start && slot <= end; // This covers rebet(44), chips(47-51), all in(52), place bet(53), etc.
     }
 
     protected void handleBet(int slot, Player player, InventoryClickEvent event) {
@@ -147,8 +151,8 @@ public abstract class Client extends DealerInventory {
             return;
         }
         // Rebet
-        if (slot == 43 && rebetEnabled) {
-            rebetEnabled = !rebetEnabled;
+        if (slot == 44 && rebetSwitch) {
+            toggleRebet();
             updateRebetToggle(slot);
             return;
         }
@@ -351,6 +355,8 @@ public abstract class Client extends DealerInventory {
     }
 
     protected void toggleRebet() {
+        if (SoundHelper.getSoundSafely("ui.button.click", player) != null)
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
         rebetEnabled = !rebetEnabled;
     }
 

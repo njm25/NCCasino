@@ -434,14 +434,12 @@ public class CoinFlipClient extends Client {
     }
 
     private void handleAnimationFinished(){
-
         gameActive = false;
         betAccepted = false;
         betAmount = 0;
         betStack.clear();
         populateGlassPattern();
         if(chairOneOccupant!=null && chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
-            
             bettingEnabled = true;
             initializeUI(rebetEnabled, bettingEnabled,false);
             updateBetLore(53, 0);

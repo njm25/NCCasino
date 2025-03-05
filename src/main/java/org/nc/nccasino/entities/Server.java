@@ -224,7 +224,7 @@ public abstract class Server extends DealerInventory {
         }
     }
     
-    protected void applyWinEffects(Player player) {
+    public void applyWinEffects(Player player) {
         if (player != null) {
             player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
             playRandomPitchSound(player);

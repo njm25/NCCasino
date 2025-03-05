@@ -14,7 +14,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
-import org.nc.nccasino.helpers.SoundHelper;
 
 public class DragonClient extends Client{
     private int numColumns = 7; 
@@ -30,21 +29,16 @@ public class DragonClient extends Client{
     private int floorsCleared = 0; 
 
     public DragonClient(DragonServer server, Player player, Nccasino plugin, String internalName) {
-    super(server, player, "Dragon Descent", plugin, internalName);
-          
-    }
-
-    @Override
-    public void initializeUI(boolean switchRebet, boolean betSlip,boolean deafultRebet) {
-        super.initializeUI(switchRebet, betSlip,deafultRebet);
+        super(server, player, "Dragon Descent", plugin, internalName);
+        initializeUI(true, true,true);
         setupPregame();
     }
 
     private void setupPregame() {
         bettingEnabled=true;
-        updateRebetToggle(53);
+        updateRebetToggle(44);
         // Table layout
-        int[] tableSlots = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,28,29,30,31,32,33,34, 35, 36,37,38,39,40,41,42,43, 44};
+        int[] tableSlots = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,28,29,30,31,32,33,34, 35, 36,37,38,39,40,41,42,43};
         for (int slot : tableSlots) {
             ItemStack item = new ItemStack(Material.BROWN_STAINED_GLASS_PANE);
             ItemMeta meta = item.getItemMeta();
@@ -60,21 +54,15 @@ public class DragonClient extends Client{
         setupGameSettingRow(9, Material.WHITE_STAINED_GLASS_PANE, "Columns", numColumns, 2, 9);
         setupGameSettingRow(18, Material.VINE, "Vines (Safe Spots per Floor)", numSafeSpots, 1, numColumns - 1);
         setupGameSettingRow(27, Material.BLACK_STAINED_GLASS_PANE, "Floors", numRows, 1, 100); // Unlimited Floors (for now)
-        updatePlayerHead();
     }
 
     private void updatePlayerHead() {
         double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
-    
-        if (bettingEnabled) {
-            inventory.setItem(40, createPlayerHead(player.getUniqueId(), "§e§oPlace Bet", "§7§oCurrent Bet: §a" + totalBet));
-        } else {
-                double payoutMultiplier = calculatePayoutMultiplier();
-                double potentialWinnings = totalBet * payoutMultiplier;
-                potentialWinnings = Math.round(potentialWinnings * 100.0) / 100.0;
-                inventory.setItem(playerX, createPlayerHead(player.getUniqueId(), "§e§oCash Out", 
-                    "§7§oCashout Value: §a" + potentialWinnings)); // Show exact double value
-        }
+        double payoutMultiplier = calculatePayoutMultiplier();
+        double potentialWinnings = totalBet * payoutMultiplier;
+        potentialWinnings = Math.round(potentialWinnings * 100.0) / 100.0;
+        inventory.setItem(playerX, createPlayerHead(player.getUniqueId(), "§e§oCash Out", 
+            "§7§oCashout Value: §a" + potentialWinnings)); // Show exact double value
     }
     
     private void setupGameSettingRow(int startSlot, Material material, String settingName, int value, int min, int max) {
@@ -117,8 +105,7 @@ public class DragonClient extends Client{
             newValue = Math.max(min, Math.min(max, numRows + change));
             numRows = newValue;
         }
-    
-        initializeUI(true, true, false);
+        setupPregame();
     }
     
     private void setupGame() {
@@ -693,6 +680,7 @@ public class DragonClient extends Client{
     
         if (winnings > 0) {
             creditPlayer(player, winnings);
+            server.applyWinEffects(player);
         }
         Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 40L); // 40 ticks = 2 seconds
     }
@@ -737,122 +725,9 @@ public class DragonClient extends Client{
 
 
         initializeUI(true, true, rebetEnabled);
+        setupPregame();
     }
     
-    @Override
-    protected boolean isBetSlot(int slot) {
-        return bettingEnabled && (slot == 40 || (slot >= 45 && slot <= 53)); // Only clickable during betting
-    }
-
-    @Override
-    protected void handleBet(int slot, Player player, InventoryClickEvent event) {
-        event.setCancelled(true);
- 
-        // Handle Wager & All In Selection
-        if (slot >= 47 && slot <= 52) {
-            updateSelectedWager(slot);
-            return;
-        }
-        // Rebet
-        if (slot == 53) {
-            rebetEnabled = !rebetEnabled;
-            updateRebetToggle(slot);
-            return;
-        }
-
-        // Undo all 
-        if (slot == 45) {
-            undoAllBets();
-            updatePlayerHead();
-            return;
-        }
-
-        // Undo last
-        if (slot == 46) {
-            undoLastBet();
-            updatePlayerHead();
-            return;
-        }
-
-        // All In
-        if (slot == 52) {
-            placeAllInBet();
-            updatePlayerHead();
-            return;
-        }
-
-        // slot == 53 => "Click here to place bet"
-        if (slot == 40) {
-            handleBetPlacement();
-            //double total = betStack.stream().mapToDouble(Double::doubleValue).sum();
-            updatePlayerHead();
-        }
-
-   
-    }
-
-    protected void handleBetPlacement() {
-        // Check if user is holding the currency item
-        ItemStack heldItem = player.getItemOnCursor();
-        Material currencyMat = getCurrencyMaterial();
-        double wagerAmount = 0;
-        boolean usedHeldItem = false;
-
-        if (heldItem != null && heldItem.getType() == currencyMat) {
-            wagerAmount = heldItem.getAmount();
-            usedHeldItem = true;
-        } else {
-            wagerAmount = selectedWager; 
-        }
-
-        if (selectedWager <= 0 && !usedHeldItem) {
-            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case STANDARD:
-                    player.sendMessage("§cInvalid action.");
-                    break;
-                case VERBOSE:
-                    player.sendMessage("§cSelect a wager amount first.");
-                    break;
-                case NONE:
-                    break;
-            }
-            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
-            return;
-        }
-        if (!hasEnoughWager(player, selectedWager) && !usedHeldItem) {
-            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case STANDARD:
-                    player.sendMessage("§cInvalid action.");
-                    break;
-                case VERBOSE:
-                    player.sendMessage("§cNot enough currency to place bet.");
-                    break;
-                case NONE:
-                    break;
-            }
-            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
-            return;
-        }
-
-        if (wagerAmount <= 0) {
-            // Possibly send a message to the user "Invalid action" or "Select a wager first."
-            return;
-        }
-
-        // Remove currency from inventory or from cursor
-        if (usedHeldItem) {
-            player.setItemOnCursor(null);
-        } else {
-            removeCurrencyFromInventory(player, (int)wagerAmount);
-        }
-        if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
-        betStack.push(wagerAmount);
-        inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
-
-    }
-
     @Override
     public void onServerUpdate(String eventType, Object data) {
         // TODO Auto-generated method stub
