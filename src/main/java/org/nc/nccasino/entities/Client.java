@@ -34,7 +34,9 @@ public abstract class Client extends DealerInventory {
     protected final Map<String, Double> chipValues = new LinkedHashMap<>();
     protected boolean bettingEnabled = false;
     protected boolean rebetSwitch = false;
-    
+    protected int bettingPaperSlot=53;
+    protected int rebetSlot=44;
+
     public Client(Server server, Player player, String title,
                   Nccasino plugin, String internalName)
     {
@@ -54,6 +56,12 @@ public abstract class Client extends DealerInventory {
         return player;
     }
     public void initializeUI(boolean rebetSwitch, boolean betSlip,boolean deafultRebet) {
+        setupBettingRow(rebetSwitch, betSlip, deafultRebet);
+    }
+
+    public void initializeUI(boolean rebetSwitch, boolean betSlip,boolean deafultRebet,int paperSlot,int rebettSlot) {
+        bettingPaperSlot=paperSlot;
+        rebetSlot=rebettSlot;
         setupBettingRow(rebetSwitch, betSlip, deafultRebet);
     }
 
@@ -91,14 +99,14 @@ public abstract class Client extends DealerInventory {
         }
         if(betSlip){
             // 2) Paper in slot 53: "Click here to place bet"
-            inventory.setItem(53, createCustomItem(Material.PAPER, "Click here to place bet", 1));
+            inventory.setItem(bettingPaperSlot, createCustomItem(Material.PAPER, "Click here to place bet", 1));
         }
         if(rebetSwitch){
         // 2) Paper in slot 53: "Click here to place bet"
         // 3) Rebet: slot 44
         Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
         String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
-        inventory.setItem(44, createCustomItem(rebetMat, rebetName, 1));
+        inventory.setItem(rebetSlot, createCustomItem(rebetMat, rebetName, 1));
         }
         // 4) Undo All: slot 45
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
@@ -112,7 +120,7 @@ public abstract class Client extends DealerInventory {
         // If we had any existing bets, update the lore on slot 53
         double curr = betStack.stream().mapToDouble(Double::doubleValue).sum();
         if (curr > 0) {
-            updateBetLore(53, curr);
+            updateBetLore(bettingPaperSlot, curr);
         }
     }
 
@@ -135,9 +143,9 @@ public abstract class Client extends DealerInventory {
     }
 
     protected boolean isBetSlot(int slot) {
-        int start = rebetSwitch ? 44 : 45;
-        int end = 53;
-        return slot >= start && slot <= end; // This covers rebet(44), chips(47-51), all in(52), place bet(53), etc.
+        int start= 45;
+        int end = 52;
+        return (slot >= start && slot <= end)||slot==bettingPaperSlot||slot==rebetSlot; // This covers rebet(44), chips(47-51), all in(52), place bet(53), etc.
     }
 
     protected void handleBet(int slot, Player player, InventoryClickEvent event) {
@@ -149,7 +157,7 @@ public abstract class Client extends DealerInventory {
             return;
         }
         // Rebet
-        if (slot == 44 && rebetSwitch) {
+        if (slot == rebetSlot && rebetSwitch) {
             toggleRebet();
             updateRebetToggle(slot);
             return;
@@ -158,7 +166,7 @@ public abstract class Client extends DealerInventory {
         // Undo all 
         if (slot == 45) {
             undoAllBets();
-            updateBetLore(53, 0);
+            updateBetLore(bettingPaperSlot, 0);
             return;
         }
 
@@ -166,7 +174,7 @@ public abstract class Client extends DealerInventory {
         if (slot == 46) {
             undoLastBet();
             double currBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
-            updateBetLore(53, currBet);
+            updateBetLore(bettingPaperSlot, currBet);
             return;
         }
 
@@ -174,7 +182,7 @@ public abstract class Client extends DealerInventory {
         if (slot == 52) {
             placeAllInBet();
             double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
-            updateBetLore(53, totalBet);
+            updateBetLore(bettingPaperSlot, totalBet);
             return;
         }
 
@@ -211,10 +219,10 @@ public abstract class Client extends DealerInventory {
         }
 
         // slot == 53 => "Click here to place bet"
-        if (slot == 53) {
+        if (slot == bettingPaperSlot) {
             handleBetPlacement();
             double total = betStack.stream().mapToDouble(Double::doubleValue).sum();
-            updateBetLore(53, total);
+            updateBetLore(bettingPaperSlot, total);
         }
 
    

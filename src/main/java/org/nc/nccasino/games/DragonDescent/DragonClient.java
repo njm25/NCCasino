@@ -32,15 +32,15 @@ public class DragonClient extends Client{
 
     public DragonClient(DragonServer server, Player player, Nccasino plugin, String internalName) {
         super(server, player, "Dragon Descent", plugin, internalName);
-        initializeUI(true, true,true);
+        initializeUI(true, true,true,40,53);
         setupPregame();
     }
 
     private void setupPregame() {
         bettingEnabled=true;
-        updateRebetToggle(44);
+        //updateRebetToggle(44);
         // Table layout
-        int[] tableSlots = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,28,29,30,31,32,33,34, 35, 36,37,38,39,40,41,42,43};
+        int[] tableSlots = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,28,29,30,31,32,33,34, 35, 36,37,38,39,41,42,43,44};
         for (int slot : tableSlots) {
             ItemStack item = new ItemStack(Material.BROWN_STAINED_GLASS_PANE);
             ItemMeta meta = item.getItemMeta();
@@ -747,7 +747,7 @@ public class DragonClient extends Client{
             betStack.clear(); // If rebet is off, clear the stack.
         }
 
-        initializeUI(true, true, rebetEnabled);
+        initializeUI(true, true,rebetEnabled,40,53);
         setupPregame();
     }
 
