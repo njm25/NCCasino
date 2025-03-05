@@ -398,7 +398,7 @@ public class DragonClient extends Client{
         inventory.setItem(playerX, createCustomItem(Material.DRAGON_HEAD, "§4The Dragon got you!", 1));
         
         server.applyLoseEffects(player);
-        
+
         // Delay reset slightly to let player see the result
         Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 30L); // 60 ticks = 3 seconds
     }
@@ -412,7 +412,25 @@ public class DragonClient extends Client{
     
         if (bettingEnabled) {
             if (slot == 4) {
-                setupGame();
+                if(!betStack.isEmpty()){
+                    if (SoundHelper.getSoundSafely("entity.ender_dragon.ambient", player) != null)
+                        player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_AMBIENT, SoundCategory.MASTER, 0.6f, 1.0f);
+                    setupGame();
+                }
+                else {
+                    switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                        case STANDARD:
+                            player.sendMessage("§cInvalid action.");
+                            break;
+                        case VERBOSE:
+                            player.sendMessage("§cNo bet placed.");
+                            break;
+                        case NONE:
+                            break;
+                    }
+                    if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+                }
                 return;
             }
             handleGameSettingClick(slot);
@@ -471,6 +489,8 @@ public class DragonClient extends Client{
             revealRow(floor);
         
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (SoundHelper.getSoundSafely("block.cave_vines.step", player) != null)
+                    player.playSound(player.getLocation(), Sound.BLOCK_CAVE_VINES_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
                 inventory.setItem(playerX, createCustomItem(Material.VINE, "§aSafe!", 1));
                 playerX = slot;
                 if (gameGrid[displayOffset + floor - 1][safeGridCol] == 1) { 
@@ -687,11 +707,16 @@ public class DragonClient extends Client{
             creditPlayer(player, winnings);
             server.applyWinEffects(player);
         }
+        
+        gameOverTriggered=true;
         Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 40L); // 40 ticks = 2 seconds
     }
 
     private void resetGame() {
         // Cancel all delayed tasks to prevent conflicts
+        if (this.inventory == null) {
+            return;
+        }
         for (int taskID : taskIDs) {
             Bukkit.getScheduler().cancelTask(taskID);
         }
@@ -730,6 +755,18 @@ public class DragonClient extends Client{
 
         initializeUI(true, true, rebetEnabled);
         setupPregame();
+    }
+
+    @Override
+    protected void handleClientInventoryClose() {
+        if(!bettingEnabled && !gameOverTriggered){
+            moveLocked=true;
+            cashOut();
+        }
+        else if (bettingEnabled && !betStack.isEmpty()) {
+            undoAllBets();
+        }
+        super.handleClientInventoryClose();
     }
     
     @Override
