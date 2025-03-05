@@ -691,17 +691,7 @@ public class DragonClient extends Client{
 
         winnings = applyProbabilisticRounding(winnings, player);
         // Notify the player
-        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-            case STANDARD:
-                player.sendMessage("§a§lPaid " + winnings + " " + plugin.getCurrencyName(internalName).toLowerCase());
-                break;
-            case VERBOSE:
-                player.sendMessage("§a§lPaid " + winnings + " " + plugin.getCurrencyName(internalName).toLowerCase() + 
-                    " (profit of " + (winnings - totalBet) + ")");
-                break;
-            case NONE:
-                break;
-        }
+        server.sendPayoutMessage(player, winnings, true, (winnings - totalBet));
     
         if (winnings > 0) {
             creditPlayer(player, winnings);

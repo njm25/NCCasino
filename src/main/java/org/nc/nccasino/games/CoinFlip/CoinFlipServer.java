@@ -141,13 +141,13 @@ public class CoinFlipServer extends Server {
         // Handle payout and messages for the winner
         if (winnerPlayer != null && payout > 0) {
             creditPlayer(winnerPlayer, payout);
-            sendPayoutMessage(winnerPlayer, payout, true);
+            sendPayoutMessage(winnerPlayer, payout, true, payout/2);
             applyWinEffects(winnerPlayer);
         }
     
         // Handle losing message and effects for the loser
         if (loserPlayer != null) {
-            sendPayoutMessage(loserPlayer, payout, false);
+            sendPayoutMessage(loserPlayer, payout, false, payout/2);
             applyLoseEffects(loserPlayer);
         }
     }

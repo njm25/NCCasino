@@ -202,7 +202,7 @@ public abstract class Server extends DealerInventory {
         return clients.containsKey(playerUuid);
     }
         
-    protected void sendPayoutMessage(Player player, int payout, boolean isWinner) {
+    public void sendPayoutMessage(Player player, double payout, boolean isWinner, double profit) {
         String currencyName = plugin.getCurrencyName(internalName).toLowerCase();
         boolean isSingle = Math.abs(payout) == 1;
     
@@ -213,7 +213,6 @@ public abstract class Server extends DealerInventory {
                         : "§c§lYou lose!");
                 break;
             case VERBOSE:
-                int profit = Math.abs(payout / 2);
                 player.sendMessage(isWinner
                         ? "§a§lPaid " + payout + " " + currencyName + (isSingle ? "" : "s") +
                           "\n §r§a§o(profit of " + profit + ")"
