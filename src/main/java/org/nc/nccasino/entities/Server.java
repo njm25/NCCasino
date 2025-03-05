@@ -231,7 +231,7 @@ public abstract class Server extends DealerInventory {
         }
     }
     
-    protected void applyLoseEffects(Player player) {
+    public void applyLoseEffects(Player player) {
         if (player != null) {
             if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null) {
                 player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER, 1.0f, 1.0f);

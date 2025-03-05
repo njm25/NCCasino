@@ -14,6 +14,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
+import org.nc.nccasino.helpers.SoundHelper;
 
 public class DragonClient extends Client{
     private int numColumns = 7; 
@@ -94,10 +95,10 @@ public class DragonClient extends Client{
             newValue = Math.max(min, Math.min(max, numColumns + change));
             numColumns = newValue;
             
-            // Ensure numSafeSpots is within valid range
-            if (numSafeSpots >= numColumns) {
-                numSafeSpots = numColumns - 1;
-            }
+        // Ensure numSafeSpots is within valid range
+        if (numSafeSpots >= numColumns) {
+            numSafeSpots = numColumns - 1;
+        }
         } else if (setting.equals("Vines (Safe Spots per Floor)")) {
             newValue = Math.max(min, Math.min(numColumns - 1, numSafeSpots + change)); // Enforce col - 1
             numSafeSpots = newValue;
@@ -105,6 +106,9 @@ public class DragonClient extends Client{
             newValue = Math.max(min, Math.min(max, numRows + change));
             numRows = newValue;
         }
+        
+        if (SoundHelper.getSoundSafely("block.metal_pressure_plate.click_on", player) != null)
+            player.playSound(player.getLocation(), Sound.BLOCK_METAL_PRESSURE_PLATE_CLICK_ON, SoundCategory.MASTER, 1.0f, 1.0f);
         setupPregame();
     }
     
@@ -392,8 +396,9 @@ public class DragonClient extends Client{
     
         // Set dragon head where the player is
         inventory.setItem(playerX, createCustomItem(Material.DRAGON_HEAD, "§4The Dragon got you!", 1));
-        player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_DEATH, SoundCategory.MASTER, 1.0f, 0.8f);
-    
+        
+        server.applyLoseEffects(player);
+        
         // Delay reset slightly to let player see the result
         Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 30L); // 60 ticks = 3 seconds
     }
@@ -722,7 +727,6 @@ public class DragonClient extends Client{
         } else {
             betStack.clear(); // If rebet is off, clear the stack.
         }
-
 
         initializeUI(true, true, rebetEnabled);
         setupPregame();
