@@ -34,6 +34,7 @@ public abstract class Client extends DealerInventory {
     protected final Map<String, Double> chipValues = new LinkedHashMap<>();
     protected boolean bettingEnabled = false;
     protected boolean rebetSwitch = false;
+    protected boolean betSlip = false; 
     protected int bettingPaperSlot=53;
     protected int rebetSlot=44;
 
@@ -59,9 +60,10 @@ public abstract class Client extends DealerInventory {
         setupBettingRow(rebetSwitch, betSlip, deafultRebet);
     }
 
-    public void initializeUI(boolean rebetSwitch, boolean betSlip,boolean deafultRebet,int paperSlot,int rebettSlot) {
+    public void initializeUI(boolean rebetSwitch, boolean betSlip,boolean deafultRebet,int paperSlot,int rebetSlot) {
         bettingPaperSlot=paperSlot;
-        rebetSlot=rebettSlot;
+        this.rebetSlot=rebetSlot;
+        this.betSlip=betSlip;
         setupBettingRow(rebetSwitch, betSlip, deafultRebet);
     }
 
