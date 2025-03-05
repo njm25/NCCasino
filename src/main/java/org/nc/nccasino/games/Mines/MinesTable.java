@@ -475,12 +475,8 @@ public class MinesTable extends DealerInventory {
         // Handle rebet toggle
         if (slot == 43&& clickedItem != null && clickedItem.getType() ==Material.RED_WOOL||clickedItem.getType() ==Material.GREEN_WOOL) {
             rebetEnabled = !rebetEnabled;
-            if(clickedItem.getType() ==Material.RED_WOOL){
-                 if (SoundHelper.getSoundSafely("entity.illusioner.prepare_mirror", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_PREPARE_MIRROR, SoundCategory.MASTER,1.0f, 1.0f);
-            }
-            else{
-                 if (SoundHelper.getSoundSafely("entity.illusioner.cast_spell", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_CAST_SPELL, SoundCategory.MASTER,1.0f, 1.0f);  
-            }
+            if (SoundHelper.getSoundSafely("ui.button.click", player) != null)
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
            
 
             updateRebetToggle();
