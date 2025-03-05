@@ -52,6 +52,7 @@ permissions:
       nccasino.games.mines: true
       nccasino.games.baccarat: true
       nccasino.games.coinflip: true
+      nccasino.games.dragon: true
 
   nccasino.games.blackjack:
     description: Allows playing blackjack
@@ -71,6 +72,10 @@ permissions:
   
   nccasino.games.coinflip:
     description: Allows playing coinflip
+    default: true
+
+  nccasino.games.dragon:
+    description: Allows playing dragon descent
     default: true
 
   nccasino.adminmenu:

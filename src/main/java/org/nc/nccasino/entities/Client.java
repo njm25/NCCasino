@@ -33,7 +33,10 @@ public abstract class Client extends DealerInventory {
     protected double selectedWager = 0.0;
     protected final Map<String, Double> chipValues = new LinkedHashMap<>();
     protected boolean bettingEnabled = false;
-    
+    protected boolean rebetSwitch = false;
+    protected int bettingPaperSlot=53;
+    protected int rebetSlot=44;
+
     public Client(Server server, Player player, String title,
                   Nccasino plugin, String internalName)
     {
@@ -53,7 +56,13 @@ public abstract class Client extends DealerInventory {
         return player;
     }
     public void initializeUI(boolean rebetSwitch, boolean betSlip,boolean deafultRebet) {
-        setupBettingRow(rebetSwitch, betSlip,deafultRebet);
+        setupBettingRow(rebetSwitch, betSlip, deafultRebet);
+    }
+
+    public void initializeUI(boolean rebetSwitch, boolean betSlip,boolean deafultRebet,int paperSlot,int rebettSlot) {
+        bettingPaperSlot=paperSlot;
+        rebetSlot=rebettSlot;
+        setupBettingRow(rebetSwitch, betSlip, deafultRebet);
     }
 
     private void loadChipValuesFromConfig() {
@@ -76,23 +85,28 @@ public abstract class Client extends DealerInventory {
         bettingEnabled = true;
         // 1) Build the chips (slots 47..51)
         rebetEnabled = defaultRebet; 
+        this.rebetSwitch = rebetSwitch;
         int chipSlot = 47;
         for (Map.Entry<String, Double> entry : chipValues.entrySet()) {
             String chipName = entry.getKey();
             double chipVal = entry.getValue();
-            inventory.setItem(chipSlot, createCustomItem(getCurrencyMaterial(), chipName, (int) chipVal));
+            if (chipVal == selectedWager) {
+                inventory.setItem(chipSlot, createEnchantedItem(getCurrencyMaterial(), chipName, (int) chipVal));
+            } else {
+                inventory.setItem(chipSlot, createCustomItem(getCurrencyMaterial(), chipName, (int) chipVal));
+            }
             chipSlot++;
         }
         if(betSlip){
             // 2) Paper in slot 53: "Click here to place bet"
-            inventory.setItem(53, createCustomItem(Material.PAPER, "Click here to place bet", 1));
+            inventory.setItem(bettingPaperSlot, createCustomItem(Material.PAPER, "Click here to place bet", 1));
         }
         if(rebetSwitch){
         // 2) Paper in slot 53: "Click here to place bet"
-        // 3) Rebet: slot 43
+        // 3) Rebet: slot 44
         Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
         String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
-        inventory.setItem(43, createCustomItem(rebetMat, rebetName, 1));
+        inventory.setItem(rebetSlot, createCustomItem(rebetMat, rebetName, 1));
         }
         // 4) Undo All: slot 45
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
@@ -106,7 +120,7 @@ public abstract class Client extends DealerInventory {
         // If we had any existing bets, update the lore on slot 53
         double curr = betStack.stream().mapToDouble(Double::doubleValue).sum();
         if (curr > 0) {
-            updateBetLore(53, curr);
+            updateBetLore(bettingPaperSlot, curr);
         }
     }
 
@@ -120,10 +134,8 @@ public abstract class Client extends DealerInventory {
         if (!clicker.getUniqueId().equals(player.getUniqueId())) return;
 
         // If it's one of the bet slots (chips, rebet, etc.), handle it:
-        if (isBetSlot(slot)) {
-            if(bettingEnabled) {
-                handleBet(slot, clicker, event);
-            }
+        if (bettingEnabled && isBetSlot(slot)) {
+            handleBet(slot, clicker, event);
         } else {
             // Otherwise, let game-specific logic handle it
             handleClientSpecificClick(slot, clicker, event);
@@ -131,7 +143,9 @@ public abstract class Client extends DealerInventory {
     }
 
     protected boolean isBetSlot(int slot) {
-        return slot >= 45 && slot <= 53; // This covers rebet(43), chips(47-51), all in(52), place bet(53), etc.
+        int start= 45;
+        int end = 52;
+        return (slot >= start && slot <= end)||slot==bettingPaperSlot||slot==rebetSlot; // This covers rebet(44), chips(47-51), all in(52), place bet(53), etc.
     }
 
     protected void handleBet(int slot, Player player, InventoryClickEvent event) {
@@ -143,8 +157,8 @@ public abstract class Client extends DealerInventory {
             return;
         }
         // Rebet
-        if (slot == 43 && rebetEnabled) {
-            rebetEnabled = !rebetEnabled;
+        if (slot == rebetSlot && rebetSwitch) {
+            toggleRebet();
             updateRebetToggle(slot);
             return;
         }
@@ -152,7 +166,7 @@ public abstract class Client extends DealerInventory {
         // Undo all 
         if (slot == 45) {
             undoAllBets();
-            updateBetLore(53, 0);
+            updateBetLore(bettingPaperSlot, 0);
             return;
         }
 
@@ -160,7 +174,7 @@ public abstract class Client extends DealerInventory {
         if (slot == 46) {
             undoLastBet();
             double currBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
-            updateBetLore(53, currBet);
+            updateBetLore(bettingPaperSlot, currBet);
             return;
         }
 
@@ -168,7 +182,7 @@ public abstract class Client extends DealerInventory {
         if (slot == 52) {
             placeAllInBet();
             double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
-            updateBetLore(53, totalBet);
+            updateBetLore(bettingPaperSlot, totalBet);
             return;
         }
 
@@ -205,10 +219,10 @@ public abstract class Client extends DealerInventory {
         }
 
         // slot == 53 => "Click here to place bet"
-        if (slot == 53) {
+        if (slot == bettingPaperSlot) {
             handleBetPlacement();
             double total = betStack.stream().mapToDouble(Double::doubleValue).sum();
-            updateBetLore(53, total);
+            updateBetLore(bettingPaperSlot, total);
         }
 
    
@@ -347,6 +361,8 @@ public abstract class Client extends DealerInventory {
     }
 
     protected void toggleRebet() {
+        if (SoundHelper.getSoundSafely("ui.button.click", player) != null)
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
         rebetEnabled = !rebetEnabled;
     }
 
@@ -588,6 +604,7 @@ public abstract class Client extends DealerInventory {
 
     public void cleanup() {
         unregisterListener();
+        delete();
     }
 
     public UUID getOwnerId() {

@@ -202,21 +202,20 @@ public abstract class Server extends DealerInventory {
         return clients.containsKey(playerUuid);
     }
         
-    protected void sendPayoutMessage(Player player, int payout, boolean isWinner) {
+    public void sendPayoutMessage(Player player, double payout, boolean isWinner, double profit) {
         String currencyName = plugin.getCurrencyName(internalName).toLowerCase();
         boolean isSingle = Math.abs(payout) == 1;
     
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
             case STANDARD:
                 player.sendMessage(isWinner
-                        ? "§a§lPaid " + payout + " " + currencyName + (isSingle ? "" : "s")
+                        ? "§a§lPaid " + (int) payout + " " + currencyName + (isSingle ? "" : "s")
                         : "§c§lYou lose!");
                 break;
             case VERBOSE:
-                int profit = Math.abs(payout / 2);
                 player.sendMessage(isWinner
-                        ? "§a§lPaid " + payout + " " + currencyName + (isSingle ? "" : "s") +
-                          "\n §r§a§o(profit of " + profit + ")"
+                        ? "§a§lPaid " + (int) payout + " " + currencyName + (isSingle ? "" : "s") +
+                          "\n §r§a§o(profit of " + (int) profit + ")"
                         : "§c§lYou lose!");
                 break;
             case NONE:
@@ -224,14 +223,14 @@ public abstract class Server extends DealerInventory {
         }
     }
     
-    protected void applyWinEffects(Player player) {
+    public void applyWinEffects(Player player) {
         if (player != null) {
             player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
             playRandomPitchSound(player);
         }
     }
     
-    protected void applyLoseEffects(Player player) {
+    public void applyLoseEffects(Player player) {
         if (player != null) {
             if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null) {
                 player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER, 1.0f, 1.0f);

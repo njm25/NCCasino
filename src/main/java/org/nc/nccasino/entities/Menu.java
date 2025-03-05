@@ -50,6 +50,7 @@ public abstract class Menu extends DealerInventory {
         BACCARAT,
         TEST_GAME,
         COIN_FLIP,
+        DRAGON_DESCENT,
         
         // Default game settings
         EDIT_TIMER,

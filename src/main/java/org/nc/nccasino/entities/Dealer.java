@@ -23,6 +23,7 @@ import org.nc.nccasino.components.AdminMenu;
 import org.nc.nccasino.games.Baccarat.BaccaratServer;
 import org.nc.nccasino.games.Blackjack.BlackjackInventory;
 import org.nc.nccasino.games.CoinFlip.CoinFlipServer;
+import org.nc.nccasino.games.DragonDescent.DragonServer;
 import org.nc.nccasino.games.Mines.MinesInventory;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
 import org.nc.nccasino.games.TestGame.TestServer;
@@ -291,6 +292,10 @@ public class Dealer {
                 name = "Coin Flip Dealer";
                 defaultTimer = 3;
                 break;
+            case "Dragon Descent":
+                inventory = new DragonServer(uniqueId, plugin, internalName);
+                name = "Dragon Descent Dealer";
+                break;
             default:
                 defaultTimer = 10;
                 inventory = new BlackjackInventory(uniqueId, plugin, internalName);
@@ -409,6 +414,10 @@ public class Dealer {
                 newName = "Coin Flip Dealer";
                 defaultTimer = 3;
                 break;
+            case "Dragon Descent":
+                newInventory = new DragonServer(dealerId, plugin, internalName);
+                newName = "Dragon Descent Dealer";
+                break;
             default:
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);
                 newName = "Blackjack Dealer";
@@ -487,6 +496,9 @@ public class Dealer {
                 break;            
             case "Coin Flip":
                 newInventory = new CoinFlipServer(dealerId, plugin, internalName);
+                break;
+            case "Dragon Descent":
+                newInventory = new DragonServer(dealerId, plugin, internalName);
                 break;
             default:
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);

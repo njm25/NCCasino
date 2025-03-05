@@ -37,6 +37,7 @@ public class GameOptionsMenu extends Menu {
         slotMapping.put(SlotOption.MINES, 2);
         slotMapping.put(SlotOption.BACCARAT, 3);
         slotMapping.put(SlotOption.COIN_FLIP, 4);
+        slotMapping.put(SlotOption.DRAGON_DESCENT, 5);
         slotMapping.put(SlotOption.EXIT, 8);
         initializeMenu();
     }
@@ -63,6 +64,8 @@ public class GameOptionsMenu extends Menu {
         slotMapping.put(SlotOption.MINES, 3);
         slotMapping.put(SlotOption.BACCARAT, 4);
         slotMapping.put(SlotOption.COIN_FLIP, 5);
+        slotMapping.put(SlotOption.DRAGON_DESCENT, 6);
+
         
     
        initializeMenu();
@@ -79,6 +82,8 @@ public class GameOptionsMenu extends Menu {
             addItemAndLore(Material.SKELETON_SKULL, 1, "Baccarat",  slotMapping.get(SlotOption.BACCARAT));
             addItemAndLore(Material.SUNFLOWER, 1, "Coin Flip",  slotMapping.get(SlotOption.COIN_FLIP));
             addItemAndLore(Material.TNT, 1, "Mines",  slotMapping.get(SlotOption.MINES));
+            addItemAndLore(Material.DRAGON_HEAD, 1, "Dragon Descent",  slotMapping.get(SlotOption.DRAGON_DESCENT));
+
         }
         else{
             addItemAndLore(Material.CREEPER_HEAD, 1, "Blackjack",  slotMapping.get(SlotOption.BLACKJACK));
@@ -86,6 +91,7 @@ public class GameOptionsMenu extends Menu {
             addItemAndLore(Material.SUNFLOWER, 1, "Coin Flip",  slotMapping.get(SlotOption.COIN_FLIP));
             addItemAndLore(Material.SKELETON_SKULL, 1, "Baccarat",  slotMapping.get(SlotOption.BACCARAT));
             addItemAndLore(Material.TNT, 1, "Mines",  slotMapping.get(SlotOption.MINES));
+            addItemAndLore(Material.DRAGON_HEAD, 1, "Dragon Descent",  slotMapping.get(SlotOption.DRAGON_DESCENT));
             addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
         }
     }
@@ -118,6 +124,10 @@ public class GameOptionsMenu extends Menu {
             case COIN_FLIP:
                 playDefaultSound(player);
                 gameType = "Coin Flip";
+                break;
+            case DRAGON_DESCENT:
+                playDefaultSound(player);
+                gameType = "Dragon Descent";
                 break;
             default:
                 return;
