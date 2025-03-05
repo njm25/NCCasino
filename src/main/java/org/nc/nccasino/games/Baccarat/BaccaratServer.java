@@ -240,16 +240,6 @@ public class BaccaratServer extends Server {
             if (seatMap.get(slot).equals(playerId)) {
                 // Player clicked their own seat -> Leave and refund
                 removeFromSeat(player);
-                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                    case STANDARD:
-                        player.sendMessage("§cYou left your seat.");
-                        break;
-                    case VERBOSE:
-                    player.sendMessage("§eYou left your seat, bets refunded.");
-                    break;
-                    case NONE:
-                        break;
-                }
                 if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
             }
         } else if (seatedPlayers.contains(playerId)) {

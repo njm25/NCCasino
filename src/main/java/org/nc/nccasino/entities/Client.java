@@ -34,6 +34,7 @@ public abstract class Client extends DealerInventory {
     protected final Map<String, Double> chipValues = new LinkedHashMap<>();
     protected boolean bettingEnabled = false;
     protected boolean rebetSwitch = false;
+    protected boolean betSlip = false; 
     protected int bettingPaperSlot=53;
     protected int rebetSlot=44;
 
@@ -56,12 +57,14 @@ public abstract class Client extends DealerInventory {
         return player;
     }
     public void initializeUI(boolean rebetSwitch, boolean betSlip,boolean deafultRebet) {
+        this.betSlip=betSlip;
         setupBettingRow(rebetSwitch, betSlip, deafultRebet);
     }
 
-    public void initializeUI(boolean rebetSwitch, boolean betSlip,boolean deafultRebet,int paperSlot,int rebettSlot) {
+    public void initializeUI(boolean rebetSwitch, boolean betSlip,boolean deafultRebet,int paperSlot,int rebetSlot) {
         bettingPaperSlot=paperSlot;
-        rebetSlot=rebettSlot;
+        this.rebetSlot=rebetSlot;
+        this.betSlip=betSlip;
         setupBettingRow(rebetSwitch, betSlip, deafultRebet);
     }
 
@@ -143,9 +146,9 @@ public abstract class Client extends DealerInventory {
     }
 
     protected boolean isBetSlot(int slot) {
-        int start= 45;
+        int start = 45;
         int end = 52;
-        return (slot >= start && slot <= end)||slot==bettingPaperSlot||slot==rebetSlot; // This covers rebet(44), chips(47-51), all in(52), place bet(53), etc.
+        return (slot >= start && slot <= end) || (slot==bettingPaperSlot && betSlip) || (slot==rebetSlot && rebetSwitch); // This covers rebet(44), chips(47-51), all in(52), place bet(53), etc.
     }
 
     protected void handleBet(int slot, Player player, InventoryClickEvent event) {

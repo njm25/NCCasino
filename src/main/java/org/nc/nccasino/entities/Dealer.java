@@ -432,6 +432,24 @@ public class Dealer {
             plugin.getConfig().set("dealers." + internalName + ".animation-message", "NCCasino - " + gameName);
             plugin.getConfig().set("dealers." + internalName + ".currency.material", "EMERALD");
             plugin.getConfig().set("dealers." + internalName + ".currency.name", "Emerald");
+
+            if(plugin.getConfig().contains("dealers." + internalName + ".stand-on-17")){
+                plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
+            }
+            if(plugin.getConfig().contains("dealers." + internalName + ".number-of-decks")){
+                
+                if (gameName.equals("Baccarat")){
+                    plugin.getConfig().set("dealers." + internalName + ".number-of-decks", 8);
+                }
+                else if (gameName.equals("Blackjack")) {
+                    plugin.getConfig().set("dealers." + internalName + ".number-of-decks", 6);
+                }
+
+            }
+            if(plugin.getConfig().contains("dealers." + internalName + ".default-mines")){
+                plugin.getConfig().set("dealers." + internalName + ".default-mines", 3);
+            }
+
             setAnimationMessage(mob, gameName);
             setName(mob, newName);
            
