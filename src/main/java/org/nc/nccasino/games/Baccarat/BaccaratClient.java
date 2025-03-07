@@ -410,7 +410,9 @@ public class BaccaratClient extends Client {
 
     private void animateWinningHand(int[] slots, Material material, String message) {
         int[] index = {0}; // Track which slot to enchant
+        if (this.inventory==null) return;
         taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+            if (this.inventory==null) return;
             // Reset all slots to normal first
             for (int slot : slots) {
                 ItemStack item = new ItemStack(material);
@@ -440,7 +442,10 @@ public class BaccaratClient extends Client {
         }, 0L, 3L); // Runs every 10 ticks (0.5 seconds)
     
         // Stop animation after 5 seconds
+        
+        if (this.inventory==null) return;
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (this.inventory==null) return;
             if(taskId!=-1)Bukkit.getScheduler().cancelTask(taskId);
            //applyStaticEnchantment(slots, material, message);
         }, 100L);
