@@ -607,7 +607,6 @@ public abstract class Client extends DealerInventory {
 
     public void cleanup() {
         unregisterListener();
-        delete();
     }
 
     public UUID getOwnerId() {
