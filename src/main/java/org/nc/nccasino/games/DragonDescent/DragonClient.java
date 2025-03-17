@@ -294,6 +294,7 @@ public class DragonClient extends Client{
     }
     
     private void animateDragonSweep(int floor, boolean gameOver) {
+        if (gameGrid == null) return;
         int actualFloor = displayOffset + (floor - 1);
 
         int rowStart = floor * 9;
@@ -332,9 +333,9 @@ public class DragonClient extends Client{
     
             int thisDelay = col * 2; // each col is 2 ticks later
             maxDelay.set(Math.max(maxDelay.get(), thisDelay));
-            if (this.inventory == null) return;
+            if (this.inventory == null|| gameGrid == null) return;
             int taskID = Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (gameOverTriggered) return;
+                if (gameOverTriggered|| gameGrid == null) return;
                     if (lastPlacedSlot.get() != -1) {
                     restoreTile(lastPlacedSlot.get(), actualFloor+1);
                 }
@@ -346,7 +347,7 @@ public class DragonClient extends Client{
                     return;
                 }
                 int restoreTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    if (!gameOverTriggered) {
+                    if (!gameOverTriggered&& gameGrid != null) {
                         if (isBrownColumn) {
                             inventory.setItem(slot, createCustomItem(Material.AIR, "§r", 1));
                         } else {
@@ -481,7 +482,7 @@ public class DragonClient extends Client{
 
     
                 moveLocked=true;
-                cashOut();
+                cashOut(true);
                 return;
         }
     
@@ -513,7 +514,7 @@ public class DragonClient extends Client{
         if (floor == (currentFloor - displayOffset)) { 
             moveLocked = true;
             revealRow(floor);
-            if(this.inventory == null) return;
+            if(this.inventory == null||gameGrid==null) return;
             boolean gameOver = (gameGrid[displayOffset + floor - 1][safeGridCol] == 0);
             if (gameOver) playerLost = true; 
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -537,9 +538,10 @@ public class DragonClient extends Client{
                     if (currentFloor == numRows) {
                         renameAllExcept(playerX, "§aYayyy!");
                         moveLocked = true; 
-                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        cashOut(); // Auto cash-out if at last floor
-                    }, 40L);
+                        int taskID =Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        cashOut(true); // Auto cash-out if at last floor
+                    }, 40L).getTaskId();
+                    taskIDs.add(taskID);
                     } else if (floor == 5) { // Reached last visible row
                         Bukkit.getScheduler().runTaskLater(plugin, this::shiftDisplayUp, 60L); // 1.5s delay before shifting
                     } else {
@@ -723,7 +725,7 @@ public class DragonClient extends Client{
         }
     }
 
-    private void cashOut() {
+    private void cashOut(boolean resetGame) {
         double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
         double payoutMultiplier = calculatePayoutMultiplier();
         double winnings = totalBet * payoutMultiplier;
@@ -738,7 +740,26 @@ public class DragonClient extends Client{
         }
         
         playerLost=true;
-        Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 40L); // 40 ticks = 2 seconds
+        if(resetGame){
+        Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 40L); }
+        else{
+
+            betStack.clear(); // If rebet is off, clear the stack.
+            for (int taskID : taskIDs) {
+                Bukkit.getScheduler().cancelTask(taskID);
+            }
+            taskIDs.clear();
+            floorsCleared=0;
+            playerLost=false;
+            gameOverTriggered = false; // Reset game state
+            moveLocked = false;
+            displayOffset = 0;
+            currentFloor = 1;
+            playerX = 4;
+            gameGrid = null; // Clear old game grid safely
+            bettingEnabled = true;
+        }
+
     }
 
     private void resetGame() {
@@ -791,7 +812,7 @@ public class DragonClient extends Client{
     protected void handleClientInventoryClose() {
         if(!bettingEnabled && !playerLost){
             moveLocked=true;
-            cashOut();
+            cashOut(false);
         }
         else if (bettingEnabled && !betStack.isEmpty()) {
             undoAllBets();
