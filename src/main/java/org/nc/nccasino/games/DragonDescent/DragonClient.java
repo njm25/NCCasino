@@ -32,6 +32,7 @@ public class DragonClient extends Client{
     private boolean playerLost = false;
     private int displayOffset = 0; 
     private int floorsCleared = 0; 
+    private boolean cashOutTriggered = false; 
 
     public DragonClient(DragonServer server, Player player, Nccasino plugin, String internalName) {
         super(server, player, "Dragon Descent", plugin, internalName);
@@ -41,6 +42,7 @@ public class DragonClient extends Client{
 
     @SuppressWarnings("removal")
     private void setupPregame() {
+        cashOutTriggered=false;
         bettingEnabled=true;
         //updateRebetToggle(44);
         // Table layout
@@ -423,7 +425,7 @@ public class DragonClient extends Client{
     @Override
     protected void handleClientSpecificClick(int slot, Player player, InventoryClickEvent event) {
         event.setCancelled(true);
-        if (moveLocked) {
+        if (moveLocked|| cashOutTriggered) {
             return;
         }
     
@@ -726,6 +728,9 @@ public class DragonClient extends Client{
     }
 
     private void cashOut(boolean resetGame) {
+        if (cashOutTriggered) return; 
+        cashOutTriggered = true;
+        moveLocked = true;
         double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
         double payoutMultiplier = calculatePayoutMultiplier();
         double winnings = totalBet * payoutMultiplier;
@@ -740,8 +745,9 @@ public class DragonClient extends Client{
         }
         
         playerLost=true;
+
         if(resetGame){
-        Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 40L); }
+            Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 40L); }
         else{
 
             betStack.clear(); // If rebet is off, clear the stack.
