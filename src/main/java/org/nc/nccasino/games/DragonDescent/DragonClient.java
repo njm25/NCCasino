@@ -613,6 +613,9 @@ public class DragonClient extends Client{
     }
     
     private void shiftDisplayUp() {
+               if (gameGrid == null ) {
+        return;
+    }
         if (displayOffset + 5 >= numRows) return;
     
         moveLocked = true; 
@@ -620,7 +623,9 @@ public class DragonClient extends Client{
         for (int step = 1; step <= 5; step++) {
             final int currentStep = step;
     
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                int taskID = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (gameGrid == null) return; 
+
     
                 // 1) Shift each row up by 1 (row i+1 ⇒ row i)
                 for (int i = 0; i < 5; i++) {  // rows 0..4 in the inventory “board” area
@@ -653,11 +658,16 @@ public class DragonClient extends Client{
                     moveLocked = false;
                 }
     
-            }, delayPerStep * step);
+            }, delayPerStep * step).getTaskId();
+                    taskIDs.add(taskID);
+
         }
     }
     
     private void fillRowWithFloor(int row, int floorIndex) {
+          if (gameGrid == null ) {
+        return;
+    }
         int rowStart = row * 9;
         int effectiveColumns = (numColumns % 2 == 0) ? (numColumns + 1) : numColumns;
         int startCol = (9 - effectiveColumns) / 2;
