@@ -61,6 +61,11 @@ public abstract class Menu extends DealerInventory {
         // Blackjack settings menu
         STAND_17,
         NUMBER_OF_DECKS,
+        
+        // Dragon Descent settings menu
+        EDIT_COLUMNS,
+        EDIT_VINES, 
+        EDIT_FLOORS,
 
         YES,
         NO,
