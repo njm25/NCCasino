@@ -500,6 +500,11 @@ public class MobSelectionMenu extends Menu {
             }
             case "Coin Flip" -> {
             }
+            case "Dragon Descent" -> {
+                settings.put("default-columns", config.getInt(basePath + "default-columns", 7));
+                settings.put("default-vines", config.getInt(basePath + "default-vines", 5));
+                settings.put("default-floors", config.getInt(basePath + "default-floors", 4));
+            }
         }
         return settings;
     }

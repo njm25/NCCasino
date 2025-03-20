@@ -219,8 +219,36 @@ public class GameOptionsMenu extends Menu {
                     }
                 }
 
-
-        
+                // Set default values for Dragon Descent
+                if (gameType.equals("Dragon Descent")) {
+                    if (!plugin.getConfig().contains("dealers." + internalName + ".default-columns")) {
+                        plugin.getConfig().set("dealers." + internalName + ".default-columns", 7);
+                    }
+                    if (!plugin.getConfig().contains("dealers." + internalName + ".default-vines")) {
+                        plugin.getConfig().set("dealers." + internalName + ".default-vines", 5);
+                    }
+                    if (!plugin.getConfig().contains("dealers." + internalName + ".default-floors")) {
+                        plugin.getConfig().set("dealers." + internalName + ".default-floors", 4);
+                    }
+                    
+                    // Validate values
+                    int columns = plugin.getConfig().getInt("dealers." + internalName + ".default-columns");
+                    int vines = plugin.getConfig().getInt("dealers." + internalName + ".default-vines");
+                    int floors = plugin.getConfig().getInt("dealers." + internalName + ".default-floors");
+                    
+                    if (columns < 2 || columns > 9) {
+                        plugin.getConfig().set("dealers." + internalName + ".default-columns", 7);
+                    }
+                    
+                    if (vines < 1 || vines >= columns) {
+                        plugin.getConfig().set("dealers." + internalName + ".default-vines", Math.min(5, columns - 1));
+                    }
+                    
+                    if (floors < 1 || floors > 100000) {
+                        plugin.getConfig().set("dealers." + internalName + ".default-floors", 4);
+                    }
+                }
+                
                 this.delete();
             },
             (uuid) -> {

@@ -449,6 +449,14 @@ public class Dealer {
             if(plugin.getConfig().contains("dealers." + internalName + ".default-mines")){
                 plugin.getConfig().set("dealers." + internalName + ".default-mines", 3);
             }
+            
+            // Set default values for Dragon Descent if that's the game type
+            if (gameName.equals("Dragon Descent")) {
+                // Set default values for Dragon Descent settings
+                plugin.getConfig().set("dealers." + internalName + ".default-columns", 7);
+                plugin.getConfig().set("dealers." + internalName + ".default-vines", 5);
+                plugin.getConfig().set("dealers." + internalName + ".default-floors", 4);
+            }
 
             setAnimationMessage(mob, gameName);
             setName(mob, newName);

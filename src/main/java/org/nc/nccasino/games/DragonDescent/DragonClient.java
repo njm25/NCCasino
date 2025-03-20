@@ -36,6 +36,24 @@ public class DragonClient extends Client{
 
     public DragonClient(DragonServer server, Player player, Nccasino plugin, String internalName) {
         super(server, player, "Dragon Descent", plugin, internalName);
+
+        if (!plugin.getConfig().contains("dealers." + internalName + ".default-columns")) {
+            plugin.getConfig().set("dealers." + internalName + ".default-columns", 7);
+        }
+        if (!plugin.getConfig().contains("dealers." + internalName + ".default-vines")) {
+            plugin.getConfig().set("dealers." + internalName + ".default-vines", 5);
+        }
+        if (!plugin.getConfig().contains("dealers." + internalName + ".default-floors")) {
+            plugin.getConfig().set("dealers." + internalName + ".default-floors", 4);
+        }
+        plugin.saveConfig();
+        numColumns = plugin.getDragonDescentColumns(internalName);
+        numSafeSpots = plugin.getDragonDescentVines(internalName);
+        numRows = plugin.getDragonDescentFloors(internalName);
+        
+        // Ensure vines are valid for column count
+        numSafeSpots = Math.min(numSafeSpots, numColumns - 1);
+        
         initializeUI(true, true,false,40,53);
         setupPregame();
     }
@@ -828,7 +846,6 @@ public class DragonClient extends Client{
     
     @Override
     public void onServerUpdate(String eventType, Object data) {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'onServerUpdate'");
     }
     

@@ -464,7 +464,62 @@ public final class Nccasino extends JavaPlugin implements Listener {
         if (timer < 0) return 0;      
         if (timer > 10000) return 10000; 
     
-        return (int) timer; 
+        return (int) timer;
+    }
+
+    // Dragon Descent specific configuration methods
+    public int getDragonDescentColumns(String internalName) {
+        int columns;
+        if (!getConfig().contains("dealers." + internalName + ".default-columns")) {
+            // If the key doesn't exist, set default value
+            getConfig().set("dealers." + internalName + ".default-columns", "7");
+            columns = 7;
+        } else {
+            // Retrieve current value
+            String value = getConfig().getString("dealers." + internalName + ".default-columns", "7").trim();
+            try {
+                columns = Integer.parseInt(value);
+            } catch (NumberFormatException e) {
+                columns = 7; // Default value if parsing fails
+            }
+        }
+        return columns;
+    }
+
+    public int getDragonDescentVines(String internalName) {
+        int vines;
+        if (!getConfig().contains("dealers." + internalName + ".default-vines")) {
+            // If the key doesn't exist, set default value
+            getConfig().set("dealers." + internalName + ".default-vines", "5");
+            vines = 5;
+        } else {
+            // Retrieve current value
+            String value = getConfig().getString("dealers." + internalName + ".default-vines", "5").trim();
+            try {
+                vines = Integer.parseInt(value);
+            } catch (NumberFormatException e) {
+                vines = 5; // Default value if parsing fails
+            }
+        }
+        return vines;
+    }
+
+    public int getDragonDescentFloors(String internalName) {
+        int floors;
+        if (!getConfig().contains("dealers." + internalName + ".default-floors")) {
+            // If the key doesn't exist, set default value
+            getConfig().set("dealers." + internalName + ".default-floors", "4");
+            floors = 4;
+        } else {
+            // Retrieve current value
+            String value = getConfig().getString("dealers." + internalName + ".default-floors", "4").trim();
+            try {
+                floors = Integer.parseInt(value);
+            } catch (NumberFormatException e) {
+                floors = 4; // Default value if parsing fails
+            }
+        }
+        return floors;
     }
 
     public void reinitializeDealerConfigurations() {
