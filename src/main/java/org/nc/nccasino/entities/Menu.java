@@ -93,9 +93,13 @@ public abstract class Menu extends DealerInventory {
         PM,
         //CHANGE_BIOME,
         MOB_SELECTION,
+        JOCKEY_MENU,
 
         // Test buttons
-        TEST_MENU
+        TEST_MENU,
+        ADD_JOCKEY,
+        ADD_PASSENGER,
+        REMOVE_JOCKEY
     }
 
     protected final Map<SlotOption, Integer> slotMapping = new HashMap<>();
