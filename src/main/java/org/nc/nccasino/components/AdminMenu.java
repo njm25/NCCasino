@@ -160,7 +160,7 @@ public class AdminMenu extends Menu {
     slotMapping.put(SlotOption.CHIP_SIZE4, 23);
     slotMapping.put(SlotOption.CHIP_SIZE5, 24);
     slotMapping.put(SlotOption.MOB_SELECTION, 4);
-
+    slotMapping.put(SlotOption.JOCKEY_MENU, 13);
    }
 
 
@@ -221,6 +221,8 @@ public class AdminMenu extends Menu {
         addItemAndLore(Material.BOOK, 1, currentGame + " Settings", slotMapping.get(SlotOption.GAME_OPTIONS), gameSettingsLore.toArray(new String[0]));
     
         addItemAndLore(Material.RED_STAINED_GLASS_PANE, 1, "Edit Animation Message",  slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE), "Current: §a" + currentAnimationMessage);
+        addItemAndLore(Material.SADDLE, 1, "Manage Jockeys", slotMapping.get(SlotOption.JOCKEY_MENU), "Manage dealer's jockeys");
+
        /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
         addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
         addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
@@ -457,6 +459,10 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 handleTestMenu(player);
                 playDefaultSound(player);
                 break;
+            case JOCKEY_MENU:
+                handleJockeyMenu(player);
+                playDefaultSound(player);
+                break;
             default:
             
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
@@ -476,6 +482,25 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
     }
 
+    private void handleJockeyMenu(Player player) {
+        JockeyMenu jockeyMenu = new JockeyMenu(
+            dealerId,
+            player,
+            Dealer.getInternalName(dealer) + "'s Jockey Menu",
+            (p) -> {
+                if (adminInventories.containsKey(player.getUniqueId())) {
+                    player.openInventory(adminInventories.get(player.getUniqueId()).getInventory());
+                } else {
+                    AdminMenu newAdminInventory = new AdminMenu(dealerId, player, plugin);
+                    player.openInventory(newAdminInventory.getInventory());
+                }
+            },
+            plugin,
+            Dealer.getInternalName(dealer) + "'s Admin Menu"
+        );
+        player.openInventory(jockeyMenu.getInventory());
+    }
+    
     private void handleMobSelection(Player player) {
         MobSelectionMenu mobSelectionInventory = new MobSelectionMenu(player, plugin, dealerId, (p) -> {
             if (adminInventories.containsKey(player.getUniqueId())) {
