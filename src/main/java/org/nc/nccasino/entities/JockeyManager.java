@@ -1,23 +1,63 @@
 package org.nc.nccasino.entities;
 
 import org.bukkit.entity.Mob;
-import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Entity;
 import org.bukkit.Location;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 public class JockeyManager {
     private final Mob dealer;
     private JockeyNode head;
     private final List<JockeyNode> jockeys;
 
+    private JockeyNode findTopmostJockey() {
+        JockeyNode current = head;
+        while (current.getChild() != null) {
+            current = current.getChild();
+        }
+        return current;
+    }
+
+    private void initializeFromPassenger(Entity passenger, int position) {
+        if (passenger instanceof Mob && position > 0) {  // Ensure we don't try to add the dealer
+            Mob mobPassenger = (Mob) passenger;
+            
+            // Create new node without mounting
+            JockeyNode newNode = new JockeyNode(mobPassenger, position);
+            
+            // Find parent node
+            JockeyNode parent = jockeys.get(position - 1);
+            
+            // Set up parent-child relationship
+            newNode.setParent(parent);
+            parent.setChild(newNode);
+            
+            // Add to jockeys list
+            jockeys.add(newNode);
+            
+            // Recursively process this passenger's passengers
+            if (!mobPassenger.getPassengers().isEmpty()) {
+                for (Entity subPassenger : mobPassenger.getPassengers()) {
+                    initializeFromPassenger(subPassenger, jockeys.size());
+                }
+            }
+        }
+    }
+
     public JockeyManager(Mob dealer) {
         this.dealer = dealer;
         this.jockeys = new ArrayList<>();
         this.head = new JockeyNode(dealer, 0);
         jockeys.add(head);
+
+        // Initialize from existing passengers recursively
+        if (!dealer.getPassengers().isEmpty()) {
+            for (Entity passenger : dealer.getPassengers()) {
+                initializeFromPassenger(passenger, jockeys.size());
+            }
+        }
     }
 
     public JockeyNode addJockey(Mob mob, int position) {
@@ -35,26 +75,16 @@ public class JockeyManager {
             }
         }
 
-        // Get the parent node (the one below this new jockey)
-        JockeyNode parent = position > 1 ? jockeys.get(position - 1) : head;
+        // Find the current topmost jockey
+        JockeyNode parent = findTopmostJockey();
         
-        // If there's already a jockey at this position or above, unmount it first
-        if (position < jockeys.size()) {
-            JockeyNode existing = jockeys.get(position);
-            existing.unmount();
-            // Mount it on the new node
-            existing.mountOn(newNode);
+        // Only mount if the parent is not the same entity
+        if (parent.getMob() != mob) {
+            newNode.mountOn(parent);
         }
-
-        // Mount the new node on its parent
-        newNode.mountOn(parent);
         
         // Add the new node to our list at the correct position
-        if (position >= jockeys.size()) {
-            jockeys.add(newNode);
-        } else {
-            jockeys.add(position, newNode);
-        }
+        jockeys.add(newNode);
 
         return newNode;
     }

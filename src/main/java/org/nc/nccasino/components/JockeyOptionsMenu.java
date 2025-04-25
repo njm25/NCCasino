@@ -1,18 +1,14 @@
 package org.nc.nccasino.components;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.entities.JockeyManager;
 
-import java.util.UUID;
 import java.util.function.Consumer;
 
 public class JockeyOptionsMenu extends Menu {

@@ -1,7 +1,6 @@
 package org.nc.nccasino.entities;
 
 import org.bukkit.entity.Mob;
-import org.bukkit.entity.EntityType;
 import java.util.UUID;
 
 public class JockeyNode {
