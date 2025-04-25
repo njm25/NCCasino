@@ -1,12 +1,10 @@
 package org.nc.nccasino.components;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
@@ -43,6 +41,7 @@ public class JockeyMenu extends Menu {
                 .findFirst().orElse(null);
         }
         
+        // Create a fresh JockeyManager to ensure we have the current state
         this.jockeyManager = new JockeyManager(dealer);
         
         slotMapping.put(SlotOption.EXIT, 26);
@@ -73,17 +72,17 @@ public class JockeyMenu extends Menu {
         );
 
         // Display current jockeys
-        int slot = 10;
+        int slot = 5; // Start one slot to the right of the dealer spawner
         for (JockeyNode jockey : jockeyManager.getJockeys()) {
             if (jockey.getPosition() == 0) continue; // Skip the dealer
+            Material spawnEgg = MobSelectionMenu.getSpawnEggFor(jockey.getMob().getType());
             addItemAndLore(
-                Material.SPAWNER, 
+                spawnEgg, 
                 1, 
                 "Jockey #" + jockey.getPosition(), 
                 slot,
-                "Name: §a" + jockey.getCustomName(),
-                "Type: §a" + jockey.getMob().getType().name(),
-                "Click to edit"
+
+                "Type: §a" + jockey.getMob().getType().name()
             );
             slot++;
         }
@@ -104,8 +103,8 @@ public class JockeyMenu extends Menu {
             default:
                 // Check if clicked on a jockey item
                 int slot = event.getSlot();
-                if (slot >= 10 && slot < 17) {
-                    int position = slot - 9;
+                if (slot >= 5 && slot < 12) { // Slots 5-11 are for jockeys
+                    int position = slot - 4; // Convert slot to position (5 -> 1, 6 -> 2, etc.)
                     JockeyNode jockey = jockeyManager.getJockey(position);
                     if (jockey != null) {
                         handleJockeyOptions(player, jockey);

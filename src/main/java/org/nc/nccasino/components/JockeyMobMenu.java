@@ -1,6 +1,5 @@
 package org.nc.nccasino.components;
 
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
@@ -82,8 +81,8 @@ public class JockeyMobMenu extends Menu {
         this.isCreatingNew = targetJockey == null;
         this.asPassenger = asPassenger;
         
-        slotMapping.put(SlotOption.EXIT, 49);
-        slotMapping.put(SlotOption.RETURN, 48);
+        slotMapping.put(SlotOption.EXIT, 53);
+        slotMapping.put(SlotOption.RETURN, 45);
         slotMapping.put(SlotOption.PAGE_TOGGLE, 49);
         jockeyMobInventories.put(this.ownerId, this);
         initializeMenu();
@@ -112,10 +111,10 @@ public class JockeyMobMenu extends Menu {
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit", slotMapping.get(SlotOption.EXIT));
         addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnName, slotMapping.get(SlotOption.RETURN));
 
-        // Page toggle button
+        // Page toggle button - always show it if there are multiple pages
         if (currentPage > 1) {
             addItemAndLore(Material.ARROW, 1, "Previous Page", slotMapping.get(SlotOption.PAGE_TOGGLE));
-        } else if (currentPage < (int) Math.ceil(spawnEggList.size() / (double) PAGE_SIZE)) {
+        } else if ((startIndex + PAGE_SIZE) < spawnEggList.size()) {
             addItemAndLore(Material.ARROW, 1, "Next Page", slotMapping.get(SlotOption.PAGE_TOGGLE));
         }
     }
@@ -160,7 +159,7 @@ public class JockeyMobMenu extends Menu {
                     // Create new jockey
                     int position;
                     if (asPassenger) {
-                        position = 1; // Add at the top
+                        position = jockeyManager.getJockeyCount() + 1; // Add at the top of the stack
                     } else {
                         position = jockeyManager.getJockeyCount() + 1; // Add at the bottom
                     }
