@@ -2,6 +2,8 @@ package org.nc.nccasino.entities;
 
 import org.bukkit.entity.Mob;
 import java.util.UUID;
+import java.util.List;
+import java.util.ArrayList;
 
 public class JockeyNode {
     private final UUID id;
@@ -95,5 +97,18 @@ public class JockeyNode {
         if (this.child != null) {
             this.child.unmount();
         }
+    }
+
+    public boolean isPassenger() {
+        return parent != null;
+    }
+
+    public List<JockeyNode> getPassengers() {
+        List<JockeyNode> passengers = new ArrayList<>();
+        if (child != null) {
+            passengers.add(child);
+            passengers.addAll(child.getPassengers());
+        }
+        return passengers;
     }
 } 
