@@ -9,6 +9,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.JockeyManager;
@@ -21,7 +22,7 @@ public class JockeyMobMenu extends Menu {
     private final Nccasino plugin;
     private final String returnName;
     private final JockeyManager jockeyManager;
-    private final JockeyNode targetJockey; // null if creating new jockey
+    private final JockeyNode targetJockey;
     private final boolean isCreatingNew;
     private final boolean asPassenger;
     private int currentPage = 1;
@@ -31,6 +32,10 @@ public class JockeyMobMenu extends Menu {
     private static final Map<Material, EntityType> spawnEggToEntity = new HashMap<>();
     private static final Map<EntityType, Material> entityToSpawnEgg = new HashMap<>();
     private static final List<Material> spawnEggList = new ArrayList<>();
+
+    private final Consumer<Player> returnCallback;
+    private int totalPages;
+    private Map<Integer, EntityType> slotToEntityType = new HashMap<>();
 
     static {
         for (Material material : Material.values()) {
@@ -80,23 +85,30 @@ public class JockeyMobMenu extends Menu {
         this.targetJockey = targetJockey;
         this.isCreatingNew = targetJockey == null;
         this.asPassenger = asPassenger;
+        this.returnCallback = returnCallback;
         
         slotMapping.put(SlotOption.EXIT, 53);
         slotMapping.put(SlotOption.RETURN, 45);
         slotMapping.put(SlotOption.PAGE_TOGGLE, 49);
         jockeyMobInventories.put(this.ownerId, this);
+        
+        // Calculate total pages
+        totalPages = (int) Math.ceil(spawnEggList.size() / (double) PAGE_SIZE);
+        
         initializeMenu();
     }
 
     @Override
     protected void initializeMenu() {
         inventory.clear();
+        slotToEntityType.clear();
         int startIndex = (currentPage - 1) * PAGE_SIZE;
 
         // Populate spawn eggs
         for (int i = 0; i < PAGE_SIZE && startIndex + i < spawnEggList.size(); i++) {
             Material material = spawnEggList.get(startIndex + i);
             EntityType entityType = spawnEggToEntity.get(material);
+            int slot = i;
 
             ItemStack item = new ItemStack(material);
             ItemMeta meta = item.getItemMeta();
@@ -104,14 +116,15 @@ public class JockeyMobMenu extends Menu {
                 meta.setDisplayName(ChatColor.YELLOW + formatEntityName(entityType.name()));
                 item.setItemMeta(meta);
             }
-            inventory.setItem(i, item);
+            inventory.setItem(slot, item);
+            slotToEntityType.put(slot, entityType);
         }
 
-        // Navigation buttons
+        // Add navigation buttons
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit", slotMapping.get(SlotOption.EXIT));
         addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnName, slotMapping.get(SlotOption.RETURN));
 
-        // Page toggle button - always show it if there are multiple pages
+        // Page toggle button
         if (currentPage > 1) {
             addItemAndLore(Material.ARROW, 1, "Previous Page", slotMapping.get(SlotOption.PAGE_TOGGLE));
         } else if ((startIndex + PAGE_SIZE) < spawnEggList.size()) {
@@ -119,16 +132,37 @@ public class JockeyMobMenu extends Menu {
         }
     }
 
+    private void returnToJockeyMenu(Player player) {
+        // Schedule the return with a delay to ensure proper updates
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                // First update the JockeyMenu if it exists
+                JockeyMenu jockeyMenu = JockeyMenu.jockeyInventories.get(player.getUniqueId());
+                if (jockeyMenu != null) {
+                    jockeyMenu.initializeMenu();
+                }
+                
+                // Then return to it
+                if (returnCallback != null) {
+                    returnCallback.accept(player);
+                }
+            }
+        }.runTaskLater(plugin, 2L); // 2 tick delay (0.1 seconds)
+    }
+
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
-        // First check if it's a navigation button
+        event.setCancelled(true);
+
+        // First check if it's a mapped slot option
         SlotOption option = getKeyByValue(slotMapping, slot);
         if (option != null) {
             switch (option) {
                 case PAGE_TOGGLE:
                     if (currentPage > 1) {
                         currentPage--;
-                    } else if (currentPage < (int) Math.ceil(spawnEggList.size() / (double) PAGE_SIZE)) {
+                    } else if (currentPage < totalPages) {
                         currentPage++;
                     }
                     initializeMenu();
@@ -138,64 +172,65 @@ public class JockeyMobMenu extends Menu {
                     player.closeInventory();
                     return;
                 case RETURN:
-                    executeReturn(player);
+                    returnToJockeyMenu(player);
                     return;
             }
             return;
         }
 
-        // If not a navigation button, check if it's a spawn egg slot
-        if (slot >= 0 && slot < 45 && event.getCurrentItem() != null) {
-            Material clickedMaterial = event.getCurrentItem().getType();
-            EntityType selectedType = spawnEggToEntity.get(clickedMaterial);
-            if (selectedType != null) {
-                // Calculate the actual index based on the current page
-                int actualIndex = (currentPage - 1) * PAGE_SIZE + slot;
-                if (actualIndex >= spawnEggList.size()) return;
+        // If not a mapped slot, check if it's an entity selection slot
+        EntityType selectedType = slotToEntityType.get(slot);
+        if (selectedType != null) {
+            // Create the new mob
+            Mob newMob = (Mob) player.getWorld().spawnEntity(player.getLocation(), selectedType);
+            
+            // Get the dealer's name to use as base for custom names
+            String dealerName = jockeyManager.getDealer().getCustomName();
+            if (dealerName == null || dealerName.isEmpty()) {
+                dealerName = "Dealer";
+            }
+            
+            if (targetJockey != null) {
+                // Editing existing jockey
+                targetJockey.setMob(newMob);
+                // Keep the existing custom name when editing
+                if (targetJockey.getCustomName() != null) {
+                    targetJockey.setCustomName(targetJockey.getCustomName());
+                }
+            } else {
+                // Creating new jockey
+                JockeyNode newJockey = new JockeyNode(newMob, jockeyManager.getJockeyCount() + 1);
+                newJockey.setCustomName(dealerName);
                 
-                Mob newMob = (Mob) player.getWorld().spawnEntity(player.getLocation(), selectedType);
-                
-                if (isCreatingNew) {
-                    // Create new jockey
-                    int position;
-                    if (asPassenger) {
-                        position = jockeyManager.getJockeyCount() + 1; // Add at the top of the stack
-                    } else {
-                        position = jockeyManager.getJockeyCount() + 1; // Add at the bottom
-                    }
-                    
-                    JockeyNode newJockey = jockeyManager.addJockey(newMob, position);
-                    if (newJockey != null) {
-                        String type = asPassenger ? "passenger" : "jockey";
-                        player.sendMessage("§aCreated new " + type + " with " + formatEntityName(selectedType.name()));
-                        playDefaultSound(player);
-                        if (returnCallback != null) {
-                            returnCallback.accept(player);
-                        }
-                    } else {
-                        player.sendMessage("§cFailed to create jockey");
-                        newMob.remove();
+                if (asPassenger) {
+                    // Find the last jockey to add this as a passenger
+                    List<JockeyNode> jockeys = jockeyManager.getJockeys();
+                    if (!jockeys.isEmpty()) {
+                        JockeyNode lastJockey = jockeys.get(jockeys.size() - 1);
+                        newJockey.mountOn(lastJockey);
                     }
                 } else {
-                    // Change existing jockey's mob
-                    if (jockeyManager.changeMobType(targetJockey.getPosition(), newMob)) {
-                        player.sendMessage("§aChanged jockey to " + formatEntityName(selectedType.name()));
-                        playDefaultSound(player);
-                        if (returnCallback != null) {
-                            returnCallback.accept(player);
+                    // Add as a new jockey at the bottom of the stack
+                    JockeyNode lastJockey = null;
+                    for (JockeyNode jockey : jockeyManager.getJockeys()) {
+                        if (jockey.getPosition() > 0) {
+                            lastJockey = jockey;
                         }
-                    } else {
-                        player.sendMessage("§cFailed to change jockey");
-                        newMob.remove();
+                    }
+                    if (lastJockey != null) {
+                        newJockey.mountOn(lastJockey);
                     }
                 }
             }
+            
+            playDefaultSound(player);
+            returnToJockeyMenu(player);
         }
     }
 
     @Override
     protected void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
-        // This is now handled in handleClick
+        // All click handling is done in handleClick
     }
 
     @Override
