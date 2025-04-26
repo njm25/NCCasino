@@ -23,12 +23,14 @@ public class JockeyMenu extends Menu {
     private Mob dealer;
     private JockeyManager jockeyManager;
     public static final Map<UUID, JockeyMenu> jockeyInventories = new HashMap<>();
+    private Map<Integer, JockeyNode> slotToJockeyMap;
 
     public JockeyMenu(UUID dealerId, Player player, String title, Consumer<Player> ret, Nccasino plugin, String returnName) {
         super(player, plugin, dealerId, title, 27, returnName, ret);
         this.dealerId = dealerId;
         this.plugin = plugin;
         this.returnName = returnName;
+        this.slotToJockeyMap = new HashMap<>();
         this.dealer = Dealer.getMobFromId(dealerId);
         if (this.dealer == null) {
             // Attempt to find a nearby Dealer if not found above
@@ -55,13 +57,17 @@ public class JockeyMenu extends Menu {
 
     @Override
     protected void initializeMenu() {
+        // Clear the jockey mapping
+        slotToJockeyMap.clear();
+
+        // Add standard menu items
         addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnName, slotMapping.get(SlotOption.RETURN));
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit", slotMapping.get(SlotOption.EXIT));
         addItemAndLore(Material.SADDLE, 1, "Add Jockey", slotMapping.get(SlotOption.ADD_JOCKEY), "Add a new jockey to the bottom of the stack");
         addItemAndLore(Material.LEAD, 1, "Add Passenger", slotMapping.get(SlotOption.ADD_PASSENGER), "Add a new jockey to the top of the stack");
         addItemAndLore(Material.BARRIER, 1, "Remove Jockey", slotMapping.get(SlotOption.REMOVE_JOCKEY), "Remove the top jockey from the stack");
 
-        // Add dealer representation in the middle
+        // Add dealer representation
         addItemAndLore(
             Material.SPAWNER,
             1,
@@ -71,20 +77,53 @@ public class JockeyMenu extends Menu {
             "This is the base dealer"
         );
 
-        // Display current jockeys
-        int slot = 5; // Start one slot to the right of the dealer spawner
+        // Display current jockeys with dynamic slot assignment
+        int slot = 5; // Starting slot for jockeys
         for (JockeyNode jockey : jockeyManager.getJockeys()) {
-            if (jockey.getPosition() == 0) continue; // Skip the dealer
-            Material spawnEgg = MobSelectionMenu.getSpawnEggFor(jockey.getMob().getType());
-            addItemAndLore(
-                spawnEgg, 
-                1, 
-                "Jockey #" + jockey.getPosition(), 
-                slot,
+            // Include all jockeys and passengers, but skip the dealer itself
+            if (jockey.getPosition() == 0) continue;
 
-                "Type: §a" + jockey.getMob().getType().name()
+            Material spawnEgg = MobSelectionMenu.getSpawnEggFor(jockey.getMob().getType());
+            String customName = jockey.getCustomName() != null ? jockey.getCustomName() : "Jockey #" + jockey.getPosition();
+            String role = jockey.isPassenger() ? "Passenger" : "Jockey";
+            
+            addItemAndLore(
+                spawnEgg,
+                1,
+                customName,
+                slot,
+                "Type: §a" + jockey.getMob().getType().name(),
+                "Role: §e" + role,
+                "Position: " + jockey.getPosition(),
+                "Click to customize"
             );
+
+            // Map this slot to the jockey
+            slotToJockeyMap.put(slot, jockey);
             slot++;
+
+            // Handle any passengers this jockey might have
+            if (jockey.getPassengers() != null) {
+                for (JockeyNode passenger : jockey.getPassengers()) {
+                    Material passengerEgg = MobSelectionMenu.getSpawnEggFor(passenger.getMob().getType());
+                    String passengerName = passenger.getCustomName() != null ? passenger.getCustomName() : "Passenger of " + customName;
+                    
+                    addItemAndLore(
+                        passengerEgg,
+                        1,
+                        passengerName,
+                        slot,
+                        "Type: §a" + passenger.getMob().getType().name(),
+                        "Role: §ePassenger",
+                        "Position: " + passenger.getPosition(),
+                        "Click to customize"
+                    );
+
+                    // Map this slot to the passenger
+                    slotToJockeyMap.put(slot, passenger);
+                    slot++;
+                }
+            }
         }
     }
 
@@ -100,17 +139,22 @@ public class JockeyMenu extends Menu {
             case REMOVE_JOCKEY:
                 handleRemoveJockey(player);
                 break;
-            default:
-                // Check if clicked on a jockey item
-                int slot = event.getSlot();
-                if (slot >= 5 && slot < 12) { // Slots 5-11 are for jockeys
-                    int position = slot - 4; // Convert slot to position (5 -> 1, 6 -> 2, etc.)
-                    JockeyNode jockey = jockeyManager.getJockey(position);
-                    if (jockey != null) {
-                        handleJockeyOptions(player, jockey);
-                    }
-                }
-                break;
+        }
+    }
+
+    @Override
+    public void handleClick(int slot, Player player, InventoryClickEvent event) {
+        // First check if it's a mapped slot option
+        SlotOption option = getKeyByValue(slotMapping, slot);
+        if (option != null) {
+            super.handleClick(slot, player, event);
+            return;
+        }
+
+        // If not a mapped slot, check if it's a jockey slot
+        JockeyNode clickedJockey = slotToJockeyMap.get(slot);
+        if (clickedJockey != null) {
+            handleJockeyOptions(player, clickedJockey);
         }
     }
 
