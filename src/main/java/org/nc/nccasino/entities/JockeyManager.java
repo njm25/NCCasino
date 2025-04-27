@@ -27,8 +27,8 @@ public class JockeyManager {
         if (passenger instanceof Mob && position > 0) {  // Ensure we don't try to add the dealer
             Mob mobPassenger = (Mob) passenger;
             
-            // Create new node without mounting
-            JockeyNode newNode = new JockeyNode(mobPassenger, position);
+            // Create new node without mounting - this is an existing jockey
+            JockeyNode newNode = new JockeyNode(mobPassenger, position, false);
             
             // Find parent node
             JockeyNode parent = jockeys.get(position - 1);
@@ -52,7 +52,7 @@ public class JockeyManager {
     public JockeyManager(Mob dealer) {
         this.dealer = dealer;
         this.jockeys = new ArrayList<>();
-        this.head = new JockeyNode(dealer, 0);
+        this.head = new JockeyNode(dealer, 0, false); // Dealer is an existing mob
         jockeys.add(head);
 
         // Initialize from existing passengers recursively
@@ -138,7 +138,7 @@ public class JockeyManager {
                 // Smoothly interpolate rotations
                 float bodyDiff = ((targetBodyYaw - bodyYaw + 540) % 360) - 180;
                 float headDiff = ((targetHeadYaw - headYaw + 540) % 360) - 180;
-                float pitchDiff = targetPitch - headPitch;
+                //float pitchDiff = targetPitch - headPitch;
 
                 float turnSpeed = Math.max(MIN_TURN_SPEED, 
                     Math.max(Math.abs(bodyDiff), Math.abs(headDiff)) * SMOOTH_FACTOR);
@@ -196,7 +196,7 @@ public class JockeyManager {
             return null;
         }
 
-        JockeyNode newNode = new JockeyNode(mob, position);
+        JockeyNode newNode = new JockeyNode(mob, position, true); // This is a new jockey
         
         // If adding at an existing position, shift all subsequent jockeys up
         if (position <= jockeys.size()) {
