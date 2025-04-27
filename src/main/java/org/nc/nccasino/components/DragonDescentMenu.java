@@ -56,9 +56,6 @@ public class DragonDescentMenu extends Menu {
         initializeMenu();
     }
 
-    private void unregisterListener() {
-        InventoryCloseEvent.getHandlerList().unregister(this);
-    }
 
     @Override
     public void cleanup() {
