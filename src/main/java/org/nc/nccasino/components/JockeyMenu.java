@@ -158,6 +158,8 @@ public class JockeyMenu extends Menu {
             case REMOVE_JOCKEY:
                 handleRemoveJockey(player);
                 break;
+            default:
+                break;
         }
     }
 
