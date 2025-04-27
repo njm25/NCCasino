@@ -4,6 +4,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
 import org.bukkit.Material;
 import org.bukkit.entity.*;
+import org.bukkit.entity.Cat.Type;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
@@ -27,6 +28,81 @@ public class JockeyOptionsMenu extends Menu {
     private static final Map<Material, EntityType> spawnEggToEntity = new HashMap<>();
     private static final Map<EntityType, Material> entityToSpawnEgg = new HashMap<>();
     private static final List<Material> spawnEggList = new ArrayList<>();
+
+    private static final Map<Class<? extends Mob>, Material[]> VARIANT_ITEMS = new HashMap<>() {{
+        put(Cat.class, new Material[]{
+            Material.BROWN_GLAZED_TERRACOTTA, Material.PINK_GLAZED_TERRACOTTA, Material.ORANGE_GLAZED_TERRACOTTA, Material.LIGHT_GRAY_GLAZED_TERRACOTTA, 
+            Material.GRAY_GLAZED_TERRACOTTA, Material.LIME_GLAZED_TERRACOTTA, Material.YELLOW_GLAZED_TERRACOTTA, Material.LIGHT_BLUE_GLAZED_TERRACOTTA,
+            Material.WHITE_GLAZED_TERRACOTTA, Material.PURPLE_GLAZED_TERRACOTTA, Material.BLACK_GLAZED_TERRACOTTA
+        }); // 11 variants
+    
+        put(Fox.class, new Material[]{
+            Material.ORANGE_DYE, Material.WHITE_DYE
+        }); // 2 variants
+    
+        put(Frog.class, new Material[]{
+            Material.ORANGE_DYE, Material.GRAY_DYE, Material.GREEN_DYE
+        }); // 3 variants
+    
+        put(Parrot.class, new Material[]{
+            Material.RED_DYE, Material.BLUE_DYE, Material.GREEN_DYE, Material.CYAN_DYE, Material.GRAY_DYE
+        }); // 5 variants
+    
+        put(Rabbit.class, new Material[]{
+            Material.BROWN_DYE, Material.WHITE_DYE, Material.BLACK_DYE, Material.BIRCH_LOG, 
+            Material.YELLOW_DYE, Material.FROGSPAWN, Material.BONE
+        }); // 6 variants
+    
+        put(Axolotl.class, new Material[]{
+            Material.PINK_DYE, Material.BROWN_DYE, Material.YELLOW_DYE, Material.CYAN_DYE, Material.BLUE_DYE
+        }); // 5 variants
+    
+        put(MushroomCow.class, new Material[]{
+            Material.RED_MUSHROOM, Material.BROWN_MUSHROOM
+        }); // 2 variants
+    
+        put(Panda.class, new Material[]{
+            Material.BLACK_WOOL, Material.BROWN_WOOL
+        }); // 2 variants
+    
+        put(Sheep.class, new Material[]{
+            Material.WHITE_WOOL, Material.ORANGE_WOOL, Material.MAGENTA_WOOL, Material.LIGHT_BLUE_WOOL,
+            Material.YELLOW_WOOL, Material.LIME_WOOL, Material.PINK_WOOL, Material.GRAY_WOOL,
+            Material.LIGHT_GRAY_WOOL, Material.CYAN_WOOL, Material.PURPLE_WOOL, Material.BLUE_WOOL,
+            Material.BROWN_WOOL, Material.GREEN_WOOL, Material.RED_WOOL, Material.BLACK_WOOL
+        }); // 16 colors
+    }};
+
+    private static final Cat.Type[] CAT_TYPES = {
+        Cat.Type.TABBY,
+        Cat.Type.BLACK,
+        Cat.Type.RED,
+        Cat.Type.SIAMESE,
+        Cat.Type.BRITISH_SHORTHAIR,
+        Cat.Type.CALICO,
+        Cat.Type.PERSIAN,
+        Cat.Type.RAGDOLL,
+        Cat.Type.WHITE,
+        Cat.Type.JELLIE,
+        Cat.Type.ALL_BLACK
+    };
+
+    private static final Frog.Variant[] FROG_VARIANTS = {
+        Frog.Variant.TEMPERATE,
+        Frog.Variant.WARM,
+        Frog.Variant.COLD
+    };  
+
+    private static final List<DyeColor> SHEEP_COLOR_ORDER = List.of(
+        DyeColor.WHITE, // Default
+        // Smooth ROYGBIV with blending colors
+        DyeColor.RED, DyeColor.PINK, DyeColor.ORANGE, 
+        DyeColor.YELLOW, DyeColor.LIME, DyeColor.GREEN, 
+        DyeColor.CYAN, DyeColor.LIGHT_BLUE, DyeColor.BLUE, 
+        DyeColor.PURPLE, DyeColor.MAGENTA,
+        // Remaining colors
+        DyeColor.GRAY, DyeColor.LIGHT_GRAY, DyeColor.BROWN, DyeColor.BLACK
+    );
 
     static {
         // Initialize spawn egg mappings
@@ -142,6 +218,8 @@ public class JockeyOptionsMenu extends Menu {
                 case VARIANT:
                     handleVariantClick(player);
                     return;
+                default:
+                
         }
             return;
         }
@@ -156,7 +234,7 @@ public class JockeyOptionsMenu extends Menu {
                 if (actualIndex >= spawnEggList.size()) return;
                 
                 // Store references before changing anything
-                Mob oldMob = jockey.getMob();
+                //Mob oldMob = jockey.getMob();
                 JockeyNode parentNode = jockey.getParent();
                 JockeyNode childNode = jockey.getChild();
                 
@@ -351,16 +429,43 @@ public class JockeyOptionsMenu extends Menu {
     }
 
     private Material getVariantItem(Mob mob) {
-        if (mob instanceof Fox) return Material.SWEET_BERRIES;
-        if (mob instanceof Frog) return Material.LILY_PAD;
-        if (mob instanceof Cat) return Material.STRING;
-        if (mob instanceof Parrot) return Material.COOKIE;
-        if (mob instanceof Rabbit) return Material.CARROT;
-        if (mob instanceof Axolotl) return Material.WATER_BUCKET;
-        if (mob instanceof MushroomCow mooshroom) return Material.RED_MUSHROOM;
-        if (mob instanceof Panda panda) return Material.BAMBOO;
+        if (mob instanceof Cat cat) {
+            Material[] items = VARIANT_ITEMS.get(Cat.class);
+            return items[indexOf(CAT_TYPES, cat.getCatType())];
+        }
+        if (mob instanceof Fox fox) {
+            Material[] items = VARIANT_ITEMS.get(Fox.class);
+            return items[fox.getFoxType().ordinal()];
+        }
+        if (mob instanceof Frog frog) {
+            Material[] items = VARIANT_ITEMS.get(Frog.class);
+            return items[indexOf(FROG_VARIANTS, frog.getVariant())];
+        }
+        if (mob instanceof Parrot parrot) {
+            Material[] items = VARIANT_ITEMS.get(Parrot.class);
+            return items[parrot.getVariant().ordinal()];
+        }
+        if (mob instanceof Rabbit rabbit) {
+            Material[] items = VARIANT_ITEMS.get(Rabbit.class);
+            return items[rabbit.getRabbitType().ordinal()];
+        }
+        if (mob instanceof Axolotl axolotl) {
+            Material[] items = VARIANT_ITEMS.get(Axolotl.class);
+            return items[axolotl.getVariant().ordinal()];
+        }
+        if (mob instanceof MushroomCow mooshroom) {
+            Material[] items = VARIANT_ITEMS.get(MushroomCow.class);
+            return items[mooshroom.getVariant().ordinal()];
+        }
+        if (mob instanceof Panda panda) {
+            Material[] items = VARIANT_ITEMS.get(Panda.class);
+            return items[panda.getMainGene() == Panda.Gene.NORMAL ? 0 : 1];
+        }
+        if (mob instanceof Sheep sheep) {
+            Material[] items = VARIANT_ITEMS.get(Sheep.class);
+            return items[SHEEP_COLOR_ORDER.indexOf(sheep.getColor())];
+        }
         if (mob instanceof Villager || mob instanceof ZombieVillager) return Material.EMERALD;
-        if (mob instanceof Sheep) return Material.WHITE_WOOL;
         if (mob instanceof Wolf) return Material.BONE;
         return Material.NAME_TAG;
     }
@@ -382,43 +487,64 @@ public class JockeyOptionsMenu extends Menu {
     }
 
     private void cycleSingleVariant(Player player, Mob mob) {
-        if (mob instanceof Fox fox) {
-            Fox.Type[] types = Fox.Type.values();
-            fox.setFoxType(types[(fox.getFoxType().ordinal() + 1) % types.length]);
+        if (mob instanceof Cat cat) {
+            int currentIndex = indexOf(CAT_TYPES, cat.getCatType());
+            Type newType = CAT_TYPES[(currentIndex + 1) % CAT_TYPES.length];
+            cat.setCatType(newType);
+            sendVariantUpdateMessage(player, newType, mob);
+        } else if (mob instanceof Fox fox) {
+            Fox.Type newType = fox.getFoxType() == Fox.Type.RED ? Fox.Type.SNOW : Fox.Type.RED;
+            fox.setFoxType(newType);
+            sendVariantUpdateMessage(player, newType, mob);
         } else if (mob instanceof Frog frog) {
-            Frog.Variant[] variants = Frog.Variant.values();
-            frog.setVariant(variants[(frog.getVariant().ordinal() + 1) % variants.length]);
-        } else if (mob instanceof Cat cat) {
-            Cat.Type[] types = Cat.Type.values();
-            cat.setCatType(types[(cat.getCatType().ordinal() + 1) % types.length]);
+            int currentIndex = indexOf(FROG_VARIANTS, frog.getVariant());
+            Frog.Variant newVariant = FROG_VARIANTS[(currentIndex + 1) % FROG_VARIANTS.length];
+            frog.setVariant(newVariant);
+            sendVariantUpdateMessage(player, newVariant, mob);
         } else if (mob instanceof Parrot parrot) {
-            Parrot.Variant[] variants = Parrot.Variant.values();
-            parrot.setVariant(variants[(parrot.getVariant().ordinal() + 1) % variants.length]);
+            Parrot.Variant newVariant = Parrot.Variant.values()[(parrot.getVariant().ordinal() + 1) % Parrot.Variant.values().length];
+            parrot.setVariant(newVariant);
+            sendVariantUpdateMessage(player, newVariant, mob);
         } else if (mob instanceof Rabbit rabbit) {
-            Rabbit.Type[] types = Rabbit.Type.values();
-            rabbit.setRabbitType(types[(rabbit.getRabbitType().ordinal() + 1) % types.length]);
+            Rabbit.Type newType = Rabbit.Type.values()[(rabbit.getRabbitType().ordinal() + 1) % Rabbit.Type.values().length];
+            rabbit.setRabbitType(newType);
+            sendVariantUpdateMessage(player, newType, mob);
         } else if (mob instanceof Axolotl axolotl) {
-            Axolotl.Variant[] variants = Axolotl.Variant.values();
-            axolotl.setVariant(variants[(axolotl.getVariant().ordinal() + 1) % variants.length]);
-        } else if (mob instanceof MushroomCow mooshroom) {
-            MushroomCow.Variant[] variants = MushroomCow.Variant.values();
-            mooshroom.setVariant(variants[(mooshroom.getVariant().ordinal() + 1) % variants.length]);
+            Axolotl.Variant newVariant = Axolotl.Variant.values()[(axolotl.getVariant().ordinal() + 1) % Axolotl.Variant.values().length];
+            axolotl.setVariant(newVariant);
+            sendVariantUpdateMessage(player, newVariant, mob);
+        } else if (mob instanceof MushroomCow mushroomCow) {
+            MushroomCow.Variant newVariant = mushroomCow.getVariant() == MushroomCow.Variant.RED ? MushroomCow.Variant.BROWN : MushroomCow.Variant.RED;
+            mushroomCow.setVariant(newVariant);
+            sendVariantUpdateMessage(player, newVariant, mob);
         } else if (mob instanceof Panda panda) {
-            Panda.Gene[] genes = Panda.Gene.values();
-            panda.setMainGene(genes[(panda.getMainGene().ordinal() + 1) % genes.length]);
-        } else if (mob instanceof Villager villager) {
-            Villager.Type[] types = Villager.Type.values();
-            villager.setVillagerType(types[(villager.getVillagerType().ordinal() + 1) % types.length]);
-        } else if (mob instanceof ZombieVillager zombie) {
-            Villager.Type[] types = Villager.Type.values();
-            zombie.setVillagerType(types[(zombie.getVillagerType().ordinal() + 1) % types.length]);
+            Panda.Gene newGene = panda.getMainGene() == Panda.Gene.NORMAL ? Panda.Gene.BROWN : Panda.Gene.NORMAL;
+            panda.setMainGene(newGene);
+            panda.setHiddenGene(newGene);
+            sendVariantUpdateMessage(player, newGene, mob);
         } else if (mob instanceof Sheep sheep) {
-            DyeColor[] colors = DyeColor.values();
-            sheep.setColor(colors[(sheep.getColor().ordinal() + 1) % colors.length]);
-        } else if (mob instanceof Wolf wolf) {
-            DyeColor[] colors = DyeColor.values();
-            wolf.setCollarColor(colors[(wolf.getCollarColor().ordinal() + 1) % colors.length]);
+            int currentIndex = SHEEP_COLOR_ORDER.indexOf(sheep.getColor());
+            DyeColor newColor = SHEEP_COLOR_ORDER.get((currentIndex + 1) % SHEEP_COLOR_ORDER.size());
+            sheep.setColor(newColor);
+            sendVariantUpdateMessage(player, newColor, mob);
         }
+        
+        initializeMenu();
+    }
+
+    private void sendVariantUpdateMessage(Player player, Object variantObj, Mob mob) {
+        String variantName = variantObj.toString().toLowerCase().replace("_", " ");
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case VERBOSE -> player.sendMessage("§a" + formatEntityName(mob.getType().toString()) + " variant set to " + ChatColor.YELLOW + variantName + "§a.");
+            default -> {}
+        }
+    }
+
+    private static <E> int indexOf(E[] arr, E value) {
+        for (int i = 0; i < arr.length; i++) {
+            if (arr[i].equals(value)) return i;
+        }
+        return 0;
     }
 
     private List<String> getComplexVariantDetails(Mob mob) {
