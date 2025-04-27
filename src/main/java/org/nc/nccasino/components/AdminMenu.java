@@ -50,6 +50,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.entities.JockeyManager;
+import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.helpers.SoundHelper;
@@ -1105,6 +1107,15 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 plugin.getConfig().set("dealers." + internalName + ".display-name", newName);
                 plugin.saveConfig();
                 dealer.setCustomNameVisible(true);
+                
+                // Update all jockey names in the stack
+                JockeyManager jockeyManager = new JockeyManager(dealer);
+                for (JockeyNode jockey : jockeyManager.getJockeys()) {
+                    if (jockey.getPosition() > 0) { // Skip dealer (position 0)
+                        jockey.setCustomName(newName);
+                    }
+                }
+                
                 plugin.reloadDealer(dealer);
                 
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
