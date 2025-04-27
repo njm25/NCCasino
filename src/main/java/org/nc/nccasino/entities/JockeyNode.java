@@ -3,7 +3,6 @@ package org.nc.nccasino.entities;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Slime;
 import org.bukkit.entity.MagmaCube;
-import org.bukkit.entity.Panda;
 import org.bukkit.entity.Shulker;
 import org.bukkit.attribute.AttributeInstance;
 import org.nc.nccasino.helpers.AttributeHelper;
@@ -18,13 +17,21 @@ public class JockeyNode {
     private JockeyNode parent;
     private JockeyNode child;
     private int position;
+    private final boolean isNewJockey; // Track whether this is a new jockey
 
     public JockeyNode(Mob mob, int position) {
+        this(mob, position, false); // Default to existing jockey for backward compatibility
+    }
+
+    public JockeyNode(Mob mob, int position, boolean isNewJockey) {
         this.id = UUID.randomUUID();
         this.mob = mob;
         this.position = position;
         this.customName = mob.getCustomName();
-        initializeJockeyAttributes(mob);
+        this.isNewJockey = isNewJockey;
+        if (isNewJockey) {
+            initializeJockeyAttributes(mob);
+        }
     }
 
     private void initializeJockeyAttributes(Mob mob) {
@@ -67,10 +74,6 @@ public class JockeyNode {
         if (mob instanceof MagmaCube) {
             ((MagmaCube)mob).setSize(3);
         }
-        if (mob instanceof Panda) {
-            ((Panda)mob).setMainGene(Panda.Gene.NORMAL);
-            ((Panda)mob).setHiddenGene(Panda.Gene.NORMAL);
-        }
         if (mob instanceof Shulker) {
             // Even for Shulkers, we want to control their behavior
             ((Shulker)mob).setAI(false);
@@ -96,7 +99,9 @@ public class JockeyNode {
         }
         this.mob = mob;
         if (mob != null) {
-            initializeJockeyAttributes(mob);
+            if (isNewJockey) { // Only initialize attributes if this is a new jockey
+                initializeJockeyAttributes(mob);
+            }
             mob.setCustomName(customName);
             mob.setCustomNameVisible(true);
         }
