@@ -23,7 +23,6 @@ public class JockeyMobMenu extends Menu {
     private final String returnName;
     private final JockeyManager jockeyManager;
     private final JockeyNode targetJockey;
-    private final boolean isCreatingNew;
     private final boolean asPassenger;
     private int currentPage = 1;
     private static final int PAGE_SIZE = 45;
@@ -83,7 +82,6 @@ public class JockeyMobMenu extends Menu {
         this.returnName = returnName;
         this.jockeyManager = jockeyManager;
         this.targetJockey = targetJockey;
-        this.isCreatingNew = targetJockey == null;
         this.asPassenger = asPassenger;
         this.returnCallback = returnCallback;
         
@@ -174,6 +172,8 @@ public class JockeyMobMenu extends Menu {
                 case RETURN:
                     returnToJockeyMenu(player);
                     return;
+                default:
+                  
             }
             return;
         }
