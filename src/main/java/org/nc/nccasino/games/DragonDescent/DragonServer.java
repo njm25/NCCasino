@@ -22,7 +22,6 @@ public class DragonServer extends Server {
     
     @Override
     public void onClientUpdate(Client client, String eventType, Object data) {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'onClientUpdate'");
     }
 }
