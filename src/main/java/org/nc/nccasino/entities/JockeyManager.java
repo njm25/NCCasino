@@ -3,14 +3,17 @@ package org.nc.nccasino.entities;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Entity;
 import org.bukkit.Location;
-
-import java.util.ArrayList;
-import java.util.List;
+import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.plugin.java.JavaPlugin;
+import java.util.*;
 
 public class JockeyManager {
     private final Mob dealer;
     private JockeyNode head;
     private final List<JockeyNode> jockeys;
+    private static final Map<UUID, BukkitTask> lookTasks = new HashMap<>();
+    private static final Random random = new Random();
 
     private JockeyNode findTopmostJockey() {
         JockeyNode current = head;
@@ -58,6 +61,134 @@ public class JockeyManager {
                 initializeFromPassenger(passenger, jockeys.size());
             }
         }
+        
+        // Start the looking behavior for the stack
+        startStackLooking();
+    }
+
+    private void startStackLooking() {
+        // Cancel any existing tasks
+        if (lookTasks.containsKey(dealer.getUniqueId())) {
+            lookTasks.get(dealer.getUniqueId()).cancel();
+            lookTasks.remove(dealer.getUniqueId());
+        }
+
+        BukkitTask task = new BukkitRunnable() {
+            private Entity currentTarget = null;
+            private float bodyYaw = dealer.getLocation().getYaw();
+            private float headYaw = bodyYaw;
+            private float headPitch = 0;
+            private static final float MIN_TURN_SPEED = 0.5f;
+            private static final float MAX_TURN_SPEED = 4.0f;
+            private static final float SMOOTH_FACTOR = 0.2f;
+            private int targetLockTime = 0;
+            private static final int TARGET_LOCK_DURATION = 175;
+            private boolean idleMode = false;
+            private float idleYaw = bodyYaw;
+
+            @Override
+            public void run() {
+                if (dealer.isDead() || !dealer.isValid()) {
+                    cancel();
+                    lookTasks.remove(dealer.getUniqueId());
+                    return;
+                }
+
+                // Update target or mode
+                if (targetLockTime <= 0) {
+                    if (random.nextDouble() < 0.05) {
+                        idleMode = true;
+                        idleYaw = random.nextFloat() * 360.0f;
+                    } else {
+                        idleMode = false;
+                        currentTarget = (random.nextDouble() < 0.1) ? getNearbyMob() : getNearestPlayer();
+                    }
+                    targetLockTime = TARGET_LOCK_DURATION;
+                }
+                targetLockTime--;
+
+                // Calculate target rotation
+                float targetBodyYaw;
+                float targetHeadYaw;
+                float targetPitch = 0;
+
+                if (idleMode) {
+                    targetBodyYaw = idleYaw;
+                    targetHeadYaw = idleYaw;
+                } else if (currentTarget != null) {
+                    Location dealerLoc = dealer.getLocation();
+                    Location targetLoc = currentTarget.getLocation();
+                    
+                    // Calculate body yaw (horizontal angle)
+                    double dx = targetLoc.getX() - dealerLoc.getX();
+                    double dz = targetLoc.getZ() - dealerLoc.getZ();
+                    targetBodyYaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+                    
+                    // Calculate head pitch (vertical angle)
+                    double dy = targetLoc.getY() - (dealerLoc.getY() + 1.6); // Add eye height
+                    double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+                    targetPitch = (float) -Math.toDegrees(Math.atan2(dy, horizontalDistance));
+                    
+                    // Head can look slightly to the sides (within 45 degrees of body)
+                    targetHeadYaw = targetBodyYaw;
+                } else {
+                    return;
+                }
+
+                // Smoothly interpolate rotations
+                float bodyDiff = ((targetBodyYaw - bodyYaw + 540) % 360) - 180;
+                float headDiff = ((targetHeadYaw - headYaw + 540) % 360) - 180;
+                float pitchDiff = targetPitch - headPitch;
+
+                float turnSpeed = Math.max(MIN_TURN_SPEED, 
+                    Math.max(Math.abs(bodyDiff), Math.abs(headDiff)) * SMOOTH_FACTOR);
+                turnSpeed = Math.min(turnSpeed, MAX_TURN_SPEED);
+
+                bodyYaw = lerpAngle(bodyYaw, targetBodyYaw, turnSpeed);
+                headYaw = lerpAngle(headYaw, targetHeadYaw, turnSpeed);
+                headPitch = lerpAngle(headPitch, targetPitch, turnSpeed);
+
+                // Apply rotations to the entire stack
+                Location loc = dealer.getLocation();
+                loc.setYaw(bodyYaw);
+                dealer.teleport(loc);
+                
+                // Update head rotations for all entities in the stack
+                for (JockeyNode jockey : jockeys) {
+                    Mob mob = jockey.getMob();
+                    mob.setRotation(bodyYaw, headPitch);
+                }
+            }
+
+            private Entity getNearbyMob() {
+                double maxDistance = 20.0;
+                return dealer.getWorld().getNearbyEntities(dealer.getLocation(), maxDistance, maxDistance, maxDistance)
+                    .stream()
+                    .filter(e -> e instanceof Mob && !jockeys.stream().anyMatch(j -> j.getMob().equals(e)))
+                    .min((e1, e2) -> Double.compare(
+                        e1.getLocation().distance(dealer.getLocation()),
+                        e2.getLocation().distance(dealer.getLocation())))
+                    .orElse(null);
+            }
+
+            private Entity getNearestPlayer() {
+                double maxDistance = 20.0;
+                return dealer.getWorld().getNearbyEntities(dealer.getLocation(), maxDistance, maxDistance, maxDistance)
+                    .stream()
+                    .filter(e -> e instanceof org.bukkit.entity.Player)
+                    .min((e1, e2) -> Double.compare(
+                        e1.getLocation().distance(dealer.getLocation()),
+                        e2.getLocation().distance(dealer.getLocation())))
+                    .orElse(null);
+            }
+
+            private float lerpAngle(float current, float target, float speed) {
+                float diff = ((target - current + 540) % 360) - 180;
+                return current + Math.min(Math.max(diff, -speed), speed);
+            }
+        }.runTaskTimer(JavaPlugin.getProvidingPlugin(JockeyManager.class), 0L, 1L);
+
+        lookTasks.put(dealer.getUniqueId(), task);
     }
 
     public JockeyNode addJockey(Mob mob, int position) {
@@ -86,6 +217,9 @@ public class JockeyManager {
         // Add the new node to our list at the correct position
         jockeys.add(newNode);
 
+        // Restart looking behavior to include the new jockey
+        startStackLooking();
+
         return newNode;
     }
 
@@ -97,6 +231,13 @@ public class JockeyManager {
         JockeyNode toRemove = jockeys.get(position);
         JockeyNode parent = toRemove.getParent();
         JockeyNode child = toRemove.getChild();
+
+        // Cancel looking task for the removed jockey
+        UUID mobId = toRemove.getMob().getUniqueId();
+        if (lookTasks.containsKey(mobId)) {
+            lookTasks.get(mobId).cancel();
+            lookTasks.remove(mobId);
+        }
 
         toRemove.remove();
         jockeys.remove(position);
@@ -110,6 +251,9 @@ public class JockeyManager {
         for (int i = position; i < jockeys.size(); i++) {
             jockeys.get(i).setPosition(i);
         }
+
+        // Restart looking behavior for the remaining stack
+        startStackLooking();
 
         return true;
     }
@@ -159,6 +303,17 @@ public class JockeyManager {
         JockeyNode jockey = jockeys.get(position);
         jockey.setCustomName(newName);
         return true;
+    }
+
+    public void cleanup() {
+        // Cancel all looking tasks for this stack
+        for (JockeyNode jockey : jockeys) {
+            UUID mobId = jockey.getMob().getUniqueId();
+            if (lookTasks.containsKey(mobId)) {
+                lookTasks.get(mobId).cancel();
+                lookTasks.remove(mobId);
+            }
+        }
     }
 
     public Mob getDealer() {
