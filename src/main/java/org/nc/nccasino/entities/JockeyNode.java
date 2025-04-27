@@ -1,6 +1,12 @@
 package org.nc.nccasino.entities;
 
 import org.bukkit.entity.Mob;
+import org.bukkit.entity.Slime;
+import org.bukkit.entity.MagmaCube;
+import org.bukkit.entity.Panda;
+import org.bukkit.entity.Shulker;
+import org.bukkit.attribute.AttributeInstance;
+import org.nc.nccasino.helpers.AttributeHelper;
 import java.util.UUID;
 import java.util.List;
 import java.util.ArrayList;
@@ -18,6 +24,61 @@ public class JockeyNode {
         this.mob = mob;
         this.position = position;
         this.customName = mob.getCustomName();
+        initializeJockeyAttributes(mob);
+    }
+
+    private void initializeJockeyAttributes(Mob mob) {
+        // Basic attributes that should be set for all mobs
+        mob.setInvisible(false);
+        mob.setInvulnerable(true);
+        mob.setCustomNameVisible(true);
+        mob.setGravity(false);
+        mob.setSilent(true);
+        mob.setCollidable(false);
+        mob.setPersistent(true);
+        mob.setRemoveWhenFarAway(false);
+
+        // Always disable AI for all mobs - we'll control movement manually
+        mob.setAI(false);
+
+        // Prevent any movement
+        AttributeInstance movementSpeedAttribute = mob.getAttribute(AttributeHelper.getAttributeSafely("MOVEMENT_SPEED"));
+        if (movementSpeedAttribute != null) {
+            movementSpeedAttribute.setBaseValue(0.0);
+        }
+
+        // Clear equipment to prevent any interference
+        if (mob instanceof org.bukkit.entity.LivingEntity livingEntity) {
+            var equipment = livingEntity.getEquipment();
+            if (equipment != null) {
+                equipment.setItemInMainHand(null);
+                equipment.setItemInOffHand(null);
+                equipment.setHelmet(null);
+                equipment.setChestplate(null);
+                equipment.setLeggings(null);
+                equipment.setBoots(null);
+            }
+        }
+
+        // Special handling for specific mob types
+        if (mob instanceof Slime) {
+            ((Slime)mob).setSize(3);
+        }
+        if (mob instanceof MagmaCube) {
+            ((MagmaCube)mob).setSize(3);
+        }
+        if (mob instanceof Panda) {
+            ((Panda)mob).setMainGene(Panda.Gene.NORMAL);
+            ((Panda)mob).setHiddenGene(Panda.Gene.NORMAL);
+        }
+        if (mob instanceof Shulker) {
+            // Even for Shulkers, we want to control their behavior
+            ((Shulker)mob).setAI(false);
+            ((Shulker)mob).setPeek(0); // Prevent peeking behavior
+        }
+
+        // Lock the head rotation to match body rotation
+        mob.setRotation(mob.getLocation().getYaw(), 0);
     }
 
     public UUID getId() {
@@ -35,6 +96,7 @@ public class JockeyNode {
         }
         this.mob = mob;
         if (mob != null) {
+            initializeJockeyAttributes(mob);
             mob.setCustomName(customName);
             mob.setCustomNameVisible(true);
         }
