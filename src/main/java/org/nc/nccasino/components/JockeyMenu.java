@@ -12,9 +12,12 @@ import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.HashSet;
 
 public class JockeyMenu extends Menu {
     private UUID dealerId;
@@ -79,10 +82,21 @@ public class JockeyMenu extends Menu {
 
         // Display current jockeys with dynamic slot assignment
         int slot = 5; // Starting slot for jockeys
-        for (JockeyNode jockey : jockeyManager.getJockeys()) {
-            // Include all jockeys and passengers, but skip the dealer itself
-            if (jockey.getPosition() == 0) continue;
-
+        
+        // Get all jockeys excluding the dealer (position 0)
+        List<JockeyNode> allJockeys = jockeyManager.getJockeys().stream()
+            .filter(j -> j.getPosition() > 0)
+            .toList();
+            
+        // Create a set to track which jockeys we've already displayed
+        Set<JockeyNode> displayedJockeys = new HashSet<>();
+        
+        // Display jockeys in order, skipping those that are passengers of other jockeys
+        for (JockeyNode jockey : allJockeys) {
+            if (displayedJockeys.contains(jockey)) {
+                continue; // Skip if we've already displayed this jockey
+            }
+            
             Material spawnEgg = MobSelectionMenu.getSpawnEggFor(jockey.getMob().getType());
             String customName = jockey.getCustomName() != null ? jockey.getCustomName() : "Jockey #" + jockey.getPosition();
             String role = jockey.isPassenger() ? "Passenger" : "Jockey";
@@ -100,29 +114,34 @@ public class JockeyMenu extends Menu {
 
             // Map this slot to the jockey
             slotToJockeyMap.put(slot, jockey);
+            displayedJockeys.add(jockey);
             slot++;
 
-            // Handle any passengers this jockey might have
-            if (jockey.getPassengers() != null) {
-                for (JockeyNode passenger : jockey.getPassengers()) {
-                    Material passengerEgg = MobSelectionMenu.getSpawnEggFor(passenger.getMob().getType());
-                    String passengerName = passenger.getCustomName() != null ? passenger.getCustomName() : "Passenger of " + customName;
-                    
-                    addItemAndLore(
-                        passengerEgg,
-                        1,
-                        passengerName,
-                        slot,
-                        "Type: §a" + passenger.getMob().getType().name(),
-                        "Role: §ePassenger",
-                        "Position: " + passenger.getPosition(),
-                        "Click to customize"
-                    );
-
-                    // Map this slot to the passenger
-                    slotToJockeyMap.put(slot, passenger);
-                    slot++;
+            // Display any passengers this jockey has
+            List<JockeyNode> passengers = jockey.getPassengers();
+            for (JockeyNode passenger : passengers) {
+                if (displayedJockeys.contains(passenger)) {
+                    continue; // Skip if we've already displayed this passenger
                 }
+                
+                Material passengerEgg = MobSelectionMenu.getSpawnEggFor(passenger.getMob().getType());
+                String passengerName = passenger.getCustomName() != null ? passenger.getCustomName() : "Passenger of " + customName;
+                
+                addItemAndLore(
+                    passengerEgg,
+                    1,
+                    passengerName,
+                    slot,
+                    "Type: §a" + passenger.getMob().getType().name(),
+                    "Role: §ePassenger",
+                    "Position: " + passenger.getPosition(),
+                    "Click to customize"
+                );
+
+                // Map this slot to the passenger
+                slotToJockeyMap.put(slot, passenger);
+                displayedJockeys.add(passenger);
+                slot++;
             }
         }
     }
