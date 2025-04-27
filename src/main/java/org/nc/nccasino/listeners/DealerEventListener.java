@@ -28,111 +28,125 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Shulker;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.entities.JockeyManager;
+import org.nc.nccasino.entities.JockeyNode;
 
 public class DealerEventListener implements Listener {
-private static final Set<UUID> adminTriggeredTeleports = new HashSet<>();
+    private static final Set<UUID> adminTriggeredTeleports = new HashSet<>();
+    
     public static void allowAdminTeleport(UUID entityId) {
         adminTriggeredTeleports.add(entityId);
     }
 
+    private boolean isPartOfDealerStack(Mob mob) {
+        if (Dealer.isDealer(mob)) {
+            return true;
+        }
+
+        // Check nearby dealers (within 5 blocks) for jockey stacks
+        List<Entity> nearbyEntities = mob.getNearbyEntities(5, 5, 5);
+        for (Entity entity : nearbyEntities) {
+            if (entity instanceof Mob nearbyMob && Dealer.isDealer(nearbyMob)) {
+                JockeyManager jockeyManager = new JockeyManager(nearbyMob);
+                for (JockeyNode jockey : jockeyManager.getJockeys()) {
+                    if (jockey.getMob().equals(mob)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     @EventHandler
     public void onEntityDamage(EntityDamageEvent event) {
-        if (event.getEntity() instanceof Mob mob) {
-            if (Dealer.isDealer(mob)) {
-                event.setCancelled(true);
-            }
+        if (event.getEntity() instanceof Mob mob && isPartOfDealerStack(mob)) {
+            event.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onEntityTransform(EntityTransformEvent event) {
         Entity entity = event.getEntity();
-        if (entity instanceof Mob && Dealer.isDealer((Mob) entity)) {
+        if (entity instanceof Mob mob && isPartOfDealerStack(mob)) {
             event.setCancelled(true);
         }
     }
-    
 
     @EventHandler
     public void onEntityCombust(EntityCombustEvent event) {
         Entity entity = event.getEntity();
-        if (entity instanceof Mob && Dealer.isDealer((Mob) entity)) {
-                event.setCancelled(true);
+        if (entity instanceof Mob mob && isPartOfDealerStack(mob)) {
+            event.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onPotionSplash(PotionSplashEvent event) {
         for (LivingEntity entity : event.getAffectedEntities()) {
-            if (entity instanceof Mob mob && Dealer.isDealer(mob)) {
-                if (event.getAffectedEntities().contains(entity)) { // Ensure the entity is still in the list
-                    event.setIntensity(entity, 0); // Nullify the effect
-                }
+            if (entity instanceof Mob mob && isPartOfDealerStack(mob)) {
+                event.setIntensity(entity, 0);
             }
         }
     }
 
-    //lingering potions
     @EventHandler
     public void onAreaEffectCloudApply(AreaEffectCloudApplyEvent event) {
         List<LivingEntity> affectedEntities = event.getAffectedEntities();
-        affectedEntities.removeIf(entity -> entity instanceof Mob && Dealer.isDealer((Mob) entity));
+        affectedEntities.removeIf(entity -> entity instanceof Mob mob && isPartOfDealerStack(mob));
     }
 
     @EventHandler
     public void onEntitySpawn(EntitySpawnEvent event) {
-        if (event.getEntity() instanceof Mob && Dealer.isDealer((Mob) event.getEntity())) {
-            Mob dealer = (Mob) event.getEntity();
-            dealer.setCanPickupItems(false); // Prevent item pickup
+        if (event.getEntity() instanceof Mob mob && isPartOfDealerStack(mob)) {
+            mob.setCanPickupItems(false);
         }
     }
 
     @EventHandler
     public void onEntityPickupItem(EntityPickupItemEvent event) {
-            if (event.getEntity() instanceof Mob&& Dealer.isDealer((Mob)event.getEntity())) {
-                event.setCancelled(true); // Prevent dealer foxes from picking up items
+        if (event.getEntity() instanceof Mob mob && isPartOfDealerStack(mob)) {
+            event.setCancelled(true);
         }
     }
 
     @EventHandler
     public void onEntityDropItem(EntityDropItemEvent event) {
-        if (event.getEntity() instanceof Mob &&Dealer.isDealer((Mob)event.getEntity())) {
-            event.setCancelled(true); // Cancels all natural item drops
-        }
-    }
-    @EventHandler
-    public void onEntityPortal(EntityPortalEvent event) {
-        if (event.getEntity() instanceof Mob && Dealer.isDealer((Mob) event.getEntity())) {
+        if (event.getEntity() instanceof Mob mob && isPartOfDealerStack(mob)) {
             event.setCancelled(true);
         }
     }
 
-     @EventHandler
+    @EventHandler
+    public void onEntityPortal(EntityPortalEvent event) {
+        if (event.getEntity() instanceof Mob mob && isPartOfDealerStack(mob)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
     public void onShulkerShoot(ProjectileLaunchEvent event) {
         Projectile projectile = event.getEntity();
         ProjectileSource shooter = projectile.getShooter();
 
-        if (shooter instanceof Shulker shulker) {
-            if (Dealer.isDealer(shulker)) {
-                event.setCancelled(true); // Stop the projectile from being launched
-            }
+        if (shooter instanceof Shulker shulker && isPartOfDealerStack(shulker)) {
+            event.setCancelled(true);
         }
     }
 
-  @EventHandler
+    @EventHandler
     public void onEntityTeleport(EntityTeleportEvent event) {
         Entity entity = event.getEntity();
         if (entity instanceof Mob mob && (mob instanceof Enderman || mob instanceof Endermite || mob instanceof Shulker)) {
-            if (Dealer.isDealer(mob)) {
+            if (isPartOfDealerStack(mob)) {
                 if (adminTriggeredTeleports.contains(entity.getUniqueId())) {
                     adminTriggeredTeleports.remove(entity.getUniqueId());
-                    return; // Allow the teleport
+                    return;
                 }
                 event.setCancelled(true);
             }
         }
     }
-
 }
 
 
