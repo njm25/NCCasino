@@ -21,6 +21,8 @@ import org.nc.nccasino.components.AnimationMessage;
 import org.nc.nccasino.components.PlayerMenu;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.entities.JockeyManager;
+import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.helpers.Preferences.MessageSetting;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -44,14 +46,42 @@ public class DealerInteractListener implements Listener {
         this.plugin = plugin;
     }
 
+    private Mob findDealerFromJockey(Mob clickedMob) {
+        // First check if this mob is a dealer
+        if (Dealer.isDealer(clickedMob)) {
+            return clickedMob;
+        }
+
+        // Get all nearby entities that could be dealers
+        List<Entity> nearbyEntities = clickedMob.getNearbyEntities(5, 5, 5);
+        for (Entity entity : nearbyEntities) {
+            if (entity instanceof Mob mob && Dealer.isDealer(mob)) {
+                // Create a JockeyManager for this dealer
+                JockeyManager jockeyManager = new JockeyManager(mob);
+                
+                // Check if the clicked mob is in this dealer's jockey stack
+                for (JockeyNode jockey : jockeyManager.getJockeys()) {
+                    if (jockey.getMob().equals(clickedMob)) {
+                        return mob; // Found the dealer this jockey belongs to
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     @EventHandler
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         Entity clickedEntity = event.getRightClicked();
         if (!(clickedEntity instanceof Mob)) return;
         Player player = event.getPlayer();
-        this.dealer = (Mob) clickedEntity;
-        if(!Dealer.isDealer(dealer)) return;
-        String interactionKey = player.getUniqueId() + ":" + clickedEntity.getUniqueId();
+        Mob clickedMob = (Mob) clickedEntity;
+        
+        // Find the dealer associated with this mob (either directly or through jockey stack)
+        this.dealer = findDealerFromJockey(clickedMob);
+        if (this.dealer == null) return;
+
+        String interactionKey = player.getUniqueId() + ":" + this.dealer.getUniqueId();
 
         // Prevent duplicate interactions from the same player-entity pair
         if (recentInteractions.contains(interactionKey)) {
@@ -61,11 +91,8 @@ public class DealerInteractListener implements Listener {
         // Schedule removal after a short delay
         Bukkit.getScheduler().runTaskLater(plugin, () -> recentInteractions.remove(interactionKey), 1L);
 
-
-
-        UUID dealerId = Dealer.getUniqueId(dealer);
-        String internalName = Dealer.getInternalName(dealer);
-
+        UUID dealerId = Dealer.getUniqueId(this.dealer);
+        String internalName = Dealer.getInternalName(this.dealer);
 
         // Check if dealer has a game type defined
         if (!plugin.getConfig().contains("dealers." + internalName + ".game")) {
