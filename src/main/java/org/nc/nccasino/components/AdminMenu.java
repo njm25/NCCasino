@@ -76,6 +76,8 @@ public class AdminMenu extends Menu {
     private static final Map<UUID, Mob> chipEditMode = new HashMap<>();
     private static final Map<UUID, Mob> currencyEditMode = new HashMap<>();
     public static final Map<UUID, Mob> decksEditMode = new HashMap<>();
+    public static final Map<UUID, Mob> dragonEditMode = new HashMap<>();
+
     // All active AdminInventories by player ID
     public static final Map<UUID, AdminMenu> adminInventories = new HashMap<>();
     // Tracks which dealer is being edited by which player
@@ -277,7 +279,14 @@ public class AdminMenu extends Menu {
                 int coinFlipTimer = config.getInt("dealers." + internalName + ".timer", 30);
                 lore.add("§7Timer: §a" + coinFlipTimer);
                 break;
-    
+            case "Dragon Descent":
+                int defaultColumns = config.getInt("dealers." + internalName + ".default-columns", 7);
+                int defaultVines = config.getInt("dealers." + internalName + ".default-vines", 5);
+                int defaultFloors = config.getInt("dealers." + internalName + ".default-floors", 4);
+                lore.add("§7Default # of Columns: §a" + defaultColumns);
+                lore.add("§7Default # of Vines: §a" + defaultVines);
+                lore.add("§7Default # of Floors: §a" + defaultFloors);
+                break;
             default:
                 lore.add("§7No settings available.");
                 break;
@@ -538,17 +547,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     },
                     plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
             );
-            
-        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
-            switch(messPref){
-                case VERBOSE:{
-                    //player.sendMessage("§aMines Settings Opened.");
-                    break;}
-                default:{
-                    break;}
-            }
             player.openInventory(minesAdminInventory.getInventory());
-                break;
+            break;
             }
             case "Roulette":{
                 RouletteMenu rouletteAdminInventory = new RouletteMenu(
@@ -569,15 +569,6 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     },
                     plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
             );
-            
-        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
-            switch(messPref){
-                case VERBOSE:{
-                    //player.sendMessage("§aRoulette Settings Opened.");
-                    break;}
-                default:{
-                    break;}
-            }
                 player.openInventory(rouletteAdminInventory.getInventory());
 
                 break;
@@ -615,7 +606,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 break;
             }
             case "Baccarat":{
-                BaccaratMenu baccaratMenuAdminInventory = new BaccaratMenu(
+                BaccaratMenu baccaratAdminInventory = new BaccaratMenu(
                     dealerId,
                     player,
                     Dealer.getInternalName(dealer)+ "'s Baccarat Settings",
@@ -633,17 +624,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     },
                     plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
             );
-            
-        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
-            switch(messPref){
-                case VERBOSE:{
-                    //player.sendMessage("Baccarat Settings Opened.");
-                    break;}
-                default:{
-                    break;}
-            }
-                player.openInventory(baccaratMenuAdminInventory.getInventory());
-
+                player.openInventory(baccaratAdminInventory.getInventory());
                 break;
             }
             case "Blackjack":{
@@ -665,24 +646,36 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                     },
                     plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
             );
-            
-        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
-            switch(messPref){
-                case VERBOSE:{
-                    //player.sendMessage("§aBlackjack Settings Opened.");
-                    break;}
-                default:{
-                    break;}
-            }
+
                 player.openInventory(blackjackAdminInventory.getInventory());
                 break;
             }
-            default: {
+            case "Dragon Descent":{
+                DragonDescentMenu dragonAdminInventory = new DragonDescentMenu(
+                    dealerId,
+                    player,
+                    Dealer.getInternalName(dealer)+ "'s Dragon Descent Settings",
+                    (uuid) -> {
+                        // Cancel action: re-open the AdminInventory
+                        if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
+                            player.openInventory(adminInventory.getInventory());
+                        } else {
+                            AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
+                            player.openInventory(adminInventory.getInventory());
+                        }
+                    },
+                    plugin, Dealer.getInternalName(dealer)+ "'s Admin Menu"
+                );
+                player.openInventory(dragonAdminInventory.getInventory());
                 break;
+            }
+            default:{
+                break;}
             }
 
         }
-    }
+    
 /* 
     private void handleToggleCurrencyMode(Player player) {
 

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'org.nc'
-version = '1.4.7'
+version = '1.4.8'
 
 repositories {
     mavenLocal()
@@ -21,8 +21,8 @@ repositories {
 }
 
 dependencies {
-    compileOnly("org.spigotmc:spigot-api:1.21.4-R0.1-SNAPSHOT")
-    implementation files('libs/lib-1.0-SNAPSHOT.jar')    
+    compileOnly("org.spigotmc:spigot-api:1.21.5-R0.1-SNAPSHOT")
+    implementation files('libs/lib-1.0-SNAPSHOT.jar')  
 }
 
 def targetJavaVersion = 21
