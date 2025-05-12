@@ -115,7 +115,14 @@ public class JockeyNode {
         this.customName = name;
         if (mob != null) {
             mob.setCustomName(name);
-            mob.setCustomNameVisible(true);
+            // For bottom jockeys, never show the name
+            if (position == 1) {
+                mob.setCustomNameVisible(false);
+            } else {
+                // For other mobs, only show name if they're at the top
+                boolean isTop = (parent == null);
+                mob.setCustomNameVisible(isTop);
+            }
         }
     }
 
@@ -145,17 +152,49 @@ public class JockeyNode {
 
     public void mountOn(JockeyNode vehicle) {
         if (vehicle != null && vehicle.getMob() != null && this.mob != null) {
+            // First ensure we're unmounted from any current vehicle
+            unmount();
+            
+            // Then do the actual mounting
             vehicle.getMob().addPassenger(this.mob);
+            
+            // Set up the node relationships
             this.parent = vehicle;
             vehicle.setChild(this);
+            
+            // Update name visibility
+            if (this.position == 1) {
+                // Bottom jockey should never show name
+                this.mob.setCustomNameVisible(false);
+            } else {
+                // For other mobs, show name only if they're at the top
+                boolean isTop = (parent == null);
+                this.mob.setCustomNameVisible(isTop);
+            }
+            
+            // Update vehicle's name visibility
+            vehicle.getMob().setCustomNameVisible(false);
         }
     }
 
     public void unmount() {
         if (this.mob != null && this.parent != null && this.parent.getMob() != null) {
+            // First remove the Bukkit relationship
             this.parent.getMob().removePassenger(this.mob);
+            
+            // Then clean up the node relationships
             this.parent.setChild(null);
             this.parent = null;
+            
+            // Update name visibility
+            if (this.position == 1) {
+                // Bottom jockey should never show name
+                this.mob.setCustomNameVisible(false);
+            } else {
+                // For other mobs, show name if they're at the top
+                boolean isTop = (this.child == null);
+                this.mob.setCustomNameVisible(isTop);
+            }
         }
     }
 

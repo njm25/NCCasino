@@ -66,84 +66,95 @@ public class JockeyMenu extends Menu {
         // Add standard menu items
         addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnName, slotMapping.get(SlotOption.RETURN));
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit", slotMapping.get(SlotOption.EXIT));
-        addItemAndLore(Material.SADDLE, 1, "Add Jockey", slotMapping.get(SlotOption.ADD_JOCKEY), "Add a new jockey to the bottom of the stack");
-        addItemAndLore(Material.LEAD, 1, "Add Passenger", slotMapping.get(SlotOption.ADD_PASSENGER), "Add a new jockey to the top of the stack");
-        addItemAndLore(Material.BARRIER, 1, "Remove Jockey", slotMapping.get(SlotOption.REMOVE_JOCKEY), "Remove the top jockey from the stack");
+        addItemAndLore(Material.SADDLE, 1, "Add Vehicle", slotMapping.get(SlotOption.ADD_JOCKEY), "Add a new mob directly below dealer");
+        addItemAndLore(Material.LEAD, 1, "Add Jockey", slotMapping.get(SlotOption.ADD_PASSENGER), "Add a new mob to the top of the stack");
+        addItemAndLore(Material.BARRIER, 1, "Remove Jockey(WIP)", slotMapping.get(SlotOption.REMOVE_JOCKEY), "Remove the top jockey from the stack(WIP)");
 
-        // Add dealer representation
+        // Add dealer representation in the middle
+        int dealerSlot = 13; // Center slot
         addItemAndLore(
             Material.SPAWNER,
             1,
             "Dealer",
-            4,
+            dealerSlot,
             "Type: §a" + dealer.getType().name(),
             "This is the base dealer"
         );
 
-        // Display current jockeys with dynamic slot assignment
-        int slot = 5; // Starting slot for jockeys
+        System.out.println("\n=== MENU DEBUG ===");
+        System.out.println("Dealer: " + dealer.getType());
         
-        // Get all jockeys excluding the dealer (position 0)
-        List<JockeyNode> allJockeys = jockeyManager.getJockeys().stream()
-            .filter(j -> j.getPosition() > 0)
-            .toList();
+        // Display jockeys (below dealer)
+        Mob currentMob = dealer;
+        int jockeySlot = dealerSlot - 1; // Start left of dealer
+        while (currentMob.getVehicle() instanceof Mob) {
+            Mob jockeyMob = (Mob)currentMob.getVehicle();
+            System.out.println("Found jockey: " + jockeyMob.getType());
             
-        // Create a set to track which jockeys we've already displayed
-        Set<JockeyNode> displayedJockeys = new HashSet<>();
-        
-        // Display jockeys in order, skipping those that are passengers of other jockeys
-        for (JockeyNode jockey : allJockeys) {
-            if (displayedJockeys.contains(jockey)) {
-                continue; // Skip if we've already displayed this jockey
-            }
-            
-            Material spawnEgg = MobSelectionMenu.getSpawnEggFor(jockey.getMob().getType());
-            String customName = jockey.getCustomName() != null ? jockey.getCustomName() : "Jockey #" + jockey.getPosition();
-            String role = jockey.isPassenger() ? "Passenger" : "Jockey";
+            Material spawnEgg = MobSelectionMenu.getSpawnEggFor(jockeyMob.getType());
+            String customName = jockeyMob.getCustomName() != null ? jockeyMob.getCustomName() : "Jockey";
             
             addItemAndLore(
                 spawnEgg,
                 1,
                 customName,
-                slot,
-                "Type: §a" + jockey.getMob().getType().name(),
-                "Role: §e" + role,
-                "Position: " + jockey.getPosition(),
+                jockeySlot,
+                "Type: §a" + jockeyMob.getType().name(),
+                "Role: §eJockey",
                 "Click to customize"
             );
+            
+            // Map this slot to the jockey node
+            JockeyNode node = findNodeForMob(jockeyMob);
+            if (node != null) {
+                slotToJockeyMap.put(jockeySlot, node);
+            }
+            
+            currentMob = jockeyMob;
+            jockeySlot--; // Move left
+        }
+        
+        // Display passengers (above dealer)
+        currentMob = dealer;
+        int passengerSlot = dealerSlot + 1; // Start right of dealer
+        while (!currentMob.getPassengers().isEmpty() && currentMob.getPassengers().get(0) instanceof Mob) {
+            Mob passengerMob = (Mob)currentMob.getPassengers().get(0);
+            System.out.println("Found passenger: " + passengerMob.getType());
+            
+            Material spawnEgg = MobSelectionMenu.getSpawnEggFor(passengerMob.getType());
+            String customName = passengerMob.getCustomName() != null ? passengerMob.getCustomName() : "Passenger";
+            
+            addItemAndLore(
+                spawnEgg,
+                1,
+                customName,
+                passengerSlot,
+                "Type: §a" + passengerMob.getType().name(),
+                "Role: §ePassenger",
+                "Click to customize"
+            );
+            
+            // Map this slot to the jockey node
+            JockeyNode node = findNodeForMob(passengerMob);
+            if (node != null) {
+                slotToJockeyMap.put(passengerSlot, node);
+            }
+            
+            currentMob = passengerMob;
+            passengerSlot++; // Move right
+        }
+        
+        System.out.println("=== END MENU DEBUG ===\n");
+    }
 
-            // Map this slot to the jockey
-            slotToJockeyMap.put(slot, jockey);
-            displayedJockeys.add(jockey);
-            slot++;
-
-            // Display any passengers this jockey has
-            List<JockeyNode> passengers = jockey.getPassengers();
-            for (JockeyNode passenger : passengers) {
-                if (displayedJockeys.contains(passenger)) {
-                    continue; // Skip if we've already displayed this passenger
-                }
-                
-                Material passengerEgg = MobSelectionMenu.getSpawnEggFor(passenger.getMob().getType());
-                String passengerName = passenger.getCustomName() != null ? passenger.getCustomName() : "Passenger of " + customName;
-                
-                addItemAndLore(
-                    passengerEgg,
-                    1,
-                    passengerName,
-                    slot,
-                    "Type: §a" + passenger.getMob().getType().name(),
-                    "Role: §ePassenger",
-                    "Position: " + passenger.getPosition(),
-                    "Click to customize"
-                );
-
-                // Map this slot to the passenger
-                slotToJockeyMap.put(slot, passenger);
-                displayedJockeys.add(passenger);
-                slot++;
+    ////////////doesnt this trigger if theres diff mobs of the same type
+    private JockeyNode findNodeForMob(Mob mob) {
+        for (JockeyNode node : jockeyManager.getJockeys()) {
+            if (node.getMob().equals(mob)) {
+                return node;
             }
         }
+        return null;
     }
 
     @Override

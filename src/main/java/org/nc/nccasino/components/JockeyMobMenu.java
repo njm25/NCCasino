@@ -1,7 +1,10 @@
 package org.nc.nccasino.components;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
@@ -181,9 +184,6 @@ public class JockeyMobMenu extends Menu {
         // If not a mapped slot, check if it's an entity selection slot
         EntityType selectedType = slotToEntityType.get(slot);
         if (selectedType != null) {
-            // Create the new mob
-            Mob newMob = (Mob) player.getWorld().spawnEntity(player.getLocation(), selectedType);
-            
             // Get the dealer's name to use as base for custom names
             String dealerName = jockeyManager.getDealer().getCustomName();
             if (dealerName == null || dealerName.isEmpty()) {
@@ -192,33 +192,175 @@ public class JockeyMobMenu extends Menu {
             
             if (targetJockey != null) {
                 // Editing existing jockey
+                Mob newMob = (Mob) player.getWorld().spawnEntity(player.getLocation(), selectedType);
                 targetJockey.setMob(newMob);
                 // Keep the existing custom name when editing
                 if (targetJockey.getCustomName() != null) {
                     targetJockey.setCustomName(targetJockey.getCustomName());
                 }
             } else {
-                // Creating new jockey
-                JockeyNode newJockey = new JockeyNode(newMob, jockeyManager.getJockeyCount() + 1);
-                newJockey.setCustomName(dealerName);
-                
                 if (asPassenger) {
+                    // Add as passenger (on top of stack)
+                    Mob newMob = (Mob) player.getWorld().spawnEntity(player.getLocation(), selectedType);
+                    JockeyNode newJockey = new JockeyNode(newMob, jockeyManager.getJockeyCount() + 1, true);
+                    newJockey.setCustomName(dealerName);
+                    
                     // Find the last jockey to add this as a passenger
                     List<JockeyNode> jockeys = jockeyManager.getJockeys();
                     if (!jockeys.isEmpty()) {
                         JockeyNode lastJockey = jockeys.get(jockeys.size() - 1);
                         newJockey.mountOn(lastJockey);
+                        
+                        // Since this is a passenger on top, make its name permanently visible
+                        newMob.setCustomNameVisible(true);
+                        
+                        // Hide the name of the jockey it's mounted on
+                        lastJockey.getMob().setCustomNameVisible(false);
                     }
                 } else {
-                    // Add as a new jockey at the bottom of the stack
-                    JockeyNode lastJockey = null;
+                    // Add as jockey (at bottom of stack)
+                    Mob dealer = jockeyManager.getDealer();
+                    Location dealerLoc = dealer.getLocation().clone();
+                    float yaw = dealerLoc.getYaw();
+                    
+                    // Check if this is a completely lone dealer - no passengers and no jockeys
+                    boolean isLoneDealer = dealer.getPassengers().isEmpty() && jockeyManager.getJockeyCount() == 0;
+                    System.out.println("isLoneDealer: " + isLoneDealer);
+                    System.out.println("dealer.getPassengers(): " + dealer.getPassengers());
+                    System.out.println("jockeyManager.getJockeyCount(): " + jockeyManager.getJockeyCount());
+                    if (isLoneDealer) {
+                        // Create new mob exactly where dealer is
+                        Mob newMob = (Mob) dealer.getWorld().spawnEntity(dealerLoc, selectedType);
+                        newMob.teleport(dealerLoc);
+                        newMob.setRotation(yaw, 0);
+                        
+                        // Create an invisible bat passenger to initialize vehicle state
+                        Mob batPassenger = (Mob) dealer.getWorld().spawnEntity(dealerLoc, EntityType.BAT);
+                        batPassenger.setInvisible(true);
+                        batPassenger.setSilent(true);
+                        batPassenger.setAI(false);
+                        batPassenger.setInvulnerable(true);
+                        batPassenger.setGravity(false);
+                        
+                        // Add bat to dealer to initialize vehicle state
+                        dealer.addPassenger(batPassenger);
+                        
+                        // Now mount the dealer on the new mob while it's in vehicle mode
+                        newMob.addPassenger(dealer);
+                        
+                        // Create and set up nodes
+                        JockeyNode newJockey = new JockeyNode(newMob, 1, true);
+                        newJockey.setCustomName(dealerName);
+                        
+                        JockeyNode dealerNode = jockeyManager.getJockey(0);
+                        dealerNode.setParent(newJockey);
+                        newJockey.setChild(dealerNode);
+                        
+                        // Update name visibility - dealer is now top, so show its name
+                        dealer.setCustomNameVisible(true);
+                        newMob.setCustomName(dealerName);
+                        newMob.setCustomNameVisible(false);
+                        // Force the custom name to be completely hidden for the bottom jockey
+                        newMob.setCustomNameVisible(false);
+                        newMob.setCustomName(null);
+                        
+                        // Schedule bat removal after 3 ticks
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            dealer.removePassenger(batPassenger);
+                            batPassenger.remove();
+                        }, 3L);
+                    } else {
+                        // Get the current bottom-most mob in the stack
+                        /*self coded example
+                         *     Mob bott=dealer;
+                        while (bott.getVehicle()!=null){
+                            bott=(Mob)bott.getVehicle();
+                        }
+                        
+               
+                        
+                        // Create new mob at the exact position of current bottom
+                        Location bottomLoc = bott.getLocation();
+                        Mob newMob = (Mob) dealer.getWorld().spawnEntity(bottomLoc, selectedType);
+                        newMob.teleport(bottomLoc);
+                        newMob.setRotation(yaw, 0);
+                         */
+                        JockeyNode currentBottom = jockeyManager.getJockey(0); // Start with dealer
+                        while (currentBottom.getChild() != null) {
+                            currentBottom = currentBottom.getChild();
+                        }
+                        
+                        // Create new mob at the exact position of current bottom
+                        Location bottomLoc = currentBottom.getMob().getLocation();
+                        Mob newMob = (Mob) dealer.getWorld().spawnEntity(bottomLoc, selectedType);
+                        newMob.teleport(bottomLoc);
+                        newMob.setRotation(bottomLoc.getYaw(), 0);
+                        
+                        // Create the new jockey node
+                        JockeyNode newJockey = new JockeyNode(newMob, 1, true); // Position 1 as it will be the bottom
+                        newJockey.setCustomName(dealerName);
+                        
+                        // Force the custom name to be completely hidden for the bottom jockey
+                        newMob.setCustomNameVisible(false);
+                        newMob.setCustomName(null);
+
+                        // Store the entire stack's structure before dismounting
+                        List<JockeyNode> stackOrder = new ArrayList<>();
+                        JockeyNode current = jockeyManager.getJockey(0); // Start with dealer
+                        while (current != null) {
+                            stackOrder.add(current);
+                            current = current.getChild();
+                        }
+
+                        // Dismount the entire stack
+                        for (int i = stackOrder.size() - 1; i >= 0; i--) {
+                            JockeyNode node = stackOrder.get(i);
+                            if (node.getParent() != null) {
+                                node.unmount();
+                            }
+                        }
+
+                        // Now rebuild the stack from bottom up
+                        // First, update positions
+                        for (int i = 0; i < stackOrder.size(); i++) {
+                            stackOrder.get(i).setPosition(i + 2); // +2 because new jockey is position 1
+                        }
+
+                        // Mount everything in the correct order
+                        newJockey.getMob().addPassenger(stackOrder.get(stackOrder.size() - 1).getMob()); // Mount bottom of old stack onto new jockey
+                        stackOrder.get(stackOrder.size() - 1).setParent(newJockey);
+                        newJockey.setChild(stackOrder.get(stackOrder.size() - 1));
+
+                        // Mount the rest of the stack
+                        for (int i = stackOrder.size() - 1; i > 0; i--) {
+                            JockeyNode lower = stackOrder.get(i);
+                            JockeyNode upper = stackOrder.get(i - 1);
+                            lower.getMob().addPassenger(upper.getMob());
+                            upper.setParent(lower);
+                            lower.setChild(upper);
+                        }
+
+                        // Update name visibility for the entire stack
                     for (JockeyNode jockey : jockeyManager.getJockeys()) {
-                        if (jockey.getPosition() > 0) {
-                            lastJockey = jockey;
+                            jockey.getMob().setCustomName(dealerName);
+                            if (jockey == newJockey) {
+                                // Bottom jockey never shows name
+                                jockey.getMob().setCustomNameVisible(false);
+                                jockey.getMob().setCustomName(null);
+                            } else {
+                                // Only the top mob shows its name
+                                boolean isTop = (jockey.getChild() == null);
+                                jockey.getMob().setCustomNameVisible(isTop);
+                            }
                         }
                     }
-                    if (lastJockey != null) {
-                        newJockey.mountOn(lastJockey);
+                    
+                    // Update positions for all jockeys
+                    List<JockeyNode> jockeys = jockeyManager.getJockeys();
+                    for (JockeyNode jockey : jockeys) {
+                        if (jockey.getPosition() > 0) {
+                            jockey.setPosition(jockey.getPosition() + 1);
+                        }
                     }
                 }
             }

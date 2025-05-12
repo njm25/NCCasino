@@ -49,18 +49,62 @@ public class JockeyManager {
         }
     }
 
+    private void initializeFromVehicle(Entity vehicle, int position) {
+        if (vehicle instanceof Mob && position > 0) {  // Ensure we don't try to add the dealer
+            Mob mobVehicle = (Mob) vehicle;
+            
+            // Create new node without mounting - this is an existing jockey
+            JockeyNode newNode = new JockeyNode(mobVehicle, position, false);
+            
+            // Find child node (the one riding this vehicle)
+            JockeyNode child = jockeys.get(position - 1);
+            
+            // Set up parent-child relationship
+            child.setParent(newNode);
+            newNode.setChild(child);
+            
+            // Add to jockeys list
+            jockeys.add(newNode);
+            
+            // Recursively process this vehicle's vehicle
+            if (mobVehicle.getVehicle() instanceof Mob) {
+                initializeFromVehicle(mobVehicle.getVehicle(), jockeys.size());
+            }
+        }
+    }
+
     public JockeyManager(Mob dealer) {
         this.dealer = dealer;
         this.jockeys = new ArrayList<>();
         this.head = new JockeyNode(dealer, 0, false); // Dealer is an existing mob
         jockeys.add(head);
 
+        System.out.println("\n=== JOCKEY MANAGER INIT ===");
+        System.out.println("Initializing from dealer: " + dealer.getType());
+
         // Initialize from existing passengers recursively
         if (!dealer.getPassengers().isEmpty()) {
+            System.out.println("Found passengers on dealer");
             for (Entity passenger : dealer.getPassengers()) {
                 initializeFromPassenger(passenger, jockeys.size());
             }
         }
+        System.out.println("vehic is"+dealer.getVehicle());
+        // Initialize from existing vehicle recursively
+        if (dealer.getVehicle() instanceof Mob) {
+            System.out.println("Found vehicle under dealer");
+            initializeFromVehicle(dealer.getVehicle(), jockeys.size());
+        }
+        
+        // Print final state
+        System.out.println("Final jockey list:");
+        for (JockeyNode node : jockeys) {
+            System.out.println("- " + node.getMob().getType() + 
+                " (pos:" + node.getPosition() + 
+                ", parent:" + (node.getParent() != null ? node.getParent().getMob().getType() : "none") + 
+                ", child:" + (node.getChild() != null ? node.getChild().getMob().getType() : "none") + ")");
+        }
+        System.out.println("=== END INIT ===\n");
         
         // Start the looking behavior for the stack
         startStackLooking();

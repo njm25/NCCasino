@@ -16,7 +16,9 @@ import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.projectiles.ProjectileSource;
 
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -30,12 +32,31 @@ import org.bukkit.entity.Shulker;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
+import org.bukkit.Bukkit;
+import org.bukkit.plugin.java.JavaPlugin;
 
 public class DealerEventListener implements Listener {
     private static final Set<UUID> adminTriggeredTeleports = new HashSet<>();
+    private static final Map<UUID, JockeyManager> jockeyManagerCache = new HashMap<>();
+    private static final long CACHE_TIMEOUT = 20L * 60L; // 60 seconds in ticks
     
     public static void allowAdminTeleport(UUID entityId) {
         adminTriggeredTeleports.add(entityId);
+    }
+
+    private JockeyManager getJockeyManager(Mob dealer) {
+        UUID dealerId = dealer.getUniqueId();
+        JockeyManager manager = jockeyManagerCache.get(dealerId);
+        
+        if (manager == null) {
+            manager = new JockeyManager(dealer);
+            jockeyManagerCache.put(dealerId, manager);
+            
+            // Schedule cache cleanup
+            Bukkit.getScheduler().runTaskLater(JavaPlugin.getProvidingPlugin(DealerEventListener.class),
+                () -> jockeyManagerCache.remove(dealerId), CACHE_TIMEOUT);
+        }
+        return manager;
     }
 
     private boolean isPartOfDealerStack(Mob mob) {
@@ -47,7 +68,7 @@ public class DealerEventListener implements Listener {
         List<Entity> nearbyEntities = mob.getNearbyEntities(5, 5, 5);
         for (Entity entity : nearbyEntities) {
             if (entity instanceof Mob nearbyMob && Dealer.isDealer(nearbyMob)) {
-                JockeyManager jockeyManager = new JockeyManager(nearbyMob);
+                JockeyManager jockeyManager = getJockeyManager(nearbyMob);
                 for (JockeyNode jockey : jockeyManager.getJockeys()) {
                     if (jockey.getMob().equals(mob)) {
                         return true;
