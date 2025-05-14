@@ -22,7 +22,7 @@ public class JockeyManager {
         }
         return current;
     }
-
+    @SuppressWarnings("unused")
     private void initializeFromPassenger(Entity passenger, int position) {
         if (passenger instanceof Mob && position > 0) {  // Ensure we don't try to add the dealer
             Mob mobPassenger = (Mob) passenger;
@@ -48,7 +48,7 @@ public class JockeyManager {
             }
         }
     }
-
+    @SuppressWarnings("unused")
     private void initializeFromVehicle(Entity vehicle, int position) {
         if (vehicle instanceof Mob && position > 0) {  // Ensure we don't try to add the dealer
             Mob mobVehicle = (Mob) vehicle;
