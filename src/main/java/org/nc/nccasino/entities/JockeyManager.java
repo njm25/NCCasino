@@ -59,9 +59,8 @@ public class JockeyManager {
             // Find child node (the one riding this vehicle)
             JockeyNode child = jockeys.get(position - 1);
             
-            // Set up parent-child relationship
-            child.setParent(newNode);
-            newNode.setChild(child);
+            // Set up parent-child relationship using the new mountAsVehicle method
+            newNode.mountAsVehicle(child);
             
             // Add to jockeys list
             jockeys.add(newNode);
@@ -82,18 +81,42 @@ public class JockeyManager {
         System.out.println("\n=== JOCKEY MANAGER INIT ===");
         System.out.println("Initializing from dealer: " + dealer.getType());
 
-        // Initialize from existing passengers recursively
-        if (!dealer.getPassengers().isEmpty()) {
-            System.out.println("Found passengers on dealer");
-            for (Entity passenger : dealer.getPassengers()) {
-                initializeFromPassenger(passenger, jockeys.size());
-            }
+        // First, build the complete stack structure
+        List<Entity> stackOrder = new ArrayList<>();
+        Entity current = dealer;
+        
+        // Add all passengers first (top to bottom)
+        while (!current.getPassengers().isEmpty()) {
+            current = current.getPassengers().get(0);
+            stackOrder.add(0, current); // Add to front to maintain top-to-bottom order
         }
-        System.out.println("vehic is"+dealer.getVehicle());
-        // Initialize from existing vehicle recursively
-        if (dealer.getVehicle() instanceof Mob) {
-            System.out.println("Found vehicle under dealer");
-            initializeFromVehicle(dealer.getVehicle(), jockeys.size());
+        
+        // Then add all vehicles (bottom to top)
+        current = dealer;
+        while (current.getVehicle() instanceof Mob) {
+            current = current.getVehicle();
+            stackOrder.add(current); // Add to end to maintain bottom-to-top order
+        }
+        
+        // Now initialize the nodes in the correct order
+        for (int i = 0; i < stackOrder.size(); i++) {
+            Entity entity = stackOrder.get(i);
+            if (entity instanceof Mob) {
+                Mob mob = (Mob) entity;
+                JockeyNode newNode = new JockeyNode(mob, i + 1, false);
+                
+                // Set up relationships
+                if (i == 0) {
+                    // First node (top) mounts on dealer
+                    newNode.mountOn(head);
+                } else {
+                    // Other nodes mount on the previous node
+                    JockeyNode prevNode = jockeys.get(i);
+                    newNode.mountOn(prevNode);
+                }
+                
+                jockeys.add(newNode);
+            }
         }
         
         // Print final state
