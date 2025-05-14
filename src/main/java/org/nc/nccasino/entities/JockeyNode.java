@@ -177,14 +177,48 @@ public class JockeyNode {
         }
     }
 
-    public void unmount() {
-        if (this.mob != null && this.parent != null && this.parent.getMob() != null) {
-            // First remove the Bukkit relationship
-            this.parent.getMob().removePassenger(this.mob);
+    public void mountAsVehicle(JockeyNode passenger) {
+        if (passenger != null && passenger.getMob() != null && this.mob != null) {
+            // First ensure we're unmounted from any current vehicle
+            unmount();
             
-            // Then clean up the node relationships
-            this.parent.setChild(null);
-            this.parent = null;
+            // Then do the actual mounting
+            this.mob.addPassenger(passenger.getMob());
+            
+            // Set up the node relationships
+            passenger.setParent(this);
+            this.setChild(passenger);
+            
+            // Update name visibility
+            if (this.position == 1) {
+                // Bottom jockey should never show name
+                this.mob.setCustomNameVisible(false);
+            } else {
+                // For other mobs, show name only if they're at the top
+                boolean isTop = (parent == null);
+                this.mob.setCustomNameVisible(isTop);
+            }
+            
+            // Update passenger's name visibility
+            passenger.getMob().setCustomNameVisible(false);
+        }
+    }
+
+    public void unmount() {
+        if (this.mob != null) {
+            // Remove from current vehicle if any
+            if (this.parent != null && this.parent.getMob() != null) {
+                this.parent.getMob().removePassenger(this.mob);
+                this.parent.setChild(null);
+                this.parent = null;
+            }
+            
+            // Remove current passengers if any
+            if (this.child != null && this.child.getMob() != null) {
+                this.mob.removePassenger(this.child.getMob());
+                this.child.setParent(null);
+                this.child = null;
+            }
             
             // Update name visibility
             if (this.position == 1) {
