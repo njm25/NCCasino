@@ -1,6 +1,7 @@
 package org.nc.nccasino.components;
 
 import org.bukkit.Material;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
@@ -189,6 +190,7 @@ public class JockeyMenu extends Menu {
     }
 
     private void handleAddJockey(Player player, boolean asPassenger) {
+        // Show mob selection menu first
         JockeyMobMenu mobMenu = new JockeyMobMenu(
             player, 
             plugin, 
@@ -196,6 +198,30 @@ public class JockeyMenu extends Menu {
             null, 
             "Jockey Menu",
             (p) -> {
+                // After vehicle is selected, if this is the first vehicle and not a passenger
+                if (jockeyManager.getJockeyCount() == 0 && !asPassenger) {
+                    // Get the last selected mob type
+                    EntityType selectedType = JockeyMobMenu.getLastSelectedType(player);
+                    if (selectedType != null) {
+                        // Show first vehicle menu
+                        FirstVehicleMenu firstVehicleMenu = new FirstVehicleMenu(
+                            player,
+                            plugin,
+                            jockeyManager,
+                            "Jockey Menu",
+                            (p2) -> {
+                                if (jockeyInventories.containsKey(player.getUniqueId())) {
+                                    player.openInventory(jockeyInventories.get(player.getUniqueId()).getInventory());
+                                }
+                            },
+                            selectedType
+                        );
+                        player.openInventory(firstVehicleMenu.getInventory());
+                        return;
+                    }
+                }
+                
+                // Otherwise return to jockey menu
                 if (jockeyInventories.containsKey(player.getUniqueId())) {
                     player.openInventory(jockeyInventories.get(player.getUniqueId()).getInventory());
                 }
