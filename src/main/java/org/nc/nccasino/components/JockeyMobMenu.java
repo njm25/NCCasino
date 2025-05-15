@@ -29,6 +29,7 @@ public class JockeyMobMenu extends Menu {
     private int currentPage = 1;
     private static final int PAGE_SIZE = 45;
     public static final Map<UUID, JockeyMobMenu> jockeyMobInventories = new HashMap<>();
+    public static final Map<UUID, EntityType> lastSelectedType = new HashMap<>();
     
     private static final Map<Material, EntityType> spawnEggToEntity = new HashMap<>();
     private static final Map<EntityType, Material> entityToSpawnEgg = new HashMap<>();
@@ -183,6 +184,9 @@ public class JockeyMobMenu extends Menu {
         // If not a mapped slot, check if it's an entity selection slot
         EntityType selectedType = slotToEntityType.get(slot);
         if (selectedType != null) {
+            // Store the selected type
+            lastSelectedType.put(player.getUniqueId(), selectedType);
+            
             // Get the dealer's name to use as base for custom names
             String dealerName = jockeyManager.getDealer().getCustomName();
             if (dealerName == null || dealerName.isEmpty()) {
@@ -200,19 +204,30 @@ public class JockeyMobMenu extends Menu {
             } else {
                 if (asPassenger) {
                     // Add as passenger (on top of stack)
-                    Mob newMob = (Mob) player.getWorld().spawnEntity(player.getLocation(), selectedType);
-                    JockeyNode newJockey = new JockeyNode(newMob, jockeyManager.getJockeyCount() + 1, true);
-                    newJockey.setCustomName(dealerName);
+                    Mob dealer = jockeyManager.getDealer();
+                    Mob newMob = (Mob) dealer.getWorld().spawnEntity(dealer.getLocation(), selectedType);
                     
                     // Find the topmost jockey to add this as a passenger
                     List<JockeyNode> jockeys = jockeyManager.getJockeys();
                     if (!jockeys.isEmpty()) {
-                        // Find the topmost jockey (one with no parent)
+                        // Find the topmost jockey by following the passenger chain
                         JockeyNode topJockey = jockeys.get(0); // Start with dealer
-                        while (topJockey.getChild() != null) {
-                            topJockey = topJockey.getChild();
+                        while (!topJockey.getMob().getPassengers().isEmpty()) {
+                            Mob passenger = (Mob)topJockey.getMob().getPassengers().get(0);
+                            // Find the node for this passenger
+                            for (JockeyNode node : jockeys) {
+                                if (node.getMob().equals(passenger)) {
+                                    topJockey = node;
+                                    break;
+                                }
+                            }
                         }
                         
+                        // Create new jockey node with position after the topmost jockey
+                        JockeyNode newJockey = new JockeyNode(newMob, topJockey.getPosition() + 1, true);
+                        newJockey.setCustomName(dealerName);
+                        
+                        // Mount the new passenger on top
                         newJockey.mountOn(topJockey);
                         
                         // Since this is a passenger on top, make its name permanently visible
@@ -220,95 +235,74 @@ public class JockeyMobMenu extends Menu {
                         
                         // Hide the name of the jockey it's mounted on
                         topJockey.getMob().setCustomNameVisible(false);
-                    }
-                } else {
-                    // Add as jockey (at bottom of stack)
-                    Mob dealer = jockeyManager.getDealer();
-                    Location dealerLoc = dealer.getLocation().clone();
-                    float yaw = dealerLoc.getYaw();
-                    
-                    // Check if this is a completely lone dealer - no passengers and no jockeys
-                    boolean isLoneDealer = dealer.getPassengers().isEmpty() && jockeyManager.getJockeyCount() == 0;
-                    System.out.println("isLoneDealer: " + isLoneDealer);
-                    System.out.println("dealer.getPassengers(): " + dealer.getPassengers());
-                    System.out.println("jockeyManager.getJockeyCount(): " + jockeyManager.getJockeyCount());
-                    if (isLoneDealer) {
-                        // Create new mob exactly where dealer is
-                        Mob newMob = (Mob) dealer.getWorld().spawnEntity(dealerLoc, selectedType);
-                        newMob.teleport(dealerLoc);
-                        newMob.setRotation(yaw, 0);
                         
-                        // Create and set up nodes
-                        JockeyNode newJockey = new JockeyNode(newMob, 1, true);
-                        newJockey.setCustomName(dealerName);
-                        
-                        JockeyNode dealerNode = jockeyManager.getJockey(0);
-                        
-                        // Create a temporary invisible bat to initialize vehicle state
-                        Mob tempBat = (Mob) dealer.getWorld().spawnEntity(dealerLoc, EntityType.BAT);
-                        tempBat.setInvisible(true);
-                        tempBat.setSilent(true);
-                        tempBat.setAI(false);
-                        tempBat.setInvulnerable(true);
-                        tempBat.setGravity(false);
-                        
-                        // Add bat to dealer to initialize vehicle state
-                        dealer.addPassenger(tempBat);
-                        
-                        // Now mount the dealer on the new mob
-                        newJockey.mountAsVehicle(dealerNode);
-                        
-                        // Update name visibility - dealer is now top, so show its name
-                        dealer.setCustomNameVisible(true);
-                        newMob.setCustomName(dealerName);
-                        newMob.setCustomNameVisible(false);
-                        // Force the custom name to be completely hidden for the bottom jockey
-                        newMob.setCustomNameVisible(false);
-                        newMob.setCustomName(null);
-                        
-                        // Schedule bat removal after 3 ticks
-                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                            dealer.removePassenger(tempBat);
-                            tempBat.remove();
-                        }, 3L);
-                    } else {
-                        // Get the current bottom-most mob in the stack
-                        Mob bott = dealer;
-                        while (bott.getVehicle() != null) {
-                            bott = (Mob)bott.getVehicle();
-                        }
-                        
-                        // Create new mob at the exact position of current bottom
-                        Location bottomLoc = bott.getLocation();
-                        Mob newMob = (Mob) dealer.getWorld().spawnEntity(bottomLoc, selectedType);
-                        newMob.teleport(bottomLoc);
-                        newMob.setRotation(bott.getLocation().getYaw(), 0);
-                        
-                        // Create and set up nodes
-                        JockeyNode newJockey = new JockeyNode(newMob, jockeyManager.getJockeyCount() + 1, true);
-                        newJockey.setCustomName(dealerName);
-                        
-                        // Find the bottom node
-                        JockeyNode bottomNode = null;
-                        for (JockeyNode node : jockeyManager.getJockeys()) {
-                            if (node.getMob().equals(bott)) {
-                                bottomNode = node;
+                        // Remove any existing silverfish
+                        for (JockeyNode node : jockeys) {
+                            if (node.getMob().getType() == EntityType.SILVERFISH) {
+                                node.getMob().remove();
                                 break;
                             }
                         }
                         
-                        if (bottomNode != null) {
-                            // Use the new mountAsVehicle method
-                            newJockey.mountAsVehicle(bottomNode);
-                            
-                            // Update name visibility
-                            newMob.setCustomNameVisible(false);
-                            bott.setCustomNameVisible(false);
+                        // Add to jockey manager's list and update positions
+                        jockeys.add(newJockey);
+                        
+                        // Update positions for all jockeys
+                        for (JockeyNode jockey : jockeys) {
+                            if (jockey.getPosition() > 0) {
+                                jockey.setPosition(jockey.getPosition() + 1);
+                            }
+                        }
+                    }
+                } else {
+                    // Check if this is the first vehicle (no jockeys yet)
+                    if (jockeyManager.getJockeyCount() == 0) {
+                        // Don't spawn anything yet, just return to menu
+                        playDefaultSound(player);
+                        returnToJockeyMenu(player);
+                        return;
+                    }
+                    
+                    // Get the current bottom-most mob in the stack
+                    Mob dealer = jockeyManager.getDealer();
+                    Mob bott = dealer;
+                    while (bott.getVehicle() != null) {
+                        bott = (Mob)bott.getVehicle();
+                    }
+                    
+                    // Create new mob at the exact position of current bottom
+                    Location bottomLoc = bott.getLocation();
+                    Mob newMob = (Mob) dealer.getWorld().spawnEntity(bottomLoc, selectedType);
+                    newMob.teleport(bottomLoc);
+                    newMob.setRotation(bott.getLocation().getYaw(), 0);
+                    
+                    // Create and set up nodes
+                    JockeyNode newJockey = new JockeyNode(newMob, jockeyManager.getJockeyCount() + 1, true);
+                    newJockey.setCustomName(dealerName);
+                    
+                    // Find the bottom node
+                    JockeyNode bottomNode = null;
+                    for (JockeyNode node : jockeyManager.getJockeys()) {
+                        if (node.getMob().equals(bott)) {
+                            bottomNode = node;
+                            break;
                         }
                     }
                     
-                    // Update positions for all jockeys
+                    if (bottomNode != null) {
+                        // Use the new mountAsVehicle method
+                        newJockey.mountAsVehicle(bottomNode);
+                        
+                        // Update name visibility
+                        newMob.setCustomNameVisible(false);
+                        bott.setCustomNameVisible(false);
+                    }
+                    
+                    // Add to jockey manager's list and update positions
                     List<JockeyNode> jockeys = jockeyManager.getJockeys();
+                    jockeys.add(newJockey);
+                    
+                    // Update positions for all jockeys
                     for (JockeyNode jockey : jockeys) {
                         if (jockey.getPosition() > 0) {
                             jockey.setPosition(jockey.getPosition() + 1);
@@ -324,7 +318,22 @@ public class JockeyMobMenu extends Menu {
 
     @Override
     protected void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
-        // All click handling is done in handleClick
+        switch (option) {
+            case PAGE_TOGGLE:
+                if (currentPage > 1) {
+                    currentPage--;
+                } else if ((currentPage * PAGE_SIZE) < spawnEggList.size()) {
+                    currentPage++;
+                }
+                initializeMenu();
+                break;
+            default:
+                break;
+        }
+    }
+
+    public static EntityType getLastSelectedType(Player player) {
+        return lastSelectedType.get(player.getUniqueId());
     }
 
     @Override
