@@ -160,6 +160,8 @@ public class FirstVehicleMenu extends Menu {
                 player.openInventory(mobMenu.getInventory());
                 cleanup();
                 break;
+                default:
+                break;
         }
     }
 
