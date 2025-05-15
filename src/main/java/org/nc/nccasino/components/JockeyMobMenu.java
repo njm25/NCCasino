@@ -1,5 +1,6 @@
 package org.nc.nccasino.components;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -340,5 +341,120 @@ public class JockeyMobMenu extends Menu {
         HandlerList.unregisterAll(this);
         jockeyMobInventories.remove(ownerId);
         this.delete();
+    }
+
+    private void handleMobSelection(Player player, int slot, InventoryClickEvent event) {
+        if (slot >= 0 && slot < 45 && event.getCurrentItem() != null) {
+            Material clickedMaterial = event.getCurrentItem().getType();
+            EntityType selectedType = spawnEggToEntity.get(clickedMaterial);
+            if (selectedType != null) {
+                // Calculate the actual index based on the current page
+                int actualIndex = (currentPage - 1) * PAGE_SIZE + slot;
+                if (actualIndex >= spawnEggList.size()) return;
+                
+                // Store references before changing anything
+                JockeyNode parentNode = targetJockey != null ? targetJockey.getParent() : null;
+                JockeyNode childNode = targetJockey != null ? targetJockey.getChild() : null;
+                
+                // First, detach any child to prevent it from being removed with the old mob
+                if (childNode != null) {
+                    childNode.unmount();
+                }
+                
+                // Spawn new mob near the parent (temporary location)
+                Mob parentMob = parentNode != null ? parentNode.getMob() : jockeyManager.getDealer();
+                Mob newMob = (Mob) parentMob.getWorld().spawnEntity(parentMob.getLocation(), selectedType);
+                
+                // Get the dealer's name
+                String dealerName = jockeyManager.getDealer().getCustomName();
+                if (dealerName == null || dealerName.isEmpty()) {
+                    dealerName = "Dealer";
+                }
+                
+                // Update the jockey with the new mob
+                if (targetJockey != null) {
+                    // Editing existing jockey
+                    if (jockeyManager.changeMobType(targetJockey.getPosition(), newMob)) {
+                        // Set the dealer's name
+                        newMob.setCustomName(dealerName);
+                        newMob.setCustomNameVisible(true);
+                        
+                        // First attach this mob to its parent
+                        if (parentNode != null) {
+                            parentMob.addPassenger(newMob);
+                        }
+                        
+                        // Then reattach the child if it existed
+                        if (childNode != null) {
+                            Mob childMob = childNode.getMob();
+                            newMob.addPassenger(childMob);
+                            childNode.setParent(targetJockey);
+                            targetJockey.setChild(childNode);
+                        }
+                        
+                        player.sendMessage("§aChanged jockey to " + formatEntityName(selectedType.name()));
+                        playDefaultSound(player);
+                        if (returnCallback != null) {
+                            returnCallback.accept(player);
+                        }
+                    } else {
+                        player.sendMessage("§cFailed to change jockey");
+                        newMob.remove();
+                        
+                        // If we failed, reattach the child to maintain stack
+                        if (childNode != null) {
+                            childNode.mountOn(targetJockey);
+                        }
+                    }
+                } else {
+                    // Adding new jockey/passenger
+                    if (asPassenger) {
+                        // Add as passenger (on top of stack)
+                        Mob dealer = jockeyManager.getDealer();
+                        
+                        // Find the topmost jockey
+                        Mob topMob = dealer;
+                        while (!topMob.getPassengers().isEmpty()) {
+                            topMob = (Mob) topMob.getPassengers().get(0);
+                        }
+                        
+                        // Mount the new passenger on top
+                        topMob.addPassenger(newMob);
+                        newMob.setCustomName(dealerName);
+                        newMob.setCustomNameVisible(true);
+                        
+                        // Hide the name of the jockey it's mounted on
+                        topMob.setCustomNameVisible(false);
+                        
+                        // Remove any existing silverfish
+                        for (JockeyNode node : jockeyManager.getJockeys()) {
+                            if (node.getMob().getType() == EntityType.SILVERFISH) {
+                                node.getMob().remove();
+                                break;
+                            }
+                        }
+                    } else {
+                        // Add as vehicle (below stack)
+                        Mob dealer = jockeyManager.getDealer();
+                        Mob bottomMob = dealer;
+                        while (bottomMob.getVehicle() != null) {
+                            bottomMob = (Mob) bottomMob.getVehicle();
+                        }
+                        
+                        // Mount the new vehicle below
+                        newMob.addPassenger(bottomMob);
+                        newMob.setCustomName(dealerName);
+                        newMob.setCustomNameVisible(false);
+                        bottomMob.setCustomNameVisible(false);
+                    }
+                    
+                    player.sendMessage("§aAdded new " + (asPassenger ? "passenger" : "vehicle") + ": " + formatEntityName(selectedType.name()));
+                    playDefaultSound(player);
+                    if (returnCallback != null) {
+                        returnCallback.accept(player);
+                    }
+                }
+            }
+        }
     }
 } 

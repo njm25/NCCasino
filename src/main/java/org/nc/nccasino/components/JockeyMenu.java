@@ -210,6 +210,8 @@ public class JockeyMenu extends Menu {
                             jockeyManager,
                             "Jockey Menu",
                             (p2) -> {
+                                // Refresh the jockey manager to ensure state is in sync
+                                jockeyManager.refresh();
                                 if (jockeyInventories.containsKey(player.getUniqueId())) {
                                     player.openInventory(jockeyInventories.get(player.getUniqueId()).getInventory());
                                 }
@@ -220,6 +222,9 @@ public class JockeyMenu extends Menu {
                         return;
                     }
                 }
+                
+                // Refresh the jockey manager to ensure state is in sync
+                jockeyManager.refresh();
                 
                 // Otherwise return to jockey menu
                 if (jockeyInventories.containsKey(player.getUniqueId())) {
