@@ -7,6 +7,7 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.JockeyManager;
@@ -100,9 +101,18 @@ public class FirstVehicleMenu extends Menu {
                 
                 player.sendMessage("§aAdded vehicle and invisible passenger");
                 cleanup();
-                if (returnCallback != null) {
-                    returnCallback.accept(player);
-                }
+                
+                // Add delay before returning to menu
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        // Refresh the jockey manager to ensure state is in sync
+                        jockeyManager.refresh();
+                        if (returnCallback != null) {
+                            returnCallback.accept(player);
+                        }
+                    }
+                }.runTaskLater(plugin, 10L); // Increased delay to 10 ticks
                 break;
                 
             case PICK_PASSENGER:
@@ -151,16 +161,24 @@ public class FirstVehicleMenu extends Menu {
                             }
                         }
                         
-                        if (returnCallback != null) {
-                            returnCallback.accept(player);
-                        }
+                        // Add delay before returning to menu
+                        new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                // Refresh the jockey manager to ensure state is in sync
+                                jockeyManager.refresh();
+                                if (returnCallback != null) {
+                                    returnCallback.accept(player);
+                                }
+                            }
+                        }.runTaskLater(plugin, 10L); // Increased delay to 10 ticks
                     },
                     true // asPassenger = true
                 );
                 player.openInventory(mobMenu.getInventory());
                 cleanup();
                 break;
-                default:
+            default:
                 break;
         }
     }

@@ -9,6 +9,7 @@ import org.nc.nccasino.helpers.AttributeHelper;
 import java.util.UUID;
 import java.util.List;
 import java.util.ArrayList;
+import org.bukkit.entity.EntityType;
 
 public class JockeyNode {
     private final UUID id;
@@ -31,22 +32,22 @@ public class JockeyNode {
         this.isNewJockey = isNewJockey;
         if (isNewJockey) {
             initializeJockeyAttributes(mob);
+            // Only set visibility for non-silverfish entities
+            if (mob.getType() != EntityType.SILVERFISH) {
+                mob.setCustomNameVisible(true);
+            }
         }
     }
 
     private void initializeJockeyAttributes(Mob mob) {
         // Basic attributes that should be set for all mobs
-        mob.setInvisible(false);
         mob.setInvulnerable(true);
-        mob.setCustomNameVisible(true);
         mob.setGravity(false);
         mob.setSilent(true);
         mob.setCollidable(false);
         mob.setPersistent(true);
         mob.setRemoveWhenFarAway(false);
-
-        // Always disable AI for all mobs - we'll control movement manually
-        mob.setAI(false);
+        mob.setAI(false); // Always disable AI
 
         // Prevent any movement
         AttributeInstance movementSpeedAttribute = mob.getAttribute(AttributeHelper.getAttributeSafely("MOVEMENT_SPEED"));
@@ -99,7 +100,11 @@ public class JockeyNode {
         }
         this.mob = mob;
         if (mob != null) {
-            if (isNewJockey) { // Only initialize attributes if this is a new jockey
+            // Always set these attributes regardless of whether it's a new jockey
+            mob.setInvulnerable(true);
+            mob.setAI(false);
+            
+            if (isNewJockey) { // Only initialize other attributes if this is a new jockey
                 initializeJockeyAttributes(mob);
             }
             mob.setCustomName(customName);

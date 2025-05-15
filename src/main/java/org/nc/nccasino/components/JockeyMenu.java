@@ -6,6 +6,7 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
@@ -54,7 +55,14 @@ public class JockeyMenu extends Menu {
         slotMapping.put(SlotOption.ADD_PASSENGER, 22);
         slotMapping.put(SlotOption.REMOVE_JOCKEY, 23);
         jockeyInventories.put(this.ownerId, this);
-        initializeMenu();
+        
+        // Add a small delay before initializing the menu
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                initializeMenu();
+            }
+        }.runTaskLater(plugin, 2L);
     }
 
     @Override

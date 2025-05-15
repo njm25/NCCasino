@@ -14,6 +14,7 @@ import org.bukkit.event.entity.EntityTransformEvent;
 import org.bukkit.event.entity.PotionSplashEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.projectiles.ProjectileSource;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 
 import java.util.HashSet;
 import java.util.HashMap;
@@ -60,8 +61,25 @@ public class DealerEventListener implements Listener {
     }
 
     private boolean isPartOfDealerStack(Mob mob) {
+        // First check if this mob is a dealer
         if (Dealer.isDealer(mob)) {
             return true;
+        }
+
+        // Check if this mob is a passenger of any dealer
+        Entity vehicle = mob.getVehicle();
+        while (vehicle != null) {
+            if (vehicle instanceof Mob vehicleMob && Dealer.isDealer(vehicleMob)) {
+                return true;
+            }
+            vehicle = vehicle.getVehicle();
+        }
+
+        // Check if this mob has a dealer as a passenger
+        for (Entity passenger : mob.getPassengers()) {
+            if (passenger instanceof Mob passengerMob && Dealer.isDealer(passengerMob)) {
+                return true;
+            }
         }
 
         // Check nearby dealers (within 5 blocks) for jockey stacks
@@ -83,6 +101,15 @@ public class DealerEventListener implements Listener {
     public void onEntityDamage(EntityDamageEvent event) {
         if (event.getEntity() instanceof Mob mob && isPartOfDealerStack(mob)) {
             event.setCancelled(true);
+            event.setDamage(0);
+        }
+    }
+
+    @EventHandler
+    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        if (event.getEntity() instanceof Mob mob && isPartOfDealerStack(mob)) {
+            event.setCancelled(true);
+            event.setDamage(0);
         }
     }
 
