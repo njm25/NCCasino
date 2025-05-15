@@ -99,7 +99,11 @@ public abstract class Menu extends DealerInventory {
         TEST_MENU,
         ADD_JOCKEY,
         ADD_PASSENGER,
-        REMOVE_JOCKEY
+        REMOVE_JOCKEY,
+
+        // Passenger menu
+        INVISIBLE_PASSENGER,
+        PICK_PASSENGER
     }
 
     protected final Map<SlotOption, Integer> slotMapping = new HashMap<>();

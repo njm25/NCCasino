@@ -208,9 +208,9 @@ public class JockeyNode {
         if (this.mob != null) {
             // Remove from current vehicle if any
             if (this.parent != null && this.parent.getMob() != null) {
-                this.parent.getMob().removePassenger(this.mob);
-                this.parent.setChild(null);
-                this.parent = null;
+            this.parent.getMob().removePassenger(this.mob);
+            this.parent.setChild(null);
+            this.parent = null;
             }
             
             // Remove current passengers if any
