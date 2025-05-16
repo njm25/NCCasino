@@ -342,6 +342,7 @@ public class JockeyMobMenu extends Menu {
         this.delete();
     }
 
+    @SuppressWarnings("unused")
     private void handleMobSelection(Player player, int slot, InventoryClickEvent event) {
         if (slot >= 0 && slot < 45 && event.getCurrentItem() != null) {
             Material clickedMaterial = event.getCurrentItem().getType();
