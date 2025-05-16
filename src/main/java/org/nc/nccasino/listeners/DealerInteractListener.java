@@ -21,8 +21,6 @@ import org.nc.nccasino.components.AnimationMessage;
 import org.nc.nccasino.components.PlayerMenu;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Dealer;
-import org.nc.nccasino.entities.JockeyManager;
-import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.helpers.Preferences.MessageSetting;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.bukkit.plugin.java.JavaPlugin;

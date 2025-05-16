@@ -32,7 +32,7 @@ import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Shulker;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.JockeyManager;
-import org.nc.nccasino.entities.JockeyNode;
+
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -45,6 +45,7 @@ public class DealerEventListener implements Listener {
         adminTriggeredTeleports.add(entityId);
     }
 
+    @SuppressWarnings("unused")
     private JockeyManager getJockeyManager(Mob dealer) {
         UUID dealerId = dealer.getUniqueId();
         JockeyManager manager = jockeyManagerCache.get(dealerId);
