@@ -82,18 +82,24 @@ public class DealerEventListener implements Listener {
             }
         }
 
-        // Check nearby dealers (within 5 blocks) for jockey stacks
-        List<Entity> nearbyEntities = mob.getNearbyEntities(5, 5, 5);
-        for (Entity entity : nearbyEntities) {
-            if (entity instanceof Mob nearbyMob && Dealer.isDealer(nearbyMob)) {
-                JockeyManager jockeyManager = getJockeyManager(nearbyMob);
-                for (JockeyNode jockey : jockeyManager.getJockeys()) {
-                    if (jockey.getMob().equals(mob)) {
-                        return true;
-                    }
-                }
+        // Check if this mob is part of a dealer's stack by following the chain
+        Entity current = mob;
+        // Check upward chain (passengers)
+        while (!current.getPassengers().isEmpty()) {
+            current = current.getPassengers().get(0);
+            if (current instanceof Mob passengerMob && Dealer.isDealer(passengerMob)) {
+                return true;
             }
         }
+        // Check downward chain (vehicles)
+        current = mob;
+        while (current.getVehicle() != null) {
+            current = current.getVehicle();
+            if (current instanceof Mob vehicleMob && Dealer.isDealer(vehicleMob)) {
+                return true;
+            }
+        }
+
         return false;
     }
 
