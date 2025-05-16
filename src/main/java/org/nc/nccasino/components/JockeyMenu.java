@@ -29,7 +29,7 @@ public class JockeyMenu extends Menu {
     private Map<Integer, JockeyNode> slotToJockeyMap;
 
     public JockeyMenu(UUID dealerId, Player player, String title, Consumer<Player> ret, Nccasino plugin, String returnName) {
-        super(player, plugin, dealerId, title, 54, returnName, ret);
+        super(player, plugin, dealerId, title, 27, returnName, ret);
         this.dealerId = dealerId;
         this.plugin = plugin;
         this.returnName = returnName;
@@ -49,11 +49,11 @@ public class JockeyMenu extends Menu {
         // Create a fresh JockeyManager to ensure we have the current state
         this.jockeyManager = new JockeyManager(dealer);
         
-        slotMapping.put(SlotOption.EXIT, 53);
-        slotMapping.put(SlotOption.RETURN, 45);
-        slotMapping.put(SlotOption.ADD_JOCKEY, 48);
-        slotMapping.put(SlotOption.ADD_PASSENGER, 49);
-        slotMapping.put(SlotOption.REMOVE_JOCKEY, 50);
+        slotMapping.put(SlotOption.EXIT, 26);
+        slotMapping.put(SlotOption.RETURN, 18);
+        slotMapping.put(SlotOption.ADD_JOCKEY, 21);
+        slotMapping.put(SlotOption.ADD_PASSENGER, 22);
+        slotMapping.put(SlotOption.REMOVE_JOCKEY, 23);
         jockeyInventories.put(this.ownerId, this);
         
         // Add a small delay before initializing the menu
@@ -77,37 +77,8 @@ public class JockeyMenu extends Menu {
         addItemAndLore(Material.LEAD, 1, "Add Jockey", slotMapping.get(SlotOption.ADD_PASSENGER), "Add a new mob to the top of the stack");
         addItemAndLore(Material.BARRIER, 1, "Remove Jockey(WIP)", slotMapping.get(SlotOption.REMOVE_JOCKEY), "Remove the top jockey from the stack(WIP)");
 
-        // Count vehicles and passengers
-        int vehicleCount = 0;
-        int passengerCount = 0;
-        Mob currentMob = dealer;
-        
-        // Count vehicles (below dealer)
-        while (currentMob.getVehicle() instanceof Mob) {
-            vehicleCount++;
-            currentMob = (Mob) currentMob.getVehicle();
-        }
-        
-        // Count passengers (above dealer)
-        currentMob = dealer;
-        while (!currentMob.getPassengers().isEmpty() && currentMob.getPassengers().get(0) instanceof Mob) {
-            passengerCount++;
-            currentMob = (Mob) currentMob.getPassengers().get(0);
-        }
-
-        // Calculate dealer position (default in third row, center)
-        int dealerSlot = 22; // Default center position in third row
-        if (vehicleCount >= 23) {
-            // Move dealer right based on how many vehicles beyond 23
-            int shiftAmount = vehicleCount - 22; // Allow shifting all the way to slot 44
-            dealerSlot = 22 + shiftAmount;
-        } else if (passengerCount >= 23) {
-            // Move dealer left based on how many passengers beyond 23
-            int shiftAmount = passengerCount - 22; // Allow shifting all the way to slot 0
-            dealerSlot = 22 - shiftAmount;
-        }
-
-        // Add dealer representation
+        // Add dealer representation in the middle
+        int dealerSlot = 13; // Center slot
         addItemAndLore(
             Material.SPAWNER,
             1,
@@ -119,11 +90,9 @@ public class JockeyMenu extends Menu {
 
         System.out.println("\n=== MENU DEBUG ===");
         System.out.println("Dealer: " + dealer.getType());
-        System.out.println("Vehicle Count: " + vehicleCount);
-        System.out.println("Passenger Count: " + passengerCount);
         
         // Display jockeys (below dealer)
-        currentMob = dealer;
+        Mob currentMob = dealer;
         int jockeySlot = dealerSlot - 1; // Start left of dealer
         while (currentMob.getVehicle() instanceof Mob) {
             Mob jockeyMob = (Mob)currentMob.getVehicle();
@@ -229,40 +198,6 @@ public class JockeyMenu extends Menu {
     }
 
     private void handleAddJockey(Player player, boolean asPassenger) {
-        // Count current vehicles and passengers
-        int vehicleCount = 0;
-        int passengerCount = 0;
-        Mob currentMob = dealer;
-        
-        // Count vehicles (below dealer)
-        while (currentMob.getVehicle() instanceof Mob) {
-            vehicleCount++;
-            currentMob = (Mob) currentMob.getVehicle();
-        }
-        
-        // Count passengers (above dealer)
-        currentMob = dealer;
-        while (!currentMob.getPassengers().isEmpty() && currentMob.getPassengers().get(0) instanceof Mob) {
-            passengerCount++;
-            currentMob = (Mob) currentMob.getPassengers().get(0);
-        }
-
-        // Check if we've reached the maximum total limit
-        int totalCount = vehicleCount + passengerCount;
-        if (totalCount >= 44) {
-            player.sendMessage("§cMaximum total number of vehicles and passengers (44) reached!");
-            return;
-        }
-
-        // Check if we've reached the maximum limit for the specific type
-        if (asPassenger && passengerCount >= 44) {
-            player.sendMessage("§cMaximum number of passengers (44) reached!");
-            return;
-        } else if (!asPassenger && vehicleCount >= 44) {
-            player.sendMessage("§cMaximum number of vehicles (44) reached!");
-            return;
-        }
-
         // Show mob selection menu first
         JockeyMobMenu mobMenu = new JockeyMobMenu(
             player, 
