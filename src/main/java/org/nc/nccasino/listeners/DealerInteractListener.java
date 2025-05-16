@@ -52,21 +52,40 @@ public class DealerInteractListener implements Listener {
             return clickedMob;
         }
 
-        // Get all nearby entities that could be dealers
-        List<Entity> nearbyEntities = clickedMob.getNearbyEntities(5, 5, 5);
-        for (Entity entity : nearbyEntities) {
-            if (entity instanceof Mob mob && Dealer.isDealer(mob)) {
-                // Create a JockeyManager for this dealer
-                JockeyManager jockeyManager = new JockeyManager(mob);
-                
-                // Check if the clicked mob is in this dealer's jockey stack
-                for (JockeyNode jockey : jockeyManager.getJockeys()) {
-                    if (jockey.getMob().equals(clickedMob)) {
-                        return mob; // Found the dealer this jockey belongs to
-                    }
-                }
+        // Check if this mob is a passenger of any dealer
+        Entity vehicle = clickedMob.getVehicle();
+        while (vehicle != null) {
+            if (vehicle instanceof Mob vehicleMob && Dealer.isDealer(vehicleMob)) {
+                return vehicleMob;
+            }
+            vehicle = vehicle.getVehicle();
+        }
+
+        // Check if this mob has a dealer as a passenger
+        for (Entity passenger : clickedMob.getPassengers()) {
+            if (passenger instanceof Mob passengerMob && Dealer.isDealer(passengerMob)) {
+                return passengerMob;
             }
         }
+
+        // Check if this mob is part of a dealer's stack by following the chain
+        Entity current = clickedMob;
+        // Check upward chain (passengers)
+        while (!current.getPassengers().isEmpty()) {
+            current = current.getPassengers().get(0);
+            if (current instanceof Mob passengerMob && Dealer.isDealer(passengerMob)) {
+                return passengerMob;
+            }
+        }
+        // Check downward chain (vehicles)
+        current = clickedMob;
+        while (current.getVehicle() != null) {
+            current = current.getVehicle();
+            if (current instanceof Mob vehicleMob && Dealer.isDealer(vehicleMob)) {
+                return vehicleMob;
+            }
+        }
+
         return null;
     }
 
