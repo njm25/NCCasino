@@ -110,7 +110,7 @@ public abstract class Menu extends DealerInventory {
     protected final UUID ownerId;
     public final UUID dealerId;
     protected final Nccasino plugin;
-    protected final Consumer<Player> returnCallback;
+    protected Consumer<Player> returnCallback;
     protected final String returnMessage;
     protected final Player player;
     public Mob dealer;
@@ -239,6 +239,10 @@ public abstract class Menu extends DealerInventory {
             slotMapping.get(SlotOption.RETURN)
         );
     }   
+
+    public void setReturnCallback(Consumer<Player> callback) {
+        this.returnCallback = callback;
+    }
 
     public static List<Player> getOpenInventories(UUID dealerId) {
         List<Player> players = new ArrayList<>();
