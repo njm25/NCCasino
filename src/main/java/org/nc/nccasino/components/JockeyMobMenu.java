@@ -304,7 +304,7 @@ public class JockeyMobMenu extends Menu {
                         // Mount the new passenger on top
                         topMob.addPassenger(newMob);
                         newMob.setCustomName(dealerName);
-                        newMob.setCustomNameVisible(true);
+                        newMob.setCustomNameVisible(false);
                         
                         // Hide the name of the jockey it's mounted on
                         topMob.setCustomNameVisible(false);
@@ -528,7 +528,7 @@ public class JockeyMobMenu extends Menu {
                         // Mount the new passenger on top
                         topMob.addPassenger(newMob);
                         newMob.setCustomName(dealerName);
-                        newMob.setCustomNameVisible(true);
+                        newMob.setCustomNameVisible(false);
                         
                         // Hide the name of the jockey it's mounted on
                         topMob.setCustomNameVisible(false);
