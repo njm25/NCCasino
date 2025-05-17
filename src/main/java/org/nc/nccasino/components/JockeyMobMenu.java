@@ -138,6 +138,7 @@ public class JockeyMobMenu extends Menu {
         }
     }
 
+    @SuppressWarnings("unused")
     private void returnToJockeyMenu(Player player) {
         // Schedule the return with a delay to ensure proper updates
         new BukkitRunnable() {

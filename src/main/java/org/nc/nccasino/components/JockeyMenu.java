@@ -28,9 +28,7 @@ public class JockeyMenu extends Menu {
     public static final Map<UUID, JockeyMenu> jockeyInventories = new HashMap<>();
     public static final Map<UUID, Consumer<Player>> returnCallbacks = new HashMap<>();
     private Map<Integer, JockeyNode> slotToJockeyMap;
-    private int currentPage = 1;
-    private static final int PAGE_SIZE = 45;
-    private int totalPages;
+
 
     public JockeyMenu(UUID dealerId, Player player, String title, Consumer<Player> ret, Nccasino plugin, String returnName) {
         super(player, plugin, dealerId, title, 54, returnName, ret);
