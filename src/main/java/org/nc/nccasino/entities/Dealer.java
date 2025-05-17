@@ -88,7 +88,7 @@ public class Dealer {
         mob.setInvisible(false);                                    
         mob.setInvulnerable(true);
         mob.setCustomName(name);
-        mob.setCustomNameVisible(true);
+        mob.setCustomNameVisible(false);
         mob.setGravity(false);
         mob.setSilent(true);
         mob.setCollidable(false);
@@ -375,7 +375,7 @@ public class Dealer {
 
         PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
-// do chip sizes specificially before because bj initalizes them and theyll get reset otherwise
+// do chip sizes specifically before because bj initalizes them and theyll get reset otherwise
         if(resetToDefault){
             plugin.getConfig().set("dealers." + internalName + ".chip-sizes.size1", 1);
             plugin.getConfig().set("dealers." + internalName + ".chip-sizes.size2", 5);
@@ -407,7 +407,6 @@ public class Dealer {
             case "Test Game":
                 newInventory = new TestServer(dealerId, plugin, internalName);
                 newName = "Test Game Dealer";
-                defaultTimer = 10;
                 break;
             case "Coin Flip":
                 newInventory = new CoinFlipServer(dealerId, plugin, internalName);
