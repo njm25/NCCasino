@@ -630,9 +630,11 @@ public class BaccaratServer extends Server {
             switch (betType) {
                 case PLAYER:
                     if (result.equals("PLAYER_WINS")) payout += wager * 2;
+                    if (result.equals("TIE")) payout += wager ;
                     break;
                 case BANKER:
                     if (result.equals("BANKER_WINS")) payout += wager * 1.95; // 5% commission
+                    if (result.equals("TIE")) payout += wager ;
                     break;
                 case TIE:
                     if (result.equals("TIE")) payout += wager * 9;
@@ -654,7 +656,7 @@ public class BaccaratServer extends Server {
                 player.sendMessage("§a§lPaid "+ (int)payout+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s"));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§a§lPaid "+ (int)payout+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s")  + "\n §r§a§o(profit of "+(int)Math.abs(payout-totalBet)+")");
+                player.sendMessage("§a§lPaid "+ (int)payout+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s")  + "\n §r§a§o(profit of "+(int)(payout-totalBet)+")");
                 break;     
             }
                 case NONE:{
