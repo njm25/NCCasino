@@ -209,7 +209,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         mob.setInvisible(false);                                    
                         mob.setInvulnerable(true);
                         mob.setCustomName(name);
-                        mob.setCustomNameVisible(true);
+                        mob.setCustomNameVisible(false);
                         mob.setGravity(false);
                         mob.setSilent(true);
                         mob.setCollidable(false);
