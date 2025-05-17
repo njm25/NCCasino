@@ -108,7 +108,7 @@ public class JockeyNode {
                 initializeJockeyAttributes(mob);
             }
             mob.setCustomName(customName);
-            mob.setCustomNameVisible(true);
+            mob.setCustomNameVisible(false);
         }
     }
 
@@ -120,14 +120,7 @@ public class JockeyNode {
         this.customName = name;
         if (mob != null) {
             mob.setCustomName(name);
-            // For bottom jockeys, never show the name
-            if (position == 1) {
-                mob.setCustomNameVisible(false);
-            } else {
-                // For other mobs, only show name if they're at the top
-                boolean isTop = (parent == null);
-                mob.setCustomNameVisible(isTop);
-            }
+            mob.setCustomNameVisible(false);
         }
     }
 
