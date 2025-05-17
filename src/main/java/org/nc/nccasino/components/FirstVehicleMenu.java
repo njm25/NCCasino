@@ -27,8 +27,31 @@ public class FirstVehicleMenu extends Menu {
     private final EntityType vehicleType;
     public static final Map<UUID, FirstVehicleMenu> firstVehicleInventories = new HashMap<>();
 
+    public EntityType getVehicleType() {
+        return vehicleType;
+    }
+
     public FirstVehicleMenu(Player player, Nccasino plugin, JockeyManager jockeyManager, String returnName, Consumer<Player> returnCallback, EntityType vehicleType) {
-        super(player, plugin, jockeyManager.getDealer().getUniqueId(), "Select First Vehicle Passenger", 9, returnName, returnCallback);
+        super(player, plugin, jockeyManager.getDealer().getUniqueId(), "Select First Vehicle Passenger", 9, "Jockey Mob Menu", (p) -> {
+            // Return to JockeyMobMenu
+            JockeyMobMenu newMobMenu = new JockeyMobMenu(
+                p,
+                plugin,
+                jockeyManager,
+                null,
+                "Jockey Menu",
+                (p2) -> {
+                    // Return to JockeyMenu
+                    if (JockeyMenu.jockeyInventories.containsKey(p2.getUniqueId())) {
+                        p2.openInventory(JockeyMenu.jockeyInventories.get(p2.getUniqueId()).getInventory());
+                    } else if (returnCallback != null) {
+                        returnCallback.accept(p2);
+                    }
+                },
+                false
+            );
+            p.openInventory(newMobMenu.getInventory());
+        });
         this.plugin = plugin;
         this.returnName = returnName;
         this.jockeyManager = jockeyManager;
@@ -108,79 +131,72 @@ public class FirstVehicleMenu extends Menu {
                     public void run() {
                         // Refresh the jockey manager to ensure state is in sync
                         jockeyManager.refresh();
-                        if (returnCallback != null) {
+                        // Return to JockeyMenu
+                        if (JockeyMenu.jockeyInventories.containsKey(player.getUniqueId())) {
+                            player.openInventory(JockeyMenu.jockeyInventories.get(player.getUniqueId()).getInventory());
+                        } else if (returnCallback != null) {
                             returnCallback.accept(player);
                         }
                     }
-                }.runTaskLater(plugin, 10L); // Increased delay to 10 ticks
+                }.runTaskLater(plugin, 10L);
                 break;
                 
             case PICK_PASSENGER:
-                // Open jockey mob menu
-                JockeyMobMenu mobMenu = new JockeyMobMenu(
-                    player, 
-                    plugin, 
+                // Create a new JockeyMobMenu for passenger selection
+                JockeyMobMenu passengerMenu = new JockeyMobMenu(
+                    player,
+                    plugin,
                     jockeyManager,
-                    null, 
-                    "Passenger Menu",
+                    null,
+                    "First Vehicle Menu",
                     (p) -> {
-                        // Get dealer location
-                        Mob dealerMob = jockeyManager.getDealer();
-                        Location dealerPos = dealerMob.getLocation().clone();
-                        float dealerYaw = dealerPos.getYaw();
-                        
-                        // Find the passenger we just added
-                        List<JockeyNode> currentJockeys = jockeyManager.getJockeys();
-                        if (!currentJockeys.isEmpty()) {
-                            JockeyNode passenger = currentJockeys.get(currentJockeys.size() - 1);
-                            
-                            // Spawn vehicle at dealer location
-                            Mob newVehicle = (Mob) dealerMob.getWorld().spawnEntity(dealerPos, vehicleType);
-                            newVehicle.teleport(dealerPos);
-                            newVehicle.setRotation(dealerYaw, 0);
-                            
-                            // Create vehicle node
-                            JockeyNode newVehicleNode = new JockeyNode(newVehicle, 1, true);
-                            newVehicleNode.setCustomName("Vehicle");
-                            
-                            // Mount dealer on vehicle
-                            JockeyNode dealerJockey = jockeyManager.getJockey(0);
-                            newVehicleNode.mountAsVehicle(dealerJockey);
-                            
-                            // Update name visibility
-                            dealerMob.setCustomNameVisible(true);
-                            newVehicle.setCustomNameVisible(false);
-                            passenger.getMob().setCustomNameVisible(true);
-                            
-                            // Remove any existing silverfish
-                            for (JockeyNode node : currentJockeys) {
-                                if (node.getMob().getType() == EntityType.SILVERFISH) {
-                                    node.getMob().remove();
-                                    break;
-                                }
-                            }
+                        // Return to FirstVehicleMenu
+                        if (firstVehicleInventories.containsKey(p.getUniqueId())) {
+                            p.openInventory(firstVehicleInventories.get(p.getUniqueId()).getInventory());
+                        } else if (returnCallback != null) {
+                            returnCallback.accept(p);
                         }
-                        
-                        // Add delay before returning to menu
-                        new BukkitRunnable() {
-                            @Override
-                            public void run() {
-                                // Refresh the jockey manager to ensure state is in sync
-                                jockeyManager.refresh();
-                                if (returnCallback != null) {
-                                    returnCallback.accept(player);
-                                }
-                            }
-                        }.runTaskLater(plugin, 10L); // Increased delay to 10 ticks
                     },
-                    true // asPassenger = true
+                    true
                 );
-                player.openInventory(mobMenu.getInventory());
+                // Store the vehicle type in the passenger menu
+                JockeyMobMenu.vehicleTypeMap.put(player.getUniqueId(), vehicleType);
+                cleanup();
+                player.openInventory(passengerMenu.getInventory());
+                break;
+                
+            case EXIT:
+                player.closeInventory();
                 cleanup();
                 break;
+                
+            case RETURN:
+                cleanup();
+                // Return to JockeyMobMenu
+                JockeyMobMenu newMobMenu = new JockeyMobMenu(
+                    player,
+                    plugin,
+                    jockeyManager,
+                    null,
+                    "Jockey Menu",
+                    (p) -> {
+                        // Return to JockeyMenu
+                        if (JockeyMenu.jockeyInventories.containsKey(p.getUniqueId())) {
+                            p.openInventory(JockeyMenu.jockeyInventories.get(p.getUniqueId()).getInventory());
+                        } else if (returnCallback != null) {
+                            returnCallback.accept(p);
+                        }
+                    },
+                    false
+                );
+                player.openInventory(newMobMenu.getInventory());
+                break;
+                
             default:
                 break;
         }
+        
+        playDefaultSound(player);
     }
 
     @Override
