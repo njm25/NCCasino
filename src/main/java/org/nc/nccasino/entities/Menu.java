@@ -2,7 +2,6 @@ package org.nc.nccasino.entities;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -247,7 +246,7 @@ public abstract class Menu extends DealerInventory {
             }
 
             if (player.getOpenInventory().getTopInventory().getHolder() instanceof Menu menu) {
-                Mob dealer = Dealer.findDealer(dealerId, player.getLocation());
+                Mob dealer = Dealer.findDealer(menu.dealerId, player.getLocation());
                 if (Dealer.getUniqueId(dealer).equals(dealerId) || dealer.getUniqueId().equals(dealerId)) {
                     players.add(player);
                 }

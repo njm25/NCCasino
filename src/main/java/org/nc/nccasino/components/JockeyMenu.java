@@ -20,6 +20,7 @@ import java.util.function.Consumer;
 
 
 public class JockeyMenu extends Menu {
+    @SuppressWarnings("unused")
     private UUID dealerId;
     private final Nccasino plugin;
     private final String returnName;
