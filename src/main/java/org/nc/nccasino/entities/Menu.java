@@ -140,44 +140,9 @@ public abstract class Menu extends DealerInventory {
         this.returnMessage = returnMessage;
         this.player = player;
         this.returnCallback = returnCallback;
-        this.dealer = Dealer.getMobFromId(dealerId);
         if (this.dealer == null) {
-            // Try to find the dealer by following the passenger/vehicle chain
-            Mob foundDealer = null;
-            for (Entity entity : player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5)) {
-                if (entity instanceof Mob mob) {
-                    // Check if this mob is a dealer
-                    if (Dealer.isDealer(mob) && Dealer.getUniqueId(mob).equals(this.dealerId)) {
-                        foundDealer = mob;
-                        break;
-                    }
-                    
-                    // Check passengers
-                    for (Entity passenger : mob.getPassengers()) {
-                        if (passenger instanceof Mob passengerMob && 
-                            Dealer.isDealer(passengerMob) && 
-                            Dealer.getUniqueId(passengerMob).equals(this.dealerId)) {
-                            foundDealer = passengerMob;
-                            break;
-                        }
-                    }
-                    if (foundDealer != null) break;
-                    
-                    // Check vehicle
-                    Entity vehicle = mob.getVehicle();
-                    while (vehicle != null) {
-                        if (vehicle instanceof Mob vehicleMob && 
-                            Dealer.isDealer(vehicleMob) && 
-                            Dealer.getUniqueId(vehicleMob).equals(this.dealerId)) {
-                            foundDealer = vehicleMob;
-                            break;
-                        }
-                        vehicle = vehicle.getVehicle();
-                    }
-                    if (foundDealer != null) break;
-                }
-            }
-            this.dealer = foundDealer;
+            // Use the new findDealer method to locate the dealer
+            this.dealer = Dealer.findDealer(this.dealerId, player.getLocation());
         }
      
         // Register this menu as an event listener
@@ -282,13 +247,7 @@ public abstract class Menu extends DealerInventory {
             }
 
             if (player.getOpenInventory().getTopInventory().getHolder() instanceof Menu menu) {
-                Mob dealer = (Mob) player.getWorld()
-                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                .filter(entity -> entity instanceof Mob)
-                .map(entity -> (Mob) entity)
-                .filter(v -> Dealer.isDealer(v)
-                             && Dealer.getUniqueId(v).equals(menu.dealerId))
-                .findFirst().orElse(null);
+                Mob dealer = Dealer.findDealer(dealerId, player.getLocation());
                 if (Dealer.getUniqueId(dealer).equals(dealerId) || dealer.getUniqueId().equals(dealerId)) {
                     players.add(player);
                 }

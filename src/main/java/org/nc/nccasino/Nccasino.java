@@ -538,11 +538,15 @@ public final class Nccasino extends JavaPlugin implements Listener {
     public Mob getDealerByInternalName(String internalName) {
         for (var world : Bukkit.getWorlds()) {
             for (Entity entity : world.getEntities()) {
-                if (entity instanceof Mob mov) {
-                    PersistentDataContainer dataContainer = mov.getPersistentDataContainer();
+                if (entity instanceof Mob mob) {
+                    PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
                     String storedInternalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
                     if (internalName.equals(storedInternalName)) {
-                        return mov;
+                        UUID dealerId = Dealer.getUniqueId(mob);
+                        if (dealerId != null) {
+                            return Dealer.findDealer(dealerId, mob.getLocation());
+                        }
+                        return mob;
                     }
                 }
             }

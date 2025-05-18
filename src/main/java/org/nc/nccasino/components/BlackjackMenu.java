@@ -35,17 +35,7 @@ public class BlackjackMenu extends Menu {
         this.dealerId = dealerId;
         this.plugin = plugin;
         this.returnName=returnName;
-        this.dealer = Dealer.getMobFromId(dealerId);
-        if (this.dealer == null) {
-            // Attempt to find a nearby Dealer if not found above
-            this.dealer = (Mob) player.getWorld()
-                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                .filter(entity -> entity instanceof Mob)
-                .map(entity -> (Mob) entity)
-                .filter(v -> Dealer.isDealer(v)
-                             && Dealer.getUniqueId(v).equals(this.dealerId))
-                .findFirst().orElse(null);
-        }
+        this.dealer = Dealer.findDealer(dealerId, player.getLocation());
 
         slotMapping.put(SlotOption.EXIT, 8);
         slotMapping.put(SlotOption.RETURN, 0);

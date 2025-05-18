@@ -103,38 +103,18 @@ public class AdminMenu extends Menu {
      * Constructor: creates an AdminInventory for a specific dealer, owned by a specific player.
      */
     public AdminMenu(UUID dealerId, Player player, Nccasino plugin) {
-
         super(
             player, 
             plugin, 
             dealerId, 
-            Dealer.getInternalName((Mob) player.getWorld()
-            .getNearbyEntities(player.getLocation(), 20, 20, 20).stream()
-            .filter(entity -> entity instanceof Mob)
-            .map(entity -> (Mob) entity)
-            .filter(v -> Dealer.isDealer(v)
-                        && Dealer.getUniqueId(v).equals(dealerId))
-            .findFirst().orElse(null))
-    
-            + "'s Admin Menu",
-                    45,
-                    null,
-                    null
+            Dealer.getInternalName(Dealer.findDealer(dealerId, player.getLocation())) + "'s Admin Menu",
+            45,
+            null,
+            null
         );
         // Find the actual Villager instance (the "dealer")
-        this.dealer = Dealer.getMobFromId(dealerId);
-        if (this.dealer == null) {
-            // Attempt to find a nearby Dealer if not found above
-            this.dealer = (Mob) player.getWorld()
-                .getNearbyEntities(player.getLocation(), 20, 20, 20).stream()
-                .filter(entity -> entity instanceof Mob)
-                .map(entity -> (Mob) entity)
-                .filter(v -> Dealer.isDealer(v)
-                             && Dealer.getUniqueId(v).equals(this.dealerId))
-                .findFirst().orElse(null);
-        }
+        this.dealer = Dealer.findDealer(dealerId, player.getLocation());
 
-//////////VVVVVVVVVVVVVexpand to retrieve mode from config once thats set up
         this.currencyMode = CurrencyMode.VANILLA;
         adminInventories.put(this.ownerId, this);
         setupSlotMapping();
@@ -490,17 +470,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     private void handleJockeyMenu(Player player) {
         // Ensure we have a valid dealer reference
         if (dealer == null) {
-            dealer = Dealer.getMobFromId(dealerId);
-            if (dealer == null) {
-                // Attempt to find a nearby Dealer if not found above
-                dealer = (Mob) player.getWorld()
-                    .getNearbyEntities(player.getLocation(), 20, 20, 20).stream()
-                    .filter(entity -> entity instanceof Mob)
-                    .map(entity -> (Mob) entity)
-                    .filter(v -> Dealer.isDealer(v)
-                                && Dealer.getUniqueId(v).equals(dealerId))
-                    .findFirst().orElse(null);
-            }
+            dealer = Dealer.findDealer(dealerId, player.getLocation());
         }
 
         if (dealer == null) {

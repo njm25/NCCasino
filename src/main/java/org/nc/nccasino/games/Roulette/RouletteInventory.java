@@ -461,11 +461,7 @@ private void openBettingTable(Player player) {
     switchingPlayers.add(player); // Mark the player as switching inventories
 
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        Mob dealer = (Mob) player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-            .filter(entity -> entity instanceof Mob)
-            .map(entity -> (Mob) entity)
-            .filter(v -> Dealer.isDealer(v) && Dealer.getUniqueId(v).equals(this.dealerId))
-            .findFirst().orElse(null);
+        Mob dealer = Dealer.findDealer(dealerId, player.getLocation());
         if (dealer != null) {
             Stack<Pair<String, Integer>> bets = getPlayerBets(player.getUniqueId());
             String internalName = Dealer.getInternalName(dealer);

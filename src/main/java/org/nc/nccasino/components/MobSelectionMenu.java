@@ -221,29 +221,12 @@ public class MobSelectionMenu extends Menu {
             player, 
             plugin, 
             dealerId, 
-                Dealer.getInternalName((Mob) player.getWorld()
-                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                .filter(entity -> entity instanceof Mob)
-                .map(entity -> (Mob) entity)
-                .filter(v -> Dealer.isDealer(v) && Dealer.getUniqueId(v).equals(dealerId)).findFirst().orElse(null))
-                + "'s Mob Settings"
-                , 
+            Dealer.getInternalName(Dealer.findDealer(dealerId, player.getLocation())) + "'s Mob Settings",
             54, 
             returnName, 
             returnToAdmin
         ); 
-        this.dealer = Dealer.getMobFromId(dealerId);
-        if (this.dealer == null) {
-            // Attempt to find a nearby Dealer if not found above
-            this.dealer = (Mob) player.getWorld()
-                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                .filter(entity -> entity instanceof Mob)
-                .map(entity -> (Mob) entity)
-                .filter(v -> Dealer.isDealer(v)
-                             && Dealer.getUniqueId(v).equals(this.dealerId))
-                .findFirst().orElse(null);
-        }
-     
+        this.dealer = Dealer.findDealer(dealerId, player.getLocation());
 
         initializeMenu();
     }
