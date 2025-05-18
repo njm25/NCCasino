@@ -20,6 +20,8 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Axolotl;
 import org.bukkit.entity.Cat;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fox;
 import org.bukkit.entity.Frog;
 import org.bukkit.entity.Horse;
@@ -106,7 +108,7 @@ public class AdminMenu extends Menu {
             plugin, 
             dealerId, 
             Dealer.getInternalName((Mob) player.getWorld()
-            .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
+            .getNearbyEntities(player.getLocation(), 20, 20, 20).stream()
             .filter(entity -> entity instanceof Mob)
             .map(entity -> (Mob) entity)
             .filter(v -> Dealer.isDealer(v)
@@ -123,7 +125,7 @@ public class AdminMenu extends Menu {
         if (this.dealer == null) {
             // Attempt to find a nearby Dealer if not found above
             this.dealer = (Mob) player.getWorld()
-                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
+                .getNearbyEntities(player.getLocation(), 20, 20, 20).stream()
                 .filter(entity -> entity instanceof Mob)
                 .map(entity -> (Mob) entity)
                 .filter(v -> Dealer.isDealer(v)
@@ -1340,11 +1342,51 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     
         // Successful teleport
         if (chunk.isLoaded() && dealer != null && dealer.getUniqueId().equals(dealerId)) {
-             DealerEventListener.allowAdminTeleport(dealer.getUniqueId()); // Allow this teleport
-             dealer.setAI(true);
-            dealer.teleport(newLocation);
+            DealerEventListener.allowAdminTeleport(dealer.getUniqueId()); // Allow this teleport
+            
+            // Find the bottom-most vehicle in the stack
+            Mob bottomMob = dealer;
+            while (bottomMob.getVehicle() instanceof Mob) {
+                bottomMob = (Mob) bottomMob.getVehicle();
+            }
+            
+            // Store all mobs in the stack from bottom to top
+            List<Mob> stackMobs = new ArrayList<>();
+            Mob current = bottomMob;
+            while (current != null) {
+                stackMobs.add(current);
+                if (!current.getPassengers().isEmpty() && current.getPassengers().get(0) instanceof Mob) {
+                    current = (Mob) current.getPassengers().get(0);
+                } else {
+                    current = null;
+                }
+            }
+            
+            // Temporarily unmount everything
+            for (Mob mob : stackMobs) {
+                if (mob.getVehicle() != null) {
+                    mob.getVehicle().removePassenger(mob);
+                }
+                for (Entity passenger : new ArrayList<>(mob.getPassengers())) {
+                    mob.removePassenger(passenger);
+                }
+            }
+            
+            // Teleport the bottom mob first
+            bottomMob.setAI(true);
+            bottomMob.teleport(newLocation);
+            bottomMob.setAI(false);
+            
+            // Remount everything in order from bottom to top
+            for (int i = 0; i < stackMobs.size() - 1; i++) {
+                Mob currentMob = stackMobs.get(i);
+                Mob nextMob = stackMobs.get(i + 1);
+                currentMob.addPassenger(nextMob);
+            }
+            
+            // Save the new location
             saveDealerLocation(newLocation);
-            dealer.setAI(false);
+            
             if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null) {
                 player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER, 1.0f, 1.0f);
             }
@@ -1378,8 +1420,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         } else if (attempt == 10) {
             Bukkit.getScheduler().runTaskLater(plugin, () -> attemptTeleport(player, newLocation, dealerId, 30), 30L);
         } else {
-            
-        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
+            Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch (messPref) {
                 case STANDARD:
                     player.sendMessage("§cFailed to move dealer. Chunk did not load.");

@@ -234,6 +234,14 @@ public class JockeyMobMenu extends Menu {
             if (targetJockey != null) {
                 // Editing existing jockey
                 Mob newMob = (Mob) player.getWorld().spawnEntity(player.getLocation(), selectedType);
+                newMob.setAI(false);
+                newMob.setPersistent(true);
+                newMob.setRemoveWhenFarAway(false);
+                newMob.setGravity(false);
+                newMob.setSilent(true);
+                newMob.setCollidable(false);
+                newMob.setInvulnerable(true);
+                
                 targetJockey.setMob(newMob);
                 // Keep the existing custom name when editing
                 if (targetJockey.getCustomName() != null) {
@@ -256,6 +264,13 @@ public class JockeyMobMenu extends Menu {
                         if (vehicleType != null) {
                             // Spawn vehicle at dealer location
                             Mob vehicle = (Mob) dealer.getWorld().spawnEntity(dealerLoc, vehicleType);
+                            vehicle.setAI(false);
+                            vehicle.setPersistent(true);
+                            vehicle.setRemoveWhenFarAway(false);
+                            vehicle.setGravity(false);
+                            vehicle.setSilent(true);
+                            vehicle.setCollidable(false);
+                            vehicle.setInvulnerable(true);
                             vehicle.teleport(dealerLoc);
                             vehicle.setRotation(yaw, 0);
                             
@@ -269,6 +284,13 @@ public class JockeyMobMenu extends Menu {
                             
                             // Spawn passenger at dealer location
                             Mob newMob = (Mob) dealer.getWorld().spawnEntity(dealerLoc, selectedType);
+                            newMob.setAI(false);
+                            newMob.setPersistent(true);
+                            newMob.setRemoveWhenFarAway(false);
+                            newMob.setGravity(false);
+                            newMob.setSilent(true);
+                            newMob.setCollidable(false);
+                            newMob.setInvulnerable(true);
                             newMob.teleport(dealerLoc);
                             newMob.setRotation(yaw, 0);
                             
@@ -301,7 +323,13 @@ public class JockeyMobMenu extends Menu {
                         Mob newMob = (Mob) dealer.getWorld().spawnEntity(dealerLoc, selectedType);
                         newMob.teleport(dealerLoc);
                         newMob.setRotation(yaw, 0);
-                        
+                        newMob.setPersistent(true);
+                        newMob.setRemoveWhenFarAway(false);
+                        newMob.setGravity(false);
+                        newMob.setSilent(true);
+                        newMob.setCollidable(false);
+                        newMob.setInvulnerable(true);
+                        newMob.setAI(false);
                         // Mount the new passenger on top
                         topMob.addPassenger(newMob);
                         newMob.setCustomName(dealerName);
@@ -369,6 +397,13 @@ public class JockeyMobMenu extends Menu {
                     // Create new mob at the exact position of current bottom
                     Location bottomLoc = bott.getLocation();
                     Mob newMob = (Mob) dealer.getWorld().spawnEntity(bottomLoc, selectedType);
+                    newMob.setAI(false);
+                    newMob.setPersistent(true);
+                    newMob.setRemoveWhenFarAway(false);
+                    newMob.setGravity(false);
+                    newMob.setSilent(true);
+                    newMob.setCollidable(false);
+                    newMob.setInvulnerable(true);
                     newMob.teleport(bottomLoc);
                     newMob.setRotation(bott.getLocation().getYaw(), 0);
                     
@@ -472,7 +507,13 @@ public class JockeyMobMenu extends Menu {
                 // Spawn new mob near the parent (temporary location)
                 Mob parentMob = parentNode != null ? parentNode.getMob() : jockeyManager.getDealer();
                 Mob newMob = (Mob) parentMob.getWorld().spawnEntity(parentMob.getLocation(), selectedType);
-                
+                newMob.setAI(false);
+                newMob.setPersistent(true);
+                newMob.setRemoveWhenFarAway(false);
+                newMob.setGravity(false);
+                newMob.setSilent(true);
+                newMob.setCollidable(false);
+                newMob.setInvulnerable(true);
                 // Get the dealer's name
                 String dealerName = jockeyManager.getDealer().getCustomName();
                 if (dealerName == null || dealerName.isEmpty()) {

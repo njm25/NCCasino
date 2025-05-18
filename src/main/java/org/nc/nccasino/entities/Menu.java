@@ -2,6 +2,7 @@ package org.nc.nccasino.entities;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -141,14 +142,42 @@ public abstract class Menu extends DealerInventory {
         this.returnCallback = returnCallback;
         this.dealer = Dealer.getMobFromId(dealerId);
         if (this.dealer == null) {
-            // Attempt to find a nearby Dealer if not found above
-            this.dealer = (Mob) player.getWorld()
-                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                .filter(entity -> entity instanceof Mob)
-                .map(entity -> (Mob) entity)
-                .filter(v -> Dealer.isDealer(v)
-                             && Dealer.getUniqueId(v).equals(this.dealerId))
-                .findFirst().orElse(null);
+            // Try to find the dealer by following the passenger/vehicle chain
+            Mob foundDealer = null;
+            for (Entity entity : player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5)) {
+                if (entity instanceof Mob mob) {
+                    // Check if this mob is a dealer
+                    if (Dealer.isDealer(mob) && Dealer.getUniqueId(mob).equals(this.dealerId)) {
+                        foundDealer = mob;
+                        break;
+                    }
+                    
+                    // Check passengers
+                    for (Entity passenger : mob.getPassengers()) {
+                        if (passenger instanceof Mob passengerMob && 
+                            Dealer.isDealer(passengerMob) && 
+                            Dealer.getUniqueId(passengerMob).equals(this.dealerId)) {
+                            foundDealer = passengerMob;
+                            break;
+                        }
+                    }
+                    if (foundDealer != null) break;
+                    
+                    // Check vehicle
+                    Entity vehicle = mob.getVehicle();
+                    while (vehicle != null) {
+                        if (vehicle instanceof Mob vehicleMob && 
+                            Dealer.isDealer(vehicleMob) && 
+                            Dealer.getUniqueId(vehicleMob).equals(this.dealerId)) {
+                            foundDealer = vehicleMob;
+                            break;
+                        }
+                        vehicle = vehicle.getVehicle();
+                    }
+                    if (foundDealer != null) break;
+                }
+            }
+            this.dealer = foundDealer;
         }
      
         // Register this menu as an event listener
