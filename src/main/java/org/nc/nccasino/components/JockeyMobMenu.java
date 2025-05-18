@@ -6,6 +6,8 @@ import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
@@ -316,7 +318,20 @@ public class JockeyMobMenu extends Menu {
                         // Find the topmost jockey
                         Mob topMob = dealer;
                         while (!topMob.getPassengers().isEmpty()) {
-                            topMob = (Mob) topMob.getPassengers().get(0);
+                            Entity passenger = topMob.getPassengers().get(0);
+                            if (passenger instanceof Mob) {
+                                topMob = (Mob) passenger;
+                            } else {
+                                break; // Stop if we hit a non-Mob entity
+                            }
+                        }
+                        
+                        // Check for and remove any armor stands
+                        for (Entity passenger : dealer.getPassengers()) {
+                            if (passenger instanceof ArmorStand) {
+                                passenger.remove();
+                                break;
+                            }
                         }
                         
                         // Spawn new passenger at dealer location
@@ -337,14 +352,6 @@ public class JockeyMobMenu extends Menu {
                         
                         // Hide the name of the jockey it's mounted on
                         topMob.setCustomNameVisible(false);
-                        
-                        // Remove any existing silverfish
-                        for (JockeyNode node : jockeyManager.getJockeys()) {
-                            if (node.getMob().getType() == EntityType.SILVERFISH) {
-                                node.getMob().remove();
-                                break;
-                            }
-                        }
                         
                         player.sendMessage("§aAdded new passenger: " + formatEntityName(selectedType.name()));
                     }
@@ -564,7 +571,20 @@ public class JockeyMobMenu extends Menu {
                         // Find the topmost jockey
                         Mob topMob = dealer;
                         while (!topMob.getPassengers().isEmpty()) {
-                            topMob = (Mob) topMob.getPassengers().get(0);
+                            Entity passenger = topMob.getPassengers().get(0);
+                            if (passenger instanceof Mob) {
+                                topMob = (Mob) passenger;
+                            } else {
+                                break; // Stop if we hit a non-Mob entity
+                            }
+                        }
+                        
+                        // Check for and remove any armor stands
+                        for (Entity passenger : dealer.getPassengers()) {
+                            if (passenger instanceof ArmorStand) {
+                                passenger.remove();
+                                break;
+                            }
                         }
                         
                         // Mount the new passenger on top
@@ -575,13 +595,7 @@ public class JockeyMobMenu extends Menu {
                         // Hide the name of the jockey it's mounted on
                         topMob.setCustomNameVisible(false);
                         
-                        // Remove any existing silverfish
-                        for (JockeyNode node : jockeyManager.getJockeys()) {
-                            if (node.getMob().getType() == EntityType.SILVERFISH) {
-                                node.getMob().remove();
-                                break;
-                            }
-                        }
+                        player.sendMessage("§aAdded new passenger: " + formatEntityName(selectedType.name()));
                     } else {
                         // Add as vehicle (below stack)
                         Mob dealer = jockeyManager.getDealer();

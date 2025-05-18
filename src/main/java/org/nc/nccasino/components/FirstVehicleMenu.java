@@ -5,6 +5,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -106,19 +107,20 @@ public class FirstVehicleMenu extends Menu {
                 JockeyNode dealerNode = jockeyManager.getJockey(0);
                 vehicleNode.mountAsVehicle(dealerNode);
                 
-                // Spawn invisible silverfish at dealer location
-                Mob silverfish = (Mob) dealer.getWorld().spawnEntity(dealerLoc, EntityType.SILVERFISH);
-                silverfish.setCustomNameVisible(false);
-                silverfish.setInvisible(true);
-                silverfish.setAI(false); // Make silverfish AFK
+                // Spawn invisible armor stand at dealer location
+                ArmorStand armorStand = (ArmorStand) dealer.getWorld().spawnEntity(dealerLoc, EntityType.ARMOR_STAND);
+                armorStand.setVisible(false);
+                armorStand.setGravity(false);
+                armorStand.setSmall(true);
+                armorStand.setMarker(true);
+                armorStand.setCustomName(dealer.getCustomName());
+                armorStand.setCustomNameVisible(true);
                 
-                // Add silverfish as passenger to dealer
-                JockeyNode passengerNode = new JockeyNode(silverfish, 2, true);
-                passengerNode.setCustomName(""); // Empty name
-                passengerNode.mountOn(dealerNode);
+                // Add armor stand as passenger to dealer directly
+                dealer.addPassenger(armorStand);
                 
                 // Update name visibility
-                dealer.setCustomNameVisible(true);
+                dealer.setCustomNameVisible(false);
                 vehicle.setCustomNameVisible(false);
                 
                 player.sendMessage("§aAdded vehicle and invisible passenger");
@@ -132,12 +134,14 @@ public class FirstVehicleMenu extends Menu {
                         jockeyManager.refresh();
                         // Return to JockeyMenu
                         if (JockeyMenu.jockeyInventories.containsKey(player.getUniqueId())) {
+                            JockeyMenu temp=(JockeyMenu)JockeyMenu.jockeyInventories.get(player.getUniqueId());
+                            temp.initializeMenu();
                             player.openInventory(JockeyMenu.jockeyInventories.get(player.getUniqueId()).getInventory());
                         } else if (returnCallback != null) {
                             returnCallback.accept(player);
                         }
                     }
-                }.runTaskLater(plugin, 10L);
+                }.runTaskLater(plugin, 2L);
                 break;
                 
             case PICK_PASSENGER:

@@ -19,6 +19,7 @@ import org.bukkit.SoundCategory;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Axolotl;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Cat;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -487,6 +488,26 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     }
 
     private void handleJockeyMenu(Player player) {
+        // Ensure we have a valid dealer reference
+        if (dealer == null) {
+            dealer = Dealer.getMobFromId(dealerId);
+            if (dealer == null) {
+                // Attempt to find a nearby Dealer if not found above
+                dealer = (Mob) player.getWorld()
+                    .getNearbyEntities(player.getLocation(), 20, 20, 20).stream()
+                    .filter(entity -> entity instanceof Mob)
+                    .map(entity -> (Mob) entity)
+                    .filter(v -> Dealer.isDealer(v)
+                                && Dealer.getUniqueId(v).equals(dealerId))
+                    .findFirst().orElse(null);
+            }
+        }
+
+        if (dealer == null) {
+            player.sendMessage("§cCould not find dealer.");
+            return;
+        }
+
         JockeyMenu jockeyMenu = new JockeyMenu(
             dealerId,
             player,
@@ -1362,6 +1383,17 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 }
             }
             
+            // Store armor stand info if present
+            ArmorStand armorStand = null;
+            String armorStandName = null;
+            for (Entity passenger : dealer.getPassengers()) {
+                if (passenger instanceof ArmorStand) {
+                    armorStand = (ArmorStand) passenger;
+                    armorStandName = armorStand.getCustomName();
+                    break;
+                }
+            }
+            
             // Temporarily unmount everything
             for (Mob mob : stackMobs) {
                 if (mob.getVehicle() != null) {
@@ -1382,6 +1414,24 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 Mob currentMob = stackMobs.get(i);
                 Mob nextMob = stackMobs.get(i + 1);
                 currentMob.addPassenger(nextMob);
+            }
+            
+            // Respawn armor stand if it existed
+            if (armorStand != null) {
+                // Remove old armor stand
+                armorStand.remove();
+                
+                // Spawn new armor stand at dealer location
+                ArmorStand newArmorStand = (ArmorStand) dealer.getWorld().spawnEntity(newLocation, EntityType.ARMOR_STAND);
+                newArmorStand.setVisible(false);
+                newArmorStand.setGravity(false);
+                newArmorStand.setSmall(true);
+                newArmorStand.setMarker(true);
+                newArmorStand.setCustomName(armorStandName);
+                newArmorStand.setCustomNameVisible(true);
+                
+                // Add armor stand as passenger to dealer
+                dealer.addPassenger(newArmorStand);
             }
             
             // Save the new location
