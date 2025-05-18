@@ -608,4 +608,61 @@ public class Dealer {
         Dealer dealer = dealers.get(dealerId);
         return (dealer != null) ? dealer.getMob() : null;
     }
+
+    /**
+     * Finds a dealer by ID using both radius search and stack traversal.
+     * This is the preferred method for finding dealers as it handles both
+     * direct lookup and complex stack scenarios.
+     * 
+     * @param dealerId The UUID of the dealer to find
+     * @param location The location to search from (for radius search)
+     * @param radius The radius to search within (defaults to 20 if not specified)
+     * @return The found dealer Mob, or null if not found
+     */
+    public static Mob findDealer(UUID dealerId, Location location, int radius) {
+        // First try direct lookup
+        Mob dealer = getMobFromId(dealerId);
+        if (dealer != null && dealer.isValid() && !dealer.isDead()) {
+            return dealer;
+        }
+
+        // Then try radius search with stack traversal
+        for (Entity entity : location.getWorld().getNearbyEntities(location, radius, radius, radius)) {
+            if (!(entity instanceof Mob mob)) continue;
+
+            // Check if this mob is the dealer
+            if (Dealer.isDealer(mob) && Dealer.getUniqueId(mob).equals(dealerId)) {
+                return mob;
+            }
+
+            // Check passengers
+            for (Entity passenger : mob.getPassengers()) {
+                if (passenger instanceof Mob passengerMob && 
+                    Dealer.isDealer(passengerMob) && 
+                    Dealer.getUniqueId(passengerMob).equals(dealerId)) {
+                    return passengerMob;
+                }
+            }
+
+            // Check vehicle chain
+            Entity vehicle = mob.getVehicle();
+            while (vehicle != null) {
+                if (vehicle instanceof Mob vehicleMob && 
+                    Dealer.isDealer(vehicleMob) && 
+                    Dealer.getUniqueId(vehicleMob).equals(dealerId)) {
+                    return vehicleMob;
+                }
+                vehicle = vehicle.getVehicle();
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Overloaded version of findDealer that uses default radius of 20
+     */
+    public static Mob findDealer(UUID dealerId, Location location) {
+        return findDealer(dealerId, location, 20);
+    }
 }
