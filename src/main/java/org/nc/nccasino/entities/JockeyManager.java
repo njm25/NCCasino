@@ -361,7 +361,17 @@ public class JockeyManager {
     }
 
     public int getJockeyCount() {
-        return jockeys.size() - 1; // Exclude the dealer
+        return jockeys.size() - 1; // Exclude dealer
+    }
+
+    public int getVehicleCount() {
+        int count = 0;
+        Mob current = dealer;
+        while (current.getVehicle() instanceof Mob) {
+            count++;
+            current = (Mob) current.getVehicle();
+        }
+        return count;
     }
 
     public void clearJockeys() {

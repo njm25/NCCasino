@@ -3,6 +3,7 @@ package org.nc.nccasino.components;
 import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
 import org.bukkit.Material;
+import org.bukkit.Location;
 import org.bukkit.entity.*;
 import org.bukkit.entity.Cat.Type;
 import org.bukkit.event.HandlerList;
@@ -233,19 +234,63 @@ public class JockeyOptionsMenu extends Menu {
                 int actualIndex = (currentPage - 1) * PAGE_SIZE + slot;
                 if (actualIndex >= spawnEggList.size()) return;
                 
-                // Store references before changing anything
-                //Mob oldMob = jockey.getMob();
-                JockeyNode parentNode = jockey.getParent();
-                JockeyNode childNode = jockey.getChild();
+                // Store the original location and rotation
+                Location originalLoc = jockey.getMob().getLocation().clone();
+                float originalYaw = jockey.getMob().getLocation().getYaw();
                 
-                // First, detach any child to prevent it from being removed with the old mob
-                if (childNode != null) {
-                    childNode.unmount();
+                // Find the bottom-most mob in the stack
+                Mob bottomMob = jockey.getMob();
+                while (bottomMob.getVehicle() instanceof Mob) {
+                    bottomMob = (Mob) bottomMob.getVehicle();
                 }
                 
-                // Spawn new mob near the parent (temporary location)
-                Mob parentMob = parentNode != null ? parentNode.getMob() : jockeyManager.getDealer();
-                Mob newMob = (Mob) parentMob.getWorld().spawnEntity(parentMob.getLocation(), selectedType);
+                // Store all mobs in the stack from bottom to top
+                List<Mob> stackMobs = new ArrayList<>();
+                Mob current = bottomMob;
+                while (current != null) {
+                    stackMobs.add(current);
+                    if (!current.getPassengers().isEmpty() && current.getPassengers().get(0) instanceof Mob) {
+                        current = (Mob) current.getPassengers().get(0);
+                    } else {
+                        current = null;
+                    }
+                }
+                
+                // Find the index of our jockey in the stack
+                int jockeyIndex = -1;
+                for (int i = 0; i < stackMobs.size(); i++) {
+                    if (stackMobs.get(i).equals(jockey.getMob())) {
+                        jockeyIndex = i;
+                        break;
+                    }
+                }
+                
+                if (jockeyIndex == -1) {
+                    player.sendMessage("§cFailed to find jockey in stack");
+                    return;
+                }
+                
+                // Temporarily unmount everything
+                for (Mob mob : stackMobs) {
+                    if (mob.getVehicle() != null) {
+                        mob.getVehicle().removePassenger(mob);
+                    }
+                    for (Entity passenger : new ArrayList<>(mob.getPassengers())) {
+                        mob.removePassenger(passenger);
+                    }
+                }
+                
+                // Spawn new mob at the exact original location
+                Mob newMob = (Mob) jockey.getMob().getWorld().spawnEntity(originalLoc, selectedType);
+                newMob.setAI(false);
+                newMob.setPersistent(true);
+                newMob.setRemoveWhenFarAway(false);
+                newMob.setGravity(false);
+                newMob.setSilent(true);
+                newMob.setCollidable(false);
+                newMob.setInvulnerable(true);
+                newMob.teleport(originalLoc);
+                newMob.setRotation(originalYaw, 0);
                 
                 // Get the dealer's name
                 String dealerName = jockeyManager.getDealer().getCustomName();
@@ -257,33 +302,38 @@ public class JockeyOptionsMenu extends Menu {
                 if (jockeyManager.changeMobType(jockey.getPosition(), newMob)) {
                     // Set the dealer's name
                     newMob.setCustomName(dealerName);
-                    newMob.setCustomNameVisible(true);
+                    newMob.setCustomNameVisible(false);
                     
-                    // First attach this mob to its parent
-                    if (parentNode != null) {
-                        parentMob.addPassenger(newMob);
+                    // Replace the old mob in our stack list with the new one
+                    stackMobs.set(jockeyIndex, newMob);
+                    
+                    // Remount everything in order from bottom to top
+                    for (int i = 0; i < stackMobs.size() - 1; i++) {
+                        Mob currentMob = stackMobs.get(i);
+                        Mob nextMob = stackMobs.get(i + 1);
+                        currentMob.addPassenger(nextMob);
+                        
+                        // Update visibility - only top mob should show name
+                        currentMob.setCustomNameVisible(false);
                     }
                     
-                    // Then reattach the child if it existed
-                    if (childNode != null) {
-                        Mob childMob = childNode.getMob();
-                        newMob.addPassenger(childMob);
-                        childNode.setParent(jockey);
-                        jockey.setChild(childNode);
-                    }
+                    // Refresh the jockey manager to ensure all relationships are correct
+                    jockeyManager.refresh();
                     
                     player.sendMessage("§aChanged jockey to " + formatEntityName(selectedType.name()));
                     playDefaultSound(player);
                     if (returnCallback != null) {
+                        JockeyMenu temp = (JockeyMenu)JockeyMenu.jockeyInventories.get(player.getUniqueId());
+                        temp.initializeMenu();
                         returnCallback.accept(player);
                     }
                 } else {
                     player.sendMessage("§cFailed to change jockey");
                     newMob.remove();
                     
-                    // If we failed, reattach the child to maintain stack
-                    if (childNode != null) {
-                        childNode.mountOn(jockey);
+                    // If we failed, remount everything in original order
+                    for (int i = 0; i < stackMobs.size() - 1; i++) {
+                        stackMobs.get(i).addPassenger(stackMobs.get(i + 1));
                     }
                 }
             }
