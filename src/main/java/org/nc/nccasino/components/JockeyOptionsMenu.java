@@ -1,5 +1,6 @@
 package org.nc.nccasino.components;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
 import org.bukkit.Material;
@@ -10,6 +11,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.JockeyNode;
@@ -362,9 +364,22 @@ public class JockeyOptionsMenu extends Menu {
                     player.sendMessage("§aChanged jockey to " + formatEntityName(selectedType.name()));
                     playDefaultSound(player);
                     if (returnCallback != null) {
-                        JockeyMenu temp = (JockeyMenu)JockeyMenu.jockeyInventories.get(player.getUniqueId());
-                        temp.initializeMenu();
-                        returnCallback.accept(player);
+                        // Schedule the return with a delay to ensure proper updates
+                        new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                // First update the JockeyMenu if it exists
+                                JockeyMenu temp = JockeyMenu.jockeyInventories.get(player.getUniqueId());
+                                if (temp != null) {
+                                    // Create a fresh JockeyManager to ensure we have the current state
+                                    temp.refreshJockeyManager();
+                                    temp.initializeMenu();
+                                }
+                                
+                                // Then return to it
+                                returnCallback.accept(player);
+                            }
+                        }.runTaskLater(plugin, 2L); // 2 tick delay (0.1 seconds)
                     }
                 } else {
                     player.sendMessage("§cFailed to change jockey");

@@ -20,12 +20,11 @@ import java.util.function.Consumer;
 
 
 public class JockeyMenu extends Menu {
-    @SuppressWarnings("unused")
     private UUID dealerId;
     private final Nccasino plugin;
     private final String returnName;
     private Mob dealer;
-    private final JockeyManager jockeyManager;
+    private JockeyManager jockeyManager;
     public static final Map<UUID, JockeyMenu> jockeyInventories = new HashMap<>();
     public static final Map<UUID, Consumer<Player>> returnCallbacks = new HashMap<>();
     private Map<Integer, JockeyNode> slotToJockeyMap;
@@ -331,5 +330,10 @@ public class JockeyMenu extends Menu {
         jockeyInventories.remove(ownerId);
         returnCallbacks.remove(ownerId);
         this.delete();
+    }
+
+    public void refreshJockeyManager() {
+        // Create a fresh JockeyManager to ensure we have the current state
+        this.jockeyManager = new JockeyManager(dealer);
     }
 } 
