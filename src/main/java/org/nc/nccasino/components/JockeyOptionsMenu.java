@@ -256,6 +256,17 @@ public class JockeyOptionsMenu extends Menu {
                     }
                 }
                 
+                // Store armor stand info if present
+                ArmorStand armorStand = null;
+                String armorStandName = null;
+                for (Entity passenger : jockeyManager.getDealer().getPassengers()) {
+                    if (passenger instanceof ArmorStand) {
+                        armorStand = (ArmorStand) passenger;
+                        armorStandName = armorStand.getCustomName();
+                        break;
+                    }
+                }
+                
                 // Find the index of our jockey in the stack
                 int jockeyIndex = -1;
                 for (int i = 0; i < stackMobs.size(); i++) {
@@ -278,6 +289,11 @@ public class JockeyOptionsMenu extends Menu {
                     for (Entity passenger : new ArrayList<>(mob.getPassengers())) {
                         mob.removePassenger(passenger);
                     }
+                }
+                
+                // If there was an armor stand, remove it
+                if (armorStand != null) {
+                    armorStand.remove();
                 }
                 
                 // Spawn new mob at the exact original location
@@ -312,9 +328,32 @@ public class JockeyOptionsMenu extends Menu {
                         Mob currentMob = stackMobs.get(i);
                         Mob nextMob = stackMobs.get(i + 1);
                         currentMob.addPassenger(nextMob);
-                        
-                        // Update visibility - only top mob should show name
                         currentMob.setCustomNameVisible(false);
+                    }
+                    
+                    // Check if we need to respawn the armor stand
+                    // Only respawn if there are vehicles but no regular passengers
+                    boolean hasVehicles = jockeyManager.getDealer().getVehicle() != null;
+                    boolean hasPassengers = false;
+                    for (Entity passenger : jockeyManager.getDealer().getPassengers()) {
+                        if (passenger instanceof Mob) {
+                            hasPassengers = true;
+                            break;
+                        }
+                    }
+                    
+                    if (hasVehicles && !hasPassengers) {
+                        // Spawn new armor stand at dealer location
+                        ArmorStand newArmorStand = (ArmorStand) jockeyManager.getDealer().getWorld().spawnEntity(originalLoc, EntityType.ARMOR_STAND);
+                        newArmorStand.setVisible(false);
+                        newArmorStand.setGravity(false);
+                        newArmorStand.setSmall(true);
+                        newArmorStand.setMarker(true);
+                        newArmorStand.setCustomName(armorStandName != null ? armorStandName : dealerName);
+                        newArmorStand.setCustomNameVisible(true);
+                        
+                        // Add armor stand as passenger to dealer
+                        jockeyManager.getDealer().addPassenger(newArmorStand);
                     }
                     
                     // Refresh the jockey manager to ensure all relationships are correct
@@ -334,6 +373,18 @@ public class JockeyOptionsMenu extends Menu {
                     // If we failed, remount everything in original order
                     for (int i = 0; i < stackMobs.size() - 1; i++) {
                         stackMobs.get(i).addPassenger(stackMobs.get(i + 1));
+                    }
+                    
+                    // Restore armor stand if it existed
+                    if (armorStand != null) {
+                        ArmorStand newArmorStand = (ArmorStand) jockeyManager.getDealer().getWorld().spawnEntity(originalLoc, EntityType.ARMOR_STAND);
+                        newArmorStand.setVisible(false);
+                        newArmorStand.setGravity(false);
+                        newArmorStand.setSmall(true);
+                        newArmorStand.setMarker(true);
+                        newArmorStand.setCustomName(armorStandName);
+                        newArmorStand.setCustomNameVisible(true);
+                        jockeyManager.getDealer().addPassenger(newArmorStand);
                     }
                 }
             }
