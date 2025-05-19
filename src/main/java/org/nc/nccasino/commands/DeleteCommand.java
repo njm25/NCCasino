@@ -11,14 +11,20 @@ import org.bukkit.SoundCategory;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.components.AdminMenu;
-import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.entities.DealerInventory;
+import org.nc.nccasino.entities.JockeyManager;
+import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.listeners.DealerEventListener;
 
 public class DeleteCommand implements CasinoCommand {
 
@@ -83,17 +89,48 @@ public class DeleteCommand implements CasinoCommand {
             }
             
             Bukkit.getScheduler().runTask(plugin, () -> {
+                // First clean up all associated inventories
                 plugin.deleteAssociatedInventories(mob);
 
                 Bukkit.getScheduler().runTask(plugin, () -> {
+                    // Create a JockeyManager to handle stack cleanup
+                    JockeyManager jockeyManager = new JockeyManager(mob);
+                    
+                    // Clean up all jockeys in the stack
+                    jockeyManager.cleanup();
+                    
+                    // Remove all jockeys and vehicles
+                    List<JockeyNode> jockeys = jockeyManager.getJockeys();
+                    for (int i = jockeys.size() - 1; i > 0; i--) {
+                        JockeyNode jockey = jockeys.get(i);
+                        // First unmount to prevent any issues
+                        jockey.unmount();
+                        // Then remove the physical entity
+                        jockey.getMob().remove();
+                    }
+                    
+                    // Check for and remove any armor stand passengers
+                    for (Entity passenger : mob.getPassengers()) {
+                        if (passenger instanceof ArmorStand) {
+                            passenger.remove();
+                        }
+                    }
+                    
+                    // Remove the dealer and all its data
                     Dealer.removeDealer(mob);
                     DealerInventory.unregisterAllListeners(mob);
                     removeDealerData(internalName);
-                    sender.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName + ChatColor.GREEN + "' has been deleted.");
+                    
+                    // Clear any remaining references
+                    AdminMenu.clearAllEditModes(mob);
+                    AdminMenu.deleteAssociatedAdminInventories((Player) sender);
+                    
+                    // Remove from jockey manager cache
+                    DealerEventListener.clearJockeyManagerCache(mob.getUniqueId());
+                    
+                    sender.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName + ChatColor.GREEN + "' and all associated components have been deleted.");
                 });
             });
-
-            
         });
 
         return true;

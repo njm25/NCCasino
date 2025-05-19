@@ -45,6 +45,10 @@ public class DealerEventListener implements Listener {
         adminTriggeredTeleports.add(entityId);
     }
 
+    public static void clearJockeyManagerCache(UUID dealerId) {
+        jockeyManagerCache.remove(dealerId);
+    }
+
     @SuppressWarnings("unused")
     private JockeyManager getJockeyManager(Mob dealer) {
         UUID dealerId = dealer.getUniqueId();
