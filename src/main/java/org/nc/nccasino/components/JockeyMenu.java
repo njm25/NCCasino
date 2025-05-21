@@ -150,7 +150,7 @@ public class JockeyMenu extends Menu {
         addItemAndLore(
                 dealerSpawnEgg,
             1,
-                "Dealer"+dealerTypeName,
+                "Dealer "+dealerTypeName,
             dealerSlot,
                 getMobLore(dealer).toArray(new String[0])
         );
@@ -280,8 +280,38 @@ public class JockeyMenu extends Menu {
             return;
         }
 
-        // If not a mapped slot, check if it's the dealer slot (center position)
-        if (slot == 22) {
+        // Calculate dealer slot position
+        int dealerSlot = 22; // Default center position in third row
+        int vehicleCount = 0;
+        int passengerCount = 0;
+        Mob currentMob = dealer;
+        
+        // Count vehicles (below dealer)
+        while (currentMob.getVehicle() instanceof Mob) {
+            vehicleCount++;
+            currentMob = (Mob) currentMob.getVehicle();
+        }
+        
+        // Reset currentMob for passenger counting
+        currentMob = dealer;
+        while (!currentMob.getPassengers().isEmpty() && currentMob.getPassengers().get(0) instanceof Mob) {
+            passengerCount++;
+            currentMob = (Mob) currentMob.getPassengers().get(0);
+        }
+
+        // Adjust dealer slot based on stack size
+        if (vehicleCount >= 23) {
+            // Move dealer right based on how many vehicles beyond 23
+            int shiftAmount = vehicleCount - 22;
+            dealerSlot = 22 + shiftAmount;
+        } else if (passengerCount >= 23) {
+            // Move dealer left based on how many passengers beyond 23
+            int shiftAmount = passengerCount - 22;
+            dealerSlot = 22 - shiftAmount;
+        }
+
+        // If not a mapped slot, check if it's the dealer slot (using calculated position)
+        if (slot == dealerSlot) {
             handleDealerClick(player);
             return;
         }
@@ -292,7 +322,7 @@ public class JockeyMenu extends Menu {
             if (deleteMode) {
                 handleJockeyDeletion(player, clickedJockey);
             } else {
-            handleJockeyOptions(player, clickedJockey);
+                handleJockeyOptions(player, clickedJockey);
             }
         }
     }
