@@ -334,6 +334,7 @@ public class JockeyMenu extends Menu {
         playDefaultSound(player);
     }
 
+    @SuppressWarnings("unused")
     private void handleJockeyDeletion(Player player, JockeyNode jockey) {
         // Get the position of this jockey in the stack
         int position = jockey.getPosition();

@@ -700,6 +700,7 @@ public class JockeyOptionsMenu extends Menu {
         this.delete();
     }
 
+    @SuppressWarnings("unused")
     private void handleDelete(Player player) {
         // Get the position of this jockey in the stack
         int position = jockey.getPosition();
