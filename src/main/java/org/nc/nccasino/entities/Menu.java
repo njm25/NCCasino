@@ -74,6 +74,7 @@ public abstract class Menu extends DealerInventory {
         PAGE_TOGGLE,
         VARIANT,
         AGE_TOGGLE,
+        DELETE,
 
         // Admin menu
         EDIT_DISPLAY_NAME,
