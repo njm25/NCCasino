@@ -235,6 +235,10 @@ public class JockeyNode {
         if (this.child != null) {
             this.child.unmount();
         }
+        // Actually remove the mob from the world
+        if (this.mob != null) {
+            this.mob.remove();
+        }
     }
 
     public boolean isPassenger() {
