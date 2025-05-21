@@ -330,13 +330,13 @@ public class MobSelectionMenu extends Menu {
             return;
         }
 
-        FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
+         FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
 
-        // Read dealer location from dealers.yaml
-        String worldName = dealersConfig.getString("dealers." + internalName + ".world");
-        double x = dealersConfig.getDouble("dealers." + internalName + ".X");
-        double y = dealersConfig.getDouble("dealers." + internalName + ".Y");
-        double z = dealersConfig.getDouble("dealers." + internalName + ".Z");
+         // Read dealer location from dealers.yaml
+         String worldName = dealersConfig.getString("dealers." + internalName + ".world");
+         double x = dealersConfig.getDouble("dealers." + internalName + ".X");
+         double y = dealersConfig.getDouble("dealers." + internalName + ".Y");
+         double z = dealersConfig.getDouble("dealers." + internalName + ".Z");
 
         if (worldName == null) {
             player.sendMessage(ChatColor.RED + "Failed to retrieve dealer location.");
