@@ -16,8 +16,12 @@ import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.entity.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +70,7 @@ public class JockeyMenu extends Menu {
         }.runTaskLater(plugin, 2L);
     }
 
+    @SuppressWarnings("unused")
     @Override
     public void initializeMenu() {
         inventory.clear();
@@ -75,18 +80,28 @@ public class JockeyMenu extends Menu {
         // Add standard menu items
         addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnName, slotMapping.get(SlotOption.RETURN));
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit", slotMapping.get(SlotOption.EXIT));
-        addItemAndLore(Material.SADDLE, 1, "Add Vehicle", slotMapping.get(SlotOption.ADD_JOCKEY), "Add a new mob directly below dealer");
-        addItemAndLore(Material.LEAD, 1, "Add Jockey", slotMapping.get(SlotOption.ADD_PASSENGER), "Add a new mob to the top of the stack");
+        addItemAndLore(Material.SADDLE, 1, "Add Vehicle", slotMapping.get(SlotOption.ADD_JOCKEY), "Add a new mob the bottom of the stack");
+        addItemAndLore(Material.LEAD, 1, "Add Passenger", slotMapping.get(SlotOption.ADD_PASSENGER), "Add a new mob to the top of the stack");
         
         // Update the remove jockey button based on delete mode
         if (deleteMode) {
-            addItemAndLore(Material.BARRIER, 1, "Delete Mode: ON", slotMapping.get(SlotOption.REMOVE_JOCKEY), 
-                "Click to exit delete mode",
-                "Click any jockey to delete it");
+            ItemStack deleteButton = createEnchantedItem(Material.BARRIER, "Delete Mode: ON", 1);
+            ItemMeta meta = deleteButton.getItemMeta();
+            if (meta != null) {
+                List<String> lore = Arrays.asList(
+                    "Click to exit delete mode",
+                    "Click any jockey to delete it"
+                );
+                meta.setLore(lore);
+                deleteButton.setItemMeta(meta);
+            }
+            inventory.setItem(slotMapping.get(SlotOption.REMOVE_JOCKEY), deleteButton);
         } else {
             addItemAndLore(Material.BARRIER, 1, "Delete Mode: OFF", slotMapping.get(SlotOption.REMOVE_JOCKEY), 
-                "Click to enter delete mode",
-                "When active, click jockeys to delete them");
+                "Click to enter delete mode,",
+                "which stays until clicked again",
+                "When active, click jockeys to delete them"
+                );
         }
 
            // Count vehicles and passengers
@@ -119,40 +134,54 @@ public class JockeyMenu extends Menu {
                dealerSlot = 22 - shiftAmount;
            }
    
-           // Add dealer representation
-        addItemAndLore(
-            Material.SPAWNER,
-            1,
-            "Dealer",
-            dealerSlot,
-            "Type: §a" + dealer.getType().name(),
-            "This is the base dealer"
-        );
-
-        //System.out.println("\n=== MENU DEBUG ===");
-        //System.out.println("Dealer: " + dealer.getType());
+        // Add dealer representation with spawn egg
+        Material dealerSpawnEgg = MobSelectionMenu.getSpawnEggFor(dealer.getType());
+        String dealerTypeName = formatEntityName(dealer.getType().name());
         
-        //System.out.println("Passenger Count: " + passengerCount);
-        //System.out.println("Vehicle Count: " + vehicleCount);
+        if (!deleteMode) {
+            ItemStack dealerItem = createEnchantedItem(dealerSpawnEgg, dealerTypeName, 1);
+            ItemMeta meta = dealerItem.getItemMeta();
+            if (meta != null) {
+                meta.setLore(getMobLore(dealer));
+                dealerItem.setItemMeta(meta);
+            }
+            inventory.setItem(dealerSlot, dealerItem);
+        } else {
+        addItemAndLore(
+                dealerSpawnEgg,
+            1,
+                "Dealer"+dealerTypeName,
+            dealerSlot,
+                getMobLore(dealer).toArray(new String[0])
+        );
+        }
+        
         // Display jockeys (below dealer)
         currentMob = dealer;
         int jockeySlot = dealerSlot - 1; // Start left of dealer
         while (currentMob.getVehicle() instanceof Mob) {
             Mob jockeyMob = (Mob)currentMob.getVehicle();
-            //System.out.println("Found jockey: " + jockeyMob.getType());
             
             Material spawnEgg = MobSelectionMenu.getSpawnEggFor(jockeyMob.getType());
-            String customName = jockeyMob.getCustomName() != null ? jockeyMob.getCustomName() : "Jockey";
+            String mobTypeName = formatEntityName(jockeyMob.getType().name());
             
+            if (deleteMode) {
+                ItemStack deleteEgg = createEnchantedItem(spawnEgg, mobTypeName, 1);
+                ItemMeta meta = deleteEgg.getItemMeta();
+                if (meta != null) {
+                    meta.setLore(getMobLore(jockeyMob));
+                    deleteEgg.setItemMeta(meta);
+                }
+                inventory.setItem(jockeySlot, deleteEgg);
+            } else {
             addItemAndLore(
                 spawnEgg,
                 1,
-                customName,
+                    mobTypeName,
                 jockeySlot,
-                "Type: §a" + jockeyMob.getType().name(),
-                "Role: §eJockey",
-                "Click to customize"
+                    getMobLore(jockeyMob).toArray(new String[0])
             );
+            }
             
             // Map this slot to the jockey node
             JockeyNode node = findNodeForMob(jockeyMob);
@@ -169,20 +198,27 @@ public class JockeyMenu extends Menu {
         int passengerSlot = dealerSlot + 1; // Start right of dealer
         while (!currentMob.getPassengers().isEmpty() && currentMob.getPassengers().get(0) instanceof Mob) {
             Mob passengerMob = (Mob)currentMob.getPassengers().get(0);
-            //System.out.println("Found passenger: " + passengerMob.getType());
             
             Material spawnEgg = MobSelectionMenu.getSpawnEggFor(passengerMob.getType());
-            String customName = passengerMob.getCustomName() != null ? passengerMob.getCustomName() : "Passenger";
+            String mobTypeName = formatEntityName(passengerMob.getType().name());
             
+            if (deleteMode) {
+                ItemStack deleteEgg = createEnchantedItem(spawnEgg, mobTypeName, 1);
+                ItemMeta meta = deleteEgg.getItemMeta();
+                if (meta != null) {
+                    meta.setLore(getMobLore(passengerMob));
+                    deleteEgg.setItemMeta(meta);
+                }
+                inventory.setItem(passengerSlot, deleteEgg);
+            } else {
             addItemAndLore(
                 spawnEgg,
                 1,
-                customName,
+                    mobTypeName,
                 passengerSlot,
-                "Type: §a" + passengerMob.getType().name(),
-                "Role: §ePassenger",
-                "Click to customize"
+                    getMobLore(passengerMob).toArray(new String[0])
             );
+            }
             
             // Map this slot to the jockey node
             JockeyNode node = findNodeForMob(passengerMob);
@@ -193,8 +229,19 @@ public class JockeyMenu extends Menu {
             currentMob = passengerMob;
             passengerSlot++; // Move right
         }
-        
-        //System.out.println("=== END MENU DEBUG ===\n");
+    }
+
+    private String formatEntityName(String name) {
+        String[] words = name.toLowerCase().split("_");
+        StringBuilder result = new StringBuilder();
+        for (String word : words) {
+            if (word.length() > 0) {
+                result.append(Character.toUpperCase(word.charAt(0)))
+                      .append(word.substring(1))
+                      .append(" ");
+            }
+        }
+        return result.toString().trim();
     }
 
     ////////////doesnt this trigger if theres diff mobs of the same type
@@ -233,7 +280,13 @@ public class JockeyMenu extends Menu {
             return;
         }
 
-        // If not a mapped slot, check if it's a jockey slot
+        // If not a mapped slot, check if it's the dealer slot (center position)
+        if (slot == 22) {
+            handleDealerClick(player);
+            return;
+        }
+
+        // If not dealer slot, check if it's a jockey slot
         JockeyNode clickedJockey = slotToJockeyMap.get(slot);
         if (clickedJockey != null) {
             if (deleteMode) {
@@ -628,5 +681,129 @@ public class JockeyMenu extends Menu {
     public void refreshJockeyManager() {
         // Create a fresh JockeyManager to ensure we have the current state
         this.jockeyManager = new JockeyManager(dealer);
+    }
+
+    private List<String> getMobLore(Mob mob) {
+        List<String> lore = new ArrayList<>();
+        
+        // Add age/size info if applicable
+        if (isAgeable(mob)) {
+            org.bukkit.entity.Ageable ageable = (org.bukkit.entity.Ageable) mob;
+            lore.add("Age: §a" + (ageable.isAdult() ? "Adult" : "Baby"));
+        } else if (mob instanceof Slime slime) {
+            lore.add("Size: §a" + slime.getSize());
+        }
+
+        // Add variant info
+        if (isComplicatedVariant(mob)) {
+            lore.addAll(getComplexVariantDetails(mob));
+        } else {
+            String variant = getVariantName(mob);
+            if (!variant.isEmpty() && !variant.equals("Unknown")) {
+                lore.add("Variant: §a" + variant);
+            }
+        }
+
+        // Add click instruction
+        if (mob == dealer) {
+            lore.add("Click to edit dealer mob");
+        } else if (deleteMode) {
+            lore.add("Click to delete");
+        } else {
+            lore.add("Click to customize");
+        }
+
+        return lore;
+    }
+
+    private boolean isAgeable(Mob mob) {
+        return mob instanceof org.bukkit.entity.Ageable 
+            && !(mob instanceof Parrot)
+            && !(mob instanceof Frog)
+            && !(mob instanceof PiglinBrute)
+            && !(mob instanceof WanderingTrader);
+    }
+
+    private boolean isComplicatedVariant(Mob mob) {
+        return (mob instanceof Llama)
+            || (mob instanceof Horse)
+            || (mob instanceof TropicalFish);
+    }
+
+    private List<String> getComplexVariantDetails(Mob mob) {
+        List<String> details = new ArrayList<>();
+        if (mob instanceof Llama llama) {
+            details.add("Color: §a" + formatEntityName(llama.getColor().toString()));
+            details.add("Decor: §a" + getLlamaCarpetName(llama));
+        } else if (mob instanceof Horse horse) {
+            details.add("Color: §a" + formatEntityName(horse.getColor().toString()));
+            details.add("Style: §a" + formatEntityName(horse.getStyle().toString()));
+        } else if (mob instanceof TropicalFish fish) {
+            details.add("Pattern: §a" + formatEntityName(fish.getPattern().toString()));
+            details.add("Body Color: §a" + formatEntityName(fish.getBodyColor().toString()));
+            details.add("Pattern Color: §a" + formatEntityName(fish.getPatternColor().toString()));
+        }
+        return details;
+    }
+
+    private String getLlamaCarpetName(Llama llama) {
+        if (llama.getInventory().getDecor() != null) {
+            return formatEntityName(llama.getInventory().getDecor().getType().toString().replace("_CARPET", ""));
+        }
+        return "None";
+    }
+
+    private String getVariantName(Mob mob) {
+        if (mob instanceof Cat cat) {
+            return formatEntityName(cat.getCatType().toString());
+        } else if (mob instanceof Fox fox) {
+            return formatEntityName(fox.getFoxType().toString());
+        } else if (mob instanceof Frog frog) {
+            return formatEntityName(frog.getVariant().toString());
+        } else if (mob instanceof Parrot parrot) {
+            return formatEntityName(parrot.getVariant().toString());
+        } else if (mob instanceof Rabbit rabbit) {
+            return formatEntityName(rabbit.getRabbitType().toString());
+        } else if (mob instanceof Axolotl axolotl) {
+            return formatEntityName(axolotl.getVariant().toString());
+        } else if (mob instanceof MushroomCow mooshroom) {
+            return formatEntityName(mooshroom.getVariant().toString());
+        } else if (mob instanceof Panda panda) {
+            return formatEntityName(panda.getMainGene().toString());
+        } else if (mob instanceof Villager villager) {
+            return formatEntityName(villager.getVillagerType().toString());
+        } else if (mob instanceof ZombieVillager zombieVillager) {
+            return formatEntityName(zombieVillager.getVillagerType().toString());
+        } else if (mob instanceof Sheep sheep) {
+            return formatEntityName(sheep.getColor().toString());
+        } else if (mob instanceof Wolf wolf) {
+            return formatEntityName(wolf.getCollarColor().toString());
+        }
+        return "";
+    }
+
+    private void handleDealerClick(Player player) {
+        // Ensure we have a valid dealer reference
+        if (dealer == null) {
+            player.sendMessage("§cError: Could not find dealer");
+            return;
+        }
+
+        MobSelectionMenu mobSelectionMenu = new MobSelectionMenu(
+            player,
+            plugin,
+            dealerId,
+            (p) -> {
+                // Return to JockeyMenu
+                if (jockeyInventories.containsKey(player.getUniqueId())) {
+                    JockeyMenu temp = jockeyInventories.get(player.getUniqueId());
+                    temp.refreshJockeyManager();
+                    temp.initializeMenu();
+                    player.openInventory(temp.getInventory());
+                }
+            },
+            "Jockey Menu"
+        );
+        player.openInventory(mobSelectionMenu.getInventory());
     }
 } 

@@ -222,7 +222,7 @@ public class MobSelectionMenu extends Menu {
             player, 
             plugin, 
             dealerId, 
-            Dealer.getInternalName(Dealer.findDealer(dealerId, player.getLocation())) + "'s Mob Settings",
+            "Dealer Mob Settings", // Use a default title that doesn't depend on dealer name
             54, 
             returnName, 
             returnToAdmin
