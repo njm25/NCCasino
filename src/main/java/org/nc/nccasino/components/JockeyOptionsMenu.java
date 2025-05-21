@@ -124,7 +124,24 @@ public class JockeyOptionsMenu extends Menu {
     }
 
     public JockeyOptionsMenu(Player player, Nccasino plugin, JockeyNode jockey, String returnName, Consumer<Player> returnCallback) {
-        super(player, plugin, jockey.getId(), "Jockey Options", 54, returnName, returnCallback);
+        super(player, plugin, jockey.getId(), "Jockey Options", 54, returnName, (p) -> {
+            // Schedule the return with a delay to ensure proper updates
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    // First update the JockeyMenu if it exists
+                    JockeyMenu temp = JockeyMenu.jockeyInventories.get(p.getUniqueId());
+                    if (temp != null) {
+                        // Create a fresh JockeyManager to ensure we have the current state
+                        temp.refreshJockeyManager();
+                        temp.initializeMenu();
+                        p.openInventory(temp.getInventory());
+                    } else if (returnCallback != null) {
+                        returnCallback.accept(p);
+                    }
+                }
+            }.runTaskLater(plugin, 2L); // 2 tick delay (0.1 seconds)
+        });
         this.jockey = jockey;
         this.plugin = plugin;
         this.returnName = returnName;
@@ -139,15 +156,18 @@ public class JockeyOptionsMenu extends Menu {
 
         slotMapping.put(SlotOption.EXIT, 53);
         slotMapping.put(SlotOption.RETURN, 45);
-        slotMapping.put(SlotOption.PAGE_TOGGLE, 49);
+        slotMapping.put(SlotOption.PAGE_TOGGLE, 50);
         
         if (isAgeable(jockey.getMob()) || jockey.getMob() instanceof Slime || jockey.getMob() instanceof MagmaCube) {
-            slotMapping.put(SlotOption.AGE_TOGGLE, 51);
+            slotMapping.put(SlotOption.AGE_TOGGLE, 52);
         }
         
         if (isComplicatedVariant(jockey.getMob()) || hasSingleVariant(jockey.getMob())) {
-            slotMapping.put(SlotOption.VARIANT, 47);
+            slotMapping.put(SlotOption.VARIANT, 46);
         }
+
+        // Add delete button
+        slotMapping.put(SlotOption.DELETE, 48);
 
         initializeMenu();
     }
@@ -174,6 +194,9 @@ public class JockeyOptionsMenu extends Menu {
         // Add navigation and control buttons
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit", slotMapping.get(SlotOption.EXIT));
         addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnName, slotMapping.get(SlotOption.RETURN));
+
+        // Add delete button
+        addItemAndLore(Material.BARRIER, 1, "Delete Jockey", slotMapping.get(SlotOption.DELETE), "Click to delete this jockey");
 
         // Page toggle button
         if (currentPage > 1) {
@@ -219,6 +242,9 @@ public class JockeyOptionsMenu extends Menu {
                     return;
                 case VARIANT:
                     handleVariantClick(player);
+                    return;
+                case DELETE:
+                    handleDelete(player);
                     return;
                 default:
                 
@@ -333,7 +359,6 @@ public class JockeyOptionsMenu extends Menu {
                     }
                     
                     // Check if we need to respawn the armor stand
-                    // Only respawn if there are vehicles but no regular passengers
                     boolean hasVehicles = jockeyManager.getDealer().getVehicle() != null;
                     boolean hasPassengers = false;
                     for (Entity passenger : jockeyManager.getDealer().getPassengers()) {
@@ -355,6 +380,7 @@ public class JockeyOptionsMenu extends Menu {
                         
                         // Add armor stand as passenger to dealer
                         jockeyManager.getDealer().addPassenger(newArmorStand);
+                        jockeyManager.getDealer().setCustomNameVisible(false);
                     }
                     
                     // Refresh the jockey manager to ensure all relationships are correct
@@ -362,24 +388,6 @@ public class JockeyOptionsMenu extends Menu {
                     
                     player.sendMessage("§aChanged jockey to " + formatEntityName(selectedType.name()));
                     playDefaultSound(player);
-                    if (returnCallback != null) {
-                        // Schedule the return with a delay to ensure proper updates
-                        new BukkitRunnable() {
-                            @Override
-                            public void run() {
-                                // First update the JockeyMenu if it exists
-                                JockeyMenu temp = JockeyMenu.jockeyInventories.get(player.getUniqueId());
-                                if (temp != null) {
-                                    // Create a fresh JockeyManager to ensure we have the current state
-                                    temp.refreshJockeyManager();
-                                    temp.initializeMenu();
-                                }
-                                
-                                // Then return to it
-                                returnCallback.accept(player);
-                            }
-                        }.runTaskLater(plugin, 2L); // 2 tick delay (0.1 seconds)
-                    }
                 } else {
                     player.sendMessage("§cFailed to change jockey");
                     newMob.remove();
@@ -690,5 +698,203 @@ public class JockeyOptionsMenu extends Menu {
     public void cleanup() {
         HandlerList.unregisterAll(this);
         this.delete();
+    }
+
+    private void handleDelete(Player player) {
+        // Get the position of this jockey in the stack
+        int position = jockey.getPosition();
+
+        // Store the absolute bottom location BEFORE any modifications
+        Mob bottomMost = jockeyManager.getDealer();
+        while (bottomMost.getVehicle() instanceof Mob) {
+            bottomMost = (Mob) bottomMost.getVehicle();
+        }
+        final Location bottomLocation = bottomMost.getLocation().clone();
+        final float bottomYaw = bottomMost.getLocation().getYaw();
+        
+        //System.out.println("Initial bottom location: " + bottomLocation);
+        //System.out.println("Deleting mob: " + jockey.getMob().getType() + " UUID: " + jockey.getMob().getUniqueId());
+
+        // Remove any existing armor stand
+        final ArmorStand armorStand;
+        final String armorStandName;
+        {
+            ArmorStand tempArmorStand = null;
+            String tempArmorStandName = null;
+            for (Entity passenger : jockeyManager.getDealer().getPassengers()) {
+                if (passenger instanceof ArmorStand) {
+                    tempArmorStand = (ArmorStand) passenger;
+                    tempArmorStandName = tempArmorStand.getCustomName();
+                    tempArmorStand.remove();
+                    break;
+                }
+            }
+            armorStand = tempArmorStand;
+            armorStandName = tempArmorStandName;
+        }
+
+        // Build the complete stack list in order: bottom vehicles -> dealer -> passengers
+        List<Mob> allMobs = new ArrayList<>();
+        
+        // First add vehicles from bottom up
+        Mob current = bottomMost;
+        while (current != null) {
+            allMobs.add(current);
+            //System.out.println("Added to stack (vehicles): " + current.getType() + " UUID: " + current.getUniqueId());
+            if (current.getUniqueId().equals(jockeyManager.getDealer().getUniqueId())) {
+                break;
+            }
+            if (!current.getPassengers().isEmpty() && current.getPassengers().get(0) instanceof Mob) {
+                current = (Mob) current.getPassengers().get(0);
+            } else {
+                break;
+            }
+        }
+        
+        // Then add passengers
+        current = jockeyManager.getDealer();
+        while (!current.getPassengers().isEmpty() && current.getPassengers().get(0) instanceof Mob) {
+            current = (Mob) current.getPassengers().get(0);
+            allMobs.add(current);
+            //System.out.println("Added to stack (passengers): " + current.getType() + " UUID: " + current.getUniqueId());
+        }
+
+        // Find our target mob's index
+        int jockeyIndex = -1;
+        for (int i = 0; i < allMobs.size(); i++) {
+            if (allMobs.get(i).getUniqueId().equals(jockey.getMob().getUniqueId())) {
+                jockeyIndex = i;
+                //System.out.println("Found jockey at index: " + i);
+                break;
+            }
+        }
+
+        if (jockeyIndex == -1) {
+            player.sendMessage("§cFailed to find jockey in stack");
+            return;
+        }
+
+        // Check if we're deleting the bottom mob
+        boolean isDeletingBottom = jockeyIndex == 0;
+        //System.out.println("Is deleting bottom: " + isDeletingBottom);
+
+        // Unmount everything in the stack
+        for (Mob mob : allMobs) {
+            if (mob.getVehicle() != null) {
+                //System.out.println("Unmounting: " + mob.getType() + " from vehicle: " + mob.getVehicle().getType());
+                mob.leaveVehicle();
+            }
+            for (Entity passenger : new ArrayList<>(mob.getPassengers())) {
+                //System.out.println("Removing passenger from: " + mob.getType() + " passenger: " + passenger.getType());
+                mob.removePassenger(passenger);
+            }
+        }
+
+        // Remove the jockey from our list and from the world
+        allMobs.remove(jockeyIndex);
+        jockey.getMob().remove();
+
+        // Remove from JockeyManager
+        jockeyManager.removeJockey(position);
+
+        if (!allMobs.isEmpty()) {
+            // If we deleted the bottom mob, we need to ensure the new bottom mob gets to the right spot
+            if (isDeletingBottom) {
+                Mob newBottom = allMobs.get(0);
+                //System.out.println("New bottom mob: " + newBottom.getType() + " UUID: " + newBottom.getUniqueId());
+                //System.out.println("Target bottom location: " + bottomLocation);
+                
+                // Force the new bottom mob to the correct location
+                newBottom.teleport(bottomLocation);
+                newBottom.setRotation(bottomYaw, 0);
+                
+                // Wait a tick to ensure teleport is processed
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        // Double-check position and force if needed
+                        if (!newBottom.getLocation().equals(bottomLocation)) {
+                            //System.out.println("Bottom mob not at target location, forcing...");
+                            //System.out.println("Current: " + newBottom.getLocation());
+                            //System.out.println("Target: " + bottomLocation);
+                            newBottom.teleport(bottomLocation);
+                            newBottom.setRotation(bottomYaw, 0);
+                        }
+                    }
+                }.runTaskLater(plugin, 1L);
+            }
+
+            // Reposition all mobs starting from the bottom
+            for (int i = 0; i < allMobs.size(); i++) {
+                Mob mob = allMobs.get(i);
+                Location newLoc;
+                if (i == 0) {
+                    // First mob always goes to original bottom location
+                    newLoc = bottomLocation.clone();
+                    //System.out.println("Setting bottom mob location: " + newLoc + " for mob: " + mob.getType());
+                } else {
+                    // Other mobs stack on top of the previous mob
+                    Mob below = allMobs.get(i - 1);
+                    newLoc = below.getLocation().clone();
+                    newLoc.add(0, below.getHeight(), 0);
+                    //System.out.println("Setting mob location: " + newLoc + " for mob: " + mob.getType() + " above: " + below.getType());
+                }
+                mob.teleport(newLoc);
+                mob.setRotation(bottomYaw, 0);
+            }
+
+            // Wait a tick before remounting to ensure all teleports are processed
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    // Remount everything in order from bottom to top
+                    for (int i = 0; i < allMobs.size() - 1; i++) {
+                        Mob lower = allMobs.get(i);
+                        Mob upper = allMobs.get(i + 1);
+                        //System.out.println("Mounting: " + upper.getType() + " on: " + lower.getType());
+                        lower.addPassenger(upper);
+                        lower.setCustomNameVisible(false);
+                    }
+
+                    // Check if we need to respawn the armor stand
+                    boolean hasVehicles = jockeyManager.getDealer().getVehicle() != null;
+                    boolean hasPassengers = false;
+                    for (Entity passenger : jockeyManager.getDealer().getPassengers()) {
+                        if (passenger instanceof Mob) {
+                            hasPassengers = true;
+                            break;
+                        }
+                    }
+
+                    if (hasVehicles && !hasPassengers) {
+                        // Spawn new armor stand at dealer location
+                        ArmorStand newArmorStand = (ArmorStand) jockeyManager.getDealer().getWorld().spawnEntity(bottomLocation, EntityType.ARMOR_STAND);
+                        newArmorStand.setVisible(false);
+                        newArmorStand.setGravity(false);
+                        newArmorStand.setSmall(true);
+                        newArmorStand.setMarker(true);
+                        newArmorStand.setCustomName(armorStandName != null ? armorStandName : jockeyManager.getDealer().getCustomName());
+                        newArmorStand.setCustomNameVisible(true);
+
+                        // Add armor stand as passenger to dealer
+                        jockeyManager.getDealer().addPassenger(newArmorStand);
+                        jockeyManager.getDealer().setCustomNameVisible(false);
+                    }
+
+                    // Refresh the jockey manager to ensure all relationships are correct
+                    jockeyManager.refresh();
+                }
+            }.runTaskLater(plugin, 1L);
+        }
+
+        // Send feedback to player
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case STANDARD -> player.sendMessage("§aJockey deleted.");
+            case VERBOSE -> player.sendMessage("§aJockey " + ChatColor.YELLOW + jockey.getMob().getType().name() + "§a deleted.");
+            default -> {}
+        }
+
+        // Return to JockeyMenu
+        executeReturn(player);
     }
 } 
