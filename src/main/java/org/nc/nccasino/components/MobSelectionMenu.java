@@ -52,6 +52,7 @@ import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.JockeyManager;
+import org.nc.nccasino.entities.JockeyNode;
 
 public class MobSelectionMenu extends Menu {
     private int currentPage = 1;
@@ -435,9 +436,14 @@ public class MobSelectionMenu extends Menu {
                                 // Spawn new dealer
                                 Mob newDealer = Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
                                 
-                                // Create new JockeyManager to handle looking behavior
+                                // Update names of all mobs in the stack
                                 JockeyManager jockeyManager = new JockeyManager(newDealer);
-                                
+                                for (JockeyNode jockey : jockeyManager.getJockeys()) {
+                                    if (jockey.getPosition() > 0) { // Skip dealer (position 0)
+                                        jockey.setCustomName(name);
+                                    }
+                                }
+
                                 // Rebuild vehicle stack from bottom up
                                 final Mob[] topVehicleRef = new Mob[1];
                                 if (!vehicleStack.isEmpty()) {
@@ -484,6 +490,10 @@ public class MobSelectionMenu extends Menu {
                                         
                                         // Create JockeyManager after stack is fully built
                                         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                            // Update names of all mobs in the stack
+                                            for (Mob passenger : passengerStack) {
+                                                passenger.setCustomName(name);
+                                            }
                                             new JockeyManager(newDealer);
                                         }, 5L);
                                     }, 1L);
@@ -512,6 +522,10 @@ public class MobSelectionMenu extends Menu {
                                     
                                     // Create JockeyManager after stack is fully built
                                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                        // Update names of all mobs in the stack
+                                        for (Mob passenger : passengerStack) {
+                                            passenger.setCustomName(name);
+                                        }
                                         new JockeyManager(newDealer);
                                     }, 5L);
                                 }
@@ -568,8 +582,13 @@ public class MobSelectionMenu extends Menu {
                                 Dealer.updateGameType(newDealer, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
                                 restoreGameSpecificSettings(plugin.getConfig(), internalName, gameType, gameSettings);
 
-                                // Create new JockeyManager to handle looking behavior
+                                // Update names of all mobs in the stack
                                 JockeyManager jockeyManager = new JockeyManager(newDealer);
+                                for (JockeyNode jockey : jockeyManager.getJockeys()) {
+                                    if (jockey.getPosition() > 0) { // Skip dealer (position 0)
+                                        jockey.setCustomName(name);
+                                    }
+                                }
 
                                 // Rebuild vehicle stack from bottom up
                                 final Mob[] topVehicleRef = new Mob[1];
@@ -617,6 +636,10 @@ public class MobSelectionMenu extends Menu {
                                         
                                         // Create JockeyManager after stack is fully built
                                         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                            // Update names of all mobs in the stack
+                                            for (Mob passenger : passengerStack) {
+                                                passenger.setCustomName(name);
+                                            }
                                             new JockeyManager(newDealer);
                                         }, 5L);
                                     }, 1L);
@@ -645,6 +668,10 @@ public class MobSelectionMenu extends Menu {
                                     
                                     // Create JockeyManager after stack is fully built
                                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                        // Update names of all mobs in the stack
+                                        for (Mob passenger : passengerStack) {
+                                            passenger.setCustomName(name);
+                                        }
                                         new JockeyManager(newDealer);
                                     }, 5L);
                                 }

@@ -459,7 +459,14 @@ public class Dealer {
 
             setAnimationMessage(mob, gameName);
             setName(mob, newName);
-           
+            
+            // Update names of all mobs in the stack
+            JockeyManager jockeyManager = new JockeyManager(mob);
+            for (JockeyNode jockey : jockeyManager.getJockeys()) {
+                if (jockey.getPosition() > 0) { // Skip dealer (position 0)
+                    jockey.setCustomName(newName);
+                }
+            }
         }
         plugin.saveConfig();
         DealerInventory.updateInventory(dealerId, newInventory);
