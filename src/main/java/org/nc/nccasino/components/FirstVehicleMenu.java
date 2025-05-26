@@ -74,15 +74,15 @@ public class FirstVehicleMenu extends Menu {
         addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit", slotMapping.get(SlotOption.EXIT));
         
         // Add passenger options
-        addItemAndLore(Material.SILVERFISH_SPAWN_EGG, 1, "Invisible Passenger", 
+        addItemAndLore(Material.ARMOR_STAND, 1, "Invisible Passenger", 
             slotMapping.get(SlotOption.INVISIBLE_PASSENGER),
-            "§7Adds an invisible silverfish passenger",
-            "§7No visible name will be shown");
+            "§7Adds an invisible armor stand passenger",
+            "§7Name will be permanently visible");
             
-        addItemAndLore(Material.VILLAGER_SPAWN_EGG, 1, "Pick Passenger", 
+        addItemAndLore(Material.EGG, 1, "Pick Passenger", 
             slotMapping.get(SlotOption.PICK_PASSENGER),
             "§7Choose a specific mob as passenger",
-            "§7The mob's name will be visible");
+            "§7Standard name visibility");
     }
 
     @Override

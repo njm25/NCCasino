@@ -302,9 +302,9 @@ public class JockeyMobMenu extends Menu {
                             passengerNode.mountOn(dealerNode);
                             
                             // Update name visibility
-                            dealer.setCustomNameVisible(true);
+                            dealer.setCustomNameVisible(false);
                             vehicle.setCustomNameVisible(false);
-                            newMob.setCustomNameVisible(true);
+                            newMob.setCustomNameVisible(false);
                             
                             // Add to jockey manager's list
                             List<JockeyNode> jockeys = jockeyManager.getJockeys();

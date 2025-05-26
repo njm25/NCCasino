@@ -388,6 +388,9 @@ public class JockeyOptionsMenu extends Menu {
                     
                     player.sendMessage("§aChanged jockey to " + formatEntityName(selectedType.name()));
                     playDefaultSound(player);
+                    
+                    // Return to JockeyMenu after successful mob change
+                    executeReturn(player);
                 } else {
                     player.sendMessage("§cFailed to change jockey");
                     newMob.remove();

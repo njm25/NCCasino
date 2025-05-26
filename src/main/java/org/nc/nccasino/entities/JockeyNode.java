@@ -9,7 +9,7 @@ import org.nc.nccasino.helpers.AttributeHelper;
 import java.util.UUID;
 import java.util.List;
 import java.util.ArrayList;
-import org.bukkit.entity.EntityType;
+
 
 public class JockeyNode {
     private final UUID id;
@@ -32,10 +32,6 @@ public class JockeyNode {
         this.isNewJockey = isNewJockey;
         if (isNewJockey) {
             initializeJockeyAttributes(mob);
-            // Only set visibility for non-silverfish entities
-            if (mob.getType() != EntityType.SILVERFISH) {
-                mob.setCustomNameVisible(true);
-            }
         }
     }
 

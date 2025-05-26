@@ -51,6 +51,7 @@ import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Menu;
+import org.nc.nccasino.entities.JockeyManager;
 
 public class MobSelectionMenu extends Menu {
     private int currentPage = 1;
@@ -434,6 +435,9 @@ public class MobSelectionMenu extends Menu {
                                 // Spawn new dealer
                                 Mob newDealer = Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
                                 
+                                // Create new JockeyManager to handle looking behavior
+                                JockeyManager jockeyManager = new JockeyManager(newDealer);
+                                
                                 // Rebuild vehicle stack from bottom up
                                 final Mob[] topVehicleRef = new Mob[1];
                                 if (!vehicleStack.isEmpty()) {
@@ -477,6 +481,11 @@ public class MobSelectionMenu extends Menu {
                                             newDealer.setCustomNameVisible(false);
                                             newDealer.addPassenger(armorStand);
                                         }
+                                        
+                                        // Create JockeyManager after stack is fully built
+                                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                            new JockeyManager(newDealer);
+                                        }, 5L);
                                     }, 1L);
                                 } else {
                                     // No vehicles, just rebuild passenger stack
@@ -500,6 +509,11 @@ public class MobSelectionMenu extends Menu {
                                         newDealer.setCustomNameVisible(false);
                                         newDealer.addPassenger(armorStand);
                                     }
+                                    
+                                    // Create JockeyManager after stack is fully built
+                                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                        new JockeyManager(newDealer);
+                                    }, 5L);
                                 }
 
                                 dealersConfig.set("dealers." + internalName + ".world", worldName);
@@ -554,6 +568,9 @@ public class MobSelectionMenu extends Menu {
                                 Dealer.updateGameType(newDealer, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
                                 restoreGameSpecificSettings(plugin.getConfig(), internalName, gameType, gameSettings);
 
+                                // Create new JockeyManager to handle looking behavior
+                                JockeyManager jockeyManager = new JockeyManager(newDealer);
+
                                 // Rebuild vehicle stack from bottom up
                                 final Mob[] topVehicleRef = new Mob[1];
                                 if (!vehicleStack.isEmpty()) {
@@ -597,6 +614,11 @@ public class MobSelectionMenu extends Menu {
                                             newDealer.setCustomNameVisible(false);
                                             newDealer.addPassenger(armorStand);
                                         }
+                                        
+                                        // Create JockeyManager after stack is fully built
+                                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                            new JockeyManager(newDealer);
+                                        }, 5L);
                                     }, 1L);
                                 } else {
                                     // No vehicles, just rebuild passenger stack
@@ -620,6 +642,11 @@ public class MobSelectionMenu extends Menu {
                                         newDealer.setCustomNameVisible(false);
                                         newDealer.addPassenger(armorStand);
                                     }
+                                    
+                                    // Create JockeyManager after stack is fully built
+                                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                        new JockeyManager(newDealer);
+                                    }, 5L);
                                 }
 
                                 dealersConfig.set("dealers." + internalName + ".world", worldName);
