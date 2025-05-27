@@ -73,6 +73,18 @@ public class JockeyOptionsMenu extends Menu {
             Material.LIGHT_GRAY_WOOL, Material.CYAN_WOOL, Material.PURPLE_WOOL, Material.BLUE_WOOL,
             Material.BROWN_WOOL, Material.GREEN_WOOL, Material.RED_WOOL, Material.BLACK_WOOL
         }); // 16 colors
+
+        put(Pig.class, new Material[]{
+            Material.PINK_CONCRETE, Material.PINK_TERRACOTTA, Material.PINK_WOOL, Material.PINK_GLAZED_TERRACOTTA
+        }); // 4 variants
+
+        put(Cow.class, new Material[]{
+            Material.BROWN_CONCRETE, Material.BROWN_TERRACOTTA, Material.BROWN_WOOL, Material.BROWN_GLAZED_TERRACOTTA
+        }); // 4 variants
+
+        put(Chicken.class, new Material[]{
+            Material.WHITE_CONCRETE, Material.WHITE_TERRACOTTA, Material.WHITE_WOOL, Material.WHITE_GLAZED_TERRACOTTA
+        }); // 4 variants
     }};
 
     private static final Cat.Type[] CAT_TYPES = {
@@ -104,6 +116,24 @@ public class JockeyOptionsMenu extends Menu {
         DyeColor.PURPLE, DyeColor.MAGENTA,
         // Remaining colors
         DyeColor.GRAY, DyeColor.LIGHT_GRAY, DyeColor.BROWN, DyeColor.BLACK
+    );
+
+    private static final List<Pig.Variant> PIG_VARIANTS = List.of(
+        Pig.Variant.TEMPERATE,
+        Pig.Variant.WARM,
+        Pig.Variant.COLD
+    );
+
+    private static final List<Cow.Variant> COW_VARIANTS = List.of(
+        Cow.Variant.TEMPERATE,
+        Cow.Variant.WARM,
+        Cow.Variant.COLD
+    );
+
+    private static final List<Chicken.Variant> CHICKEN_VARIANTS = List.of(
+        Chicken.Variant.TEMPERATE,
+        Chicken.Variant.WARM,
+        Chicken.Variant.COLD
     );
 
     static {
@@ -534,7 +564,10 @@ public class JockeyOptionsMenu extends Menu {
             || (mob instanceof Villager)
             || (mob instanceof ZombieVillager)
             || (mob instanceof Sheep)
-            || (mob instanceof Wolf);
+            || (mob instanceof Wolf)
+            || (mob instanceof Pig)
+            || (mob instanceof Cow)
+            || (mob instanceof Chicken);
     }
 
     private boolean isAgeable(Mob mob) {
@@ -591,6 +624,18 @@ public class JockeyOptionsMenu extends Menu {
             Material[] items = VARIANT_ITEMS.get(Sheep.class);
             return items[SHEEP_COLOR_ORDER.indexOf(sheep.getColor())];
         }
+        if (mob instanceof Pig pig) {
+            Material[] items = VARIANT_ITEMS.get(Pig.class);
+            return items[PIG_VARIANTS.indexOf(pig.getVariant())];
+        }
+        if (mob instanceof Cow cow) {
+            Material[] items = VARIANT_ITEMS.get(Cow.class);
+            return items[COW_VARIANTS.indexOf(cow.getVariant())];
+        }
+        if (mob instanceof Chicken chicken) {
+            Material[] items = VARIANT_ITEMS.get(Chicken.class);
+            return items[CHICKEN_VARIANTS.indexOf(chicken.getVariant())];
+        }
         if (mob instanceof Villager || mob instanceof ZombieVillager) return Material.EMERALD;
         if (mob instanceof Wolf) return Material.BONE;
         return Material.NAME_TAG;
@@ -609,6 +654,9 @@ public class JockeyOptionsMenu extends Menu {
         if (mob instanceof ZombieVillager zombie) return formatEntityName(zombie.getVillagerType().toString());
         if (mob instanceof Sheep sheep) return formatEntityName(sheep.getColor().toString());
         if (mob instanceof Wolf wolf) return formatEntityName(wolf.getCollarColor().toString());
+        if (mob instanceof Pig pig) return formatEntityName(pig.getVariant().toString());
+        if (mob instanceof Cow cow) return formatEntityName(cow.getVariant().toString());
+        if (mob instanceof Chicken chicken) return formatEntityName(chicken.getVariant().toString());
         return "Unknown";
     }
 
@@ -653,6 +701,27 @@ public class JockeyOptionsMenu extends Menu {
             DyeColor newColor = SHEEP_COLOR_ORDER.get((currentIndex + 1) % SHEEP_COLOR_ORDER.size());
             sheep.setColor(newColor);
             sendVariantUpdateMessage(player, newColor, mob);
+        } else if (mob instanceof Pig pig) {
+            List<Pig.Variant> variants = PIG_VARIANTS;
+            Pig.Variant curr = pig.getVariant();
+            int idx = variants.indexOf(curr);
+            Pig.Variant next = variants.get((idx + 1) % variants.size());
+            pig.setVariant(next);
+            sendVariantUpdateMessage(player, next, mob);
+        } else if (mob instanceof Cow cow) {
+            List<Cow.Variant> variants = COW_VARIANTS;
+            Cow.Variant curr = cow.getVariant();
+            int idx = variants.indexOf(curr);
+            Cow.Variant next = variants.get((idx + 1) % variants.size());
+            cow.setVariant(next);
+            sendVariantUpdateMessage(player, next, mob);
+        } else if (mob instanceof Chicken chicken) {
+            List<Chicken.Variant> variants = CHICKEN_VARIANTS;
+            Chicken.Variant curr = chicken.getVariant();
+            int idx = variants.indexOf(curr);
+            Chicken.Variant next = variants.get((idx + 1) % variants.size());
+            chicken.setVariant(next);
+            sendVariantUpdateMessage(player, next, mob);
         }
         
         initializeMenu();

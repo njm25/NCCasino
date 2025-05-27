@@ -23,6 +23,9 @@ import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Axolotl;
 import org.bukkit.entity.Cat;
 import org.bukkit.entity.Cat.Type;
+import org.bukkit.entity.Chicken;
+import org.bukkit.entity.Cow;
+import org.bukkit.entity.Pig;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fox;
@@ -102,18 +105,33 @@ public class MobSelectionMenu extends Menu {
     };  
 
     private static final List<DyeColor> SHEEP_COLOR_ORDER = List.of(
-    DyeColor.WHITE, // Default
+        DyeColor.WHITE, // Default
+        // Smooth ROYGBIV with blending colors
+        DyeColor.RED, DyeColor.PINK, DyeColor.ORANGE, 
+        DyeColor.YELLOW, DyeColor.LIME, DyeColor.GREEN, 
+        DyeColor.CYAN, DyeColor.LIGHT_BLUE, DyeColor.BLUE, 
+        DyeColor.PURPLE, DyeColor.MAGENTA,
+        // Remaining colors
+        DyeColor.GRAY, DyeColor.LIGHT_GRAY, DyeColor.BROWN, DyeColor.BLACK
+    );
 
-    // Smooth ROYGBIV with blending colors
-    DyeColor.RED, DyeColor.PINK, DyeColor.ORANGE, 
-    DyeColor.YELLOW, DyeColor.LIME, DyeColor.GREEN, 
-    DyeColor.CYAN, DyeColor.LIGHT_BLUE, DyeColor.BLUE, 
-    DyeColor.PURPLE, DyeColor.MAGENTA,
+    private static final List<Pig.Variant> PIG_VARIANTS = List.of(
+        Pig.Variant.TEMPERATE,
+        Pig.Variant.WARM,
+        Pig.Variant.COLD
+    );
 
-    // Remaining colors
-    DyeColor.GRAY, DyeColor.LIGHT_GRAY, DyeColor.BROWN, DyeColor.BLACK
-)   ;
+    private static final List<Cow.Variant> COW_VARIANTS = List.of(
+        Cow.Variant.TEMPERATE,
+        Cow.Variant.WARM,
+        Cow.Variant.COLD
+    );
 
+    private static final List<Chicken.Variant> CHICKEN_VARIANTS = List.of(
+        Chicken.Variant.TEMPERATE,
+        Chicken.Variant.WARM,
+        Chicken.Variant.COLD
+    );
 
     private static final Map<DyeColor, Material> DYE_MATERIAL_MAP = new HashMap<>() {{
         put(DyeColor.WHITE, Material.WHITE_DYE);
@@ -176,6 +194,18 @@ public class MobSelectionMenu extends Menu {
             Material.LIGHT_GRAY_WOOL, Material.CYAN_WOOL, Material.PURPLE_WOOL, Material.BLUE_WOOL,
             Material.BROWN_WOOL, Material.GREEN_WOOL, Material.RED_WOOL, Material.BLACK_WOOL
         }); // 16 colors
+
+        put(Pig.class, new Material[]{
+            Material.PINK_CONCRETE, Material.PINK_TERRACOTTA, Material.PINK_WOOL, Material.PINK_GLAZED_TERRACOTTA
+        }); // 4 variants
+
+        put(Cow.class, new Material[]{
+            Material.BROWN_CONCRETE, Material.BROWN_TERRACOTTA, Material.BROWN_WOOL, Material.BROWN_GLAZED_TERRACOTTA
+        }); // 4 variants
+
+        put(Chicken.class, new Material[]{
+            Material.WHITE_CONCRETE, Material.WHITE_TERRACOTTA, Material.WHITE_WOOL, Material.WHITE_GLAZED_TERRACOTTA
+        }); // 4 variants
     }};
 
     static {
@@ -885,6 +915,30 @@ public class MobSelectionMenu extends Menu {
                 }
             }
         }
+        else if (mob instanceof Pig pig) {
+            List<Pig.Variant> variants = PIG_VARIANTS;
+            Pig.Variant curr = pig.getVariant();
+            int idx = variants.indexOf(curr);
+            Pig.Variant next = variants.get((idx + 1) % variants.size());
+            pig.setVariant(next);
+            sendVariantUpdateMessage(player, next, mob);
+        }
+        else if (mob instanceof Cow cow) {
+            List<Cow.Variant> variants = COW_VARIANTS;
+            Cow.Variant curr = cow.getVariant();
+            int idx = variants.indexOf(curr);
+            Cow.Variant next = variants.get((idx + 1) % variants.size());
+            cow.setVariant(next);
+            sendVariantUpdateMessage(player, next, mob);
+        }
+        else if (mob instanceof Chicken chicken) {
+            List<Chicken.Variant> variants = CHICKEN_VARIANTS;
+            Chicken.Variant curr = chicken.getVariant();
+            int idx = variants.indexOf(curr);
+            Chicken.Variant next = variants.get((idx + 1) % variants.size());
+            chicken.setVariant(next);
+            sendVariantUpdateMessage(player, next, mob);
+        }
         else {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case VERBOSE -> player.sendMessage("§cMob type " +ChatColor.YELLOW+formatEntityName(mob.getType().toString())  + "§c does not have any variants.");
@@ -1025,6 +1079,12 @@ public class MobSelectionMenu extends Menu {
             return VARIANT_ITEMS.get(Panda.class)[panda.getMainGene() == Panda.Gene.BROWN ? 1 : 0];
         } else if (mob instanceof Sheep sheep) {
             return VARIANT_ITEMS.get(Sheep.class)[indexOf(DyeColor.values(), sheep.getColor())];
+        } else if (mob instanceof Pig pig) {
+            return VARIANT_ITEMS.get(Pig.class)[PIG_VARIANTS.indexOf(pig.getVariant())];
+        } else if (mob instanceof Cow cow) {
+            return VARIANT_ITEMS.get(Cow.class)[COW_VARIANTS.indexOf(cow.getVariant())];
+        } else if (mob instanceof Chicken chicken) {
+            return VARIANT_ITEMS.get(Chicken.class)[CHICKEN_VARIANTS.indexOf(chicken.getVariant())];
         }
     
         return Material.BARRIER; // Default if not found
@@ -1178,8 +1238,14 @@ public class MobSelectionMenu extends Menu {
             return formatEntityName(zombieVillager.getVillagerType().toString());
         } else if (mob instanceof Sheep sheep) {
             return formatEntityName(sheep.getColor().toString());
-        }else if (mob instanceof Wolf wolf) {
+        } else if (mob instanceof Wolf wolf) {
             return formatEntityName(wolf.getCollarColor().toString());
+        } else if (mob instanceof Pig pig) {
+            return formatEntityName(pig.getVariant().toString());
+        } else if (mob instanceof Cow cow) {
+            return formatEntityName(cow.getVariant().toString());
+        } else if (mob instanceof Chicken chicken) {
+            return formatEntityName(chicken.getVariant().toString());
         }
 
         return "Unknown";
@@ -1197,8 +1263,10 @@ public class MobSelectionMenu extends Menu {
             || (mob instanceof Villager)
             || (mob instanceof ZombieVillager)
             || (mob instanceof Sheep)
-            || (mob instanceof Wolf);
-            
+            || (mob instanceof Wolf)
+            || (mob instanceof Pig)
+            || (mob instanceof Cow)
+            || (mob instanceof Chicken);
     }
 
         private boolean isComplicatedVariant(Mob mob) {

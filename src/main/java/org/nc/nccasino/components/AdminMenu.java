@@ -21,6 +21,9 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Axolotl;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Cat;
+import org.bukkit.entity.Cat.Type;
+import org.bukkit.entity.Chicken;
+import org.bukkit.entity.Cow;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fox;
@@ -32,6 +35,7 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.MushroomCow;
 import org.bukkit.entity.Panda;
 import org.bukkit.entity.Parrot;
+import org.bukkit.entity.Pig;
 import org.bukkit.entity.PiglinBrute;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Rabbit;
@@ -1652,6 +1656,12 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         return formatEntityName(zombieVillager.getVillagerType().toString());
     } else if (mob instanceof Sheep sheep) {
         return formatEntityName(sheep.getColor().toString());
+    } else if (mob instanceof Pig pig) {
+        return formatEntityName(pig.getVariant().toString());
+    } else if (mob instanceof Cow cow) {
+        return formatEntityName(cow.getVariant().toString());
+    } else if (mob instanceof Chicken chicken) {
+        return formatEntityName(chicken.getVariant().toString());
     }
     return "";
     }
