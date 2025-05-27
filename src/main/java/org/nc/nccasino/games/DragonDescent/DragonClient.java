@@ -33,7 +33,7 @@ public class DragonClient extends Client{
     private int displayOffset = 0; 
     private int floorsCleared = 0; 
     private boolean cashOutTriggered = false; 
-
+    private boolean shiftlock = false;
     public DragonClient(DragonServer server, Player player, Nccasino plugin, String internalName) {
         super(server, player, "Dragon Descent", plugin, internalName);
 
@@ -443,7 +443,7 @@ public class DragonClient extends Client{
     @Override
     protected void handleClientSpecificClick(int slot, Player player, InventoryClickEvent event) {
         event.setCancelled(true);
-        if (moveLocked|| cashOutTriggered) {
+        if (moveLocked|| cashOutTriggered||shiftlock) {
             return;
         }
     
@@ -500,9 +500,10 @@ public class DragonClient extends Client{
         // Allow cashing out if the player is on a safe spot
         if (slot == playerX) {
 
-    
+            if (!moveLocked && !cashOutTriggered && !playerLost) {
                 moveLocked=true;
                 cashOut(true);
+            }
                 return;
         }
     
@@ -563,6 +564,7 @@ public class DragonClient extends Client{
                     }, 40L).getTaskId();
                     taskIDs.add(taskID);
                     } else if (floor == 5) { // Reached last visible row
+                        shiftlock=true;
                         Bukkit.getScheduler().runTaskLater(plugin, this::shiftDisplayUp, 60L); // 1.5s delay before shifting
                     } else {
                         setNextClickableRow(currentFloor+1);
@@ -678,6 +680,7 @@ public class DragonClient extends Client{
                     currentFloor = displayOffset + 1;
                     setNextClickableRow(currentFloor);
                     moveLocked = false;
+                    shiftlock=false;
                 }
     
             }, delayPerStep * step).getTaskId();
