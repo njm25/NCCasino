@@ -29,20 +29,19 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 
-public class JockeyMenu extends Menu {
-    @SuppressWarnings("unused")
+public class MobSettingsMenu extends Menu {
     private UUID dealerId;
     private final Nccasino plugin;
     private final String returnName;
     private Mob dealer;
     private JockeyManager jockeyManager;
-    public static final Map<UUID, JockeyMenu> jockeyInventories = new HashMap<>();
+    public static final Map<UUID, MobSettingsMenu> jockeyInventories = new HashMap<>();
     public static final Map<UUID, Consumer<Player>> returnCallbacks = new HashMap<>();
     private Map<Integer, JockeyNode> slotToJockeyMap;
     private boolean deleteMode = false;
 
 
-    public JockeyMenu(UUID dealerId, Player player, String title, Consumer<Player> ret, Nccasino plugin, String returnName) {
+    public MobSettingsMenu(UUID dealerId, Player player, String title, Consumer<Player> ret, Nccasino plugin, String returnName) {
         super(player, plugin, dealerId, title, 54, returnName, ret);
         this.dealerId = dealerId;
         this.plugin = plugin;
@@ -368,7 +367,7 @@ public class JockeyMenu extends Menu {
             plugin, 
             this.jockeyManager,
             null, 
-            "Jockey Menu",
+            "Mob Settings Menu",
             (p) -> {
                 // After vehicle is selected, if this is the first vehicle and not a passenger
                 if (jockeyManager.getJockeyCount() == 0 && !asPassenger) {
@@ -380,7 +379,7 @@ public class JockeyMenu extends Menu {
                             player,
                             plugin,
                             jockeyManager,
-                            "Jockey Menu",
+                            "Mob Settings Menu",
                             returnCallbacks.get(this.ownerId), // Use the original callback directly
                             selectedType
                         );
@@ -392,7 +391,7 @@ public class JockeyMenu extends Menu {
                 // Refresh the jockey manager to ensure state is in sync
                 jockeyManager.refresh();
                 
-                // Otherwise return to jockey menu
+                // Otherwise return to mob settings menu
                 if (jockeyInventories.containsKey(player.getUniqueId())) {
                     player.openInventory(jockeyInventories.get(player.getUniqueId()).getInventory());
                 }
@@ -688,10 +687,10 @@ public class JockeyMenu extends Menu {
             player,
             plugin,
             jockey,
-            Dealer.getInternalName(dealer) + "'s Jockey Menu",
+            Dealer.getInternalName(dealer) + "'s Mob Settings Menu",
             (p) -> {
                 if (jockeyInventories.containsKey(player.getUniqueId())) {
-                    JockeyMenu temp=(JockeyMenu)JockeyMenu.jockeyInventories.get(player.getUniqueId());
+                    MobSettingsMenu temp=(MobSettingsMenu)MobSettingsMenu.jockeyInventories.get(player.getUniqueId());
                     temp.initializeMenu();
                     player.openInventory(jockeyInventories.get(player.getUniqueId()).getInventory());
                 }
@@ -824,15 +823,15 @@ public class JockeyMenu extends Menu {
             plugin,
             dealerId,
             (p) -> {
-                // Return to JockeyMenu
+                // Return to mobSettingsMenu
                 if (jockeyInventories.containsKey(player.getUniqueId())) {
-                    JockeyMenu temp = jockeyInventories.get(player.getUniqueId());
+                    MobSettingsMenu temp = jockeyInventories.get(player.getUniqueId());
                     temp.refreshJockeyManager();
                     temp.initializeMenu();
                     player.openInventory(temp.getInventory());
                 }
             },
-            "Jockey Menu"
+            "Mob Settings Menu"
         );
         player.openInventory(mobSelectionMenu.getInventory());
     }

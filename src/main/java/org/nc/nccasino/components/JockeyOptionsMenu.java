@@ -129,8 +129,8 @@ public class JockeyOptionsMenu extends Menu {
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    // First update the JockeyMenu if it exists
-                    JockeyMenu temp = JockeyMenu.jockeyInventories.get(p.getUniqueId());
+                    // First update the mobSettingsMenu if it exists
+                    MobSettingsMenu temp = MobSettingsMenu.jockeyInventories.get(p.getUniqueId());
                     if (temp != null) {
                         // Create a fresh JockeyManager to ensure we have the current state
                         temp.refreshJockeyManager();
@@ -389,7 +389,7 @@ public class JockeyOptionsMenu extends Menu {
                     player.sendMessage("§aChanged jockey to " + formatEntityName(selectedType.name()));
                     playDefaultSound(player);
                     
-                    // Return to JockeyMenu after successful mob change
+                    // Return to mobSettingsMenu after successful mob change
                     executeReturn(player);
                 } else {
                     player.sendMessage("§cFailed to change jockey");
@@ -898,7 +898,7 @@ public class JockeyOptionsMenu extends Menu {
             default -> {}
         }
 
-        // Return to JockeyMenu
+        // Return to mobSettingsMenu
         executeReturn(player);
     }
 } 

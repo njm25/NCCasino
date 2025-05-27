@@ -94,6 +94,7 @@ public abstract class Menu extends DealerInventory {
         PM,
         //CHANGE_BIOME,
         MOB_SELECTION,
+        MOB_SETTINGS,
         JOCKEY_MENU,
 
         // Test buttons

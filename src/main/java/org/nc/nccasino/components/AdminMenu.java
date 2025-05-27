@@ -144,7 +144,7 @@ public class AdminMenu extends Menu {
     slotMapping.put(SlotOption.CHIP_SIZE3, 22);
     slotMapping.put(SlotOption.CHIP_SIZE4, 23);
     slotMapping.put(SlotOption.CHIP_SIZE5, 24);
-    slotMapping.put(SlotOption.MOB_SELECTION, 4);
+    slotMapping.put(SlotOption.MOB_SETTINGS, 4);
     slotMapping.put(SlotOption.JOCKEY_MENU, 13);
    }
 
@@ -206,7 +206,6 @@ public class AdminMenu extends Menu {
         addItemAndLore(Material.BOOK, 1, currentGame + " Settings", slotMapping.get(SlotOption.GAME_OPTIONS), gameSettingsLore.toArray(new String[0]));
     
         addItemAndLore(Material.RED_STAINED_GLASS_PANE, 1, "Edit Animation Message",  slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE), "Current: §a" + currentAnimationMessage);
-        addItemAndLore(Material.SADDLE, 1, "Manage Jockeys", slotMapping.get(SlotOption.JOCKEY_MENU), "Manage dealer's jockeys");
 
        /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
         addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
@@ -228,7 +227,7 @@ public class AdminMenu extends Menu {
 
         // Now display that egg item in the slot
         List<String> lore = getMobSelectionLore(dealer);
-        addItemAndLore(mobEgg, 1, "Edit Dealer Mob", slotMapping.get(SlotOption.MOB_SELECTION), lore.toArray(new String[0]));
+        addItemAndLore(mobEgg, 1, "Edit Dealer Mob", slotMapping.get(SlotOption.MOB_SETTINGS), lore.toArray(new String[0]));
 
     }
     
@@ -436,16 +435,12 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 playDefaultSound(player);
                 handlePlayerMenu(player);
                 break;
-            case MOB_SELECTION:
-                handleMobSelection(player);
+            case MOB_SETTINGS:
+                handleDealerSettings(player);
                 playDefaultSound(player);
                 break;
             case TEST_MENU:
                 handleTestMenu(player);
-                playDefaultSound(player);
-                break;
-            case JOCKEY_MENU:
-                handleJockeyMenu(player);
                 playDefaultSound(player);
                 break;
             default:
@@ -467,7 +462,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
     }
 
-    private void handleJockeyMenu(Player player) {
+    private void handleDealerSettings(Player player) {
         // Ensure we have a valid dealer reference
         if (dealer == null) {
             dealer = Dealer.findDealer(dealerId, player.getLocation());
@@ -478,10 +473,10 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             return;
         }
 
-        JockeyMenu jockeyMenu = new JockeyMenu(
+        MobSettingsMenu mobSettingsMenu = new MobSettingsMenu(
             dealerId,
             player,
-            Dealer.getInternalName(dealer) + "'s Jockey Menu",
+            Dealer.getInternalName(dealer) + "'s Mob Settings Menu",
             (p) -> {
                 if (adminInventories.containsKey(player.getUniqueId())) {
                     player.openInventory(adminInventories.get(player.getUniqueId()).getInventory());
@@ -493,20 +488,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             plugin,
             Dealer.getInternalName(dealer) + "'s Admin Menu"
         );
-        player.openInventory(jockeyMenu.getInventory());
-    }
-    
-    private void handleMobSelection(Player player) {
-        MobSelectionMenu mobSelectionInventory = new MobSelectionMenu(player, plugin, dealerId, (p) -> {
-            if (adminInventories.containsKey(player.getUniqueId())) {
-                player.openInventory(adminInventories.get(player.getUniqueId()).getInventory());
-            } else {
-                AdminMenu newAdminInventory = new AdminMenu(dealerId, player, plugin);
-                player.openInventory(newAdminInventory.getInventory());
-            }
-        }, Dealer.getInternalName(dealer) + "'s Admin Menu");
-
-        player.openInventory(mobSelectionInventory.getInventory());
+        player.openInventory(mobSettingsMenu.getInventory());
     }
 
     private void handlePlayerMenu(Player player) {
@@ -1618,7 +1600,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         if (!sizeOrAge.isEmpty()) {
             lore.add(sizeOrAge);
         }
-            if (isComplicatedVariant(mob)) {
+        if (isComplicatedVariant(mob)) {
             lore.addAll(getComplexVariantDetails(mob));
         } else {
             String variant = getCurrentVariant(mob);
@@ -1626,6 +1608,12 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 lore.add("Variant: §a" + variant);
             }
         }
+        // add total number of passengers
+        int passengerCount = mob.getPassengers().size();
+        if (passengerCount > 0) {
+            lore.add("Passengers: §a" + passengerCount);
+        }
+
         return lore;
     }
 

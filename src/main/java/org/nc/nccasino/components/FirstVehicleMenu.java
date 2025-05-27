@@ -39,11 +39,11 @@ public class FirstVehicleMenu extends Menu {
                 plugin,
                 jockeyManager,
                 null,
-                "Jockey Menu",
+                "Mob Settings Menu",
                 (p2) -> {
-                    // Return to JockeyMenu
-                    if (JockeyMenu.jockeyInventories.containsKey(p2.getUniqueId())) {
-                        p2.openInventory(JockeyMenu.jockeyInventories.get(p2.getUniqueId()).getInventory());
+                    // Return to mobSettingsMenu
+                    if (MobSettingsMenu.jockeyInventories.containsKey(p2.getUniqueId())) {
+                        p2.openInventory(MobSettingsMenu.jockeyInventories.get(p2.getUniqueId()).getInventory());
                     } else if (returnCallback != null) {
                         returnCallback.accept(p2);
                     }
@@ -132,11 +132,11 @@ public class FirstVehicleMenu extends Menu {
                     public void run() {
                         // Refresh the jockey manager to ensure state is in sync
                         jockeyManager.refresh();
-                        // Return to JockeyMenu
-                        if (JockeyMenu.jockeyInventories.containsKey(player.getUniqueId())) {
-                            JockeyMenu temp=(JockeyMenu)JockeyMenu.jockeyInventories.get(player.getUniqueId());
+                        // Return to mobSettingsMenu
+                        if (MobSettingsMenu.jockeyInventories.containsKey(player.getUniqueId())) {
+                            MobSettingsMenu temp=(MobSettingsMenu)MobSettingsMenu.jockeyInventories.get(player.getUniqueId());
                             temp.initializeMenu();
-                            player.openInventory(JockeyMenu.jockeyInventories.get(player.getUniqueId()).getInventory());
+                            player.openInventory(MobSettingsMenu.jockeyInventories.get(player.getUniqueId()).getInventory());
                         } else if (returnCallback != null) {
                             returnCallback.accept(player);
                         }
@@ -181,11 +181,11 @@ public class FirstVehicleMenu extends Menu {
                     plugin,
                     jockeyManager,
                     null,
-                    "Jockey Menu",
+                    "Mob Settings Menu",
                     (p) -> {
-                        // Return to JockeyMenu
-                        if (JockeyMenu.jockeyInventories.containsKey(p.getUniqueId())) {
-                            p.openInventory(JockeyMenu.jockeyInventories.get(p.getUniqueId()).getInventory());
+                        // Return to mobSettingsMenu
+                        if (MobSettingsMenu.jockeyInventories.containsKey(p.getUniqueId())) {
+                            p.openInventory(MobSettingsMenu.jockeyInventories.get(p.getUniqueId()).getInventory());
                         } else if (returnCallback != null) {
                             returnCallback.accept(p);
                         }

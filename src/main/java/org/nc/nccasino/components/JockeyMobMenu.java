@@ -12,7 +12,6 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.JockeyManager;
@@ -140,26 +139,6 @@ public class JockeyMobMenu extends Menu {
         }
     }
 
-    @SuppressWarnings("unused")
-    private void returnToJockeyMenu(Player player) {
-        // Schedule the return with a delay to ensure proper updates
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                // First update the JockeyMenu if it exists
-                JockeyMenu jockeyMenu = JockeyMenu.jockeyInventories.get(player.getUniqueId());
-                if (jockeyMenu != null) {
-                    jockeyMenu.initializeMenu();
-                }
-                
-                // Then return to it
-                if (returnCallback != null) {
-                    returnCallback.accept(player);
-                }
-            }
-        }.runTaskLater(plugin, 2L); // 2 tick delay (0.1 seconds)
-    }
-
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
         event.setCancelled(true);
@@ -190,11 +169,11 @@ public class JockeyMobMenu extends Menu {
                             player,
                             plugin,
                             jockeyManager,
-                            "Jockey Menu",
+                            "Mob Settings Menu",
                             (p) -> {
-                                // Return to JockeyMenu
-                                if (JockeyMenu.jockeyInventories.containsKey(p.getUniqueId())) {
-                                    p.openInventory(JockeyMenu.jockeyInventories.get(p.getUniqueId()).getInventory());
+                                // Return to mobSettingsMenu
+                                if (MobSettingsMenu.jockeyInventories.containsKey(p.getUniqueId())) {
+                                    p.openInventory(MobSettingsMenu.jockeyInventories.get(p.getUniqueId()).getInventory());
                                 } else if (returnCallback != null) {
                                     returnCallback.accept(p);
                                 }
@@ -207,9 +186,9 @@ public class JockeyMobMenu extends Menu {
                         if (!asPassenger && jockeyManager.getJockeyCount() == 0) {
                             vehicleTypeMap.remove(player.getUniqueId());
                         }
-                        // Return to JockeyMenu
-                        if (JockeyMenu.jockeyInventories.containsKey(player.getUniqueId())) {
-                            player.openInventory(JockeyMenu.jockeyInventories.get(player.getUniqueId()).getInventory());
+                        // Return to mobSettingsMenu
+                        if (MobSettingsMenu.jockeyInventories.containsKey(player.getUniqueId())) {
+                            player.openInventory(MobSettingsMenu.jockeyInventories.get(player.getUniqueId()).getInventory());
                         } else if (returnCallback != null) {
                             returnCallback.accept(player);
                         }
@@ -358,12 +337,12 @@ public class JockeyMobMenu extends Menu {
                     cleanup();
                     jockeyManager.refresh();
 
-                    // Return to JockeyMenu after selecting passenger
-                    if (JockeyMenu.jockeyInventories.containsKey(player.getUniqueId())) {
+                    // Return to mobSettingsMenu after selecting passenger
+                    if (MobSettingsMenu.jockeyInventories.containsKey(player.getUniqueId())) {
                     //System.out.println("skib1");
-                    JockeyMenu temp=(JockeyMenu)JockeyMenu.jockeyInventories.get(player.getUniqueId());
+                    MobSettingsMenu temp=(MobSettingsMenu)MobSettingsMenu.jockeyInventories.get(player.getUniqueId());
                     temp.initializeMenu();
-                        player.openInventory(JockeyMenu.jockeyInventories.get(player.getUniqueId()).getInventory());
+                        player.openInventory(MobSettingsMenu.jockeyInventories.get(player.getUniqueId()).getInventory());
                      
                     } else if (returnCallback != null) {
                         returnCallback.accept(player);
@@ -378,11 +357,11 @@ public class JockeyMobMenu extends Menu {
                             player,
                             plugin,
                             jockeyManager,
-                            "Jockey Menu",
+                            "Mob Settings Menu",
                             (p) -> {
-                                // Return to JockeyMenu
-                                if (JockeyMenu.jockeyInventories.containsKey(p.getUniqueId())) {
-                                    p.openInventory(JockeyMenu.jockeyInventories.get(p.getUniqueId()).getInventory());
+                                // Return to mobSettingsMenu
+                                if (MobSettingsMenu.jockeyInventories.containsKey(p.getUniqueId())) {
+                                    p.openInventory(MobSettingsMenu.jockeyInventories.get(p.getUniqueId()).getInventory());
                                 } else if (returnCallback != null) {
                                     returnCallback.accept(p);
                                 }
@@ -450,11 +429,11 @@ public class JockeyMobMenu extends Menu {
                     cleanup();
                     jockeyManager.refresh();
 
-                    // Return to JockeyMenu
-                    if (JockeyMenu.jockeyInventories.containsKey(player.getUniqueId())) {
-                        JockeyMenu temp=(JockeyMenu)JockeyMenu.jockeyInventories.get(player.getUniqueId());
+                    // Return to mobSettingsMenu
+                    if (MobSettingsMenu.jockeyInventories.containsKey(player.getUniqueId())) {
+                        MobSettingsMenu temp=(MobSettingsMenu)MobSettingsMenu.jockeyInventories.get(player.getUniqueId());
                         temp.initializeMenu();
-                        player.openInventory(JockeyMenu.jockeyInventories.get(player.getUniqueId()).getInventory());
+                        player.openInventory(MobSettingsMenu.jockeyInventories.get(player.getUniqueId()).getInventory());
                     } else if (returnCallback != null) {
                         returnCallback.accept(player);
                     }
