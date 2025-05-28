@@ -18,6 +18,7 @@ import org.nc.nccasino.entities.JockeyManager;
 
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class JockeyOptionsMenu extends Menu {
     private final JockeyNode jockey;
@@ -30,6 +31,45 @@ public class JockeyOptionsMenu extends Menu {
     private static final Map<Material, EntityType> spawnEggToEntity = new HashMap<>();
     private static final Map<EntityType, Material> entityToSpawnEgg = new HashMap<>();
     private static final List<Material> spawnEggList = new ArrayList<>();
+
+    private static final List<Villager.Type> VILLAGER_BIOMES = Arrays.asList(
+        Villager.Type.DESERT,
+        Villager.Type.JUNGLE,
+        Villager.Type.PLAINS,
+        Villager.Type.SAVANNA,
+        Villager.Type.SNOW,
+        Villager.Type.SWAMP,
+        Villager.Type.TAIGA
+    );
+    
+    private static final Map<Villager.Type, Material> BIOME_MATERIALS = new HashMap<>() {{
+        put(Villager.Type.DESERT, Material.CACTUS);
+        put(Villager.Type.JUNGLE, Material.JUNGLE_LOG);
+        put(Villager.Type.PLAINS, Material.OAK_LOG);
+        put(Villager.Type.SAVANNA, Material.ACACIA_LOG);
+        put(Villager.Type.SNOW, Material.PALE_OAK_LOG);
+        put(Villager.Type.SWAMP, Material.MANGROVE_LOG);
+        put(Villager.Type.TAIGA, Material.SPRUCE_LOG);
+    }};
+
+    private static final Map<DyeColor, Material> DYE_MATERIAL_MAP = new HashMap<>() {{
+        put(DyeColor.WHITE, Material.WHITE_DYE);
+        put(DyeColor.ORANGE, Material.ORANGE_DYE);
+        put(DyeColor.MAGENTA, Material.MAGENTA_DYE);
+        put(DyeColor.LIGHT_BLUE, Material.LIGHT_BLUE_DYE);
+        put(DyeColor.YELLOW, Material.YELLOW_DYE);
+        put(DyeColor.LIME, Material.LIME_DYE);
+        put(DyeColor.PINK, Material.PINK_DYE);
+        put(DyeColor.GRAY, Material.GRAY_DYE);
+        put(DyeColor.LIGHT_GRAY, Material.LIGHT_GRAY_DYE);
+        put(DyeColor.CYAN, Material.CYAN_DYE);
+        put(DyeColor.PURPLE, Material.PURPLE_DYE);
+        put(DyeColor.BLUE, Material.BLUE_DYE);
+        put(DyeColor.BROWN, Material.BROWN_DYE);
+        put(DyeColor.GREEN, Material.GREEN_DYE);
+        put(DyeColor.RED, Material.RED_DYE);
+        put(DyeColor.BLACK, Material.BLACK_DYE);
+    }};
 
     private static final Map<Class<? extends Mob>, Material[]> VARIANT_ITEMS = new HashMap<>() {{
         put(Cat.class, new Material[]{
@@ -212,6 +252,7 @@ public class JockeyOptionsMenu extends Menu {
 
         // Add variant button if applicable
         if (isComplicatedVariant(jockey.getMob()) || hasSingleVariant(jockey.getMob())) {
+            slotMapping.put(SlotOption.VARIANT, 47);
             updateVariantButton();
         }
     }
@@ -465,20 +506,67 @@ public class JockeyOptionsMenu extends Menu {
     private void updateVariantButton() {
         Mob mob = jockey.getMob();
         int slot = slotMapping.get(SlotOption.VARIANT);
-
-        if (isComplicatedVariant(mob)) {
+    
+        if (mob instanceof Villager villager) {
+            Villager.Type vt = villager.getVillagerType();
+            Material mat = BIOME_MATERIALS.getOrDefault(vt, Material.GRASS_BLOCK);
+            addItemAndLore(
+                mat, 
+                1,
+                "Edit " + formatEntityName(mob.getType().toString()) + " Variant",
+                slot,
+                "Current: §a" + formatEntityName(vt.toString())
+            );
+            return;
+        }
+        else if (mob instanceof ZombieVillager villager) {
+            Villager.Type vt = villager.getVillagerType();
+            Material mat = BIOME_MATERIALS.getOrDefault(vt, Material.GRASS_BLOCK);
+            addItemAndLore(
+                mat, 
+                1,
+                "Edit " + formatEntityName(mob.getType().toString()) + " Variant",
+                slot,
+                "Current: §a" + formatEntityName(vt.toString())
+            );
+            return;
+        }
+        else if (isComplicatedVariant(mob)) {
             List<String> details = getComplexVariantDetails(mob);
             addItemAndLore(
                 Material.WRITABLE_BOOK,
                 1,
-                "Open " + formatEntityName(mob.getType().toString()) + " Variant Menu",
+                "Open "+ formatEntityName(mob.getType().toString())+" Variant Menu",
                 slot,
                 details.toArray(new String[0])
             );
             return;
         }
-
-        if (hasSingleVariant(mob)) {
+        else if (mob instanceof Wolf wolf) {
+            if (!wolf.isTamed()) {
+                addItemAndLore(
+                    Material.BARRIER,
+                    1,
+                    "Edit " + formatEntityName(mob.getType().toString()) + " Collar Color",
+                    slot,
+                    "Current: §aNone"
+                );
+                return;
+            }
+        
+            DyeColor currentColor = wolf.getCollarColor();
+            Material dyeMaterial = DYE_MATERIAL_MAP.getOrDefault(currentColor, Material.GRAY_DYE);
+            
+            addItemAndLore(
+                dyeMaterial,
+                1,
+                "Edit " + formatEntityName(mob.getType().toString()) + " Collar Color",
+                slot,
+                "Current: §a" + formatEntityName(currentColor.toString())
+            );
+            return;
+        }
+        else if (hasSingleVariant(mob)) {
             Material variantItem = getVariantItem(mob);
             addItemAndLore(
                 variantItem,
@@ -487,6 +575,7 @@ public class JockeyOptionsMenu extends Menu {
                 slot,
                 "Current: §a" + getVariantName(mob)
             );
+            return;
         }
     }
 
@@ -659,9 +748,17 @@ public class JockeyOptionsMenu extends Menu {
     }
 
     private void sendVariantUpdateMessage(Player player, Object variantObj, Mob mob) {
-        String variantName = variantObj.toString().toLowerCase().replace("_", " ");
+        String variantName;
+        if (variantObj instanceof Enum<?> e) {
+            // True Enum, so we can do .name()
+            variantName = e.name();
+        } else {
+            // Might be CraftCat$CraftType, so fallback to .toString()
+            variantName = variantObj.toString();
+        }
+    
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-            case VERBOSE -> player.sendMessage("§a" + formatEntityName(mob.getType().toString()) + " variant set to " + ChatColor.YELLOW + variantName + "§a.");
+            case VERBOSE  -> player.sendMessage("§a"+formatEntityName(mob.getType().toString())+" variant changed to " + ChatColor.YELLOW + formatEntityName(variantName)+"§a.");
             default -> {}
         }
     }
@@ -689,7 +786,9 @@ public class JockeyOptionsMenu extends Menu {
     }
 
     private String formatEntityName(String name) {
-        return name.substring(0, 1).toUpperCase() + name.substring(1).toLowerCase().replace("_", " ");
+        return Arrays.stream(name.toLowerCase().replace("_", " ").split(" "))
+                     .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1))
+                     .collect(Collectors.joining(" "));
     }
 
     @Override

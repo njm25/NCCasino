@@ -227,7 +227,7 @@ public class AdminMenu extends Menu {
 
         // Now display that egg item in the slot
         List<String> lore = getMobSelectionLore(dealer);
-        addItemAndLore(mobEgg, 1, "Edit Dealer Mob", slotMapping.get(SlotOption.MOB_SETTINGS), lore.toArray(new String[0]));
+        addItemAndLore(mobEgg, 1, "Edit Mob Settings", slotMapping.get(SlotOption.MOB_SETTINGS), lore.toArray(new String[0]));
 
     }
     
@@ -1596,7 +1596,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     private List<String> getMobSelectionLore(Mob mob) {
         List<String> lore = new ArrayList<>();
         lore.add("Mob: §a" + formatEntityName(mob.getType().toString()));
-            String sizeOrAge = getCurrentSizeOrAge(mob);
+        String sizeOrAge = getCurrentSizeOrAge(mob);
         if (!sizeOrAge.isEmpty()) {
             lore.add(sizeOrAge);
         }
@@ -1608,10 +1608,21 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 lore.add("Variant: §a" + variant);
             }
         }
-        // add total number of passengers
-        int passengerCount = mob.getPassengers().size();
+
+        // Add vehicle and passenger counts using JockeyManager
+        JockeyManager jockeyManager = new JockeyManager(mob);
+        int vehicleCount = jockeyManager.getVehicleCount();
+        int totalJockeys = jockeyManager.getJockeyCount();
+        int passengerCount = totalJockeys - vehicleCount;
+        
+        if (vehicleCount > 0) {
+            lore.add("Vehicles: §a" + vehicleCount);
+        }
         if (passengerCount > 0) {
             lore.add("Passengers: §a" + passengerCount);
+        }
+        else if (passengerCount == 0 && vehicleCount == 0) {
+            lore.add("No passengers or vehicles");
         }
 
         return lore;
@@ -1645,19 +1656,19 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     }
 
     private List<String> getComplexVariantDetails(Mob mob) {
-    List<String> details = new ArrayList<>();
-    if (mob instanceof Llama llama) {
-        details.add("Current Color: §a" + formatEntityName(llama.getColor().toString()));
-        details.add("Current Decor: §a" + getLlamaCarpetName(llama));
-    } else if (mob instanceof Horse horse) {
-        details.add("Current Color: §a" + formatEntityName(horse.getColor().toString()));
-        details.add("Current Style: §a" + formatEntityName(horse.getStyle().toString()));
-    } else if (mob instanceof TropicalFish fish) {
-        details.add("Current Pattern: §a" + formatEntityName(fish.getPattern().toString()));
-        details.add("Current Body Color: §a" + formatEntityName(fish.getBodyColor().toString()));
-        details.add("Current Pattern Color: §a" + formatEntityName(fish.getPatternColor().toString()));
-    }
-    return details;
+        List<String> details = new ArrayList<>();
+        if (mob instanceof Llama llama) {
+            details.add("Current Color: §a" + formatEntityName(llama.getColor().toString()));
+            details.add("Current Decor: §a" + getLlamaCarpetName(llama));
+        } else if (mob instanceof Horse horse) {
+            details.add("Current Color: §a" + formatEntityName(horse.getColor().toString()));
+            details.add("Current Style: §a" + formatEntityName(horse.getStyle().toString()));
+        } else if (mob instanceof TropicalFish fish) {
+            details.add("Current Pattern: §a" + formatEntityName(fish.getPattern().toString()));
+            details.add("Current Body Color: §a" + formatEntityName(fish.getBodyColor().toString()));
+            details.add("Current Pattern Color: §a" + formatEntityName(fish.getPatternColor().toString()));
+        }
+        return details;
     }
 
     private String getLlamaCarpetName(Llama llama) {

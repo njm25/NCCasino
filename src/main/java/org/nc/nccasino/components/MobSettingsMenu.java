@@ -87,20 +87,22 @@ public class MobSettingsMenu extends Menu {
             ItemStack deleteButton = createEnchantedItem(Material.BARRIER, "Delete Mode: ON", 1);
             ItemMeta meta = deleteButton.getItemMeta();
             if (meta != null) {
+                meta.setDisplayName(ChatColor.YELLOW + "Delete Mode: ON");
                 List<String> lore = Arrays.asList(
-                    "Click to exit delete mode",
-                    "Click any jockey to delete it"
+                    ChatColor.GRAY + "Click to exit delete mode",
+                    ChatColor.GRAY + "Click any jockey to delete it"
                 );
                 meta.setLore(lore);
+                meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
                 deleteButton.setItemMeta(meta);
             }
             inventory.setItem(slotMapping.get(SlotOption.REMOVE_JOCKEY), deleteButton);
         } else {
             addItemAndLore(Material.BARRIER, 1, "Delete Mode: OFF", slotMapping.get(SlotOption.REMOVE_JOCKEY), 
-                "Click to enter delete mode,",
-                "which stays until clicked again",
-                "When active, click jockeys to delete them"
-                );
+                ChatColor.GRAY + "Click to enter delete mode,",
+                ChatColor.GRAY + "which stays until clicked again",
+                ChatColor.GRAY + "When active, click jockeys to delete them"
+            );
         }
 
            // Count vehicles and passengers
@@ -137,22 +139,24 @@ public class MobSettingsMenu extends Menu {
         Material dealerSpawnEgg = MobSelectionMenu.getSpawnEggFor(dealer.getType());
         String dealerTypeName = formatEntityName(dealer.getType().name());
         
-        if (!deleteMode) {
-            ItemStack dealerItem = createEnchantedItem(dealerSpawnEgg, dealerTypeName, 1);
+        if (!deleteMode) {  // Dealer should be enchanted when NOT in delete mode
+            ItemStack dealerItem = createEnchantedItem(dealerSpawnEgg, "Dealer " + dealerTypeName, 1);
             ItemMeta meta = dealerItem.getItemMeta();
             if (meta != null) {
+                meta.setDisplayName(ChatColor.YELLOW + "Dealer " + dealerTypeName);
                 meta.setLore(getMobLore(dealer));
+                meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
                 dealerItem.setItemMeta(meta);
             }
             inventory.setItem(dealerSlot, dealerItem);
-        } else {
-        addItemAndLore(
+        } else {  // Dealer should NOT be enchanted when in delete mode
+            addItemAndLore(
                 dealerSpawnEgg,
-            1,
-                "Dealer "+dealerTypeName,
-            dealerSlot,
+                1,
+                "Dealer " + dealerTypeName,
+                dealerSlot,
                 getMobLore(dealer).toArray(new String[0])
-        );
+            );
         }
         
         // Display jockeys (below dealer)
@@ -168,18 +172,20 @@ public class MobSettingsMenu extends Menu {
                 ItemStack deleteEgg = createEnchantedItem(spawnEgg, mobTypeName, 1);
                 ItemMeta meta = deleteEgg.getItemMeta();
                 if (meta != null) {
+                    meta.setDisplayName(ChatColor.YELLOW + mobTypeName);
                     meta.setLore(getMobLore(jockeyMob));
+                    meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
                     deleteEgg.setItemMeta(meta);
                 }
                 inventory.setItem(jockeySlot, deleteEgg);
             } else {
-            addItemAndLore(
-                spawnEgg,
-                1,
+                addItemAndLore(
+                    spawnEgg,
+                    1,
                     mobTypeName,
-                jockeySlot,
+                    jockeySlot,
                     getMobLore(jockeyMob).toArray(new String[0])
-            );
+                );
             }
             
             // Map this slot to the jockey node
@@ -205,18 +211,20 @@ public class MobSettingsMenu extends Menu {
                 ItemStack deleteEgg = createEnchantedItem(spawnEgg, mobTypeName, 1);
                 ItemMeta meta = deleteEgg.getItemMeta();
                 if (meta != null) {
+                    meta.setDisplayName(ChatColor.YELLOW + mobTypeName);
                     meta.setLore(getMobLore(passengerMob));
+                    meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
                     deleteEgg.setItemMeta(meta);
                 }
                 inventory.setItem(passengerSlot, deleteEgg);
             } else {
-            addItemAndLore(
-                spawnEgg,
-                1,
+                addItemAndLore(
+                    spawnEgg,
+                    1,
                     mobTypeName,
-                passengerSlot,
+                    passengerSlot,
                     getMobLore(passengerMob).toArray(new String[0])
-            );
+                );
             }
             
             // Map this slot to the jockey node
@@ -327,7 +335,6 @@ public class MobSettingsMenu extends Menu {
     }
 
     private void handleAddJockey(Player player, boolean asPassenger) {
-
         int vehicleCount = 0;
         int passengerCount = 0;
         Mob currentMob = dealer;
@@ -361,7 +368,7 @@ public class MobSettingsMenu extends Menu {
             return;
         }
 
-        // Show mob selection menu first
+        // Show mob selection menu
         JockeyMobMenu mobMenu = new JockeyMobMenu(
             player, 
             plugin, 
@@ -374,16 +381,55 @@ public class MobSettingsMenu extends Menu {
                     // Get the last selected mob type
                     EntityType selectedType = JockeyMobMenu.getLastSelectedType(player);
                     if (selectedType != null) {
-                        // Show first vehicle menu
-                        FirstVehicleMenu firstVehicleMenu = new FirstVehicleMenu(
-                            player,
-                            plugin,
-                            jockeyManager,
-                            "Mob Settings Menu",
-                            returnCallbacks.get(this.ownerId), // Use the original callback directly
-                            selectedType
-                        );
-                        player.openInventory(firstVehicleMenu.getInventory());
+                        // Get dealer location
+                        Location dealerLoc = dealer.getLocation().clone();
+                        float yaw = dealerLoc.getYaw();
+                        
+                        // Spawn vehicle at dealer location
+                        Mob vehicle = (Mob) dealer.getWorld().spawnEntity(dealerLoc, selectedType);
+                        vehicle.setAI(false);
+                        vehicle.setPersistent(true);
+                        vehicle.setRemoveWhenFarAway(false);
+                        vehicle.setGravity(false);
+                        vehicle.setSilent(true);
+                        vehicle.setCollidable(false);
+                        vehicle.setInvulnerable(true);
+                        vehicle.teleport(dealerLoc);
+                        vehicle.setRotation(yaw, 0);
+                        
+                        // Create vehicle node
+                        JockeyNode vehicleNode = new JockeyNode(vehicle, 1, true);
+                        vehicleNode.setCustomName("Vehicle");
+                        
+                        // Mount dealer on vehicle
+                        JockeyNode dealerNode = jockeyManager.getJockey(0);
+                        vehicleNode.mountAsVehicle(dealerNode);
+                        
+                        // Since this is the first vehicle and there are no passengers, add an armor stand
+                        ArmorStand armorStand = (ArmorStand) dealer.getWorld().spawnEntity(dealerLoc, EntityType.ARMOR_STAND);
+                        armorStand.setVisible(false);
+                        armorStand.setGravity(false);
+                        armorStand.setSmall(true);
+                        armorStand.setMarker(true);
+                        armorStand.setCustomName(dealer.getCustomName());
+                        armorStand.setCustomNameVisible(true);
+                        
+                        // Add armor stand as passenger to dealer
+                        dealer.addPassenger(armorStand);
+                        dealer.setCustomNameVisible(false);
+                        vehicle.setCustomNameVisible(false);
+                        
+                        // Add to jockey manager's list
+                        jockeyManager.getJockeys().add(vehicleNode);
+                        
+                        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                            case STANDARD -> player.sendMessage("§aAdded vehicle.");
+                            case VERBOSE -> player.sendMessage("§aAdded vehicle: " + ChatColor.YELLOW + formatEntityName(selectedType.name()) + "§a.");
+                            default -> {}
+                        }
+                        
+                        // Refresh the menu
+                        initializeMenu();
                         return;
                     }
                 }
@@ -718,28 +764,36 @@ public class MobSettingsMenu extends Menu {
         // Add age/size info if applicable
         if (isAgeable(mob)) {
             org.bukkit.entity.Ageable ageable = (org.bukkit.entity.Ageable) mob;
-            lore.add("Age: §a" + (ageable.isAdult() ? "Adult" : "Baby"));
+            lore.add(ChatColor.GRAY + "Age: " + ChatColor.GREEN + (ageable.isAdult() ? "Adult" : "Baby"));
         } else if (mob instanceof Slime slime) {
-            lore.add("Size: §a" + slime.getSize());
+            lore.add(ChatColor.GRAY + "Size: " + ChatColor.GREEN  + slime.getSize());
         }
 
         // Add variant info
         if (isComplicatedVariant(mob)) {
-            lore.addAll(getComplexVariantDetails(mob));
+            List<String> details = getComplexVariantDetails(mob);
+            for (String detail : details) {
+                String[] parts = detail.split("§a");
+                if (parts.length == 2) {
+                    lore.add(ChatColor.GRAY + parts[0] + ChatColor.GREEN  + parts[1]);
+                } else {
+                    lore.add(ChatColor.GRAY + detail);
+                }
+            }
         } else {
             String variant = getVariantName(mob);
             if (!variant.isEmpty() && !variant.equals("Unknown")) {
-                lore.add("Variant: §a" + variant);
+                lore.add(ChatColor.GRAY + "Variant: " + ChatColor.GREEN  + variant);
             }
         }
 
         // Add click instruction
         if (mob == dealer) {
-            lore.add("Click to edit dealer mob");
+            lore.add(ChatColor.GRAY + "Click to edit dealer mob");
         } else if (deleteMode) {
-            lore.add("Click to delete");
+            lore.add(ChatColor.GRAY + "Click to delete");
         } else {
-            lore.add("Click to customize");
+            lore.add(ChatColor.GRAY + "Click to customize");
         }
 
         return lore;
@@ -762,15 +816,15 @@ public class MobSettingsMenu extends Menu {
     private List<String> getComplexVariantDetails(Mob mob) {
         List<String> details = new ArrayList<>();
         if (mob instanceof Llama llama) {
-            details.add("Color: §a" + formatEntityName(llama.getColor().toString()));
-            details.add("Decor: §a" + getLlamaCarpetName(llama));
+            details.add(ChatColor.GRAY + "Color: " + ChatColor.GREEN  + formatEntityName(llama.getColor().toString()));
+            details.add(ChatColor.GRAY + "Decor: " + ChatColor.GREEN  + getLlamaCarpetName(llama));
         } else if (mob instanceof Horse horse) {
-            details.add("Color: §a" + formatEntityName(horse.getColor().toString()));
-            details.add("Style: §a" + formatEntityName(horse.getStyle().toString()));
+            details.add(ChatColor.GRAY + "Color: " + ChatColor.GREEN  + formatEntityName(horse.getColor().toString()));
+            details.add(ChatColor.GRAY + "Style: " + ChatColor.GREEN  + formatEntityName(horse.getStyle().toString()));
         } else if (mob instanceof TropicalFish fish) {
-            details.add("Pattern: §a" + formatEntityName(fish.getPattern().toString()));
-            details.add("Body Color: §a" + formatEntityName(fish.getBodyColor().toString()));
-            details.add("Pattern Color: §a" + formatEntityName(fish.getPatternColor().toString()));
+            details.add(ChatColor.GRAY + "Pattern: " + ChatColor.GREEN  + formatEntityName(fish.getPattern().toString()));
+            details.add(ChatColor.GRAY + "Body Color: " + ChatColor.GREEN  + formatEntityName(fish.getBodyColor().toString()));
+            details.add(ChatColor.GRAY + "Pattern Color: " + ChatColor.GREEN  + formatEntityName(fish.getPatternColor().toString()));
         }
         return details;
     }

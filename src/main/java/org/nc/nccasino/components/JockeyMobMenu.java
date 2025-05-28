@@ -19,6 +19,7 @@ import org.nc.nccasino.entities.JockeyNode;
 
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class JockeyMobMenu extends Menu {
     private final Nccasino plugin;
@@ -30,7 +31,6 @@ public class JockeyMobMenu extends Menu {
     private static final int PAGE_SIZE = 45;
     public static final Map<UUID, JockeyMobMenu> jockeyMobInventories = new HashMap<>();
     public static final Map<UUID, EntityType> lastSelectedType = new HashMap<>();
-    public static final Map<UUID, EntityType> vehicleTypeMap = new HashMap<>();
     
     private static final Map<Material, EntityType> spawnEggToEntity = new HashMap<>();
     private static final Map<EntityType, Material> entityToSpawnEgg = new HashMap<>();
@@ -82,9 +82,8 @@ public class JockeyMobMenu extends Menu {
 
     public JockeyMobMenu(Player player, Nccasino plugin, JockeyManager jockeyManager, JockeyNode targetJockey, String returnName, Consumer<Player> returnCallback, boolean asPassenger) {
         super(player, plugin, jockeyManager.getDealer().getUniqueId(), 
-            // Set different titles for first vehicle flow
+            // Set different titles
             (jockeyManager.getJockeyCount() == 0 && !asPassenger) ? "Select Vehicle Mob" :
-            (returnName.equals("First Vehicle Menu")) ? "Select Passenger Mob" :
             "Select Jockey Mob", 
             54, returnName, returnCallback);
         this.plugin = plugin;
@@ -162,36 +161,11 @@ public class JockeyMobMenu extends Menu {
                     return;
                 case RETURN:
                     cleanup();
-                    // If this is a passenger selection menu, return to FirstVehicleMenu
-                    if (asPassenger && returnName.equals("First Vehicle Menu")) {
-                        // Return to FirstVehicleMenu with the stored vehicle type
-                        FirstVehicleMenu firstVehicleMenu = new FirstVehicleMenu(
-                            player,
-                            plugin,
-                            jockeyManager,
-                            "Mob Settings Menu",
-                            (p) -> {
-                                // Return to mobSettingsMenu
-                                if (MobSettingsMenu.jockeyInventories.containsKey(p.getUniqueId())) {
-                                    p.openInventory(MobSettingsMenu.jockeyInventories.get(p.getUniqueId()).getInventory());
-                                } else if (returnCallback != null) {
-                                    returnCallback.accept(p);
-                                }
-                            },
-                            vehicleTypeMap.get(player.getUniqueId())
-                        );
-                        player.openInventory(firstVehicleMenu.getInventory());
-                    } else {
-                        // If returning to first JockeyMobMenu, clear the stored vehicle type
-                        if (!asPassenger && jockeyManager.getJockeyCount() == 0) {
-                            vehicleTypeMap.remove(player.getUniqueId());
-                        }
-                        // Return to mobSettingsMenu
-                        if (MobSettingsMenu.jockeyInventories.containsKey(player.getUniqueId())) {
-                            player.openInventory(MobSettingsMenu.jockeyInventories.get(player.getUniqueId()).getInventory());
-                        } else if (returnCallback != null) {
-                            returnCallback.accept(player);
-                        }
+                    // Return to mobSettingsMenu
+                    if (MobSettingsMenu.jockeyInventories.containsKey(player.getUniqueId())) {
+                        player.openInventory(MobSettingsMenu.jockeyInventories.get(player.getUniqueId()).getInventory());
+                    } else if (returnCallback != null) {
+                        returnCallback.accept(player);
                     }
                     return;
                 default:
@@ -239,109 +213,52 @@ public class JockeyMobMenu extends Menu {
                     Location dealerLoc = dealer.getLocation().clone();
                     float yaw = dealerLoc.getYaw();
                     
-                    if (returnName.equals("First Vehicle Menu")) {
-                        // First vehicle flow - use vehicleTypeMap
-                        EntityType vehicleType = vehicleTypeMap.get(player.getUniqueId());
-                        if (vehicleType != null) {
-                            // Spawn vehicle at dealer location
-                            Mob vehicle = (Mob) dealer.getWorld().spawnEntity(dealerLoc, vehicleType);
-                            vehicle.setAI(false);
-                            vehicle.setPersistent(true);
-                            vehicle.setRemoveWhenFarAway(false);
-                            vehicle.setGravity(false);
-                            vehicle.setSilent(true);
-                            vehicle.setCollidable(false);
-                            vehicle.setInvulnerable(true);
-                            vehicle.teleport(dealerLoc);
-                            vehicle.setRotation(yaw, 0);
-                            
-                            // Create vehicle node
-                            JockeyNode vehicleNode = new JockeyNode(vehicle, 1, true);
-                            vehicleNode.setCustomName("Vehicle");
-                            
-                            // Mount dealer on vehicle
-                            JockeyNode dealerNode = jockeyManager.getJockey(0);
-                            vehicleNode.mountAsVehicle(dealerNode);
-                            
-                            // Spawn passenger at dealer location
-                            Mob newMob = (Mob) dealer.getWorld().spawnEntity(dealerLoc, selectedType);
-                            newMob.setAI(false);
-                            newMob.setPersistent(true);
-                            newMob.setRemoveWhenFarAway(false);
-                            newMob.setGravity(false);
-                            newMob.setSilent(true);
-                            newMob.setCollidable(false);
-                            newMob.setInvulnerable(true);
-                            newMob.teleport(dealerLoc);
-                            newMob.setRotation(yaw, 0);
-                            
-                            // Add passenger to dealer
-                            JockeyNode passengerNode = new JockeyNode(newMob, 2, true);
-                            passengerNode.setCustomName(dealerName);
-                            passengerNode.mountOn(dealerNode);
-                            
-                            // Update name visibility
-                            dealer.setCustomNameVisible(false);
-                            vehicle.setCustomNameVisible(false);
-                            newMob.setCustomNameVisible(false);
-                            
-                            // Add to jockey manager's list
-                            List<JockeyNode> jockeys = jockeyManager.getJockeys();
-                            jockeys.add(vehicleNode);
-                            jockeys.add(passengerNode);
-                            
-                            player.sendMessage("§aAdded vehicle and passenger");
+                    // Find the topmost jockey
+                    Mob topMob = dealer;
+                    while (!topMob.getPassengers().isEmpty()) {
+                        Entity passenger = topMob.getPassengers().get(0);
+                        if (passenger instanceof Mob) {
+                            topMob = (Mob) passenger;
+                        } else {
+                            break; // Stop if we hit a non-Mob entity
                         }
-                    } else {
-                        // Regular passenger addition
-                        // Find the topmost jockey
-                        Mob topMob = dealer;
-                        while (!topMob.getPassengers().isEmpty()) {
-                            Entity passenger = topMob.getPassengers().get(0);
-                            if (passenger instanceof Mob) {
-                                topMob = (Mob) passenger;
-                            } else {
-                                break; // Stop if we hit a non-Mob entity
-                            }
-                        }
-                        
-                        // Check for and remove any armor stands
-                        for (Entity passenger : dealer.getPassengers()) {
-                            if (passenger instanceof ArmorStand) {
-                                passenger.remove();
-                                break;
-                            }
-                        }
-                        
-                        // Spawn new passenger at dealer location
-                        Mob newMob = (Mob) dealer.getWorld().spawnEntity(dealerLoc, selectedType);
-                        newMob.teleport(dealerLoc);
-                        newMob.setRotation(yaw, 0);
-                        newMob.setPersistent(true);
-                        newMob.setRemoveWhenFarAway(false);
-                        newMob.setGravity(false);
-                        newMob.setSilent(true);
-                        newMob.setCollidable(false);
-                        newMob.setInvulnerable(true);
-                        newMob.setAI(false);
-                        // Mount the new passenger on top
-                        topMob.addPassenger(newMob);
-                        newMob.setCustomName(dealerName);
-                        newMob.setCustomNameVisible(false);
-                        
-                        // Hide the name of the jockey it's mounted on
-                        topMob.setCustomNameVisible(false);
-                        
-                        player.sendMessage("§aAdded new passenger: " + formatEntityName(selectedType.name()));
                     }
+                    
+                    // Check for and remove any armor stands
+                    for (Entity passenger : dealer.getPassengers()) {
+                        if (passenger instanceof ArmorStand) {
+                            passenger.remove();
+                            break;
+                        }
+                    }
+                    
+                    // Spawn new passenger at dealer location
+                    Mob newMob = (Mob) dealer.getWorld().spawnEntity(dealerLoc, selectedType);
+                    newMob.teleport(dealerLoc);
+                    newMob.setRotation(yaw, 0);
+                    newMob.setPersistent(true);
+                    newMob.setRemoveWhenFarAway(false);
+                    newMob.setGravity(false);
+                    newMob.setSilent(true);
+                    newMob.setCollidable(false);
+                    newMob.setInvulnerable(true);
+                    newMob.setAI(false);
+                    // Mount the new passenger on top
+                    topMob.addPassenger(newMob);
+                    newMob.setCustomName(dealerName);
+                    newMob.setCustomNameVisible(false);
+                    
+                    // Hide the name of the jockey it's mounted on
+                    topMob.setCustomNameVisible(false);
+                    
+                    player.sendMessage("§aAdded new passenger: " + formatEntityName(selectedType.name()));
                     cleanup();
                     jockeyManager.refresh();
 
                     // Return to mobSettingsMenu after selecting passenger
                     if (MobSettingsMenu.jockeyInventories.containsKey(player.getUniqueId())) {
-                    //System.out.println("skib1");
-                    MobSettingsMenu temp=(MobSettingsMenu)MobSettingsMenu.jockeyInventories.get(player.getUniqueId());
-                    temp.initializeMenu();
+                        MobSettingsMenu temp=(MobSettingsMenu)MobSettingsMenu.jockeyInventories.get(player.getUniqueId());
+                        temp.initializeMenu();
                         player.openInventory(MobSettingsMenu.jockeyInventories.get(player.getUniqueId()).getInventory());
                      
                     } else if (returnCallback != null) {
@@ -350,26 +267,63 @@ public class JockeyMobMenu extends Menu {
                 } else {
                     // Check if this is the first vehicle (no jockeys yet)
                     if (jockeyManager.getJockeyCount() == 0) {
-                        // Store the vehicle type
-                        vehicleTypeMap.put(player.getUniqueId(), selectedType);
-                        // Open First Vehicle Menu
-                        FirstVehicleMenu firstVehicleMenu = new FirstVehicleMenu(
-                            player,
-                            plugin,
-                            jockeyManager,
-                            "Mob Settings Menu",
-                            (p) -> {
-                                // Return to mobSettingsMenu
-                                if (MobSettingsMenu.jockeyInventories.containsKey(p.getUniqueId())) {
-                                    p.openInventory(MobSettingsMenu.jockeyInventories.get(p.getUniqueId()).getInventory());
-                                } else if (returnCallback != null) {
-                                    returnCallback.accept(p);
-                                }
-                            },
-                            selectedType
-                        );
+                        // Get dealer location
+                        Mob dealer = jockeyManager.getDealer();
+                        Location dealerLoc = dealer.getLocation().clone();
+                        float yaw = dealerLoc.getYaw();
+                        
+                        // Spawn vehicle at dealer location
+                        Mob vehicle = (Mob) dealer.getWorld().spawnEntity(dealerLoc, selectedType);
+                        vehicle.setAI(false);
+                        vehicle.setPersistent(true);
+                        vehicle.setRemoveWhenFarAway(false);
+                        vehicle.setGravity(false);
+                        vehicle.setSilent(true);
+                        vehicle.setCollidable(false);
+                        vehicle.setInvulnerable(true);
+                        vehicle.teleport(dealerLoc);
+                        vehicle.setRotation(yaw, 0);
+                        
+                        // Create vehicle node
+                        JockeyNode vehicleNode = new JockeyNode(vehicle, 1, true);
+                        vehicleNode.setCustomName("Vehicle");
+                        
+                        // Mount dealer on vehicle
+                        JockeyNode dealerNode = jockeyManager.getJockey(0);
+                        vehicleNode.mountAsVehicle(dealerNode);
+                        
+                        // Since this is the first vehicle and there are no passengers, add an armor stand
+                        ArmorStand armorStand = (ArmorStand) dealer.getWorld().spawnEntity(dealerLoc, EntityType.ARMOR_STAND);
+                        armorStand.setVisible(false);
+                        armorStand.setGravity(false);
+                        armorStand.setInvulnerable(true);
+                        armorStand.setSmall(true);
+                        armorStand.setMarker(true);
+                        armorStand.setCustomNameVisible(true);
+                        armorStand.setCustomName(dealer.getCustomName());
+                        dealer.setCustomNameVisible(false);
+                        dealer.addPassenger(armorStand);
+                        
+                        // Add to jockey manager's list
+                        jockeyManager.getJockeys().add(vehicleNode);
+                        
+                        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                            case STANDARD -> player.sendMessage("§aAdded vehicle.");
+                            case VERBOSE -> player.sendMessage("§aAdded vehicle: " + ChatColor.YELLOW + formatEntityName(selectedType.name()) + "§a.");
+                            default -> {}
+                        }
+                        
                         cleanup();
-                        player.openInventory(firstVehicleMenu.getInventory());
+                        jockeyManager.refresh();
+
+                        // Return to mobSettingsMenu
+                        if (MobSettingsMenu.jockeyInventories.containsKey(player.getUniqueId())) {
+                            MobSettingsMenu temp=(MobSettingsMenu)MobSettingsMenu.jockeyInventories.get(player.getUniqueId());
+                            temp.initializeMenu();
+                            player.openInventory(MobSettingsMenu.jockeyInventories.get(player.getUniqueId()).getInventory());
+                        } else if (returnCallback != null) {
+                            returnCallback.accept(player);
+                        }
                         return;
                     }
                     
@@ -597,6 +551,202 @@ public class JockeyMobMenu extends Menu {
                     }
                 }
             }
+        }
+    }
+
+    private void handleEntityClick(int slot, Player player, InventoryClickEvent event) {
+        EntityType selectedType = slotToEntityType.get(slot);
+        if (selectedType == null) return;
+
+        // Store the selected type for potential use in vehicle/passenger flows
+        lastSelectedType.put(player.getUniqueId(), selectedType);
+
+        // Get dealer name for consistent naming
+        String dealerName = jockeyManager.getDealer().getCustomName();
+
+        // Handle mob selection
+        if (targetJockey != null) {
+            // Jockey replacement flow
+            handleJockeyReplacement(player, selectedType, dealerName);
+        } else {
+            if (asPassenger) {
+                // Get dealer location
+                Mob dealer = jockeyManager.getDealer();
+                Location dealerLoc = dealer.getLocation().clone();
+                float yaw = dealerLoc.getYaw();
+                
+                // Find the topmost jockey
+                Mob topMob = dealer;
+                while (!topMob.getPassengers().isEmpty()) {
+                    Entity passenger = topMob.getPassengers().get(0);
+                    if (passenger instanceof Mob) {
+                        topMob = (Mob) passenger;
+                    } else {
+                        break; // Stop if we hit a non-Mob entity
+                    }
+                }
+                
+                // Check for and remove any armor stands
+                for (Entity passenger : dealer.getPassengers()) {
+                    if (passenger instanceof ArmorStand) {
+                        passenger.remove();
+                        break;
+                    }
+                }
+                
+                // Spawn new mob at dealer location
+                Mob newMob = (Mob) dealer.getWorld().spawnEntity(dealerLoc, selectedType);
+                newMob.setAI(false);
+                newMob.setPersistent(true);
+                newMob.setRemoveWhenFarAway(false);
+                newMob.setGravity(false);
+                newMob.setSilent(true);
+                newMob.setCollidable(false);
+                newMob.setInvulnerable(true);
+                newMob.teleport(dealerLoc);
+                newMob.setRotation(yaw, 0);
+                
+                // Mount the new passenger on top
+                topMob.addPassenger(newMob);
+                newMob.setCustomName(dealerName);
+                newMob.setCustomNameVisible(false);
+                
+                // Hide the name of the jockey it's mounted on
+                topMob.setCustomNameVisible(false);
+                
+                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                    case STANDARD -> player.sendMessage("§aAdded passenger.");
+                    case VERBOSE -> player.sendMessage("§aAdded passenger: " + ChatColor.YELLOW + JockeyMobMenu.formatEntityName(selectedType.name()) + "§a.");
+                    default -> {}
+                }
+            } else {
+                // Get the current bottom-most mob in the stack
+                Mob dealer = jockeyManager.getDealer();
+                Mob bott = dealer;
+                while (bott.getVehicle() != null) {
+                    bott = (Mob)bott.getVehicle();
+                }
+                
+                // Create new mob at the exact position of current bottom
+                Location bottomLoc = bott.getLocation();
+                Mob newMob = (Mob) dealer.getWorld().spawnEntity(bottomLoc, selectedType);
+                newMob.setAI(false);
+                newMob.setPersistent(true);
+                newMob.setRemoveWhenFarAway(false);
+                newMob.setGravity(false);
+                newMob.setSilent(true);
+                newMob.setCollidable(false);
+                newMob.setInvulnerable(true);
+                newMob.teleport(bottomLoc);
+                newMob.setRotation(bottomLoc.getYaw(), 0);
+                
+                // Add new mob as vehicle to current bottom
+                newMob.addPassenger(bott);
+                newMob.setCustomName(dealerName);
+                newMob.setCustomNameVisible(false);
+                
+                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                    case STANDARD -> player.sendMessage("§aAdded vehicle.");
+                    case VERBOSE -> player.sendMessage("§aAdded vehicle: " + ChatColor.YELLOW + JockeyMobMenu.formatEntityName(selectedType.name()) + "§a.");
+                    default -> {}
+                }
+            }
+        }
+
+        // Refresh the jockey manager to ensure state is in sync
+        jockeyManager.refresh();
+        
+        // Return to previous menu
+        if (returnCallback != null) {
+            returnCallback.accept(player);
+        }
+        
+        cleanup();
+    }
+
+    private void handleJockeyReplacement(Player player, EntityType selectedType, String dealerName) {
+        // Get the original location and yaw
+        Location originalLoc = targetJockey.getMob().getLocation().clone();
+        float yaw = originalLoc.getYaw();
+        
+        // Store whether this jockey has vehicles or passengers
+        boolean hasVehicles = targetJockey.getMob().getVehicle() != null;
+        boolean hasPassengers = false;
+        for (Entity passenger : targetJockey.getMob().getPassengers()) {
+            if (passenger instanceof Mob) {
+                hasPassengers = true;
+                break;
+            }
+        }
+        
+        // Store any armor stand that might be present
+        ArmorStand armorStand = null;
+        String armorStandName = null;
+        for (Entity passenger : targetJockey.getMob().getPassengers()) {
+            if (passenger instanceof ArmorStand) {
+                armorStand = (ArmorStand) passenger;
+                armorStandName = armorStand.getCustomName();
+                armorStand.remove();
+                break;
+            }
+        }
+        
+        // Create the new mob
+        Mob newMob = (Mob) targetJockey.getMob().getWorld().spawnEntity(originalLoc, selectedType);
+        newMob.setAI(false);
+        newMob.setPersistent(true);
+        newMob.setRemoveWhenFarAway(false);
+        newMob.setGravity(false);
+        newMob.setSilent(true);
+        newMob.setCollidable(false);
+        newMob.setInvulnerable(true);
+        newMob.teleport(originalLoc);
+        newMob.setRotation(yaw, 0);
+        
+        // Replace the old mob in the stack
+        if (hasVehicles) {
+            Entity vehicle = targetJockey.getMob().getVehicle();
+            targetJockey.getMob().leaveVehicle();
+            vehicle.addPassenger(newMob);
+        }
+        
+        if (hasPassengers) {
+            for (Entity passenger : targetJockey.getMob().getPassengers()) {
+                if (passenger instanceof Mob) {
+                    targetJockey.getMob().removePassenger(passenger);
+                    newMob.addPassenger(passenger);
+                }
+            }
+        }
+        
+        // Remove the old mob
+        targetJockey.getMob().remove();
+        
+        // Update the jockey node with the new mob
+        targetJockey.setMob(newMob);
+        targetJockey.setCustomName(dealerName);
+        newMob.setCustomNameVisible(false);
+        
+        // If this jockey has vehicles but no passengers, add an armor stand
+        if (hasVehicles && !hasPassengers) {
+            ArmorStand newArmorStand = (ArmorStand) newMob.getWorld().spawnEntity(originalLoc, EntityType.ARMOR_STAND);
+            newArmorStand.setVisible(false);
+            newArmorStand.setGravity(false);
+            newArmorStand.setSmall(true);
+            newArmorStand.setMarker(true);
+            newArmorStand.setCustomName(armorStandName != null ? armorStandName : dealerName);
+            newArmorStand.setCustomNameVisible(true);
+            
+            // Add armor stand as passenger
+            newMob.addPassenger(newArmorStand);
+            newMob.setCustomNameVisible(false);
+        }
+        
+        // Send feedback to player
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case STANDARD -> player.sendMessage("§aChanged jockey.");
+            case VERBOSE -> player.sendMessage("§aChanged jockey to " + ChatColor.YELLOW + JockeyMobMenu.formatEntityName(selectedType.name()) + "§a.");
+            default -> {}
         }
     }
 } 
