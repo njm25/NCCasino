@@ -252,7 +252,7 @@ public class JockeyOptionsMenu extends Menu {
 
         // Add variant button if applicable
         if (isComplicatedVariant(jockey.getMob()) || hasSingleVariant(jockey.getMob())) {
-            slotMapping.put(SlotOption.VARIANT, 47);
+            slotMapping.put(SlotOption.VARIANT, 46);
             updateVariantButton();
         }
     }
@@ -737,11 +737,43 @@ public class JockeyOptionsMenu extends Menu {
             panda.setMainGene(newGene);
             panda.setHiddenGene(newGene);
             sendVariantUpdateMessage(player, newGene, mob);
+        } else if (mob instanceof Villager villager) {
+            Villager.Type currentBiome = villager.getVillagerType();
+            int index = VILLAGER_BIOMES.indexOf(currentBiome);
+            Villager.Type newBiome = VILLAGER_BIOMES.get((index + 1) % VILLAGER_BIOMES.size());
+            villager.setVillagerType(newBiome);
+            sendVariantUpdateMessage(player, newBiome, mob);
+        } else if (mob instanceof ZombieVillager zombieVillager) {
+            Villager.Type currentBiome = zombieVillager.getVillagerType();
+            int index = VILLAGER_BIOMES.indexOf(currentBiome);
+            Villager.Type newBiome = VILLAGER_BIOMES.get((index + 1) % VILLAGER_BIOMES.size());
+            zombieVillager.setVillagerType(newBiome);
+            sendVariantUpdateMessage(player, newBiome, mob);
         } else if (mob instanceof Sheep sheep) {
             int currentIndex = SHEEP_COLOR_ORDER.indexOf(sheep.getColor());
             DyeColor newColor = SHEEP_COLOR_ORDER.get((currentIndex + 1) % SHEEP_COLOR_ORDER.size());
             sheep.setColor(newColor);
             sendVariantUpdateMessage(player, newColor, mob);
+        } else if (mob instanceof Wolf wolf) {
+            List<DyeColor> colors = List.of(DyeColor.values());
+            
+            if (!wolf.isTamed()) {
+                // If untamed, tame and set the first collar color
+                wolf.setTamed(true);
+                wolf.setCollarColor(colors.get(0));
+                sendVariantUpdateMessage(player, colors.get(0), mob);
+            } else {
+                // If tamed, cycle through the colors, untame if removing the collar
+                int index = colors.indexOf(wolf.getCollarColor());
+                if (index == colors.size() - 1) {
+                    wolf.setTamed(false); // If cycling past last color, untame the wolf
+                    sendVariantUpdateMessage(player, "Untamed", mob);
+                } else {
+                    DyeColor nextColor = colors.get((index + 1) % colors.size());
+                    wolf.setCollarColor(nextColor);
+                    sendVariantUpdateMessage(player, nextColor, mob);
+                }
+            }
         }
         
         initializeMenu();
