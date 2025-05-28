@@ -74,6 +74,7 @@ public abstract class Menu extends DealerInventory {
         PAGE_TOGGLE,
         VARIANT,
         AGE_TOGGLE,
+        DELETE,
 
         // Admin menu
         EDIT_DISPLAY_NAME,
@@ -93,16 +94,25 @@ public abstract class Menu extends DealerInventory {
         PM,
         //CHANGE_BIOME,
         MOB_SELECTION,
+        MOB_SETTINGS,
+        JOCKEY_MENU,
 
         // Test buttons
-        TEST_MENU
+        TEST_MENU,
+        ADD_JOCKEY,
+        ADD_PASSENGER,
+        REMOVE_JOCKEY,
+
+        // Passenger menu
+        INVISIBLE_PASSENGER,
+        PICK_PASSENGER
     }
 
     protected final Map<SlotOption, Integer> slotMapping = new HashMap<>();
     protected final UUID ownerId;
     public final UUID dealerId;
     protected final Nccasino plugin;
-    protected final Consumer<Player> returnCallback;
+    protected Consumer<Player> returnCallback;
     protected final String returnMessage;
     protected final Player player;
     public Mob dealer;
@@ -131,16 +141,9 @@ public abstract class Menu extends DealerInventory {
         this.returnMessage = returnMessage;
         this.player = player;
         this.returnCallback = returnCallback;
-        this.dealer = Dealer.getMobFromId(dealerId);
         if (this.dealer == null) {
-            // Attempt to find a nearby Dealer if not found above
-            this.dealer = (Mob) player.getWorld()
-                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                .filter(entity -> entity instanceof Mob)
-                .map(entity -> (Mob) entity)
-                .filter(v -> Dealer.isDealer(v)
-                             && Dealer.getUniqueId(v).equals(this.dealerId))
-                .findFirst().orElse(null);
+            // Use the new findDealer method to locate the dealer
+            this.dealer = Dealer.findDealer(this.dealerId, player.getLocation());
         }
      
         // Register this menu as an event listener
@@ -232,6 +235,10 @@ public abstract class Menu extends DealerInventory {
         );
     }   
 
+    public void setReturnCallback(Consumer<Player> callback) {
+        this.returnCallback = callback;
+    }
+
     public static List<Player> getOpenInventories(UUID dealerId) {
         List<Player> players = new ArrayList<>();
 
@@ -241,13 +248,7 @@ public abstract class Menu extends DealerInventory {
             }
 
             if (player.getOpenInventory().getTopInventory().getHolder() instanceof Menu menu) {
-                Mob dealer = (Mob) player.getWorld()
-                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                .filter(entity -> entity instanceof Mob)
-                .map(entity -> (Mob) entity)
-                .filter(v -> Dealer.isDealer(v)
-                             && Dealer.getUniqueId(v).equals(menu.dealerId))
-                .findFirst().orElse(null);
+                Mob dealer = Dealer.findDealer(menu.dealerId, player.getLocation());
                 if (Dealer.getUniqueId(dealer).equals(dealerId) || dealer.getUniqueId().equals(dealerId)) {
                     players.add(player);
                 }

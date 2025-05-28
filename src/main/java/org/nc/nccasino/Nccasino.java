@@ -29,8 +29,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Shulker;
-import org.bukkit.entity.Villager;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.persistence.PersistentDataContainer;
@@ -39,6 +38,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.commands.CommandExecution;
 import org.nc.nccasino.commands.CommandTabCompleter;
 import org.nc.nccasino.components.AnimationMessage;
+import org.nc.nccasino.components.AdminMenu;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.games.Blackjack.BlackjackInventory;
@@ -53,7 +53,10 @@ import org.nc.nccasino.listeners.DealerDeathHandler;
 import org.nc.nccasino.listeners.DealerEventListener;
 import org.nc.nccasino.listeners.DealerInitializeListener;
 import org.nc.nccasino.listeners.DealerInteractListener;
-
+import org.nc.nccasino.entities.JockeyManager;
+import org.nc.nccasino.entities.JockeyNode;
+import org.bukkit.Chunk;
+import org.bukkit.entity.EntityType;
 
 public final class Nccasino extends JavaPlugin implements Listener {
     private final Set<String> currentlyDeletingChunks = new HashSet<>();
@@ -161,11 +164,43 @@ public final class Nccasino extends JavaPlugin implements Listener {
     }
     
     private void initializeDealersIfLoaded() {
+       // getLogger().info("[Debug] Starting dealer initialization on server start");
+        
+        // Track which dealers we've already initialized
+        Set<UUID> initializedDealers = new HashSet<>();
 
         Bukkit.getWorlds().forEach(world -> {
+            //getLogger().info("[Debug] Checking world: " + world.getName());
+            
+            // First, load all chunks that have dealers
+            File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
+            if (dealersFile.exists()) {
+                FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
+                if (dealersConfig.contains("dealers")) {
+                    for (String internalName : dealersConfig.getConfigurationSection("dealers").getKeys(false)) {
+                        if (dealersConfig.getString("dealers." + internalName + ".world").equals(world.getName())) {
+                            double x = dealersConfig.getDouble("dealers." + internalName + ".X");
+                            double z = dealersConfig.getDouble("dealers." + internalName + ".Z");
+                            int chunkX = (int) x >> 4;
+                            int chunkZ = (int) z >> 4;
+                            world.loadChunk(chunkX, chunkZ);
+                        }
+                    }
+                }
+            }
+
+            // Now check all entities
             for (Entity entity : world.getEntities()) {
                 if (entity instanceof Mob mob) {
                     if (Dealer.isDealer(mob)) {
+                        // Skip if we've already initialized this dealer
+                        if (initializedDealers.contains(mob.getUniqueId())) {
+                            //getLogger().info("[Debug] Skipping already initialized dealer: " + mob.getUniqueId());
+                            continue;
+                        }
+                        
+                       // getLogger().info("[Debug] Found dealer on server start: " + mob.getType() + " uuid:" + mob.getUniqueId());
+                        initializedDealers.add(mob.getUniqueId());
 
                         mob.setCollidable(false);
                         String internalName = Dealer.getInternalName(mob);
@@ -181,11 +216,96 @@ public final class Nccasino extends JavaPlugin implements Listener {
                                 chipSizes.add(getConfig().getInt("dealers." + internalName + ".chip-sizes." + key));
                             }
                         }
-                        chipSizes.sort(Integer::compareTo); // Ensure chip sizes are in ascending order
+                        chipSizes.sort(Integer::compareTo);
                 
                         String currencyMaterial = getConfig().getString("dealers." + internalName + ".currency.material");
                         String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
                         Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+                        
+                        // Force chunk to stay loaded briefly while we initialize
+                        Chunk chunk = mob.getLocation().getChunk();
+                        boolean wasForceLoaded = chunk.isForceLoaded();
+                        chunk.setForceLoaded(true);
+                        
+                        // Delay JockeyManager initialization to ensure stack is loaded
+                        Bukkit.getScheduler().runTaskLater(this, () -> {
+                            // Find the bottom-most mob in the stack
+                            Mob bottomMob = mob;
+                            while (bottomMob.getVehicle() instanceof Mob) {
+                                bottomMob = (Mob) bottomMob.getVehicle();
+                            }
+                            
+                            // Store all mobs in the stack from bottom to top
+                            List<Mob> stackMobs = new ArrayList<>();
+                            Mob current = bottomMob;
+                            while (current != null) {
+                                stackMobs.add(current);
+                                if (!current.getPassengers().isEmpty() && current.getPassengers().get(0) instanceof Mob) {
+                                    current = (Mob) current.getPassengers().get(0);
+                                } else {
+                                    current = null;
+                                }
+                            }
+
+                            // Store armor stand info if present
+                            ArmorStand armorStand = null;
+                            String armorStandName = null;
+                            for (Entity passenger : mob.getPassengers()) {
+                                if (passenger instanceof ArmorStand) {
+                                    armorStand = (ArmorStand) passenger;
+                                    armorStandName = armorStand.getCustomName();
+                                    break;
+                                }
+                            }
+                            
+                            // Temporarily unmount everything
+                            for (Mob stackMob : stackMobs) {
+                                if (stackMob.getVehicle() != null) {
+                                    stackMob.getVehicle().removePassenger(stackMob);
+                                }
+                                for (Entity passenger : new ArrayList<>(stackMob.getPassengers())) {
+                                    stackMob.removePassenger(passenger);
+                                }
+                            }
+
+                            // Remove old armor stand if it exists
+                            if (armorStand != null) {
+                                armorStand.remove();
+                            }
+                            
+                            // Remount everything in order from bottom to top
+                            for (int i = 0; i < stackMobs.size() - 1; i++) {
+                                Mob lower = stackMobs.get(i);
+                                Mob upper = stackMobs.get(i + 1);
+                                lower.addPassenger(upper);
+                                lower.setCustomNameVisible(false);
+                            }
+
+                            // If there was an armor stand and no regular passengers, add it back
+                            if (armorStandName != null && !mob.getPassengers().stream().anyMatch(p -> p instanceof Mob)) {
+                                ArmorStand newArmorStand = (ArmorStand) world.spawnEntity(mob.getLocation(), EntityType.ARMOR_STAND);
+                                newArmorStand.setVisible(false);
+                                newArmorStand.setGravity(false);
+                                newArmorStand.setInvulnerable(true);
+                                newArmorStand.setSmall(true);
+                                newArmorStand.setMarker(true);
+                                newArmorStand.setCustomNameVisible(true);
+                                newArmorStand.setCustomName(armorStandName);
+                                mob.setCustomNameVisible(false);
+                                mob.addPassenger(newArmorStand);
+                            }
+                            
+                            // Now create JockeyManager after ensuring stack is properly mounted
+                            new JockeyManager(mob);
+                            
+                            // Restore original force loaded state after a delay
+                            if (!wasForceLoaded) {
+                                Bukkit.getScheduler().runTaskLater(this, () -> chunk.setForceLoaded(false), 40L);
+                            }
+                        }, 5L); // Reduced delay to 5 ticks since we're handling armor stands properly now
+                        
+                        mob.setPersistent(true);
+                        mob.setRemoveWhenFarAway(false);
                         if (mob instanceof org.bukkit.entity.LivingEntity livingEntity) {
                             var equipment = livingEntity.getEquipment();
                             if (equipment != null) { // Ensure the entity has equipment
@@ -197,41 +317,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
                                 equipment.setBoots(null);
                             }
                         }
-                        if (mob.getVehicle() != null) {
-                        mob.getVehicle().removePassenger(mob);
-                        }
-                        if (!mob.getPassengers().isEmpty()) {
-                            for (Entity passenger : mob.getPassengers()) {
-                                passenger.remove(); 
-                            }
-                            mob.eject(); 
-                        }
-                        mob.setInvisible(false);                                    
-                        mob.setInvulnerable(true);
-                        mob.setCustomName(name);
-                        mob.setCustomNameVisible(true);
-                        mob.setGravity(false);
-                        mob.setSilent(true);
-                        mob.setCollidable(false);
-                        if (mob instanceof Villager){
-                            ((Villager) mob).setProfession(Villager.Profession.NONE);
-                            //mob.setAI(true);
-                        }
-                        if (mob instanceof Shulker){
-                            mob.setAI(true);
-                        }
-                        else{
-                            mob.setAI(false);
-                        }
-                        Dealer.startLookingAtPlayers(mob);
-                        mob.setPersistent(true);
-                        mob.setRemoveWhenFarAway(false);
-                    
                     }
                 }
             }
         });
-}
+    }
 
     public void savePreferences() {
         if (preferencesConfig == null || preferencesFile == null) {
@@ -314,6 +404,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
             return;
         }
     
+        //getLogger().info("[Debug] Reloading dealer: " + mob.getType());
+    
         // Delete the associated inventory for this dealer
         deleteAssociatedInventories(mob);
     
@@ -336,7 +428,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
         
         Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
-        Dealer.startLookingAtPlayers(mob);
+        new JockeyManager(mob);
     }
     
     private void reloadDealers() {
@@ -538,11 +630,15 @@ public final class Nccasino extends JavaPlugin implements Listener {
     public Mob getDealerByInternalName(String internalName) {
         for (var world : Bukkit.getWorlds()) {
             for (Entity entity : world.getEntities()) {
-                if (entity instanceof Mob mov) {
-                    PersistentDataContainer dataContainer = mov.getPersistentDataContainer();
+                if (entity instanceof Mob mob) {
+                    PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
                     String storedInternalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
                     if (internalName.equals(storedInternalName)) {
-                        return mov;
+                        UUID dealerId = Dealer.getUniqueId(mob);
+                        if (dealerId != null) {
+                            return Dealer.findDealer(dealerId, mob.getLocation());
+                        }
+                        return mob;
                     }
                 }
             }
@@ -738,11 +834,47 @@ public final class Nccasino extends JavaPlugin implements Listener {
         for (String internalName : internalNames) {
             Mob mob = getDealerByInternalName(internalName);
             if (mob != null) {
+                // First clean up all associated inventories
+                deleteAssociatedInventories(mob);
+
+                // Create a JockeyManager to handle stack cleanup
+                JockeyManager jockeyManager = new JockeyManager(mob);
+                
+                // Clean up all jockeys in the stack
+                jockeyManager.cleanup();
+                
+                // First check and remove any armor stand passengers from ALL mobs in the stack
+                List<JockeyNode> jockeys = jockeyManager.getJockeys();
+                for (JockeyNode jockey : jockeys) {
+                    Mob currentMob = jockey.getMob();
+                    for (Entity passenger : new ArrayList<>(currentMob.getPassengers())) {
+                        if (passenger instanceof ArmorStand) {
+                            passenger.remove();
+                        }
+                    }
+                }
+                
+                // Now remove all jockeys and vehicles from top down
+                for (int i = jockeys.size() - 1; i > 0; i--) {
+                    JockeyNode jockey = jockeys.get(i);
+                    // First unmount to prevent any issues
+                    jockey.unmount();
+                    // Then remove the physical entity
+                    jockey.getMob().remove();
+                }
+                
+                // Remove the dealer and all its data
                 if (Dealer.removeDealer(mob)) {
                     DealerInventory.unregisterAllListeners(mob);
                     removeDealerData(internalName);
                     totalDeleted[0]++;
                 }
+                
+                // Clear any remaining references
+                AdminMenu.clearAllEditModes(mob);
+                
+                // Remove from jockey manager cache
+                DealerEventListener.clearJockeyManagerCache(mob.getUniqueId());
             } else {
                 getLogger().warning("Dealer '" + internalName + "' could not be found in chunk.");
             }

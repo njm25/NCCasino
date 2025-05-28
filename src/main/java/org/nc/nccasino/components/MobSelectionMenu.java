@@ -16,13 +16,14 @@ import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
-
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Axolotl;
 import org.bukkit.entity.Cat;
 import org.bukkit.entity.Cat.Type;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fox;
 import org.bukkit.entity.Frog;
@@ -50,6 +51,8 @@ import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Menu;
+import org.nc.nccasino.entities.JockeyManager;
+import org.nc.nccasino.entities.JockeyNode;
 
 public class MobSelectionMenu extends Menu {
     private int currentPage = 1;
@@ -221,29 +224,12 @@ public class MobSelectionMenu extends Menu {
             player, 
             plugin, 
             dealerId, 
-                Dealer.getInternalName((Mob) player.getWorld()
-                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                .filter(entity -> entity instanceof Mob)
-                .map(entity -> (Mob) entity)
-                .filter(v -> Dealer.isDealer(v) && Dealer.getUniqueId(v).equals(dealerId)).findFirst().orElse(null))
-                + "'s Mob Settings"
-                , 
+            "Dealer Mob Settings", // Use a default title that doesn't depend on dealer name
             54, 
             returnName, 
             returnToAdmin
         ); 
-        this.dealer = Dealer.getMobFromId(dealerId);
-        if (this.dealer == null) {
-            // Attempt to find a nearby Dealer if not found above
-            this.dealer = (Mob) player.getWorld()
-                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                .filter(entity -> entity instanceof Mob)
-                .map(entity -> (Mob) entity)
-                .filter(v -> Dealer.isDealer(v)
-                             && Dealer.getUniqueId(v).equals(this.dealerId))
-                .findFirst().orElse(null);
-        }
-     
+        this.dealer = Dealer.findDealer(dealerId, player.getLocation());
 
         initializeMenu();
     }
@@ -385,6 +371,40 @@ public class MobSelectionMenu extends Menu {
         chipSizes.sort(Integer::compareTo);
         String currencyMaterial = plugin.getConfig().getString("dealers." + internalName + ".currency.material");
         String currencyName = plugin.getConfig().getString("dealers." + internalName + ".currency.name");
+
+        // Store the entire stack before making changes
+        List<Mob> vehicleStack = new ArrayList<>();
+        List<Mob> passengerStack = new ArrayList<>();
+        final boolean hasArmorStand;
+
+        // Store vehicles (mobs below the dealer)
+        Mob currentMob = dealer;
+        while (currentMob.getVehicle() instanceof Mob) {
+            Mob vehicle = (Mob) currentMob.getVehicle();
+            vehicleStack.add(0, vehicle); // Add to start to maintain bottom-to-top order
+            currentMob = vehicle;
+        }
+
+        // Store passengers (mobs above the dealer)
+        currentMob = dealer;
+        boolean foundArmorStand = false;
+        while (!currentMob.getPassengers().isEmpty()) {
+            Entity passenger = currentMob.getPassengers().get(0);
+            if (passenger instanceof ArmorStand) {
+                foundArmorStand = true;
+                break;
+            }
+            if (passenger instanceof Mob) {
+                Mob mobPassenger = (Mob) passenger;
+                passengerStack.add(mobPassenger);
+                currentMob = mobPassenger;
+            } else {
+                break;
+            }
+        }
+        hasArmorStand = foundArmorStand;
+
+        // Now proceed with dealer change
         ConfirmMenu confirmInventory = new ConfirmMenu(
             player,
             dealerId,
@@ -395,8 +415,16 @@ public class MobSelectionMenu extends Menu {
                     if (dealer != null) {
                         plugin.deleteAssociatedInventories(dealer);
                         AdminMenu.clearAllEditModes(dealer);
+                        
                         // Step 1: Wait 5 ticks to ensure inventories are closed, then remove dealer
                         Bukkit.getScheduler().runTask(plugin, () -> {
+                            // First remove any existing armor stands
+                            for (Entity passenger : dealer.getPassengers()) {
+                                if (passenger instanceof ArmorStand) {
+                                    passenger.remove();
+                                }
+                            }
+
                             DealerInventory.unregisterAllListeners(dealer);
                             Dealer.removeDealer(dealer);
         
@@ -404,7 +432,104 @@ public class MobSelectionMenu extends Menu {
                             Bukkit.getScheduler().runTask(plugin, () -> {
                                 AdminMenu.deleteAssociatedAdminInventories(player);
                                 plugin.saveDefaultDealerConfig(internalName);
-                                Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
+                                
+                                // Spawn new dealer
+                                Mob newDealer = Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
+                                
+                                // Update names of all mobs in the stack
+                                JockeyManager jockeyManager = new JockeyManager(newDealer);
+                                for (JockeyNode jockey : jockeyManager.getJockeys()) {
+                                    if (jockey.getPosition() > 0) { // Skip dealer (position 0)
+                                        jockey.setCustomName(name);
+                                    }
+                                }
+
+                                // Rebuild vehicle stack from bottom up
+                                final Mob[] topVehicleRef = new Mob[1];
+                                if (!vehicleStack.isEmpty()) {
+                                    // Start with the bottom-most vehicle
+                                    Mob currentVehicle = vehicleStack.get(0);
+                                    topVehicleRef[0] = currentVehicle; // Keep track of the top vehicle
+                                    
+                                    // Add each vehicle as a passenger of the previous one
+                                    for (int i = 1; i < vehicleStack.size(); i++) {
+                                        Mob nextVehicle = vehicleStack.get(i);
+                                        currentVehicle.addPassenger(nextVehicle);
+                                        currentVehicle = nextVehicle;
+                                        topVehicleRef[0] = nextVehicle; // Update top vehicle reference
+                                    }
+                                }
+
+                                // If we have vehicles, mount the dealer on the top vehicle
+                                if (topVehicleRef[0] != null) {
+                                    // Wait a tick to ensure vehicle stack is stable
+                                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                        topVehicleRef[0].addPassenger(newDealer);
+                                        
+                                        // Rebuild passenger stack from dealer up
+                                        Mob topMob = newDealer;
+                                        for (Mob passenger : passengerStack) {
+                                            topMob.addPassenger(passenger);
+                                            passenger.setCustomNameVisible(false);
+                                            topMob = passenger;
+                                        }
+
+                                        // If there was an armor stand and no passengers, add it back
+                                        if (hasArmorStand && passengerStack.isEmpty()) {
+                                            ArmorStand armorStand = (ArmorStand) world.spawnEntity(newDealer.getLocation(), EntityType.ARMOR_STAND);
+                                            armorStand.setVisible(false);
+                                            armorStand.setGravity(false);
+                                            armorStand.setInvulnerable(true);
+                                            armorStand.setSmall(true);
+                                            armorStand.setMarker(true);
+                                            armorStand.setCustomNameVisible(true);
+                                            armorStand.setCustomName(newDealer.getCustomName());
+                                            newDealer.setCustomNameVisible(false);
+                                            newDealer.addPassenger(armorStand);
+                                        }
+                                        
+                                        // Create JockeyManager after stack is fully built
+                                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                            // Update names of all mobs in the stack
+                                            for (Mob passenger : passengerStack) {
+                                                passenger.setCustomName(name);
+                                            }
+                                            new JockeyManager(newDealer);
+                                        }, 5L);
+                                    }, 1L);
+                                } else {
+                                    // No vehicles, just rebuild passenger stack
+                                    Mob topMob = newDealer;
+                                    for (Mob passenger : passengerStack) {
+                                        topMob.addPassenger(passenger);
+                                        passenger.setCustomNameVisible(false);
+                                        topMob = passenger;
+                                    }
+
+                                    // If there was an armor stand and no passengers, add it back
+                                    if (hasArmorStand && passengerStack.isEmpty() && !vehicleStack.isEmpty()) {
+                                        ArmorStand armorStand = (ArmorStand) world.spawnEntity(newDealer.getLocation(), EntityType.ARMOR_STAND);
+                                        armorStand.setVisible(false);
+                                        armorStand.setGravity(false);
+                                        armorStand.setInvulnerable(true);
+                                        armorStand.setSmall(true);
+                                        armorStand.setMarker(true);
+                                        armorStand.setCustomNameVisible(true);
+                                        armorStand.setCustomName(newDealer.getCustomName());
+                                        newDealer.setCustomNameVisible(false);
+                                        newDealer.addPassenger(armorStand);
+                                    }
+                                    
+                                    // Create JockeyManager after stack is fully built
+                                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                        // Update names of all mobs in the stack
+                                        for (Mob passenger : passengerStack) {
+                                            passenger.setCustomName(name);
+                                        }
+                                        new JockeyManager(newDealer);
+                                    }, 5L);
+                                }
+
                                 dealersConfig.set("dealers." + internalName + ".world", worldName);
                                 dealersConfig.set("dealers." + internalName + ".X", x);
                                 dealersConfig.set("dealers." + internalName + ".Y", y);
@@ -424,8 +549,8 @@ public class MobSelectionMenu extends Menu {
         
                                 player.closeInventory();
                                 this.delete();
-                            }); // Ensures dealer is deleted before spawning new one
-                        }); // Ensures inventories are closed before removing dealer
+                            });
+                        });
                     }
                 });
             },
@@ -435,17 +560,121 @@ public class MobSelectionMenu extends Menu {
                     if (dealer != null) {
                         plugin.deleteAssociatedInventories(dealer);
                         AdminMenu.clearAllEditModes(dealer);
+                        
                         // Step 1: Wait to ensure inventories are closed, then remove dealer
                         Bukkit.getScheduler().runTask(plugin, () -> {
+                            // First remove any existing armor stands
+                            for (Entity passenger : dealer.getPassengers()) {
+                                if (passenger instanceof ArmorStand) {
+                                    passenger.remove();
+                                }
+                            }
+
                             DealerInventory.unregisterAllListeners(dealer);
                             Dealer.removeDealer(dealer);
         
                             // Step 2: Wait, then spawn new dealer
                             Bukkit.getScheduler().runTask(plugin, () -> {
                                 AdminMenu.deleteAssociatedAdminInventories(player);
+                                
+                                // Spawn new dealer and rebuild stack
                                 Mob newDealer = Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
                                 Dealer.updateGameType(newDealer, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
                                 restoreGameSpecificSettings(plugin.getConfig(), internalName, gameType, gameSettings);
+
+                                // Update names of all mobs in the stack
+                                JockeyManager jockeyManager = new JockeyManager(newDealer);
+                                for (JockeyNode jockey : jockeyManager.getJockeys()) {
+                                    if (jockey.getPosition() > 0) { // Skip dealer (position 0)
+                                        jockey.setCustomName(name);
+                                    }
+                                }
+
+                                // Rebuild vehicle stack from bottom up
+                                final Mob[] topVehicleRef = new Mob[1];
+                                if (!vehicleStack.isEmpty()) {
+                                    // Start with the bottom-most vehicle
+                                    Mob currentVehicle = vehicleStack.get(0);
+                                    topVehicleRef[0] = currentVehicle; // Keep track of the top vehicle
+                                    
+                                    // Add each vehicle as a passenger of the previous one
+                                    for (int i = 1; i < vehicleStack.size(); i++) {
+                                        Mob nextVehicle = vehicleStack.get(i);
+                                        currentVehicle.addPassenger(nextVehicle);
+                                        currentVehicle = nextVehicle;
+                                        topVehicleRef[0] = nextVehicle; // Update top vehicle reference
+                                    }
+                                }
+
+                                // If we have vehicles, mount the dealer on the top vehicle
+                                if (topVehicleRef[0] != null) {
+                                    // Wait a tick to ensure vehicle stack is stable
+                                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                        topVehicleRef[0].addPassenger(newDealer);
+                                        
+                                        // Rebuild passenger stack from dealer up
+                                        Mob topMob = newDealer;
+                                        for (Mob passenger : passengerStack) {
+                                            topMob.addPassenger(passenger);
+                                            passenger.setCustomNameVisible(false);
+                                            topMob = passenger;
+                                        }
+
+                                        // If there was an armor stand and no passengers, add it back
+                                        if (hasArmorStand && passengerStack.isEmpty()) {
+                                            ArmorStand armorStand = (ArmorStand) world.spawnEntity(newDealer.getLocation(), EntityType.ARMOR_STAND);
+                                            armorStand.setVisible(false);
+                                            armorStand.setGravity(false);
+                                            armorStand.setInvulnerable(true);
+                                            armorStand.setSmall(true);
+                                            armorStand.setMarker(true);
+                                            armorStand.setCustomNameVisible(true);
+                                            armorStand.setCustomName(newDealer.getCustomName());
+                                            newDealer.setCustomNameVisible(false);
+                                            newDealer.addPassenger(armorStand);
+                                        }
+                                        
+                                        // Create JockeyManager after stack is fully built
+                                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                            // Update names of all mobs in the stack
+                                            for (Mob passenger : passengerStack) {
+                                                passenger.setCustomName(name);
+                                            }
+                                            new JockeyManager(newDealer);
+                                        }, 5L);
+                                    }, 1L);
+                                } else {
+                                    // No vehicles, just rebuild passenger stack
+                                    Mob topMob = newDealer;
+                                    for (Mob passenger : passengerStack) {
+                                        topMob.addPassenger(passenger);
+                                        passenger.setCustomNameVisible(false);
+                                        topMob = passenger;
+                                    }
+
+                                    // If there was an armor stand and no passengers, add it back
+                                    if (hasArmorStand && passengerStack.isEmpty() && !vehicleStack.isEmpty()) {
+                                        ArmorStand armorStand = (ArmorStand) world.spawnEntity(newDealer.getLocation(), EntityType.ARMOR_STAND);
+                                        armorStand.setVisible(false);
+                                        armorStand.setGravity(false);
+                                        armorStand.setInvulnerable(true);
+                                        armorStand.setSmall(true);
+                                        armorStand.setMarker(true);
+                                        armorStand.setCustomNameVisible(true);
+                                        armorStand.setCustomName(newDealer.getCustomName());
+                                        newDealer.setCustomNameVisible(false);
+                                        newDealer.addPassenger(armorStand);
+                                    }
+                                    
+                                    // Create JockeyManager after stack is fully built
+                                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                        // Update names of all mobs in the stack
+                                        for (Mob passenger : passengerStack) {
+                                            passenger.setCustomName(name);
+                                        }
+                                        new JockeyManager(newDealer);
+                                    }, 5L);
+                                }
 
                                 dealersConfig.set("dealers." + internalName + ".world", worldName);
                                 dealersConfig.set("dealers." + internalName + ".X", x);
@@ -475,7 +704,6 @@ public class MobSelectionMenu extends Menu {
         );
         
         player.openInventory(confirmInventory.getInventory());
-    
     }
 
     private Map<String, Object> getGameSpecificSettings(FileConfiguration config, String internalName, String gameType) {

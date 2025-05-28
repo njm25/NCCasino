@@ -19,7 +19,10 @@ import org.bukkit.SoundCategory;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Axolotl;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Cat;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fox;
 import org.bukkit.entity.Frog;
 import org.bukkit.entity.Horse;
@@ -50,6 +53,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.entities.JockeyManager;
+import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.helpers.SoundHelper;
@@ -98,38 +103,18 @@ public class AdminMenu extends Menu {
      * Constructor: creates an AdminInventory for a specific dealer, owned by a specific player.
      */
     public AdminMenu(UUID dealerId, Player player, Nccasino plugin) {
-
         super(
             player, 
             plugin, 
             dealerId, 
-            Dealer.getInternalName((Mob) player.getWorld()
-            .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-            .filter(entity -> entity instanceof Mob)
-            .map(entity -> (Mob) entity)
-            .filter(v -> Dealer.isDealer(v)
-                        && Dealer.getUniqueId(v).equals(dealerId))
-            .findFirst().orElse(null))
-    
-            + "'s Admin Menu",
-                    45,
-                    null,
-                    null
+            Dealer.getInternalName(Dealer.findDealer(dealerId, player.getLocation())) + "'s Admin Menu",
+            45,
+            null,
+            null
         );
         // Find the actual Villager instance (the "dealer")
-        this.dealer = Dealer.getMobFromId(dealerId);
-        if (this.dealer == null) {
-            // Attempt to find a nearby Dealer if not found above
-            this.dealer = (Mob) player.getWorld()
-                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                .filter(entity -> entity instanceof Mob)
-                .map(entity -> (Mob) entity)
-                .filter(v -> Dealer.isDealer(v)
-                             && Dealer.getUniqueId(v).equals(this.dealerId))
-                .findFirst().orElse(null);
-        }
+        this.dealer = Dealer.findDealer(dealerId, player.getLocation());
 
-//////////VVVVVVVVVVVVVexpand to retrieve mode from config once thats set up
         this.currencyMode = CurrencyMode.VANILLA;
         adminInventories.put(this.ownerId, this);
         setupSlotMapping();
@@ -159,8 +144,8 @@ public class AdminMenu extends Menu {
     slotMapping.put(SlotOption.CHIP_SIZE3, 22);
     slotMapping.put(SlotOption.CHIP_SIZE4, 23);
     slotMapping.put(SlotOption.CHIP_SIZE5, 24);
-    slotMapping.put(SlotOption.MOB_SELECTION, 4);
-
+    slotMapping.put(SlotOption.MOB_SETTINGS, 4);
+    slotMapping.put(SlotOption.JOCKEY_MENU, 13);
    }
 
 
@@ -221,6 +206,7 @@ public class AdminMenu extends Menu {
         addItemAndLore(Material.BOOK, 1, currentGame + " Settings", slotMapping.get(SlotOption.GAME_OPTIONS), gameSettingsLore.toArray(new String[0]));
     
         addItemAndLore(Material.RED_STAINED_GLASS_PANE, 1, "Edit Animation Message",  slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE), "Current: §a" + currentAnimationMessage);
+
        /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
         addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
         addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
@@ -241,7 +227,7 @@ public class AdminMenu extends Menu {
 
         // Now display that egg item in the slot
         List<String> lore = getMobSelectionLore(dealer);
-        addItemAndLore(mobEgg, 1, "Edit Dealer Mob", slotMapping.get(SlotOption.MOB_SELECTION), lore.toArray(new String[0]));
+        addItemAndLore(mobEgg, 1, "Edit Mob Settings", slotMapping.get(SlotOption.MOB_SETTINGS), lore.toArray(new String[0]));
 
     }
     
@@ -449,8 +435,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 playDefaultSound(player);
                 handlePlayerMenu(player);
                 break;
-            case MOB_SELECTION:
-                handleMobSelection(player);
+            case MOB_SETTINGS:
+                handleDealerSettings(player);
                 playDefaultSound(player);
                 break;
             case TEST_MENU:
@@ -476,17 +462,33 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
     }
 
-    private void handleMobSelection(Player player) {
-        MobSelectionMenu mobSelectionInventory = new MobSelectionMenu(player, plugin, dealerId, (p) -> {
-            if (adminInventories.containsKey(player.getUniqueId())) {
-                player.openInventory(adminInventories.get(player.getUniqueId()).getInventory());
-            } else {
-                AdminMenu newAdminInventory = new AdminMenu(dealerId, player, plugin);
-                player.openInventory(newAdminInventory.getInventory());
-            }
-        }, Dealer.getInternalName(dealer) + "'s Admin Menu");
+    private void handleDealerSettings(Player player) {
+        // Ensure we have a valid dealer reference
+        if (dealer == null) {
+            dealer = Dealer.findDealer(dealerId, player.getLocation());
+        }
 
-        player.openInventory(mobSelectionInventory.getInventory());
+        if (dealer == null) {
+            player.sendMessage("§cCould not find dealer.");
+            return;
+        }
+
+        MobSettingsMenu mobSettingsMenu = new MobSettingsMenu(
+            dealerId,
+            player,
+            Dealer.getInternalName(dealer) + "'s Mob Settings Menu",
+            (p) -> {
+                if (adminInventories.containsKey(player.getUniqueId())) {
+                    player.openInventory(adminInventories.get(player.getUniqueId()).getInventory());
+                } else {
+                    AdminMenu newAdminInventory = new AdminMenu(dealerId, player, plugin);
+                    player.openInventory(newAdminInventory.getInventory());
+                }
+            },
+            plugin,
+            Dealer.getInternalName(dealer) + "'s Admin Menu"
+        );
+        player.openInventory(mobSettingsMenu.getInventory());
     }
 
     private void handlePlayerMenu(Player player) {
@@ -1080,6 +1082,15 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 plugin.getConfig().set("dealers." + internalName + ".display-name", newName);
                 plugin.saveConfig();
                 dealer.setCustomNameVisible(true);
+                
+                // Update all jockey names in the stack
+                JockeyManager jockeyManager = new JockeyManager(dealer);
+                for (JockeyNode jockey : jockeyManager.getJockeys()) {
+                    if (jockey.getPosition() > 0) { // Skip dealer (position 0)
+                        jockey.setCustomName(newName);
+                    }
+                }
+                
                 plugin.reloadDealer(dealer);
                 
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
@@ -1304,11 +1315,80 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     
         // Successful teleport
         if (chunk.isLoaded() && dealer != null && dealer.getUniqueId().equals(dealerId)) {
-             DealerEventListener.allowAdminTeleport(dealer.getUniqueId()); // Allow this teleport
-             dealer.setAI(true);
-            dealer.teleport(newLocation);
+            DealerEventListener.allowAdminTeleport(dealer.getUniqueId()); // Allow this teleport
+            
+            // Find the bottom-most vehicle in the stack
+            Mob bottomMob = dealer;
+            while (bottomMob.getVehicle() instanceof Mob) {
+                bottomMob = (Mob) bottomMob.getVehicle();
+            }
+            
+            // Store all mobs in the stack from bottom to top
+            List<Mob> stackMobs = new ArrayList<>();
+            Mob current = bottomMob;
+            while (current != null) {
+                stackMobs.add(current);
+                if (!current.getPassengers().isEmpty() && current.getPassengers().get(0) instanceof Mob) {
+                    current = (Mob) current.getPassengers().get(0);
+                } else {
+                    current = null;
+                }
+            }
+            
+            // Store armor stand info if present
+            ArmorStand armorStand = null;
+            String armorStandName = null;
+            for (Entity passenger : dealer.getPassengers()) {
+                if (passenger instanceof ArmorStand) {
+                    armorStand = (ArmorStand) passenger;
+                    armorStandName = armorStand.getCustomName();
+                    break;
+                }
+            }
+            
+            // Temporarily unmount everything
+            for (Mob mob : stackMobs) {
+                if (mob.getVehicle() != null) {
+                    mob.getVehicle().removePassenger(mob);
+                }
+                for (Entity passenger : new ArrayList<>(mob.getPassengers())) {
+                    mob.removePassenger(passenger);
+                }
+            }
+            
+            // Teleport the bottom mob first
+            bottomMob.setAI(true);
+            bottomMob.teleport(newLocation);
+            bottomMob.setAI(false);
+            
+            // Remount everything in order from bottom to top
+            for (int i = 0; i < stackMobs.size() - 1; i++) {
+                Mob currentMob = stackMobs.get(i);
+                Mob nextMob = stackMobs.get(i + 1);
+                currentMob.addPassenger(nextMob);
+            }
+            
+            // Respawn armor stand if it existed
+            if (armorStand != null) {
+                // Remove old armor stand
+                armorStand.remove();
+                
+                // Spawn new armor stand at dealer location
+                ArmorStand newArmorStand = (ArmorStand) dealer.getWorld().spawnEntity(newLocation, EntityType.ARMOR_STAND);
+                newArmorStand.setVisible(false);
+                newArmorStand.setGravity(false);
+                newArmorStand.setSmall(true);
+                newArmorStand.setMarker(true);
+                newArmorStand.setCustomName(armorStandName);
+                newArmorStand.setCustomNameVisible(true);
+                
+                // Add armor stand as passenger to dealer
+                dealer.addPassenger(newArmorStand);
+            }
+            
+            // Save the new location
             saveDealerLocation(newLocation);
-            dealer.setAI(false);
+            
             if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null) {
                 player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER, 1.0f, 1.0f);
             }
@@ -1342,8 +1422,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         } else if (attempt == 10) {
             Bukkit.getScheduler().runTaskLater(plugin, () -> attemptTeleport(player, newLocation, dealerId, 30), 30L);
         } else {
-            
-        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
+            Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch (messPref) {
                 case STANDARD:
                     player.sendMessage("§cFailed to move dealer. Chunk did not load.");
@@ -1517,11 +1596,11 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     private List<String> getMobSelectionLore(Mob mob) {
         List<String> lore = new ArrayList<>();
         lore.add("Mob: §a" + formatEntityName(mob.getType().toString()));
-            String sizeOrAge = getCurrentSizeOrAge(mob);
+        String sizeOrAge = getCurrentSizeOrAge(mob);
         if (!sizeOrAge.isEmpty()) {
             lore.add(sizeOrAge);
         }
-            if (isComplicatedVariant(mob)) {
+        if (isComplicatedVariant(mob)) {
             lore.addAll(getComplexVariantDetails(mob));
         } else {
             String variant = getCurrentVariant(mob);
@@ -1529,6 +1608,23 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
                 lore.add("Variant: §a" + variant);
             }
         }
+
+        // Add vehicle and passenger counts using JockeyManager
+        JockeyManager jockeyManager = new JockeyManager(mob);
+        int vehicleCount = jockeyManager.getVehicleCount();
+        int totalJockeys = jockeyManager.getJockeyCount();
+        int passengerCount = totalJockeys - vehicleCount;
+        
+        if (vehicleCount > 0) {
+            lore.add("Vehicles: §a" + vehicleCount);
+        }
+        if (passengerCount > 0) {
+            lore.add("Passengers: §a" + passengerCount);
+        }
+        else if (passengerCount == 0 && vehicleCount == 0) {
+            lore.add("No passengers or vehicles");
+        }
+
         return lore;
     }
 
@@ -1560,19 +1656,19 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     }
 
     private List<String> getComplexVariantDetails(Mob mob) {
-    List<String> details = new ArrayList<>();
-    if (mob instanceof Llama llama) {
-        details.add("Current Color: §a" + formatEntityName(llama.getColor().toString()));
-        details.add("Current Decor: §a" + getLlamaCarpetName(llama));
-    } else if (mob instanceof Horse horse) {
-        details.add("Current Color: §a" + formatEntityName(horse.getColor().toString()));
-        details.add("Current Style: §a" + formatEntityName(horse.getStyle().toString()));
-    } else if (mob instanceof TropicalFish fish) {
-        details.add("Current Pattern: §a" + formatEntityName(fish.getPattern().toString()));
-        details.add("Current Body Color: §a" + formatEntityName(fish.getBodyColor().toString()));
-        details.add("Current Pattern Color: §a" + formatEntityName(fish.getPatternColor().toString()));
-    }
-    return details;
+        List<String> details = new ArrayList<>();
+        if (mob instanceof Llama llama) {
+            details.add("Current Color: §a" + formatEntityName(llama.getColor().toString()));
+            details.add("Current Decor: §a" + getLlamaCarpetName(llama));
+        } else if (mob instanceof Horse horse) {
+            details.add("Current Color: §a" + formatEntityName(horse.getColor().toString()));
+            details.add("Current Style: §a" + formatEntityName(horse.getStyle().toString()));
+        } else if (mob instanceof TropicalFish fish) {
+            details.add("Current Pattern: §a" + formatEntityName(fish.getPattern().toString()));
+            details.add("Current Body Color: §a" + formatEntityName(fish.getBodyColor().toString()));
+            details.add("Current Pattern Color: §a" + formatEntityName(fish.getPatternColor().toString()));
+        }
+        return details;
     }
 
     private String getLlamaCarpetName(Llama llama) {

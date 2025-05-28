@@ -44,14 +44,61 @@ public class DealerInteractListener implements Listener {
         this.plugin = plugin;
     }
 
+    private Mob findDealerFromJockey(Mob clickedMob) {
+        // First check if this mob is a dealer
+        if (Dealer.isDealer(clickedMob)) {
+            return clickedMob;
+        }
+
+        // Check if this mob is a passenger of any dealer
+        Entity vehicle = clickedMob.getVehicle();
+        while (vehicle != null) {
+            if (vehicle instanceof Mob vehicleMob && Dealer.isDealer(vehicleMob)) {
+                return vehicleMob;
+            }
+            vehicle = vehicle.getVehicle();
+        }
+
+        // Check if this mob has a dealer as a passenger
+        for (Entity passenger : clickedMob.getPassengers()) {
+            if (passenger instanceof Mob passengerMob && Dealer.isDealer(passengerMob)) {
+                return passengerMob;
+            }
+        }
+
+        // Check if this mob is part of a dealer's stack by following the chain
+        Entity current = clickedMob;
+        // Check upward chain (passengers)
+        while (!current.getPassengers().isEmpty()) {
+            current = current.getPassengers().get(0);
+            if (current instanceof Mob passengerMob && Dealer.isDealer(passengerMob)) {
+                return passengerMob;
+            }
+        }
+        // Check downward chain (vehicles)
+        current = clickedMob;
+        while (current.getVehicle() != null) {
+            current = current.getVehicle();
+            if (current instanceof Mob vehicleMob && Dealer.isDealer(vehicleMob)) {
+                return vehicleMob;
+            }
+        }
+
+        return null;
+    }
+
     @EventHandler
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         Entity clickedEntity = event.getRightClicked();
         if (!(clickedEntity instanceof Mob)) return;
         Player player = event.getPlayer();
-        this.dealer = (Mob) clickedEntity;
-        if(!Dealer.isDealer(dealer)) return;
-        String interactionKey = player.getUniqueId() + ":" + clickedEntity.getUniqueId();
+        Mob clickedMob = (Mob) clickedEntity;
+        
+        // Find the dealer associated with this mob (either directly or through jockey stack)
+        this.dealer = findDealerFromJockey(clickedMob);
+        if (this.dealer == null) return;
+
+        String interactionKey = player.getUniqueId() + ":" + this.dealer.getUniqueId();
 
         // Prevent duplicate interactions from the same player-entity pair
         if (recentInteractions.contains(interactionKey)) {
@@ -61,11 +108,8 @@ public class DealerInteractListener implements Listener {
         // Schedule removal after a short delay
         Bukkit.getScheduler().runTaskLater(plugin, () -> recentInteractions.remove(interactionKey), 1L);
 
-
-
-        UUID dealerId = Dealer.getUniqueId(dealer);
-        String internalName = Dealer.getInternalName(dealer);
-
+        UUID dealerId = Dealer.getUniqueId(this.dealer);
+        String internalName = Dealer.getInternalName(this.dealer);
 
         // Check if dealer has a game type defined
         if (!plugin.getConfig().contains("dealers." + internalName + ".game")) {
@@ -135,21 +179,48 @@ public class DealerInteractListener implements Listener {
     private void handleDealerInventory(Player player, UUID dealerId) {
         DealerInventory dealerInventory = DealerInventory.inventories.get(dealerId);
         if (dealerInventory == null) {
-            //Bukkit.getLogger().warning("Error: tried to open null dealerInventory for dealerId " + dealerId);
-            Mob mob =  (Mob) player.getWorld()
-                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                .filter(entity -> entity instanceof Mob)
-                .map(entity -> (Mob) entity)
-                .filter(v -> Dealer.isDealer(v)
-                             && Dealer.getUniqueId(v).equals(dealerId))
-                .findFirst().orElse(null);
-            if (mob == null) {
-                //Bukkit.getLogger().warning("Error: Dealer mob not found for dealerId " + dealerId);
+            // Try to find the dealer by following the passenger/vehicle chain
+            Mob foundDealer = null;
+            for (Entity entity : player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5)) {
+                if (entity instanceof Mob mob) {
+                    // Check if this mob is a dealer
+                    if (Dealer.isDealer(mob) && Dealer.getUniqueId(mob).equals(dealerId)) {
+                        foundDealer = mob;
+                        break;
+                    }
+                    
+                    // Check passengers
+                    for (Entity passenger : mob.getPassengers()) {
+                        if (passenger instanceof Mob passengerMob && 
+                            Dealer.isDealer(passengerMob) && 
+                            Dealer.getUniqueId(passengerMob).equals(dealerId)) {
+                            foundDealer = passengerMob;
+                            break;
+                        }
+                    }
+                    if (foundDealer != null) break;
+                    
+                    // Check vehicle
+                    Entity vehicle = mob.getVehicle();
+                    while (vehicle != null) {
+                        if (vehicle instanceof Mob vehicleMob && 
+                            Dealer.isDealer(vehicleMob) && 
+                            Dealer.getUniqueId(vehicleMob).equals(dealerId)) {
+                            foundDealer = vehicleMob;
+                            break;
+                        }
+                        vehicle = vehicle.getVehicle();
+                    }
+                    if (foundDealer != null) break;
+                }
+            }
+            
+            if (foundDealer == null) {
                 return;
             }
 
             Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
-            String internalName = Dealer.getInternalName(mob);
+            String internalName = Dealer.getInternalName(foundDealer);
             String name = plugin.getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
             String gameType = plugin.getConfig().getString("dealers." + internalName + ".game", "Menu");
             int timer = plugin.getConfig().getInt("dealers." + internalName + ".timer", 30);
@@ -167,8 +238,8 @@ public class DealerInteractListener implements Listener {
             String currencyName = plugin.getConfig().getString("dealers." + internalName + ".currency.name", "Emerald");
 
             // Restore dealer inventory
-            Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
-            Dealer.startLookingAtPlayers(mob);
+            Dealer.updateGameType(foundDealer, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
+            Dealer.startLookingAtPlayers(foundDealer);
 
             dealerInventory = DealerInventory.getInventory(dealerId);
 

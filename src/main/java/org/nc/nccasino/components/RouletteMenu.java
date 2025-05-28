@@ -30,22 +30,13 @@ public class RouletteMenu extends Menu {
     private Mob dealer;
     public static final Map<UUID, RouletteMenu> RAInventories = new HashMap<>();
 
-    public RouletteMenu(UUID dealerId,Player player, String title, Consumer<Player> ret, Nccasino plugin,String returnName) {
+    public RouletteMenu(UUID dealerId, Player player, String title, Consumer<Player> ret, Nccasino plugin, String returnName) {
         super(player, plugin, dealerId, title, 9, title, ret);
         this.dealerId = dealerId;
         this.plugin = plugin;
-        this.returnName=returnName;
-        this.dealer = Dealer.getMobFromId(dealerId);
-        if (this.dealer == null) {
-            // Attempt to find a nearby Dealer if not found above
-            this.dealer = (Mob) player.getWorld()
-                .getNearbyEntities(player.getLocation(), 5, 5, 5).stream()
-                .filter(entity -> entity instanceof Mob)
-                .map(entity -> (Mob) entity)
-                .filter(v -> Dealer.isDealer(v)
-                             && Dealer.getUniqueId(v).equals(this.dealerId))
-                .findFirst().orElse(null);
-        }
+        this.returnName = returnName;
+        this.dealer = Dealer.findDealer(dealerId, player.getLocation());
+
         RAInventories.put(this.ownerId, this);
         
         slotMapping.put(SlotOption.EXIT, 8);
