@@ -84,10 +84,10 @@ public class MobSettingsMenu extends Menu {
         
         // Update the remove jockey button based on delete mode
         if (deleteMode) {
-            ItemStack deleteButton = createEnchantedItem(Material.BARRIER, "Delete Mode: ON", 1);
+            ItemStack deleteButton = createEnchantedItem(Material.BARRIER, "Delete Mode: " + ChatColor.GREEN + "ON", 1);
             ItemMeta meta = deleteButton.getItemMeta();
             if (meta != null) {
-                meta.setDisplayName(ChatColor.YELLOW + "Delete Mode: ON");
+                meta.setDisplayName(ChatColor.YELLOW + "Delete Mode: " + ChatColor.GREEN + "ON");
                 List<String> lore = Arrays.asList(
                     ChatColor.GRAY + "Click to exit delete mode",
                     ChatColor.GRAY + "Click any jockey to delete it"
@@ -98,7 +98,7 @@ public class MobSettingsMenu extends Menu {
             }
             inventory.setItem(slotMapping.get(SlotOption.REMOVE_JOCKEY), deleteButton);
         } else {
-            addItemAndLore(Material.BARRIER, 1, "Delete Mode: OFF", slotMapping.get(SlotOption.REMOVE_JOCKEY), 
+            addItemAndLore(Material.BARRIER, 1, "Delete Mode: " + ChatColor.RED + "OFF", slotMapping.get(SlotOption.REMOVE_JOCKEY), 
                 ChatColor.GRAY + "Click to enter delete mode,",
                 ChatColor.GRAY + "which stays until clicked again",
                 ChatColor.GRAY + "When active, click jockeys to delete them"
