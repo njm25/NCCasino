@@ -23,6 +23,7 @@ import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Axolotl;
 import org.bukkit.entity.Cat;
 import org.bukkit.entity.Cat.Type;
+import org.bukkit.entity.CopperGolem;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fox;
@@ -176,6 +177,11 @@ public class MobSelectionMenu extends Menu {
             Material.LIGHT_GRAY_WOOL, Material.CYAN_WOOL, Material.PURPLE_WOOL, Material.BLUE_WOOL,
             Material.BROWN_WOOL, Material.GREEN_WOOL, Material.RED_WOOL, Material.BLACK_WOOL
         }); // 16 colors
+        
+        put(CopperGolem.class, new Material[]{
+            Material.COPPER_BLOCK, Material.EXPOSED_COPPER, Material.WEATHERED_COPPER, Material.OXIDIZED_COPPER,
+            Material.WAXED_COPPER_BLOCK, Material.WAXED_EXPOSED_COPPER, Material.WAXED_WEATHERED_COPPER, Material.WAXED_OXIDIZED_COPPER
+        }); // 8 weather states (4 unwaxed + 4 waxed)
     }};
 
     static {
@@ -885,6 +891,23 @@ public class MobSelectionMenu extends Menu {
                 }
             }
         }
+        else if (mob instanceof CopperGolem copperGolem) {
+            // Get current weather state and cycle to next
+            Object currentState = copperGolem.getWeatherState();
+            Object[] allStates = currentState.getClass().getEnumConstants();
+            int currentIndex = java.util.Arrays.asList(allStates).indexOf(currentState);
+            Object nextState = allStates[(currentIndex + 1) % allStates.length];
+            
+            // Use reflection to call setWeatherState
+            try {
+                java.lang.reflect.Method setMethod = copperGolem.getClass().getMethod("setWeatherState", currentState.getClass());
+                setMethod.invoke(copperGolem, nextState);
+                sendVariantUpdateMessage(player, nextState, mob);
+            } catch (Exception e) {
+                // Fallback if reflection fails
+                plugin.getLogger().warning("Failed to set Copper Golem weather state: " + e.getMessage());
+            }
+        }
         else {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case VERBOSE -> player.sendMessage("§cMob type " +ChatColor.YELLOW+formatEntityName(mob.getType().toString())  + "§c does not have any variants.");
@@ -1025,6 +1048,11 @@ public class MobSelectionMenu extends Menu {
             return VARIANT_ITEMS.get(Panda.class)[panda.getMainGene() == Panda.Gene.BROWN ? 1 : 0];
         } else if (mob instanceof Sheep sheep) {
             return VARIANT_ITEMS.get(Sheep.class)[indexOf(DyeColor.values(), sheep.getColor())];
+        } else if (mob instanceof CopperGolem copperGolem) {
+            Object weatherState = copperGolem.getWeatherState();
+            Object[] allStates = weatherState.getClass().getEnumConstants();
+            int stateIndex = java.util.Arrays.asList(allStates).indexOf(weatherState);
+            return VARIANT_ITEMS.get(CopperGolem.class)[stateIndex];
         }
     
         return Material.BARRIER; // Default if not found
@@ -1180,6 +1208,8 @@ public class MobSelectionMenu extends Menu {
             return formatEntityName(sheep.getColor().toString());
         }else if (mob instanceof Wolf wolf) {
             return formatEntityName(wolf.getCollarColor().toString());
+        } else if (mob instanceof CopperGolem copperGolem) {
+            return formatEntityName(copperGolem.getWeatherState().toString());
         }
 
         return "Unknown";
@@ -1197,7 +1227,8 @@ public class MobSelectionMenu extends Menu {
             || (mob instanceof Villager)
             || (mob instanceof ZombieVillager)
             || (mob instanceof Sheep)
-            || (mob instanceof Wolf);
+            || (mob instanceof Wolf)
+            || (mob instanceof CopperGolem);
             
     }
 
