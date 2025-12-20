@@ -698,6 +698,7 @@ public class JockeyOptionsMenu extends Menu {
         if (mob instanceof ZombieVillager zombie) return formatEntityName(zombie.getVillagerType().toString());
         if (mob instanceof Sheep sheep) return formatEntityName(sheep.getColor().toString());
         if (mob instanceof Wolf wolf) return formatEntityName(wolf.getCollarColor().toString());
+        if (mob instanceof CopperGolem copperGolem) return formatEntityName(copperGolem.getWeatherState().toString());
         return "Unknown";
     }
 

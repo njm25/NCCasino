@@ -861,6 +861,8 @@ public class MobSettingsMenu extends Menu {
             return formatEntityName(sheep.getColor().toString());
         } else if (mob instanceof Wolf wolf) {
             return formatEntityName(wolf.getCollarColor().toString());
+        } else if (mob instanceof CopperGolem copperGolem) {
+            return formatEntityName(copperGolem.getWeatherState().toString());
         }
         return "";
     }
