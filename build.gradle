@@ -18,10 +18,17 @@ repositories {
         name = "sonatype"
         url = "https://oss.sonatype.org/content/groups/public/"
     }
+    maven {
+        name = 'jitpack'
+        url = 'https://www.jitpack.io'
+    }
 }
 
 dependencies {
     compileOnly("org.spigotmc:spigot-api:1.21.11-R0.1-SNAPSHOT")
+    compileOnly ('com.github.MilkBowl:VaultAPI:1.7') {
+        exclude group: 'org.bukkit'
+    }
     implementation files('libs/lib-1.0-SNAPSHOT.jar')  
 }
 
