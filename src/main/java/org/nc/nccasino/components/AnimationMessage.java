@@ -237,6 +237,8 @@ public class AnimationMessage extends DealerInventory {
         List<Player> players = new ArrayList<>();
         
         for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player == null) 
+                continue;
             if (player.getOpenInventory() == null || player.getOpenInventory().getTopInventory() == null) {
                 continue; // Skip if no inventory is open
             }

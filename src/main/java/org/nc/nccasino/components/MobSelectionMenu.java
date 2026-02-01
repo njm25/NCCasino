@@ -1027,27 +1027,39 @@ public class MobSelectionMenu extends Menu {
             return;
         }
     }
-
+    
     private Material getVariantItem(Mob mob) {
         // Check manually instead of using VARIANT_ITEMS.get(mob.getClass())
         if (mob instanceof Cat cat) {
             return VARIANT_ITEMS.get(Cat.class)[indexOf(CAT_TYPES, cat.getCatType())];
         } else if (mob instanceof Fox fox) {
-            return VARIANT_ITEMS.get(Fox.class)[indexOf(Fox.Type.values(), fox.getFoxType())];
+            Fox.Type foxType = fox.getFoxType();
+            if (foxType == null) return null;
+            return VARIANT_ITEMS.get(Fox.class)[indexOf(Fox.Type.values(), foxType)];
         } else if (mob instanceof Frog frog) {
             return VARIANT_ITEMS.get(Frog.class)[indexOf(FROG_VARIANTS, frog.getVariant())];
         } else if (mob instanceof Parrot parrot) {
-            return VARIANT_ITEMS.get(Parrot.class)[indexOf(Parrot.Variant.values(), parrot.getVariant())];
+            Parrot.Variant variant = parrot.getVariant();
+            if (variant == null) return null;
+            return VARIANT_ITEMS.get(Parrot.class)[indexOf(Parrot.Variant.values(), variant)];
         } else if (mob instanceof Rabbit rabbit) {
-            return VARIANT_ITEMS.get(Rabbit.class)[indexOf(Rabbit.Type.values(), rabbit.getRabbitType())];
+            Rabbit.Type rabbitType = rabbit.getRabbitType();
+            if (rabbitType == null) return null;
+            return VARIANT_ITEMS.get(Rabbit.class)[indexOf(Rabbit.Type.values(), rabbitType)];
         } else if (mob instanceof Axolotl axolotl) {
-            return VARIANT_ITEMS.get(Axolotl.class)[indexOf(Axolotl.Variant.values(), axolotl.getVariant())];
+            Axolotl.Variant variant = axolotl.getVariant();
+            if (variant == null) return null;
+            return VARIANT_ITEMS.get(Axolotl.class)[indexOf(Axolotl.Variant.values(), variant)];
         } else if (mob instanceof MushroomCow mooshroom) {
-            return VARIANT_ITEMS.get(MushroomCow.class)[indexOf(MushroomCow.Variant.values(), mooshroom.getVariant())];
+            MushroomCow.Variant variant = mooshroom.getVariant();
+            if (variant == null) return null;
+            return VARIANT_ITEMS.get(MushroomCow.class)[indexOf(MushroomCow.Variant.values(), variant)];
         } else if (mob instanceof Panda panda) {
             return VARIANT_ITEMS.get(Panda.class)[panda.getMainGene() == Panda.Gene.BROWN ? 1 : 0];
         } else if (mob instanceof Sheep sheep) {
-            return VARIANT_ITEMS.get(Sheep.class)[indexOf(DyeColor.values(), sheep.getColor())];
+            DyeColor color = sheep.getColor();
+            if (color == null) return null;
+            return VARIANT_ITEMS.get(Sheep.class)[indexOf(DyeColor.values(), color)];
         } else if (mob instanceof CopperGolem copperGolem) {
             Object weatherState = copperGolem.getWeatherState();
             Object[] allStates = weatherState.getClass().getEnumConstants();

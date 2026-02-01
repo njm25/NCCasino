@@ -473,6 +473,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
             // Close any players with an open inventory of MinesTable, RouletteInventory, BettingTable, or BlackjackInventory
             for (Player player : Bukkit.getOnlinePlayers()) {
+                if (player == null) 
+                    continue;
                 if (player.getOpenInventory() == null || player.getOpenInventory().getTopInventory() == null) {
                     continue; // Skip if the player has no open inventory
                 }

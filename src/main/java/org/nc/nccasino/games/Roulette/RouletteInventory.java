@@ -598,6 +598,8 @@ private void exitGame(Player player) {
         //List<Player> playersWithBets = new ArrayList<>();
 
         for (Player player : Bukkit.getServer().getOnlinePlayers()) {
+            if (player == null) 
+                continue;
             InventoryView openInventory = player.getOpenInventory();
             if (openInventory != null && openInventory.getTopInventory().getHolder() == this) {
                 activePlayers.add(player);

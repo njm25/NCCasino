@@ -100,6 +100,8 @@ public class DealerInventory implements InventoryHolder, Listener {
             Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (player == null) 
+                        continue;
                     if (player.getOpenInventory().getTopInventory().getHolder().equals(existing)) {
                         player.closeInventory();
                     }
@@ -278,13 +280,17 @@ public class DealerInventory implements InventoryHolder, Listener {
         return itemStack;
     }
 
+    @SuppressWarnings("null")
     public static <K, V> K getKeyByValue(Map<K, V> map, V value) {
         for (Map.Entry<K, V> entry : map.entrySet()) {
-            if (entry.getValue().equals(value)) {
+            V entryValue = entry.getValue();
+            if (entryValue != null && entryValue.equals(value)) {
+                return entry.getKey();
+            } else if (entryValue == null && value == null) {
                 return entry.getKey();
             }
         }
-        return null; 
+        return (K) null; 
     }
 
     // Example: Add an item to a player's inventory with custom lore
