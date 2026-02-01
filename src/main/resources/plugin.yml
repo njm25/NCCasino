@@ -23,7 +23,6 @@ permissions:
       nccasino.commands.help: true
       nccasino.commands.list: true
       nccasino.commands.reload: true
-      nccasino.commands.testvault: true
 
   nccasino.commands.create:
     description: Allows creating a dealer in NCCasino
@@ -43,10 +42,6 @@ permissions:
 
   nccasino.commands.reload:
     description: Allows reloading the NCCasino plugin
-    default: op
-
-  nccasino.commands.testvault:
-    description: Allows testing Vault integration
     default: op
 
   nccasino.games:

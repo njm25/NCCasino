@@ -23,7 +23,6 @@ public class CommandExecution implements CommandExecutor {
         commands.put("reload", new ReloadCommand(plugin));
         commands.put("list", new ListDealersCommand((Nccasino) plugin));
         commands.put("delete", new DeleteCommand((Nccasino) plugin));
-        commands.put("testvault", new TestVaultCommand((Nccasino) plugin));
 
         // Define required permissions for each command
         commandPermissions.put("help", "nccasino.commands.help");
@@ -31,7 +30,6 @@ public class CommandExecution implements CommandExecutor {
         commandPermissions.put("reload", "nccasino.commands.reload");
         commandPermissions.put("list", "nccasino.commands.list");
         commandPermissions.put("delete", "nccasino.commands.delete");
-        commandPermissions.put("testvault", "nccasino.commands.testvault");
     }
 
     @Override
