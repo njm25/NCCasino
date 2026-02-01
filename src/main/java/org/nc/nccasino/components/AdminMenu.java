@@ -132,9 +132,9 @@ public class AdminMenu extends Menu {
     slotMapping.put(SlotOption.EDIT_GAME_TYPE, 0);
     slotMapping.put(SlotOption.GAME_OPTIONS, 2);
     slotMapping.put(SlotOption.EDIT_ANIMATION_MESSAGE, 8);
-    // put(SlotOption.USE_VAULT, 28);   
+    slotMapping.put(SlotOption.USE_VAULT, 28);   
     slotMapping.put(SlotOption.EDIT_CURRENCY, 31);
-    //put(SlotOption.TOGGLE_CURRENCY_MODE, 31);
+    slotMapping.put(SlotOption.TOGGLE_CURRENCY_MODE, 40);
     slotMapping.put(SlotOption.EXIT, 36);
     slotMapping.put(SlotOption.PM, 38);
 
@@ -393,17 +393,14 @@ public class AdminMenu extends Menu {
                 handleEditCurrency(player,event);
                 playDefaultSound(player);
                 break;
-                /* 
             case USE_VAULT:
-                handleUseVault(player);
-                if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f);
-player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-                break;*/
+                // handleUseVault(player);
+                playDefaultSound(player);
+                break;
                 case TOGGLE_CURRENCY_MODE:
-                /*
                 handleToggleCurrencyMode(player);
                 playDefaultSound(player);
-            */  break;
+              break;
             case GAME_OPTIONS:
                 playDefaultSound(player);
                 handleGameOptions(player,currentGame);
@@ -679,7 +676,6 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
         }
     
-/* 
     private void handleToggleCurrencyMode(Player player) {
 
         CurrencyMode next;
@@ -700,6 +696,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
         // Update the button labels in the admin inventory
         updateCurrencyButtons();
+        
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
         switch(messPref){
             case VERBOSE:{
                 player.sendMessage("§eSwitched currency mode to: §a" + this.currencyMode.name()+"§e."); 
@@ -709,7 +707,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         }
      
     }
-    */
+
     private void updateCurrencyButtons() {
         String internalName= Dealer.getInternalName(dealer);
         Inventory inv = getInventory();
@@ -718,22 +716,22 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             case CurrencyMode.VAULT:
                 addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY), "[Disabled For Vault Mode]");
 
-                //addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Select Currency [Disabled For Vault Mode]"),slotMapping.get(SlotOption.EDIT_CURRENCY));
-                //addItem(createCustomItem(Material.CHEST,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Select Currency [Disabled For Vault Mode]"),slotMapping.get(SlotOption.EDIT_CURRENCY));
+                addItem(createCustomItem(Material.CHEST,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
             break;
             case CurrencyMode.VANILLA:
                 addItemAndLore(plugin.getCurrency(internalName), 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY),"Current: §a"+plugin.getCurrencyName(internalName), "Drag or shift-click item here to change");
-                //addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-                //addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
+                addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
             break;
             case CurrencyMode.CUSTOM:
                 addItem(createCustomItem(plugin.getCurrency(internalName), "Select Custom Currency",1),slotMapping.get(SlotOption.EDIT_CURRENCY));
-                //addItem(createEnchantedItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-                //addItem(createCustomItem(Material.ENDER_CHEST,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                addItem(createEnchantedItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                addItem(createCustomItem(Material.ENDER_CHEST,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
                 break;
             default:
             addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-            //addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+            addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
             break;
         }
             // Chip Sizes

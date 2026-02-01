@@ -83,7 +83,7 @@ public abstract class Menu extends DealerInventory {
         DELETE_DEALER,
         TOGGLE_CURRENCY_MODE,
         EDIT_CURRENCY,
-        //USE_VAULT,
+        USE_VAULT,
         GAME_OPTIONS,
         EDIT_ANIMATION_MESSAGE,
         CHIP_SIZE1,
