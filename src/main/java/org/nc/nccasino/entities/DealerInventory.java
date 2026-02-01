@@ -280,6 +280,7 @@ public class DealerInventory implements InventoryHolder, Listener {
         return itemStack;
     }
 
+    @SuppressWarnings("null")
     public static <K, V> K getKeyByValue(Map<K, V> map, V value) {
         for (Map.Entry<K, V> entry : map.entrySet()) {
             V entryValue = entry.getValue();

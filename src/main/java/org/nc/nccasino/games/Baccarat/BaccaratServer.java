@@ -297,10 +297,10 @@ public class BaccaratServer extends Server {
         playerBets.putIfAbsent(playerId, new HashMap<>());
     
         // Accumulate this player's bet correctly
-        playerBets.get(playerId).merge(betType, amount, Double::sum);
+        playerBets.get(playerId).merge(betType, amount, (existing, newValue) -> (existing != null ? existing : 0.0) + (newValue != null ? newValue : 0.0));
     
         // Accumulate total bets correctly
-        totalBets.merge(betType, amount, Double::sum);
+        totalBets.merge(betType, amount, (existing, newValue) -> (existing != null ? existing : 0.0) + (newValue != null ? newValue : 0.0));
     
         // Broadcast a single update to ALL players
         for (Client c : clients.values()) {

@@ -472,7 +472,7 @@ private void handleAllIn(Player player) {
 
     // Store the bet amount
     Map<Integer, Double> bets = playerBets.computeIfAbsent(playerId, k -> new HashMap<>());
-    double newTotal = bets.merge(betSlot, totalBalance, Double::sum);
+    double newTotal = bets.merge(betSlot, totalBalance, (existing, newValue) -> (existing != null ? existing : 0.0) + (newValue != null ? newValue : 0.0));
 
     // Update the displayed bet amount with the new total
     updateItemLore(betSlot, newTotal);
