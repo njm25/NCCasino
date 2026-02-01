@@ -55,6 +55,7 @@ import org.nc.nccasino.listeners.DealerInitializeListener;
 import org.nc.nccasino.listeners.DealerInteractListener;
 import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
+import org.nc.nccasino.economy.VaultHook;
 import org.bukkit.Chunk;
 import org.bukkit.entity.EntityType;
 
@@ -67,6 +68,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     private Material currency;    // Material used for betting currency
     private String currencyName;  // Display name for the currency
+    private VaultHook vaultHook;
 
     /**
      * This local map was used in your code. If you still need it,
@@ -88,6 +90,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
         // Load currency from config
         loadCurrencyFromConfig();
+
+        // Initialize Vault hook
+        vaultHook = new VaultHook(this);
+        vaultHook.hookAndLog();
 
         // Register event listeners
         getServer().getPluginManager().registerEvents(new DealerInteractListener(this), this);
@@ -366,6 +372,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     public String getCurrencyName() {
         return currencyName;
+    }
+
+    public VaultHook getVaultHook() {
+        return vaultHook;
     }
 
     private void reinitializeDealers() {
