@@ -265,34 +265,42 @@ public abstract class Server extends DealerInventory {
 			return;
 		}
 
-		CurrencyProvider provider = getActiveCurrencyProvider();
+		CurrencyProvider provider = getCurrencyProvider();
 		if (provider != null) {
-			int before = provider.getBalance(player, internalName);
-			provider.deposit(player, internalName, toGive);
-			int after = provider.getBalance(player, internalName);
+			// STANDARD: keep existing behavior (provider-backed with leftover drop).
+			if (provider.getMode() == CurrencyMode.STANDARD) {
+				int before = provider.getBalance(player, internalName);
+				provider.deposit(player, internalName, toGive);
+				int after = provider.getBalance(player, internalName);
 
-			int actuallyAdded = Math.max(0, after - before);
-			int leftoverAmount = toGive - actuallyAdded;
+				int actuallyAdded = Math.max(0, after - before);
+				int leftoverAmount = toGive - actuallyAdded;
 
-			if (leftoverAmount > 0) {
-				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-					case STANDARD:{
-						player.sendMessage("§cNo room for " + leftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(leftoverAmount) == 1 ? "" : "s") + ", dropping...");
+				if (leftoverAmount > 0) {
+					switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+						case STANDARD:{
+							player.sendMessage("§cNo room for " + leftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(leftoverAmount) == 1 ? "" : "s") + ", dropping...");
 
-						break;}
-					case VERBOSE:{
-						player.sendMessage("§cNo room for " + leftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(leftoverAmount) == 1 ? "" : "s") + ", dropping...");
-						break;     
-					}
-						case NONE:{
-						break;
-					}
-				} 
-				dropExcessItems(player, leftoverAmount, currencyMaterial);
+							break;}
+						case VERBOSE:{
+							player.sendMessage("§cNo room for " + leftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(leftoverAmount) == 1 ? "" : "s") + ", dropping...");
+							break;     
+						}
+							case NONE:{
+							break;
+						}
+					} 
+					dropExcessItems(player, leftoverAmount, currencyMaterial);
+				}
+				return;
 			}
+
+			// VAULT/CUSTOM (or any non-STANDARD): rely solely on the provider, no item fallback.
+			provider.deposit(player, internalName, toGive);
 			return;
 		}
 
+		// No provider available: legacy item behavior.
 		int fullStacks = toGive / 64;
 		int remainder = toGive % 64;
 		int totalLeftoverAmount = 0;
@@ -342,26 +350,12 @@ public abstract class Server extends DealerInventory {
         }
     }
 
-	/**
-	 * Returns the active currency provider for this server if and only if it represents
-	 * the current STANDARD (item-based) mode. For this phase, VAULT and CUSTOM remain
-	 * unimplemented stubs, so we intentionally fall back to legacy behavior when
-	 * those modes are selected.
-	 */
-	private CurrencyProvider getActiveCurrencyProvider() {
+	// Thin wrapper around the CurrencyManager to obtain the provider for this server.
+	private CurrencyProvider getCurrencyProvider() {
 		if (plugin.getCurrencyManager() == null) {
 			return null;
 		}
 
-		CurrencyProvider provider = plugin.getCurrencyManager().getProvider(internalName);
-		if (provider == null) {
-			return null;
-		}
-
-		if (provider.getMode() != CurrencyMode.STANDARD) {
-			return null;
-		}
-
-		return provider;
+		return plugin.getCurrencyManager().getProvider(internalName);
 	}
 }

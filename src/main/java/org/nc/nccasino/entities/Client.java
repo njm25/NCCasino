@@ -437,7 +437,7 @@ public abstract class Client extends DealerInventory {
     }
 
     
-    protected void creditPlayer(Player player, double amount) {
+	protected void creditPlayer(Player player, double amount) {
 		Material currencyMaterial = plugin.getCurrency(internalName);
 		if (currencyMaterial == null) {
 			player.sendMessage("Error: Currency material is not set. Unable to credit winnings.");
@@ -451,32 +451,40 @@ public abstract class Client extends DealerInventory {
 
 		CurrencyProvider provider = getCurrencyProvider();
 		if (provider != null) {
-			int before = provider.getBalance(player, internalName);
-			provider.deposit(player, internalName, toGive);
-			int after = provider.getBalance(player, internalName);
+			// STANDARD: keep existing "add then drop leftovers" behavior via provider.
+			if (provider.getMode() == org.nc.nccasino.currency.CurrencyMode.STANDARD) {
+				int before = provider.getBalance(player, internalName);
+				provider.deposit(player, internalName, toGive);
+				int after = provider.getBalance(player, internalName);
 
-			int actuallyAdded = Math.max(0, after - before);
-			int leftoverAmount = toGive - actuallyAdded;
+				int actuallyAdded = Math.max(0, after - before);
+				int leftoverAmount = toGive - actuallyAdded;
 
-			if (leftoverAmount > 0) {
-				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-					case STANDARD:{
-						player.sendMessage("§cNo room for " + leftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(leftoverAmount) == 1 ? "" : "s") + ", dropping...");
+				if (leftoverAmount > 0) {
+					switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+						case STANDARD:{
+							player.sendMessage("§cNo room for " + leftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(leftoverAmount) == 1 ? "" : "s") + ", dropping...");
 
-						break;}
-					case VERBOSE:{
-						player.sendMessage("§cNo room for " + leftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(leftoverAmount) == 1 ? "" : "s") + ", dropping...");
-						break;     
-					}
-						case NONE:{
-						break;
-					}
-				} 
-				dropExcessItems(player, leftoverAmount, currencyMaterial);
+							break;}
+						case VERBOSE:{
+							player.sendMessage("§cNo room for " + leftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(leftoverAmount) == 1 ? "" : "s") + ", dropping...");
+							break;     
+						}
+							case NONE:{
+							break;
+						}
+					} 
+					dropExcessItems(player, leftoverAmount, currencyMaterial);
+				}
+				return;
 			}
+
+			// VAULT/CUSTOM (or any non-STANDARD): rely solely on the provider.
+			provider.deposit(player, internalName, toGive);
 			return;
 		}
 
+		// No provider: legacy material-only behavior.
 		int fullStacks = toGive / 64;
 		int remainder = toGive % 64;
 		int totalLeftoverAmount = 0;
@@ -634,15 +642,23 @@ public abstract class Client extends DealerInventory {
     public void refundCurrency(Player player, int amount) {
         if (amount <= 0) return;
 
-        ItemStack stack = null;
         CurrencyProvider provider = getCurrencyProvider();
+        ItemStack stack = null;
+
         if (provider != null) {
             stack = provider.createCurrencyStack(internalName, amount);
-        }
 
-        // Safety fallback: stubs may return null/AIR (VAULT/CUSTOM not implemented yet).
-        // Preserve legacy behavior by using the same Material-based stack creation as before.
-        if (stack == null || stack.getType() == Material.AIR) {
+            if (stack == null || stack.getType() == Material.AIR) {
+                // STANDARD: preserve legacy fallback to material.
+                if (provider.getMode() == org.nc.nccasino.currency.CurrencyMode.STANDARD) {
+                    stack = new ItemStack(getCurrencyMaterial(), amount);
+                } else {
+                    // VAULT/CUSTOM: no legacy item fallback; treat as unimplemented.
+                    return;
+                }
+            }
+        } else {
+            // No provider: legacy material-only behavior.
             stack = new ItemStack(getCurrencyMaterial(), amount);
         }
 
@@ -692,13 +708,22 @@ public abstract class Client extends DealerInventory {
         ItemStack stack = null;
         if (provider != null) {
             stack = provider.createCurrencyStack(internalName, amount);
+
+            if (stack == null || stack.getType() == Material.AIR) {
+                // STANDARD: preserve material fallback.
+                if (provider.getMode() == org.nc.nccasino.currency.CurrencyMode.STANDARD) {
+                    stack = new ItemStack(getCurrencyMaterial(), amount);
+                } else {
+                    // VAULT/CUSTOM: no legacy item fallback.
+                    return new ItemStack(Material.AIR);
+                }
+            }
+
+            return stack;
         }
 
-        if (stack == null || stack.getType() == Material.AIR) {
-            stack = new ItemStack(getCurrencyMaterial(), amount);
-        }
-
-        return stack;
+        // No provider: legacy behavior.
+        return new ItemStack(getCurrencyMaterial(), amount);
     }
 
     protected void registerListener() {
