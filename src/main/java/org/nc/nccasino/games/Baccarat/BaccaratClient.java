@@ -642,16 +642,7 @@ public class BaccaratClient extends Client {
 
         if (!betMapping.containsKey(slot)) return; // Not a bet slot
         ItemStack cursorItem = event.getCursor();
-        org.nc.nccasino.currency.CurrencyProvider provider = null;
-        if (plugin.getCurrencyManager() != null) {
-            provider = plugin.getCurrencyManager().getProvider(internalName);
-            if (provider != null && provider.getMode() != org.nc.nccasino.currency.CurrencyMode.STANDARD) {
-                provider = null;
-            }
-        }
-        boolean isDraggingCurrency = provider != null
-            ? provider.isCurrencyItem(cursorItem, internalName)
-            : (cursorItem != null && cursorItem.getType() == plugin.getCurrency(internalName));
+        boolean isDraggingCurrency = isCurrencyItem(cursorItem);
     
         // Get bet amount
         double betAmount;

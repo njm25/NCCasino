@@ -238,17 +238,13 @@ public abstract class Client extends DealerInventory {
     protected void handleBetPlacement() {
         // Check if user is holding the currency item
         ItemStack heldItem = player.getItemOnCursor();
-        Material currencyMat = getCurrencyMaterial();
         double wagerAmount = 0;
         boolean usedHeldItem = false;
 
-        CurrencyProvider provider = getCurrencyProvider();
         boolean isCurrencyItem = false;
-        if (heldItem != null) {
-            isCurrencyItem = provider != null
-                ? provider.isCurrencyItem(heldItem, internalName)
-                : heldItem.getType() == currencyMat;
-        }
+		if (heldItem != null) {
+			isCurrencyItem = isCurrencyItem(heldItem);
+		}
 
         if (isCurrencyItem && heldItem != null) {
             wagerAmount = heldItem.getAmount();
@@ -659,8 +655,7 @@ public abstract class Client extends DealerInventory {
 
     /**
      * Thin wrapper around the CurrencyManager to obtain the provider for this client.
-     * This will be used for STANDARD, VAULT, and CUSTOM modes as those providers are
-     * implemented. Call sites are responsible for handling null or stub behavior.
+     * Call sites are responsible for handling null or stub behavior.
      */
     private CurrencyProvider getCurrencyProvider() {
         if (plugin.getCurrencyManager() == null) {
@@ -668,6 +663,42 @@ public abstract class Client extends DealerInventory {
         }
 
         return plugin.getCurrencyManager().getProvider(internalName);
+    }
+
+    /**
+     * Determines whether the given stack represents this dealer's currency item,
+     * using the configured CurrencyProvider where available and falling back to
+     * material-only checks for legacy behavior.
+     */
+    protected boolean isCurrencyItem(ItemStack stack) {
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            return provider.isCurrencyItem(stack, internalName);
+        }
+        return stack != null && stack.getType() == getCurrencyMaterial();
+    }
+
+    /**
+     * Creates a stack of this dealer's currency using the CurrencyProvider where
+     * available, falling back to a plain material-based ItemStack for legacy
+     * behavior.
+     */
+    protected ItemStack createCurrencyStack(int amount) {
+        if (amount <= 0) {
+            return new ItemStack(Material.AIR);
+        }
+
+        CurrencyProvider provider = getCurrencyProvider();
+        ItemStack stack = null;
+        if (provider != null) {
+            stack = provider.createCurrencyStack(internalName, amount);
+        }
+
+        if (stack == null || stack.getType() == Material.AIR) {
+            stack = new ItemStack(getCurrencyMaterial(), amount);
+        }
+
+        return stack;
     }
 
     protected void registerListener() {
