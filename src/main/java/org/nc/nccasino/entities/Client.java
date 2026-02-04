@@ -13,7 +13,6 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
-import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.objects.Card;
@@ -243,7 +242,7 @@ public abstract class Client extends DealerInventory {
         double wagerAmount = 0;
         boolean usedHeldItem = false;
 
-        CurrencyProvider provider = getActiveCurrencyProvider();
+        CurrencyProvider provider = getCurrencyProvider();
         boolean isCurrencyItem = false;
         if (heldItem != null) {
             isCurrencyItem = provider != null
@@ -420,7 +419,7 @@ public abstract class Client extends DealerInventory {
     protected boolean hasEnoughWager(Player player, double amount) {
         int requiredAmount = (int) Math.ceil(amount);
 
-        CurrencyProvider provider = getActiveCurrencyProvider();
+        CurrencyProvider provider = getCurrencyProvider();
         if (provider != null) {
             return provider.has(player, internalName, requiredAmount);
         }
@@ -432,7 +431,7 @@ public abstract class Client extends DealerInventory {
     protected void removeWagerFromInventory(Player player, double amount) {
         int requiredAmount = (int) Math.ceil(amount);
 
-        CurrencyProvider provider = getActiveCurrencyProvider();
+        CurrencyProvider provider = getCurrencyProvider();
         if (provider != null) {
             provider.withdraw(player, internalName, requiredAmount);
             return;
@@ -454,7 +453,7 @@ public abstract class Client extends DealerInventory {
 			return;
 		}
 
-		CurrencyProvider provider = getActiveCurrencyProvider();
+		CurrencyProvider provider = getCurrencyProvider();
 		if (provider != null) {
 			int before = provider.getBalance(player, internalName);
 			provider.deposit(player, internalName, toGive);
@@ -612,7 +611,7 @@ public abstract class Client extends DealerInventory {
     }
 
     protected int getTotalCurrency(Player player) {
-        CurrencyProvider provider = getActiveCurrencyProvider();
+        CurrencyProvider provider = getCurrencyProvider();
         if (provider != null) {
             return provider.getBalance(player, internalName);
         }
@@ -627,7 +626,7 @@ public abstract class Client extends DealerInventory {
     protected void removeCurrencyFromInventory(Player player, int amount) {
         if (amount <= 0) return;
 
-        CurrencyProvider provider = getActiveCurrencyProvider();
+        CurrencyProvider provider = getCurrencyProvider();
         if (provider != null) {
             provider.withdraw(player, internalName, amount);
             return;
@@ -640,7 +639,7 @@ public abstract class Client extends DealerInventory {
         if (amount <= 0) return;
 
         ItemStack stack = null;
-        CurrencyProvider provider = getActiveCurrencyProvider();
+        CurrencyProvider provider = getCurrencyProvider();
         if (provider != null) {
             stack = provider.createCurrencyStack(internalName, amount);
         }
@@ -659,26 +658,16 @@ public abstract class Client extends DealerInventory {
     }
 
     /**
-     * Returns the active currency provider for this client if and only if it represents
-     * the current STANDARD (item-based) mode. For Phase 2, VAULT and CUSTOM remain
-     * unimplemented stubs, so we intentionally fall back to legacy behavior when
-     * those modes are selected.
+     * Thin wrapper around the CurrencyManager to obtain the provider for this client.
+     * This will be used for STANDARD, VAULT, and CUSTOM modes as those providers are
+     * implemented. Call sites are responsible for handling null or stub behavior.
      */
-    private CurrencyProvider getActiveCurrencyProvider() {
+    private CurrencyProvider getCurrencyProvider() {
         if (plugin.getCurrencyManager() == null) {
             return null;
         }
 
-        CurrencyProvider provider = plugin.getCurrencyManager().getProvider(internalName);
-        if (provider == null) {
-            return null;
-        }
-
-        if (provider.getMode() != CurrencyMode.STANDARD) {
-            return null;
-        }
-
-        return provider;
+        return plugin.getCurrencyManager().getProvider(internalName);
     }
 
     protected void registerListener() {
