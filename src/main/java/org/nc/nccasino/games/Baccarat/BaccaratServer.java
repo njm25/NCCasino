@@ -14,6 +14,8 @@ import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.CurrencyMode;
+import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
 import org.nc.nccasino.helpers.SoundHelper;
@@ -616,73 +618,112 @@ public class BaccaratServer extends Server {
     
     
     private void processPayouts(String result) {
-    for (UUID playerId : playerBets.keySet()) {
-        Player player = Bukkit.getPlayer(playerId);
-        if (player == null) continue;
+    	for (UUID playerId : playerBets.keySet()) {
+    		Player player = Bukkit.getPlayer(playerId);
+    		if (player == null) continue;
 
-        double payout = 0.0;
-        double totalBet = 0.0;
-        Map<BaccaratClient.BetOption, Double> bets = playerBets.get(playerId);
-        
-        for (BaccaratClient.BetOption betType : bets.keySet()) {
-            double wager = bets.get(betType);
-            totalBet += wager; 
-            switch (betType) {
-                case PLAYER:
-                    if (result.equals("PLAYER_WINS")) payout += wager * 2;
-                    if (result.equals("TIE")) payout += wager ;
-                    break;
-                case BANKER:
-                    if (result.equals("BANKER_WINS")) payout += wager * 1.95; // 5% commission
-                    if (result.equals("TIE")) payout += wager ;
-                    break;
-                case TIE:
-                    if (result.equals("TIE")) payout += wager * 9;
-                    break;
-                case PLAYERPAIR:
-                    if (playerHand.get(0).getRank() == playerHand.get(1).getRank()) payout += wager * 12;
-                    break;
-                case BANKERPAIR:
-                    if (bankerHand.get(0).getRank() == bankerHand.get(1).getRank()) payout += wager * 12;
-                    break;
-            }
-        }
+    		double payout = 0.0;
+    		double totalBet = 0.0;
+    		Map<BaccaratClient.BetOption, Double> bets = playerBets.get(playerId);
+    		
+    		for (BaccaratClient.BetOption betType : bets.keySet()) {
+    			double wager = bets.get(betType);
+    			totalBet += wager; 
+    			switch (betType) {
+    				case PLAYER:
+    					if (result.equals("PLAYER_WINS")) payout += wager * 2;
+    					if (result.equals("TIE")) payout += wager ;
+    					break;
+    				case BANKER:
+    					if (result.equals("BANKER_WINS")) payout += wager * 1.95; // 5% commission
+    					if (result.equals("TIE")) payout += wager ;
+    					break;
+    				case TIE:
+    					if (result.equals("TIE")) payout += wager * 9;
+    					break;
+    				case PLAYERPAIR:
+    					if (playerHand.get(0).getRank() == playerHand.get(1).getRank()) payout += wager * 12;
+    					break;
+    				case BANKERPAIR:
+    					if (bankerHand.get(0).getRank() == bankerHand.get(1).getRank()) payout += wager * 12;
+    					break;
+    			}
+    		}
 
-        if (payout > 0) {
-            creditPlayer(player, payout);
-        }
-        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-            case STANDARD:{
-                player.sendMessage("§a§lPaid "+ (int)payout+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s"));
-                break;}
-            case VERBOSE:{
-                player.sendMessage("§a§lPaid "+ (int)payout+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s")  + "\n §r§a§o(profit of "+(int)(payout-totalBet)+")");
-                break;     
-            }
-                case NONE:{
-                break;
-            }
-        } 
-        if (payout > totalBet) {
-            player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
-            Random random = new Random();
-            float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
-            for (int i = 0; i < 3; i++) {
-                float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
-                 if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER,1.0f,chosenPitch);
-            }
-        } else if (payout == totalBet) {
-            if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
-            player.getWorld().spawnParticle(Particle.SCRAPE, player.getLocation(), 20); 
-        } else {
-        if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
-        player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
-        }
+    		// Apply probabilistic rounding only for discrete (item-based) currencies
+    		payout = applyProbabilisticRoundingIfDiscrete(payout);
 
+    		if (payout > 0) {
+    			creditPlayer(player, payout);
+    		}
+    		switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+    			case STANDARD:{
+    				player.sendMessage("§a§lPaid "+ (int)payout+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s"));
+    				break;}
+    			case VERBOSE:{
+    				player.sendMessage("§a§lPaid "+ (int)payout+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s")  + "\n §r§a§o(profit of "+(int)(payout-totalBet)+")");
+    				break;     
+    			}
+    				case NONE:{
+    				break;
+    			}
+    		} 
+    		if (payout > totalBet) {
+    			player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
+    			Random random = new Random();
+    			float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
+    			for (int i = 0; i < 3; i++) {
+    				float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
+    				 if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER,1.0f,chosenPitch);
+    			}
+    		} else if (payout == totalBet) {
+    			if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
+    			player.getWorld().spawnParticle(Particle.SCRAPE, player.getLocation(), 20); 
+    		} else {
+    			if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f, 1.0f);
+    			player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
+    		}
+
+    	}
+
+    	resetGame();
     }
 
-    resetGame();
-}
+    /**
+     * Apply probabilistic rounding for discrete (item-based) currencies so that
+     * fractional expected values are preserved over time while still paying
+     * whole-item amounts to players.
+     */
+    private double applyProbabilisticRoundingIfDiscrete(double value) {
+    	if (value <= 0) {
+    		return value;
+    	}
+
+    	if (plugin.getCurrencyManager() == null) {
+    		return value;
+    	}
+
+    	CurrencyProvider provider = plugin.getCurrencyManager().getProvider(internalName);
+    	if (provider == null) {
+    		return value;
+    	}
+
+    	CurrencyMode mode = provider.getMode();
+    	// Only apply to discrete, item-based currencies (STANDARD/CUSTOM)
+    	if (mode != CurrencyMode.STANDARD && mode != CurrencyMode.CUSTOM) {
+    		return value;
+    	}
+
+    	int integerPart = (int) value;
+    	double fractionalPart = value - integerPart;
+
+    	if (fractionalPart <= 0) {
+    		return value;
+    	}
+
+    	Random random = new Random();
+    	return (random.nextDouble() <= fractionalPart) ? integerPart + 1 : integerPart;
+    }
 
 private void resetGame() {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {

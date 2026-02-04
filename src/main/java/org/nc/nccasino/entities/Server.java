@@ -16,6 +16,8 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.inventory.ItemStack;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.CurrencyMode;
+import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.helpers.SoundHelper;
 
 public abstract class Server extends DealerInventory {
@@ -252,51 +254,84 @@ public abstract class Server extends DealerInventory {
 
     
     protected void creditPlayer(Player player, double amount) {
-        Material currencyMaterial = plugin.getCurrency(internalName);
-        if (currencyMaterial == null) {
-            player.sendMessage("Error: Currency material is not set. Unable to credit winnings.");
-            return;
-        }
+		Material currencyMaterial = plugin.getCurrency(internalName);
+		if (currencyMaterial == null) {
+			player.sendMessage("Error: Currency material is not set. Unable to credit winnings.");
+			return;
+		}
 
-        int fullStacks = (int) amount / 64;
-        int remainder = (int) amount % 64;
-        int totalLeftoverAmount = 0;
-        HashMap<Integer, ItemStack> leftover;
+		int toGive = (int) amount;
+		if (toGive <= 0) {
+			return;
+		}
 
-        // Try adding full stacks
-        for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = new ItemStack(currencyMaterial, 64);
-            leftover = player.getInventory().addItem(stack);
-            if (!leftover.isEmpty()) {
-                totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-            }
-        }
+		CurrencyProvider provider = getActiveCurrencyProvider();
+		if (provider != null) {
+			int before = provider.getBalance(player, internalName);
+			provider.deposit(player, internalName, toGive);
+			int after = provider.getBalance(player, internalName);
 
-        // Try adding remainder
-        if (remainder > 0) {
-            ItemStack remainderStack = new ItemStack(currencyMaterial, remainder);
-            leftover = player.getInventory().addItem(remainderStack);
-            if (!leftover.isEmpty()) {
-                totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-            }
-        }
+			int actuallyAdded = Math.max(0, after - before);
+			int leftoverAmount = toGive - actuallyAdded;
 
-        if (totalLeftoverAmount > 0) {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+			if (leftoverAmount > 0) {
+				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+					case STANDARD:{
+						player.sendMessage("§cNo room for " + leftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(leftoverAmount) == 1 ? "" : "s") + ", dropping...");
 
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
-                    break;     
-                }
-                    case NONE:{
-                    break;
-                }
-            } 
-            dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
-        }
+						break;}
+					case VERBOSE:{
+						player.sendMessage("§cNo room for " + leftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(leftoverAmount) == 1 ? "" : "s") + ", dropping...");
+						break;     
+					}
+						case NONE:{
+						break;
+					}
+				} 
+				dropExcessItems(player, leftoverAmount, currencyMaterial);
+			}
+			return;
+		}
+
+		int fullStacks = toGive / 64;
+		int remainder = toGive % 64;
+		int totalLeftoverAmount = 0;
+		HashMap<Integer, ItemStack> leftover;
+
+		// Try adding full stacks
+		for (int i = 0; i < fullStacks; i++) {
+			ItemStack stack = new ItemStack(currencyMaterial, 64);
+			leftover = player.getInventory().addItem(stack);
+			if (!leftover.isEmpty()) {
+				totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
+			}
+		}
+
+		// Try adding remainder
+		if (remainder > 0) {
+			ItemStack remainderStack = new ItemStack(currencyMaterial, remainder);
+			leftover = player.getInventory().addItem(remainderStack);
+			if (!leftover.isEmpty()) {
+				totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
+			}
+		}
+
+		if (totalLeftoverAmount > 0) {
+			switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+				case STANDARD:{
+					player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+
+					break;}
+				case VERBOSE:{
+					player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+					break;     
+				}
+					case NONE:{
+					break;
+				}
+			} 
+			dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
+		}
     }
 
     protected void dropExcessItems(Player player, int amount, Material currencyMaterial) {
@@ -306,4 +341,27 @@ public abstract class Server extends DealerInventory {
             amount -= dropAmount;
         }
     }
+
+	/**
+	 * Returns the active currency provider for this server if and only if it represents
+	 * the current STANDARD (item-based) mode. For this phase, VAULT and CUSTOM remain
+	 * unimplemented stubs, so we intentionally fall back to legacy behavior when
+	 * those modes are selected.
+	 */
+	private CurrencyProvider getActiveCurrencyProvider() {
+		if (plugin.getCurrencyManager() == null) {
+			return null;
+		}
+
+		CurrencyProvider provider = plugin.getCurrencyManager().getProvider(internalName);
+		if (provider == null) {
+			return null;
+		}
+
+		if (provider.getMode() != CurrencyMode.STANDARD) {
+			return null;
+		}
+
+		return provider;
+	}
 }

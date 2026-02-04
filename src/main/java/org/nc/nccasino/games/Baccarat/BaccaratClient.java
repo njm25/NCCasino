@@ -163,7 +163,7 @@ public class BaccaratClient extends Client {
         // Banker bet additional slots
         int[] bankerAdditionalSlots = {23,32, 24,33};
         for (int slot : bankerAdditionalSlots) {
-            inventory.setItem(slot, createCustomItem(Material.PURPLE_STAINED_GLASS_PANE, "Banker Win - 1:1", 1));
+            inventory.setItem(slot, createCustomItem(Material.PURPLE_STAINED_GLASS_PANE, "Banker Win - 0.95:1", 1));
         }
         
         // Banker pair bet slots
@@ -642,7 +642,16 @@ public class BaccaratClient extends Client {
 
         if (!betMapping.containsKey(slot)) return; // Not a bet slot
         ItemStack cursorItem = event.getCursor();
-        boolean isDraggingCurrency = (cursorItem != null && cursorItem.getType() == plugin.getCurrency(internalName));
+        org.nc.nccasino.currency.CurrencyProvider provider = null;
+        if (plugin.getCurrencyManager() != null) {
+            provider = plugin.getCurrencyManager().getProvider(internalName);
+            if (provider != null && provider.getMode() != org.nc.nccasino.currency.CurrencyMode.STANDARD) {
+                provider = null;
+            }
+        }
+        boolean isDraggingCurrency = provider != null
+            ? provider.isCurrencyItem(cursorItem, internalName)
+            : (cursorItem != null && cursorItem.getType() == plugin.getCurrency(internalName));
     
         // Get bet amount
         double betAmount;
