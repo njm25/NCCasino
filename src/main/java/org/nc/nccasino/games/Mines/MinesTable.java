@@ -30,6 +30,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitTask;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.SoundHelper;
 
@@ -449,8 +450,18 @@ public class MinesTable extends DealerInventory {
                 int x = index % gridSize;
                 int y = index / gridSize;
                 handleTileSelection(x, y);
-            } else if (clickedItem != null && clickedItem.getType() == plugin.getCurrency(internalName)) {
-                cashOut();
+            } else if (clickedItem != null) {
+                CurrencyProvider provider = getCurrencyProvider();
+                boolean isCurrencyItem = false;
+                if (provider != null) {
+                    isCurrencyItem = provider.isCurrencyItem(clickedItem, internalName);
+                } else {
+                    Material currencyMat = plugin.getCurrency(internalName);
+                    isCurrencyItem = (currencyMat != null && clickedItem.getType() == currencyMat);
+                }
+                if (isCurrencyItem) {
+                    cashOut();
+                }
             }
         }
 
@@ -483,11 +494,19 @@ public class MinesTable extends DealerInventory {
         }
         if (slot == 52&& clickedItem != null && clickedItem.getType() ==Material.SNIFFER_EGG) {
             // sum up how many currency items the player has
-            Material currencyMat = plugin.getCurrency(internalName);
-            int count = Arrays.stream(player.getInventory().getContents())
-                              .filter(Objects::nonNull)
-                              .filter(it -> it.getType() == currencyMat)
-                              .mapToInt(ItemStack::getAmount).sum();
+            int count = 0;
+            CurrencyProvider provider = getCurrencyProvider();
+            if (provider != null) {
+                count = provider.getBalance(player, internalName);
+            } else {
+                Material currencyMat = plugin.getCurrency(internalName);
+                if (currencyMat != null) {
+                    count = Arrays.stream(player.getInventory().getContents())
+                                  .filter(Objects::nonNull)
+                                  .filter(it -> it.getType() == currencyMat)
+                                  .mapToInt(ItemStack::getAmount).sum();
+                }
+            }
             if (count <= 0) {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
@@ -1389,13 +1408,33 @@ public class MinesTable extends DealerInventory {
 
     private boolean hasEnoughCurrency(Player player, int amount) {
         if (amount == 0) return true; // Allow zero wager
-        ItemStack currencyItem = new ItemStack(plugin.getCurrency(internalName));
+
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            return provider.has(player, internalName, amount);
+        }
+
+        Material currencyMat = plugin.getCurrency(internalName);
+        if (currencyMat == null) {
+            return false;
+        }
+        ItemStack currencyItem = new ItemStack(currencyMat);
         return player.getInventory().containsAtLeast(currencyItem, amount);
     }
 
     private void removeWagerFromInventory(Player player, int amount) {
         if (amount == 0) return; // No need to remove currency for zero wager
-        player.getInventory().removeItem(new ItemStack(plugin.getCurrency(internalName), amount));
+
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            provider.withdraw(player, internalName, amount);
+            return;
+        }
+
+        Material currencyMat = plugin.getCurrency(internalName);
+        if (currencyMat != null) {
+            player.getInventory().removeItem(new ItemStack(currencyMat, amount));
+        }
     }
 
     private void refundAllBets(Player player) {
@@ -1412,9 +1451,15 @@ public class MinesTable extends DealerInventory {
         int fullStacks = amount / 64;
         int remainder = amount % 64;
         Material currencyMaterial = plugin.getCurrency(internalName);
+        CurrencyProvider provider = getCurrencyProvider();
     
         for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = new ItemStack(currencyMaterial, 64);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, 64);
+            } else {
+                stack = new ItemStack(currencyMaterial, 64);
+            }
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
@@ -1423,7 +1468,12 @@ public class MinesTable extends DealerInventory {
             }
         }
         if (remainder > 0) {
-            ItemStack stack = new ItemStack(currencyMaterial, remainder);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, remainder);
+            } else {
+                stack = new ItemStack(currencyMaterial, remainder);
+            }
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
@@ -1440,10 +1490,16 @@ public class MinesTable extends DealerInventory {
         int fullStacks = totalAmount / 64;
         int remainder = totalAmount % 64;
         Material currencyMaterial = plugin.getCurrency(internalName);
+        CurrencyProvider provider = getCurrencyProvider();
         int totalDropped = 0; // Track how many items were dropped
     
         for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = new ItemStack(currencyMaterial, 64);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, 64);
+            } else {
+                stack = new ItemStack(currencyMaterial, 64);
+            }
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
@@ -1454,7 +1510,12 @@ public class MinesTable extends DealerInventory {
         }
     
         if (remainder > 0) {
-            ItemStack stack = new ItemStack(currencyMaterial, remainder);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, remainder);
+            } else {
+                stack = new ItemStack(currencyMaterial, remainder);
+            }
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
@@ -1479,6 +1540,14 @@ public class MinesTable extends DealerInventory {
             }
         } 
         }
+    }
+
+    // CurrencyProvider helper for this dealer/game
+    private CurrencyProvider getCurrencyProvider() {
+        if (plugin.getCurrencyManager() == null) {
+            return null;
+        }
+        return plugin.getCurrencyManager().getProvider(internalName);
     }
     
 

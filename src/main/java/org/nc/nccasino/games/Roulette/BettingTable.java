@@ -21,6 +21,7 @@ import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.helpers.Preferences;
 import java.util.*;
@@ -661,11 +662,19 @@ public class BettingTable extends DealerInventory {
             return;
         }
         if(clickedItem.getType()==Material.SNIFFER_EGG){
-            Material currencyMat = plugin.getCurrency(internalName);
-            int count = Arrays.stream(player.getInventory().getContents())
-                              .filter(Objects::nonNull)
-                              .filter(it -> it.getType() == currencyMat)
-                              .mapToInt(ItemStack::getAmount).sum();
+            int count = 0;
+            CurrencyProvider provider = getCurrencyProvider();
+            if (provider != null) {
+                count = provider.getBalance(player, internalName);
+            } else {
+                Material currencyMat = plugin.getCurrency(internalName);
+                if (currencyMat != null) {
+                    count = Arrays.stream(player.getInventory().getContents())
+                                  .filter(Objects::nonNull)
+                                  .filter(it -> it.getType() == currencyMat)
+                                  .mapToInt(ItemStack::getAmount).sum();
+                }
+            }
             if (count <= 0) {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
@@ -750,13 +759,18 @@ public class BettingTable extends DealerInventory {
         if ((pageNum == 1 && isValidSlotPage1(slot)) || (pageNum == 2 && isValidSlotPage2(slot))) {
             // Check if the player is holding the currency item
             ItemStack heldItem = player.getItemOnCursor();
-            Material currencyType = plugin.getCurrency(internalName);
             double wagerAmount = 0;
             boolean usedHeldItem = false;
         
-            if (heldItem != null && heldItem.getType() == currencyType) {
-                wagerAmount = heldItem.getAmount();
-                usedHeldItem = true;
+            if (heldItem != null) {
+                boolean isCurrencyItem = isCurrencyItem(heldItem);
+
+                if (isCurrencyItem) {
+                    wagerAmount = heldItem.getAmount();
+                    usedHeldItem = true;
+                } else {
+                    wagerAmount = selectedWager;
+                }
             } else {
                 wagerAmount = selectedWager;
             }
@@ -1001,10 +1015,17 @@ private boolean isValidSlotPage2(int slot) {
         int remainder = amount % 64;
         int totalLeftoverAmount = 0;
         HashMap<Integer, ItemStack> leftover;
+        CurrencyProvider provider = getCurrencyProvider();
     
         // Try adding full stacks
         for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = new ItemStack(currencyMaterial, 64);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, 64);
+            }
+            if (stack == null || stack.getType() == Material.AIR) {
+                stack = new ItemStack(currencyMaterial, 64);
+            }
             leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
@@ -1013,7 +1034,13 @@ private boolean isValidSlotPage2(int slot) {
     
         // Try adding remainder
         if (remainder > 0) {
-            ItemStack remainderStack = new ItemStack(currencyMaterial, remainder);
+            ItemStack remainderStack = null;
+            if (provider != null) {
+                remainderStack = provider.createCurrencyStack(internalName, remainder);
+            }
+            if (remainderStack == null || remainderStack.getType() == Material.AIR) {
+                remainderStack = new ItemStack(currencyMaterial, remainder);
+            }
             leftover = player.getInventory().addItem(remainderStack);
             if (!leftover.isEmpty()) {
                 totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
@@ -1025,7 +1052,7 @@ private boolean isValidSlotPage2(int slot) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
                     player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
-
+    
                     break;}
                 case VERBOSE:{
                     player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
@@ -1046,6 +1073,27 @@ private boolean isValidSlotPage2(int slot) {
             player.getWorld().dropItemNaturally(player.getLocation(), new ItemStack(currencyMaterial, dropAmount));
             amount -= dropAmount;
         }
+    }
+
+    // CurrencyProvider helper for this dealer/game
+    private CurrencyProvider getCurrencyProvider() {
+        if (plugin.getCurrencyManager() == null) {
+            return null;
+        }
+        return plugin.getCurrencyManager().getProvider(internalName);
+    }
+
+    // Helper to determine if a stack represents this dealer's currency
+    private boolean isCurrencyItem(ItemStack stack) {
+        if (stack == null) return false;
+
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            return provider.isCurrencyItem(stack, internalName);
+        }
+
+        Material mat = plugin.getCurrency(internalName);
+        return mat != null && stack.getType() == mat;
     }
     
     @EventHandler
@@ -1119,13 +1167,33 @@ private boolean isValidSlotPage2(int slot) {
 
     private boolean hasEnoughWager(Player player, double amount) {
         int requiredAmount = (int) Math.ceil(amount);
-        return player.getInventory().containsAtLeast(new ItemStack(plugin.getCurrency(internalName)), requiredAmount);
+        if (requiredAmount <= 0) return true;
+
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            return provider.has(player, internalName, requiredAmount);
+        }
+
+        Material currencyMat = plugin.getCurrency(internalName);
+        if (currencyMat == null) {
+            return false;
+        }
+        return player.getInventory().containsAtLeast(new ItemStack(currencyMat), requiredAmount);
     }
 
     private void removeWagerFromInventory(Player player, double amount) {
         int requiredAmount = (int) Math.ceil(amount);
         if (requiredAmount > 0) {
-            player.getInventory().removeItem(new ItemStack(plugin.getCurrency(internalName), requiredAmount));
+            CurrencyProvider provider = getCurrencyProvider();
+            if (provider != null) {
+                provider.withdraw(player, internalName, requiredAmount);
+                return;
+            }
+
+            Material currencyMat = plugin.getCurrency(internalName);
+            if (currencyMat != null) {
+                player.getInventory().removeItem(new ItemStack(currencyMat, requiredAmount));
+            }
         } else {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{

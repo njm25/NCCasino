@@ -30,6 +30,7 @@ import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.AttributeHelper;
 import org.nc.nccasino.objects.Card;
@@ -178,6 +179,27 @@ private void registerListener() {
                 this.chipValues.put(chipName, chipValue);
             }
         }
+    }
+
+    // CurrencyProvider helper for this dealer/game
+    private CurrencyProvider getCurrencyProvider() {
+        if (plugin.getCurrencyManager() == null) {
+            return null;
+        }
+        return plugin.getCurrencyManager().getProvider(internalName);
+    }
+
+    // Helper to determine if a stack represents this dealer's currency
+    private boolean isCurrencyItem(ItemStack stack) {
+        if (stack == null) return false;
+
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            return provider.isCurrencyItem(stack, internalName);
+        }
+
+        Material mat = plugin.getCurrency(internalName);
+        return mat != null && stack.getType() == mat;
     }
 
     // Initialize Blackjack-specific game menu
@@ -500,8 +522,16 @@ private void handleAllIn(Player player) {
 }
 
 private double getPlayerTotalBalance(Player player) {
+    CurrencyProvider provider = getCurrencyProvider();
+    if (provider != null) {
+        return provider.getBalance(player, internalName);
+    }
+
     int totalAmount = 0;
     Material currencyMaterial = plugin.getCurrency(internalName);
+    if (currencyMaterial == null) {
+        return 0;
+    }
 
     for (ItemStack item : player.getInventory().getContents()) {
         if (item != null && item.getType() == currencyMaterial) {
@@ -946,7 +976,6 @@ private void removePlayerData(UUID playerId) {
     private void handleBetClick(int slot, Player player, InventoryClickEvent event) {
         UUID playerId = player.getUniqueId();
         double selectedWager = getSelectedWager(playerId);
-        Material currencyType = plugin.getCurrency(internalName);
         
         // Ensure the player is sitting before placing a bet
         if (!playerSeats.containsKey(playerId)) {
@@ -987,7 +1016,8 @@ private void removePlayerData(UUID playerId) {
     
         // Check if the player is holding the currency item
         ItemStack heldItem = event.getCursor();
-        if (heldItem != null && heldItem.getType() == currencyType) {
+        boolean isCurrencyItem = isCurrencyItem(heldItem);
+        if (isCurrencyItem && heldItem != null) {
             int amount = heldItem.getAmount();
             double totalWager = amount;
     
@@ -1186,13 +1216,33 @@ private void removePlayerData(UUID playerId) {
     
     private boolean hasEnoughWager(Player player, double amount) {
         int requiredAmount = (int) Math.ceil(amount);
-        return player.getInventory().containsAtLeast(new ItemStack(plugin.getCurrency(internalName)), requiredAmount);
+        if (requiredAmount <= 0) return true;
+
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            return provider.has(player, internalName, requiredAmount);
+        }
+
+        Material currencyMaterial = plugin.getCurrency(internalName);
+        if (currencyMaterial == null) {
+            return false;
+        }
+        return player.getInventory().containsAtLeast(new ItemStack(currencyMaterial), requiredAmount);
     }
 
     private void removeWagerFromInventory(Player player, double amount) {
         int requiredAmount = (int) Math.ceil(amount);
-        if (requiredAmount > 0) {
-            player.getInventory().removeItem(new ItemStack(plugin.getCurrency(internalName), requiredAmount));
+        if (requiredAmount <= 0) return;
+
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            provider.withdraw(player, internalName, requiredAmount);
+            return;
+        }
+
+        Material currencyMaterial = plugin.getCurrency(internalName);
+        if (currencyMaterial != null && requiredAmount > 0) {
+            player.getInventory().removeItem(new ItemStack(currencyMaterial, requiredAmount));
         }
     }
 
@@ -1201,8 +1251,14 @@ private void removePlayerData(UUID playerId) {
         int fullStacks = totalAmount / 64;
         int remainder = totalAmount % 64;
         Material currencyMaterial = plugin.getCurrency(internalName);
+        CurrencyProvider provider = getCurrencyProvider();
         for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = new ItemStack(currencyMaterial, 64);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, 64);
+            } else {
+                stack = new ItemStack(currencyMaterial, 64);
+            }
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
@@ -1211,7 +1267,12 @@ private void removePlayerData(UUID playerId) {
             }
         }
         if (remainder > 0) {
-            ItemStack stack = new ItemStack(currencyMaterial, remainder);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, remainder);
+            } else {
+                stack = new ItemStack(currencyMaterial, remainder);
+            }
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
@@ -1720,10 +1781,16 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
         int fullStacks = totalAmount / 64;
         int remainder = totalAmount % 64;
         Material currencyMaterial = plugin.getCurrency(internalName);
+        CurrencyProvider provider = getCurrencyProvider();
         int totalDropped = 0; // Track how many items were dropped
 
         for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = new ItemStack(currencyMaterial, 64);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, 64);
+            } else {
+                stack = new ItemStack(currencyMaterial, 64);
+            }
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
@@ -1734,7 +1801,12 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
         }
 
         if (remainder > 0) {
-            ItemStack stack = new ItemStack(currencyMaterial, remainder);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, remainder);
+            } else {
+                stack = new ItemStack(currencyMaterial, remainder);
+            }
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
