@@ -14,6 +14,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.currency.CurrencyProvider;
+import org.nc.nccasino.currency.MoneyHelper;
+import org.nc.nccasino.currency.VaultCurrencyProvider;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Rank;
@@ -293,7 +295,19 @@ public abstract class Client extends DealerInventory {
         if (usedHeldItem) {
             player.setItemOnCursor(null);
         } else {
-            removeCurrencyFromInventory(player, (int)wagerAmount);
+            int units = MoneyHelper.toWagerUnits(wagerAmount);
+            boolean removed = units > 0 && tryRemoveCurrencyFromInventory(player, units);
+			if (!removed) {
+				switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+					case STANDARD:
+					case VERBOSE:
+						player.sendMessage("§cNot enough currency to place bet.");
+						break;
+					case NONE:
+						break;
+				}
+				return;
+			}
         }
         if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
         betStack.push(wagerAmount);
@@ -308,7 +322,10 @@ public abstract class Client extends DealerInventory {
         }
 
         // Remove them from inventory
-        removeCurrencyFromInventory(player, count);
+        boolean removed = tryRemoveCurrencyFromInventory(player, count);
+		if (!removed) {
+			return;
+		}
 
         // push onto bet stack
         betStack.push((double) count);
@@ -413,7 +430,11 @@ public abstract class Client extends DealerInventory {
 
 
     protected boolean hasEnoughWager(Player player, double amount) {
-        int requiredAmount = (int) Math.ceil(amount);
+        int requiredAmount = MoneyHelper.toWagerUnits(amount);
+
+        if (requiredAmount <= 0) {
+            return false;
+        }
 
         CurrencyProvider provider = getCurrencyProvider();
         if (provider != null) {
@@ -425,15 +446,16 @@ public abstract class Client extends DealerInventory {
 
     
     protected void removeWagerFromInventory(Player player, double amount) {
-        int requiredAmount = (int) Math.ceil(amount);
+        tryRemoveWagerFromInventory(player, amount);
+    }
 
-        CurrencyProvider provider = getCurrencyProvider();
-        if (provider != null) {
-            provider.withdraw(player, internalName, requiredAmount);
-            return;
-        }
+    protected boolean tryRemoveWagerFromInventory(Player player, double amount) {
+        int requiredAmount = MoneyHelper.toWagerUnits(amount);
+		if (requiredAmount <= 0) {
+			return false;
+		}
 
-        player.getInventory().removeItem(new ItemStack(plugin.getCurrency(internalName), requiredAmount));
+        return tryRemoveCurrencyFromInventory(player, requiredAmount);
     }
 
     
@@ -444,12 +466,23 @@ public abstract class Client extends DealerInventory {
 			return;
 		}
 
+		CurrencyProvider provider = getCurrencyProvider();
+		if (provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT) {
+			if (provider instanceof VaultCurrencyProvider vaultProvider) {
+				java.math.BigDecimal payout = MoneyHelper.clampNonNegative(MoneyHelper.bd(amount));
+				if (payout.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+					return;
+				}
+				vaultProvider.deposit(player, internalName, payout);
+				return;
+			}
+		}
+
 		int toGive = (int) amount;
 		if (toGive <= 0) {
 			return;
 		}
 
-		CurrencyProvider provider = getCurrencyProvider();
 		if (provider != null) {
 			// STANDARD: keep existing "add then drop leftovers" behavior via provider.
 			if (provider.getMode() == org.nc.nccasino.currency.CurrencyMode.STANDARD) {
@@ -479,7 +512,7 @@ public abstract class Client extends DealerInventory {
 				return;
 			}
 
-			// VAULT/CUSTOM (or any non-STANDARD): rely solely on the provider.
+			// CUSTOM (or any non-STANDARD except VAULT): rely solely on the provider.
 			provider.deposit(player, internalName, toGive);
 			return;
 		}
@@ -628,15 +661,20 @@ public abstract class Client extends DealerInventory {
     }
 
     protected void removeCurrencyFromInventory(Player player, int amount) {
-        if (amount <= 0) return;
+        tryRemoveCurrencyFromInventory(player, amount);
+    }
+
+    protected boolean tryRemoveCurrencyFromInventory(Player player, int amount) {
+        if (amount <= 0) return false;
 
         CurrencyProvider provider = getCurrencyProvider();
         if (provider != null) {
-            provider.withdraw(player, internalName, amount);
-            return;
+			int withdrawn = provider.withdraw(player, internalName, amount);
+			return withdrawn >= amount;
         }
 
         player.getInventory().removeItem(new ItemStack(getCurrencyMaterial(), amount));
+        return true;
     }
 
     public void refundCurrency(Player player, int amount) {
@@ -646,6 +684,12 @@ public abstract class Client extends DealerInventory {
         ItemStack stack = null;
 
         if (provider != null) {
+			// Non-item currencies (VAULT/CUSTOM): refunds are balance credits, not ItemStacks.
+			if (provider.getMode() != org.nc.nccasino.currency.CurrencyMode.STANDARD) {
+				provider.deposit(player, internalName, amount);
+				return;
+			}
+
             stack = provider.createCurrencyStack(internalName, amount);
 
             if (stack == null || stack.getType() == Material.AIR) {

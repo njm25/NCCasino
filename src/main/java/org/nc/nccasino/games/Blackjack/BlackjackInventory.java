@@ -31,6 +31,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.currency.CurrencyProvider;
+import org.nc.nccasino.currency.MoneyHelper;
+import org.nc.nccasino.currency.VaultCurrencyProvider;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.AttributeHelper;
 import org.nc.nccasino.objects.Card;
@@ -1215,8 +1217,8 @@ private void removePlayerData(UUID playerId) {
     }
     
     private boolean hasEnoughWager(Player player, double amount) {
-        int requiredAmount = (int) Math.ceil(amount);
-        if (requiredAmount <= 0) return true;
+        int requiredAmount = MoneyHelper.toWagerUnits(amount);
+        if (requiredAmount <= 0) return false;
 
         CurrencyProvider provider = getCurrencyProvider();
         if (provider != null) {
@@ -1231,7 +1233,7 @@ private void removePlayerData(UUID playerId) {
     }
 
     private void removeWagerFromInventory(Player player, double amount) {
-        int requiredAmount = (int) Math.ceil(amount);
+        int requiredAmount = MoneyHelper.toWagerUnits(amount);
         if (requiredAmount <= 0) return;
 
         CurrencyProvider provider = getCurrencyProvider();
@@ -1776,12 +1778,39 @@ private void finishGame() {
 private void payOut(Player player, Map<Integer, Double> bets, double multiplier) {
     if (bets != null) {
         double totalBet = bets.values().stream().mapToDouble(Double::doubleValue).sum();
+		CurrencyProvider provider = getCurrencyProvider();
+
+		if (provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider vaultProvider) {
+			java.math.BigDecimal betAmount = MoneyHelper.clampNonNegative(MoneyHelper.bd(totalBet));
+			java.math.BigDecimal payout = betAmount.multiply(MoneyHelper.bd(multiplier));
+			java.math.BigDecimal displayPayout = MoneyHelper.roundDisplay(payout);
+			java.math.BigDecimal displayProfit = MoneyHelper.roundDisplay(payout.subtract(betAmount));
+
+			if (payout.compareTo(java.math.BigDecimal.ZERO) > 0) {
+				vaultProvider.deposit(player, internalName, payout);
+			}
+
+			switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+				case STANDARD:{
+					player.sendMessage("§a§lPaid "+ displayPayout.toPlainString() +" "+ plugin.getCurrencyName(internalName).toLowerCase());
+					break;}
+				case VERBOSE:{
+					player.sendMessage("§a§lPaid "+ displayPayout.toPlainString() +" "+ plugin.getCurrencyName(internalName).toLowerCase()  + "\n §r§a§o(profit of "+ displayProfit.toPlainString() +")");
+					break;     
+				}
+					case NONE:{
+					break;
+				}
+			}
+			return;
+		}
+
         double payout = totalBet * multiplier;
         int totalAmount = applyProbabilisticRounding(payout);
+
         int fullStacks = totalAmount / 64;
         int remainder = totalAmount % 64;
         Material currencyMaterial = plugin.getCurrency(internalName);
-        CurrencyProvider provider = getCurrencyProvider();
         int totalDropped = 0; // Track how many items were dropped
 
         for (int i = 0; i < fullStacks; i++) {

@@ -405,7 +405,19 @@ public class CoinFlipClient extends Client {
             return false;
         }
         
-        removeCurrencyFromInventory(player, (int)wagerAmount);
+        int units = org.nc.nccasino.currency.MoneyHelper.toWagerUnits(wagerAmount);
+        boolean removed = units > 0 && tryRemoveCurrencyFromInventory(player, units);
+		if (!removed) {
+			switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+				case STANDARD:
+				case VERBOSE:
+					player.sendMessage("§cNot enough currency to place bet.");
+					break;
+				case NONE:
+					break;
+			}
+			return false;
+		}
         if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
         betStack.push(wagerAmount);
         return true;

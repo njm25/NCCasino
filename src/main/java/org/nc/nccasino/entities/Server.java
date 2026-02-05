@@ -18,6 +18,8 @@ import org.bukkit.inventory.ItemStack;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.CurrencyProvider;
+import org.nc.nccasino.currency.MoneyHelper;
+import org.nc.nccasino.currency.VaultCurrencyProvider;
 import org.nc.nccasino.helpers.SoundHelper;
 
 public abstract class Server extends DealerInventory {
@@ -207,6 +209,31 @@ public abstract class Server extends DealerInventory {
     public void sendPayoutMessage(Player player, double payout, boolean isWinner, double profit) {
         String currencyName = plugin.getCurrencyName(internalName).toLowerCase();
         boolean isSingle = Math.abs(payout) == 1;
+
+		CurrencyProvider provider = getCurrencyProvider();
+		boolean isVault = (provider != null && provider.getMode() == CurrencyMode.VAULT);
+
+		if (isVault) {
+			java.math.BigDecimal displayPayout = MoneyHelper.roundDisplay(MoneyHelper.clampNonNegative(MoneyHelper.bd(payout)));
+			java.math.BigDecimal displayProfit = MoneyHelper.roundDisplay(MoneyHelper.clampNonNegative(MoneyHelper.bd(profit)));
+
+			switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+				case STANDARD:
+					player.sendMessage(isWinner
+							? "§a§lPaid " + displayPayout.toPlainString() + " " + currencyName
+							: "§c§lYou lose!");
+					break;
+				case VERBOSE:
+					player.sendMessage(isWinner
+							? "§a§lPaid " + displayPayout.toPlainString() + " " + currencyName +
+							  "\n §r§a§o(profit of " + displayProfit.toPlainString() + ")"
+							: "§c§lYou lose!");
+					break;
+				case NONE:
+					break;
+			}
+			return;
+		}
     
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
             case STANDARD:
@@ -260,12 +287,23 @@ public abstract class Server extends DealerInventory {
 			return;
 		}
 
+		CurrencyProvider provider = getCurrencyProvider();
+		if (provider != null && provider.getMode() == CurrencyMode.VAULT) {
+			if (provider instanceof VaultCurrencyProvider vaultProvider) {
+				java.math.BigDecimal payout = MoneyHelper.clampNonNegative(MoneyHelper.bd(amount));
+				if (payout.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+					return;
+				}
+				vaultProvider.deposit(player, internalName, payout);
+				return;
+			}
+		}
+
 		int toGive = (int) amount;
 		if (toGive <= 0) {
 			return;
 		}
 
-		CurrencyProvider provider = getCurrencyProvider();
 		if (provider != null) {
 			// STANDARD: keep existing behavior (provider-backed with leftover drop).
 			if (provider.getMode() == CurrencyMode.STANDARD) {
@@ -295,7 +333,7 @@ public abstract class Server extends DealerInventory {
 				return;
 			}
 
-			// VAULT/CUSTOM (or any non-STANDARD): rely solely on the provider, no item fallback.
+			// CUSTOM (or any non-STANDARD except VAULT): rely solely on the provider, no item fallback.
 			provider.deposit(player, internalName, toGive);
 			return;
 		}

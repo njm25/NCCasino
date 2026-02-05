@@ -16,6 +16,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
+import org.nc.nccasino.currency.CurrencyProvider;
+import org.nc.nccasino.currency.MoneyHelper;
+import org.nc.nccasino.currency.VaultCurrencyProvider;
 import org.nc.nccasino.helpers.AttributeHelper;
 import org.nc.nccasino.helpers.SoundHelper;
 
@@ -754,16 +757,33 @@ public class DragonClient extends Client{
         moveLocked = true;
         double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
         double payoutMultiplier = calculatePayoutMultiplier();
-        double winnings = totalBet * payoutMultiplier;
+		CurrencyProvider provider = (plugin.getCurrencyManager() != null) ? plugin.getCurrencyManager().getProvider(internalName) : null;
+		boolean isVault = provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider;
 
-        winnings = applyProbabilisticRounding(winnings, player);
-        // Notify the player
-        server.sendPayoutMessage(player, winnings, true, (winnings - totalBet));
-    
-        if (winnings > 0) {
-            creditPlayer(player, winnings);
-            server.applyWinEffects(player);
-        }
+		if (isVault) {
+			java.math.BigDecimal betAmount = MoneyHelper.clampNonNegative(MoneyHelper.bd(totalBet));
+			java.math.BigDecimal winningsBD = betAmount.multiply(MoneyHelper.bd(payoutMultiplier));
+
+			double winningsDouble = MoneyHelper.toVaultDouble(winningsBD);
+			double profitDouble = MoneyHelper.toVaultDouble(winningsBD.subtract(betAmount));
+
+			server.sendPayoutMessage(player, winningsDouble, true, profitDouble);
+
+			if (winningsBD.compareTo(java.math.BigDecimal.ZERO) > 0) {
+				((VaultCurrencyProvider) provider).deposit(player, internalName, winningsBD);
+				server.applyWinEffects(player);
+			}
+		} else {
+			double winnings = totalBet * payoutMultiplier;
+			winnings = applyProbabilisticRounding(winnings, player);
+			// Notify the player
+			server.sendPayoutMessage(player, winnings, true, (winnings - totalBet));
+		
+			if (winnings > 0) {
+				creditPlayer(player, winnings);
+				server.applyWinEffects(player);
+			}
+		}
         
         playerLost=true;
 
@@ -810,9 +830,17 @@ public class DragonClient extends Client{
         double totalRebetAmount = betStack.stream().mapToDouble(Double::doubleValue).sum();
 
         if (rebetEnabled && totalRebetAmount > 0) {
-            if (hasEnoughWager(player, (int) totalRebetAmount)) {
+            if (hasEnoughWager(player, totalRebetAmount)) {
                 // Deduct the total amount needed for rebet
-                removeCurrencyFromInventory(player, (int) totalRebetAmount);
+                int rebetUnits = org.nc.nccasino.currency.MoneyHelper.toWagerUnits(totalRebetAmount);
+                boolean removed = rebetUnits > 0 && tryRemoveCurrencyFromInventory(player, rebetUnits);
+				if (!removed) {
+					player.sendMessage("§cNot enough currency for rebet. Wager reset.");
+					betStack.clear();
+					initializeUI(true, true,rebetEnabled,40,53);
+					setupPregame();
+					return;
+				}
                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                     case STANDARD:
                     case VERBOSE:

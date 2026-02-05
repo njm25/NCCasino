@@ -22,6 +22,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.currency.CurrencyProvider;
+import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.helpers.Preferences;
 import java.util.*;
@@ -783,7 +784,10 @@ public class BettingTable extends DealerInventory {
                     if (usedHeldItem) {
                         player.setItemOnCursor(null); // Remove the held stack
                     } else {
-                        removeWagerFromInventory(player, wagerAmount);
+						boolean removed = removeWagerFromInventory(player, wagerAmount);
+						if (!removed) {
+							return;
+						}
                     }
         
                     switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
@@ -1010,12 +1014,18 @@ private boolean isValidSlotPage2(int slot) {
             player.sendMessage("Error: Currency material is not set. Unable to refund bets.");
             return;
         }
+
+		CurrencyProvider provider = getCurrencyProvider();
+		if (provider != null && provider.getMode() != org.nc.nccasino.currency.CurrencyMode.STANDARD) {
+			// VAULT/CUSTOM: refunds are handled as balance credits (no item fallback).
+			provider.deposit(player, internalName, amount);
+			return;
+		}
     
         int fullStacks = amount / 64;
         int remainder = amount % 64;
         int totalLeftoverAmount = 0;
         HashMap<Integer, ItemStack> leftover;
-        CurrencyProvider provider = getCurrencyProvider();
     
         // Try adding full stacks
         for (int i = 0; i < fullStacks; i++) {
@@ -1166,8 +1176,8 @@ private boolean isValidSlotPage2(int slot) {
     }
 
     private boolean hasEnoughWager(Player player, double amount) {
-        int requiredAmount = (int) Math.ceil(amount);
-        if (requiredAmount <= 0) return true;
+        int requiredAmount = MoneyHelper.toWagerUnits(amount);
+        if (requiredAmount <= 0) return false;
 
         CurrencyProvider provider = getCurrencyProvider();
         if (provider != null) {
@@ -1181,34 +1191,38 @@ private boolean isValidSlotPage2(int slot) {
         return player.getInventory().containsAtLeast(new ItemStack(currencyMat), requiredAmount);
     }
 
-    private void removeWagerFromInventory(Player player, double amount) {
-        int requiredAmount = (int) Math.ceil(amount);
-        if (requiredAmount > 0) {
-            CurrencyProvider provider = getCurrencyProvider();
-            if (provider != null) {
-                provider.withdraw(player, internalName, requiredAmount);
-                return;
-            }
+	// Removes wager currency; returns true if removal succeeded.
+	private boolean removeWagerFromInventory(Player player, double amount) {
+		int requiredAmount = org.nc.nccasino.currency.MoneyHelper.toWagerUnits(amount);
+		if (requiredAmount > 0) {
+			CurrencyProvider provider = getCurrencyProvider();
+			if (provider != null) {
+				int withdrawn = provider.withdraw(player, internalName, requiredAmount);
+				return withdrawn >= requiredAmount;
+			}
 
-            Material currencyMat = plugin.getCurrency(internalName);
-            if (currencyMat != null) {
-                player.getInventory().removeItem(new ItemStack(currencyMat, requiredAmount));
-            }
-        } else {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage("§cInvalid action.");
+			Material currencyMat = plugin.getCurrency(internalName);
+			if (currencyMat != null) {
+				player.getInventory().removeItem(new ItemStack(currencyMat, requiredAmount));
+				return true;
+			}
 
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§cInvalid wager amount: " + amount);
-                    break;     
-                }
-                    case NONE:{
-                    break;
-                }
-            } 
-        }
+			return false;
+		}
+
+		switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+			case STANDARD:{
+				player.sendMessage("§cInvalid action.");
+				break;}
+			case VERBOSE:{
+				player.sendMessage("§cInvalid wager amount: " + amount);
+				break;	 
+			}
+				case NONE:{
+				break;
+			}
+		}
+		return false;
     }
 
     private void openRouletteInventory(Mob dealer, Player player) {

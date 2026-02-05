@@ -16,6 +16,8 @@ import org.bukkit.entity.Player;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.CurrencyProvider;
+import org.nc.nccasino.currency.MoneyHelper;
+import org.nc.nccasino.currency.VaultCurrencyProvider;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
 import org.nc.nccasino.helpers.SoundHelper;
@@ -650,24 +652,51 @@ public class BaccaratServer extends Server {
     			}
     		}
 
-    		// Apply probabilistic rounding only for discrete (item-based) currencies
-    		payout = applyProbabilisticRoundingIfDiscrete(payout);
+			CurrencyProvider provider = plugin.getCurrencyManager() != null ? plugin.getCurrencyManager().getProvider(internalName) : null;
+			boolean isVault = provider != null && provider.getMode() == CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider;
 
-    		if (payout > 0) {
-    			creditPlayer(player, payout);
-    		}
-    		switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-    			case STANDARD:{
-    				player.sendMessage("§a§lPaid "+ (int)payout+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s"));
-    				break;}
-    			case VERBOSE:{
-    				player.sendMessage("§a§lPaid "+ (int)payout+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s")  + "\n §r§a§o(profit of "+(int)(payout-totalBet)+")");
-    				break;     
-    			}
-    				case NONE:{
-    				break;
-    			}
-    		} 
+			if (isVault) {
+				java.math.BigDecimal betAmount = MoneyHelper.clampNonNegative(MoneyHelper.bd(totalBet));
+				java.math.BigDecimal payoutBD = MoneyHelper.clampNonNegative(MoneyHelper.bd(payout));
+				java.math.BigDecimal displayPayout = MoneyHelper.roundDisplay(payoutBD);
+				java.math.BigDecimal displayProfit = MoneyHelper.roundDisplay(payoutBD.subtract(betAmount));
+
+				if (payoutBD.compareTo(java.math.BigDecimal.ZERO) > 0) {
+					((VaultCurrencyProvider) provider).deposit(player, internalName, payoutBD);
+				}
+
+	    		switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+	    			case STANDARD:{
+	    				player.sendMessage("§a§lPaid "+ displayPayout.toPlainString() +" "+ plugin.getCurrencyName(internalName).toLowerCase());
+	    				break;}
+	    			case VERBOSE:{
+	    				player.sendMessage("§a§lPaid "+ displayPayout.toPlainString() +" "+ plugin.getCurrencyName(internalName).toLowerCase()  + "\n §r§a§o(profit of "+ displayProfit.toPlainString() +")");
+	    				break;     
+	    			}
+	    				case NONE:{
+	    				break;
+	    			}
+	    		}
+			} else {
+	    		// Apply probabilistic rounding only for discrete (item-based) currencies
+	    		payout = applyProbabilisticRoundingIfDiscrete(payout);
+
+	    		if (payout > 0) {
+	    			creditPlayer(player, payout);
+	    		}
+	    		switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+	    			case STANDARD:{
+	    				player.sendMessage("§a§lPaid "+ (int)payout+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s"));
+	    				break;}
+	    			case VERBOSE:{
+	    				player.sendMessage("§a§lPaid "+ (int)payout+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s")  + "\n §r§a§o(profit of "+(int)(payout-totalBet)+")");
+	    				break;     
+	    			}
+	    				case NONE:{
+	    				break;
+	    			}
+	    		} 
+			}
     		if (payout > totalBet) {
     			player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
     			Random random = new Random();
