@@ -11,7 +11,7 @@ public class CurrencyManager {
 	public CurrencyManager(Nccasino plugin) {
 		this.plugin = plugin;
 		this.standardProvider = new StandardItemCurrencyProvider(plugin);
-		this.vaultProvider = new VaultCurrencyProvider();
+		this.vaultProvider = new VaultCurrencyProvider(plugin);
 		this.customProvider = new CustomChipCurrencyProvider();
 	}
 
