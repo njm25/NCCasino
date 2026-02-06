@@ -902,7 +902,7 @@ public class MinesTable extends DealerInventory {
        // Trigger a visual explosion at the player's location without causing damage
 
 
-       SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
+       SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
     
      startMineHitAnimation(x, y); 
                 }, 15L); 
@@ -993,11 +993,11 @@ public class MinesTable extends DealerInventory {
         int centerY = centerSlot / 9;
 
         // Step 1: After a short delay, reveal all tiles
-        SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
+        SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
             revealAllTiles();
 
             // Step 2: After another short delay, change the clicked mine tile to fire
-            SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
+            SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                  if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
         player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
                 
@@ -1017,11 +1017,11 @@ public class MinesTable extends DealerInventory {
             fireGrid[y][x] = true; // Mark the tile as on fire
     
             // After a quick delay, turn the tile into smoke (wind charge/bone meal)
-            ScheduledTask smokeTask = SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
+            ScheduledTask smokeTask = SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                 setTileAtSlot(index, Material.BONE_MEAL, "Smoke");
     
                 // After a slower delay, turn the tile into air (empty)
-                ScheduledTask airTask = SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
+                ScheduledTask airTask = SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                     setTileAtSlot(index, Material.AIR, "");
                 }, 20L); // Smoke lingers for 1 second (20 ticks) before disappearing
                 if (airTask != null) scheduledTasks.add(airTask); // Add air task to the list
@@ -1039,7 +1039,7 @@ public class MinesTable extends DealerInventory {
 
     private void spreadFireFrom(int centerX, int centerY, int currentRadius) {
         // Fire spreads quickly with minimal delay
-        ScheduledTask task = SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
+        ScheduledTask task = SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
             boolean anyTilesSetOnFire = false;
     
             for (int y = 0; y < 6; y++) { // 6 rows
@@ -1054,11 +1054,11 @@ public class MinesTable extends DealerInventory {
                             anyTilesSetOnFire = true;
     
                             // After a quick delay, turn the tile into smoke (wind charge/bone meal)
-                            ScheduledTask smokeTask = SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
+                            ScheduledTask smokeTask = SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                                 setTileAtSlot(index, Material.BONE_MEAL, "Smoke");
     
                                 // After a slower delay, turn the tile into air (empty)
-                                ScheduledTask airTask = SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
+                                ScheduledTask airTask = SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                                     setTileAtSlot(index, Material.AIR, "");
                                 }, 20L); // Smoke lingers for 1 second (20 ticks) before disappearing
                                 if (airTask != null) scheduledTasks.add(airTask); // Add air task to the list
@@ -1075,7 +1075,7 @@ public class MinesTable extends DealerInventory {
                 spreadFireFrom(centerX, centerY, currentRadius + 1);
             } else {
                 // After all tiles are on fire and smoke fades, reset the game
-                ScheduledTask resetTask = SchedulerHelper.executeEntityTaskLater(player, plugin, this::resetGame, 5L);
+                ScheduledTask resetTask = SchedulerHelper.executeEntityTaskLater(plugin, player, this::resetGame, 5L);
                 if (resetTask != null) scheduledTasks.add(resetTask); // Add reset task to the list
             }
     
@@ -1117,7 +1117,7 @@ public class MinesTable extends DealerInventory {
         }
 
         // Step 2: Start emerald expansion from the cash-out button (slot 49)
-        SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
+        SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
             startEmeraldExpansion(49);
             
             
@@ -1154,7 +1154,7 @@ public class MinesTable extends DealerInventory {
             gameState = GameState.GAME_OVER;
     
             // Reset the game after a delay
-            SchedulerHelper.executeEntityTaskLater(player, plugin, this::resetGame, 20L); // Wait 5 seconds before resetting
+            SchedulerHelper.executeEntityTaskLater(plugin, player, this::resetGame, 20L); // Wait 5 seconds before resetting
     
         }, 10L); // Wait 2 seconds before starting the emerald expansion
     }
@@ -1226,7 +1226,7 @@ public class MinesTable extends DealerInventory {
     
     private void spreadEmeraldsFrom(int centerX, int centerY, int currentRadius) {
         // Expansion of emeralds from the center
-        SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
+        SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
             boolean anyTilesSetToEmerald = false;
     
             for (int y = 0; y < 6; y++) { // 6 rows
