@@ -19,11 +19,11 @@ permissions:
     description: Grants access to all NCCasino commands
     default: op
     children:
-      - nccasino.commands.create
-      - nccasino.commands.delete
-      - nccasino.commands.help
-      - nccasino.commands.list
-      - nccasino.commands.reload
+      nccasino.commands.create: true
+      nccasino.commands.delete: true
+      nccasino.commands.help: true
+      nccasino.commands.list: true
+      nccasino.commands.reload: true
   nccasino.commands.create:
     description: Allows creating a dealer in NCCasino
     default: op
@@ -43,12 +43,12 @@ permissions:
     description: Grants access to all NCCasino games
     default: true
     children:
-      - nccasino.games.blackjack
-      - nccasino.games.roulette
-      - nccasino.games.mines
-      - nccasino.games.baccarat
-      - nccasino.games.coinflip
-      - nccasino.games.dragon
+      nccasino.games.blackjack: true
+      nccasino.games.roulette: true
+      nccasino.games.mines: true
+      nccasino.games.baccarat: true
+      nccasino.games.coinflip: true
+      nccasino.games.dragon: true
   nccasino.games.blackjack:
     description: Allows playing blackjack
     default: true
