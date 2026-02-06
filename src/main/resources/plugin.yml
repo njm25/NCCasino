@@ -2,6 +2,7 @@ name: NCCasino
 version: '1.4.8'
 main: org.nc.nccasino.Nccasino
 api-version: '1.21'
+folia-supported: true
 commands:
   ncc:
     description: Main command for the Nccasino plugin
