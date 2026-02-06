@@ -64,7 +64,7 @@ public class MinesTable extends DealerInventory {
     private double wager;
     private double previousWager = 0.0; // New field to store previous wager
     private boolean[][] fireGrid; // [6][9] To track which tiles are on fire
-    private final List<Integer> scheduledTasks = new ArrayList<>();
+    private final List<ScheduledTask> scheduledTasks = new ArrayList<>();
     private boolean rebetEnabled = false; 
     // Adjusted fields for grid mapping
     private final int[] gridSlots = {
@@ -1024,10 +1024,10 @@ public class MinesTable extends DealerInventory {
                 ScheduledTask airTask = SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
                     setTileAtSlot(index, Material.AIR, "");
                 }, 20L); // Smoke lingers for 1 second (20 ticks) before disappearing
-                scheduledTasks.add(airTask.getTaskId()); // Add air task ID to the list
+                if (airTask != null) scheduledTasks.add(airTask); // Add air task to the list
     
             }, 5L); // Smoke appears after 0.25 seconds
-            scheduledTasks.add(smokeTask.getTaskId()); // Add smoke task ID to the list
+            if (smokeTask != null) scheduledTasks.add(smokeTask); // Add smoke task to the list
         }
     }
     
@@ -1061,10 +1061,10 @@ public class MinesTable extends DealerInventory {
                                 ScheduledTask airTask = SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
                                     setTileAtSlot(index, Material.AIR, "");
                                 }, 20L); // Smoke lingers for 1 second (20 ticks) before disappearing
-                                scheduledTasks.add(airTask.getTaskId()); // Add air task ID to the list
+                                if (airTask != null) scheduledTasks.add(airTask); // Add air task to the list
     
                             }, 5L); // Smoke appears after 0.25 seconds
-                            scheduledTasks.add(smokeTask.getTaskId()); // Add smoke task ID to the list
+                            if (smokeTask != null) scheduledTasks.add(smokeTask); // Add smoke task to the list
                         }
                     }
                 }
@@ -1076,11 +1076,11 @@ public class MinesTable extends DealerInventory {
             } else {
                 // After all tiles are on fire and smoke fades, reset the game
                 ScheduledTask resetTask = SchedulerHelper.executeEntityTaskLater(player, plugin, this::resetGame, 5L);
-                scheduledTasks.add(resetTask.getTaskId()); // Add reset task ID to the list
+                if (resetTask != null) scheduledTasks.add(resetTask); // Add reset task to the list
             }
     
         }, 3L); // Fire spreads quickly (1 tick delay between rings)
-        scheduledTasks.add(task.getTaskId()); // Add the task ID to the list
+        if (task != null) scheduledTasks.add(task); // Add the task to the list
     }
     
     
@@ -1254,8 +1254,8 @@ public class MinesTable extends DealerInventory {
     
     private void resetGame() {
         // Cancel ongoing tasks
-        for (int taskId : scheduledTasks) {
-            Bukkit.getScheduler().cancelTask(taskId);
+        for (ScheduledTask task : scheduledTasks) {
+            if (task != null) task.cancel();
         }
         scheduledTasks.clear();
 
