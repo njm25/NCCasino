@@ -1,5 +1,6 @@
 package org.nc.nccasino.components;
 
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -14,6 +15,7 @@ import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.AnimationSongs;
 import org.nc.nccasino.helpers.Preferences;
+import org.nc.nccasino.helpers.SchedulerHelper;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.listeners.DealerInteractListener;
 import org.nc.VSE.*;
@@ -30,7 +32,7 @@ public class AnimationMessage extends DealerInventory {
     private final UUID playerId;
     private final Nccasino plugin;
     private final String animationMessage;
-    private final Map<UUID, Integer> animationTasks;
+    private final Map<UUID, ScheduledTask> animationTasks;
     private final Map<UUID, Boolean> animationCompleted;
     private final Map<UUID, Boolean> animationStopped; // Track if animation is already stopped
     private final Map<UUID, Runnable> animationCallbacks;
@@ -121,16 +123,16 @@ public class AnimationMessage extends DealerInventory {
             return;
         }
         closedManually=false;
-        final int[] taskId = new int[1];
         final int initialRowShift = 0; 
 
-        taskId[0] = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+        ScheduledTask task = SchedulerHelper.executeEntityTaskTimer(plugin, player, new Runnable() {
             private int rowShift = -initialRowShift;
 
             @Override
             public void run() {
                 if (animationStopped.get(playerUUID)) {
-                    Bukkit.getScheduler().cancelTask(taskId[0]);
+                    ScheduledTask currentTask = animationTasks.get(playerUUID);
+                    if (currentTask != null) currentTask.cancel();
                     animationTasks.remove(playerUUID);
                     return;
                 }
@@ -139,7 +141,8 @@ public class AnimationMessage extends DealerInventory {
                 inventory.clear();
 
                 if (printmsg == null || printmsg.length == 0 || printmsg[0].length == 0) {
-                    Bukkit.getScheduler().cancelTask(taskId[0]);
+                    ScheduledTask currentTask = animationTasks.get(playerUUID);
+                    if (currentTask != null) currentTask.cancel();
                     animationTasks.remove(playerUUID);
                     return;
                 }
@@ -169,23 +172,24 @@ public class AnimationMessage extends DealerInventory {
                     stopAnimation(player);
                     if(SoundHelper.getSoundSafely("item.chorus_fruit.teleport",player)!=null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
                     mce.removePlayerFromAllChannels(player);
-                    Bukkit.getScheduler().cancelTask(taskId[0]);
+                    ScheduledTask currentTask = animationTasks.get(playerUUID);
+                    if (currentTask != null) currentTask.cancel();
                     animationTasks.remove(playerUUID);
                     if (!animationStopped.get(playerUUID)) {
                         animationCallbacks.get(playerUUID).run();
                     }
                 }
             }
-        }, 0L, 2L).getTaskId(); 
+        }, 0L, 2L); 
 
-        animationTasks.put(playerUUID, taskId[0]);
+        animationTasks.put(playerUUID, task);
     }
     private void stopAnimation(Player player) {
         UUID playerUUID = player.getUniqueId();
 
         if (animationTasks.containsKey(playerUUID)) {
-            int taskId = animationTasks.get(playerUUID);
-            Bukkit.getScheduler().cancelTask(taskId);
+            ScheduledTask task = animationTasks.get(playerUUID);
+            if (task != null) task.cancel();
             animationTasks.remove(playerUUID);
         }
 

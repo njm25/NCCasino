@@ -3,17 +3,18 @@ package org.nc.nccasino.entities;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Entity;
 import org.bukkit.Location;
-import org.bukkit.scheduler.BukkitTask;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.plugin.java.JavaPlugin;
 import java.util.*;
 import org.bukkit.Bukkit;
+import org.nc.nccasino.helpers.SchedulerHelper;
 
 public class JockeyManager {
     private final Mob dealer;
     private JockeyNode head;
     private final List<JockeyNode> jockeys;
-    private static final Map<UUID, BukkitTask> lookTasks = new HashMap<>();
+    private static final Map<UUID, ScheduledTask> lookTasks = new HashMap<>();
     private static final Random random = new Random();
 
     private JockeyNode findTopmostJockey() {
@@ -166,7 +167,7 @@ public class JockeyManager {
         }
 
         // Add a shorter delay before starting the task to ensure dealer is fully initialized
-        Bukkit.getScheduler().runTaskLater(JavaPlugin.getProvidingPlugin(JockeyManager.class), () -> {
+        SchedulerHelper.executeEntityTaskLater(JavaPlugin.getProvidingPlugin(JockeyManager.class), dealer, () -> {
             // Check if dealer is still valid before starting task
             if (!dealer.isValid() || dealer.isDead()) {
                 return;
@@ -188,7 +189,7 @@ public class JockeyManager {
 
             if (!stackValid) {
                 // If stack is not valid, try again in a few ticks
-                Bukkit.getScheduler().runTaskLater(JavaPlugin.getProvidingPlugin(JockeyManager.class), 
+                SchedulerHelper.executeEntityTaskLater(JavaPlugin.getProvidingPlugin(JockeyManager.class), dealer,
                     () -> startStackLooking(), 5L);
                 return;
             }

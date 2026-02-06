@@ -58,6 +58,7 @@ import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.helpers.Preferences;
+import org.nc.nccasino.helpers.SchedulerHelper;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.listeners.DealerEventListener;
 
@@ -1030,7 +1031,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
             plugin.saveConfig();
     
             // Update inventory display
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                 updateCurrencyButtons();
                 player.updateInventory(); // Ensure client sees the change immediately
             }, 1L);
@@ -1419,9 +1420,9 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
     
         // Retry at increasing intervals
         if (attempt == 1) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> attemptTeleport(player, newLocation, dealerId, 10), 10L);
+            SchedulerHelper.executeEntityTaskLater(plugin, player, () -> attemptTeleport(player, newLocation, dealerId, 10), 10L);
         } else if (attempt == 10) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> attemptTeleport(player, newLocation, dealerId, 30), 30L);
+            SchedulerHelper.executeEntityTaskLater(plugin, player, () -> attemptTeleport(player, newLocation, dealerId, 30), 30L);
         } else {
             Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch (messPref) {
@@ -1486,7 +1487,7 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeEntityTaskLater(plugin, (Player) event.getPlayer(), () -> {
         Player player = (Player) event.getPlayer();
         UUID playerId = player.getUniqueId();
         if(player.getOpenInventory().getTopInventory().getHolder() instanceof AdminMenu){

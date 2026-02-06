@@ -2,6 +2,7 @@ package org.nc.nccasino.entities;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -18,6 +19,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.helpers.SchedulerHelper;
 import org.nc.nccasino.helpers.SoundHelper;
 
 import java.util.ArrayList;
@@ -98,7 +100,8 @@ public class DealerInventory implements InventoryHolder, Listener {
         
         if (existing != null) {
             Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            Location spawnLoc = plugin.getServer().getWorlds().get(0).getSpawnLocation();
+            SchedulerHelper.executeRegionTaskLater(plugin, spawnLoc, () -> {
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     if (player == null) 
                         continue;

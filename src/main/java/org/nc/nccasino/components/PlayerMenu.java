@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
+import org.nc.nccasino.helpers.SchedulerHelper;
 
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -110,10 +111,10 @@ public class PlayerMenu extends Menu {
         }
         else{
         PlayerMenu adminInventory = new PlayerMenu(player,plugin,dealerId);
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
 
         player.openInventory(adminInventory.getInventory());
-    },2L);
+    }, 2L);
     }
         });
         player.openInventory(pm.getInventory());

@@ -417,13 +417,13 @@ public class MobSelectionMenu extends Menu {
             "Reset config to default?",
             (uuid) -> {
                 // Confirm action
-                Bukkit.getScheduler().runTask(plugin, () -> {
+                SchedulerHelper.executeEntityTask(plugin, player, () -> {
                     if (dealer != null) {
                         plugin.deleteAssociatedInventories(dealer);
                         AdminMenu.clearAllEditModes(dealer);
                         
                         // Step 1: Wait 5 ticks to ensure inventories are closed, then remove dealer
-                        Bukkit.getScheduler().runTask(plugin, () -> {
+                        SchedulerHelper.executeEntityTask(plugin, player, () -> {
                             // First remove any existing armor stands
                             for (Entity passenger : dealer.getPassengers()) {
                                 if (passenger instanceof ArmorStand) {
@@ -435,7 +435,7 @@ public class MobSelectionMenu extends Menu {
                             Dealer.removeDealer(dealer);
         
                             // Step 2: Wait another 5 ticks to ensure dealer is fully removed before spawning new one
-                            Bukkit.getScheduler().runTask(plugin, () -> {
+                            SchedulerHelper.executeEntityTask(plugin, player, () -> {
                                 AdminMenu.deleteAssociatedAdminInventories(player);
                                 plugin.saveDefaultDealerConfig(internalName);
                                 
@@ -469,7 +469,7 @@ public class MobSelectionMenu extends Menu {
                                 // If we have vehicles, mount the dealer on the top vehicle
                                 if (topVehicleRef[0] != null) {
                                     // Wait a tick to ensure vehicle stack is stable
-                                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                    SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                                         topVehicleRef[0].addPassenger(newDealer);
                                         
                                         // Rebuild passenger stack from dealer up
@@ -495,7 +495,7 @@ public class MobSelectionMenu extends Menu {
                                         }
                                         
                                         // Create JockeyManager after stack is fully built
-                                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                        SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                                             // Update names of all mobs in the stack
                                             for (Mob passenger : passengerStack) {
                                                 passenger.setCustomName(name);
@@ -527,7 +527,7 @@ public class MobSelectionMenu extends Menu {
                                     }
                                     
                                     // Create JockeyManager after stack is fully built
-                                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                    SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                                         // Update names of all mobs in the stack
                                         for (Mob passenger : passengerStack) {
                                             passenger.setCustomName(name);
@@ -562,13 +562,13 @@ public class MobSelectionMenu extends Menu {
             },
             (uuid) -> {
                 // Deny action
-                Bukkit.getScheduler().runTask(plugin, () -> {
+                SchedulerHelper.executeEntityTask(plugin, player, () -> {
                     if (dealer != null) {
                         plugin.deleteAssociatedInventories(dealer);
                         AdminMenu.clearAllEditModes(dealer);
                         
                         // Step 1: Wait to ensure inventories are closed, then remove dealer
-                        Bukkit.getScheduler().runTask(plugin, () -> {
+                        SchedulerHelper.executeEntityTask(plugin, player, () -> {
                             // First remove any existing armor stands
                             for (Entity passenger : dealer.getPassengers()) {
                                 if (passenger instanceof ArmorStand) {
@@ -580,7 +580,7 @@ public class MobSelectionMenu extends Menu {
                             Dealer.removeDealer(dealer);
         
                             // Step 2: Wait, then spawn new dealer
-                            Bukkit.getScheduler().runTask(plugin, () -> {
+                            SchedulerHelper.executeEntityTask(plugin, player, () -> {
                                 AdminMenu.deleteAssociatedAdminInventories(player);
                                 
                                 // Spawn new dealer and rebuild stack
@@ -615,7 +615,7 @@ public class MobSelectionMenu extends Menu {
                                 // If we have vehicles, mount the dealer on the top vehicle
                                 if (topVehicleRef[0] != null) {
                                     // Wait a tick to ensure vehicle stack is stable
-                                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                    SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                                         topVehicleRef[0].addPassenger(newDealer);
                                         
                                         // Rebuild passenger stack from dealer up
@@ -641,7 +641,7 @@ public class MobSelectionMenu extends Menu {
                                         }
                                         
                                         // Create JockeyManager after stack is fully built
-                                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                        SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                                             // Update names of all mobs in the stack
                                             for (Mob passenger : passengerStack) {
                                                 passenger.setCustomName(name);
@@ -673,7 +673,7 @@ public class MobSelectionMenu extends Menu {
                                     }
                                     
                                     // Create JockeyManager after stack is fully built
-                                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                    SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                                         // Update names of all mobs in the stack
                                         for (Mob passenger : passengerStack) {
                                             passenger.setCustomName(name);

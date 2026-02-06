@@ -20,6 +20,7 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.helpers.SchedulerHelper;
 import org.nc.nccasino.helpers.SoundHelper;
 import net.md_5.bungee.api.ChatColor;
 
@@ -96,7 +97,7 @@ public class CoinFlipMenu extends Menu {
                     }
                 }
 
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                     if (player.getOpenInventory().getTopInventory().getHolder() instanceof AdminMenu) {
                         return;
                     }
@@ -106,8 +107,7 @@ public class CoinFlipMenu extends Menu {
                             temp.delete();
                         }
                     }
-                }
-                , 5L);
+                }, 5L);
             }
         }
     }

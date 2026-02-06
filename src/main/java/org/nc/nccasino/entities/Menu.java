@@ -10,6 +10,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.components.MobSelectionMenu;
+import org.nc.nccasino.helpers.SchedulerHelper;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -196,7 +197,7 @@ public abstract class Menu extends DealerInventory {
     public void onInventoryClose(InventoryCloseEvent event) {
         if (!event.getPlayer().getUniqueId().equals(ownerId)) return;
 
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
             if (event.getPlayer().getOpenInventory().getTopInventory().getHolder() instanceof Menu) return;
 
             cleanup();
