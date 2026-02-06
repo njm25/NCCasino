@@ -28,11 +28,13 @@ import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitTask;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.nc.VSE.MultiChannelEngine;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.helpers.SchedulerHelper;
 import org.nc.nccasino.objects.Pair;
 import org.nc.nccasino.helpers.Preferences;
 
@@ -48,18 +50,18 @@ public class RouletteInventory extends DealerInventory {
     public final Map<Player, BettingTable> Tables;
     private Map<Player, Integer> activeAnimations;
     private int frameCounter;
-    private int bettingCountdownTaskId = -1;
+    private ScheduledTask bettingCountdownTask = null;
     private boolean betsClosed = false;
     private int bettingTimeSeconds = 25;
     private int globalCountdown=bettingTimeSeconds;
     private String internalName;
     private Boolean firstFin = true;
-    private int spinTaskId;
-    private int fastSpinTaskId;
-    private int bfastSpinTaskId;
-    private int regTaskId;
-    private int reg2TaskId;
-    private int ballTaskId;
+    private ScheduledTask spinTask = null;
+    private ScheduledTask fastSpinTask = null;
+    private ScheduledTask bfastSpinTask = null;
+    private ScheduledTask regTask = null;
+    private ScheduledTask reg2Task = null;
+    private ScheduledTask ballTask = null;
     private int wheelOffset = 0;
     private int currentQuadrant = 1; // 1=Top-Right, 2=Top-Left, 3=Bottom-Left, 4=Bottom-Right
     private boolean ballMovementStarted = false;
@@ -118,9 +120,8 @@ public class RouletteInventory extends DealerInventory {
     private boolean flip4=true;
     private int wheelSpinDirection = 1; // 1 for clockwise, -1 for counter-clockwise
     private int lastDisplayedOffset = 0;
-    private final Set<Integer> activeTaskIds = new HashSet<>();
-    private BukkitTask miscTask;
-    private int miscTaskId;
+    private final Set<ScheduledTask> activeTasks = new HashSet<>();
+    private ScheduledTask miscTask;
     /////////////////////////////////////////////////////////////////////////////////////////
     private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
 
@@ -246,29 +247,29 @@ public class RouletteInventory extends DealerInventory {
     @Override
     public void delete() {
         super.delete();
-         for (int taskId : activeTaskIds) {
-            if(taskId!=1){
-        Bukkit.getScheduler().cancelTask(taskId);}
+         for (ScheduledTask task : activeTasks) {
+            if(task != null && !task.isCancelled()){
+        task.cancel();}
         }
-        if (spinTaskId != -1) {
-            Bukkit.getScheduler().cancelTask(spinTaskId);
-            spinTaskId = -1;
+        if (spinTask != null && !spinTask.isCancelled()) {
+            spinTask.cancel();
+            spinTask = null;
         }
-        if (fastSpinTaskId != -1) {
-            Bukkit.getScheduler().cancelTask(fastSpinTaskId);
-            fastSpinTaskId = -1;
+        if (fastSpinTask != null && !fastSpinTask.isCancelled()) {
+            fastSpinTask.cancel();
+            fastSpinTask = null;
         }
-        if (bfastSpinTaskId != -1) {
-            Bukkit.getScheduler().cancelTask(bfastSpinTaskId);
-            bfastSpinTaskId = -1;
+        if (bfastSpinTask != null && !bfastSpinTask.isCancelled()) {
+            bfastSpinTask.cancel();
+            bfastSpinTask = null;
         }
-        if (ballTaskId != -1) {
-            Bukkit.getScheduler().cancelTask(ballTaskId);
-            ballTaskId = -1;
+        if (ballTask != null && !ballTask.isCancelled()) {
+            ballTask.cancel();
+            ballTask = null;
         }
-        if (bettingCountdownTaskId != -1) {
-            Bukkit.getScheduler().cancelTask(bettingCountdownTaskId);
-            bettingCountdownTaskId = -1;
+        if (bettingCountdownTask != null && !bettingCountdownTask.isCancelled()) {
+            bettingCountdownTask.cancel();
+            bettingCountdownTask = null;
         }
     
         // Also clear any data references if you like
@@ -288,7 +289,7 @@ public class RouletteInventory extends DealerInventory {
         if (event.getInventory() == this.getInventory()){
             Player player = (Player) event.getPlayer();
             if (player.getInventory() != null) {
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                     if (player != null&&player.isOnline()) {
                         if (!BettingTable.switchingPlayers.contains(player)){
                         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -460,7 +461,7 @@ private void handleGameMenuClick(int slot, Player player) {
 private void openBettingTable(Player player) {
     switchingPlayers.add(player); // Mark the player as switching inventories
 
-    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+    SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
         Mob dealer = Dealer.findDealer(dealerId, player.getLocation());
         if (dealer != null) {
             Stack<Pair<String, Integer>> bets = getPlayerBets(player.getUniqueId());
@@ -644,13 +645,13 @@ private void exitGame(Player player) {
                 }
             }
 
-            miscTask=Bukkit.getScheduler().runTaskLater(plugin, () -> 
-            mce.playSong("RouletteWheel", RouletteSongs.getBallLaunch(), false, "Ball Launch")
-            , 20L);
-            activeTaskIds.add(miscTask.getTaskId()); // Store the task ID
+            Mob dealer = Dealer.getMobFromId(dealerId);
+            if (dealer != null && !dealer.isDead()) {
+                SchedulerHelper.executeEntityTaskLater(plugin, dealer, () -> 
+                    mce.playSong("RouletteWheel", RouletteSongs.getBallLaunch(), false, "Ball Launch"), 20L);
 
-            miscTask=Bukkit.getScheduler().runTaskLater(plugin, () -> startBallMovement(false), 100L);
-            activeTaskIds.add(miscTask.getTaskId());
+                SchedulerHelper.executeEntityTaskLater(plugin, dealer, () -> startBallMovement(false), 100L);
+            }
             // Transition wheel to slower spin after bets close
             // Update to spinning ball and wheel
             startSpinAnimation(activePlayers);
@@ -658,8 +659,8 @@ private void exitGame(Player player) {
     }
     
 private void startBettingTimer() {
-    if (bettingCountdownTaskId != -1) {
-        Bukkit.getScheduler().cancelTask(bettingCountdownTaskId);
+    if (bettingCountdownTask != null && !bettingCountdownTask.isCancelled()) {
+        bettingCountdownTask.cancel();
     }
 
     // Start the slow spin as soon as the betting phase begins
@@ -670,7 +671,10 @@ private void startBettingTimer() {
     // Initialize the menu buttons in their proper quadrant locations
     updateMenuButtonsForQuadrant(currentQuadrant);
 
-    bettingCountdownTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+    Mob dealer = Dealer.getMobFromId(dealerId);
+    if (dealer == null || dealer.isDead()) return;
+    
+    bettingCountdownTask = SchedulerHelper.executeEntityTaskTimer(plugin, dealer, new Runnable() {
         int countdown = bettingTimeSeconds;
         
         @Override
@@ -736,8 +740,10 @@ private void startBettingTimer() {
                 initializeDecorativeSlotsForQuadrant(currentQuadrant);
 
                 handleBetClosure();
-                Bukkit.getScheduler().cancelTask(bettingCountdownTaskId);
-                bettingCountdownTaskId = -1;
+                if (bettingCountdownTask != null && !bettingCountdownTask.isCancelled()) {
+                    bettingCountdownTask.cancel();
+                }
+                bettingCountdownTask = null;
             }
         }
     }, 0L, 20L);
@@ -752,20 +758,25 @@ private void startSlowSpinAnimation(long initialSpeed) {
     int spinDirection = wheelSpinDirection; // Set counter-clockwise
 
     initializeDecorativeSlotsForQuadrant(currentQuadrant);
-    if (spinTaskId != -1) {
-        Bukkit.getScheduler().cancelTask(spinTaskId);
+    if (spinTask != null && !spinTask.isCancelled()) {
+        spinTask.cancel();
     }
-    if (fastSpinTaskId != -1) {
-        Bukkit.getScheduler().cancelTask(fastSpinTaskId);
+    if (fastSpinTask != null && !fastSpinTask.isCancelled()) {
+        fastSpinTask.cancel();
     }
-    if (bfastSpinTaskId != -1) {
-        Bukkit.getScheduler().cancelTask(bfastSpinTaskId);
+    if (bfastSpinTask != null && !bfastSpinTask.isCancelled()) {
+        bfastSpinTask.cancel();
     }
-    spinTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+    Mob dealer = Dealer.getMobFromId(dealerId);
+    if (dealer == null || dealer.isDead()) return;
+    
+    spinTask = SchedulerHelper.executeEntityTaskTimer(plugin, dealer, new Runnable() {
         @Override
         public void run() {
             if (betsClosed) {
-                Bukkit.getScheduler().cancelTask(spinTaskId); // Stop slow spin when bets are closed
+                if (spinTask != null && !spinTask.isCancelled()) {
+                    spinTask.cancel(); // Stop slow spin when bets are closed
+                }
             } else {
                 mce.playSong("RouletteWheel", RouletteSongs.getSlowSpinTick(), false, "Basd");
                 updateWheelView(frameCounter * spinDirection); // Adjust direction here
@@ -777,8 +788,8 @@ private void startSlowSpinAnimation(long initialSpeed) {
 
 private void startSpinAnimation(List<Player> activePlayers) {
 
-    if (spinTaskId != -1) {
-        Bukkit.getScheduler().cancelTask(spinTaskId);
+    if (spinTask != null && !spinTask.isCancelled()) {
+        spinTask.cancel();
     }
 
     frameCounter = 0;
@@ -792,7 +803,10 @@ private void startSpinAnimation(List<Player> activePlayers) {
     final int spinDecelerationFrames = 200;
     long[] currentWheelDelay = {initialWheelSpeed};
 
-    Runnable spinTask = new Runnable() {
+    Mob dealer = Dealer.getMobFromId(dealerId);
+    if (dealer == null || dealer.isDead()) return;
+
+    Runnable spinTaskRunnable = new Runnable() {
         @Override
         public void run() {
             if (!spinAnimationOver) {
@@ -809,13 +823,16 @@ private void startSpinAnimation(List<Player> activePlayers) {
                     double decelerationProgress = Math.pow((double) framesSinceDecelerationStart / spinDecelerationFrames, 2);
                     currentWheelDelay[0] = Math.min(6L, 1L + (long) (decelerationProgress * (minWheelSpeed - 1L)));
                 }
-                bfastSpinTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, this, currentWheelDelay[0]);
+                Mob d = Dealer.getMobFromId(dealerId);
+                if (d != null && !d.isDead()) {
+                    SchedulerHelper.executeEntityTaskLater(plugin, d, this, currentWheelDelay[0]);
+                }
                 frameCounter++;
             }
         }
     };
     
-    fastSpinTaskId = Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, spinTask, 0L);
+    SchedulerHelper.executeEntityTaskLater(plugin, dealer, spinTaskRunnable, 0L);
     
 }
 
@@ -860,10 +877,12 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
     if (!ballMovementStarted) return;
 
     if (isSwitchingQuadrant) {
-        miscTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-            moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
-        }, currentBallDelay[0]);
-        activeTaskIds.add(miscTaskId); // Store the task ID
+        Mob dealer = Dealer.getMobFromId(dealerId);
+        if (dealer != null && !dealer.isDead()) {
+            SchedulerHelper.executeEntityTaskLater(plugin, dealer, () -> {
+                moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
+            }, currentBallDelay[0]);
+        }
         return;
     }
 
@@ -931,74 +950,77 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
         updateBallPosition(ballSpinDirection);
 
         // Schedule delay for ball to disappear, then switch quadrant view
-        miscTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-            // Remove ball from current slot
-            if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
-                inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
-            }
-            int nextquadnow=0;
-            if (wheelSpinDirection == -1) { // Clockwise
-                nextquadnow = (currentQuadrant % 4) + 1; // Move to next quadrant in order
-            } else { // Counterclockwise
-                nextquadnow = (currentQuadrant == 1) ? 4 : currentQuadrant - 1; // Move to previous quadrant
-            }
-            switch (currentQuadrant) {
-                case 1:
-                    if(nextquadnow==4){
-                    tempBallDelay[0]=6L;    
-                    }
-                    else{
-                    tempBallDelay[0]=2L;    
-                    }
-                    break;
-                case 2:
-                if(nextquadnow==3){
-                    tempBallDelay[0]=6L;    
-                    }
-                    else{
-                    tempBallDelay[0]=2L;    
-                    }
-                    break;
-                case 3:
-                if(nextquadnow==2){
-                    tempBallDelay[0]=6L;    
-                    }
-                    else{
-                    tempBallDelay[0]=2L;    
-                    }
-                    break;
-                case 4:
-                if(nextquadnow==1){
-                    tempBallDelay[0]=6L;    
-                    }
-                    else{
-                    tempBallDelay[0]=2L;    
-                    }
-                    break;
-                default:
-                    break;
-            }
-    
-            // Delay to simulate ball going off-screen before quadrant switch
-             miscTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-                switchQuadrant();
-               
-                // Delay to simulate ball still off-screen after quadrant switch
-                miscTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-                    ballCurrentIndex = getStartingIndexForNewQuadrant();
-                    updateBallPosition(ballSpinDirection);
-                   
-                    isSwitchingQuadrant = false;
-                    moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
-                }, tempBallDelay[0]); // Delay after switching quadrants
-                
-                activeTaskIds.add(miscTaskId); 
-            }, tempBallDelay[0]); // Delay before switching quadrants
-           
-            activeTaskIds.add(miscTaskId); 
-        }, 3L); // Delay before ball disappears
+        Mob dealer = Dealer.getMobFromId(dealerId);
+        if (dealer != null && !dealer.isDead()) {
+            SchedulerHelper.executeEntityTaskLater(plugin, dealer, () -> {
+                // Remove ball from current slot
+                if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
+                    inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
+                }
+                int nextquadnow=0;
+                if (wheelSpinDirection == -1) { // Clockwise
+                    nextquadnow = (currentQuadrant % 4) + 1; // Move to next quadrant in order
+                } else { // Counterclockwise
+                    nextquadnow = (currentQuadrant == 1) ? 4 : currentQuadrant - 1; // Move to previous quadrant
+                }
+                switch (currentQuadrant) {
+                    case 1:
+                        if(nextquadnow==4){
+                        tempBallDelay[0]=6L;    
+                        }
+                        else{
+                        tempBallDelay[0]=2L;    
+                        }
+                        break;
+                    case 2:
+                    if(nextquadnow==3){
+                        tempBallDelay[0]=6L;    
+                        }
+                        else{
+                        tempBallDelay[0]=2L;    
+                        }
+                        break;
+                    case 3:
+                    if(nextquadnow==2){
+                        tempBallDelay[0]=6L;    
+                        }
+                        else{
+                        tempBallDelay[0]=2L;    
+                        }
+                        break;
+                    case 4:
+                    if(nextquadnow==1){
+                        tempBallDelay[0]=6L;    
+                        }
+                        else{
+                        tempBallDelay[0]=2L;    
+                        }
+                        break;
+                    default:
+                        break;
+                }
         
-        activeTaskIds.add(miscTaskId); 
+                // Delay to simulate ball going off-screen before quadrant switch
+                Mob d = Dealer.getMobFromId(dealerId);
+                if (d != null && !d.isDead()) {
+                    SchedulerHelper.executeEntityTaskLater(plugin, d, () -> {
+                        switchQuadrant();
+                       
+                        // Delay to simulate ball still off-screen after quadrant switch
+                        Mob d2 = Dealer.getMobFromId(dealerId);
+                        if (d2 != null && !d2.isDead()) {
+                            SchedulerHelper.executeEntityTaskLater(plugin, d2, () -> {
+                                ballCurrentIndex = getStartingIndexForNewQuadrant();
+                                updateBallPosition(ballSpinDirection);
+                               
+                                isSwitchingQuadrant = false;
+                                moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
+                            }, tempBallDelay[0]); // Delay after switching quadrants
+                        }
+                    }, tempBallDelay[0]); // Delay before switching quadrants
+                }
+            }, 3L); // Delay before ball disappears
+        }
         return;
     }
 
@@ -1048,10 +1070,12 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
         }
     }
 
-     miscTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-        moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
-    }, currentBallDelay[0]);
-    activeTaskIds.add(miscTaskId); 
+     Mob dealer = Dealer.getMobFromId(dealerId);
+     if (dealer != null && !dealer.isDead()) {
+         SchedulerHelper.executeEntityTaskLater(plugin, dealer, () -> {
+             moveBall(ballSpinDirection, currentBallDelay, slotsMovedTotal, totalSlotsToMove, ballAccelerationSlots, ballDecelerationSlots);
+         }, currentBallDelay[0]);
+     }
 }
 
 private void adjustBallSpeed(long[] currentBallDelay, int slotsMoved, int ballAccelerationSlots, int totalSlots, int ballDecelerationSlots) {
@@ -1217,7 +1241,7 @@ private void handleWinningNumber() {
     for (Player player : playersWithBets) {
         if (player.isOnline()) {
             // Schedule the processing to run after a delay
-            miscTask=Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                 BettingTable bettingTable = Tables.get(player);
                 if (bettingTable != null) {
                     // Get the bet stack directly from the BettingTable
@@ -1275,14 +1299,14 @@ private void handleWinningNumber() {
                     plugin.getLogger().warning("No betting table found for player: " + player.getName());
                 }
             }, 30L);
-            
-            activeTaskIds.add(miscTask.getTaskId()); 
         }
     }
 
     // Reset for the next round
-    miscTask=Bukkit.getScheduler().runTaskLater(plugin, this::prepareNextRound, 75L);
-    activeTaskIds.add(miscTask.getTaskId()); 
+    Mob dealer = Dealer.getMobFromId(dealerId);
+    if (dealer != null && !dealer.isDead()) {
+        SchedulerHelper.executeEntityTaskLater(plugin, dealer, this::prepareNextRound, 75L);
+    } 
 
 }
 
@@ -1311,22 +1335,22 @@ private void prepareNextRound() {
 
     // Optionally reverse the wheel direction to add variety
     wheelSpinDirection *= -1;
-  if (spinTaskId != -1) {
-        Bukkit.getScheduler().cancelTask(spinTaskId);
+  if (spinTask != null && !spinTask.isCancelled()) {
+        spinTask.cancel();
     }
-    if (regTaskId != -1) {
-        Bukkit.getScheduler().cancelTask(regTaskId);
+    if (regTask != null && !regTask.isCancelled()) {
+        regTask.cancel();
     }
-    if (reg2TaskId != -1) {
-        Bukkit.getScheduler().cancelTask(reg2TaskId);
+    if (reg2Task != null && !reg2Task.isCancelled()) {
+        reg2Task.cancel();
     }
     //wheelOffset = currentOffset;
 
-    if (fastSpinTaskId != -1) {
-        Bukkit.getScheduler().cancelTask(fastSpinTaskId);
+    if (fastSpinTask != null && !fastSpinTask.isCancelled()) {
+        fastSpinTask.cancel();
     }
-    if (bfastSpinTaskId != -1) {
-        Bukkit.getScheduler().cancelTask(bfastSpinTaskId);
+    if (bfastSpinTask != null && !bfastSpinTask.isCancelled()) {
+        bfastSpinTask.cancel();
     }
     wheelOffset = lastDisplayedOffset;
     // Start the betting timer again, which also resets bets and shows menu buttons
@@ -1573,67 +1597,75 @@ private void switchStayToQuadrant(int quad){
                         meta.setDisplayName("Ball");
                         ballItem.setItemMeta(meta);
                         inventory.setItem(extraSlot, ballItem);
-                        regTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-                                // Remove ball from current slot
-                                if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
-                                    inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
-                                }
-                                int nextquadnow=0;
-                                if (wheelSpinDirection == -1) { // Clockwise
-                                    nextquadnow = (currentQuadrant % 4) + 1; // Move to next quadrant in order
-                                } else { // Counterclockwise
-                                    nextquadnow = (currentQuadrant == 1) ? 4 : currentQuadrant - 1; // Move to previous quadrant
-                                }
-                                switch (currentQuadrant) {
-                                    case 1:
-                                        if(nextquadnow==4){
-                                        tempBallDelay[0]=6L;    
-                                        }
-                                        else{
-                                        tempBallDelay[0]=2L;    
-                                        }
-                                        break;
-                                    case 2:
-                                    if(nextquadnow==3){
-                                        tempBallDelay[0]=6L;    
-                                        }
-                                        else{
-                                        tempBallDelay[0]=2L;    
-                                        }
-                                        break;
-                                    case 3:
-                                    if(nextquadnow==2){
-                                        tempBallDelay[0]=6L;    
-                                        }
-                                        else{
-                                        tempBallDelay[0]=2L;    
-                                        }
-                                        break;
-                                    case 4:
-                                    if(nextquadnow==1){
-                                        tempBallDelay[0]=6L;    
-                                        }
-                                        else{
-                                        tempBallDelay[0]=2L;    
-                                        }
-                                        break;
-                                    default:
-                                        break;
-                                }
-                            
-                                // Delay to simulate ball going off-screen before quadrant switch
-                                reg2TaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+                        Mob dealer = Dealer.getMobFromId(dealerId);
+                        if (dealer != null && !dealer.isDead()) {
+                            SchedulerHelper.executeEntityTaskLater(plugin, dealer, () -> {
+                                    // Remove ball from current slot
+                                    if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
+                                        inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
+                                    }
+                                    int nextquadnow=0;
+                                    if (wheelSpinDirection == -1) { // Clockwise
+                                        nextquadnow = (currentQuadrant % 4) + 1; // Move to next quadrant in order
+                                    } else { // Counterclockwise
+                                        nextquadnow = (currentQuadrant == 1) ? 4 : currentQuadrant - 1; // Move to previous quadrant
+                                    }
+                                    switch (currentQuadrant) {
+                                        case 1:
+                                            if(nextquadnow==4){
+                                            tempBallDelay[0]=6L;    
+                                            }
+                                            else{
+                                            tempBallDelay[0]=2L;    
+                                            }
+                                            break;
+                                        case 2:
+                                        if(nextquadnow==3){
+                                            tempBallDelay[0]=6L;    
+                                            }
+                                            else{
+                                            tempBallDelay[0]=2L;    
+                                            }
+                                            break;
+                                        case 3:
+                                        if(nextquadnow==2){
+                                            tempBallDelay[0]=6L;    
+                                            }
+                                            else{
+                                            tempBallDelay[0]=2L;    
+                                            }
+                                            break;
+                                        case 4:
+                                        if(nextquadnow==1){
+                                            tempBallDelay[0]=6L;    
+                                            }
+                                            else{
+                                            tempBallDelay[0]=2L;    
+                                            }
+                                            break;
+                                        default:
+                                            break;
+                                    }
+                                
+                                    // Delay to simulate ball going off-screen before quadrant switch
+                                    Mob d = Dealer.getMobFromId(dealerId);
+                                    if (d != null && !d.isDead()) {
+                                        SchedulerHelper.executeEntityTaskLater(plugin, d, () -> {
 
-                                    switchQauadrant();
+                                            switchQauadrant();
 
-                                    // Delay to simulate ball still off-screen after quadrant switch
-                                    miscTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
-                                       //?something goes here?
-                                    }, 2L); // Delay after switching quadrants
-                                    activeTaskIds.add(miscTaskId); 
+                                            // Delay to simulate ball still off-screen after quadrant switch
+                                            Mob d2 = Dealer.getMobFromId(dealerId);
+                                            if (d2 != null && !d2.isDead()) {
+                                                SchedulerHelper.executeEntityTaskLater(plugin, d2, () -> {
+                                                   //?something goes here?
+                                                }, 2L); // Delay after switching quadrants
+                                            }
 
-                                }, 2L); // Delay before switching quadrants
-                            }, 3L); // Delay before ball disappears 
+                                        }, 2L); // Delay before switching quadrants
+                                    }
+                                }, 3L); // Delay before ball disappears
+                        } 
                             }
                             else{
                             ItemStack ballItem = new ItemStack(Material.ENDER_PEARL);

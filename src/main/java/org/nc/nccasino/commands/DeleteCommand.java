@@ -23,6 +23,7 @@ import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.helpers.SchedulerHelper;
 import org.nc.nccasino.listeners.DealerEventListener;
 
 public class DeleteCommand implements CasinoCommand {
@@ -87,11 +88,11 @@ public class DeleteCommand implements CasinoCommand {
                 return;
             }
             
-            Bukkit.getScheduler().runTask(plugin, () -> {
+            SchedulerHelper.executeEntityTask(plugin, mob, () -> {
                 // First clean up all associated inventories
                 plugin.deleteAssociatedInventories(mob);
 
-                Bukkit.getScheduler().runTask(plugin, () -> {
+                SchedulerHelper.executeEntityTask(plugin, mob, () -> {
                     // Create a JockeyManager to handle stack cleanup
                     JockeyManager jockeyManager = new JockeyManager(mob);
                     
