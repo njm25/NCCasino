@@ -1,0 +1,75 @@
+name: NCCasino
+version: '1.4.8'
+main: org.nc.nccasino.Nccasino
+api-version: '1.21'
+folia-supported: true
+description: Casino plugin for Minecraft servers
+website: https://github.com/njm25/NCCasino
+commands:
+  ncc:
+    description: Main command for the Nccasino plugin
+    aliases: [nccasino]
+    usage: /ncc <subcommand> [args]
+    permission: nccasino.use
+permissions:
+  nccasino.use:
+    description: Allows use of the /ncc and /nccasino commands
+    default: op
+  nccasino.commands:
+    description: Grants access to all NCCasino commands
+    default: op
+    children:
+      - nccasino.commands.create
+      - nccasino.commands.delete
+      - nccasino.commands.help
+      - nccasino.commands.list
+      - nccasino.commands.reload
+  nccasino.commands.create:
+    description: Allows creating a dealer in NCCasino
+    default: op
+  nccasino.commands.delete:
+    description: Allows deleting a dealer in NCCasino
+    default: op
+  nccasino.commands.help:
+    description: Allows using the help command in NCCasino
+    default: op
+  nccasino.commands.list:
+    description: Allows listing dealers in NCCasino
+    default: op
+  nccasino.commands.reload:
+    description: Allows reloading the NCCasino plugin
+    default: op
+  nccasino.games:
+    description: Grants access to all NCCasino games
+    default: true
+    children:
+      - nccasino.games.blackjack
+      - nccasino.games.roulette
+      - nccasino.games.mines
+      - nccasino.games.baccarat
+      - nccasino.games.coinflip
+      - nccasino.games.dragon
+  nccasino.games.blackjack:
+    description: Allows playing blackjack
+    default: true
+  nccasino.games.roulette:
+    description: Allows playing roulette
+    default: true
+  nccasino.games.mines:
+    description: Allows playing mines
+    default: true
+  nccasino.games.baccarat:
+    description: Allows playing baccarat
+    default: true
+  nccasino.games.coinflip:
+    description: Allows playing coinflip
+    default: true
+  nccasino.games.dragon:
+    description: Allows playing dragon descent
+    default: true
+  nccasino.adminmenu:
+    description: Allows access to the NCCasino Admin Menu
+    default: op
+  nccasino.playermenu:
+    description: Allows access to the NCCasino Player Menu
+    default: true

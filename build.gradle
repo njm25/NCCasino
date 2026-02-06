@@ -51,8 +51,9 @@ processResources {
     def props = [version: version]
     inputs.properties props
     filteringCharset 'UTF-8'
-    exclude 'paper-plugin.yml'
-
+    filesMatching(['paper-plugin.yml', 'plugin.yml']) {
+        expand props
+    }
 }
 
 // --- SHADOW CONFIG ---
