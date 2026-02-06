@@ -719,10 +719,9 @@ public class BaccaratClient extends Client {
         double playerTotal = betStacks.getOrDefault(betType, new ArrayDeque<>())
                                       .stream().mapToDouble(Double::doubleValue).sum();
         int numBettors = ((BaccaratServer) server).getBettorCountForType(betType);
-        String currencyName = formatCurrencyName(plugin.getCurrencyName(internalName));
     
-        String playerBetText = playerTotal > 0 ? "Your Bet: " + (int) playerTotal + " " + currencyName : null;
-        String totalBetText = totalBet > 0 ? (numBettors > 1 ? "👥 " : "👤 ") + numBettors + " - " + (int) totalBet + " " + currencyName : null;
+        String playerBetText = playerTotal > 0 ? "Your Bet: " + plugin.formatWagerDisplay(currencyMode, currencyName, playerTotal) : null;
+        String totalBetText = totalBet > 0 ? (numBettors > 1 ? "👥 " : "👤 ") + numBettors + " - " + plugin.formatWagerDisplay(currencyMode, currencyName, totalBet) : null;
     
         for (int slot : betMapping.keySet()) {
             if (betMapping.get(slot) == betType) {

@@ -667,10 +667,10 @@ public class BaccaratServer extends Server {
 
 	    		switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 	    			case STANDARD:{
-	    				player.sendMessage("§a§lPaid "+ displayPayout.toPlainString() +" "+ plugin.getCurrencyName(internalName).toLowerCase());
+	    				player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()));
 	    				break;}
 	    			case VERBOSE:{
-	    				player.sendMessage("§a§lPaid "+ displayPayout.toPlainString() +" "+ plugin.getCurrencyName(internalName).toLowerCase()  + "\n §r§a§o(profit of "+ displayProfit.toPlainString() +")");
+	    				player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()) + "\n §r§a§o(profit of " + plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue()) + ")");
 	    				break;     
 	    			}
 	    				case NONE:{
@@ -686,10 +686,10 @@ public class BaccaratServer extends Server {
 	    		}
 	    		switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 	    			case STANDARD:{
-	    				player.sendMessage("§a§lPaid "+ (int)payout+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s"));
+	    				player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, payout));
 	    				break;}
 	    			case VERBOSE:{
-	    				player.sendMessage("§a§lPaid "+ (int)payout+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s")  + "\n §r§a§o(profit of "+(int)(payout-totalBet)+")");
+	    				player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, payout) + "\n §r§a§o(profit of "+(int)(payout-totalBet)+")");
 	    				break;     
 	    			}
 	    				case NONE:{

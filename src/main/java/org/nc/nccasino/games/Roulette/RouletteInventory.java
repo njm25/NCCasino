@@ -30,6 +30,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitTask;
 import org.nc.VSE.MultiChannelEngine;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
@@ -53,6 +54,8 @@ public class RouletteInventory extends DealerInventory {
     private int bettingTimeSeconds = 25;
     private int globalCountdown=bettingTimeSeconds;
     private String internalName;
+    private final CurrencyMode currencyMode;
+    private final String currencyName;
     private Boolean firstFin = true;
     private int spinTaskId;
     private int fastSpinTaskId;
@@ -131,6 +134,8 @@ public class RouletteInventory extends DealerInventory {
         this.Tables = new HashMap<>();
         this.activeAnimations = new HashMap<>();
         this.internalName = internalName;
+        this.currencyMode = plugin.getCurrencyMode(internalName);
+        this.currencyName = plugin.getCurrencyName(internalName);
         this.mce = new MultiChannelEngine(plugin);
         initializeTracks();
         initializeExtraSlots();
@@ -569,7 +574,7 @@ private void exitGame(Player player) {
                 ItemMeta meta = item.getItemMeta();
                 if (meta != null && betType.equals(meta.getDisplayName())) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Wager: " + (int)totalBet + " " + plugin.getCurrencyName(internalName)+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
+                    lore.add("Wager: " + plugin.formatWagerDisplay(currencyMode, currencyName, totalBet) + "\n");
                     meta.setLore(lore);
                     item.setItemMeta(meta);
                 }

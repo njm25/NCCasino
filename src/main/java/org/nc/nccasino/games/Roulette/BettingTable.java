@@ -21,6 +21,7 @@ import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.helpers.SoundHelper;
@@ -34,6 +35,8 @@ public class BettingTable extends DealerInventory {
     private final Mob dealer;
     private final Nccasino plugin;
     private final String internalName;
+    private final CurrencyMode currencyMode;
+    private final String currencyName;
     private final RouletteInventory rouletteInventory;
     private double selectedWager;
     private int pageNum;
@@ -51,6 +54,8 @@ public class BettingTable extends DealerInventory {
         this.dealer = dealer;
         this.plugin = plugin;
         this.internalName = internalName;
+        this.currencyMode = plugin.getCurrencyMode(internalName);
+        this.currencyName = plugin.getCurrencyName(internalName);
         this.rouletteInventory = rouletteInventory;
         this.pageNum = 1;
     
@@ -68,8 +73,8 @@ public class BettingTable extends DealerInventory {
     private void loadChipValuesFromConfig() {
         Nccasino nccasino = (Nccasino) plugin;
         for (int i = 1; i <= 5; i++) {
-            String chipName = nccasino.getChipName(internalName, i);
             double chipValue = nccasino.getChipValue(internalName, i);
+            String chipName = nccasino.getChipDisplayName(currencyMode, currencyName, chipValue);
             this.chipValues.put(chipName, chipValue);
         }
     }
@@ -200,7 +205,7 @@ public class BettingTable extends DealerInventory {
 
     private void addCommonComponents() {
         if(allin){
-            inventory.setItem(52, createEnchantedItem(Material.SNIFFER_EGG, "All In (" + (int)selectedWager + ")", 1));
+            inventory.setItem(52, createEnchantedItem(Material.SNIFFER_EGG, "All In (" + plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager) + ")", 1));
         }
         else{inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));}
 
@@ -482,7 +487,7 @@ public class BettingTable extends DealerInventory {
             //msg.append("§aTotal Payout: ").append(totalPayout).append("\n");
 
             if(totalPayout-overallWager>0){
-                msg.append("§a§lPaid ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + "\n §r§a§o(profit of "+(totalPayout-overallWager)+")");
+                msg.append("§a§lPaid ").append(plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout)).append("\n §r§a§o(profit of "+(totalPayout-overallWager)+")");
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
                     Random random = new Random();
@@ -495,21 +500,21 @@ public class BettingTable extends DealerInventory {
                 }, 20L);  
             }
             else if(totalPayout-overallWager==0){ 
-                msg.append("§6§lPaid ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + "\n §r§6§o (broke even)");
+                msg.append("§6§lPaid ").append(plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout)).append("\n §r§6§o (broke even)");
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                      if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
                     player.getWorld().spawnParticle(Particle.SCRAPE, player.getLocation(), 20); 
                 }, 20L);  
             }
             else{
-                msg.append("§c§lPaid ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + "\n§r§c§o  (loss of "+Math.abs(totalPayout-overallWager)+")");
+                msg.append("§c§lPaid ").append(plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout)).append("\n§r§c§o  (loss of "+Math.abs(totalPayout-overallWager)+")");
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                      if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
                     player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20); 
                 }, 20L);  
             }
         } else {
-            msg.append("§c§lPaid ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + "\n§r§c§o  (loss of "+Math.abs(totalPayout-overallWager)+")");
+            msg.append("§c§lPaid ").append(plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout)).append("\n§r§c§o  (loss of "+Math.abs(totalPayout-overallWager)+")");
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                  if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
                 player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20); 
@@ -682,7 +687,7 @@ public class BettingTable extends DealerInventory {
                         player.sendMessage("§cInvalid action.");
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cNo " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(count) == 1 ? "" : "s") + "\n");
+                        player.sendMessage(currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT ? "§cNo funds.\n" : "§cNo " + plugin.getCurrencyName(internalName).toLowerCase() + (Math.abs(count) == 1 ? "" : "s") + "\n");
                         break;     
                     }
                         case NONE:{
@@ -702,14 +707,14 @@ public class BettingTable extends DealerInventory {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aAll in wager of " + count +" ready to place.");            
+                    player.sendMessage("§aAll in wager of " + plugin.formatWagerDisplay(currencyMode, currencyName, count) + " ready to place.");
                     break;     
                 }
                     case NONE:{
                     break;
                 }
             } 
-            ItemStack updatedTotem = createEnchantedItem(Material.SNIFFER_EGG, "All In (" + count + ")", 1);
+            ItemStack updatedTotem = createEnchantedItem(Material.SNIFFER_EGG, "All In (" + plugin.formatWagerDisplay(currencyMode, currencyName, count) + ")", 1);
             inventory.setItem(slot, updatedTotem);
              if (SoundHelper.getSoundSafely("entity.lightning_bolt.thunder", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER,1.0f, 1.0f);
         }
@@ -734,7 +739,7 @@ public class BettingTable extends DealerInventory {
                     case STANDARD:{
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§aWager: " + selectedWager + " " + plugin.getCurrencyName(internalName));                     
+                        player.sendMessage("§aWager: " + plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager));                     
                         break;     
                     }
                         case NONE:{
@@ -794,7 +799,7 @@ public class BettingTable extends DealerInventory {
                         case STANDARD:
                             break;
                         case VERBOSE:
-                            player.sendMessage("§6Put " + (int) wagerAmount + " on " + itemName);
+                            player.sendMessage("§6Put " + plugin.formatWagerDisplay(currencyMode, currencyName, wagerAmount) + " on " + itemName);
                             break;
                         case NONE:
                             break;
@@ -820,7 +825,7 @@ public class BettingTable extends DealerInventory {
                             player.sendMessage("§cInvalid action.");
                             break;
                         case VERBOSE:
-                            player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s");
+                            player.sendMessage(currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT ? "§cNot enough funds." : "§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s");
                             break;
                         case NONE:
                             break;
@@ -1061,11 +1066,11 @@ private boolean isValidSlotPage2(int slot) {
         if (totalLeftoverAmount > 0) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+                    player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
     
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+                    player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
                     break;     
                 }
                     case NONE:{
@@ -1144,7 +1149,7 @@ private boolean isValidSlotPage2(int slot) {
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
                 List<String> lore = new ArrayList<>();
-                lore.add("Wager: " + (int)totalBet + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
+                lore.add("Wager: " + plugin.formatWagerDisplay(currencyMode, currencyName, totalBet) + "\n");
                 meta.setLore(lore);
                 item.setItemMeta(meta);
             }
@@ -1215,7 +1220,7 @@ private boolean isValidSlotPage2(int slot) {
 				player.sendMessage("§cInvalid action.");
 				break;}
 			case VERBOSE:{
-				player.sendMessage("§cInvalid wager amount: " + amount);
+				player.sendMessage("§cInvalid wager amount: " + plugin.formatWagerDisplay(currencyMode, currencyName, amount));
 				break;	 
 			}
 				case NONE:{

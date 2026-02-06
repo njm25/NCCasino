@@ -33,6 +33,9 @@ public abstract class Server extends DealerInventory {
     protected SessionState serverState = SessionState.LOBBY;
 
     protected String internalName;
+    /** Resolved once at init for formatWagerDisplay. */
+    protected final CurrencyMode currencyMode;
+    protected final String currencyName;
 
     protected final Map<UUID, SessionState> clientStates = new HashMap<>();
 
@@ -44,6 +47,8 @@ public abstract class Server extends DealerInventory {
         super(dealerId, 9, "");
         this.plugin = plugin;
         this.internalName = internalName;
+        this.currencyMode = plugin.getCurrencyMode(internalName);
+        this.currencyName = plugin.getCurrencyName(internalName);
         registerListener();
     }
 
@@ -207,49 +212,21 @@ public abstract class Server extends DealerInventory {
     }
         
     public void sendPayoutMessage(Player player, double payout, boolean isWinner, double profit) {
-        String currencyName = plugin.getCurrencyName(internalName).toLowerCase();
-        boolean isSingle = Math.abs(payout) == 1;
-
-		CurrencyProvider provider = getCurrencyProvider();
-		boolean isVault = (provider != null && provider.getMode() == CurrencyMode.VAULT);
-
-		if (isVault) {
-			java.math.BigDecimal displayPayout = MoneyHelper.roundDisplay(MoneyHelper.clampNonNegative(MoneyHelper.bd(payout)));
-			java.math.BigDecimal displayProfit = MoneyHelper.roundDisplay(MoneyHelper.clampNonNegative(MoneyHelper.bd(profit)));
-
-			switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-				case STANDARD:
-					player.sendMessage(isWinner
-							? "§a§lPaid " + displayPayout.toPlainString() + " " + currencyName
-							: "§c§lYou lose!");
-					break;
-				case VERBOSE:
-					player.sendMessage(isWinner
-							? "§a§lPaid " + displayPayout.toPlainString() + " " + currencyName +
-							  "\n §r§a§o(profit of " + displayProfit.toPlainString() + ")"
-							: "§c§lYou lose!");
-					break;
-				case NONE:
-					break;
-			}
-			return;
+		switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+			case STANDARD:
+				player.sendMessage(isWinner
+						? "§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, payout)
+						: "§c§lYou lose!");
+				break;
+			case VERBOSE:
+				player.sendMessage(isWinner
+						? "§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, payout) +
+						  "\n §r§a§o(profit of " + plugin.formatWagerDisplay(currencyMode, currencyName, profit) + ")"
+						: "§c§lYou lose!");
+				break;
+			case NONE:
+				break;
 		}
-    
-        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-            case STANDARD:
-                player.sendMessage(isWinner
-                        ? "§a§lPaid " + (int) payout + " " + currencyName + (isSingle ? "" : "s")
-                        : "§c§lYou lose!");
-                break;
-            case VERBOSE:
-                player.sendMessage(isWinner
-                        ? "§a§lPaid " + (int) payout + " " + currencyName + (isSingle ? "" : "s") +
-                          "\n §r§a§o(profit of " + (int) profit + ")"
-                        : "§c§lYou lose!");
-                break;
-            case NONE:
-                break;
-        }
     }
     
     public void applyWinEffects(Player player) {
@@ -317,11 +294,11 @@ public abstract class Server extends DealerInventory {
 				if (leftoverAmount > 0) {
 					switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 						case STANDARD:{
-							player.sendMessage("§cNo room for " + leftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(leftoverAmount) == 1 ? "" : "s") + ", dropping...");
+							player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount) + ", dropping...");
 
 							break;}
 						case VERBOSE:{
-							player.sendMessage("§cNo room for " + leftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(leftoverAmount) == 1 ? "" : "s") + ", dropping...");
+							player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount) + ", dropping...");
 							break;     
 						}
 							case NONE:{
@@ -365,11 +342,11 @@ public abstract class Server extends DealerInventory {
 		if (totalLeftoverAmount > 0) {
 			switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 				case STANDARD:{
-					player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+					player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
 
 					break;}
 				case VERBOSE:{
-					player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+					player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
 					break;     
 				}
 					case NONE:{

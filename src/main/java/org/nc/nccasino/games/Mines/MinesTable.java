@@ -30,6 +30,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitTask;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.currency.VaultCurrencyProvider;
@@ -48,6 +49,8 @@ public class MinesTable extends DealerInventory {
     private final Player player;
     private final Nccasino plugin;
     private final String internalName;
+    private final CurrencyMode currencyMode;
+    private final String currencyName;
     private final MinesInventory minesInventory;
     private final Map<String, Double> chipValues;
     private double selectedWager;
@@ -132,6 +135,8 @@ public class MinesTable extends DealerInventory {
         this.player = player;
         this.plugin = plugin;
         this.internalName = internalName;
+        this.currencyMode = plugin.getCurrencyMode(internalName);
+        this.currencyName = plugin.getCurrencyName(internalName);
         this.minesInventory = minesInventory;
         this.chipValues = new LinkedHashMap<>();
         // Initialize game state
@@ -194,8 +199,8 @@ public class MinesTable extends DealerInventory {
         // Load chip values from the config
         Map<String, Double> tempChipValues = new HashMap<>();
         for (int i = 1; i <= 5; i++) {
-            String chipName = plugin.getChipName(internalName, i);
             double chipValue = plugin.getChipValue(internalName, i);
+            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
             if (chipValue > 0) {
                 tempChipValues.put(chipName, chipValue);
             }
@@ -446,6 +451,11 @@ public class MinesTable extends DealerInventory {
         if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
             handleWagerPlacement(clickedItem, slot, event);
         } else if (gameState == GameState.PLAYING) {
+            // Cash Out button (slot 49) – handle explicitly so it works with VAULT (no physical currency item)
+            if (slot == 49) {
+                cashOut();
+                return;
+            }
             // Adjusted to handle grid slots
             int index = gridSlotList.indexOf(slot);
             if (index != -1) {
@@ -515,7 +525,7 @@ public class MinesTable extends DealerInventory {
                         player.sendMessage("§cInvalid action.");
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cNo " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(count) == 1 ? "" : "s") + "\n");
+                        player.sendMessage(currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT ? "§cNo funds.\n" : "§cNo " + plugin.getCurrencyName(internalName).toLowerCase() + (Math.abs(count) == 1 ? "" : "s") + "\n");
                         break;     
                     }
                         case NONE:{
@@ -541,7 +551,7 @@ public class MinesTable extends DealerInventory {
                     player.sendMessage("§cAll in.");
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aAll in with " + (int)count + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(count) == 1 ? "" : "s") + "\n");                    break;     
+                    player.sendMessage("§aAll in with " + plugin.formatWagerDisplay(currencyMode, currencyName, count) + "\n");                    break;     
                 }
                     case NONE:{
                     break;
@@ -583,7 +593,7 @@ public class MinesTable extends DealerInventory {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aWager: " + selectedWager + " " + plugin.getCurrencyName(internalName));                     
+                    player.sendMessage("§aWager: " + plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager));                     
                     break;     
                 }
                     case NONE:{
@@ -634,7 +644,7 @@ public class MinesTable extends DealerInventory {
                         case STANDARD:
                             break;
                         case VERBOSE:
-                            player.sendMessage("§aBet placed: " + newBetAmount);
+                            player.sendMessage("§aBet placed: " + plugin.formatWagerDisplay(currencyMode, currencyName, newBetAmount));
                             break;
                         case NONE:
                             break;
@@ -649,7 +659,7 @@ public class MinesTable extends DealerInventory {
                             player.sendMessage("§cInvalid action.");
                             break;
                         case VERBOSE:
-                            player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s.");
+                            player.sendMessage(currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT ? "§cNot enough funds." : "§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s.");
                             break;
                         case NONE:
                             break;
@@ -1176,10 +1186,10 @@ public class MinesTable extends DealerInventory {
 
 				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 					case STANDARD:{
-						player.sendMessage("§a§lPaid "+ displayWinnings.toPlainString() +" "+ plugin.getCurrencyName(internalName).toLowerCase());
+						player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayWinnings.doubleValue()));
 						break;}
 					case VERBOSE:{
-						player.sendMessage("§a§lPaid "+ displayWinnings.toPlainString() +" "+ plugin.getCurrencyName(internalName).toLowerCase()+ "\n §r§a§o(profit of "+ displayProfit.toPlainString() +")");
+						player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayWinnings.doubleValue()) + "\n §r§a§o(profit of " + plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue()) + ")");
 						break;     
 					}
 						case NONE:{
@@ -1190,10 +1200,10 @@ public class MinesTable extends DealerInventory {
 				winnings = applyProbabilisticRounding(winnings,player); 
 				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 					case STANDARD:{
-						player.sendMessage("§a§lPaid "+ (int)winnings+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(winnings) == 1 ? "" : "s"));
+						player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, winnings));
 						break;}
 					case VERBOSE:{
-						player.sendMessage("§a§lPaid "+ (int)winnings+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(winnings) == 1 ? "" : "s")  + "\n §r§a§o(profit of "+(int)Math.abs(winnings-totalBet)+")");
+						player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, winnings) + "\n §r§a§o(profit of "+(int)Math.abs(winnings-totalBet)+")");
 						break;     
 					}
 						case NONE:{
@@ -1261,10 +1271,10 @@ public class MinesTable extends DealerInventory {
 
 				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 					case STANDARD:{
-						player.sendMessage("§a§lPaid "+ displayWinnings.toPlainString() +" "+ plugin.getCurrencyName(internalName).toLowerCase());
+						player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayWinnings.doubleValue()));
 						break;}
 					case VERBOSE:{
-						player.sendMessage("§a§lPaid "+ displayWinnings.toPlainString() +" "+ plugin.getCurrencyName(internalName).toLowerCase()+ " (profit of "+ displayProfit.toPlainString() +")\n");
+						player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayWinnings.doubleValue()) + " (profit of " + plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue()) + ")\n");
 						break;     
 					}
 						case NONE:{
@@ -1275,10 +1285,10 @@ public class MinesTable extends DealerInventory {
 				winnings = applyProbabilisticRounding(winnings,player); 
 				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 					case STANDARD:{
-						player.sendMessage("§a§lPaid "+(int)winnings+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(winnings) == 1 ? "" : "s"));
+						player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, winnings));
 						break;}
 					case VERBOSE:{
-						player.sendMessage("§a§lPaid "+(int)winnings+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(winnings) == 1 ? "" : "s")  + " (profit of "+(int)Math.abs(winnings-totalBet)+")\n");
+						player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, winnings) + " (profit of "+(int)Math.abs(winnings-totalBet)+")\n");
 						break;     
 					}
 						case NONE:{
@@ -1373,10 +1383,10 @@ public class MinesTable extends DealerInventory {
                     updateBetLore(53, previousWager);
                     switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                         case STANDARD:{
-                            player.sendMessage("§dRebet of " + (int) previousWager + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(previousWager) == 1 ? "" : "s") + " placed\n");
+                            player.sendMessage("§dRebet of " + plugin.formatWagerDisplay(currencyMode, currencyName, previousWager) + " placed\n");
                             break;}
                         case VERBOSE:{
-                            player.sendMessage("§dRebet of " + (int) previousWager + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(previousWager) == 1 ? "" : "s") + " placed\n");
+                            player.sendMessage("§dRebet of " + plugin.formatWagerDisplay(currencyMode, currencyName, previousWager) + " placed\n");
                             break;     
                         }
                             case NONE:{
@@ -1453,7 +1463,7 @@ public class MinesTable extends DealerInventory {
             if (meta != null) {
                 if (totalBet > 0) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Wager: " + (int)totalBet + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
+                    lore.add("Wager: " + plugin.formatWagerDisplay(currencyMode, currencyName, totalBet) + "\n");
                     meta.setLore(lore);
                 } else {
                     meta.setLore(new ArrayList<>());  // Clear lore if no wager
@@ -1617,10 +1627,10 @@ public class MinesTable extends DealerInventory {
         if (totalDropped > 0) {     
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage("§cNo room for " + (int) totalDropped + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalDropped) == 1 ? "" : "s") + ", dropping...");
+                player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped) + ", dropping...");
                 break;}
             case VERBOSE:{
-                player.sendMessage("§cNo room for " + (int) totalDropped + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalDropped) == 1 ? "" : "s") + ", dropping...");
+                player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped) + ", dropping...");
                 break;     
             }
                 case NONE:{

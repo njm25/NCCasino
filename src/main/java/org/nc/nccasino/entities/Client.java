@@ -13,6 +13,7 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.currency.VaultCurrencyProvider;
@@ -30,6 +31,9 @@ public abstract class Client extends DealerInventory {
     protected final Player player;
     protected final Nccasino plugin;
     public final String internalName;
+    /** Resolved once at init; use for formatWagerDisplay / getChipDisplayName to avoid config read per call. */
+    protected final CurrencyMode currencyMode;
+    protected final String currencyName;
 
     protected final Deque<Double> betStack = new ArrayDeque<>();
     public boolean rebetEnabled = false;
@@ -49,6 +53,8 @@ public abstract class Client extends DealerInventory {
         this.player = player;
         this.plugin = plugin;
         this.internalName = internalName;
+        this.currencyMode = plugin.getCurrencyMode(internalName);
+        this.currencyName = plugin.getCurrencyName(internalName);
 
         // Load chip values from config so we can replicate Mines logic
         loadChipValuesFromConfig();
@@ -74,8 +80,8 @@ public abstract class Client extends DealerInventory {
     private void loadChipValuesFromConfig() {
         Map<String, Double> temp = new HashMap<>();
         for (int i = 1; i <= 5; i++) {
-            String chipName = plugin.getChipName(internalName, i);
             double chipValue = plugin.getChipValue(internalName, i);
+            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
             if (chipValue > 0) {
                 temp.put(chipName, chipValue);
             }
@@ -496,11 +502,11 @@ public abstract class Client extends DealerInventory {
 				if (leftoverAmount > 0) {
 					switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 						case STANDARD:{
-							player.sendMessage("§cNo room for " + leftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(leftoverAmount) == 1 ? "" : "s") + ", dropping...");
+							player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount) + ", dropping...");
 
 							break;}
 						case VERBOSE:{
-							player.sendMessage("§cNo room for " + leftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(leftoverAmount) == 1 ? "" : "s") + ", dropping...");
+							player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount) + ", dropping...");
 							break;     
 						}
 							case NONE:{
@@ -544,11 +550,11 @@ public abstract class Client extends DealerInventory {
 		if (totalLeftoverAmount > 0) {
 			switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 				case STANDARD:{
-					player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+					player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
 	
 					break;}
 				case VERBOSE:{
-					player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+					player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
 					break;     
 				}
 					case NONE:{
@@ -609,7 +615,7 @@ public abstract class Client extends DealerInventory {
                 if (s == slot) {
                     inventory.setItem(s, createEnchantedItem(
                         s == 52 ? Material.SNIFFER_EGG : getCurrencyMaterial(),
-                        isAllIn ? "All In (" + (int) selectedWager + ")" : chipName,
+                        isAllIn ? "All In (" + plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager) + ")" : chipName,
                         s == 52 ? 1 : (int) chipValue
                     ));
                 } else {
@@ -632,7 +638,7 @@ public abstract class Client extends DealerInventory {
             if (meta != null) {
                 if (totalBet > 0) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Wager: " + (int)totalBet + " " + plugin.getCurrencyName(internalName).toLowerCase());
+                    lore.add("Wager: " + plugin.formatWagerDisplay(currencyMode, currencyName, totalBet));
                     meta.setLore(lore);
                 } else {
                     meta.setLore(Collections.emptyList());

@@ -844,8 +844,7 @@ public class DragonClient extends Client{
                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                     case STANDARD:
                     case VERBOSE:
-                        player.sendMessage("§dRebet of " + (int) totalRebetAmount + " " +
-                            plugin.getCurrencyName(internalName).toLowerCase() + " placed.");
+                        player.sendMessage("§dRebet of " + plugin.formatWagerDisplay(currencyMode, currencyName, totalRebetAmount) + " placed.");
                         break;
                     case NONE:
                         break;
