@@ -7,11 +7,13 @@ import org.bukkit.entity.Player;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
+import org.nc.nccasino.helpers.SchedulerHelper;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
 public class CoinFlipServer extends Server {
 
 
-    private int countdownTaskId = -1;
+    private ScheduledTask countdownTask = null;
     private int timeLeft = 0;
     
     protected Player chairOneOccupant;
@@ -98,7 +100,7 @@ public class CoinFlipServer extends Server {
                     gameActive = false;
                     betAmount = 0; 
                     timeLeft = 0;
-                    countdownTaskId = -1;
+                    countdownTask = null;
                     handlePayout(payoutOne, payoutTwo, payout, (int) data);
                     if(chairOneOccupant !=null && !hasClient(chairOneOccupant.getUniqueId())){
                         if(chairTwoOccupant != null){
@@ -154,15 +156,17 @@ public class CoinFlipServer extends Server {
 
     
     private void startTimer() {
-        if (countdownTaskId != -1) return; // Timer is already running
+        if (countdownTask != null) return; // Timer is already running
 
         gameState = GameState.WAITING;
         timeLeft = plugin.getTimer(internalName);
            
-        countdownTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+        countdownTask = SchedulerHelper.executeRegionTaskTimer(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), () -> {
             if (timeLeft <= 0) {
-                Bukkit.getScheduler().cancelTask(countdownTaskId);
-                countdownTaskId = -1;
+                if (countdownTask != null) {
+                    countdownTask.cancel();
+                    countdownTask = null;
+                }
                 if (clients.isEmpty()) {
                     Bukkit.broadcastMessage("No viewers and no bets - pausing game.");
                     return;

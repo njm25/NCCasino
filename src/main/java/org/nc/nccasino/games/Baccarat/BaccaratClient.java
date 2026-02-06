@@ -23,14 +23,16 @@ import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.helpers.SchedulerHelper;
 import org.nc.nccasino.objects.Card;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
 public class BaccaratClient extends Client {
     private final int[] playerCardSlots = {10,11,12};  // Left to right
     private final int[] bankerCardSlots = {16,15,14};  // Right to left
     private final List<Card> playerHand = new ArrayList<>();
     private final List<Card> bankerHand = new ArrayList<>();
-    private int taskId=-1;
+    private ScheduledTask animationTask=null;
     protected final List<BetData> previousBets = new ArrayList<>();
     protected final Map<BetOption, Deque<Double>> betStacks = new HashMap<>();
     private boolean catchingUp=false;
@@ -292,7 +294,7 @@ public class BaccaratClient extends Client {
                 bankerHand.clear();
                 displayCards(); // Ensure UI updates properly
                 updateHandTotalDisplay(-1, -1); // Reset hand total UI
-                if(taskId!=-1)Bukkit.getScheduler().cancelTask(taskId);
+                if(animationTask!=null) animationTask.cancel();
                 break;
             case "CATCHUP_START":
                 catchingUp = true;
@@ -410,7 +412,7 @@ public class BaccaratClient extends Client {
 
     private void animateWinningHand(int[] slots, Material material, String message) {
         int[] index = {0}; // Track which slot to enchant
-        taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+        animationTask = SchedulerHelper.executeEntityTaskTimer(plugin, player, () -> {
             // Reset all slots to normal first
             for (int slot : slots) {
                 ItemStack item = new ItemStack(material);
@@ -441,8 +443,8 @@ public class BaccaratClient extends Client {
     
         // Stop animation after 5 seconds
         
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if(taskId!=-1)Bukkit.getScheduler().cancelTask(taskId);
+        SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
+            if(animationTask!=null) animationTask.cancel();
            //applyStaticEnchantment(slots, material, message);
         }, 100L);
     }

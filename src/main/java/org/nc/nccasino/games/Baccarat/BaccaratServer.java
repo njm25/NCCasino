@@ -17,8 +17,10 @@ import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.helpers.SchedulerHelper;
 import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Deck;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
 public class BaccaratServer extends Server {
     private final Map<BaccaratClient.BetOption, Double> totalBets = new HashMap<>();
@@ -26,7 +28,7 @@ public class BaccaratServer extends Server {
     private final Map<Integer, UUID> seatMap = new HashMap<>(); // Maps seat slot to player UUID
     private final List<UUID> seatedPlayers = new ArrayList<>();
 
-    private int countdownTaskId = -1;
+    private ScheduledTask countdownTask = null;
     private int timeLeft;
     private Deck deck;
     private List<Card> playerHand = new ArrayList<>();
@@ -386,7 +388,7 @@ public class BaccaratServer extends Server {
     }
 
     private void startTimer() {
-        if (countdownTaskId != -1) return; // Timer is already running
+        if (countdownTask != null) return; // Timer is already running
 
         gameState = GameState.WAITING;
         timeLeft = plugin.getTimer(internalName);
@@ -396,10 +398,12 @@ public class BaccaratServer extends Server {
                     baccaratClient.reapplyPreviousBets();
                 }
             }
-        countdownTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+        countdownTask = SchedulerHelper.executeRegionTaskTimer(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), () -> {
             if (timeLeft <= 0) {
-                Bukkit.getScheduler().cancelTask(countdownTaskId);
-                countdownTaskId = -1;
+                if (countdownTask != null) {
+                    countdownTask.cancel();
+                    countdownTask = null;
+                }
                 // If no viewers and no bets, PAUSE instead of restarting timer
                 if (clients.isEmpty() && totalBets.isEmpty()) {
                     pauseGame();
@@ -423,9 +427,9 @@ public class BaccaratServer extends Server {
     }
     
     private void pauseGame() {
-        if (countdownTaskId != -1) {
-            Bukkit.getScheduler().cancelTask(countdownTaskId);
-            countdownTaskId = -1;
+        if (countdownTask != null) {
+            countdownTask.cancel();
+            countdownTask = null;
         }
         gameState = GameState.PAUSED;
         updateTimerDisplay(-1); // Remove timer
@@ -447,7 +451,7 @@ public class BaccaratServer extends Server {
         }
     
         updateTimerDisplay(-1); // Remove timer UI
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeRegionTaskLater(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), () -> {
             dealInitialCards();
         }, 20L);
         //evaluateHands();
@@ -460,36 +464,36 @@ public class BaccaratServer extends Server {
         bankerHand.clear();
     
         // Correct Baccarat draw order
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeRegionTaskLater(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), () -> {
             playerHand.add(deck.dealCard());
             broadcastUpdate("DEAL_CARDS", Arrays.asList(playerHand.get(0)));
             updateHandTotals();
         }, 20L);
     
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeRegionTaskLater(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), () -> {
             bankerHand.add(deck.dealCard());
             broadcastUpdate("DEAL_CARDS", Arrays.asList(bankerHand.get(0)));
             updateHandTotals();
         }, 40L);
     
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeRegionTaskLater(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), () -> {
             playerHand.add(deck.dealCard());
             broadcastUpdate("DEAL_CARDS", Arrays.asList(playerHand.get(1)));
             updateHandTotals();
         }, 60L);
     
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeRegionTaskLater(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), () -> {
             bankerHand.add(deck.dealCard());
             broadcastUpdate("DEAL_CARDS", Arrays.asList(bankerHand.get(1)));
             updateHandTotals();
         }, 80L);
 
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeRegionTaskLater(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), () -> {
             if (playerHand.size() >= 2 && bankerHand.size() >= 2) {
                 evaluateHands();
             } else {
                 Bukkit.getLogger().warning("evaluateHands() called too early, retrying...");
-                Bukkit.getScheduler().runTaskLater(plugin, this::evaluateHands, 20L);
+                SchedulerHelper.executeRegionTaskLater(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), this::evaluateHands, 20L);
             }
         }, 100L);
     
@@ -500,10 +504,10 @@ public class BaccaratServer extends Server {
     private void evaluateHands() {
          if (playerHand.size() < 2 || bankerHand.size() < 2) {
             Bukkit.getLogger().warning("evaluateHands called too early! Delaying...");
-            Bukkit.getScheduler().runTaskLater(plugin, this::evaluateHands, 20L);
+            SchedulerHelper.executeRegionTaskLater(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), this::evaluateHands, 20L);
             return;
         }
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeRegionTaskLater(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), () -> {
             int playerTotal = getBaccaratHandValue(playerHand);
             int bankerTotal = getBaccaratHandValue(bankerHand);
     
@@ -516,7 +520,7 @@ public class BaccaratServer extends Server {
     
             if (playerDraws) {
                 // Player draws a third card
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                SchedulerHelper.executeRegionTaskLater(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), () -> {
                     playerHand.add(deck.dealCard());
                     broadcastUpdate("PLAYER_DRAW", playerHand.get(playerHand.size() - 1));
                     updateHandTotals();
@@ -540,17 +544,17 @@ public class BaccaratServer extends Server {
         if (bankerDraws) {
                 drawBankerCard();
         } else {
-            Bukkit.getScheduler().runTaskLater(plugin, this::determineWinner, 40L);
+            SchedulerHelper.executeRegionTaskLater(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), this::determineWinner, 40L);
         }
     }
     
     
     private void drawBankerCard() {
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeRegionTaskLater(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), () -> {
             bankerHand.add(deck.dealCard());
             broadcastUpdate("BANKER_DRAW", bankerHand.get(bankerHand.size() - 1));
             updateHandTotals();
-            Bukkit.getScheduler().runTaskLater(plugin, this::determineWinner, 40L);
+            SchedulerHelper.executeRegionTaskLater(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), this::determineWinner, 40L);
         }, 20L);
     }
     
@@ -685,7 +689,7 @@ public class BaccaratServer extends Server {
 }
 
 private void resetGame() {
-    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+    SchedulerHelper.executeRegionTaskLater(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), () -> {
         currentWinString=null;
         playerBets.clear();
         totalBets.clear();
@@ -708,7 +712,7 @@ private void resetGame() {
         }
         sendSeatUpdates();
         
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeRegionTaskLater(plugin, plugin.getServer().getWorlds().get(0).getSpawnLocation(), () -> {
         startTimer();
         }, 10L);
     }, 70L); // Delay before resetting for UI effects

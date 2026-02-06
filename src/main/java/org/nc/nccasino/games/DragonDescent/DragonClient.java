@@ -17,6 +17,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.helpers.AttributeHelper;
+import org.nc.nccasino.helpers.SchedulerHelper;
 import org.nc.nccasino.helpers.SoundHelper;
 
 public class DragonClient extends Client{
@@ -354,7 +355,7 @@ public class DragonClient extends Client{
             int thisDelay = col * 2; // each col is 2 ticks later
             maxDelay.set(Math.max(maxDelay.get(), thisDelay));
             if (this.inventory == null|| gameGrid == null) return;
-            int taskID = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            int taskID = SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
                 if (gameOverTriggered|| gameGrid == null) return;
                     if (lastPlacedSlot.get() != -1) {
                     restoreTile(lastPlacedSlot.get(), actualFloor+1);
@@ -366,7 +367,7 @@ public class DragonClient extends Client{
                     triggerGameOver();
                     return;
                 }
-                int restoreTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                int restoreTask = SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
                     if (!gameOverTriggered&& gameGrid != null) {
                         if (isBrownColumn) {
                             inventory.setItem(slot, createCustomItem(Material.AIR, "§r", 1));
@@ -387,13 +388,13 @@ public class DragonClient extends Client{
             taskIDs.add(taskID);
         }
     
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
             if (!gameOver) {
                 moveLocked = false;
             }
         }, numColumns * 3L);
     
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
             if (!gameOverTriggered) {
                 int lastSlot = lastPlacedSlot.get();
                 if (lastSlot != -1) {
@@ -427,7 +428,7 @@ public class DragonClient extends Client{
     
         // Cancel all scheduled tasks
         for (int taskID : taskIDs) {
-            Bukkit.getScheduler().cancelTask(taskID);
+            SchedulerHelper.cancelTask(taskID);
         }
         taskIDs.clear();
     
@@ -437,7 +438,7 @@ public class DragonClient extends Client{
         server.applyLoseEffects(player);
 
         // Delay reset slightly to let player see the result
-        Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 30L); // 60 ticks = 3 seconds
+        SchedulerHelper.executeEntityTaskLater(player, plugin, this::resetGame, 30L); // 60 ticks = 3 seconds
     }
     
     @Override
@@ -538,7 +539,7 @@ public class DragonClient extends Client{
             if(this.inventory == null||gameGrid==null) return;
             boolean gameOver = (gameGrid[displayOffset + floor - 1][safeGridCol] == 0);
             if (gameOver) playerLost = true; 
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
                 if(this.inventory == null) return;
                 if (SoundHelper.getSoundSafely("block.cave_vines.step", player) != null)
                     player.playSound(player.getLocation(), Sound.BLOCK_CAVE_VINES_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
@@ -549,7 +550,7 @@ public class DragonClient extends Client{
                 }
                 updatePlayerHead();
         
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
                     animateDragonSweep(floor, gameOver);
                 }, 10L);
         
@@ -559,13 +560,13 @@ public class DragonClient extends Client{
                     if (currentFloor == numRows) {
                         renameAllExcept(playerX, "§aYayyy!");
                         moveLocked = true; 
-                        int taskID =Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        int taskID =SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
                         cashOut(true); // Auto cash-out if at last floor
                     }, 40L).getTaskId();
                     taskIDs.add(taskID);
                     } else if (floor == 5) { // Reached last visible row
                         shiftlock=true;
-                        Bukkit.getScheduler().runTaskLater(plugin, this::shiftDisplayUp, 60L); // 1.5s delay before shifting
+                        SchedulerHelper.executeEntityTaskLater(player, plugin, this::shiftDisplayUp, 60L); // 1.5s delay before shifting
                     } else {
                         setNextClickableRow(currentFloor+1);
                         currentFloor++;
@@ -647,7 +648,7 @@ public class DragonClient extends Client{
         for (int step = 1; step <= 5; step++) {
             final int currentStep = step;
     
-                int taskID = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                int taskID = SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
                 if (gameGrid == null) return; 
 
     
@@ -768,12 +769,12 @@ public class DragonClient extends Client{
         playerLost=true;
 
         if(resetGame){
-            Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 40L); }
+            SchedulerHelper.executeEntityTaskLater(player, plugin, this::resetGame, 40L); }
         else{
 
             betStack.clear(); // If rebet is off, clear the stack.
             for (int taskID : taskIDs) {
-                Bukkit.getScheduler().cancelTask(taskID);
+                SchedulerHelper.cancelTask(taskID);
             }
             taskIDs.clear();
             floorsCleared=0;
@@ -795,7 +796,7 @@ public class DragonClient extends Client{
             return;
         }
         for (int taskID : taskIDs) {
-            Bukkit.getScheduler().cancelTask(taskID);
+            SchedulerHelper.cancelTask(taskID);
         }
         taskIDs.clear();
         floorsCleared=0;

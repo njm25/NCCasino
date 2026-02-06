@@ -28,9 +28,10 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.scheduler.BukkitTask;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
+import org.nc.nccasino.helpers.SchedulerHelper;
 import org.nc.nccasino.helpers.SoundHelper;
 
 public class MinesTable extends DealerInventory {
@@ -901,7 +902,7 @@ public class MinesTable extends DealerInventory {
        // Trigger a visual explosion at the player's location without causing damage
 
 
-       Bukkit.getScheduler().runTaskLater(plugin, () -> {
+       SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
     
      startMineHitAnimation(x, y); 
                 }, 15L); 
@@ -992,11 +993,11 @@ public class MinesTable extends DealerInventory {
         int centerY = centerSlot / 9;
 
         // Step 1: After a short delay, reveal all tiles
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
             revealAllTiles();
 
             // Step 2: After another short delay, change the clicked mine tile to fire
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
                  if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
         player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
                 
@@ -1016,11 +1017,11 @@ public class MinesTable extends DealerInventory {
             fireGrid[y][x] = true; // Mark the tile as on fire
     
             // After a quick delay, turn the tile into smoke (wind charge/bone meal)
-            BukkitTask smokeTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            ScheduledTask smokeTask = SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
                 setTileAtSlot(index, Material.BONE_MEAL, "Smoke");
     
                 // After a slower delay, turn the tile into air (empty)
-                BukkitTask airTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                ScheduledTask airTask = SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
                     setTileAtSlot(index, Material.AIR, "");
                 }, 20L); // Smoke lingers for 1 second (20 ticks) before disappearing
                 scheduledTasks.add(airTask.getTaskId()); // Add air task ID to the list
@@ -1038,7 +1039,7 @@ public class MinesTable extends DealerInventory {
 
     private void spreadFireFrom(int centerX, int centerY, int currentRadius) {
         // Fire spreads quickly with minimal delay
-        BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        ScheduledTask task = SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
             boolean anyTilesSetOnFire = false;
     
             for (int y = 0; y < 6; y++) { // 6 rows
@@ -1053,11 +1054,11 @@ public class MinesTable extends DealerInventory {
                             anyTilesSetOnFire = true;
     
                             // After a quick delay, turn the tile into smoke (wind charge/bone meal)
-                            BukkitTask smokeTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            ScheduledTask smokeTask = SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
                                 setTileAtSlot(index, Material.BONE_MEAL, "Smoke");
     
                                 // After a slower delay, turn the tile into air (empty)
-                                BukkitTask airTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                ScheduledTask airTask = SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
                                     setTileAtSlot(index, Material.AIR, "");
                                 }, 20L); // Smoke lingers for 1 second (20 ticks) before disappearing
                                 scheduledTasks.add(airTask.getTaskId()); // Add air task ID to the list
@@ -1074,7 +1075,7 @@ public class MinesTable extends DealerInventory {
                 spreadFireFrom(centerX, centerY, currentRadius + 1);
             } else {
                 // After all tiles are on fire and smoke fades, reset the game
-                BukkitTask resetTask = Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 5L);
+                ScheduledTask resetTask = SchedulerHelper.executeEntityTaskLater(player, plugin, this::resetGame, 5L);
                 scheduledTasks.add(resetTask.getTaskId()); // Add reset task ID to the list
             }
     
@@ -1116,7 +1117,7 @@ public class MinesTable extends DealerInventory {
         }
 
         // Step 2: Start emerald expansion from the cash-out button (slot 49)
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
             startEmeraldExpansion(49);
             
             
@@ -1153,7 +1154,7 @@ public class MinesTable extends DealerInventory {
             gameState = GameState.GAME_OVER;
     
             // Reset the game after a delay
-            Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 20L); // Wait 5 seconds before resetting
+            SchedulerHelper.executeEntityTaskLater(player, plugin, this::resetGame, 20L); // Wait 5 seconds before resetting
     
         }, 10L); // Wait 2 seconds before starting the emerald expansion
     }
@@ -1225,7 +1226,7 @@ public class MinesTable extends DealerInventory {
     
     private void spreadEmeraldsFrom(int centerX, int centerY, int currentRadius) {
         // Expansion of emeralds from the center
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeEntityTaskLater(player, plugin, () -> {
             boolean anyTilesSetToEmerald = false;
     
             for (int y = 0; y < 6; y++) { // 6 rows

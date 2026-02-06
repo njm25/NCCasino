@@ -2,6 +2,7 @@ package org.nc.nccasino.games.Roulette;
 
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.helpers.SchedulerHelper;
 import org.nc.nccasino.helpers.TableGenerator;
 import org.nc.nccasino.objects.Pair;
 import org.bukkit.Bukkit;
@@ -348,7 +349,7 @@ public class BettingTable extends DealerInventory {
         if(betsClosed&&!countflag){
             countflag=true;
          // Mimic a screen going over the whole betting table
-              Bukkit.getScheduler().runTaskLater(plugin, () -> {
+              SchedulerHelper.executeEntityTaskLater(Bukkit.getPlayer(playerId), plugin, () -> {
                for (int i = 0; i < inventory.getSize(); i++) {
                    ItemStack originalItem = inventory.getItem(i);
                       if (originalItem != null && originalItem.getType() != Material.AIR) {
@@ -360,7 +361,7 @@ public class BettingTable extends DealerInventory {
                            }
                         }, 10L); // Adjust the delay as necessary // Example delay
 
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            SchedulerHelper.executeEntityTaskLater(Bukkit.getPlayer(playerId), plugin, () -> {
                 //System.out.println("Hit at "+countdown);
                       Player player = Bukkit.getPlayer(playerId);
 
@@ -481,7 +482,7 @@ public class BettingTable extends DealerInventory {
 
             if(totalPayout-overallWager>0){
                 msg.append("§a§lPaid ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + "\n §r§a§o(profit of "+(totalPayout-overallWager)+")");
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                SchedulerHelper.executeEntityTaskLater(Bukkit.getPlayer(playerId), plugin, () -> {
                     player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
                     Random random = new Random();
                     float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
@@ -494,28 +495,28 @@ public class BettingTable extends DealerInventory {
             }
             else if(totalPayout-overallWager==0){ 
                 msg.append("§6§lPaid ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + "\n §r§6§o (broke even)");
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                SchedulerHelper.executeEntityTaskLater(Bukkit.getPlayer(playerId), plugin, () -> {
                      if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
                     player.getWorld().spawnParticle(Particle.SCRAPE, player.getLocation(), 20); 
                 }, 20L);  
             }
             else{
                 msg.append("§c§lPaid ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + "\n§r§c§o  (loss of "+Math.abs(totalPayout-overallWager)+")");
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                SchedulerHelper.executeEntityTaskLater(Bukkit.getPlayer(playerId), plugin, () -> {
                      if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
                     player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20); 
                 }, 20L);  
             }
         } else {
             msg.append("§c§lPaid ").append(totalPayout).append(" " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalPayout) == 1 ? "" : "s") + "\n§r§c§o  (loss of "+Math.abs(totalPayout-overallWager)+")");
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            SchedulerHelper.executeEntityTaskLater(Bukkit.getPlayer(playerId), plugin, () -> {
                  if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
                 player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20); 
             }, 20L);  
         }
     
         final int totalPayoutFinal = categoryMap.values().stream().mapToInt(cat -> cat.totalPayout).sum();
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeEntityTaskLater(Bukkit.getPlayer(playerId), plugin, () -> {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
                     player.sendMessage(msg.toString());
@@ -532,8 +533,8 @@ public class BettingTable extends DealerInventory {
                 refundWagerToInventory(player, totalPayoutFinal);
             }
         }, 20L);
-        Bukkit.getScheduler().runTaskLater(plugin, this::initializeTable, 25L);
-        Bukkit.getScheduler().runTaskLater(plugin, this::updateAllLore, 25L);
+        SchedulerHelper.executeEntityTaskLater(Bukkit.getPlayer(playerId), plugin, this::initializeTable, 25L);
+        SchedulerHelper.executeEntityTaskLater(Bukkit.getPlayer(playerId), plugin, this::updateAllLore, 25L);
     }
     
     private String parseCategory(String betType) {
@@ -930,7 +931,7 @@ public class BettingTable extends DealerInventory {
                 }
                 player.openInventory(((RouletteInventory) dealerInventory).getInventory());
                  if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
-                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                 SchedulerHelper.executeEntityTaskLater(Bukkit.getPlayer(playerId), plugin, () -> {
 
                 switchingPlayers.remove(player);
                  },5L);
@@ -1060,7 +1061,7 @@ private boolean isValidSlotPage2(int slot) {
        
         if (switchingPlayers.contains(player)) {
 
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            SchedulerHelper.executeEntityTaskLater(Bukkit.getPlayer(playerId), plugin, () -> {
                 switchingPlayers.remove(player);
                  },20L);
             return;

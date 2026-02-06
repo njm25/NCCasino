@@ -7,6 +7,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.nc.nccasino.Nccasino;
 import org.bukkit.event.HandlerList;
+import org.nc.nccasino.helpers.SchedulerHelper;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -51,7 +52,7 @@ public class MinesInventory extends DealerInventory {
             Player player = (Player) event.getPlayer();
 
             if (player.getInventory() != null) {
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                     if (player.getOpenInventory().getTopInventory().getHolder() == this.getInventory().getHolder()) {
                  
                         MinesTable minesTable = new MinesTable(dealerId, player, plugin, internalName, this);
