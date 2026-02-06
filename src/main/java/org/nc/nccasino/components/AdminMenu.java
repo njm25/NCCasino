@@ -684,6 +684,7 @@ public class AdminMenu extends Menu {
         if (raw == null) return CurrencyMode.VANILLA;
         String normalized = raw.trim().toUpperCase();
         if ("VAULT".equals(normalized)) return CurrencyMode.VAULT;
+        return CurrencyMode.VANILLA; // VANILLA, STANDARD, CUSTOM (for now), or any other value
     }
 
     private void handleToggleCurrencyMode(Player player) {
