@@ -116,7 +116,7 @@ public class AdminMenu extends Menu {
         // Find the actual Villager instance (the "dealer")
         this.dealer = Dealer.findDealer(dealerId, player.getLocation());
 
-        this.currencyMode = CurrencyMode.VANILLA;
+        this.currencyMode = loadCurrencyModeFromConfig();
         adminInventories.put(this.ownerId, this);
         setupSlotMapping();
         initializeMenu();
@@ -676,6 +676,18 @@ public class AdminMenu extends Menu {
 
         }
     
+    /** Load dealer's currency mode from config so the menu displays the current selection (VAULT/VANILLA/CUSTOM). */
+    private CurrencyMode loadCurrencyModeFromConfig() {
+        if (dealer == null) return CurrencyMode.VANILLA;
+        String internalName = Dealer.getInternalName(dealer);
+        String raw = plugin.getConfig().getString("dealers." + internalName + ".currency.mode", "STANDARD");
+        if (raw == null) return CurrencyMode.VANILLA;
+        String normalized = raw.trim().toUpperCase();
+        if ("VAULT".equals(normalized)) return CurrencyMode.VAULT;
+        if ("CUSTOM".equals(normalized)) return CurrencyMode.CUSTOM;
+        return CurrencyMode.VANILLA; // VANILLA, STANDARD, or any other value
+    }
+
     private void handleToggleCurrencyMode(Player player) {
 
         CurrencyMode next;
