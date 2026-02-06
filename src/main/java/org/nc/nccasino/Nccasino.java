@@ -19,6 +19,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
@@ -49,6 +50,7 @@ import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.Metrics;
 import org.nc.nccasino.helpers.Preferences;
+import org.nc.nccasino.helpers.SchedulerHelper;
 import org.nc.nccasino.listeners.DealerDeathHandler;
 import org.nc.nccasino.listeners.DealerEventListener;
 import org.nc.nccasino.listeners.DealerInitializeListener;
@@ -228,7 +230,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         chunk.setForceLoaded(true);
                         
                         // Delay JockeyManager initialization to ensure stack is loaded
-                        Bukkit.getScheduler().runTaskLater(this, () -> {
+                        SchedulerHelper.executeEntityTaskLater(this, mob, () -> {
                             // Find the bottom-most mob in the stack
                             Mob bottomMob = mob;
                             while (bottomMob.getVehicle() instanceof Mob) {
@@ -300,7 +302,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                             
                             // Restore original force loaded state after a delay
                             if (!wasForceLoaded) {
-                                Bukkit.getScheduler().runTaskLater(this, () -> chunk.setForceLoaded(false), 40L);
+                                SchedulerHelper.executeRegionTaskLater(this, mob.getLocation(), () -> chunk.setForceLoaded(false), 40L);
                             }
                         }, 5L); // Reduced delay to 5 ticks since we're handling armor stands properly now
                         
@@ -451,7 +453,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         }
     
         // Close inventories on the main thread
-        Bukkit.getScheduler().runTask(this, () -> {
+        SchedulerHelper.executeGlobalTask(this, () -> {
             // Close all player inventories linked to this dealer
             List<Player> menuPlayers = Menu.getOpenInventories(dealerId);
             for (Player player : menuPlayers) {
@@ -710,7 +712,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
     }
 
     public void executeOnDealer(String internalName, Runnable action) {
-        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+        SchedulerHelper.executeAsyncTask(this, () -> {
             File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
             FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile); // Reload fresh config
         
@@ -731,10 +733,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
         
             int chunkX = (int) x >> 4;
             int chunkZ = (int) z >> 4;
+            Location chunkLoc = new Location(world, x, 64, z);
         
             world.setChunkForceLoaded(chunkX, chunkZ, true);
         
-            Bukkit.getScheduler().runTaskLater(this, () -> {
+            SchedulerHelper.executeRegionTaskLater(this, chunkLoc, () -> {
                 if (world.isChunkLoaded(chunkX, chunkZ)) {
                     Mob mob = getDealerByInternalName(internalName);
                     if (mob != null) {
@@ -742,14 +745,14 @@ public final class Nccasino extends JavaPlugin implements Listener {
                     } else {
                         getLogger().warning("Dealer '" + internalName + "' could not be found in chunk.");
                     }
-                    Bukkit.getScheduler().runTaskLater(this, () -> {
+                    SchedulerHelper.executeRegionTaskLater(this, chunkLoc, () -> {
                         if (world.isChunkForceLoaded(chunkX, chunkZ)) {
                             world.setChunkForceLoaded(chunkX, chunkZ, false);
                         }
                     }, 100L);
                 
                 } else {
-                    Bukkit.getScheduler().runTaskLater(this, () -> {
+                    SchedulerHelper.executeRegionTaskLater(this, chunkLoc, () -> {
                         if (world.isChunkLoaded(chunkX, chunkZ)) {
                             Mob mob = getDealerByInternalName(internalName);
                             if (mob != null) {
@@ -762,7 +765,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         } else {
                             getLogger().warning("Chunk could not be loaded for dealer '" + internalName + "'. Skipping.");
                         }
-                        Bukkit.getScheduler().runTaskLater(this, () -> {
+                        SchedulerHelper.executeRegionTaskLater(this, chunkLoc, () -> {
                             if (world.isChunkForceLoaded(chunkX, chunkZ)) {
                                 world.setChunkForceLoaded(chunkX, chunkZ, false);
                             }
@@ -814,10 +817,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
             List<String> internalNames = entry.getValue();
             addDeletingChunk(world, chunkX, chunkZ);
             world.setChunkForceLoaded(chunkX, chunkZ, true);
+            Location chunkLoc = new Location(world, chunkX * 16, 64, chunkZ * 16);
         
-            Bukkit.getScheduler().runTaskLater(this, () -> {
+            SchedulerHelper.executeRegionTaskLater(this, chunkLoc, () -> {
                 if (!world.isChunkLoaded(chunkX, chunkZ)) {
-                    Bukkit.getScheduler().runTaskLater(this, () -> {
+                    SchedulerHelper.executeRegionTaskLater(this, chunkLoc, () -> {
                         if (!world.isChunkLoaded(chunkX, chunkZ)) {
                             getLogger().warning("Chunk (" + chunkX + ", " + chunkZ + ") did not load in time.");
                             removeDeletingChunk(world, chunkX, chunkZ); // Cleanup after deletion
@@ -881,8 +885,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 getLogger().warning("Dealer '" + internalName + "' could not be found in chunk.");
             }
         }
-    
-        Bukkit.getScheduler().runTaskLater(this, () -> {
+        
+        Location chunkLoc = new Location(world, chunkX * 16, 64, chunkZ * 16);
+        SchedulerHelper.executeRegionTaskLater(this, chunkLoc, () -> {
             if (world.isChunkForceLoaded(chunkX, chunkZ)) {
                 world.setChunkForceLoaded(chunkX, chunkZ, false);
             }
@@ -892,7 +897,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         synchronized (processedChunks) {
             processedChunks[0]++;
             if (processedChunks[0] == totalChunks && sendMessageOnCompletion) {
-                Bukkit.getScheduler().runTask(this, () ->
+                SchedulerHelper.executeGlobalTask(this, () ->
                     sender.sendMessage(ChatColor.GREEN + "Deleted " + totalDeleted[0] + " dealers.")
                 );
             }
