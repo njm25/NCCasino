@@ -33,8 +33,8 @@ import org.bukkit.entity.Shulker;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.JockeyManager;
 
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.nc.nccasino.helpers.SchedulerHelper;
 
 public class DealerEventListener implements Listener {
     private static final Set<UUID> adminTriggeredTeleports = new HashSet<>();
@@ -59,8 +59,8 @@ public class DealerEventListener implements Listener {
             jockeyManagerCache.put(dealerId, manager);
             
             // Schedule cache cleanup
-            Bukkit.getScheduler().runTaskLater(JavaPlugin.getProvidingPlugin(DealerEventListener.class),
-                () -> jockeyManagerCache.remove(dealerId), CACHE_TIMEOUT);
+            SchedulerHelper.executeEntityTaskLater(JavaPlugin.getProvidingPlugin(DealerEventListener.class),
+                dealer, () -> jockeyManagerCache.remove(dealerId), CACHE_TIMEOUT);
         }
         return manager;
     }

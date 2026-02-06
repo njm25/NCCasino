@@ -1,7 +1,7 @@
 package org.nc.nccasino.listeners;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
+import org.nc.nccasino.helpers.SchedulerHelper;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Villager;
@@ -24,7 +24,7 @@ public class DealerInitializeListener implements Listener {
     public void onChunkLoad(ChunkLoadEvent event) {
         Chunk chunk = event.getChunk();
         
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeRegionTaskLater(plugin, chunk.getBlock(8, 0, 8).getLocation(), () -> {
             // Loop through all entities in the chunk
             for (Entity entity : chunk.getEntities()) {
                 if (entity instanceof Mob mob) {

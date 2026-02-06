@@ -2,6 +2,7 @@ package org.nc.nccasino.listeners;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.nc.nccasino.helpers.SchedulerHelper;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.configuration.ConfigurationSection;
@@ -106,7 +107,7 @@ public class DealerInteractListener implements Listener {
         }
         recentInteractions.add(interactionKey);
         // Schedule removal after a short delay
-        Bukkit.getScheduler().runTaskLater(plugin, () -> recentInteractions.remove(interactionKey), 1L);
+        SchedulerHelper.executeEntityTaskLater(plugin, this.dealer, () -> recentInteractions.remove(interactionKey), 1L);
 
         UUID dealerId = Dealer.getUniqueId(this.dealer);
         String internalName = Dealer.getInternalName(this.dealer);
@@ -264,7 +265,7 @@ public class DealerInteractListener implements Listener {
         String animationMessage = plugin.getConfig().getString("dealers." + Dealer.getInternalName(dealer) + ".animation-message");
         activeAnimations.add(player);
 
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeEntityTaskLater(plugin, dealer, () -> {
             AnimationMessage animationTable = new AnimationMessage(dealer, player, plugin, animationMessage, 0);
             player.openInventory(animationTable.getInventory());
 
@@ -273,7 +274,7 @@ public class DealerInteractListener implements Listener {
     }
 
     private void afterAnimationComplete(Player player, DealerInventory dealerInventory) {
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
             if (player != null && player.isOnline()) {
                 activeAnimations.remove(player);
                 if (dealerInventory != null) {
@@ -323,7 +324,7 @@ public class DealerInteractListener implements Listener {
             event.setCancelled(true);
             if (clickAllowed.getOrDefault(playerId, true)) {
                 clickAllowed.put(playerId, false); // Prevent rapid clicking
-                Bukkit.getScheduler().runTaskLater(plugin, () -> clickAllowed.put(playerId, true), 5L);
+                SchedulerHelper.executeEntityTaskLater(plugin, player, () -> clickAllowed.put(playerId, true), 5L);
 
                 DealerInventory dealerInventory = (DealerInventory) event.getInventory().getHolder();
                 dealerInventory.handleClick(event.getSlot(), player, event);

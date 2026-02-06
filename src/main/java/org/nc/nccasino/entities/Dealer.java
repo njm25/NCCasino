@@ -15,9 +15,8 @@ import org.bukkit.entity.Villager;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.NamespacedKey;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.components.AdminMenu;
 import org.nc.nccasino.games.Baccarat.BaccaratServer;
@@ -28,6 +27,7 @@ import org.nc.nccasino.games.Mines.MinesInventory;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
 import org.nc.nccasino.games.TestGame.TestServer;
 import org.nc.nccasino.helpers.AttributeHelper;
+import org.nc.nccasino.helpers.SchedulerHelper;
 
 import java.util.HashMap;
 import java.util.List;
@@ -38,7 +38,7 @@ import java.util.UUID;
 public class Dealer {
     // Static map of Dealer references
     public static final Map<UUID, Dealer> dealers = new HashMap<>();
-    private static final Map<UUID, BukkitTask> lookAtTasks = new HashMap<>();
+    private static final Map<UUID, ScheduledTask> lookAtTasks = new HashMap<>();
 
     private static final NamespacedKey DEALER_KEY =
         new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "dealer_villager");
@@ -146,7 +146,7 @@ public class Dealer {
             lookAtTasks.get(mobId).cancel();
         }
     
-        BukkitTask task = new BukkitRunnable() {
+        ScheduledTask task = SchedulerHelper.executeEntityTaskTimer(JavaPlugin.getProvidingPlugin(Dealer.class), mob, new Runnable() {
             private final Random random = new Random();
             private Entity currentTarget = null;
             private float bodyYaw = mob.getLocation().getYaw();
@@ -154,26 +154,26 @@ public class Dealer {
             private static final float MAX_TURN_SPEED = 4.0f;
             private static final float SMOOTH_FACTOR = 0.2f;
             private int targetLockTime = 0;
-            private static final int TARGET_LOCK_DURATION = 175; // Keep target for 5 seconds
+            private static final int TARGET_LOCK_DURATION = 175;
             private boolean idleMode = false;
             private float idleYaw = bodyYaw;
     
             @Override
             public void run() {
                 if (mob.isDead() || !mob.isValid()) {
-                    cancel();
-                    lookAtTasks.remove(mobId);
+                    ScheduledTask currentTask = lookAtTasks.remove(mobId);
+                    if (currentTask != null) {
+                        currentTask.cancel();
+                    }
                     return;
                 }
     
-                // Decide whether to enter idle mode (10% chance)
                 if (targetLockTime <= 0) {
-                    if (random.nextDouble() < 0.05) { // 10% chance for idle mode
+                    if (random.nextDouble() < 0.05) {
                         idleMode = true;
-                        idleYaw = random.nextFloat() * 360.0f; // Pick a random yaw
+                        idleYaw = random.nextFloat() * 360.0f;
                     } else {
                         idleMode = false;
-                        // 30% chance to look at another dealer/mob instead of a player
                         currentTarget = (random.nextDouble() < 0.1) ? getNearbyDealerOrMob(mob) : getNearestPlayer(mob);
                     }
                     targetLockTime = TARGET_LOCK_DURATION;
@@ -183,13 +183,11 @@ public class Dealer {
                 Location mobLoc = mob.getLocation();
     
                 if (idleMode) {
-                    // Smoothly turn towards random idle yaw
                     float angleDiff = ((idleYaw - bodyYaw + 540) % 360) - 180;
                     float turnSpeed = Math.max(MIN_TURN_SPEED, Math.abs(angleDiff) * SMOOTH_FACTOR);
                     turnSpeed = Math.min(turnSpeed, MAX_TURN_SPEED);
                     bodyYaw = lerpAngle(bodyYaw, idleYaw, turnSpeed);
                 } else if (currentTarget != null) {
-                    // Normal tracking logic
                     Location targetLoc = currentTarget.getLocation();
                     double dx = targetLoc.getX() - mobLoc.getX();
                     double dz = targetLoc.getZ() - mobLoc.getZ();
@@ -203,7 +201,7 @@ public class Dealer {
     
                 setBodyYaw(mob, bodyYaw);
             }
-        }.runTaskTimer(JavaPlugin.getProvidingPlugin(Dealer.class), 0L, 1L);
+        }, 0L, 1L);
     
         lookAtTasks.put(mobId, task);
     }
