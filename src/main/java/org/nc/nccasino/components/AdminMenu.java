@@ -21,7 +21,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Axolotl;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Cat;
-import org.bukkit.entity.CopperGolem;
+// import org.bukkit.entity.CopperGolem; // Removed - not available in Paper API 1.21.1
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fox;
@@ -1653,9 +1653,8 @@ player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCatego
         return formatEntityName(zombieVillager.getVillagerType().toString());
     } else if (mob instanceof Sheep sheep) {
         return formatEntityName(sheep.getColor().toString());
-    } else if (mob instanceof CopperGolem copperGolem) {
-        return formatEntityName(copperGolem.getWeatherState().toString());
     }
+    // CopperGolem case removed - not available in Paper API 1.21.1
     return "";
     }
 

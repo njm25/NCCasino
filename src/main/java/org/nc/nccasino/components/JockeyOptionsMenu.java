@@ -47,7 +47,7 @@ public class JockeyOptionsMenu extends Menu {
         put(Villager.Type.JUNGLE, Material.JUNGLE_LOG);
         put(Villager.Type.PLAINS, Material.OAK_LOG);
         put(Villager.Type.SAVANNA, Material.ACACIA_LOG);
-        put(Villager.Type.SNOW, Material.PALE_OAK_LOG);
+        put(Villager.Type.SNOW, Material.SPRUCE_LOG);
         put(Villager.Type.SWAMP, Material.MANGROVE_LOG);
         put(Villager.Type.TAIGA, Material.SPRUCE_LOG);
     }};
@@ -698,7 +698,7 @@ public class JockeyOptionsMenu extends Menu {
         if (mob instanceof ZombieVillager zombie) return formatEntityName(zombie.getVillagerType().toString());
         if (mob instanceof Sheep sheep) return formatEntityName(sheep.getColor().toString());
         if (mob instanceof Wolf wolf) return formatEntityName(wolf.getCollarColor().toString());
-        if (mob instanceof CopperGolem copperGolem) return formatEntityName(copperGolem.getWeatherState().toString());
+        // CopperGolem case removed - not available in Paper API 1.21.1
         return "Unknown";
     }
 

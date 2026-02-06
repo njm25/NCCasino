@@ -194,7 +194,7 @@ public class JockeyManager {
                 return;
             }
 
-            BukkitTask task = new BukkitRunnable() {
+            ScheduledTask task = new BukkitRunnable() {
                 private Entity currentTarget = null;
                 private float bodyYaw = dealer.getLocation().getYaw();
                 private float headYaw = bodyYaw;

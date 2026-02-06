@@ -19,10 +19,11 @@ public class SchedulerHelper {
         }
     }
     
-    public static void executeEntityTaskLater(Plugin plugin, Entity entity, Runnable task, long delayTicks) {
+    public static ScheduledTask executeEntityTaskLater(Plugin plugin, Entity entity, Runnable task, long delayTicks) {
         if (entity != null && !entity.isDead()) {
-            entity.getScheduler().runDelayed(plugin, scheduledTask -> task.run(), null, delayTicks);
+            return entity.getScheduler().runDelayed(plugin, scheduledTask -> task.run(), null, delayTicks);
         }
+        return null;
     }
     
     public static ScheduledTask executeEntityTaskTimer(Plugin plugin, Entity entity, Runnable task, long delayTicks, long periodTicks) {
@@ -38,10 +39,11 @@ public class SchedulerHelper {
         }
     }
     
-    public static void executeRegionTaskLater(Plugin plugin, Location loc, Runnable task, long delayTicks) {
+    public static ScheduledTask executeRegionTaskLater(Plugin plugin, Location loc, Runnable task, long delayTicks) {
         if (loc != null && loc.getWorld() != null) {
-            Bukkit.getRegionScheduler().runDelayed(plugin, loc, scheduledTask -> task.run(), delayTicks);
+            return Bukkit.getRegionScheduler().runDelayed(plugin, loc, scheduledTask -> task.run(), delayTicks);
         }
+        return null;
     }
     
     public static ScheduledTask executeRegionTaskTimer(Plugin plugin, Location loc, Runnable task, long delayTicks, long periodTicks) {

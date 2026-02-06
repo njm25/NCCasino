@@ -23,7 +23,6 @@ import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Axolotl;
 import org.bukkit.entity.Cat;
 import org.bukkit.entity.Cat.Type;
-import org.bukkit.entity.CopperGolem;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fox;
@@ -54,6 +53,7 @@ import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
+import org.nc.nccasino.helpers.SchedulerHelper;
 
 public class MobSelectionMenu extends Menu {
     private int currentPage = 1;
@@ -77,7 +77,7 @@ public class MobSelectionMenu extends Menu {
         put(Villager.Type.JUNGLE, Material.JUNGLE_LOG);
         put(Villager.Type.PLAINS, Material.OAK_LOG);
         put(Villager.Type.SAVANNA, Material.ACACIA_LOG);
-        put(Villager.Type.SNOW, Material.PALE_OAK_LOG);
+        put(Villager.Type.SNOW, Material.SPRUCE_LOG);
         put(Villager.Type.SWAMP, Material.MANGROVE_LOG);
         put(Villager.Type.TAIGA, Material.SPRUCE_LOG);
     }};
@@ -178,10 +178,7 @@ public class MobSelectionMenu extends Menu {
             Material.BROWN_WOOL, Material.GREEN_WOOL, Material.RED_WOOL, Material.BLACK_WOOL
         }); // 16 colors
         
-        put(CopperGolem.class, new Material[]{
-            Material.COPPER_BLOCK, Material.EXPOSED_COPPER, Material.WEATHERED_COPPER, Material.OXIDIZED_COPPER,
-            Material.WAXED_COPPER_BLOCK, Material.WAXED_EXPOSED_COPPER, Material.WAXED_WEATHERED_COPPER, Material.WAXED_OXIDIZED_COPPER
-        }); // 8 weather states (4 unwaxed + 4 waxed)
+        // CopperGolem removed - not available in Paper API 1.21.1
     }};
 
     static {
@@ -891,12 +888,7 @@ public class MobSelectionMenu extends Menu {
                 }
             }
         }
-        else if (mob instanceof CopperGolem copperGolem) {
-            // Get current weather state and cycle to next
-            Object currentState = copperGolem.getWeatherState();
-            Object[] allStates = currentState.getClass().getEnumConstants();
-            int currentIndex = java.util.Arrays.asList(allStates).indexOf(currentState);
-            Object nextState = allStates[(currentIndex + 1) % allStates.length];
+        // CopperGolem case removed - not available in Paper API 1.21.1
             
             // Use reflection to call setWeatherState
             try {
@@ -1060,12 +1052,8 @@ public class MobSelectionMenu extends Menu {
             DyeColor color = sheep.getColor();
             if (color == null) return null;
             return VARIANT_ITEMS.get(Sheep.class)[indexOf(DyeColor.values(), color)];
-        } else if (mob instanceof CopperGolem copperGolem) {
-            Object weatherState = copperGolem.getWeatherState();
-            Object[] allStates = weatherState.getClass().getEnumConstants();
-            int stateIndex = java.util.Arrays.asList(allStates).indexOf(weatherState);
-            return VARIANT_ITEMS.get(CopperGolem.class)[stateIndex];
         }
+        // CopperGolem case removed - not available in Paper API 1.21.1
     
         return Material.BARRIER; // Default if not found
     }
@@ -1220,9 +1208,8 @@ public class MobSelectionMenu extends Menu {
             return formatEntityName(sheep.getColor().toString());
         }else if (mob instanceof Wolf wolf) {
             return formatEntityName(wolf.getCollarColor().toString());
-        } else if (mob instanceof CopperGolem copperGolem) {
-            return formatEntityName(copperGolem.getWeatherState().toString());
         }
+        // CopperGolem case removed - not available in Paper API 1.21.1
 
         return "Unknown";
     }
@@ -1239,8 +1226,8 @@ public class MobSelectionMenu extends Menu {
             || (mob instanceof Villager)
             || (mob instanceof ZombieVillager)
             || (mob instanceof Sheep)
-            || (mob instanceof Wolf)
-            || (mob instanceof CopperGolem);
+            || (mob instanceof Wolf);
+            // CopperGolem removed - not available in Paper API 1.21.1
             
     }
 
