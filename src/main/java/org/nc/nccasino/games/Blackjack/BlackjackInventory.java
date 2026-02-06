@@ -32,10 +32,12 @@ import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.AttributeHelper;
+import org.nc.nccasino.helpers.SchedulerHelper;
 import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Deck;
 import org.nc.nccasino.objects.Suit;
 import org.nc.nccasino.helpers.SoundHelper;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
 public class BlackjackInventory extends DealerInventory {
 
@@ -46,7 +48,7 @@ public class BlackjackInventory extends DealerInventory {
     private final Map<UUID, Map<Integer, Double>> playerBets; // Track player bets by slot number
     private final Map<UUID, List<Double>> lastBetAmounts; // Track the last bet amounts placed by the player
     private boolean gameActive; // Track whether the game is active
-    private int countdownTaskId; // Task ID for the countdown timer
+    private ScheduledTask countdownTask; // Task for the countdown timer
     private UUID currentPlayerId; // Track the current player
     private Iterator<UUID> playerIterator; // Iterator for player turns
     private final Map<UUID, Integer> playerCardCounts = new HashMap<>(); // Track number of cards each player has
@@ -69,7 +71,7 @@ public class BlackjackInventory extends DealerInventory {
         this.playerSeats = new HashMap<>(); // Initialize player seats storage
         this.playerBets = new HashMap<>(); // Initialize player bets storage
         this.lastBetAmounts = new HashMap<>(); // Initialize last bet amounts storage
-        this.countdownTaskId = -1; // Initialize countdown task ID
+        this.countdownTask = null; // Initialize countdown task
         // Initialize the start menu
         Nccasino nccasino = plugin;
         this.dealerId = dealerId;
@@ -142,7 +144,7 @@ private void registerListener() {
         if (event.getInventory() == this.getInventory()){
             Player player=(Player)event.getPlayer();
             if(player.getInventory() !=null){
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
                         if (player != null) {
                             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                                 case STANDARD:{
@@ -494,7 +496,7 @@ private void handleAllIn(Player player) {
     //
 
     // Start countdown if not already running
-    if (countdownTaskId == -1) {
+    if (countdownTask == null) {
         startCountdownTimer();
     }
 }
@@ -619,7 +621,7 @@ private void handleHit(Player player) {
         playerCardCounts.put(playerId, cardCount); // Update the card count
 
         // Delay the hand value calculation to ensure the card is fully added to the player's hand
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
             if (!playerSeats.containsKey(playerId)) {
                 return;
             }
@@ -639,13 +641,13 @@ private void handleHit(Player player) {
             if (handValue == 21) {
    
                 playerTurnActive.put(playerId, false); // Deactivate the player's turn
-                startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
+                startNextPlayerTurnWithDelay(20L, player); // Start next player's turn with delay
             } else if (handValue > 21) {
 
 
                 playerDone.put(playerId, true); // Mark the player as done
                 playerTurnActive.put(playerId, false); // Deactivate the player's turn
-                startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
+                startNextPlayerTurnWithDelay(20L, player); // Start next player's turn with delay
            
             } else {
                 
@@ -674,12 +676,12 @@ private void handleStand(Player player) {
                 break;
             }
         }
-        startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
+        startNextPlayerTurnWithDelay(20L, player); // Start next player's turn with delay
     }
 }
 
-private void startNextPlayerTurnWithDelay(long delay) {
-    Bukkit.getScheduler().runTaskLater(plugin, () -> startNextPlayerTurn(), delay);
+private void startNextPlayerTurnWithDelay(long delay, Player player) {
+    SchedulerHelper.executeEntityTaskLater(plugin, player, () -> startNextPlayerTurn(), delay);
 }
 
 private void handleDoubleDown(Player player) {
@@ -734,7 +736,7 @@ private void handleDoubleDown(Player player) {
                 break;
             }
         }
-        startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
+        startNextPlayerTurnWithDelay(20L, player); // Start next player's turn with delay
     }
 }
 
@@ -820,7 +822,7 @@ private void handleLeaveChair(Player player) {
     inventory.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, "Click to sit here"));
 
     // If the timer is still running, undo all bets
-    if (countdownTaskId != -1 && !gameActive) {
+    if (countdownTask != null && !gameActive) {
         handleUndoAllBets(player);
     } else {
         removePlayerData(playerId);
@@ -1002,7 +1004,7 @@ private void removePlayerData(UUID playerId) {
                 if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
                     player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
     
-                if (countdownTaskId == -1) {
+                if (countdownTask == null) {
                     startCountdownTimer();
                 }
                 return;
@@ -1018,7 +1020,7 @@ private void removePlayerData(UUID playerId) {
             if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
                 player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
     
-            if (countdownTaskId == -1) {
+            if (countdownTask == null) {
                 startCountdownTimer();
             }
         } else {
@@ -1091,9 +1093,9 @@ private void removePlayerData(UUID playerId) {
     }
 
     private void stopCountdownTimer() {
-        if (countdownTaskId != -1) {
-            Bukkit.getScheduler().cancelTask(countdownTaskId);
-            countdownTaskId = -1;
+        if (countdownTask != null) {
+            countdownTask.cancel();
+            countdownTask = null;
             // Clear the Game Info lever stack to reset the display
             inventory.setItem(1, createCustomItem(Material.CLOCK, "Game Info"));
         }
@@ -1246,7 +1248,11 @@ private void removePlayerData(UUID playerId) {
 
     // Start the countdown timer and display it with a stack of levers
     private void startCountdownTimer() {
-        countdownTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+        UUID firstPlayerId = playerSeats.keySet().iterator().next();
+        Player firstPlayer = Bukkit.getPlayer(firstPlayerId);
+        if (firstPlayer == null) return;
+        
+        countdownTask = SchedulerHelper.executeEntityTaskTimer(plugin, firstPlayer, new Runnable() {
             
             int countdown =  plugin.getTimer(internalName);
             @Override
@@ -1263,7 +1269,7 @@ private void removePlayerData(UUID playerId) {
                     }
                     countdown--;
                 } else {
-                    Bukkit.getScheduler().cancelTask(countdownTaskId);
+                    countdownTask.cancel();
                     activateGame();
                 }
             }
@@ -1333,25 +1339,29 @@ private void dealInitialCards() {
     }
 
     // Check for initial blackjack right after dealing cards
-    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        for (UUID playerId : playerSeats.keySet()) {
-            Player player = Bukkit.getPlayer(playerId);
-            if (player != null) {
-                int handValue = calculateHandValue(playerHands.get(playerId));
-                if (handValue == 21) {
-                    playerDone.put(playerId, true); // Mark the player as done
-                    playerTurnActive.put(playerId, false); // Deactivate the player's turn
+    UUID firstPlayerId = playerSeats.keySet().iterator().next();
+    Player firstPlayer = Bukkit.getPlayer(firstPlayerId);
+    if (firstPlayer != null) {
+        SchedulerHelper.executeEntityTaskLater(plugin, firstPlayer, () -> {
+            for (UUID playerId : playerSeats.keySet()) {
+                Player player = Bukkit.getPlayer(playerId);
+                if (player != null) {
+                    int handValue = calculateHandValue(playerHands.get(playerId));
+                    if (handValue == 21) {
+                        playerDone.put(playerId, true); // Mark the player as done
+                        playerTurnActive.put(playerId, false); // Deactivate the player's turn
+                    }
                 }
             }
-        }
 
-        // Initialize playerIterator to start turns after dealing cards
-        playerIterator = playerSeats.keySet().stream()
-            .filter(playerId -> playerBets.containsKey(playerId) && !playerBets.get(playerId).isEmpty() && !playerDone.getOrDefault(playerId, false))
-            .iterator();
+            // Initialize playerIterator to start turns after dealing cards
+            playerIterator = playerSeats.keySet().stream()
+                .filter(playerId -> playerBets.containsKey(playerId) && !playerBets.get(playerId).isEmpty() && !playerDone.getOrDefault(playerId, false))
+                .iterator();
 
-        startNextPlayerTurn();
-    }, delay + 20L); // Delay slightly longer to allow cards to be fully dealt
+            startNextPlayerTurn();
+        }, delay + 20L); // Delay slightly longer to allow cards to be fully dealt
+    }
 }
 
 private void startNextPlayerTurn() {
@@ -1424,7 +1434,7 @@ private void startNextPlayerTurn() {
             if (handValue == 21) {
                 playerDone.put(currentPlayerId, true); // Mark the player as done
                 playerTurnActive.put(currentPlayerId, false); // Deactivate the player's turn
-                startNextPlayerTurnWithDelay(20L); // Start the next player's turn with delay
+                startNextPlayerTurnWithDelay(20L, currentPlayer); // Start the next player's turn with delay
                 return; // Skip to the next player
             }
 
@@ -1490,15 +1500,19 @@ private void startDealerTurn() {
     updateLeverDisplayName("Dealer's Turn");
 
     // Reveal the dealer's hidden card with delay
-    revealDealerCardWithDelay(20L);
+    UUID firstPlayerId = playerSeats.keySet().iterator().next();
+    Player firstPlayer = Bukkit.getPlayer(firstPlayerId);
+    if (firstPlayer != null) {
+        revealDealerCardWithDelay(20L, firstPlayer);
 
-    // Dealer must hit until reaching at least 17
-    Bukkit.getScheduler().runTaskLater(plugin, () -> dealDealerCardsUntilSeventeen(4, calculateHandValue(dealerHand), 20L), 40L); // Start dealer's turn after revealing with delay
+        // Dealer must hit until reaching at least 17
+        SchedulerHelper.executeEntityTaskLater(plugin, firstPlayer, () -> dealDealerCardsUntilSeventeen(4, calculateHandValue(dealerHand), 20L), 40L); // Start dealer's turn after revealing with delay
+    }
 }
 
-private void revealDealerCardWithDelay(long delay) {
+private void revealDealerCardWithDelay(long delay, Player player) {
 
-    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+    SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
         ItemStack hiddenCard = inventory.getItem(3);
         if (hiddenCard != null && hiddenCard.getType() == Material.WHITE_STAINED_GLASS_PANE) {
             Card revealedCard = deck.dealCard(); // Reveal the actual card
@@ -1555,12 +1569,20 @@ private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long
         updateDealerHead();
 
         // Schedule the next card if needed
-        Bukkit.getScheduler().runTaskLater(plugin, () -> dealDealerCardsUntilSeventeen(nextSlot + 1, mutableDealerCardSum[0], delay), delay);
+        UUID firstPlayerId = playerSeats.keySet().iterator().next();
+        Player firstPlayer = Bukkit.getPlayer(firstPlayerId);
+        if (firstPlayer != null) {
+            SchedulerHelper.executeEntityTaskLater(plugin, firstPlayer, () -> dealDealerCardsUntilSeventeen(nextSlot + 1, mutableDealerCardSum[0], delay), delay);
+        }
     } else if (mutableDealerCardSum[0] == 17) {
         // Determine whether the dealer stops at 17 based on the percentage chance
         if (Math.random() * 100 < standOn17Chance) {
             // Stop at 17
-            Bukkit.getScheduler().runTaskLater(plugin, this::finishGame, delay);
+            UUID firstPlayerId = playerSeats.keySet().iterator().next();
+            Player firstPlayer = Bukkit.getPlayer(firstPlayerId);
+            if (firstPlayer != null) {
+                SchedulerHelper.executeEntityTaskLater(plugin, firstPlayer, this::finishGame, delay);
+            }
         } else {
             // Continue if the dealer does not stop at 17
             if (deck.hasCards()) {
@@ -1569,26 +1591,42 @@ private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long
                 mutableDealerCardSum[0] = calculateHandValue(dealerHand);
                 updateDealerHead();
                 
-                Bukkit.getScheduler().runTaskLater(plugin, () -> 
-                    dealDealerCardsUntilSeventeen(nextSlot + 1, mutableDealerCardSum[0], delay), delay);
+                UUID firstPlayerId = playerSeats.keySet().iterator().next();
+                Player firstPlayer = Bukkit.getPlayer(firstPlayerId);
+                if (firstPlayer != null) {
+                    SchedulerHelper.executeEntityTaskLater(plugin, firstPlayer, () -> 
+                        dealDealerCardsUntilSeventeen(nextSlot + 1, mutableDealerCardSum[0], delay), delay);
+                }
             }
         }
     } else {
         // Proceed to finish the game after the dealer's turn
-        Bukkit.getScheduler().runTaskLater(plugin, this::finishGame, delay);
+        UUID firstPlayerId = playerSeats.keySet().iterator().next();
+        Player firstPlayer = Bukkit.getPlayer(firstPlayerId);
+        if (firstPlayer != null) {
+            SchedulerHelper.executeEntityTaskLater(plugin, firstPlayer, this::finishGame, delay);
+        }
     }
 }
 
 
 private void scheduleCardDealingWithDelay(int slot, Card card, long delay, UUID playerId) {
-    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        dealCardToPlayer(slot, card, playerId);
-        if (playerId != null) {
-            updatePlayerHead(playerId); // Update player's head lore
-        } else {
-            updateDealerHead(); // Update dealer's head lore
-        }
-    }, delay);
+    Player player = playerId != null ? Bukkit.getPlayer(playerId) : null;
+    if (player == null && !playerSeats.isEmpty()) {
+        UUID firstPlayerId = playerSeats.keySet().iterator().next();
+        player = Bukkit.getPlayer(firstPlayerId);
+    }
+    if (player != null) {
+        Player finalPlayer = player;
+        SchedulerHelper.executeEntityTaskLater(plugin, player, () -> {
+            dealCardToPlayer(slot, card, playerId);
+            if (playerId != null) {
+                updatePlayerHead(playerId); // Update player's head lore
+            } else {
+                updateDealerHead(); // Update dealer's head lore
+            }
+        }, delay);
+    }
 }
 
 
@@ -1817,9 +1855,9 @@ private void resetGame() {
     currentPlayerId = null;
 
     // Cancel any ongoing countdown
-    if (countdownTaskId != -1) {
-        Bukkit.getScheduler().cancelTask(countdownTaskId);
-        countdownTaskId = -1;
+    if (countdownTask != null) {
+        countdownTask.cancel();
+        countdownTask = null;
     }
 
     // Clear the inventory to ensure no leftover items
@@ -1865,24 +1903,28 @@ private int calculateHandValue(List<ItemStack> hand) {
 }
 
 private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId) {
-    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        if (!gameActive || playerSeats.isEmpty()) {
-            return;
-        }
-        for (UUID uuid : playerSeats.keySet()) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null && player.isOnline()) {
-                 if (SoundHelper.getSoundSafely("block.soul_soil.step", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
+    UUID firstPlayerId = playerSeats.keySet().iterator().next();
+    Player firstPlayer = Bukkit.getPlayer(firstPlayerId);
+    if (firstPlayer != null) {
+        SchedulerHelper.executeEntityTaskLater(plugin, firstPlayer, () -> {
+            if (!gameActive || playerSeats.isEmpty()) {
+                return;
             }
-        }
-        
-        dealCardToPlayer(slot, card, playerId);
-        if (playerId != null) {
-            updatePlayerHead(playerId); // Update player's head lore
-        } else {
-            updateDealerHead(); // Update dealer's head lore
-        }
-    }, delay);
+            for (UUID uuid : playerSeats.keySet()) {
+                Player player = Bukkit.getPlayer(uuid);
+                if (player != null && player.isOnline()) {
+                     if (SoundHelper.getSoundSafely("block.soul_soil.step", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
+                }
+            }
+            
+            dealCardToPlayer(slot, card, playerId);
+            if (playerId != null) {
+                updatePlayerHead(playerId); // Update player's head lore
+            } else {
+                updateDealerHead(); // Update dealer's head lore
+            }
+        }, delay);
+    }
 }
 
 private void updatePlayerHead(UUID playerId) {
@@ -2007,26 +2049,30 @@ private int getCardValue(ItemStack cardItem) {
 }
 
 private void scheduleHiddenCardDealing(int slot, int delay) {
-    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        if (!gameActive || playerSeats.isEmpty()) {
-            return;
-        }
-        Material material = Material.WHITE_STAINED_GLASS_PANE; // Hidden card is now white
-        ItemStack hiddenCard = new ItemStack(material, 1);
-        ItemMeta meta = hiddenCard.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName("Hidden Card");
-            hiddenCard.setItemMeta(meta);
-        }
-        
-        for (UUID uuid : playerSeats.keySet()) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null && player.isOnline()) {
-                 if (SoundHelper.getSoundSafely("block.soul_soil.step", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
+    UUID firstPlayerId = playerSeats.keySet().iterator().next();
+    Player firstPlayer = Bukkit.getPlayer(firstPlayerId);
+    if (firstPlayer != null) {
+        SchedulerHelper.executeEntityTaskLater(plugin, firstPlayer, () -> {
+            if (!gameActive || playerSeats.isEmpty()) {
+                return;
             }
-        }
-        inventory.setItem(slot, hiddenCard);
-    }, delay);
+            Material material = Material.WHITE_STAINED_GLASS_PANE; // Hidden card is now white
+            ItemStack hiddenCard = new ItemStack(material, 1);
+            ItemMeta meta = hiddenCard.getItemMeta();
+            if (meta != null) {
+                meta.setDisplayName("Hidden Card");
+                hiddenCard.setItemMeta(meta);
+            }
+            
+            for (UUID uuid : playerSeats.keySet()) {
+                Player player = Bukkit.getPlayer(uuid);
+                if (player != null && player.isOnline()) {
+                     if (SoundHelper.getSoundSafely("block.soul_soil.step", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
+                }
+            }
+            inventory.setItem(slot, hiddenCard);
+        }, delay);
+    }
 }
 
 private void dealCardToPlayer(int slot, Card card, UUID playerId) {
@@ -2097,8 +2143,8 @@ public void delete() {
     lastBetAmounts.clear();
 
     // Remove any scheduled tasks related to this game
-    if (countdownTaskId != -1) {
-        Bukkit.getScheduler().cancelTask(countdownTaskId);
+    if (countdownTask != null) {
+        countdownTask.cancel();
     }
 
     // Unregister events related to this inventory
@@ -2131,9 +2177,9 @@ public void delete() {
         selectedWagers.clear();
     
         // Stop any ongoing scheduled tasks
-        if (countdownTaskId != -1) {
-            Bukkit.getScheduler().cancelTask(countdownTaskId);
-            countdownTaskId = -1;
+        if (countdownTask != null) {
+            countdownTask.cancel();
+            countdownTask = null;
         }
     
         // Clear and reset the inventory
