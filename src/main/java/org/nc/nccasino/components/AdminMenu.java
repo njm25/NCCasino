@@ -684,21 +684,33 @@ public class AdminMenu extends Menu {
         if (raw == null) return CurrencyMode.VANILLA;
         String normalized = raw.trim().toUpperCase();
         if ("VAULT".equals(normalized)) return CurrencyMode.VAULT;
-        if ("CUSTOM".equals(normalized)) return CurrencyMode.CUSTOM;
-        return CurrencyMode.VANILLA; // VANILLA, STANDARD, or any other value
     }
 
     private void handleToggleCurrencyMode(Player player) {
 
         CurrencyMode next;
         switch (this.currencyMode) {
-            case VANILLA: next = CurrencyMode.CUSTOM; break;
-            case CUSTOM:  next = CurrencyMode.VAULT;  break;
-            default:      next = CurrencyMode.VANILLA; break;
+            case VANILLA: next = CurrencyMode.VAULT; break;
+            // case CUSTOM:  next = CurrencyMode.VAULT;  break;
+            case VAULT:   next = CurrencyMode.VANILLA; break;
+            default:     next = CurrencyMode.VANILLA; break;
         }
+
+        // If switching to VAULT, require Vault + economy to be available
+        if (next == CurrencyMode.VAULT && plugin.getVaultHook() != null && !plugin.getVaultHook().isEconomyAvailable()) {
+            Preferences.MessageSetting messPref = plugin.getPreferences(player.getUniqueId()).getMessageSetting();
+            if (messPref != Preferences.MessageSetting.NONE) {
+                if (!plugin.getVaultHook().isVaultPresent()) {
+                    player.sendMessage("§cVault not found. Install Vault to use with NCCasino.");
+                } else {
+                    player.sendMessage("§cNo economy plugin. Install an economy plugin to use Vault.");
+                }
+            }
+            return;
+        }
+
         this.currencyMode = next;
 
-        
         // Update the config
         if (dealer != null) {
             String internalName = Dealer.getInternalName(dealer);
@@ -706,45 +718,57 @@ public class AdminMenu extends Menu {
             plugin.saveConfig();
         }
 
-        // Update the button labels in the admin inventory
         updateCurrencyButtons();
-        
-        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
-        switch(messPref){
-            case VERBOSE:{
-                player.sendMessage("§eSwitched currency mode to: §a" + this.currencyMode.name()+"§e."); 
-                break;}
-            default:{
-                break;}
+
+        Preferences.MessageSetting messPref = plugin.getPreferences(player.getUniqueId()).getMessageSetting();
+        switch (messPref) {
+            case VERBOSE:
+                player.sendMessage("§eSwitched currency mode to: §a" + this.currencyMode.name() + "§e.");
+                break;
+            default:
+                break;
         }
-     
     }
 
     private void updateCurrencyButtons() {
-        String internalName= Dealer.getInternalName(dealer);
+        String internalName = Dealer.getInternalName(dealer);
         Inventory inv = getInventory();
         if (inv == null) return;
-        switch(this.currencyMode){
-            case CurrencyMode.VAULT:
-                addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY), "[Disabled For Vault Mode]");
 
-                addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Select Currency [Disabled For Vault Mode]"),slotMapping.get(SlotOption.EDIT_CURRENCY));
-                addItem(createCustomItem(Material.CHEST,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-            break;
-            case CurrencyMode.VANILLA:
-                addItemAndLore(plugin.getCurrency(internalName), 1, "Select Currency",  slotMapping.get(SlotOption.EDIT_CURRENCY),"Current: §a"+plugin.getCurrencyName(internalName), "Drag or shift-click item here to change");
-                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-                addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-            break;
-            case CurrencyMode.CUSTOM:
-                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Custom Currency",1),slotMapping.get(SlotOption.EDIT_CURRENCY));
-                addItem(createEnchantedItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-                addItem(createCustomItem(Material.ENDER_CHEST,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+        boolean vaultAvailable = plugin.getVaultHook() != null && plugin.getVaultHook().isEconomyAvailable();
+
+        switch (this.currencyMode) {
+            case CurrencyMode.VAULT:
+                addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, "Select Currency", slotMapping.get(SlotOption.EDIT_CURRENCY), "[Disabled For Vault Mode]");
+                addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Select Currency [Disabled For Vault Mode]"), slotMapping.get(SlotOption.EDIT_CURRENCY));
+                if (vaultAvailable) {
+                    addItem(createCustomItem(Material.CHEST, "Toggle Currency Mode: " + currencyMode.name()), slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                } else {
+                    // Vault or economy missing: show disabled state, standard mode used until available
+                    String title = (plugin.getVaultHook() != null && plugin.getVaultHook().isVaultPresent())
+                        ? "§cVault (no economy)"
+                        : "§cVault (not found)";
+                    String subtitle = (plugin.getVaultHook() != null && plugin.getVaultHook().isVaultPresent())
+                        ? "§7Install an economy plugin to use Vault"
+                        : "§7Install Vault to use with NCCasino";
+                    addItemAndLore(Material.BARRIER, 1, title, slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE), subtitle, "§8Standard mode used until available.");
+                }
                 break;
+            case CurrencyMode.VANILLA:
+                addItemAndLore(plugin.getCurrency(internalName), 1, "Select Currency", slotMapping.get(SlotOption.EDIT_CURRENCY), "Current: §a" + plugin.getCurrencyName(internalName), "Drag or shift-click item here to change");
+                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
+                addItem(createCustomItem(Material.GRASS_BLOCK, "Toggle Currency Mode: " + currencyMode.name()), slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                break;
+            // CUSTOM commented out for this release (cycle is VANILLA <-> VAULT only)
+            // case CurrencyMode.CUSTOM:
+            //     addItem(createCustomItem(plugin.getCurrency(internalName), "Select Custom Currency",1),slotMapping.get(SlotOption.EDIT_CURRENCY));
+            //     addItem(createEnchantedItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+            //     addItem(createCustomItem(Material.ENDER_CHEST,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+            //     break;
             default:
-            addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-            addItem(createCustomItem(Material.GRASS_BLOCK,"Toggle Currency Mode: " + currencyMode.name()),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
-            break;
+                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
+                addItem(createCustomItem(Material.GRASS_BLOCK, "Toggle Currency Mode: " + currencyMode.name()), slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                break;
         }
             // Chip Sizes
             for (int i = 1; i <= 5; i++) {
@@ -1008,8 +1032,13 @@ public class AdminMenu extends Menu {
             } 
             return;
         }
-    
-        ItemStack cursorItem = event.getCursor(); // Item being dragged
+
+        // VANILLA mode: remind how to set currency when clicking with empty cursor
+        ItemStack cursorItem = event.getCursor();
+        if ((cursorItem == null || cursorItem.getType() == Material.AIR) && (messPref == Preferences.MessageSetting.STANDARD || messPref == Preferences.MessageSetting.VERBOSE)) {
+            player.sendMessage("§eDrag vanilla item here to set as currency.");
+        }
+
         handleDrag(cursorItem, player, event);
     }
 

@@ -24,6 +24,13 @@ public final class DealerCurrencySettings {
 			return CurrencyMode.STANDARD;
 		}
 
+		// Config may say VAULT but Vault+economy not present: treat as STANDARD (config unchanged for when Vault is added later).
+		if (normalized.equals("VAULT")) {
+			if (plugin.getVaultHook() == null || !plugin.getVaultHook().isEconomyAvailable()) {
+				return CurrencyMode.STANDARD;
+			}
+		}
+
 		try {
 			return CurrencyMode.valueOf(normalized);
 		} catch (IllegalArgumentException ignored) {
