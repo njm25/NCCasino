@@ -256,7 +256,7 @@ public class CoinFlipClient extends Client {
                     , "§oAccept bet"
                     , slotMapping.get(SlotOption.HANDLE_SUBMIT_BET)
                     , "§oClick to accept bet"
-                    , "§oCurrent: §o§a" + betAmount + " " + getCurrencyMaterial().toString().charAt(0) + getCurrencyMaterial().toString().substring(1).toLowerCase() + (betAmount > 1 ? "s" : "")
+                    , "§oCurrent: §o§a" + plugin.formatWagerDisplay(currencyMode, currencyName, betAmount)
                 );
             }
           
@@ -343,7 +343,7 @@ public class CoinFlipClient extends Client {
             , 1, "§oAccept bet"
             , slotMapping.get(SlotOption.HANDLE_SUBMIT_BET)
             , "§oClick to accept bet"
-            , "§oCurrent: §o§a" + betAmount + " " + getCurrencyMaterial().toString().charAt(0) + getCurrencyMaterial().toString().substring(1).toLowerCase() + (betAmount > 1 ? "s" : "")
+            , "§oCurrent: §o§a" + plugin.formatWagerDisplay(currencyMode, currencyName, betAmount)
             );
         }
         if (SoundHelper.getSoundSafely("block.enchantment_table.use", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f); 
@@ -405,7 +405,19 @@ public class CoinFlipClient extends Client {
             return false;
         }
         
-        removeCurrencyFromInventory(player, (int)wagerAmount);
+        int units = org.nc.nccasino.currency.MoneyHelper.toWagerUnits(wagerAmount);
+        boolean removed = units > 0 && tryRemoveCurrencyFromInventory(player, units);
+		if (!removed) {
+			switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+				case STANDARD:
+				case VERBOSE:
+					player.sendMessage("§cNot enough currency to place bet.");
+					break;
+				case NONE:
+					break;
+			}
+			return false;
+		}
         if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
         betStack.push(wagerAmount);
         return true;
@@ -577,7 +589,7 @@ public class CoinFlipClient extends Client {
     }
 
     private void updatePotChest(){
-        addItemAndLore(Material.CHEST, 1, "§oPot", 40, "§oCurrent: §o§a" + betAmount + " " + getCurrencyMaterial().toString().charAt(0) + getCurrencyMaterial().toString().substring(1).toLowerCase() + (betAmount > 1 ? "s" : ""));
+        addItemAndLore(Material.CHEST, 1, "§oPot", 40, "§oCurrent: §o§a" + plugin.formatWagerDisplay(currencyMode, currencyName, betAmount));
     }
 
     private int flipTask = -1;

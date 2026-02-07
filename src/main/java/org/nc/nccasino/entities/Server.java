@@ -16,6 +16,10 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.inventory.ItemStack;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.CurrencyMode;
+import org.nc.nccasino.currency.CurrencyProvider;
+import org.nc.nccasino.currency.MoneyHelper;
+import org.nc.nccasino.currency.VaultCurrencyProvider;
 import org.nc.nccasino.helpers.SoundHelper;
 
 public abstract class Server extends DealerInventory {
@@ -29,6 +33,9 @@ public abstract class Server extends DealerInventory {
     protected SessionState serverState = SessionState.LOBBY;
 
     protected String internalName;
+    /** Resolved once at init for formatWagerDisplay. */
+    protected final CurrencyMode currencyMode;
+    protected final String currencyName;
 
     protected final Map<UUID, SessionState> clientStates = new HashMap<>();
 
@@ -40,6 +47,8 @@ public abstract class Server extends DealerInventory {
         super(dealerId, 9, "");
         this.plugin = plugin;
         this.internalName = internalName;
+        this.currencyMode = plugin.getCurrencyMode(internalName);
+        this.currencyName = plugin.getCurrencyName(internalName);
         registerListener();
     }
 
@@ -203,24 +212,21 @@ public abstract class Server extends DealerInventory {
     }
         
     public void sendPayoutMessage(Player player, double payout, boolean isWinner, double profit) {
-        String currencyName = plugin.getCurrencyName(internalName).toLowerCase();
-        boolean isSingle = Math.abs(payout) == 1;
-    
-        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-            case STANDARD:
-                player.sendMessage(isWinner
-                        ? "§a§lPaid " + (int) payout + " " + currencyName + (isSingle ? "" : "s")
-                        : "§c§lYou lose!");
-                break;
-            case VERBOSE:
-                player.sendMessage(isWinner
-                        ? "§a§lPaid " + (int) payout + " " + currencyName + (isSingle ? "" : "s") +
-                          "\n §r§a§o(profit of " + (int) profit + ")"
-                        : "§c§lYou lose!");
-                break;
-            case NONE:
-                break;
-        }
+		switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+			case STANDARD:
+				player.sendMessage(isWinner
+						? "§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, payout)
+						: "§c§lYou lose!");
+				break;
+			case VERBOSE:
+				player.sendMessage(isWinner
+						? "§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, payout) +
+						  "\n §r§a§o(profit of " + plugin.formatWagerDisplay(currencyMode, currencyName, profit) + ")"
+						: "§c§lYou lose!");
+				break;
+			case NONE:
+				break;
+		}
     }
     
     public void applyWinEffects(Player player) {
@@ -252,51 +258,103 @@ public abstract class Server extends DealerInventory {
 
     
     protected void creditPlayer(Player player, double amount) {
-        Material currencyMaterial = plugin.getCurrency(internalName);
-        if (currencyMaterial == null) {
-            player.sendMessage("Error: Currency material is not set. Unable to credit winnings.");
-            return;
-        }
+		Material currencyMaterial = plugin.getCurrency(internalName);
+		if (currencyMaterial == null) {
+			player.sendMessage("Error: Currency material is not set. Unable to credit winnings.");
+			return;
+		}
 
-        int fullStacks = (int) amount / 64;
-        int remainder = (int) amount % 64;
-        int totalLeftoverAmount = 0;
-        HashMap<Integer, ItemStack> leftover;
+		CurrencyProvider provider = getCurrencyProvider();
+		if (provider != null && provider.getMode() == CurrencyMode.VAULT) {
+			if (provider instanceof VaultCurrencyProvider vaultProvider) {
+				java.math.BigDecimal payout = MoneyHelper.clampNonNegative(MoneyHelper.bd(amount));
+				if (payout.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+					return;
+				}
+				vaultProvider.deposit(player, internalName, payout);
+				return;
+			}
+		}
 
-        // Try adding full stacks
-        for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = new ItemStack(currencyMaterial, 64);
-            leftover = player.getInventory().addItem(stack);
-            if (!leftover.isEmpty()) {
-                totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-            }
-        }
+		int toGive = (int) amount;
+		if (toGive <= 0) {
+			return;
+		}
 
-        // Try adding remainder
-        if (remainder > 0) {
-            ItemStack remainderStack = new ItemStack(currencyMaterial, remainder);
-            leftover = player.getInventory().addItem(remainderStack);
-            if (!leftover.isEmpty()) {
-                totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-            }
-        }
+		if (provider != null) {
+			// STANDARD: keep existing behavior (provider-backed with leftover drop).
+			if (provider.getMode() == CurrencyMode.STANDARD) {
+				int before = provider.getBalance(player, internalName);
+				provider.deposit(player, internalName, toGive);
+				int after = provider.getBalance(player, internalName);
 
-        if (totalLeftoverAmount > 0) {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
+				int actuallyAdded = Math.max(0, after - before);
+				int leftoverAmount = toGive - actuallyAdded;
 
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
-                    break;     
-                }
-                    case NONE:{
-                    break;
-                }
-            } 
-            dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
-        }
+				if (leftoverAmount > 0) {
+					switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+						case STANDARD:{
+							player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount) + ", dropping...");
+
+							break;}
+						case VERBOSE:{
+							player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount) + ", dropping...");
+							break;     
+						}
+							case NONE:{
+							break;
+						}
+					} 
+					dropExcessItems(player, leftoverAmount, currencyMaterial);
+				}
+				return;
+			}
+
+			// CUSTOM (or any non-STANDARD except VAULT): rely solely on the provider, no item fallback.
+			provider.deposit(player, internalName, toGive);
+			return;
+		}
+
+		// No provider available: legacy item behavior.
+		int fullStacks = toGive / 64;
+		int remainder = toGive % 64;
+		int totalLeftoverAmount = 0;
+		HashMap<Integer, ItemStack> leftover;
+
+		// Try adding full stacks
+		for (int i = 0; i < fullStacks; i++) {
+			ItemStack stack = new ItemStack(currencyMaterial, 64);
+			leftover = player.getInventory().addItem(stack);
+			if (!leftover.isEmpty()) {
+				totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
+			}
+		}
+
+		// Try adding remainder
+		if (remainder > 0) {
+			ItemStack remainderStack = new ItemStack(currencyMaterial, remainder);
+			leftover = player.getInventory().addItem(remainderStack);
+			if (!leftover.isEmpty()) {
+				totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
+			}
+		}
+
+		if (totalLeftoverAmount > 0) {
+			switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+				case STANDARD:{
+					player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
+
+					break;}
+				case VERBOSE:{
+					player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
+					break;     
+				}
+					case NONE:{
+					break;
+				}
+			} 
+			dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
+		}
     }
 
     protected void dropExcessItems(Player player, int amount, Material currencyMaterial) {
@@ -306,4 +364,13 @@ public abstract class Server extends DealerInventory {
             amount -= dropAmount;
         }
     }
+
+	// Thin wrapper around the CurrencyManager to obtain the provider for this server.
+	private CurrencyProvider getCurrencyProvider() {
+		if (plugin.getCurrencyManager() == null) {
+			return null;
+		}
+
+		return plugin.getCurrencyManager().getProvider(internalName);
+	}
 }

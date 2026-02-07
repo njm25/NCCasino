@@ -55,6 +55,10 @@ import org.nc.nccasino.listeners.DealerInitializeListener;
 import org.nc.nccasino.listeners.DealerInteractListener;
 import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
+import org.nc.nccasino.economy.VaultHook;
+import org.nc.nccasino.currency.CurrencyManager;
+import org.nc.nccasino.currency.CurrencyMode;
+import org.nc.nccasino.currency.DealerCurrencySettings;
 import org.bukkit.Chunk;
 import org.bukkit.entity.EntityType;
 
@@ -67,6 +71,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     private Material currency;    // Material used for betting currency
     private String currencyName;  // Display name for the currency
+    private VaultHook vaultHook;
+    private CurrencyManager currencyManager;
 
     /**
      * This local map was used in your code. If you still need it,
@@ -88,6 +94,13 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
         // Load currency from config
         loadCurrencyFromConfig();
+
+        // Initialize Vault hook
+        vaultHook = new VaultHook(this);
+        vaultHook.hookAndLog();
+
+        // Phase 0 currency scaffolding (unused by gameplay until wired into games)
+        currencyManager = new CurrencyManager(this);
 
         // Register event listeners
         getServer().getPluginManager().registerEvents(new DealerInteractListener(this), this);
@@ -368,6 +381,14 @@ public final class Nccasino extends JavaPlugin implements Listener {
         return currencyName;
     }
 
+    public VaultHook getVaultHook() {
+        return vaultHook;
+    }
+
+    public CurrencyManager getCurrencyManager() {
+        return currencyManager;
+    }
+
     private void reinitializeDealers() {
         Bukkit.getWorlds().forEach(world -> {
             for (Entity entity : world.getEntities()) {
@@ -518,6 +539,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
             getConfig().set(path + ".animation-message", "NCCASINO");
             getConfig().set(path + ".currency.material", "EMERALD");
             getConfig().set(path + ".currency.name", "Emerald");
+            getConfig().set(path + ".currency.mode", "STANDARD");
             getConfig().set(path + ".chip-sizes.size1", 1);
             getConfig().set(path + ".chip-sizes.size2", 5);
             getConfig().set(path + ".chip-sizes.size3", 10);
@@ -543,6 +565,47 @@ public final class Nccasino extends JavaPlugin implements Listener {
     public String getChipName(String internalName, int index) {
         double value = getChipValue(internalName, index);
         return (int) value + " " + getCurrencyName(internalName);
+    }
+
+    /** Resolve once per game: returns this dealer's currency mode (no cache). */
+    public CurrencyMode getCurrencyMode(String internalName) {
+        if (internalName == null || internalName.isBlank()) return CurrencyMode.STANDARD;
+        return DealerCurrencySettings.getMode(this, internalName);
+    }
+
+    /** True only when this dealer's config explicitly has currency.mode = VAULT (display "5$"). Vanilla/STANDARD/missing → false. */
+    public boolean isVaultCurrency(String internalName) {
+        return getCurrencyMode(internalName) == CurrencyMode.VAULT;
+    }
+
+    /** Format wager amount for UI: VAULT → "$5", else → "5 emeralds" (lowercase, plural). Use this overload with cached mode/name to avoid config read per call. */
+    public String formatWagerDisplay(CurrencyMode mode, String currencyName, double amount) {
+        int n = (int) amount;
+        if (mode == CurrencyMode.VAULT) {
+            return "$" + n;
+        }
+        String name = currencyName != null ? currencyName.toLowerCase() : "emerald";
+        return n + " " + name + (n != 1 ? "s" : "");
+    }
+
+    /** Format wager amount (reads config for mode/name). Prefer formatWagerDisplay(mode, currencyName, amount) with cached values. */
+    public String formatWagerDisplay(String internalName, double amount) {
+        return formatWagerDisplay(getCurrencyMode(internalName), getCurrencyName(internalName), amount);
+    }
+
+    /** Chip button display name: VAULT → "$5", else → "5 Emeralds". Use with cached mode/name to avoid config read per call. */
+    public String getChipDisplayName(CurrencyMode mode, String currencyName, double value) {
+        int n = (int) value;
+        if (mode == CurrencyMode.VAULT) {
+            return "$" + n;
+        }
+        String name = currencyName != null ? currencyName : "Emerald";
+        return n + " " + name + (n != 1 ? "s" : "");
+    }
+
+    /** Chip button display name (reads config). Prefer getChipDisplayName(mode, currencyName, value) with cached values. */
+    public String getChipDisplayName(String internalName, int index) {
+        return getChipDisplayName(getCurrencyMode(internalName), getCurrencyName(internalName), getChipValue(internalName, index));
     }
 
     public int getTimer(String internalName) {

@@ -13,6 +13,10 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.CurrencyMode;
+import org.nc.nccasino.currency.CurrencyProvider;
+import org.nc.nccasino.currency.MoneyHelper;
+import org.nc.nccasino.currency.VaultCurrencyProvider;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Rank;
@@ -27,6 +31,9 @@ public abstract class Client extends DealerInventory {
     protected final Player player;
     protected final Nccasino plugin;
     public final String internalName;
+    /** Resolved once at init; use for formatWagerDisplay / getChipDisplayName to avoid config read per call. */
+    protected final CurrencyMode currencyMode;
+    protected final String currencyName;
 
     protected final Deque<Double> betStack = new ArrayDeque<>();
     public boolean rebetEnabled = false;
@@ -46,6 +53,8 @@ public abstract class Client extends DealerInventory {
         this.player = player;
         this.plugin = plugin;
         this.internalName = internalName;
+        this.currencyMode = plugin.getCurrencyMode(internalName);
+        this.currencyName = plugin.getCurrencyName(internalName);
 
         // Load chip values from config so we can replicate Mines logic
         loadChipValuesFromConfig();
@@ -71,8 +80,8 @@ public abstract class Client extends DealerInventory {
     private void loadChipValuesFromConfig() {
         Map<String, Double> temp = new HashMap<>();
         for (int i = 1; i <= 5; i++) {
-            String chipName = plugin.getChipName(internalName, i);
             double chipValue = plugin.getChipValue(internalName, i);
+            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
             if (chipValue > 0) {
                 temp.put(chipName, chipValue);
             }
@@ -237,11 +246,15 @@ public abstract class Client extends DealerInventory {
     protected void handleBetPlacement() {
         // Check if user is holding the currency item
         ItemStack heldItem = player.getItemOnCursor();
-        Material currencyMat = getCurrencyMaterial();
         double wagerAmount = 0;
         boolean usedHeldItem = false;
 
-        if (heldItem != null && heldItem.getType() == currencyMat) {
+        boolean isCurrencyItem = false;
+		if (heldItem != null) {
+			isCurrencyItem = isCurrencyItem(heldItem);
+		}
+
+        if (isCurrencyItem && heldItem != null) {
             wagerAmount = heldItem.getAmount();
             usedHeldItem = true;
         } else {
@@ -288,18 +301,26 @@ public abstract class Client extends DealerInventory {
         if (usedHeldItem) {
             player.setItemOnCursor(null);
         } else {
-            removeCurrencyFromInventory(player, (int)wagerAmount);
+            int units = MoneyHelper.toWagerUnits(wagerAmount);
+            boolean removed = units > 0 && tryRemoveCurrencyFromInventory(player, units);
+			if (!removed) {
+				switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+					case STANDARD:
+					case VERBOSE:
+						player.sendMessage("§cNot enough currency to place bet.");
+						break;
+					case NONE:
+						break;
+				}
+				return;
+			}
         }
         if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
         betStack.push(wagerAmount);
     }
 
     protected void placeAllInBet() {
-        Material cMat = getCurrencyMaterial();
-        int count = Arrays.stream(player.getInventory().getContents())
-            .filter(Objects::nonNull)
-            .filter(it -> it.getType() == cMat)
-            .mapToInt(ItemStack::getAmount).sum();
+        int count = getTotalCurrency(player);
 
         if (count <= 0) {
             // Possibly message "No currency"
@@ -307,7 +328,10 @@ public abstract class Client extends DealerInventory {
         }
 
         // Remove them from inventory
-        removeCurrencyFromInventory(player, count);
+        boolean removed = tryRemoveCurrencyFromInventory(player, count);
+		if (!removed) {
+			return;
+		}
 
         // push onto bet stack
         betStack.push((double) count);
@@ -412,63 +436,133 @@ public abstract class Client extends DealerInventory {
 
 
     protected boolean hasEnoughWager(Player player, double amount) {
-        int requiredAmount = (int) Math.ceil(amount);
+        int requiredAmount = MoneyHelper.toWagerUnits(amount);
+
+        if (requiredAmount <= 0) {
+            return false;
+        }
+
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            return provider.has(player, internalName, requiredAmount);
+        }
+
         return player.getInventory().containsAtLeast(new ItemStack(plugin.getCurrency(internalName)), requiredAmount);
     }
 
     
     protected void removeWagerFromInventory(Player player, double amount) {
-        int requiredAmount = (int) Math.ceil(amount);
-        player.getInventory().removeItem(new ItemStack(plugin.getCurrency(internalName), requiredAmount));
+        tryRemoveWagerFromInventory(player, amount);
+    }
+
+    protected boolean tryRemoveWagerFromInventory(Player player, double amount) {
+        int requiredAmount = MoneyHelper.toWagerUnits(amount);
+		if (requiredAmount <= 0) {
+			return false;
+		}
+
+        return tryRemoveCurrencyFromInventory(player, requiredAmount);
     }
 
     
-    protected void creditPlayer(Player player, double amount) {
-        Material currencyMaterial = plugin.getCurrency(internalName);
-        if (currencyMaterial == null) {
-            player.sendMessage("Error: Currency material is not set. Unable to credit winnings.");
-            return;
-        }
-    
-        int fullStacks = (int) amount / 64;
-        int remainder = (int) amount % 64;
-        int totalLeftoverAmount = 0;
-        HashMap<Integer, ItemStack> leftover;
-    
-        // Try adding full stacks
-        for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = new ItemStack(currencyMaterial, 64);
-            leftover = player.getInventory().addItem(stack);
-            if (!leftover.isEmpty()) {
-                totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-            }
-        }
-    
-        // Try adding remainder
-        if (remainder > 0) {
-            ItemStack remainderStack = new ItemStack(currencyMaterial, remainder);
-            leftover = player.getInventory().addItem(remainderStack);
-            if (!leftover.isEmpty()) {
-                totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-            }
-        }
-    
-        if (totalLeftoverAmount > 0) {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
-    
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§cNo room for " + totalLeftoverAmount + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalLeftoverAmount) == 1 ? "" : "s") + ", dropping...");
-                    break;     
-                }
-                    case NONE:{
-                    break;
-                }
-            } 
-            dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
-        }
+	protected void creditPlayer(Player player, double amount) {
+		Material currencyMaterial = plugin.getCurrency(internalName);
+		if (currencyMaterial == null) {
+			player.sendMessage("Error: Currency material is not set. Unable to credit winnings.");
+			return;
+		}
+
+		CurrencyProvider provider = getCurrencyProvider();
+		if (provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT) {
+			if (provider instanceof VaultCurrencyProvider vaultProvider) {
+				java.math.BigDecimal payout = MoneyHelper.clampNonNegative(MoneyHelper.bd(amount));
+				if (payout.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+					return;
+				}
+				vaultProvider.deposit(player, internalName, payout);
+				return;
+			}
+		}
+
+		int toGive = (int) amount;
+		if (toGive <= 0) {
+			return;
+		}
+
+		if (provider != null) {
+			// STANDARD: keep existing "add then drop leftovers" behavior via provider.
+			if (provider.getMode() == org.nc.nccasino.currency.CurrencyMode.STANDARD) {
+				int before = provider.getBalance(player, internalName);
+				provider.deposit(player, internalName, toGive);
+				int after = provider.getBalance(player, internalName);
+
+				int actuallyAdded = Math.max(0, after - before);
+				int leftoverAmount = toGive - actuallyAdded;
+
+				if (leftoverAmount > 0) {
+					switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+						case STANDARD:{
+							player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount) + ", dropping...");
+
+							break;}
+						case VERBOSE:{
+							player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount) + ", dropping...");
+							break;     
+						}
+							case NONE:{
+							break;
+						}
+					} 
+					dropExcessItems(player, leftoverAmount, currencyMaterial);
+				}
+				return;
+			}
+
+			// CUSTOM (or any non-STANDARD except VAULT): rely solely on the provider.
+			provider.deposit(player, internalName, toGive);
+			return;
+		}
+
+		// No provider: legacy material-only behavior.
+		int fullStacks = toGive / 64;
+		int remainder = toGive % 64;
+		int totalLeftoverAmount = 0;
+		HashMap<Integer, ItemStack> leftover;
+	
+		// Try adding full stacks
+		for (int i = 0; i < fullStacks; i++) {
+			ItemStack stack = new ItemStack(currencyMaterial, 64);
+			leftover = player.getInventory().addItem(stack);
+			if (!leftover.isEmpty()) {
+				totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
+			}
+		}
+	
+		// Try adding remainder
+		if (remainder > 0) {
+			ItemStack remainderStack = new ItemStack(currencyMaterial, remainder);
+			leftover = player.getInventory().addItem(remainderStack);
+			if (!leftover.isEmpty()) {
+				totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
+			}
+		}
+	
+		if (totalLeftoverAmount > 0) {
+			switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+				case STANDARD:{
+					player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
+	
+					break;}
+				case VERBOSE:{
+					player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
+					break;     
+				}
+					case NONE:{
+					break;
+				}
+			} 
+			dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
+		}
     }
     
     private void dropExcessItems(Player player, int amount, Material currencyMaterial) {
@@ -521,7 +615,7 @@ public abstract class Client extends DealerInventory {
                 if (s == slot) {
                     inventory.setItem(s, createEnchantedItem(
                         s == 52 ? Material.SNIFFER_EGG : getCurrencyMaterial(),
-                        isAllIn ? "All In (" + (int) selectedWager + ")" : chipName,
+                        isAllIn ? "All In (" + plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager) + ")" : chipName,
                         s == 52 ? 1 : (int) chipValue
                     ));
                 } else {
@@ -544,7 +638,7 @@ public abstract class Client extends DealerInventory {
             if (meta != null) {
                 if (totalBet > 0) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Wager: " + (int)totalBet + " " + plugin.getCurrencyName(internalName).toLowerCase());
+                    lore.add("Wager: " + plugin.formatWagerDisplay(currencyMode, currencyName, totalBet));
                     meta.setLore(lore);
                 } else {
                     meta.setLore(Collections.emptyList());
@@ -560,6 +654,11 @@ public abstract class Client extends DealerInventory {
     }
 
     protected int getTotalCurrency(Player player) {
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            return provider.getBalance(player, internalName);
+        }
+
         return Arrays.stream(player.getInventory().getContents())
             .filter(Objects::nonNull)
             .filter(it -> it.getType() == getCurrencyMaterial())
@@ -568,17 +667,113 @@ public abstract class Client extends DealerInventory {
     }
 
     protected void removeCurrencyFromInventory(Player player, int amount) {
-        if (amount <= 0) return;
+        tryRemoveCurrencyFromInventory(player, amount);
+    }
+
+    protected boolean tryRemoveCurrencyFromInventory(Player player, int amount) {
+        if (amount <= 0) return false;
+
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+			int withdrawn = provider.withdraw(player, internalName, amount);
+			return withdrawn >= amount;
+        }
+
         player.getInventory().removeItem(new ItemStack(getCurrencyMaterial(), amount));
+        return true;
     }
 
     public void refundCurrency(Player player, int amount) {
         if (amount <= 0) return;
-        player.getInventory().addItem(new ItemStack(getCurrencyMaterial(), amount));
+
+        CurrencyProvider provider = getCurrencyProvider();
+        ItemStack stack = null;
+
+        if (provider != null) {
+			// Non-item currencies (VAULT/CUSTOM): refunds are balance credits, not ItemStacks.
+			if (provider.getMode() != org.nc.nccasino.currency.CurrencyMode.STANDARD) {
+				provider.deposit(player, internalName, amount);
+				return;
+			}
+
+            stack = provider.createCurrencyStack(internalName, amount);
+
+            if (stack == null || stack.getType() == Material.AIR) {
+                // STANDARD: preserve legacy fallback to material.
+                if (provider.getMode() == org.nc.nccasino.currency.CurrencyMode.STANDARD) {
+                    stack = new ItemStack(getCurrencyMaterial(), amount);
+                } else {
+                    // VAULT/CUSTOM: no legacy item fallback; treat as unimplemented.
+                    return;
+                }
+            }
+        } else {
+            // No provider: legacy material-only behavior.
+            stack = new ItemStack(getCurrencyMaterial(), amount);
+        }
+
+        player.getInventory().addItem(stack);
     }
 
     protected Material getCurrencyMaterial(){
         return plugin.getCurrency(internalName);
+    }
+
+    /**
+     * Thin wrapper around the CurrencyManager to obtain the provider for this client.
+     * Call sites are responsible for handling null or stub behavior.
+     */
+    private CurrencyProvider getCurrencyProvider() {
+        if (plugin.getCurrencyManager() == null) {
+            return null;
+        }
+
+        return plugin.getCurrencyManager().getProvider(internalName);
+    }
+
+    /**
+     * Determines whether the given stack represents this dealer's currency item,
+     * using the configured CurrencyProvider where available and falling back to
+     * material-only checks for legacy behavior.
+     */
+    protected boolean isCurrencyItem(ItemStack stack) {
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            return provider.isCurrencyItem(stack, internalName);
+        }
+        return stack != null && stack.getType() == getCurrencyMaterial();
+    }
+
+    /**
+     * Creates a stack of this dealer's currency using the CurrencyProvider where
+     * available, falling back to a plain material-based ItemStack for legacy
+     * behavior.
+     */
+    protected ItemStack createCurrencyStack(int amount) {
+        if (amount <= 0) {
+            return new ItemStack(Material.AIR);
+        }
+
+        CurrencyProvider provider = getCurrencyProvider();
+        ItemStack stack = null;
+        if (provider != null) {
+            stack = provider.createCurrencyStack(internalName, amount);
+
+            if (stack == null || stack.getType() == Material.AIR) {
+                // STANDARD: preserve material fallback.
+                if (provider.getMode() == org.nc.nccasino.currency.CurrencyMode.STANDARD) {
+                    stack = new ItemStack(getCurrencyMaterial(), amount);
+                } else {
+                    // VAULT/CUSTOM: no legacy item fallback.
+                    return new ItemStack(Material.AIR);
+                }
+            }
+
+            return stack;
+        }
+
+        // No provider: legacy behavior.
+        return new ItemStack(getCurrencyMaterial(), amount);
     }
 
     protected void registerListener() {

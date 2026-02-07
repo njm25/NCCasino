@@ -30,6 +30,10 @@ import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.CurrencyMode;
+import org.nc.nccasino.currency.CurrencyProvider;
+import org.nc.nccasino.currency.MoneyHelper;
+import org.nc.nccasino.currency.VaultCurrencyProvider;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.AttributeHelper;
 import org.nc.nccasino.objects.Card;
@@ -42,6 +46,8 @@ public class BlackjackInventory extends DealerInventory {
     private final Nccasino plugin; // Reference to the main plugin
     private final Map<String, Double> chipValues; // Track chip values
     private final String internalName; // Internal name for config lookup
+    private final CurrencyMode currencyMode;
+    private final String currencyName;
     private final Map<UUID, Integer> playerSeats; // Track player seats
     private final Map<UUID, Map<Integer, Double>> playerBets; // Track player bets by slot number
     private final Map<UUID, List<Double>> lastBetAmounts; // Track the last bet amounts placed by the player
@@ -65,6 +71,8 @@ public class BlackjackInventory extends DealerInventory {
         this.plugin = plugin; // Store the plugin reference
         this.chipValues = new HashMap<>(); // Initialize chip values storage
         this.internalName = internalName; // Store the internal name
+        this.currencyMode = plugin.getCurrencyMode(internalName);
+        this.currencyName = plugin.getCurrencyName(internalName);
         this.gameActive = false; // Initialize game active flag
         this.playerSeats = new HashMap<>(); // Initialize player seats storage
         this.playerBets = new HashMap<>(); // Initialize player bets storage
@@ -172,12 +180,33 @@ private void registerListener() {
     // Load chip values from the plugin config
     private void loadChipValuesFromConfig() {
         for (int i = 1; i <= 5; i++) {
-            String chipName = plugin.getChipName(internalName, i);
             double chipValue = plugin.getChipValue(internalName, i);
+            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
             if (chipValue > 0) { // Ensure chip value is positive
                 this.chipValues.put(chipName, chipValue);
             }
         }
+    }
+
+    // CurrencyProvider helper for this dealer/game
+    private CurrencyProvider getCurrencyProvider() {
+        if (plugin.getCurrencyManager() == null) {
+            return null;
+        }
+        return plugin.getCurrencyManager().getProvider(internalName);
+    }
+
+    // Helper to determine if a stack represents this dealer's currency
+    private boolean isCurrencyItem(ItemStack stack) {
+        if (stack == null) return false;
+
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            return provider.isCurrencyItem(stack, internalName);
+        }
+
+        Material mat = plugin.getCurrency(internalName);
+        return mat != null && stack.getType() == mat;
     }
 
     // Initialize Blackjack-specific game menu
@@ -454,7 +483,7 @@ private void handleAllIn(Player player) {
                 player.sendMessage("§cInvalid action.");
                 break;}
             case VERBOSE:{
-                player.sendMessage("§cNo " + plugin.getCurrencyName(internalName).toLowerCase()+"s"+ "\n");
+                player.sendMessage(currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT ? "§cNo funds.\n" : "§cNo " + plugin.getCurrencyName(internalName).toLowerCase() + "s\n");
                 break;}
             case NONE:{
                 break;
@@ -485,7 +514,7 @@ private void handleAllIn(Player player) {
         case STANDARD:{
             break;}
         case VERBOSE:{
-            player.sendMessage("§aAll in with " + (int)newTotal + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(newTotal) == 1 ? "" : "s") + "\n");
+            player.sendMessage("§aAll in with " + plugin.formatWagerDisplay(currencyMode, currencyName, newTotal) + "\n");
                         break;}
         case NONE:{
             break;
@@ -500,8 +529,16 @@ private void handleAllIn(Player player) {
 }
 
 private double getPlayerTotalBalance(Player player) {
+    CurrencyProvider provider = getCurrencyProvider();
+    if (provider != null) {
+        return provider.getBalance(player, internalName);
+    }
+
     int totalAmount = 0;
     Material currencyMaterial = plugin.getCurrency(internalName);
+    if (currencyMaterial == null) {
+        return 0;
+    }
 
     for (ItemStack item : player.getInventory().getContents()) {
         if (item != null && item.getType() == currencyMaterial) {
@@ -923,7 +960,7 @@ private void removePlayerData(UUID playerId) {
             case STANDARD:{
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aWager: " + selectedWager + " " + plugin.getCurrencyName(internalName));                     
+                player.sendMessage("§aWager: " + plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager));                     
                 break;     
             }
                 case NONE:{
@@ -946,7 +983,6 @@ private void removePlayerData(UUID playerId) {
     private void handleBetClick(int slot, Player player, InventoryClickEvent event) {
         UUID playerId = player.getUniqueId();
         double selectedWager = getSelectedWager(playerId);
-        Material currencyType = plugin.getCurrency(internalName);
         
         // Ensure the player is sitting before placing a bet
         if (!playerSeats.containsKey(playerId)) {
@@ -987,7 +1023,8 @@ private void removePlayerData(UUID playerId) {
     
         // Check if the player is holding the currency item
         ItemStack heldItem = event.getCursor();
-        if (heldItem != null && heldItem.getType() == currencyType) {
+        boolean isCurrencyItem = isCurrencyItem(heldItem);
+        if (isCurrencyItem && heldItem != null) {
             int amount = heldItem.getAmount();
             double totalWager = amount;
     
@@ -1174,7 +1211,7 @@ private void removePlayerData(UUID playerId) {
             if (meta != null) {
                 if (wager > 0) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Wager: " + (int)wager + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(wager) == 1 ? "" : "s") + "\n");
+                    lore.add("Wager: " + plugin.formatWagerDisplay(currencyMode, currencyName, wager) + "\n");
                     meta.setLore(lore);
                 } else {
                     meta.setLore(new ArrayList<>()); // Clear lore if no wager
@@ -1185,24 +1222,57 @@ private void removePlayerData(UUID playerId) {
     }
     
     private boolean hasEnoughWager(Player player, double amount) {
-        int requiredAmount = (int) Math.ceil(amount);
-        return player.getInventory().containsAtLeast(new ItemStack(plugin.getCurrency(internalName)), requiredAmount);
+        int requiredAmount = MoneyHelper.toWagerUnits(amount);
+        if (requiredAmount <= 0) return false;
+
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            return provider.has(player, internalName, requiredAmount);
+        }
+
+        Material currencyMaterial = plugin.getCurrency(internalName);
+        if (currencyMaterial == null) {
+            return false;
+        }
+        return player.getInventory().containsAtLeast(new ItemStack(currencyMaterial), requiredAmount);
     }
 
     private void removeWagerFromInventory(Player player, double amount) {
-        int requiredAmount = (int) Math.ceil(amount);
-        if (requiredAmount > 0) {
-            player.getInventory().removeItem(new ItemStack(plugin.getCurrency(internalName), requiredAmount));
+        int requiredAmount = MoneyHelper.toWagerUnits(amount);
+        if (requiredAmount <= 0) return;
+
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            provider.withdraw(player, internalName, requiredAmount);
+            return;
+        }
+
+        Material currencyMaterial = plugin.getCurrency(internalName);
+        if (currencyMaterial != null && requiredAmount > 0) {
+            player.getInventory().removeItem(new ItemStack(currencyMaterial, requiredAmount));
         }
     }
 
     private void addWagerToInventory(Player player, double amount) {
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null && provider.getMode() == CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider vaultProvider) {
+            java.math.BigDecimal refund = MoneyHelper.clampNonNegative(MoneyHelper.bd(amount));
+            if (refund.compareTo(java.math.BigDecimal.ZERO) > 0) {
+                vaultProvider.deposit(player, internalName, refund);
+            }
+            return;
+        }
         int totalAmount = (int) Math.floor(amount);
         int fullStacks = totalAmount / 64;
         int remainder = totalAmount % 64;
         Material currencyMaterial = plugin.getCurrency(internalName);
         for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = new ItemStack(currencyMaterial, 64);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, 64);
+            } else {
+                stack = new ItemStack(currencyMaterial, 64);
+            }
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
@@ -1211,7 +1281,12 @@ private void removePlayerData(UUID playerId) {
             }
         }
         if (remainder > 0) {
-            ItemStack stack = new ItemStack(currencyMaterial, remainder);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, remainder);
+            } else {
+                stack = new ItemStack(currencyMaterial, remainder);
+            }
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
@@ -1715,15 +1790,48 @@ private void finishGame() {
 private void payOut(Player player, Map<Integer, Double> bets, double multiplier) {
     if (bets != null) {
         double totalBet = bets.values().stream().mapToDouble(Double::doubleValue).sum();
+		CurrencyProvider provider = getCurrencyProvider();
+
+		if (provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider vaultProvider) {
+			java.math.BigDecimal betAmount = MoneyHelper.clampNonNegative(MoneyHelper.bd(totalBet));
+			java.math.BigDecimal payout = betAmount.multiply(MoneyHelper.bd(multiplier));
+			java.math.BigDecimal displayPayout = MoneyHelper.roundDisplay(payout);
+			java.math.BigDecimal displayProfit = MoneyHelper.roundDisplay(payout.subtract(betAmount));
+
+			if (payout.compareTo(java.math.BigDecimal.ZERO) > 0) {
+				vaultProvider.deposit(player, internalName, payout);
+			}
+
+			switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+				case STANDARD:{
+					player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()));
+					break;}
+				case VERBOSE:{
+					player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()) + "\n §r§a§o(profit of " + plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue()) + ")");
+					break;     
+				}
+					case NONE:{
+					break;
+				}
+			}
+			return;
+		}
+
         double payout = totalBet * multiplier;
         int totalAmount = applyProbabilisticRounding(payout);
+
         int fullStacks = totalAmount / 64;
         int remainder = totalAmount % 64;
         Material currencyMaterial = plugin.getCurrency(internalName);
         int totalDropped = 0; // Track how many items were dropped
 
         for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = new ItemStack(currencyMaterial, 64);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, 64);
+            } else {
+                stack = new ItemStack(currencyMaterial, 64);
+            }
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
@@ -1734,7 +1842,12 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
         }
 
         if (remainder > 0) {
-            ItemStack stack = new ItemStack(currencyMaterial, remainder);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, remainder);
+            } else {
+                stack = new ItemStack(currencyMaterial, remainder);
+            }
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
@@ -1745,10 +1858,10 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
         }
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage("§a§lPaid "+(int)totalAmount+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalAmount) == 1 ? "" : "s"));
+                player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, totalAmount));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§a§lPaid "+(int)totalAmount+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalAmount) == 1 ? "" : "s")  + "\n §r§a§o(profit of "+(int)Math.abs(totalAmount-totalBet)+")");
+                player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, totalAmount) + "\n §r§a§o(profit of "+(int)Math.abs(totalAmount-totalBet)+")");
                 break;     
             }
                 case NONE:{
@@ -1761,10 +1874,10 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
         if (totalDropped > 0) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage("§cNo room for " + (int)totalDropped + " "+plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalDropped) == 1 ? "" : "s") +", dropping...");       
+                    player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped) + ", dropping...");       
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cNo room for " + (int)totalDropped + " "+plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalDropped) == 1 ? "" : "s") +", dropping...");  
+                    player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped) + ", dropping...");  
                     break;     
                 }
                     case NONE:{

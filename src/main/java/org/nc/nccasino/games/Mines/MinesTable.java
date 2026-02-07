@@ -30,6 +30,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitTask;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.CurrencyMode;
+import org.nc.nccasino.currency.CurrencyProvider;
+import org.nc.nccasino.currency.MoneyHelper;
+import org.nc.nccasino.currency.VaultCurrencyProvider;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.SoundHelper;
 
@@ -45,6 +49,8 @@ public class MinesTable extends DealerInventory {
     private final Player player;
     private final Nccasino plugin;
     private final String internalName;
+    private final CurrencyMode currencyMode;
+    private final String currencyName;
     private final MinesInventory minesInventory;
     private final Map<String, Double> chipValues;
     private double selectedWager;
@@ -129,6 +135,8 @@ public class MinesTable extends DealerInventory {
         this.player = player;
         this.plugin = plugin;
         this.internalName = internalName;
+        this.currencyMode = plugin.getCurrencyMode(internalName);
+        this.currencyName = plugin.getCurrencyName(internalName);
         this.minesInventory = minesInventory;
         this.chipValues = new LinkedHashMap<>();
         // Initialize game state
@@ -191,8 +199,8 @@ public class MinesTable extends DealerInventory {
         // Load chip values from the config
         Map<String, Double> tempChipValues = new HashMap<>();
         for (int i = 1; i <= 5; i++) {
-            String chipName = plugin.getChipName(internalName, i);
             double chipValue = plugin.getChipValue(internalName, i);
+            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
             if (chipValue > 0) {
                 tempChipValues.put(chipName, chipValue);
             }
@@ -443,14 +451,29 @@ public class MinesTable extends DealerInventory {
         if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
             handleWagerPlacement(clickedItem, slot, event);
         } else if (gameState == GameState.PLAYING) {
+            // Cash Out button (slot 49) – handle explicitly so it works with VAULT (no physical currency item)
+            if (slot == 49) {
+                cashOut();
+                return;
+            }
             // Adjusted to handle grid slots
             int index = gridSlotList.indexOf(slot);
             if (index != -1) {
                 int x = index % gridSize;
                 int y = index / gridSize;
                 handleTileSelection(x, y);
-            } else if (clickedItem != null && clickedItem.getType() == plugin.getCurrency(internalName)) {
-                cashOut();
+            } else if (clickedItem != null) {
+                CurrencyProvider provider = getCurrencyProvider();
+                boolean isCurrencyItem = false;
+                if (provider != null) {
+                    isCurrencyItem = provider.isCurrencyItem(clickedItem, internalName);
+                } else {
+                    Material currencyMat = plugin.getCurrency(internalName);
+                    isCurrencyItem = (currencyMat != null && clickedItem.getType() == currencyMat);
+                }
+                if (isCurrencyItem) {
+                    cashOut();
+                }
             }
         }
 
@@ -483,18 +506,26 @@ public class MinesTable extends DealerInventory {
         }
         if (slot == 52&& clickedItem != null && clickedItem.getType() ==Material.SNIFFER_EGG) {
             // sum up how many currency items the player has
-            Material currencyMat = plugin.getCurrency(internalName);
-            int count = Arrays.stream(player.getInventory().getContents())
-                              .filter(Objects::nonNull)
-                              .filter(it -> it.getType() == currencyMat)
-                              .mapToInt(ItemStack::getAmount).sum();
+            int count = 0;
+            CurrencyProvider provider = getCurrencyProvider();
+            if (provider != null) {
+                count = provider.getBalance(player, internalName);
+            } else {
+                Material currencyMat = plugin.getCurrency(internalName);
+                if (currencyMat != null) {
+                    count = Arrays.stream(player.getInventory().getContents())
+                                  .filter(Objects::nonNull)
+                                  .filter(it -> it.getType() == currencyMat)
+                                  .mapToInt(ItemStack::getAmount).sum();
+                }
+            }
             if (count <= 0) {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
                         player.sendMessage("§cInvalid action.");
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cNo " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(count) == 1 ? "" : "s") + "\n");
+                        player.sendMessage(currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT ? "§cNo funds.\n" : "§cNo " + plugin.getCurrencyName(internalName).toLowerCase() + (Math.abs(count) == 1 ? "" : "s") + "\n");
                         break;     
                     }
                         case NONE:{
@@ -506,7 +537,10 @@ public class MinesTable extends DealerInventory {
             }
             // place that entire count as a single bet in the betStack
             betStack.push((double) count);
-            removeWagerFromInventory(player, count);
+            boolean removed = removeWagerFromInventory(player, count);
+			if (!removed) {
+				return;
+			}
             double totalBet = betStack.stream().mapToDouble(d -> d).sum();
             updateBetLore(53, totalBet);
             wager = count;
@@ -517,7 +551,7 @@ public class MinesTable extends DealerInventory {
                     player.sendMessage("§cAll in.");
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aAll in with " + (int)count + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(count) == 1 ? "" : "s") + "\n");                    break;     
+                    player.sendMessage("§aAll in with " + plugin.formatWagerDisplay(currencyMode, currencyName, count) + "\n");                    break;     
                 }
                     case NONE:{
                     break;
@@ -559,7 +593,7 @@ public class MinesTable extends DealerInventory {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aWager: " + selectedWager + " " + plugin.getCurrencyName(internalName));                     
+                    player.sendMessage("§aWager: " + plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager));                     
                     break;     
                 }
                     case NONE:{
@@ -583,14 +617,18 @@ public class MinesTable extends DealerInventory {
         
             // Ensure the player has selected a valid wager
             if (wagerAmount > 0) {
-                boolean canBet = usedHeldItem || hasEnoughCurrency(player, (int) wagerAmount);
+                int units = org.nc.nccasino.currency.MoneyHelper.toWagerUnits(wagerAmount);
+                boolean canBet = usedHeldItem || (units > 0 && hasEnoughCurrency(player, units));
         
                 if (canBet) {
                     // If the player was holding the item, remove it from the cursor
                     if (usedHeldItem) {
                         player.setItemOnCursor(null);
                     } else {
-                        removeWagerFromInventory(player, (int) wagerAmount);
+                        boolean removed = units > 0 && removeWagerFromInventory(player, units);
+						if (!removed) {
+							return;
+						}
                     }
         
                     double newBetAmount = wagerAmount;
@@ -606,7 +644,7 @@ public class MinesTable extends DealerInventory {
                         case STANDARD:
                             break;
                         case VERBOSE:
-                            player.sendMessage("§aBet placed: " + newBetAmount);
+                            player.sendMessage("§aBet placed: " + plugin.formatWagerDisplay(currencyMode, currencyName, newBetAmount));
                             break;
                         case NONE:
                             break;
@@ -621,7 +659,7 @@ public class MinesTable extends DealerInventory {
                             player.sendMessage("§cInvalid action.");
                             break;
                         case VERBOSE:
-                            player.sendMessage("§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s.");
+                            player.sendMessage(currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT ? "§cNot enough funds." : "§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s.");
                             break;
                         case NONE:
                             break;
@@ -1133,21 +1171,47 @@ public class MinesTable extends DealerInventory {
                 double payoutMultiplier = calculatePayoutMultiplier(safePicks);
                 winnings = totalBet * payoutMultiplier;
             }
-    
-            winnings = applyProbabilisticRounding(winnings,player); 
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage("§a§lPaid "+ (int)winnings+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(winnings) == 1 ? "" : "s"));
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§a§lPaid "+ (int)winnings+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(winnings) == 1 ? "" : "s")  + "\n §r§a§o(profit of "+(int)Math.abs(winnings-totalBet)+")");
-                    break;     
-                }
-                    case NONE:{
-                    break;
-                }
-            } 
-            giveWinningsToPlayer(winnings);
+			CurrencyProvider provider = getCurrencyProvider();
+			boolean isVault = provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider;
+
+			if (isVault) {
+				java.math.BigDecimal betBD = MoneyHelper.clampNonNegative(MoneyHelper.bd(totalBet));
+				java.math.BigDecimal winningsBD = MoneyHelper.clampNonNegative(MoneyHelper.bd(winnings));
+				java.math.BigDecimal displayWinnings = MoneyHelper.roundDisplay(winningsBD);
+				java.math.BigDecimal displayProfit = MoneyHelper.roundDisplay(winningsBD.subtract(betBD));
+
+				if (winningsBD.compareTo(java.math.BigDecimal.ZERO) > 0) {
+					((VaultCurrencyProvider) provider).deposit(player, internalName, winningsBD);
+				}
+
+				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+					case STANDARD:{
+						player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayWinnings.doubleValue()));
+						break;}
+					case VERBOSE:{
+						player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayWinnings.doubleValue()) + "\n §r§a§o(profit of " + plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue()) + ")");
+						break;     
+					}
+						case NONE:{
+						break;
+					}
+				}
+			} else {
+				winnings = applyProbabilisticRounding(winnings,player); 
+				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+					case STANDARD:{
+						player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, winnings));
+						break;}
+					case VERBOSE:{
+						player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, winnings) + "\n §r§a§o(profit of "+(int)Math.abs(winnings-totalBet)+")");
+						break;     
+					}
+						case NONE:{
+						break;
+					}
+				} 
+				giveWinningsToPlayer(winnings);
+			}
        
             gameOver = true;
             gameState = GameState.GAME_OVER;
@@ -1192,23 +1256,50 @@ public class MinesTable extends DealerInventory {
                 double payoutMultiplier = calculatePayoutMultiplier(safePicks);
                 winnings = totalBet * payoutMultiplier;
             }
-            winnings = applyProbabilisticRounding(winnings,player); 
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage("§a§lPaid "+(int)winnings+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(winnings) == 1 ? "" : "s"));
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage("§a§lPaid "+(int)winnings+" "+ plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(winnings) == 1 ? "" : "s")  + " (profit of "+(int)Math.abs(winnings-totalBet)+")\n");
-                    break;     
-                }
-                    case NONE:{
-                    break;
-                }
-            } 
-    
-            if (winnings > 0) {
-                giveWinningsToPlayer(winnings);
-            }
+			CurrencyProvider provider = getCurrencyProvider();
+			boolean isVault = provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider;
+
+			if (isVault) {
+				java.math.BigDecimal betBD = MoneyHelper.clampNonNegative(MoneyHelper.bd(totalBet));
+				java.math.BigDecimal winningsBD = MoneyHelper.clampNonNegative(MoneyHelper.bd(winnings));
+				java.math.BigDecimal displayWinnings = MoneyHelper.roundDisplay(winningsBD);
+				java.math.BigDecimal displayProfit = MoneyHelper.roundDisplay(winningsBD.subtract(betBD));
+
+				if (winningsBD.compareTo(java.math.BigDecimal.ZERO) > 0) {
+					((VaultCurrencyProvider) provider).deposit(player, internalName, winningsBD);
+				}
+
+				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+					case STANDARD:{
+						player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayWinnings.doubleValue()));
+						break;}
+					case VERBOSE:{
+						player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayWinnings.doubleValue()) + " (profit of " + plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue()) + ")\n");
+						break;     
+					}
+						case NONE:{
+						break;
+					}
+				}
+			} else {
+				winnings = applyProbabilisticRounding(winnings,player); 
+				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+					case STANDARD:{
+						player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, winnings));
+						break;}
+					case VERBOSE:{
+						player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, winnings) + " (profit of "+(int)Math.abs(winnings-totalBet)+")\n");
+						break;     
+					}
+						case NONE:{
+						break;
+					}
+				} 
+		
+				if (winnings > 0) {
+					giveWinningsToPlayer(winnings);
+				}
+			}
     
             gameOver = true;
             gameState = GameState.GAME_OVER;
@@ -1284,15 +1375,18 @@ public class MinesTable extends DealerInventory {
                 // Check if the player still has the MinesTable open before deducting the bet
                 InventoryView openInventory = player.getOpenInventory();
                 if (openInventory != null && openInventory.getTopInventory().getHolder() instanceof MinesTable) {
-                    removeWagerFromInventory(player, (int) previousWager);
+                    boolean removed = removeWagerFromInventory(player, (int) previousWager);
+					if (!removed) {
+						return;
+					}
                     betStack.push(previousWager);
                     updateBetLore(53, previousWager);
                     switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                         case STANDARD:{
-                            player.sendMessage("§dRebet of " + (int) previousWager + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(previousWager) == 1 ? "" : "s") + " placed\n");
+                            player.sendMessage("§dRebet of " + plugin.formatWagerDisplay(currencyMode, currencyName, previousWager) + " placed\n");
                             break;}
                         case VERBOSE:{
-                            player.sendMessage("§dRebet of " + (int) previousWager + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(previousWager) == 1 ? "" : "s") + " placed\n");
+                            player.sendMessage("§dRebet of " + plugin.formatWagerDisplay(currencyMode, currencyName, previousWager) + " placed\n");
                             break;     
                         }
                             case NONE:{
@@ -1369,7 +1463,7 @@ public class MinesTable extends DealerInventory {
             if (meta != null) {
                 if (totalBet > 0) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Wager: " + (int)totalBet + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalBet) == 1 ? "" : "s") + "\n");
+                    lore.add("Wager: " + plugin.formatWagerDisplay(currencyMode, currencyName, totalBet) + "\n");
                     meta.setLore(lore);
                 } else {
                     meta.setLore(new ArrayList<>());  // Clear lore if no wager
@@ -1389,13 +1483,40 @@ public class MinesTable extends DealerInventory {
 
     private boolean hasEnoughCurrency(Player player, int amount) {
         if (amount == 0) return true; // Allow zero wager
-        ItemStack currencyItem = new ItemStack(plugin.getCurrency(internalName));
+
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            return provider.has(player, internalName, amount);
+        }
+
+        Material currencyMat = plugin.getCurrency(internalName);
+        if (currencyMat == null) {
+            return false;
+        }
+        ItemStack currencyItem = new ItemStack(currencyMat);
         return player.getInventory().containsAtLeast(currencyItem, amount);
     }
 
-    private void removeWagerFromInventory(Player player, int amount) {
-        if (amount == 0) return; // No need to remove currency for zero wager
-        player.getInventory().removeItem(new ItemStack(plugin.getCurrency(internalName), amount));
+    private boolean removeWagerFromInventory(Player player, int amount) {
+        if (amount == 0) return true; // No need to remove currency for zero wager
+
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+			if (provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT) {
+				int withdrawn = provider.withdraw(player, internalName, amount);
+				return withdrawn >= amount;
+			}
+
+            provider.withdraw(player, internalName, amount);
+            return true;
+        }
+
+        Material currencyMat = plugin.getCurrency(internalName);
+        if (currencyMat != null) {
+            player.getInventory().removeItem(new ItemStack(currencyMat, amount));
+			return true;
+        }
+		return false;
     }
 
     private void refundAllBets(Player player) {
@@ -1408,13 +1529,25 @@ public class MinesTable extends DealerInventory {
 
     private void refundBet(Player player, int amount) {
         if (amount <= 0) return; // No refund needed for zero amount
+
+		CurrencyProvider provider = getCurrencyProvider();
+		if (provider != null && provider.getMode() != org.nc.nccasino.currency.CurrencyMode.STANDARD) {
+			// VAULT/CUSTOM: refund is a balance credit.
+			provider.deposit(player, internalName, amount);
+			return;
+		}
     
         int fullStacks = amount / 64;
         int remainder = amount % 64;
         Material currencyMaterial = plugin.getCurrency(internalName);
     
         for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = new ItemStack(currencyMaterial, 64);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, 64);
+            } else {
+                stack = new ItemStack(currencyMaterial, 64);
+            }
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
@@ -1423,7 +1556,12 @@ public class MinesTable extends DealerInventory {
             }
         }
         if (remainder > 0) {
-            ItemStack stack = new ItemStack(currencyMaterial, remainder);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, remainder);
+            } else {
+                stack = new ItemStack(currencyMaterial, remainder);
+            }
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
@@ -1436,14 +1574,30 @@ public class MinesTable extends DealerInventory {
 
     private void giveWinningsToPlayer(double amount) {
         if (amount <= 0) return; // No winnings to give
+
+		CurrencyProvider provider = getCurrencyProvider();
+		if (provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider vaultProvider) {
+			java.math.BigDecimal payout = MoneyHelper.clampNonNegative(MoneyHelper.bd(amount));
+			if (payout.compareTo(java.math.BigDecimal.ZERO) > 0) {
+				vaultProvider.deposit(player, internalName, payout);
+			}
+			return;
+		}
+
         int totalAmount = (int) Math.floor(amount);
+
         int fullStacks = totalAmount / 64;
         int remainder = totalAmount % 64;
         Material currencyMaterial = plugin.getCurrency(internalName);
         int totalDropped = 0; // Track how many items were dropped
     
         for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = new ItemStack(currencyMaterial, 64);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, 64);
+            } else {
+                stack = new ItemStack(currencyMaterial, 64);
+            }
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
@@ -1454,7 +1608,12 @@ public class MinesTable extends DealerInventory {
         }
     
         if (remainder > 0) {
-            ItemStack stack = new ItemStack(currencyMaterial, remainder);
+            ItemStack stack = null;
+            if (provider != null) {
+                stack = provider.createCurrencyStack(internalName, remainder);
+            } else {
+                stack = new ItemStack(currencyMaterial, remainder);
+            }
             HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
             if (!leftover.isEmpty()) {
                 for (ItemStack item : leftover.values()) {
@@ -1468,10 +1627,10 @@ public class MinesTable extends DealerInventory {
         if (totalDropped > 0) {     
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage("§cNo room for " + (int) totalDropped + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalDropped) == 1 ? "" : "s") + ", dropping...");
+                player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped) + ", dropping...");
                 break;}
             case VERBOSE:{
-                player.sendMessage("§cNo room for " + (int) totalDropped + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(totalDropped) == 1 ? "" : "s") + ", dropping...");
+                player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped) + ", dropping...");
                 break;     
             }
                 case NONE:{
@@ -1479,6 +1638,14 @@ public class MinesTable extends DealerInventory {
             }
         } 
         }
+    }
+
+    // CurrencyProvider helper for this dealer/game
+    private CurrencyProvider getCurrencyProvider() {
+        if (plugin.getCurrencyManager() == null) {
+            return null;
+        }
+        return plugin.getCurrencyManager().getProvider(internalName);
     }
     
 

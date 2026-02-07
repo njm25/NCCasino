@@ -108,7 +108,7 @@ public class TestClient extends Client {
             double seat1Bet = testServer.getSeat1Bet();
             ItemStack acceptBet = createCustomItem(
                     Material.LIME_WOOL, 
-                    "Accept Bet: " + (int) seat1Bet + " " + plugin.getCurrencyName(internalName), 
+                    "Accept Bet: " + plugin.formatWagerDisplay(currencyMode, currencyName, seat1Bet), 
                     1
             );
             inventory.setItem(ACCEPT_BET_SLOT, acceptBet);

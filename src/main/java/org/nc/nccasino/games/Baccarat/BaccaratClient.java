@@ -163,7 +163,7 @@ public class BaccaratClient extends Client {
         // Banker bet additional slots
         int[] bankerAdditionalSlots = {23,32, 24,33};
         for (int slot : bankerAdditionalSlots) {
-            inventory.setItem(slot, createCustomItem(Material.PURPLE_STAINED_GLASS_PANE, "Banker Win - 1:1", 1));
+            inventory.setItem(slot, createCustomItem(Material.PURPLE_STAINED_GLASS_PANE, "Banker Win - 0.95:1", 1));
         }
         
         // Banker pair bet slots
@@ -642,7 +642,7 @@ public class BaccaratClient extends Client {
 
         if (!betMapping.containsKey(slot)) return; // Not a bet slot
         ItemStack cursorItem = event.getCursor();
-        boolean isDraggingCurrency = (cursorItem != null && cursorItem.getType() == plugin.getCurrency(internalName));
+        boolean isDraggingCurrency = isCurrencyItem(cursorItem);
     
         // Get bet amount
         double betAmount;
@@ -719,10 +719,9 @@ public class BaccaratClient extends Client {
         double playerTotal = betStacks.getOrDefault(betType, new ArrayDeque<>())
                                       .stream().mapToDouble(Double::doubleValue).sum();
         int numBettors = ((BaccaratServer) server).getBettorCountForType(betType);
-        String currencyName = formatCurrencyName(plugin.getCurrencyName(internalName));
     
-        String playerBetText = playerTotal > 0 ? "Your Bet: " + (int) playerTotal + " " + currencyName : null;
-        String totalBetText = totalBet > 0 ? (numBettors > 1 ? "👥 " : "👤 ") + numBettors + " - " + (int) totalBet + " " + currencyName : null;
+        String playerBetText = playerTotal > 0 ? "Your Bet: " + plugin.formatWagerDisplay(currencyMode, currencyName, playerTotal) : null;
+        String totalBetText = totalBet > 0 ? (numBettors > 1 ? "👥 " : "👤 ") + numBettors + " - " + plugin.formatWagerDisplay(currencyMode, currencyName, totalBet) : null;
     
         for (int slot : betMapping.keySet()) {
             if (betMapping.get(slot) == betType) {
