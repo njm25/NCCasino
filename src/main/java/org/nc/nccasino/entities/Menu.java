@@ -91,6 +91,7 @@ public abstract class Menu extends DealerInventory {
         CHIP_SIZE3,
         CHIP_SIZE4,
         CHIP_SIZE5,
+        TOGGLE_ALL_IN,
         PM,
         //CHANGE_BIOME,
         MOB_SELECTION,

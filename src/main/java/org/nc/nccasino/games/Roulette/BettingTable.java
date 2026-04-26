@@ -41,6 +41,7 @@ public class BettingTable extends DealerInventory {
     private double selectedWager;
     private int pageNum;
     private Boolean allin=false;
+    private final boolean allowAllIn;
     private final Map<String, Double> chipValues;
     private final Stack<Pair<String, Integer>> betStack;
     private Stack<Pair<String, Integer>> testStack;
@@ -56,6 +57,7 @@ public class BettingTable extends DealerInventory {
         this.internalName = internalName;
         this.currencyMode = plugin.getCurrencyMode(internalName);
         this.currencyName = plugin.getCurrencyName(internalName);
+        this.allowAllIn = plugin.isAllInAllowed(internalName);
         this.rouletteInventory = rouletteInventory;
         this.pageNum = 1;
     
@@ -204,10 +206,15 @@ public class BettingTable extends DealerInventory {
     }
 
     private void addCommonComponents() {
-        if(allin){
-            inventory.setItem(52, createEnchantedItem(Material.SNIFFER_EGG, "All In (" + plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager) + ")", 1));
+        if (allowAllIn) {
+            if (allin) {
+                inventory.setItem(52, createEnchantedItem(Material.SNIFFER_EGG, "All In (" + plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager) + ")", 1));
+            } else {
+                inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
+            }
+        } else {
+            inventory.setItem(52, createCustomItem(Material.GRAY_STAINED_GLASS_PANE, " ", 1));
         }
-        else{inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));}
 
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
         inventory.setItem(46, createCustomItem(Material.WIND_CHARGE, "Undo Last Bet", 1));
@@ -667,7 +674,7 @@ public class BettingTable extends DealerInventory {
             updateClockItem(countdown1, betsClosed);
             return;
         }
-        if(clickedItem.getType()==Material.SNIFFER_EGG){
+        if(clickedItem.getType()==Material.SNIFFER_EGG && allowAllIn){
             int count = 0;
             CurrencyProvider provider = getCurrencyProvider();
             if (provider != null) {
@@ -728,7 +735,7 @@ public class BettingTable extends DealerInventory {
                 for (int i = 47; i <= 51; i++) {
                     resetChipAtSlot(i);
                 }
-                inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG,"All In",1 ));
+                if (allowAllIn) inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG,"All In",1 ));
                 // 2) Enchant only the clicked chip
                 inventory.setItem(slot, createEnchantedItem(
                     plugin.getCurrency(internalName),
@@ -814,7 +821,7 @@ public class BettingTable extends DealerInventory {
                     rouletteInventory.updatePlayerBets(playerId, betStack, player);
                     updateAllLore();
         
-                    if (allin) {
+                    if (allin && allowAllIn) {
                         allin = false;
                         inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
                     }

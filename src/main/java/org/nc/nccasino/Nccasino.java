@@ -545,8 +545,13 @@ public final class Nccasino extends JavaPlugin implements Listener {
             getConfig().set(path + ".chip-sizes.size3", 10);
             getConfig().set(path + ".chip-sizes.size4", 25);
             getConfig().set(path + ".chip-sizes.size5", 50);
+            getConfig().set(path + ".betting.allow-all-in", true);
             saveConfig();
         }
+    }
+
+    public boolean isAllInAllowed(String internalName) {
+        return getConfig().getBoolean("dealers." + internalName + ".betting.allow-all-in", true);
     }
 
     public Material getCurrency(String internalName) {

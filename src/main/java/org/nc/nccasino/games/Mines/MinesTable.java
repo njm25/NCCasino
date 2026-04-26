@@ -259,9 +259,13 @@ public class MinesTable extends DealerInventory {
         // Add undo buttons
         inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
         inventory.setItem(46, createCustomItem(Material.WIND_CHARGE, "Undo Last Bet", 1));
-        inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
+        if (plugin.isAllInAllowed(internalName)) {
+            inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
+        } else {
+            inventory.setItem(52, createCustomItem(Material.GRAY_STAINED_GLASS_PANE, " ", 1));
+        }
     }
-    
+
    // Method to toggle rebet on/off
    private void updateRebetToggle() {
     Material material = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
@@ -504,7 +508,7 @@ public class MinesTable extends DealerInventory {
 
             updateRebetToggle();
         }
-        if (slot == 52&& clickedItem != null && clickedItem.getType() ==Material.SNIFFER_EGG) {
+        if (slot == 52 && clickedItem != null && clickedItem.getType() == Material.SNIFFER_EGG && plugin.isAllInAllowed(internalName)) {
             // sum up how many currency items the player has
             int count = 0;
             CurrencyProvider provider = getCurrencyProvider();

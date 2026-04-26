@@ -265,7 +265,11 @@ private void registerListener() {
             inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
             slot++;
         }
-        inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
+        if (plugin.isAllInAllowed(internalName)) {
+            inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
+        } else {
+            inventory.setItem(52, createCustomItem(Material.GRAY_STAINED_GLASS_PANE, " ", 1));
+        }
         // Add leave chair option with a wooden door
         inventory.setItem(53, createCustomItem(Material.SPRUCE_DOOR, "Leave Chair/Exit", 1));
     }
@@ -431,7 +435,8 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
                     handleUndoLastBet(player);
                     break;
                 case 52:
-                    handleAllIn(player);
+                    if (plugin.isAllInAllowed(internalName)) handleAllIn(player);
+                    break;
                 default:
                     // Handle other slots if needed
                     break;

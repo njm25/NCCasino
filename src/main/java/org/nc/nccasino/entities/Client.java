@@ -41,9 +41,10 @@ public abstract class Client extends DealerInventory {
     protected final Map<String, Double> chipValues = new LinkedHashMap<>();
     protected boolean bettingEnabled = false;
     protected boolean rebetSwitch = false;
-    protected boolean betSlip = false; 
+    protected boolean betSlip = false;
     protected int bettingPaperSlot=53;
     protected int rebetSlot=44;
+    protected final boolean allowAllIn;
 
     public Client(Server server, Player player, String title,
                   Nccasino plugin, String internalName)
@@ -55,6 +56,7 @@ public abstract class Client extends DealerInventory {
         this.internalName = internalName;
         this.currencyMode = plugin.getCurrencyMode(internalName);
         this.currencyName = plugin.getCurrencyName(internalName);
+        this.allowAllIn = plugin.isAllInAllowed(internalName);
 
         // Load chip values from config so we can replicate Mines logic
         loadChipValuesFromConfig();
@@ -126,8 +128,12 @@ public abstract class Client extends DealerInventory {
         // 5) Undo Last: slot 46
         inventory.setItem(46, createCustomItem(Material.WIND_CHARGE, "Undo Last Bet", 1));
 
-        // 6) All In: slot 52
-        inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
+        // 6) All In: slot 52 (only when enabled for this dealer)
+        if (allowAllIn) {
+            inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
+        } else {
+            inventory.setItem(52, createCustomItem(Material.GRAY_STAINED_GLASS_PANE, " ", 1));
+        }
 
         // If we had any existing bets, update the lore on slot 53
         double curr = betStack.stream().mapToDouble(Double::doubleValue).sum();
@@ -156,15 +162,15 @@ public abstract class Client extends DealerInventory {
 
     protected boolean isBetSlot(int slot) {
         int start = 45;
-        int end = 52;
-        return (slot >= start && slot <= end) || (slot==bettingPaperSlot && betSlip) || (slot==rebetSlot && rebetSwitch); // This covers rebet(44), chips(47-51), all in(52), place bet(53), etc.
+        int end = allowAllIn ? 52 : 51;
+        return (slot >= start && slot <= end) || (slot==bettingPaperSlot && betSlip) || (slot==rebetSlot && rebetSwitch);
     }
 
     protected void handleBet(int slot, Player player, InventoryClickEvent event) {
         event.setCancelled(true);
  
         // Handle Wager & All In Selection
-        if (slot >= 47 && slot <= 52) {
+        if (slot >= 47 && slot <= (allowAllIn ? 52 : 51)) {
             updateSelectedWager(slot);
             return;
         }
@@ -605,7 +611,7 @@ public abstract class Client extends DealerInventory {
         }
 
         // Loop through wager slots (chips & All In) to update enchantment
-        for (int s = 47; s <= 52; s++) {
+        for (int s = 47; s <= (allowAllIn ? 52 : 51); s++) {
             ItemStack chip = inventory.getItem(s);
             if (chip != null && chip.hasItemMeta()) {
                 ItemMeta meta = chip.getItemMeta();

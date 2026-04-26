@@ -68,7 +68,7 @@ public class BaccaratClient extends Client {
         public BaccaratClient(BaccaratServer server, Player player, Nccasino plugin, String internalName) {
             super(server, player, "Baccarat", plugin, internalName);
             slotMapping.put(53,SlotOption.EXIT );
-            slotMapping.put(52,SlotOption.ALLIN);
+            if (allowAllIn) slotMapping.put(52,SlotOption.ALLIN);
             slotMapping.put(51,SlotOption.WAGER1);
             slotMapping.put(50,SlotOption.WAGER2);
             slotMapping.put(49,SlotOption.WAGER3);
@@ -474,6 +474,7 @@ public class BaccaratClient extends Client {
 
         @Override
     protected boolean isBetSlot(int slot) {
+        if (slot == 52 && !allowAllIn) return false;
         if (slot >= 45 && slot <= 53) return true;  // old logic
         if (slot>=19 && slot <= 25 ) return true;
         if (slot>=28 && slot <= 34 ) return true;
@@ -484,7 +485,7 @@ public class BaccaratClient extends Client {
     protected void handleBet(int slot, Player player, InventoryClickEvent event) {
         event.setCancelled(true);
         // Handle Wager & All In Selection
-        if (slot >= 47 && slot <= 52) {
+        if (slot >= 47 && slot <= (allowAllIn ? 52 : 51)) {
             updateSelectedWager(slot);
             return;
         }

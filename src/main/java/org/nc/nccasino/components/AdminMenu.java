@@ -145,6 +145,7 @@ public class AdminMenu extends Menu {
     slotMapping.put(SlotOption.CHIP_SIZE3, 22);
     slotMapping.put(SlotOption.CHIP_SIZE4, 23);
     slotMapping.put(SlotOption.CHIP_SIZE5, 24);
+    slotMapping.put(SlotOption.TOGGLE_ALL_IN, 33);
     slotMapping.put(SlotOption.MOB_SETTINGS, 4);
     slotMapping.put(SlotOption.JOCKEY_MENU, 13);
    }
@@ -427,6 +428,10 @@ public class AdminMenu extends Menu {
                 break;
             case CHIP_SIZE5:
                 handleEditChipSize(player,5);
+                playDefaultSound(player);
+                break;
+            case TOGGLE_ALL_IN:
+                handleToggleAllIn(player);
                 playDefaultSound(player);
                 break;
             case PM:
@@ -731,6 +736,35 @@ public class AdminMenu extends Menu {
         }
     }
 
+    private void handleToggleAllIn(Player player) {
+        if (dealer == null) return;
+        String internalName = Dealer.getInternalName(dealer);
+        boolean current = plugin.isAllInAllowed(internalName);
+        boolean next = !current;
+        plugin.getConfig().set("dealers." + internalName + ".betting.allow-all-in", next);
+        plugin.saveConfig();
+        updateAllInButton();
+        Preferences.MessageSetting messPref = plugin.getPreferences(player.getUniqueId()).getMessageSetting();
+        switch (messPref) {
+            case VERBOSE:
+                player.sendMessage("§eAll In betting " + (next ? "§aenabled" : "§cdisabled") + "§e.");
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void updateAllInButton() {
+        if (dealer == null) return;
+        String internalName = Dealer.getInternalName(dealer);
+        boolean allowed = plugin.isAllInAllowed(internalName);
+        if (allowed) {
+            addItemAndLore(Material.SNIFFER_EGG, 1, "All In Betting: ON", slotMapping.get(SlotOption.TOGGLE_ALL_IN), "§7Click to disable All In for this dealer");
+        } else {
+            addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, "All In Betting: OFF", slotMapping.get(SlotOption.TOGGLE_ALL_IN), "§7Click to enable All In for this dealer");
+        }
+    }
+
     private void updateCurrencyButtons() {
         String internalName = Dealer.getInternalName(dealer);
         Inventory inv = getInventory();
@@ -777,7 +811,9 @@ public class AdminMenu extends Menu {
                     ? plugin.getConfig().getInt("dealers." + internalName + ".chip-sizes.size" + i)
                     : 1; // Default to 1 if missing
                 addItemAndLore(plugin.getCurrency(internalName), chipValue, "Edit Chip Size #" + i,  slotMapping.get(SlotOption.valueOf("CHIP_SIZE" + i)), "Current: §a" + chipValue);
-    } 
+            }
+            // All In toggle
+            updateAllInButton();
     }
 
     private void handleEditChipSize(Player player,int chipInd) {
