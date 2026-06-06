@@ -585,7 +585,7 @@ public class DragonClient extends Client{
         for (int i = 0; i < floorsCleared; i++) {
             probability *= (double) numSafeSpots / numColumns;
         }
-        return 1.0 / probability;
+        return 0.99 / probability; // 1% house edge
     }
     
     

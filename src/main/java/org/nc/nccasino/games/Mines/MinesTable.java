@@ -1444,14 +1444,7 @@ public class MinesTable extends DealerInventory {
             probability *= (double) (totalTiles - minesCount - i) / (totalTiles - i);
         }
     
-        // Calculate a dynamic house edge based on the rounding factor
-        double baseEdge = 0.005; // Base house edge (0.5%)
-        double roundingCompensation = 0.005; // Adjust this based on rounding impact
-    
-        double effectiveEdge = baseEdge - roundingCompensation; // Adjust the house edge to make it fairer
-        effectiveEdge = Math.max(0, effectiveEdge); // Ensure house edge doesn't go negative
-    
-        double payoutMultiplier = ((1.0 - effectiveEdge) / probability);
+        double payoutMultiplier = (0.99 / probability); // 1% house edge
         return payoutMultiplier;
     }
     
