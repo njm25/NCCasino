@@ -40,8 +40,11 @@ import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Deck;
 import org.nc.nccasino.objects.Suit;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.SessionRegistry;
+import org.nc.nccasino.session.TerminableSession;
 
-public class BlackjackInventory extends DealerInventory {
+public class BlackjackInventory extends DealerInventory implements TerminableSession {
 
     private final Nccasino plugin; // Reference to the main plugin
     private final Map<String, Double> chipValues; // Track chip values
@@ -839,6 +842,7 @@ private void handleInsurance(Player player) {
         }
         // Track the player's seat
         playerSeats.put(playerId, slot);
+        SessionRegistry.register(playerId, this);
     }
     
 
@@ -930,6 +934,7 @@ private void removePlayerData(UUID playerId) {
 
         // Remove player from seat map
         playerSeats.remove(playerId);
+        SessionRegistry.unregister(playerId, this);
 
         // Ensure player is removed from active turns
         if (playerIterator != null) {
@@ -2262,18 +2267,85 @@ public void delete() {
         @EventHandler
         public void handleInventoryClose(InventoryCloseEvent event) {
             if (event.getInventory().getHolder() != this) return;
-        
+
             Player player = (Player) event.getPlayer();
+            UUID playerId = player.getUniqueId();
 
-        
-            if (!gameActive) {
-                handleUndoAllBets(player);
-                handleLeaveChair(player);
-            } else {
-                handleLeaveChairDuringGame(player);
+            if (!playerSeats.containsKey(playerId)) {
+                return;
             }
-        }
-        
 
-    
+            // Route through the same idempotent path used for quit/kick,
+            // rather than resolving the wager directly here. It's unclear
+            // whether InventoryCloseEvent reliably fires on a real
+            // disconnect, so this must not race ahead of PlayerQuitEvent
+            // and get it wrong (e.g. refunding a kicked player) — whichever
+            // of this or the quit event fires first "wins" and the other
+            // becomes a safe no-op, and consumeQuitReason still correctly
+            // reports KICKED here even if this fires first, since the kick
+            // is marked as soon as PlayerKickEvent itself fires.
+            ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
+            SessionRegistry.terminatePlayerSession(playerId, reason);
+        }
+
+    /**
+     * Authoritative disconnect/kick resolution, reached via SessionRegistry
+     * regardless of whether this fires from PlayerQuitEvent or from this
+     * table's own InventoryCloseEvent. Transition is based on {@code
+     * gameActive} — set the instant dealing is committed server-side, not
+     * on any animation — never on what the client had visibly rendered.
+     */
+    @Override
+    public void onSessionTerminated(UUID playerId, ExitReason reason) {
+        if (!playerSeats.containsKey(playerId)) {
+            // Already resolved through another path (e.g. a voluntary
+            // leave-chair click that ran before this).
+            return;
+        }
+
+        if (gameActive) {
+            // Deal has begun: forfeit unconditionally. Never calculate an
+            // automated hand or create a pending payout. Advance the turn
+            // safely first if it was theirs.
+            if (playerId.equals(currentPlayerId)) {
+                playerDone.put(playerId, true);
+                startNextPlayerTurn();
+            }
+            removePlayerData(playerId);
+        } else {
+            // Before the deal: refund the committed wager, unless kicked —
+            // a kicked player forfeits regardless of phase.
+            if (reason != ExitReason.KICKED) {
+                refundPendingBets(playerId);
+            }
+            removePlayerData(playerId);
+        }
+
+        if (playerSeats.isEmpty()) {
+            sittable = false;
+        }
+    }
+
+    /**
+     * Refunds whatever {@code playerId} currently has wagered. Called
+     * before removePlayerData, which clears the underlying bet records
+     * without moving any currency itself.
+     */
+    private void refundPendingBets(UUID playerId) {
+        Map<Integer, Double> bets = playerBets.get(playerId);
+        if (bets == null || bets.isEmpty()) {
+            return;
+        }
+
+        double total = bets.values().stream().mapToDouble(Double::doubleValue).sum();
+        if (total <= 0) {
+            return;
+        }
+
+        Player player = Bukkit.getPlayer(playerId);
+        if (player != null) {
+            addWagerToInventory(player, total);
+        }
+    }
+
 }
