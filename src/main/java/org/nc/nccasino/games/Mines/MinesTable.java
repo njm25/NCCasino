@@ -36,8 +36,13 @@ import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.currency.VaultCurrencyProvider;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.payout.PayoutMessages;
+import org.nc.nccasino.payout.PendingPayout;
+import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.SessionRegistry;
+import org.nc.nccasino.session.TerminableSession;
 
-public class MinesTable extends DealerInventory {
+public class MinesTable extends DealerInventory implements TerminableSession {
     // Game state management
     public enum GameState {
         PLACING_WAGER,
@@ -145,6 +150,7 @@ public class MinesTable extends DealerInventory {
         this.gameOver = false;
         int defMines;
         this.dealerId = dealerId;
+        SessionRegistry.register(playerId, this);
 
         loadChipValuesFromConfig();
         if (!plugin.getConfig().contains("dealers." + internalName + ".default-mines")) {
@@ -1669,7 +1675,8 @@ public class MinesTable extends DealerInventory {
 
         // Notify minesInventory to remove the player's table
         minesInventory.removeTable(playerId);
-    
+        SessionRegistry.unregister(playerId, this);
+
         cleanup();  // Clean up game state
     }
     
@@ -1692,12 +1699,108 @@ public class MinesTable extends DealerInventory {
     // Handle inventory close event
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
+        if (!(event.getInventory().getHolder() instanceof MinesTable) || !event.getPlayer().getUniqueId().equals(playerId)) {
+            return;
+        }
 
-        if (event.getInventory().getHolder() instanceof MinesTable && event.getPlayer().getUniqueId().equals(playerId)) {
-            if (gameState == GameState.PLAYING) {
-                closeCashOut();  // Automatically cash out the player
+        // Route through the same idempotent path used for quit/kick rather
+        // than resolving directly here. It's unclear whether
+        // InventoryCloseEvent reliably fires on a real disconnect, so this
+        // must not race ahead of PlayerQuitEvent and get it wrong (e.g.
+        // cashing out a kicked player) — whichever of this or the quit
+        // event fires first "wins" and the other becomes a safe no-op, and
+        // consumeQuitReason still correctly reports KICKED here even if
+        // this fires first, since the kick is marked as soon as
+        // PlayerKickEvent itself fires.
+        ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
+        SessionRegistry.terminatePlayerSession(playerId, reason);
+    }
+
+    /**
+     * Authoritative disconnect/kick resolution, reached via SessionRegistry
+     * regardless of whether this fires from PlayerQuitEvent or from this
+     * table's own InventoryCloseEvent. Mines resolves each tile click
+     * synchronously (gameState/safePicks/gameOver are already fully
+     * updated the instant a click is accepted, before any reveal
+     * animation runs), so whatever this table's state shows at the moment
+     * of termination already reflects the true, finished outcome of the
+     * last accepted move — there is no separate "still resolving" state
+     * to wait for.
+     */
+    @Override
+    public void onSessionTerminated(UUID terminatedPlayerId, ExitReason reason) {
+        if (Boolean.TRUE.equals(closeFlag)) {
+            return; // already resolved through another path
+        }
+        closeFlag = true;
+
+        if (reason != ExitReason.KICKED) {
+            if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
+                refundAllBets(player);
+            } else if (gameState == GameState.PLAYING) {
+                resolveMidGameDisconnect(terminatedPlayerId);
             }
-            endGame();  // Call the end game logic when the inventory is closed
+            // GAME_OVER: already resolved through normal play — either a
+            // win was already paid, or a mine was hit and nothing is owed.
+        }
+        // KICKED: forfeit unconditionally regardless of phase — no refund,
+        // no cash-out.
+
+        betStack.clear();
+
+        for (int taskId : scheduledTasks) {
+            Bukkit.getScheduler().cancelTask(taskId);
+        }
+        scheduledTasks.clear();
+
+        minesInventory.removeTable(terminatedPlayerId);
+        unregisterListener();
+    }
+
+    /**
+     * Cashes out the player's current position (bet x current multiplier)
+     * as a durable pending payout for delivery on reconnect, per the
+     * required policy. This deliberately never attempts a direct credit
+     * here: whether a Player object is still safely usable at the exact
+     * moment this runs is not reliably knowable (it's unclear whether
+     * InventoryCloseEvent fires before or after connection teardown
+     * begins on a real disconnect), so silently risking a lost payout in
+     * exchange for slightly faster delivery in the ambiguous cases is not
+     * an acceptable trade.
+     */
+    private void resolveMidGameDisconnect(UUID terminatedPlayerId) {
+        double totalBet = 0;
+        for (double t : betStack) {
+            totalBet += t;
+        }
+        double winnings = safePicks == 0 ? totalBet : totalBet * calculatePayoutMultiplier(safePicks);
+        if (winnings <= 0) {
+            return;
+        }
+
+        Material currencyMaterial = plugin.getCurrency(internalName);
+        PendingPayout payout = PendingPayout.create(
+            terminatedPlayerId,
+            "Mines",
+            internalName,
+            currencyMode,
+            currencyMaterial != null ? currencyMaterial.name() : null,
+            currencyName,
+            winnings,
+            PayoutMessages.disconnectedMidGameContext("Mines")
+        );
+
+        boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
+        if (!persisted) {
+            // Durable write failed. Rather than losing the winnings
+            // outright, make a best-effort direct credit attempt as a
+            // last resort — not guaranteed to reach the player, but
+            // strictly better odds than doing nothing.
+            plugin.getLogger().warning("[NCCasino] Mines pending payout failed to persist for "
+                + terminatedPlayerId + "; attempting direct credit instead.");
+            if (player != null) {
+                giveWinningsToPlayer(winnings);
+            }
         }
     }
 
