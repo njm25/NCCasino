@@ -127,9 +127,20 @@ public abstract class Server extends DealerInventory {
 
     public Client getOrCreateClient(Player player) {
         UUID uuid = player.getUniqueId();
-        if (clients.containsKey(uuid)) {
-            return clients.get(uuid);
+        Client existing = clients.get(uuid);
+        if (existing != null) {
+            if (isStale(existing, player)) {
+                // A previous session's Client is still registered, holding
+                // a dead Player reference (e.g. cleanup never ran because
+                // they disconnected rather than closing the inventory).
+                // Reusing it would silently fail to message/pay the actual
+                // reconnected player, so discard it before creating fresh.
+                removeClient(uuid);
+            } else {
+                return existing;
+            }
         }
+
         // Create a new client using the abstract factory method
         Client newClient = createClientForPlayer(player);
         clients.put(uuid, newClient);
@@ -138,6 +149,18 @@ public abstract class Server extends DealerInventory {
         clientStates.put(uuid, SessionState.LOBBY);
 
         return newClient;
+    }
+
+    /**
+     * A cached Client is only safe to reuse if it still refers to the
+     * exact Player object of the current login session. UUID equality
+     * alone isn't enough — Bukkit hands out a brand-new Player object on
+     * every reconnect, so an old, disconnected Player reference can share
+     * the same UUID while being otherwise dead.
+     */
+    private boolean isStale(Client existing, Player currentPlayer) {
+        Player cachedPlayer = existing.getPlayer();
+        return cachedPlayer == null || !cachedPlayer.isOnline() || !cachedPlayer.equals(currentPlayer);
     }
 
     protected abstract Client createClientForPlayer(Player player);
