@@ -29,6 +29,12 @@ public final class PayoutMessages {
             + "\n" + ChatColor.GREEN + "Payout: " + formatAmount(payout);
     }
 
+    /** Shown on join when one or more pending payouts exist but couldn't be delivered yet. */
+    public static String formatPendingRetryNotice(int count) {
+        return ChatColor.GOLD + "You have " + count + " pending payout" + (count == 1 ? "" : "s")
+            + " that could not be delivered yet. It will be delivered automatically once possible.";
+    }
+
     private static String formatAmount(PendingPayout payout) {
         int whole = (int) payout.amount();
         if (payout.currencyMode() == CurrencyMode.VAULT) {

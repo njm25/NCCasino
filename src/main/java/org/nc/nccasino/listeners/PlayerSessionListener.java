@@ -1,12 +1,18 @@
 package org.nc.nccasino.listeners;
 
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.payout.DeliveryResult;
+import org.nc.nccasino.payout.PayoutMessages;
+import org.nc.nccasino.payout.PendingPayout;
+import org.nc.nccasino.payout.PendingPayoutStore;
 import org.nc.nccasino.session.ExitReason;
 import org.nc.nccasino.session.SessionRegistry;
 
@@ -25,6 +31,13 @@ import java.util.UUID;
  * chance to cancel it) to classify the quit that follows it as
  * {@link ExitReason#KICKED} instead — it does not run a separate cleanup
  * path of its own.
+ *
+ * <p>{@code PlayerJoinEvent} settles whatever pending payouts/results
+ * accumulated while the player was away. It deliberately does not attempt
+ * to resume an interrupted game, clear admin edit-mode state, or repair
+ * stale cached session objects — those are separate, later concerns
+ * (respectively: not requested, admin edit-mode cleanup, and stale-client
+ * handling).
  */
 public class PlayerSessionListener implements Listener {
 
@@ -58,5 +71,23 @@ public class PlayerSessionListener implements Listener {
         UUID playerId = event.getPlayer().getUniqueId();
         ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
         SessionRegistry.terminatePlayerSession(playerId, reason);
+    }
+
+    @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        PendingPayoutStore store = plugin.getPendingPayoutStore();
+        if (store == null) {
+            return;
+        }
+
+        Player player = event.getPlayer();
+        DeliveryResult result = store.attemptDeliver(player);
+
+        for (PendingPayout payout : result.delivered()) {
+            player.sendMessage(PayoutMessages.formatDelivered(payout));
+        }
+        if (!result.stillPending().isEmpty()) {
+            player.sendMessage(PayoutMessages.formatPendingRetryNotice(result.stillPending().size()));
+        }
     }
 }
