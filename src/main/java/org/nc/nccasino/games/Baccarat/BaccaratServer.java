@@ -777,6 +777,10 @@ public class BaccaratServer extends Server {
      * timing window as resolving directly inside a quit/close handler.
      */
     private void queuePendingPayout(UUID playerId, double amount) {
+    	queuePendingPayout(playerId, amount, PayoutMessages.disconnectedMidGameContext("Baccarat"));
+    }
+
+    private void queuePendingPayout(UUID playerId, double amount, String context) {
     	Material currencyMaterial = plugin.getCurrency(internalName);
     	PendingPayout pendingPayout = PendingPayout.create(
     		playerId,
@@ -786,11 +790,40 @@ public class BaccaratServer extends Server {
     		currencyMaterial != null ? currencyMaterial.name() : null,
     		currencyName,
     		amount,
-    		PayoutMessages.disconnectedMidGameContext("Baccarat")
+    		context
     	);
     	boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(pendingPayout);
     	if (!persisted) {
     		plugin.getLogger().warning("[NCCasino] Baccarat pending payout failed to persist for " + playerId + ".");
+    	}
+    }
+
+    /**
+     * The server is shutting down with this player's bet still committed
+     * to an in-flight hand. The scheduled deal/draw/evaluate chain that
+     * would normally carry it to a real outcome is about to be cancelled
+     * along with everything else, so refund the wager via the durable
+     * pending-payout store instead.
+     */
+    void refundForShutdown(UUID playerId) {
+    	Map<BaccaratClient.BetOption, Double> bets = playerBets.remove(playerId);
+    	if (bets == null || bets.isEmpty()) {
+    		return;
+    	}
+
+    	double total = bets.values().stream().mapToDouble(Double::doubleValue).sum();
+    	for (Map.Entry<BaccaratClient.BetOption, Double> entry : bets.entrySet()) {
+    		double amount = entry.getValue();
+    		totalBets.computeIfPresent(entry.getKey(), (k, v) -> (v - amount) <= 0 ? null : v - amount);
+    	}
+    	for (BaccaratClient.BetOption betType : BaccaratClient.BetOption.values()) {
+    		broadcastUpdate("UPDATE_BET_DISPLAY", new BetDisplayData(
+    			betType, 0.0, totalBets.getOrDefault(betType, 0.0)
+    		));
+    	}
+
+    	if (total > 0) {
+    		queuePendingPayout(playerId, total, PayoutMessages.serverRestartRefundContext("Baccarat"));
     	}
     }
 

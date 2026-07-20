@@ -36,6 +36,8 @@ import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.objects.Pair;
 import org.nc.nccasino.helpers.Preferences;
+import org.nc.nccasino.payout.PayoutMessages;
+import org.nc.nccasino.payout.PendingPayout;
 import org.nc.nccasino.session.ExitReason;
 import org.nc.nccasino.session.SessionRegistry;
 import org.nc.nccasino.session.TerminableSession;
@@ -1801,12 +1803,55 @@ private void fillDecorativeSlots(int[] slots, Material material) {
      * handling; a plain disconnect intentionally does nothing here and
      * falls through to normal resolution (see handleBetClosure/
      * handleWinningNumber), since the spin resolves independently of
-     * player presence.
+     * player presence. A plugin/server shutdown is different again: the
+     * scheduled tasks that would normally carry the bet through to that
+     * same resolution are about to be cancelled along with everything
+     * else, so there's no "riding it out" — refund instead.
      */
     @Override
     public void onSessionTerminated(UUID terminatedPlayerId, ExitReason reason) {
         if (reason == ExitReason.KICKED) {
             forfeitBet(terminatedPlayerId);
+        } else if (reason == ExitReason.PLUGIN_DISABLE) {
+            refundForShutdown(terminatedPlayerId);
+        }
+    }
+
+    /**
+     * The server is shutting down with this player's bet still committed
+     * to an in-flight round. Refunds the full wagered amount via the
+     * durable pending-payout store (delivered as a normal chat message on
+     * next join) rather than a live credit, since this player may not
+     * even be online right now.
+     */
+    private void refundForShutdown(UUID playerId) {
+        Stack<Pair<String, Integer>> bets = Bets.get(playerId);
+        if (bets == null || bets.isEmpty()) {
+            return;
+        }
+
+        double total = 0;
+        for (Pair<String, Integer> bet : bets) {
+            total += bet.getSecond();
+        }
+        if (total <= 0) {
+            return;
+        }
+
+        Material currencyMaterial = plugin.getCurrency(internalName);
+        PendingPayout payout = PendingPayout.create(
+            playerId,
+            "Roulette",
+            internalName,
+            currencyMode,
+            currencyMaterial != null ? currencyMaterial.name() : null,
+            currencyName,
+            total,
+            PayoutMessages.serverRestartRefundContext("Roulette")
+        );
+        boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
+        if (!persisted) {
+            plugin.getLogger().warning("[NCCasino] Roulette shutdown refund failed to persist for " + playerId + ".");
         }
     }
 

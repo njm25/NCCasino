@@ -23,6 +23,17 @@ public final class PayoutMessages {
             + " game. The game finished while you were offline.";
     }
 
+    /**
+     * The context line stored on a pending record created because the
+     * server shut down while a round was still in flight — the game
+     * couldn't be resolved to a real outcome, so the wager is refunded
+     * rather than played out.
+     */
+    public static String serverRestartRefundContext(String gameType) {
+        return "The server restarted while your " + gameType
+            + " bet was still awaiting resolution, so it has been refunded.";
+    }
+
     /** The chat message shown when a pending payout/result is delivered on join. */
     public static String formatDelivered(PendingPayout payout) {
         return ChatColor.YELLOW + payout.context()

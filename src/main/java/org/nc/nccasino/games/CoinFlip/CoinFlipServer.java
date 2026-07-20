@@ -189,6 +189,10 @@ public class CoinFlipServer extends Server {
     }
 
     private void queuePendingPayout(UUID playerId, double amount) {
+        queuePendingPayout(playerId, amount, PayoutMessages.disconnectedMidGameContext("Coin Flip"));
+    }
+
+    private void queuePendingPayout(UUID playerId, double amount, String context) {
         Material currencyMaterial = plugin.getCurrency(internalName);
         PendingPayout pendingPayout = PendingPayout.create(
             playerId,
@@ -198,12 +202,39 @@ public class CoinFlipServer extends Server {
             currencyMaterial != null ? currencyMaterial.name() : null,
             currencyName,
             amount,
-            PayoutMessages.disconnectedMidGameContext("Coin Flip")
+            context
         );
         boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(pendingPayout);
         if (!persisted) {
             plugin.getLogger().warning("[NCCasino] Coin Flip pending payout failed to persist for " + playerId + ".");
         }
+    }
+
+    /**
+     * The server is shutting down with a flip already accepted and
+     * in-flight. The scheduled resolution (both the client-driven
+     * animation callback and the server's own fallback timer) is about to
+     * be cancelled along with everything else, so there's no way to let it
+     * ride to a real outcome — refund each side's own stake instead.
+     */
+    void refundForShutdown() {
+        if (!gameActive) {
+            return;
+        }
+
+        int stake = betAmount / 2;
+        gameActive = false;
+        betAmount = 0;
+        timeLeft = 0;
+        countdownTaskId = -1;
+
+        if (chairOneOccupant != null && stake > 0) {
+            queuePendingPayout(chairOneOccupant.getUniqueId(), stake, PayoutMessages.serverRestartRefundContext("Coin Flip"));
+        }
+        if (chairTwoOccupant != null && stake > 0) {
+            queuePendingPayout(chairTwoOccupant.getUniqueId(), stake, PayoutMessages.serverRestartRefundContext("Coin Flip"));
+        }
+        forfeited.clear();
     }
 
     /**

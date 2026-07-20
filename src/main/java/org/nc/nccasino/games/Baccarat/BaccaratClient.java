@@ -832,6 +832,13 @@ public class BaccaratClient extends Client implements TerminableSession {
             // Pregame: nothing has been risked into an active hand yet,
             // so this is a plain refund.
             sendUpdateToServer("PLAYER_LEFT_BEFORE_START", null);
+        } else if (reason == ExitReason.PLUGIN_DISABLE) {
+            // Mid-hand, but the scheduled deal/draw/evaluate chain that
+            // would normally carry this bet to a real outcome is about to
+            // be cancelled along with everything else — refund instead of
+            // trying to let it ride through a hand that will never finish.
+            baccaratServer.refundForShutdown(terminatedPlayerId);
+            baccaratServer.releaseSeatForDisconnect(terminatedPlayerId);
         } else {
             // Mid-hand: the bet already rode into the hand and resolves
             // normally by UUID at payout time (delivered as a pending

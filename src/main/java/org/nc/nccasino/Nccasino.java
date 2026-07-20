@@ -61,6 +61,8 @@ import org.nc.nccasino.currency.CurrencyManager;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.DealerCurrencySettings;
 import org.nc.nccasino.payout.PendingPayoutStore;
+import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.SessionRegistry;
 import org.bukkit.Chunk;
 import org.bukkit.entity.EntityType;
 
@@ -85,6 +87,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        // Settle every active player session (refund/cash-out/forfeit as
+        // appropriate, exactly like a disconnect) before the scheduled
+        // tasks that would otherwise resolve in-flight rounds get
+        // cancelled along with everything else the plugin owns.
+        SessionRegistry.terminateAll(ExitReason.PLUGIN_DISABLE);
         savePreferences();
     }
 

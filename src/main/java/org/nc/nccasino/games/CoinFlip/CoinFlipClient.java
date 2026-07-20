@@ -125,6 +125,14 @@ public class CoinFlipClient extends Client implements TerminableSession {
             // forfeit unconditionally, no refund.
             server.removeClient(terminatedPlayerId);
             ((CoinFlipServer) server).forfeitPlayer(terminatedPlayerId);
+        } else if (gameActive && reason == ExitReason.PLUGIN_DISABLE) {
+            // The flip is already accepted and in-flight, but the
+            // scheduled resolution (both the animation callback and the
+            // server's own fallback timer) is about to be cancelled along
+            // with everything else — refund both sides' stakes instead of
+            // trying to let it ride to a result that will never come.
+            ((CoinFlipServer) server).refundForShutdown();
+            server.removeClient(terminatedPlayerId);
         } else {
             if (!gameActive) {
                 if (player == chairOneOccupant) {
