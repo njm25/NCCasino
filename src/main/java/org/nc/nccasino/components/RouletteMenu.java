@@ -62,6 +62,14 @@ public class RouletteMenu extends Menu {
         this.delete();
     }
 
+    /** Tears down this player's open RouletteMenu, if any. AdminMenu's own edit-mode maps are cleared separately and unconditionally by AdminMenu.clearPlayerEditState. */
+    public static void clearPlayerState(UUID playerId) {
+        RouletteMenu menu = RAInventories.get(playerId);
+        if (menu != null) {
+            menu.cleanup();
+        }
+    }
+
     @Override
     protected void initializeMenu(){
         String internalName = Dealer.getInternalName(dealer);

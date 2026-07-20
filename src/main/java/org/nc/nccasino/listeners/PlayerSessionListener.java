@@ -9,6 +9,13 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.components.AdminMenu;
+import org.nc.nccasino.components.BaccaratMenu;
+import org.nc.nccasino.components.BlackjackMenu;
+import org.nc.nccasino.components.CoinFlipMenu;
+import org.nc.nccasino.components.DragonDescentMenu;
+import org.nc.nccasino.components.MinesMenu;
+import org.nc.nccasino.components.RouletteMenu;
 import org.nc.nccasino.payout.DeliveryResult;
 import org.nc.nccasino.payout.PayoutMessages;
 import org.nc.nccasino.payout.PendingPayout;
@@ -32,12 +39,15 @@ import java.util.UUID;
  * {@link ExitReason#KICKED} instead — it does not run a separate cleanup
  * path of its own.
  *
+ * <p>Every quit or kick also unconditionally releases any admin edit-mode
+ * lock and stale intro-animation tracking for that player, regardless of
+ * {@link ExitReason} — this is a UI-lock release, not wager compensation,
+ * so it must not be gated the way payout policy is.
+ *
  * <p>{@code PlayerJoinEvent} settles whatever pending payouts/results
  * accumulated while the player was away. It deliberately does not attempt
- * to resume an interrupted game, clear admin edit-mode state, or repair
- * stale cached session objects — those are separate, later concerns
- * (respectively: not requested, admin edit-mode cleanup, and stale-client
- * handling).
+ * to resume an interrupted game or repair stale cached session objects —
+ * the latter is a separate, later concern (stale-client handling).
  */
 public class PlayerSessionListener implements Listener {
 
@@ -71,6 +81,31 @@ public class PlayerSessionListener implements Listener {
         UUID playerId = event.getPlayer().getUniqueId();
         ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
         SessionRegistry.terminatePlayerSession(playerId, reason);
+
+        // Admin edit-mode/occupation cleanup runs unconditionally, on every
+        // quit or kick alike: it's about releasing a UI lock, not wager
+        // compensation, so it must not depend on ExitReason.
+        clearAdminAndInteractionState(event.getPlayer(), playerId);
+    }
+
+    /**
+     * Central cleanup for the admin edit-mode/settings-menu stale-lock bug:
+     * a player who starts editing something (e.g. clicks "Edit Timer",
+     * which closes the menu and waits for a chat reply) and then
+     * disconnects before finishing was previously locked out of every
+     * NCCasino dealer forever, since nothing but successful chat
+     * submission or an open inventory closing ever cleared these maps.
+     * Also clears stale intro-animation tracking for the same reason.
+     */
+    private void clearAdminAndInteractionState(Player player, UUID playerId) {
+        AdminMenu.clearPlayerEditState(playerId);
+        BlackjackMenu.clearPlayerState(playerId);
+        RouletteMenu.clearPlayerState(playerId);
+        MinesMenu.clearPlayerState(playerId);
+        BaccaratMenu.clearPlayerState(playerId);
+        CoinFlipMenu.clearPlayerState(playerId);
+        DragonDescentMenu.clearPlayerState(playerId);
+        DealerInteractListener.clearActiveAnimation(player);
     }
 
     @EventHandler

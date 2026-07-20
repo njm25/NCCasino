@@ -44,6 +44,18 @@ public class DealerInteractListener implements Listener {
         this.plugin = plugin;
     }
 
+    /**
+     * Removes {@code player} from the active-intro-animation tracker. Used
+     * on disconnect: the natural-completion removal path in
+     * {@code afterAnimationComplete} only runs if the player is still
+     * online, so a disconnect mid-animation could otherwise leave them
+     * permanently marked as "already saw the animation," suppressing it
+     * forever on future dealer interactions.
+     */
+    public static void clearActiveAnimation(Player player) {
+        activeAnimations.remove(player);
+    }
+
     private Mob findDealerFromJockey(Mob clickedMob) {
         // First check if this mob is a dealer
         if (Dealer.isDealer(clickedMob)) {

@@ -66,6 +66,14 @@ public class BlackjackMenu extends Menu {
         this.delete();
     }
 
+    /** Tears down this player's open BlackjackMenu, if any. AdminMenu's own edit-mode maps are cleared separately and unconditionally by AdminMenu.clearPlayerEditState, so this only needs to handle the case where a menu instance still exists. */
+    public static void clearPlayerState(UUID playerId) {
+        BlackjackMenu menu = BAInventories.get(playerId);
+        if (menu != null) {
+            menu.cleanup();
+        }
+    }
+
     @Override
     protected void initializeMenu(){
         String internalName = Dealer.getInternalName(dealer);

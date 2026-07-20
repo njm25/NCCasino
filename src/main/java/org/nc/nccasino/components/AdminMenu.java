@@ -1587,20 +1587,39 @@ public class AdminMenu extends Menu {
 
     @Override
     public void cleanup() {
-        // 1) Unregister all event handlers for this instance
+        // Unregister this specific instance's handlers even if it is no
+        // longer (or never was) the one on record in adminInventories.
         HandlerList.unregisterAll(this);
+        clearPlayerEditState(ownerId);
+    }
 
-        // 2) Remove from adminInventories
-        adminInventories.remove(ownerId);
+    /**
+     * Removes {@code playerId} from every AdminMenu-owned edit-mode/
+     * occupation map, and unregisters + tears down their AdminMenu
+     * instance if one is currently open. Safe to call even when the
+     * player has no admin inventory open at all — e.g. they left the
+     * settings menu to type a new value in chat and disconnected before
+     * submitting it, which is the scenario that previously left them
+     * permanently locked out (nothing but a successful chat submission or
+     * an open-inventory close ever cleared these maps).
+     */
+    public static void clearPlayerEditState(UUID playerId) {
+        moveMode.remove(playerId);
+        nameEditMode.remove(playerId);
+        timerEditMode.remove(playerId);
+        standOn17Mode.remove(playerId);
+        editMinesMode.remove(playerId);
+        amsgEditMode.remove(playerId);
+        chipEditMode.remove(playerId);
+        currencyEditMode.remove(playerId);
+        decksEditMode.remove(playerId);
+        dragonEditMode.remove(playerId);
+        localMob.remove(playerId);
 
-        // 3) Remove player references from the specialized maps
-        moveMode.remove(ownerId);
-        nameEditMode.remove(ownerId);
-        timerEditMode.remove(ownerId);
-        amsgEditMode.remove(ownerId);
-        chipEditMode.remove(ownerId);
-        localMob.remove(ownerId);
-        currencyEditMode.remove(ownerId);
+        AdminMenu menu = adminInventories.remove(playerId);
+        if (menu != null) {
+            HandlerList.unregisterAll(menu);
+        }
     }
 
     public static void clearAllEditModes(Mob mob) {
