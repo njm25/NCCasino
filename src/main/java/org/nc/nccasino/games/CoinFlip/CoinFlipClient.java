@@ -2,6 +2,7 @@ package org.nc.nccasino.games.CoinFlip;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -15,8 +16,11 @@ import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.SessionRegistry;
+import org.nc.nccasino.session.TerminableSession;
 
-public class CoinFlipClient extends Client {
+public class CoinFlipClient extends Client implements TerminableSession {
 
     private enum SlotOption
     {
@@ -35,9 +39,11 @@ public class CoinFlipClient extends Client {
     private final String clickHereToSit = "§f§oClick here to sit";
     private boolean gameActive = false;
     private boolean betAccepted = false;
+    private boolean sessionResolved = false;
 
     public CoinFlipClient(Server server, Player player, Nccasino plugin, String internalName) {
         super(server, player, "Coin Flip", plugin, internalName);
+        SessionRegistry.register(player.getUniqueId(), this);
         this.chairOneOccupant = null;
         this.chairTwoOccupant = null;
 
@@ -89,15 +95,51 @@ public class CoinFlipClient extends Client {
     
     @Override
     protected void handleClientInventoryClose() {
-        if(!gameActive){
-            if(player == chairOneOccupant){
-                sendUpdateToServer("PLAYER_LEAVE_ONE", null);
-            }
-            if(player == chairTwoOccupant){
-                sendUpdateToServer("PLAYER_LEAVE_TWO", null);
-            }
+        // Route through the same idempotent path used for quit/kick rather
+        // than resolving directly here — whichever of this or the quit
+        // event fires first "wins" and the other becomes a safe no-op, and
+        // consumeQuitReason still correctly reports KICKED here even if
+        // this fires first, since the kick is marked as soon as
+        // PlayerKickEvent itself fires.
+        UUID playerId = player.getUniqueId();
+        ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
+        SessionRegistry.terminatePlayerSession(playerId, reason);
+    }
+
+    /**
+     * Authoritative disconnect/kick resolution, reached via SessionRegistry
+     * regardless of whether this fires from PlayerQuitEvent or from this
+     * client's own InventoryCloseEvent.
+     */
+    @Override
+    public void onSessionTerminated(UUID terminatedPlayerId, ExitReason reason) {
+        if (sessionResolved) {
+            return; // already resolved through another path
         }
-        super.handleClientInventoryClose();
+        sessionResolved = true;
+
+        if (reason == ExitReason.KICKED) {
+            // Remove from the server's client registry first so this
+            // client can't receive (and self-refund against) the
+            // seat-leave broadcast forfeitPlayer causes — kicked players
+            // forfeit unconditionally, no refund.
+            server.removeClient(terminatedPlayerId);
+            ((CoinFlipServer) server).forfeitPlayer(terminatedPlayerId);
+        } else {
+            if (!gameActive) {
+                if (player == chairOneOccupant) {
+                    sendUpdateToServer("PLAYER_LEAVE_ONE", null);
+                }
+                if (player == chairTwoOccupant) {
+                    sendUpdateToServer("PLAYER_LEAVE_TWO", null);
+                }
+            }
+            // gameActive: let it ride — the bet already rode into the
+            // round and resolves normally by UUID at payout time
+            // (delivered as a pending payout if still offline then).
+            // resolveRound's own post-payout cleanup frees the seat.
+            server.removeClient(terminatedPlayerId);
+        }
     }
     
     private void handleChairOne(){
