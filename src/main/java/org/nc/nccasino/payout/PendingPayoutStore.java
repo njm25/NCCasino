@@ -162,25 +162,33 @@ public class PendingPayoutStore {
     }
 
     /**
-     * Removes a delivered record and persists the removal. Idempotent: if
-     * the record is already gone, this is a harmless no-op that still
-     * reports success.
+     * Removes a record whose payout has ALREADY been delivered (the
+     * currency has already moved) and persists the removal. Idempotent: if
+     * the record is already gone, this is a harmless no-op.
+     *
+     * <p>Unlike a normal removal, this deliberately never rolls back the
+     * in-memory removal on a persist failure. By the time this is called
+     * the player has already been paid — re-adding the record so it looks
+     * pending again would make the next {@link #attemptDeliver} call pay
+     * them a second time, which is strictly worse than the alternative: a
+     * stale, already-delivered record surviving on disk that needs manual
+     * cleanup (logged loudly below) but can never cause a duplicate
+     * payment from this running instance.
      */
-    private synchronized boolean markDelivered(UUID payoutId) {
+    private synchronized void markDelivered(UUID payoutId) {
         PendingPayout removed = byId.get(payoutId);
         if (removed == null) {
-            return true;
+            return;
         }
 
         indexRemove(removed);
 
-        boolean ok = persist();
-        if (!ok) {
-            // Roll back so we don't lose track of a record that is, from
-            // disk's perspective, still pending.
-            indexAdd(removed);
+        if (!persist()) {
+            plugin.getLogger().log(Level.SEVERE, "[NCCasino] Delivered pending payout " + payoutId
+                + " to " + removed.playerId() + " but failed to persist its removal from disk. "
+                + "The record may still be present in pending-payouts.yml and should be removed "
+                + "manually to avoid a duplicate payout on a future server restart.");
         }
-        return ok;
     }
 
     /**
@@ -189,7 +197,9 @@ public class PendingPayoutStore {
      * currency movement and is always delivered immediately (there is
      * nothing that can fail). A record with a positive amount is only
      * removed from the store if the actual deposit succeeds; on failure it
-     * is left pending for a later retry and logged.
+     * is left pending for a later retry and logged. A deposit that
+     * succeeds is always reported as delivered, even if persisting its
+     * removal from disk fails afterward — see {@link #markDelivered}.
      */
     public synchronized DeliveryResult attemptDeliver(Player player) {
         List<PendingPayout> pending = getPending(player.getUniqueId());
@@ -206,13 +216,8 @@ public class PendingPayoutStore {
                 continue;
             }
 
-            if (markDelivered(payout.id())) {
-                delivered.add(payout);
-            } else {
-                // Removal failed to persist; treat as not-yet-delivered
-                // rather than risk double-crediting on a later retry.
-                stillPending.add(payout);
-            }
+            markDelivered(payout.id());
+            delivered.add(payout);
         }
 
         return new DeliveryResult(delivered, stillPending);

@@ -1147,7 +1147,17 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             //player.sendMessage("§cGame over.");
             return;
         }
-    
+
+        // Mark the game resolved synchronously, before any of the payout
+        // itself runs — mirroring how a mine hit already does this. The
+        // actual deposit below is deferred behind a scheduled task, but
+        // onSessionTerminated relies on gameState to know whether a
+        // disconnect still needs resolving; leaving it at PLAYING until
+        // after the deposit already happened let a disconnect in that
+        // window queue a second, independent payout for the same cash-out.
+        gameOver = true;
+        gameState = GameState.GAME_OVER;
+
         // Step 1: Reveal all tiles (mines and safes)
         revealAllTiles();
         player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
@@ -1218,10 +1228,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 				} 
 				giveWinningsToPlayer(winnings);
 			}
-       
-            gameOver = true;
-            gameState = GameState.GAME_OVER;
-    
+
             // Reset the game after a delay
             Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 20L); // Wait 5 seconds before resetting
     
