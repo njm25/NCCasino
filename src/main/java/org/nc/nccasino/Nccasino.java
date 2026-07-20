@@ -53,6 +53,7 @@ import org.nc.nccasino.listeners.DealerDeathHandler;
 import org.nc.nccasino.listeners.DealerEventListener;
 import org.nc.nccasino.listeners.DealerInitializeListener;
 import org.nc.nccasino.listeners.DealerInteractListener;
+import org.nc.nccasino.listeners.PlayerSessionListener;
 import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.economy.VaultHook;
@@ -108,6 +109,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new DealerDeathHandler(this), this);
         getServer().getPluginManager().registerEvents(new DealerEventListener(), this);
         getServer().getPluginManager().registerEvents(new DealerInitializeListener(this), this); // Register the chunk listener
+        getServer().getPluginManager().registerEvents(new PlayerSessionListener(this), this);
 
 
         // Register the command executor
