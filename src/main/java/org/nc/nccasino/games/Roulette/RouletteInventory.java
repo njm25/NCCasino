@@ -36,18 +36,20 @@ import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.objects.Pair;
 import org.nc.nccasino.helpers.Preferences;
+import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.SessionRegistry;
+import org.nc.nccasino.session.TerminableSession;
 
-public class RouletteInventory extends DealerInventory {
+public class RouletteInventory extends DealerInventory implements TerminableSession {
     private final MultiChannelEngine mce;
     private final List<Integer> wheelLayout = Arrays.asList(
-        0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 
+        0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5,
         24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
     );
-    private final Set<Player> switchingPlayers = new HashSet<>();
+    private final Set<UUID> switchingPlayers = new HashSet<>();
     private final Nccasino plugin;
     private final Map<UUID, Stack<Pair<String, Integer>>> Bets;
-    public final Map<Player, BettingTable> Tables;
-    private Map<Player, Integer> activeAnimations;
+    public final Map<UUID, BettingTable> Tables;
     private int frameCounter;
     private int bettingCountdownTaskId = -1;
     private boolean betsClosed = false;
@@ -132,7 +134,6 @@ public class RouletteInventory extends DealerInventory {
         this.plugin = plugin;
         this.Bets = new HashMap<>();
         this.Tables = new HashMap<>();
-        this.activeAnimations = new HashMap<>();
         this.internalName = internalName;
         this.currencyMode = plugin.getCurrencyMode(internalName);
         this.currencyName = plugin.getCurrencyName(internalName);
@@ -280,8 +281,7 @@ public class RouletteInventory extends DealerInventory {
         Bets.clear();
         Tables.clear();
         playersWithBets.clear();
-        newtry.clear(); 
-        activeAnimations.clear();
+        newtry.clear();
         unregisterListener();
         
     }
@@ -295,7 +295,7 @@ public class RouletteInventory extends DealerInventory {
             if (player.getInventory() != null) {
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     if (player != null&&player.isOnline()) {
-                        if (!BettingTable.switchingPlayers.contains(player)){
+                        if (!BettingTable.switchingPlayers.contains(player.getUniqueId())){
                         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                             case STANDARD:{
                                 break;}
@@ -329,14 +329,14 @@ public class RouletteInventory extends DealerInventory {
 
     @EventHandler
     public void handlePlayerQuit(PlayerQuitEvent event) {
-        switchingPlayers.remove(event.getPlayer());
+        switchingPlayers.remove(event.getPlayer().getUniqueId());
     }
 
     @EventHandler
     public void handleInventoryClose(InventoryCloseEvent event) {
         Player player = (Player) event.getPlayer();
         // Check if the player is switching inventories
-        if (switchingPlayers.contains(player)) {
+        if (switchingPlayers.contains(player.getUniqueId())) {
             return; // Ignore this close event if the player is switching
         }
     
@@ -463,7 +463,7 @@ private void handleGameMenuClick(int slot, Player player) {
 }
 
 private void openBettingTable(Player player) {
-    switchingPlayers.add(player); // Mark the player as switching inventories
+    switchingPlayers.add(player.getUniqueId()); // Mark the player as switching inventories
 
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
         Mob dealer = Dealer.findDealer(dealerId, player.getLocation());
@@ -471,9 +471,9 @@ private void openBettingTable(Player player) {
             Stack<Pair<String, Integer>> bets = getPlayerBets(player.getUniqueId());
             String internalName = Dealer.getInternalName(dealer);
             BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets, internalName, this, globalCountdown);
-            Tables.put(player, bettingTable);
+            Tables.put(player.getUniqueId(), bettingTable);
             player.openInventory(bettingTable.getInventory());
-             if (SoundHelper.getSoundSafely("item.book.page_turn", player) != null)player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, SoundCategory.MASTER, 5.0f, 1.0f); 
+             if (SoundHelper.getSoundSafely("item.book.page_turn", player) != null)player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, SoundCategory.MASTER, 5.0f, 1.0f);
              if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
             mce.addPlayerToChannel("BettingTable", player);
             mce.removePlayerFromChannel("RouletteWheel", player);}
@@ -481,25 +481,27 @@ private void openBettingTable(Player player) {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aOpened betting table.");            break;     
+                    player.sendMessage("§aOpened betting table.");            break;
                 }
                     case NONE:{
                     break;
                 }
-            } 
+            }
         } else {
             player.sendMessage("§cError: Dealer not found. Unable to open betting table.");
              if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         }
-        switchingPlayers.remove(player); // Remove the flag after the switch
+        switchingPlayers.remove(player.getUniqueId()); // Remove the flag after the switch
     }, 1L); // Small delay to allow the inventory to switch
 }
 
 
 private void exitGame(Player player) {
-    BettingTable bt = Tables.get(player);
+    UUID playerId = player.getUniqueId();
+    BettingTable bt = Tables.remove(playerId);
     if (bt != null) {
         bt.clearAllBetsAndRefund(player);
+        bt.cleanupListener();
     }
     player.closeInventory();
     switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -507,14 +509,16 @@ private void exitGame(Player player) {
             break;}
         case VERBOSE:{
     player.sendMessage("§cYou have left the game.");
-    break;     
+    break;
         }
             case NONE:{
             break;
         }
-    } 
-    Tables.remove(player);
-    removeAllBets(player.getUniqueId());
+    }
+    removeAllBets(playerId);
+    newtry.remove(playerId);
+    playersWithBets.remove(playerId);
+    SessionRegistry.unregister(playerId, this);
 
     if (Tables.isEmpty()) {
         resetToStartState();
@@ -592,7 +596,7 @@ private void exitGame(Player player) {
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public Map<UUID,Stack<Pair<String, Integer>>> newtry=new HashMap();
-    private List<Player> playersWithBets = new ArrayList<>();
+    private List<UUID> playersWithBets = new ArrayList<>();
 
     @SuppressWarnings("unchecked")
     private void handleBetClosure() {
@@ -600,56 +604,68 @@ private void exitGame(Player player) {
         betsClosed = true;
         List<Player> activePlayers = new ArrayList<>();
         playersWithBets.clear();
-        //List<Player> playersWithBets = new ArrayList<>();
 
         for (Player player : Bukkit.getServer().getOnlinePlayers()) {
-            if (player == null) 
+            if (player == null)
                 continue;
             InventoryView openInventory = player.getOpenInventory();
             if (openInventory != null && openInventory.getTopInventory().getHolder() == this) {
                 activePlayers.add(player);
             }
         }
-      
-        for (Player player : Tables.keySet()) {
-            InventoryView openInventory = player.getOpenInventory();
-            if (openInventory != null && (openInventory.getTopInventory().getHolder() == this || openInventory.getTopInventory().getHolder() == Tables.get(player))) {
-                activePlayers.add(player);
+
+        // Snapshot every player with a committed bet into this round's
+        // resolution list, regardless of whether they're online right now.
+        // The spin resolves independently of player presence, so a bet
+        // already withdrawn from a player's balance must ride the spin to
+        // a real outcome (delivered as a pending payout if they're gone by
+        // the time it resolves) rather than being silently excluded and
+        // stranded here just because they happened to be offline at this
+        // exact tick.
+        for (UUID playerId : Tables.keySet()) {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null) {
+                InventoryView openInventory = player.getOpenInventory();
+                if (openInventory != null && (openInventory.getTopInventory().getHolder() == this || openInventory.getTopInventory().getHolder() == Tables.get(playerId))) {
+                    if (!activePlayers.contains(player)) {
+                        activePlayers.add(player);
+                    }
+                }
             }
 
-            if (player != null && player.isOnline()) {
-                Stack<Pair<String, Integer>> playerBets = getPlayerBets(player.getUniqueId());
-                if (!playerBets.isEmpty()) {
-                    newtry.put(player.getUniqueId(), (Stack<Pair<String, Integer>>) playerBets.clone());
+            Stack<Pair<String, Integer>> playerBets = getPlayerBets(playerId);
+            if (!playerBets.isEmpty()) {
+                newtry.put(playerId, (Stack<Pair<String, Integer>>) playerBets.clone());
+                if (player != null && !activePlayers.contains(player)) {
                     activePlayers.add(player);
-                    playersWithBets.add(player);
-                    Bets.put(player.getUniqueId(), playerBets);
                 }
-                
+                playersWithBets.add(playerId);
+                Bets.put(playerId, playerBets);
             }
         }
 
         if (playersWithBets.isEmpty() && activePlayers.isEmpty()) {
             resetToStartState();
         } else {
-            
-            for (Player player : playersWithBets) {
-                if (player.isOnline()) {
-                    switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+
+            for (UUID playerId : playersWithBets) {
+                Player player = Bukkit.getPlayer(playerId);
+                if (player != null) {
+                    switch(plugin.getPreferences(playerId).getMessageSetting()){
                         case STANDARD:{
                             break;}
                         case VERBOSE:{
                             player.sendMessage("§dBets locked, spinning!");
-                            break;     
+                            break;
                         }
                             case NONE:{
                             break;
                         }
-                    } 
+                    }
                 }
             }
 
-            miscTask=Bukkit.getScheduler().runTaskLater(plugin, () -> 
+            miscTask=Bukkit.getScheduler().runTaskLater(plugin, () ->
             mce.playSong("RouletteWheel", RouletteSongs.getBallLaunch(), false, "Ball Launch")
             , 20L);
             activeTaskIds.add(miscTask.getTaskId()); // Store the task ID
@@ -1218,71 +1234,77 @@ private void handleWinningNumber() {
     finalpicked = true;
 
     mce.playSong("RouletteWheel", RouletteSongs.getFinalSpot(), false, "Final spot");
-    // Loop over players who have placed bets
-    for (Player player : playersWithBets) {
-        if (player.isOnline()) {
-            // Schedule the processing to run after a delay
-            miscTask=Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                BettingTable bettingTable = Tables.get(player);
-                if (bettingTable != null) {
-                    // Get the bet stack directly from the BettingTable
-                    Stack<Pair<String, Integer>> playerBets =newtry.get(player.getUniqueId());
-  
-                    if (!playerBets.isEmpty()) {
-                        // Notify the player of the winning number
-                        if (isRed(winningNumber)) {
-                            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                                case STANDARD:{
-                                    player.sendMessage("§cHit Red " + winningNumber + "!");
-                                    break;}
-                                case VERBOSE:{
-                                    player.sendMessage("§cHit Red " + winningNumber + "!");
-                                    break;     
-                                }
-                                    case NONE:{
-                                    break;
-                                }
-                            } 
-                        } else if (isBlack(winningNumber)) {
-                            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                                case STANDARD:{
-                                    player.sendMessage("§fHit Black " + winningNumber + "!");
-                                    break;}
-                                case VERBOSE:{
-                                    player.sendMessage("§fHit Black " + winningNumber + "!");
-                                    break;     
-                                }
-                                    case NONE:{
-                                    break;
-                                }
-                            } 
-                        } else {
-                            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                                case STANDARD:{
-                                    player.sendMessage("§aHit Green " + winningNumber + ", WOW!");
-                                    break;}
-                                case VERBOSE:{
-                                    player.sendMessage("§aHit Green " + winningNumber + ", WOW!");
-                                    break;     
-                                }
-                                    case NONE:{
-                                    break;
-                                }
-                            } 
-                        }
+    // Loop over players who have placed bets. Scheduled and resolved by
+    // UUID regardless of current online status — the bet already rode the
+    // spin, so it's owed a real outcome either way (processSpinResult
+    // itself decides direct credit vs. a durable pending payout based on
+    // whether the player is back online by the time this runs).
+    for (UUID playerId : playersWithBets) {
+        // Schedule the processing to run after a delay
+        miscTask=Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            BettingTable bettingTable = Tables.get(playerId);
+            if (bettingTable == null) {
+                plugin.getLogger().warning("No betting table found for player: " + playerId);
+                return;
+            }
 
-                        // Process the bets
-                        bettingTable.processSpinResult(winningNumber, playerBets);
-                    } else {
-                        plugin.getLogger().warning(player.getName() + " has no bets to process.");
+            // Get the bet stack directly from the BettingTable
+            Stack<Pair<String, Integer>> playerBets = newtry.get(playerId);
+            if (playerBets == null || playerBets.isEmpty()) {
+                plugin.getLogger().warning(playerId + " has no bets to process.");
+                return;
+            }
+
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null) {
+                // Notify the player of the winning number
+                if (isRed(winningNumber)) {
+                    switch(plugin.getPreferences(playerId).getMessageSetting()){
+                        case STANDARD:{
+                            player.sendMessage("§cHit Red " + winningNumber + "!");
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage("§cHit Red " + winningNumber + "!");
+                            break;
+                        }
+                            case NONE:{
+                            break;
+                        }
+                    }
+                } else if (isBlack(winningNumber)) {
+                    switch(plugin.getPreferences(playerId).getMessageSetting()){
+                        case STANDARD:{
+                            player.sendMessage("§fHit Black " + winningNumber + "!");
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage("§fHit Black " + winningNumber + "!");
+                            break;
+                        }
+                            case NONE:{
+                            break;
+                        }
                     }
                 } else {
-                    plugin.getLogger().warning("No betting table found for player: " + player.getName());
+                    switch(plugin.getPreferences(playerId).getMessageSetting()){
+                        case STANDARD:{
+                            player.sendMessage("§aHit Green " + winningNumber + ", WOW!");
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage("§aHit Green " + winningNumber + ", WOW!");
+                            break;
+                        }
+                            case NONE:{
+                            break;
+                        }
+                    }
                 }
-            }, 30L);
-            
-            activeTaskIds.add(miscTask.getTaskId()); 
-        }
+            }
+
+            // Process the bets
+            bettingTable.processSpinResult(winningNumber, playerBets);
+        }, 30L);
+
+        activeTaskIds.add(miscTask.getTaskId());
     }
 
     // Reset for the next round
@@ -1764,6 +1786,59 @@ private void fillDecorativeSlots(int[] slots, Material material) {
             bets = new Stack<>();
         }
         Bets.put(playerId, bets);
+        if (!bets.isEmpty()) {
+            // A committed, currency-withdrawn bet exists for this player —
+            // make sure a kick can reach us to forfeit it even if they
+            // aren't actively viewing any Roulette inventory right now.
+            SessionRegistry.register(playerId, this);
+        }
+    }
+
+    /**
+     * Kicked players forfeit unconditionally, regardless of round phase —
+     * no refund, no cash-out, no pending payout. Reached via
+     * SessionRegistry from the central PlayerQuitEvent/PlayerKickEvent
+     * handling; a plain disconnect intentionally does nothing here and
+     * falls through to normal resolution (see handleBetClosure/
+     * handleWinningNumber), since the spin resolves independently of
+     * player presence.
+     */
+    @Override
+    public void onSessionTerminated(UUID terminatedPlayerId, ExitReason reason) {
+        if (reason == ExitReason.KICKED) {
+            forfeitBet(terminatedPlayerId);
+        }
+    }
+
+    private void forfeitBet(UUID playerId) {
+        Bets.remove(playerId);
+        newtry.remove(playerId);
+        playersWithBets.remove(playerId);
+
+        BettingTable bt = Tables.remove(playerId);
+        if (bt != null) {
+            bt.cleanupListener();
+        }
+    }
+
+    /**
+     * Final cleanup once a player's bet for this round has been fully
+     * resolved (paid directly or queued as a pending payout) — called from
+     * BettingTable.processSpinResult. Avoids leaking the BettingTable's
+     * registered listener and Tables entry indefinitely, which previously
+     * only ever happened via the manual "Exit" button.
+     */
+    void finalizeRoundResolution(UUID playerId) {
+        Bets.remove(playerId);
+        newtry.remove(playerId);
+        playersWithBets.remove(playerId);
+
+        BettingTable bt = Tables.remove(playerId);
+        if (bt != null) {
+            bt.cleanupListener();
+        }
+
+        SessionRegistry.unregister(playerId, this);
     }
 }
 
