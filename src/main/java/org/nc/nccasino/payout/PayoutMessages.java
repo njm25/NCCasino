@@ -1,0 +1,42 @@
+package org.nc.nccasino.payout;
+
+import org.bukkit.ChatColor;
+import org.nc.nccasino.currency.CurrencyMode;
+
+/**
+ * Centralizes player-facing pending-payout/result text in one place so it
+ * stays consistent and is easy to localize later. This is not a
+ * localization system — just a single home for these strings for now.
+ */
+public final class PayoutMessages {
+
+    private PayoutMessages() {
+    }
+
+    /**
+     * The standard context line stored on a pending record created because
+     * a player disconnected mid-game, e.g. "You disconnected during an
+     * active Roulette game. The game finished while you were offline."
+     */
+    public static String disconnectedMidGameContext(String gameType) {
+        return "You disconnected during an active " + gameType
+            + " game. The game finished while you were offline.";
+    }
+
+    /** The chat message shown when a pending payout/result is delivered on join. */
+    public static String formatDelivered(PendingPayout payout) {
+        return ChatColor.YELLOW + payout.context()
+            + "\n" + ChatColor.GREEN + "Payout: " + formatAmount(payout);
+    }
+
+    private static String formatAmount(PendingPayout payout) {
+        int whole = (int) payout.amount();
+        if (payout.currencyMode() == CurrencyMode.VAULT) {
+            return "$" + whole;
+        }
+        String name = payout.currencyName() != null && !payout.currencyName().isBlank()
+            ? payout.currencyName().toLowerCase()
+            : "currency";
+        return whole + " " + name + (whole != 1 ? "s" : "");
+    }
+}

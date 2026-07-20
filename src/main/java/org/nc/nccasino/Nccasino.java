@@ -60,6 +60,7 @@ import org.nc.nccasino.economy.VaultHook;
 import org.nc.nccasino.currency.CurrencyManager;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.DealerCurrencySettings;
+import org.nc.nccasino.payout.PendingPayoutStore;
 import org.bukkit.Chunk;
 import org.bukkit.entity.EntityType;
 
@@ -74,6 +75,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
     private String currencyName;  // Display name for the currency
     private VaultHook vaultHook;
     private CurrencyManager currencyManager;
+    private PendingPayoutStore pendingPayoutStore;
 
     /**
      * This local map was used in your code. If you still need it,
@@ -102,6 +104,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
         // Phase 0 currency scaffolding (unused by gameplay until wired into games)
         currencyManager = new CurrencyManager(this);
+
+        // Durable pending-payout storage (delivered on join once wired up)
+        pendingPayoutStore = new PendingPayoutStore(this);
 
         // Register event listeners
         getServer().getPluginManager().registerEvents(new DealerInteractListener(this), this);
@@ -389,6 +394,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     public CurrencyManager getCurrencyManager() {
         return currencyManager;
+    }
+
+    public PendingPayoutStore getPendingPayoutStore() {
+        return pendingPayoutStore;
     }
 
     private void reinitializeDealers() {
