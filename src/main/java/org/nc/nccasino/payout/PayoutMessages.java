@@ -2,6 +2,7 @@ package org.nc.nccasino.payout;
 
 import org.bukkit.ChatColor;
 import org.nc.nccasino.currency.CurrencyMode;
+import org.nc.nccasino.currency.MoneyHelper;
 
 /**
  * Centralizes player-facing pending-payout/result text in one place so it
@@ -47,10 +48,10 @@ public final class PayoutMessages {
     }
 
     private static String formatAmount(PendingPayout payout) {
-        int whole = (int) payout.amount();
         if (payout.currencyMode() == CurrencyMode.VAULT) {
-            return "$" + whole;
+            return "$" + MoneyHelper.roundDisplay(MoneyHelper.bd(payout.amount())).toPlainString();
         }
+        int whole = (int) payout.amount();
         String name = payout.currencyName() != null && !payout.currencyName().isBlank()
             ? payout.currencyName().toLowerCase()
             : "currency";

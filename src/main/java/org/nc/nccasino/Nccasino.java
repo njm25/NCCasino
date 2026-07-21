@@ -60,6 +60,7 @@ import org.nc.nccasino.economy.VaultHook;
 import org.nc.nccasino.currency.CurrencyManager;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.DealerCurrencySettings;
+import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.payout.PendingPayoutStore;
 import org.nc.nccasino.session.ExitReason;
 import org.nc.nccasino.session.SessionRegistry;
@@ -596,12 +597,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
         return getCurrencyMode(internalName) == CurrencyMode.VAULT;
     }
 
-    /** Format wager amount for UI: VAULT → "$5", else → "5 emeralds" (lowercase, plural). Use this overload with cached mode/name to avoid config read per call. */
+    /** Format wager amount for UI: VAULT → "$5.00", else → "5 emeralds" (lowercase, plural). Use this overload with cached mode/name to avoid config read per call. */
     public String formatWagerDisplay(CurrencyMode mode, String currencyName, double amount) {
-        int n = (int) amount;
         if (mode == CurrencyMode.VAULT) {
-            return "$" + n;
+            return "$" + MoneyHelper.roundDisplay(MoneyHelper.bd(amount)).toPlainString();
         }
+        int n = (int) amount;
         String name = currencyName != null ? currencyName.toLowerCase() : "emerald";
         return n + " " + name + (n != 1 ? "s" : "");
     }
@@ -611,12 +612,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
         return formatWagerDisplay(getCurrencyMode(internalName), getCurrencyName(internalName), amount);
     }
 
-    /** Chip button display name: VAULT → "$5", else → "5 Emeralds". Use with cached mode/name to avoid config read per call. */
+    /** Chip button display name: VAULT → "$5.00", else → "5 Emeralds". Use with cached mode/name to avoid config read per call. */
     public String getChipDisplayName(CurrencyMode mode, String currencyName, double value) {
-        int n = (int) value;
         if (mode == CurrencyMode.VAULT) {
-            return "$" + n;
+            return "$" + MoneyHelper.roundDisplay(MoneyHelper.bd(value)).toPlainString();
         }
+        int n = (int) value;
         String name = currencyName != null ? currencyName : "Emerald";
         return n + " " + name + (n != 1 ? "s" : "");
     }
