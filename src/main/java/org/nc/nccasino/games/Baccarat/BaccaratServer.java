@@ -647,7 +647,16 @@ public class BaccaratServer extends Server {
         broadcastUpdate("RESULT", result);
         currentWinString=result;
         processPayouts(result);
-    
+
+        // Clear bets synchronously now that they're paid, rather than
+        // waiting for resetGame()'s 70-tick visual-reset delay — otherwise
+        // a shutdown landing in that window still sees a payable-looking
+        // bet for a hand that was already paid, and refundForShutdown
+        // would queue a second payout on top of what processPayouts just
+        // gave everyone.
+        playerBets.clear();
+        totalBets.clear();
+
         // Save the current bets before the game resets
         for (Client client : clients.values()) {
             if (client instanceof BaccaratClient &&client.rebetEnabled) {

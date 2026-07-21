@@ -75,7 +75,14 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     private double previousWager = 0.0; // New field to store previous wager
     private boolean[][] fireGrid; // [6][9] To track which tiles are on fire
     private final List<Integer> scheduledTasks = new ArrayList<>();
-    private boolean rebetEnabled = false; 
+    private boolean rebetEnabled = false;
+    // Set the instant cashOut() commits to paying out (alongside gameOver/
+    // gameState flipping to GAME_OVER), cleared once that deferred deposit
+    // actually completes. Lets onSessionTerminated tell "already paid or
+    // lost" apart from "paying out is in flight, ~10 ticks away" on a
+    // plugin/server shutdown, where that deferred task would otherwise be
+    // cancelled by Bukkit before it ever runs.
+    private boolean cashOutDepositPending = false;
     // Adjusted fields for grid mapping
     private final int[] gridSlots = {
         2, 3, 4, 5, 6,
@@ -542,11 +549,11 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 return;
             }
             // place that entire count as a single bet in the betStack
-            betStack.push((double) count);
             boolean removed = removeWagerFromInventory(player, count);
 			if (!removed) {
 				return;
 			}
+            betStack.push((double) count);
             double totalBet = betStack.stream().mapToDouble(d -> d).sum();
             updateBetLore(53, totalBet);
             wager = count;
@@ -1157,6 +1164,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         // window queue a second, independent payout for the same cash-out.
         gameOver = true;
         gameState = GameState.GAME_OVER;
+        cashOutDepositPending = true;
 
         // Step 1: Reveal all tiles (mines and safes)
         revealAllTiles();
@@ -1228,6 +1236,8 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 				} 
 				giveWinningsToPlayer(winnings);
 			}
+
+            cashOutDepositPending = false;
 
             // Reset the game after a delay
             Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 20L); // Wait 5 seconds before resetting
@@ -1520,8 +1530,8 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 				return withdrawn >= amount;
 			}
 
-            provider.withdraw(player, internalName, amount);
-            return true;
+            int withdrawn = provider.withdraw(player, internalName, amount);
+            return withdrawn >= amount;
         }
 
         Material currencyMat = plugin.getCurrency(internalName);
@@ -1746,9 +1756,22 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 refundAllBets(player);
             } else if (gameState == GameState.PLAYING) {
                 resolveMidGameDisconnect(terminatedPlayerId);
+            } else if (gameState == GameState.GAME_OVER && cashOutDepositPending && reason == ExitReason.PLUGIN_DISABLE) {
+                // cashOut() already committed to paying out (gameOver/
+                // gameState flipped synchronously), but the actual deposit
+                // is still a few ticks away in a task that's about to be
+                // cancelled along with everything else the plugin owns.
+                // Queue the same already-known payout durably instead of
+                // letting it be silently cancelled and lost. Deliberately
+                // scoped to PLUGIN_DISABLE only: for a plain disconnect in
+                // this same window, the still-live scheduled task is NOT
+                // cancelled and will complete on its own — queuing a
+                // second payout here would double-pay it.
+                resolveMidGameDisconnect(terminatedPlayerId);
             }
-            // GAME_OVER: already resolved through normal play — either a
-            // win was already paid, or a mine was hit and nothing is owed.
+            // GAME_OVER otherwise: already resolved through normal play —
+            // either a win was already paid, a mine was hit and nothing is
+            // owed, or a live cash-out deposit is still safely in flight.
         }
         // KICKED: forfeit unconditionally regardless of phase — no refund,
         // no cash-out.
