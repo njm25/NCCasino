@@ -52,6 +52,12 @@ public class RouletteInventory extends DealerInventory implements TerminableSess
     private final Nccasino plugin;
     private final Map<UUID, Stack<Pair<String, Integer>>> Bets;
     public final Map<UUID, BettingTable> Tables;
+    // Tracks a spin's already-computed winning payout for the ~1s window
+    // between it being scheduled and the deposit task actually running.
+    // Lets onSessionTerminated tell "a win is in flight, pay this exact
+    // amount" apart from "no resolution has happened yet, refund the
+    // stake from Bets" on a plugin/server shutdown.
+    private final Map<UUID, Double> pendingOnlineDeposits = new HashMap<>();
     private int frameCounter;
     private int bettingCountdownTaskId = -1;
     private boolean betsClosed = false;
@@ -1813,7 +1819,54 @@ private void fillDecorativeSlots(int[] slots, Material material) {
         if (reason == ExitReason.KICKED) {
             forfeitBet(terminatedPlayerId);
         } else if (reason == ExitReason.PLUGIN_DISABLE) {
-            refundForShutdown(terminatedPlayerId);
+            Double pendingDeposit = pendingOnlineDeposits.remove(terminatedPlayerId);
+            if (pendingDeposit != null && pendingDeposit > 0) {
+                queueShutdownWinPayout(terminatedPlayerId, pendingDeposit);
+            } else {
+                refundForShutdown(terminatedPlayerId);
+            }
+        }
+    }
+
+    /**
+     * Called by BettingTable right after a spin resolves to a win for an
+     * online player, before the deposit that pays it is scheduled. Marks
+     * the exact amount owed so a shutdown landing before that deposit runs
+     * queues the correct payout instead of losing it (the deposit task
+     * itself is about to be cancelled along with everything else) or
+     * falling back to refundForShutdown's stake-based amount, which would
+     * short a winner down to just their wager back.
+     */
+    void markOnlineDepositPending(UUID playerId, double amount) {
+        pendingOnlineDeposits.put(playerId, amount);
+    }
+
+    /** Called once the deposit above actually completes. */
+    void clearOnlineDepositPending(UUID playerId) {
+        pendingOnlineDeposits.remove(playerId);
+    }
+
+    /**
+     * Durably queues an already-resolved winning payout that a shutdown
+     * interrupted before its scheduled deposit could run. Mirrors
+     * refundForShutdown's persistence, but for a known payout amount
+     * rather than a re-derived stake total.
+     */
+    private void queueShutdownWinPayout(UUID playerId, double amount) {
+        Material currencyMaterial = plugin.getCurrency(internalName);
+        PendingPayout payout = PendingPayout.create(
+            playerId,
+            "Roulette",
+            internalName,
+            currencyMode,
+            currencyMaterial != null ? currencyMaterial.name() : null,
+            currencyName,
+            amount,
+            PayoutMessages.serverRestartRefundContext("Roulette")
+        );
+        boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
+        if (!persisted) {
+            plugin.getLogger().warning("[NCCasino] Roulette shutdown win payout failed to persist for " + playerId + ".");
         }
     }
 

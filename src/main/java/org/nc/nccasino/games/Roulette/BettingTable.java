@@ -523,6 +523,15 @@ public class BettingTable extends DealerInventory {
                 }, 20L);
             }
 
+            if (totalPayoutFinal > 0) {
+                // A shutdown landing in the ~1s window before the deposit
+                // below runs would otherwise cancel it silently, or (since
+                // finalizeRoundResolution hasn't cleared Bets yet either)
+                // fall back to refunding just the stake instead of the
+                // winnings — mark the already-known payout so it's queued
+                // durably and correctly if that happens.
+                rouletteInventory.markOnlineDepositPending(playerId, totalPayoutFinal);
+            }
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
@@ -538,10 +547,15 @@ public class BettingTable extends DealerInventory {
                 }
                 if (totalPayoutFinal > 0) {
                     refundWagerToInventory(player, totalPayoutFinal);
+                    rouletteInventory.clearOnlineDepositPending(playerId);
+                    rouletteInventory.finalizeRoundResolution(playerId);
                 }
             }, 20L);
             Bukkit.getScheduler().runTaskLater(plugin, this::initializeTable, 25L);
             Bukkit.getScheduler().runTaskLater(plugin, this::updateAllLore, 25L);
+            if (totalPayoutFinal <= 0) {
+                rouletteInventory.finalizeRoundResolution(playerId);
+            }
         } else if (totalPayoutFinal > 0) {
             // Offline at resolution time: the outcome is already final and
             // owed regardless of presence, but crediting a currently-dead
@@ -562,9 +576,10 @@ public class BettingTable extends DealerInventory {
             if (!persisted) {
                 plugin.getLogger().warning("[NCCasino] Roulette pending payout failed to persist for " + playerId + ".");
             }
+            rouletteInventory.finalizeRoundResolution(playerId);
+        } else {
+            rouletteInventory.finalizeRoundResolution(playerId);
         }
-
-        rouletteInventory.finalizeRoundResolution(playerId);
     }
     
     private String parseCategory(String betType) {
