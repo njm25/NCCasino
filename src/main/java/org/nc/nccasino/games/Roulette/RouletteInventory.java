@@ -39,6 +39,7 @@ import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.payout.PayoutMessages;
 import org.nc.nccasino.payout.PendingPayout;
 import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.GameTerminationPolicy;
 import org.nc.nccasino.session.SessionRegistry;
 import org.nc.nccasino.session.TerminableSession;
 
@@ -1242,27 +1243,24 @@ private void handleWinningNumber() {
     finalpicked = true;
 
     mce.playSong("RouletteWheel", RouletteSongs.getFinalSpot(), false, "Final spot");
-    // Loop over players who have placed bets. Scheduled and resolved by
-    // UUID regardless of current online status — the bet already rode the
-    // spin, so it's owed a real outcome either way (processSpinResult
-    // itself decides direct credit vs. a durable pending payout based on
-    // whether the player is back online by the time this runs).
-    for (UUID playerId : playersWithBets) {
-        // Schedule the processing to run after a delay
+    // Resolve by UUID regardless of current online status. The bet already
+    // rode the spin, so it is owed the real result either way.
+    for (UUID playerId : new ArrayList<>(playersWithBets)) {
+        BettingTable bettingTable = Tables.get(playerId);
+        Stack<Pair<String, Integer>> playerBets = newtry.get(playerId);
+        if (bettingTable == null) {
+            plugin.getLogger().warning("No betting table found for player: " + playerId);
+            continue;
+        }
+        if (playerBets == null || playerBets.isEmpty()) {
+            plugin.getLogger().warning(playerId + " has no bets to process.");
+            continue;
+        }
+        // The final slot is authoritative now. Commit money before the
+        // delayed presentation so shutdown cannot refund a resolved spin.
+        bettingTable.processSpinResult(winningNumber, playerBets);
+
         miscTask=Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            BettingTable bettingTable = Tables.get(playerId);
-            if (bettingTable == null) {
-                plugin.getLogger().warning("No betting table found for player: " + playerId);
-                return;
-            }
-
-            // Get the bet stack directly from the BettingTable
-            Stack<Pair<String, Integer>> playerBets = newtry.get(playerId);
-            if (playerBets == null || playerBets.isEmpty()) {
-                plugin.getLogger().warning(playerId + " has no bets to process.");
-                return;
-            }
-
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
                 // Notify the player of the winning number
@@ -1308,8 +1306,6 @@ private void handleWinningNumber() {
                 }
             }
 
-            // Process the bets
-            bettingTable.processSpinResult(winningNumber, playerBets);
         }, 30L);
 
         activeTaskIds.add(miscTask.getTaskId());
@@ -1816,15 +1812,27 @@ private void fillDecorativeSlots(int[] slots, Material material) {
      */
     @Override
     public void onSessionTerminated(UUID terminatedPlayerId, ExitReason reason) {
-        if (reason == ExitReason.KICKED) {
+        Double pendingDeposit = pendingOnlineDeposits.get(terminatedPlayerId);
+        boolean knownPayoutPending = pendingDeposit != null && pendingDeposit > 0;
+        switch (GameTerminationPolicy.roulette(reason, knownPayoutPending)) {
+        case FORFEIT:
+            pendingOnlineDeposits.remove(terminatedPlayerId);
             forfeitBet(terminatedPlayerId);
-        } else if (reason == ExitReason.PLUGIN_DISABLE) {
-            Double pendingDeposit = pendingOnlineDeposits.remove(terminatedPlayerId);
-            if (pendingDeposit != null && pendingDeposit > 0) {
-                queueShutdownWinPayout(terminatedPlayerId, pendingDeposit);
-            } else {
-                refundForShutdown(terminatedPlayerId);
-            }
+            break;
+        case QUEUE_KNOWN_PAYOUT:
+            pendingOnlineDeposits.remove(terminatedPlayerId);
+            queueKnownWinPayout(terminatedPlayerId, pendingDeposit, reason);
+            finalizeRoundResolution(terminatedPlayerId);
+            break;
+        case REFUND:
+            pendingOnlineDeposits.remove(terminatedPlayerId);
+            refundForShutdown(terminatedPlayerId);
+            break;
+        case RIDE_TO_RESULT:
+        case NO_ACTION:
+            break;
+        default:
+            throw new IllegalStateException("Unexpected Roulette termination action");
         }
     }
 
@@ -1841,9 +1849,12 @@ private void fillDecorativeSlots(int[] slots, Material material) {
         pendingOnlineDeposits.put(playerId, amount);
     }
 
-    /** Called once the deposit above actually completes. */
-    void clearOnlineDepositPending(UUID playerId) {
-        pendingOnlineDeposits.remove(playerId);
+    /**
+     * Claims the delayed live deposit. If termination persisted it first,
+     * the old scheduled task becomes a no-op rather than paying twice.
+     */
+    boolean claimOnlineDeposit(UUID playerId, double amount) {
+        return pendingOnlineDeposits.remove(playerId, amount);
     }
 
     /**
@@ -1852,7 +1863,7 @@ private void fillDecorativeSlots(int[] slots, Material material) {
      * refundForShutdown's persistence, but for a known payout amount
      * rather than a re-derived stake total.
      */
-    private void queueShutdownWinPayout(UUID playerId, double amount) {
+    private void queueKnownWinPayout(UUID playerId, double amount, ExitReason reason) {
         Material currencyMaterial = plugin.getCurrency(internalName);
         PendingPayout payout = PendingPayout.create(
             playerId,
@@ -1862,7 +1873,9 @@ private void fillDecorativeSlots(int[] slots, Material material) {
             currencyMaterial != null ? currencyMaterial.name() : null,
             currencyName,
             amount,
-            PayoutMessages.serverRestartRefundContext("Roulette")
+            reason == ExitReason.PLUGIN_DISABLE
+                ? "The server restarted after your Roulette result was determined. Your payout was saved."
+                : PayoutMessages.disconnectedMidGameContext("Roulette")
         );
         boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
         if (!persisted) {
@@ -1940,4 +1953,3 @@ private void fillDecorativeSlots(int[] slots, Material material) {
     }
 }
 
-   

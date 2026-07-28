@@ -143,6 +143,19 @@ public class PendingPayoutStore {
      * rolled back so the store's state matches what is actually on disk.
      */
     public synchronized boolean addPendingPayout(PendingPayout payout) {
+        PendingPayout existing = byId.get(payout.id());
+        if (existing != null) {
+            if (!existing.equals(payout)) {
+                plugin.getLogger().severe("[NCCasino] Refusing pending payout ID collision for "
+                    + payout.id() + ".");
+                return false;
+            }
+            // Retrying the exact same durable operation is a no-op. Without
+            // this guard, byPlayer could contain the record twice and pay it
+            // twice even though byId only contained one copy.
+            return true;
+        }
+
         indexAdd(payout);
 
         boolean ok = persist();

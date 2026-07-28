@@ -24,6 +24,7 @@ import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.payout.PayoutMessages;
 import org.nc.nccasino.payout.PendingPayout;
 import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.GameTerminationPolicy;
 import org.nc.nccasino.session.SessionRegistry;
 import org.nc.nccasino.session.TerminableSession;
 
@@ -884,12 +885,20 @@ public class DragonClient extends Client implements TerminableSession {
         }
         sessionResolved = true;
 
-        if (reason != ExitReason.KICKED) {
-            if (bettingEnabled && !betStack.isEmpty()) {
+        switch (GameTerminationPolicy.dragon(reason, bettingEnabled, playerLost)) {
+        case REFUND:
+            if (!betStack.isEmpty()) {
                 undoAllBets();
-            } else if (!bettingEnabled && !playerLost) {
-                resolveMidGameDisconnect(terminatedPlayerId);
             }
+            break;
+        case CASH_OUT:
+            resolveMidGameDisconnect(terminatedPlayerId);
+            break;
+        case NO_ACTION:
+        case FORFEIT:
+            break;
+        default:
+            throw new IllegalStateException("Unexpected Dragon Descent termination action");
             // playerLost already true: already resolved through normal
             // play — either cashed out or the dragon already got them.
         }

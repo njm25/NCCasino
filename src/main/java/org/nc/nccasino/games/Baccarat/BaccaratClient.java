@@ -25,6 +25,8 @@ import org.nc.nccasino.entities.Server;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.GameTerminationPolicy;
+import org.nc.nccasino.session.TerminationAction;
 import org.nc.nccasino.session.SessionRegistry;
 import org.nc.nccasino.session.TerminableSession;
 
@@ -824,15 +826,17 @@ public class BaccaratClient extends Client implements TerminableSession {
         BaccaratServer baccaratServer = (BaccaratServer) server;
         sendUpdateToServer("INVENTORY_CLOSE", null);
 
-        if (reason == ExitReason.KICKED) {
+        boolean waitingForRound = baccaratServer.getGameState() == Server.GameState.WAITING;
+        TerminationAction action = GameTerminationPolicy.baccarat(reason, waitingForRound);
+        if (action == TerminationAction.FORFEIT) {
             // Forfeit unconditionally regardless of phase — no refund, no
             // pending payout, seat and bet both stripped outright.
             baccaratServer.forfeitPlayer(terminatedPlayerId);
-        } else if (baccaratServer.getGameState() == Server.GameState.WAITING) {
+        } else if (action == TerminationAction.REFUND && waitingForRound) {
             // Pregame: nothing has been risked into an active hand yet,
             // so this is a plain refund.
             sendUpdateToServer("PLAYER_LEFT_BEFORE_START", null);
-        } else if (reason == ExitReason.PLUGIN_DISABLE) {
+        } else if (action == TerminationAction.REFUND) {
             // Mid-hand, but the scheduled deal/draw/evaluate chain that
             // would normally carry this bet to a real outcome is about to
             // be cancelled along with everything else — refund instead of

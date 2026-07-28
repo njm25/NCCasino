@@ -584,7 +584,7 @@ public class BaccaratServer extends Server {
         if (bankerDraws) {
                 drawBankerCard();
         } else {
-            Bukkit.getScheduler().runTaskLater(plugin, this::determineWinner, 40L);
+            determineWinner();
         }
     }
     
@@ -594,7 +594,7 @@ public class BaccaratServer extends Server {
             bankerHand.add(deck.dealCard());
             broadcastUpdate("BANKER_DRAW", bankerHand.get(bankerHand.size() - 1));
             updateHandTotals();
-            Bukkit.getScheduler().runTaskLater(plugin, this::determineWinner, 40L);
+            determineWinner();
         }, 20L);
     }
     

@@ -23,6 +23,7 @@ public class CoinFlipServer extends Server {
     protected Player chairTwoOccupant;
     protected int betAmount;
     protected Boolean gameActive;
+    private Integer committedWinner;
     private final Set<UUID> forfeited = new HashSet<>();
 
     public CoinFlipServer(UUID dealerId, Nccasino plugin, String internalName) {
@@ -97,7 +98,7 @@ public class CoinFlipServer extends Server {
                 break;
             case "ANIMATION_FINISHED":
                 if (data instanceof Integer w) {
-                    resolveRound(w);
+                    resolveRound(committedWinner != null ? committedWinner : w);
                 }
                 break;
             case "GET_CHAIRS":
@@ -131,6 +132,7 @@ public class CoinFlipServer extends Server {
         Player payoutTwo = chairTwoOccupant;
         int payout = betAmount;
         gameActive = false;
+        committedWinner = null;
         betAmount = 0;
         timeLeft = 0;
         countdownTaskId = -1;
@@ -211,28 +213,43 @@ public class CoinFlipServer extends Server {
     }
 
     /**
-     * The server is shutting down with a flip already accepted and
-     * in-flight. The scheduled resolution (both the client-driven
-     * animation callback and the server's own fallback timer) is about to
-     * be cancelled along with everything else, so there's no way to let it
-     * ride to a real outcome — refund each side's own stake instead.
+     * Settles an accepted flip during shutdown. Once a winner has been
+     * selected, that authoritative payout is saved; before selection,
+     * each side's stake is refunded.
      */
     void refundForShutdown() {
         if (!gameActive) {
             return;
         }
 
-        int stake = betAmount / 2;
+        int payout = betAmount;
+        int stake = payout / 2;
+        Integer winner = committedWinner;
+        Player payoutOne = chairOneOccupant;
+        Player payoutTwo = chairTwoOccupant;
         gameActive = false;
+        committedWinner = null;
         betAmount = 0;
         timeLeft = 0;
         countdownTaskId = -1;
 
-        if (chairOneOccupant != null && stake > 0) {
-            queuePendingPayout(chairOneOccupant.getUniqueId(), stake, PayoutMessages.serverRestartRefundContext("Coin Flip"));
-        }
-        if (chairTwoOccupant != null && stake > 0) {
-            queuePendingPayout(chairTwoOccupant.getUniqueId(), stake, PayoutMessages.serverRestartRefundContext("Coin Flip"));
+        if (winner != null) {
+            Player winningPlayer = winner == 0 ? payoutOne : payoutTwo;
+            if (winningPlayer != null && payout > 0
+                && !forfeited.contains(winningPlayer.getUniqueId())) {
+                queuePendingPayout(
+                    winningPlayer.getUniqueId(),
+                    payout,
+                    "The server restarted after your Coin Flip result was determined. Your payout was saved."
+                );
+            }
+        } else {
+            if (payoutOne != null && stake > 0) {
+                queuePendingPayout(payoutOne.getUniqueId(), stake, PayoutMessages.serverRestartRefundContext("Coin Flip"));
+            }
+            if (payoutTwo != null && stake > 0) {
+                queuePendingPayout(payoutTwo.getUniqueId(), stake, PayoutMessages.serverRestartRefundContext("Coin Flip"));
+            }
         }
         forfeited.clear();
     }
@@ -282,13 +299,9 @@ public class CoinFlipServer extends Server {
             if (timeLeft <= 0) {
                 Bukkit.getScheduler().cancelTask(countdownTaskId);
                 countdownTaskId = -1;
-                if (clients.isEmpty()) {
-                    Bukkit.broadcastMessage("No viewers and no bets - pausing game.");
-                    return;
-                }
-
                 // Otherwise, start the game
                 int winner = Math.random() < 0.5 ? 0 : 1;
+                committedWinner = winner;
                 broadcastUpdate("WINNER", winner);
                 // Resolve authoritatively on a fixed server-side delay
                 // rather than relying solely on a client to report its

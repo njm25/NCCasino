@@ -39,6 +39,8 @@ import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.payout.PayoutMessages;
 import org.nc.nccasino.payout.PendingPayout;
 import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.GameTerminationPolicy;
+import org.nc.nccasino.session.TerminationAction;
 import org.nc.nccasino.session.SessionRegistry;
 import org.nc.nccasino.session.TerminableSession;
 
@@ -1751,22 +1753,28 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         }
         closeFlag = true;
 
-        if (reason != ExitReason.KICKED) {
-            if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
+        GameTerminationPolicy.MinesPhase phase =
+            gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START
+                ? GameTerminationPolicy.MinesPhase.PREGAME
+                : gameState == GameState.PLAYING
+                    ? GameTerminationPolicy.MinesPhase.PLAYING
+                    : gameState == GameState.GAME_OVER && cashOutDepositPending
+                        ? GameTerminationPolicy.MinesPhase.GAME_OVER_DEPOSIT_PENDING
+                        : GameTerminationPolicy.MinesPhase.RESOLVED;
+        TerminationAction action = GameTerminationPolicy.mines(reason, phase);
+
+        if (action != TerminationAction.FORFEIT) {
+            if (action == TerminationAction.REFUND) {
                 refundAllBets(player);
-            } else if (gameState == GameState.PLAYING) {
+            } else if (action == TerminationAction.CASH_OUT
+                && phase == GameTerminationPolicy.MinesPhase.PLAYING) {
                 resolveMidGameDisconnect(terminatedPlayerId);
-            } else if (gameState == GameState.GAME_OVER && cashOutDepositPending && reason == ExitReason.PLUGIN_DISABLE) {
-                // cashOut() already committed to paying out (gameOver/
-                // gameState flipped synchronously), but the actual deposit
-                // is still a few ticks away in a task that's about to be
-                // cancelled along with everything else the plugin owns.
-                // Queue the same already-known payout durably instead of
-                // letting it be silently cancelled and lost. Deliberately
-                // scoped to PLUGIN_DISABLE only: for a plain disconnect in
-                // this same window, the still-live scheduled task is NOT
-                // cancelled and will complete on its own — queuing a
-                // second payout here would double-pay it.
+            }
+            if (phase == GameTerminationPolicy.MinesPhase.GAME_OVER_DEPOSIT_PENDING
+                && action == TerminationAction.CASH_OUT) {
+                // cashOut() committed the amount, but its deposit is still
+                // delayed. Persist it before this path cancels the task and
+                // clears betStack.
                 resolveMidGameDisconnect(terminatedPlayerId);
             }
             // GAME_OVER otherwise: already resolved through normal play —

@@ -17,6 +17,8 @@ import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.GameTerminationPolicy;
+import org.nc.nccasino.session.TerminationAction;
 import org.nc.nccasino.session.SessionRegistry;
 import org.nc.nccasino.session.TerminableSession;
 
@@ -118,14 +120,15 @@ public class CoinFlipClient extends Client implements TerminableSession {
         }
         sessionResolved = true;
 
-        if (reason == ExitReason.KICKED) {
+        TerminationAction action = GameTerminationPolicy.coinFlip(reason, gameActive);
+        if (action == TerminationAction.FORFEIT) {
             // Remove from the server's client registry first so this
             // client can't receive (and self-refund against) the
             // seat-leave broadcast forfeitPlayer causes — kicked players
             // forfeit unconditionally, no refund.
             server.removeClient(terminatedPlayerId);
             ((CoinFlipServer) server).forfeitPlayer(terminatedPlayerId);
-        } else if (gameActive && reason == ExitReason.PLUGIN_DISABLE) {
+        } else if (action == TerminationAction.REFUND && gameActive) {
             // The flip is already accepted and in-flight, but the
             // scheduled resolution (both the animation callback and the
             // server's own fallback timer) is about to be cancelled along
@@ -134,7 +137,7 @@ public class CoinFlipClient extends Client implements TerminableSession {
             ((CoinFlipServer) server).refundForShutdown();
             server.removeClient(terminatedPlayerId);
         } else {
-            if (!gameActive) {
+            if (action == TerminationAction.REFUND && !gameActive) {
                 if (player == chairOneOccupant) {
                     sendUpdateToServer("PLAYER_LEAVE_ONE", null);
                 }

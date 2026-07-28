@@ -40,7 +40,10 @@ import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Deck;
 import org.nc.nccasino.objects.Suit;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.payout.PayoutMessages;
+import org.nc.nccasino.payout.PendingPayout;
 import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.GameTerminationPolicy;
 import org.nc.nccasino.session.SessionRegistry;
 import org.nc.nccasino.session.TerminableSession;
 
@@ -2303,7 +2306,9 @@ public void delete() {
             return;
         }
 
-        if (gameActive) {
+        org.nc.nccasino.session.TerminationAction action =
+            GameTerminationPolicy.blackjack(reason, gameActive);
+        if (action == org.nc.nccasino.session.TerminationAction.FORFEIT) {
             // Deal has begun: forfeit unconditionally. Never calculate an
             // automated hand or create a pending payout. Advance the turn
             // safely first if it was theirs.
@@ -2312,12 +2317,12 @@ public void delete() {
                 startNextPlayerTurn();
             }
             removePlayerData(playerId);
-        } else {
+        } else if (action == org.nc.nccasino.session.TerminationAction.REFUND) {
             // Before the deal: refund the committed wager, unless kicked —
             // a kicked player forfeits regardless of phase.
-            if (reason != ExitReason.KICKED) {
-                refundPendingBets(playerId);
-            }
+            refundPendingBets(playerId, reason);
+            removePlayerData(playerId);
+        } else {
             removePlayerData(playerId);
         }
 
@@ -2331,7 +2336,7 @@ public void delete() {
      * before removePlayerData, which clears the underlying bet records
      * without moving any currency itself.
      */
-    private void refundPendingBets(UUID playerId) {
+    private void refundPendingBets(UUID playerId, ExitReason reason) {
         Map<Integer, Double> bets = playerBets.get(playerId);
         if (bets == null || bets.isEmpty()) {
             return;
@@ -2342,9 +2347,26 @@ public void delete() {
             return;
         }
 
-        Player player = Bukkit.getPlayer(playerId);
-        if (player != null) {
-            addWagerToInventory(player, total);
+        if (reason == ExitReason.PLUGIN_DISABLE) {
+            Material currencyMaterial = plugin.getCurrency(internalName);
+            PendingPayout payout = PendingPayout.create(
+                playerId,
+                "Blackjack",
+                internalName,
+                currencyMode,
+                currencyMaterial != null ? currencyMaterial.name() : null,
+                currencyName,
+                total,
+                PayoutMessages.serverRestartRefundContext("Blackjack")
+            );
+            if (!plugin.getPendingPayoutStore().addPendingPayout(payout)) {
+                plugin.getLogger().warning("[NCCasino] Blackjack shutdown refund failed to persist for " + playerId + ".");
+            }
+        } else {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null) {
+                addWagerToInventory(player, total);
+            }
         }
     }
 

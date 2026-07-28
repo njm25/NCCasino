@@ -546,9 +546,10 @@ public class BettingTable extends DealerInventory {
                     }
                 }
                 if (totalPayoutFinal > 0) {
-                    refundWagerToInventory(player, totalPayoutFinal);
-                    rouletteInventory.clearOnlineDepositPending(playerId);
-                    rouletteInventory.finalizeRoundResolution(playerId);
+                    if (rouletteInventory.claimOnlineDeposit(playerId, totalPayoutFinal)) {
+                        refundWagerToInventory(player, totalPayoutFinal);
+                        rouletteInventory.finalizeRoundResolution(playerId);
+                    }
                 }
             }, 20L);
             Bukkit.getScheduler().runTaskLater(plugin, this::initializeTable, 25L);
