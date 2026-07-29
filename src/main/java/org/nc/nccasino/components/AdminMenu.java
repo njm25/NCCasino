@@ -1702,7 +1702,7 @@ public class AdminMenu extends Menu {
 
     private List<String> getMobSelectionLore(Mob mob) {
         List<String> lore = new ArrayList<>();
-        lore.add("Mob: §a" + formatEntityName(mob.getType().toString()));
+        lore.add(text("admin.mob-lore", "mob", formatEntityName(mob.getType().toString())));
         String sizeOrAge = getCurrentSizeOrAge(mob);
         if (!sizeOrAge.isEmpty()) {
             lore.add(sizeOrAge);
@@ -1712,7 +1712,7 @@ public class AdminMenu extends Menu {
         } else {
             String variant = getCurrentVariant(mob);
             if (!variant.isEmpty()) {
-                lore.add("Variant: §a" + variant);
+                lore.add(text("admin.variant-lore", "variant", variant));
             }
         }
 
@@ -1723,13 +1723,13 @@ public class AdminMenu extends Menu {
         int passengerCount = totalJockeys - vehicleCount;
         
         if (vehicleCount > 0) {
-            lore.add("Vehicles: §a" + vehicleCount);
+            lore.add(text("admin.vehicles-lore", "count", vehicleCount));
         }
         if (passengerCount > 0) {
-            lore.add("Passengers: §a" + passengerCount);
+            lore.add(text("admin.passengers-lore", "count", passengerCount));
         }
         else if (passengerCount == 0 && vehicleCount == 0) {
-            lore.add("No passengers or vehicles");
+            lore.add(text("admin.no-passengers-vehicles"));
         }
 
         return lore;
@@ -1767,15 +1767,15 @@ public class AdminMenu extends Menu {
     private List<String> getComplexVariantDetails(Mob mob) {
         List<String> details = new ArrayList<>();
         if (mob instanceof Llama llama) {
-            details.add("Current Color: §a" + formatEntityName(llama.getColor().toString()));
-            details.add("Current Decor: §a" + getLlamaCarpetName(llama));
+            details.add(text("admin.current-color-lore", "value", formatEntityName(llama.getColor().toString())));
+            details.add(text("admin.current-decor-lore", "value", getLlamaCarpetName(llama)));
         } else if (mob instanceof Horse horse) {
-            details.add("Current Color: §a" + formatEntityName(horse.getColor().toString()));
-            details.add("Current Style: §a" + formatEntityName(horse.getStyle().toString()));
+            details.add(text("admin.current-color-lore", "value", formatEntityName(horse.getColor().toString())));
+            details.add(text("admin.current-style-lore", "value", formatEntityName(horse.getStyle().toString())));
         } else if (mob instanceof TropicalFish fish) {
-            details.add("Current Pattern: §a" + formatEntityName(fish.getPattern().toString()));
-            details.add("Current Body Color: §a" + formatEntityName(fish.getBodyColor().toString()));
-            details.add("Current Pattern Color: §a" + formatEntityName(fish.getPatternColor().toString()));
+            details.add(text("admin.current-pattern-lore", "value", formatEntityName(fish.getPattern().toString())));
+            details.add(text("admin.current-body-color-lore", "value", formatEntityName(fish.getBodyColor().toString())));
+            details.add(text("admin.current-pattern-color-lore", "value", formatEntityName(fish.getPatternColor().toString())));
         }
         return details;
     }
@@ -1784,7 +1784,7 @@ public class AdminMenu extends Menu {
         if (llama.getInventory().getDecor() != null) {
             return formatEntityName(llama.getInventory().getDecor().getType().toString().replace("_CARPET", ""));
         }
-        return "None";
+        return text("admin.none");
     }
 
     private boolean isComplicatedVariant(Mob mob) {
@@ -1795,11 +1795,15 @@ public class AdminMenu extends Menu {
 
     private String getCurrentSizeOrAge(Mob mob) {
     if (mob instanceof Slime slime && !(mob instanceof MagmaCube)) {
-        return "Size: §a" + slime.getSize();
+        return text("admin.size-lore", "value", slime.getSize());
     } else if (mob instanceof MagmaCube magmaCube) {
-        return "Size: §a" + magmaCube.getSize();
+        return text("admin.size-lore", "value", magmaCube.getSize());
     } else if (mob instanceof org.bukkit.entity.Ageable ageable&&!(mob instanceof Parrot) &&!(mob instanceof Frog) &&!(mob instanceof PiglinBrute) &&!(mob instanceof WanderingTrader)) {
-        return "Age: §a" + (ageable.isAdult() ? "Adult" : "Baby");
+        return text(
+            "admin.age-lore",
+            "value",
+            ageable.isAdult() ? text("admin.adult") : text("admin.baby")
+        );
     }
     return "";
     }
