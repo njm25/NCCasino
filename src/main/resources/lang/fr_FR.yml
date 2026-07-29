@@ -1,0 +1,50 @@
+_meta:
+  locale: fr_FR
+  name: Français
+
+common:
+  current: "&7Actuel : {value}"
+  click-toggle: "&8Cliquez pour activer ou désactiver."
+  click-cycle: "&8Cliquez pour changer."
+  click-choose: "&8Cliquez pour choisir."
+  exit: "&cQuitter"
+  return-player-menu: "&dRetour au menu du joueur"
+  return-preferences: "&dRetour aux préférences"
+
+preferences:
+  title: "Préférences"
+  sound:
+    title: "&eSon"
+    enabled: "&aActivé"
+    muted: "&cDésactivé"
+  messages:
+    title: "&eMessages"
+    minimal: "&cMinimaux"
+    standard: "&eStandard"
+    verbose: "&aDétaillés"
+  language:
+    title: "&eLangue"
+    mode: "&7Mode : {mode}"
+    effective: "&7Langue active : &f{language}"
+    server-default: "Langue du serveur"
+    explicit: "Sélectionnée"
+
+language-menu:
+  title: "Choisir la langue"
+  use-server-default: "&eUtiliser la langue du serveur"
+  default-description: "&7Suivre la langue du serveur : &f{language}"
+  selected: "&aSélectionnée"
+  select: "&8Cliquez pour sélectionner."
+
+player-menu:
+  title: "Menu du joueur"
+  statistics: "&eStatistiques"
+  preferences: "&ePréférences"
+  coming-soon: "&cBientôt disponible..."
+  return-to: "&dRetour à {menu}"
+
+errors:
+  invalid-option: "&cOption non valide."
+  invalid-preferences-option: "&cOption non valide dans les préférences."
+  invalid-language-option: "&cOption non valide dans le menu des langues."
+  invalid-player-menu-option: "&cOption non valide dans le menu du joueur."

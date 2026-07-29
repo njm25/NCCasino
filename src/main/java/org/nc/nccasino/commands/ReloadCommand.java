@@ -19,6 +19,7 @@ public class ReloadCommand implements CasinoCommand {
         plugin.reloadConfig();
         // Reinitialize dealer configurations
         ((Nccasino) plugin).reloadDealerConfigurations();
+        ((Nccasino) plugin).reloadLocalization();
         sender.sendMessage(ChatColor.GREEN + "NCCASINO configuration reloaded successfully.");
 
         return true;

@@ -1,6 +1,8 @@
 package org.nc.nccasino.helpers;
 
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.localization.LanguageMode;
+import org.nc.nccasino.localization.LocaleIds;
 import java.util.UUID;
 
 public class Preferences {
@@ -10,12 +12,16 @@ public class Preferences {
     //private UUID playerId;
     private SoundSetting soundSetting;
     private MessageSetting messageSetting;
+    private LanguageMode languageMode;
+    private String explicitLanguage;
     private final Nccasino plugin;
 
     public Preferences(UUID playerId) {
        // this.playerId = playerId;
         this.soundSetting = SoundSetting.ON; // Default
         this.messageSetting = MessageSetting.STANDARD; // Default
+        this.languageMode = LanguageMode.SERVER_DEFAULT;
+        this.explicitLanguage = null;
         this.plugin = Nccasino.getPlugin(Nccasino.class); // Get plugin instance
     }
 
@@ -51,15 +57,52 @@ public class Preferences {
         plugin.savePreferences();
     }
 
-    public String getSoundDisplay() {
-        return (soundSetting == SoundSetting.ON) ? "§aEnabled" : "§cMuted";
+    public LanguageMode getLanguageMode() {
+        return languageMode;
     }
 
-    public String getMessageDisplay() {
-        return switch (messageSetting) {
-            case NONE -> "§cMinimal";
-            case STANDARD -> "§eStandard";
-            case VERBOSE -> "§aVerbose";
-        };
+    public String getExplicitLanguage() {
+        return explicitLanguage;
     }
+
+    public void useServerDefaultLanguage() {
+        languageMode = LanguageMode.SERVER_DEFAULT;
+        explicitLanguage = null;
+        plugin.savePreferences();
+    }
+
+    public void useExplicitLanguage(String locale) {
+        String normalized = LocaleIds.normalize(locale);
+        if (normalized == null
+            || !plugin.getLocalization().supportedLanguages().containsKey(normalized)) {
+            throw new IllegalArgumentException("Unsupported locale: " + locale);
+        }
+        languageMode = LanguageMode.EXPLICIT;
+        explicitLanguage = normalized;
+        plugin.savePreferences();
+    }
+
+    /**
+     * Loads persisted values without triggering a save for every field.
+     */
+    public void load(
+        SoundSetting sound,
+        MessageSetting messages,
+        LanguageMode mode,
+        String language
+    ) {
+        soundSetting = sound != null ? sound : SoundSetting.ON;
+        messageSetting = messages != null ? messages : MessageSetting.STANDARD;
+        String normalized = LocaleIds.normalize(language);
+        if (mode == LanguageMode.EXPLICIT
+            && normalized != null
+            && plugin.getLocalization().supportedLanguages().containsKey(normalized)) {
+            languageMode = LanguageMode.EXPLICIT;
+            explicitLanguage = normalized;
+        } else {
+            languageMode = LanguageMode.SERVER_DEFAULT;
+            explicitLanguage = null;
+        }
+    }
+
 }

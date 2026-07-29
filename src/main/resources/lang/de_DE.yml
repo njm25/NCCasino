@@ -1,0 +1,50 @@
+_meta:
+  locale: de_DE
+  name: Deutsch
+
+common:
+  current: "&7Aktuell: {value}"
+  click-toggle: "&8Klicken zum Umschalten."
+  click-cycle: "&8Klicken zum Wechseln."
+  click-choose: "&8Klicken zum Auswählen."
+  exit: "&cSchließen"
+  return-player-menu: "&dZurück zum Spielermenü"
+  return-preferences: "&dZurück zu den Einstellungen"
+
+preferences:
+  title: "Einstellungen"
+  sound:
+    title: "&eTon"
+    enabled: "&aAktiviert"
+    muted: "&cStumm"
+  messages:
+    title: "&eNachrichten"
+    minimal: "&cMinimal"
+    standard: "&eStandard"
+    verbose: "&aAusführlich"
+  language:
+    title: "&eSprache"
+    mode: "&7Modus: {mode}"
+    effective: "&7Aktive Sprache: &f{language}"
+    server-default: "Serverstandard"
+    explicit: "Ausgewählt"
+
+language-menu:
+  title: "Sprache wählen"
+  use-server-default: "&eServerstandard verwenden"
+  default-description: "&7Serversprache verwenden: &f{language}"
+  selected: "&aAusgewählt"
+  select: "&8Klicken zum Auswählen."
+
+player-menu:
+  title: "Spielermenü"
+  statistics: "&eStatistik"
+  preferences: "&eEinstellungen"
+  coming-soon: "&cDemnächst..."
+  return-to: "&dZurück zu {menu}"
+
+errors:
+  invalid-option: "&cUngültige Auswahl."
+  invalid-preferences-option: "&cUngültige Auswahl im Einstellungsmenü."
+  invalid-language-option: "&cUngültige Auswahl im Sprachmenü."
+  invalid-player-menu-option: "&cUngültige Auswahl im Spielermenü."

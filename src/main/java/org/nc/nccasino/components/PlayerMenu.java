@@ -16,7 +16,22 @@ public class PlayerMenu extends Menu {
     private final boolean fromAdmin;
 
     public PlayerMenu(Player player, Nccasino plugin,UUID dealerId, Consumer<Player> returnToAdmin, String returnName) {
-        super(player, plugin,dealerId, "Player Menu", 9, returnName, returnToAdmin);
+        super(
+            player,
+            plugin,
+            dealerId,
+            plugin.getLocalization().text(player, "player-menu.title"),
+            9,
+            returnName == null
+                ? null
+                : plugin.getLocalization().text(
+                    player,
+                    "player-menu.return-to",
+                    "menu",
+                    returnName
+                ),
+            returnToAdmin
+        );
         this.fromAdmin = (returnToAdmin != null);
 
         
@@ -48,12 +63,33 @@ public class PlayerMenu extends Menu {
      */
     @Override
     protected void initializeMenu() {
-        addItemAndLore(Material.BOOK, 1, "Statistics",  slotMapping.get(SlotOption.STATS), "§cComing soon...");
-        addItemAndLore(Material.WRITABLE_BOOK, 1, "Preferences",  slotMapping.get(SlotOption.PREFERENCES));
+        addItemAndLore(
+            Material.BOOK,
+            1,
+            plugin.getLocalization().text(ownerId, "player-menu.statistics"),
+            slotMapping.get(SlotOption.STATS),
+            plugin.getLocalization().text(ownerId, "player-menu.coming-soon")
+        );
+        addItemAndLore(
+            Material.WRITABLE_BOOK,
+            1,
+            plugin.getLocalization().text(ownerId, "player-menu.preferences"),
+            slotMapping.get(SlotOption.PREFERENCES)
+        );
 
-        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
+        addItemAndLore(
+            Material.SPRUCE_DOOR,
+            1,
+            plugin.getLocalization().text(ownerId, "common.exit"),
+            slotMapping.get(SlotOption.EXIT)
+        );
         if (fromAdmin) {       
-            addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnMessage,  slotMapping.get(SlotOption.RETURN));
+            addItemAndLore(
+                Material.MAGENTA_GLAZED_TERRACOTTA,
+                1,
+                returnMessage,
+                slotMapping.get(SlotOption.RETURN)
+            );
         }
     }
 
@@ -72,10 +108,17 @@ public class PlayerMenu extends Menu {
             default:
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§cInvalid option selected.");
+                        player.sendMessage(
+                            plugin.getLocalization().text(player, "errors.invalid-option")
+                        );
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cInvalid player menu option selected.");
+                        player.sendMessage(
+                            plugin.getLocalization().text(
+                                player,
+                                "errors.invalid-player-menu-option"
+                            )
+                        );
                         break;}
                     case NONE:{
                         break;

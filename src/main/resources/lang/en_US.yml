@@ -1,0 +1,50 @@
+_meta:
+  locale: en_US
+  name: English
+
+common:
+  current: "&7Current: {value}"
+  click-toggle: "&8Click to toggle."
+  click-cycle: "&8Click to cycle."
+  click-choose: "&8Click to choose."
+  exit: "&cExit"
+  return-player-menu: "&dReturn to Player Menu"
+  return-preferences: "&dReturn to Preferences"
+
+preferences:
+  title: "Preferences"
+  sound:
+    title: "&eSound"
+    enabled: "&aEnabled"
+    muted: "&cMuted"
+  messages:
+    title: "&eMessages"
+    minimal: "&cMinimal"
+    standard: "&eStandard"
+    verbose: "&aVerbose"
+  language:
+    title: "&eLanguage"
+    mode: "&7Mode: {mode}"
+    effective: "&7Effective language: &f{language}"
+    server-default: "Server Default"
+    explicit: "Selected"
+
+language-menu:
+  title: "Choose Language"
+  use-server-default: "&eUse Server Default"
+  default-description: "&7Follow the server setting: &f{language}"
+  selected: "&aSelected"
+  select: "&8Click to select."
+
+player-menu:
+  title: "Player Menu"
+  statistics: "&eStatistics"
+  preferences: "&ePreferences"
+  coming-soon: "&cComing soon..."
+  return-to: "&dReturn to {menu}"
+
+errors:
+  invalid-option: "&cInvalid option selected."
+  invalid-preferences-option: "&cInvalid preferences menu option selected."
+  invalid-language-option: "&cInvalid language menu option selected."
+  invalid-player-menu-option: "&cInvalid player menu option selected."
