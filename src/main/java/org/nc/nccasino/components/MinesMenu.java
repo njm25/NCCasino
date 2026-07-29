@@ -65,6 +65,14 @@ public class MinesMenu extends Menu {
         this.delete();
     }
 
+    /** Tears down this player's open MinesMenu, if any. AdminMenu's own edit-mode maps are cleared separately and unconditionally by AdminMenu.clearPlayerEditState. */
+    public static void clearPlayerState(UUID playerId) {
+        MinesMenu menu = MAInventories.get(playerId);
+        if (menu != null) {
+            menu.cleanup();
+        }
+    }
+
     @Override
     protected void initializeMenu(){
         String internalName = Dealer.getInternalName(dealer);

@@ -63,6 +63,14 @@ public class BaccaratMenu extends Menu {
         AdminMenu.decksEditMode.remove(ownerId);
         this.delete();
     }
+
+    /** Tears down this player's open BaccaratMenu, if any. AdminMenu's own edit-mode maps are cleared separately and unconditionally by AdminMenu.clearPlayerEditState. */
+    public static void clearPlayerState(UUID playerId) {
+        BaccaratMenu menu = RAInventories.get(playerId);
+        if (menu != null) {
+            menu.cleanup();
+        }
+    }
     
     public boolean isPlayerOccupied(UUID playerId){
         return 

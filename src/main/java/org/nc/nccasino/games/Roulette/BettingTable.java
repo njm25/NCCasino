@@ -13,6 +13,7 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -26,10 +27,12 @@ import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.helpers.Preferences;
+import org.nc.nccasino.payout.PayoutMessages;
+import org.nc.nccasino.payout.PendingPayout;
 import java.util.*;
 
 public class BettingTable extends DealerInventory {
-    public static final Set<Player> switchingPlayers = new HashSet<>();
+    public static final Set<UUID> switchingPlayers = new HashSet<>();
     private final UUID playerId;
     public final UUID dealerId;
     private final Mob dealer;
@@ -413,8 +416,6 @@ public class BettingTable extends DealerInventory {
     }
 
     public void processSpinResult(int result, Stack<Pair<String, Integer>> dastack) {
-        Player player = Bukkit.getPlayer(playerId);
-        if (player == null) return;
         int overallWager=0;
         // We'll group categories into a data structure
         class BetCategory {
@@ -466,81 +467,120 @@ public class BettingTable extends DealerInventory {
             }
         }
     
-        // Build result message
-        StringBuilder msg = new StringBuilder("§e----- Spin Results -----\n");
-        TableGenerator table = new TableGenerator(TableGenerator.Alignment.LEFT, TableGenerator.Alignment.RIGHT, TableGenerator.Alignment.RIGHT);
-        table.addRow("§eCategory", "§bWager", "§aPayout");
-    
-        for (Map.Entry<String, BetCategory> entry : categoryMap.entrySet()) {
-            BetCategory cat = entry.getValue();
-            table.addRow("§e" + entry.getKey(), "§b" + cat.totalWager, (cat.totalPayout > 0 ? "§a" + cat.totalPayout : "§c0"));
-        }
-    
-        List<String> tableLines = table.generate(TableGenerator.Receiver.CLIENT, false, false);
-        for (String line : tableLines) {
-            msg.append(line).append("\n");
-        }
-    
-        msg.append("\n");
-        if (totalPayout > 0) {
-            //msg.append("§bTotal Wager: ").append(overallWager+"§e | ");
-            //msg.append("§aTotal Payout: ").append(totalPayout).append("\n");
+        final int totalPayoutFinal = categoryMap.values().stream().mapToInt(cat -> cat.totalPayout).sum();
+        Player player = Bukkit.getPlayer(playerId);
 
-            if(totalPayout-overallWager>0){
-                msg.append("§a§lPaid ").append(plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout)).append("\n §r§a§o(profit of "+(totalPayout-overallWager)+")");
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
-                    Random random = new Random();
-                    float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
-                    for (int i = 0; i < 3; i++) {
-                        float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
-                         if (SoundHelper.getSoundSafely("entity.player.levelup", player)!= null)player.playSound(player.getLocation(),  Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER,1.0f, chosenPitch);
-                    }
-    
-                }, 20L);  
+        if (player != null && player.isOnline()) {
+            // Build result message
+            StringBuilder msg = new StringBuilder("§e----- Spin Results -----\n");
+            TableGenerator table = new TableGenerator(TableGenerator.Alignment.LEFT, TableGenerator.Alignment.RIGHT, TableGenerator.Alignment.RIGHT);
+            table.addRow("§eCategory", "§bWager", "§aPayout");
+
+            for (Map.Entry<String, BetCategory> entry : categoryMap.entrySet()) {
+                BetCategory cat = entry.getValue();
+                table.addRow("§e" + entry.getKey(), "§b" + cat.totalWager, (cat.totalPayout > 0 ? "§a" + cat.totalPayout : "§c0"));
             }
-            else if(totalPayout-overallWager==0){ 
-                msg.append("§6§lPaid ").append(plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout)).append("\n §r§6§o (broke even)");
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                     if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
-                    player.getWorld().spawnParticle(Particle.SCRAPE, player.getLocation(), 20); 
-                }, 20L);  
+
+            List<String> tableLines = table.generate(TableGenerator.Receiver.CLIENT, false, false);
+            for (String line : tableLines) {
+                msg.append(line).append("\n");
             }
-            else{
+
+            msg.append("\n");
+            if (totalPayout > 0) {
+                if(totalPayout-overallWager>0){
+                    msg.append("§a§lPaid ").append(plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout)).append("\n §r§a§o(profit of "+(totalPayout-overallWager)+")");
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
+                        Random random = new Random();
+                        float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
+                        for (int i = 0; i < 3; i++) {
+                            float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
+                             if (SoundHelper.getSoundSafely("entity.player.levelup", player)!= null)player.playSound(player.getLocation(),  Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER,1.0f, chosenPitch);
+                        }
+
+                    }, 20L);
+                }
+                else if(totalPayout-overallWager==0){
+                    msg.append("§6§lPaid ").append(plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout)).append("\n §r§6§o (broke even)");
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                         if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
+                        player.getWorld().spawnParticle(Particle.SCRAPE, player.getLocation(), 20);
+                    }, 20L);
+                }
+                else{
+                    msg.append("§c§lPaid ").append(plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout)).append("\n§r§c§o  (loss of "+Math.abs(totalPayout-overallWager)+")");
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                         if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
+                        player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
+                    }, 20L);
+                }
+            } else {
                 msg.append("§c§lPaid ").append(plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout)).append("\n§r§c§o  (loss of "+Math.abs(totalPayout-overallWager)+")");
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                      if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
-                    player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20); 
-                }, 20L);  
+                    player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
+                }, 20L);
             }
-        } else {
-            msg.append("§c§lPaid ").append(plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout)).append("\n§r§c§o  (loss of "+Math.abs(totalPayout-overallWager)+")");
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                 if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
-                player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20); 
-            }, 20L);  
-        }
-    
-        final int totalPayoutFinal = categoryMap.values().stream().mapToInt(cat -> cat.totalPayout).sum();
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage(msg.toString());
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage(msg.toString());
-                    break;     
-                }
-                    case NONE:{
-                    break;
-                }
-            } 
+
             if (totalPayoutFinal > 0) {
-                refundWagerToInventory(player, totalPayoutFinal);
+                // A shutdown landing in the ~1s window before the deposit
+                // below runs would otherwise cancel it silently, or (since
+                // finalizeRoundResolution hasn't cleared Bets yet either)
+                // fall back to refunding just the stake instead of the
+                // winnings — mark the already-known payout so it's queued
+                // durably and correctly if that happens.
+                rouletteInventory.markOnlineDepositPending(playerId, totalPayoutFinal);
             }
-        }, 20L);
-        Bukkit.getScheduler().runTaskLater(plugin, this::initializeTable, 25L);
-        Bukkit.getScheduler().runTaskLater(plugin, this::updateAllLore, 25L);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage(msg.toString());
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage(msg.toString());
+                        break;
+                    }
+                        case NONE:{
+                        break;
+                    }
+                }
+                if (totalPayoutFinal > 0) {
+                    if (rouletteInventory.claimOnlineDeposit(playerId, totalPayoutFinal)) {
+                        refundWagerToInventory(player, totalPayoutFinal);
+                        rouletteInventory.finalizeRoundResolution(playerId);
+                    }
+                }
+            }, 20L);
+            Bukkit.getScheduler().runTaskLater(plugin, this::initializeTable, 25L);
+            Bukkit.getScheduler().runTaskLater(plugin, this::updateAllLore, 25L);
+            if (totalPayoutFinal <= 0) {
+                rouletteInventory.finalizeRoundResolution(playerId);
+            }
+        } else if (totalPayoutFinal > 0) {
+            // Offline at resolution time: the outcome is already final and
+            // owed regardless of presence, but crediting a currently-dead
+            // Player reference isn't safe — queue it durably instead and
+            // deliver it on reconnect.
+            Material currencyMaterial = plugin.getCurrency(internalName);
+            PendingPayout payout = PendingPayout.create(
+                playerId,
+                "Roulette",
+                internalName,
+                currencyMode,
+                currencyMaterial != null ? currencyMaterial.name() : null,
+                currencyName,
+                totalPayoutFinal,
+                PayoutMessages.disconnectedMidGameContext("Roulette")
+            );
+            boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
+            if (!persisted) {
+                plugin.getLogger().warning("[NCCasino] Roulette pending payout failed to persist for " + playerId + ".");
+            }
+            rouletteInventory.finalizeRoundResolution(playerId);
+        } else {
+            rouletteInventory.finalizeRoundResolution(playerId);
+        }
     }
     
     private String parseCategory(String betType) {
@@ -946,16 +986,16 @@ public class BettingTable extends DealerInventory {
                 plugin.getLogger().warning("Error: Unable to find Roulette inventory for dealer ID: " + dealerId);
                  if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
             } else if (dealerInventory instanceof RouletteInventory) {
-                switchingPlayers.add(player);
+                switchingPlayers.add(player.getUniqueId());
                 if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
                 rouletteInventory.getMCE().addPlayerToChannel("RouletteWheel", player);
                 rouletteInventory.getMCE().removePlayerFromChannel("BettingTable", player);
                 }
                 player.openInventory(((RouletteInventory) dealerInventory).getInventory());
-                 if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
+                 if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f);
                  Bukkit.getScheduler().runTaskLater(plugin, () -> {
 
-                switchingPlayers.remove(player);
+                switchingPlayers.remove(player.getUniqueId());
                  },5L);
             } else {
                 player.sendMessage("Error: This dealer is not running Roulette.");
@@ -1113,34 +1153,45 @@ private boolean isValidSlotPage2(int slot) {
     
     @EventHandler
     public void handlePlayerQuit(PlayerQuitEvent event) {
-        switchingPlayers.remove(event.getPlayer());
+        switchingPlayers.remove(event.getPlayer().getUniqueId());
     }
 
     @EventHandler
     public void handleInventoryClose(InventoryCloseEvent event) {
         if (event.getInventory().getHolder() != this) return;
         Player player = (Player) event.getPlayer();
-       
-        if (switchingPlayers.contains(player)) {
+
+        if (switchingPlayers.contains(playerId)) {
 
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                switchingPlayers.remove(player);
+                switchingPlayers.remove(playerId);
                  },20L);
             return;
         }
 
-        if (!betStack.isEmpty()){
-            rouletteInventory.updatePlayerBets(player.getUniqueId(),betStack,player);
-
-        }
-        else{
-            rouletteInventory.removeFromBets(player.getUniqueId());
-
+        // Only persist betStack back into the shared Bets map if this is
+        // still the live, current table for this player. If it's been
+        // superseded (a kick forfeited this UUID's bet, or a prior round
+        // already fully resolved and cleaned it up), rouletteInventory.Tables
+        // no longer points at this instance, and writing betStack back here
+        // would silently resurrect a bet that was already correctly
+        // removed.
+        if (rouletteInventory.Tables.get(playerId) == this) {
+            if (!betStack.isEmpty()){
+                rouletteInventory.updatePlayerBets(playerId,betStack,player);
+            }
+            else{
+                rouletteInventory.removeFromBets(playerId);
+            }
         }
         InventoryView closedInventory = event.getView();
         if (closedInventory != null && closedInventory.getTopInventory().getHolder() == this) {
         rouletteInventory.getMCE().removePlayerFromAllChannels(player);
     }
+    }
+
+    void cleanupListener() {
+        HandlerList.unregisterAll(this);
     }
 
     private void updateItemLore(int slot, int totalBet) {
@@ -1238,15 +1289,15 @@ private boolean isValidSlotPage2(int slot) {
             plugin.getLogger().warning("Error: Unable to find Roulette inventory for dealer ID: " + dealerId);
              if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
         } else if (dealerInventory instanceof RouletteInventory) {
-            switchingPlayers.add(player);
+            switchingPlayers.add(player.getUniqueId());
             if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
 
             rouletteInventory.getMCE().addPlayerToChannel("RouletteWheel", player);
             rouletteInventory.getMCE().removePlayerFromChannel("BettingTable", player);
             }
             player.openInventory(((RouletteInventory) dealerInventory).getInventory());
-             if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f); 
-            switchingPlayers.remove(player);
+             if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f);
+            switchingPlayers.remove(player.getUniqueId());
         } else {
             player.sendMessage("Error: This dealer is not running Roulette.");
              if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 

@@ -9,6 +9,7 @@ import java.util.Random;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -23,6 +24,8 @@ import org.nc.nccasino.entities.Server;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Deck;
+import org.nc.nccasino.payout.PayoutMessages;
+import org.nc.nccasino.payout.PendingPayout;
 
 public class BaccaratServer extends Server {
     private final Map<BaccaratClient.BetOption, Double> totalBets = new HashMap<>();
@@ -287,6 +290,43 @@ public class BaccaratServer extends Server {
         sendSeatUpdates();
     }
 
+    /**
+     * Kicked players forfeit unconditionally, regardless of round phase —
+     * no refund, no pending payout. Also strips their contribution out of
+     * the shared totalBets display so it doesn't overstate what's actually
+     * still in play.
+     */
+    void forfeitPlayer(UUID playerId) {
+        seatedPlayers.remove(playerId);
+        seatMap.values().removeIf(id -> id.equals(playerId));
+
+        Map<BaccaratClient.BetOption, Double> bets = playerBets.remove(playerId);
+        if (bets != null) {
+            for (Map.Entry<BaccaratClient.BetOption, Double> entry : bets.entrySet()) {
+                double amount = entry.getValue();
+                totalBets.computeIfPresent(entry.getKey(), (k, v) -> (v - amount) <= 0 ? null : v - amount);
+            }
+            for (BaccaratClient.BetOption betType : BaccaratClient.BetOption.values()) {
+                broadcastUpdate("UPDATE_BET_DISPLAY", new BetDisplayData(
+                    betType, 0.0, totalBets.getOrDefault(betType, 0.0)
+                ));
+            }
+        }
+        sendSeatUpdates();
+    }
+
+    /**
+     * A mid-hand disconnect (not a kick) frees the seat immediately for
+     * someone else, but deliberately leaves playerBets untouched — that
+     * bet still rides the hand to a real outcome in processPayouts,
+     * resolved by UUID regardless of whether they're back online by then.
+     */
+    void releaseSeatForDisconnect(UUID playerId) {
+        seatedPlayers.remove(playerId);
+        seatMap.values().removeIf(id -> id.equals(playerId));
+        sendSeatUpdates();
+    }
+
     private void sendSeatUpdates() {
         for (Client client : clients.values()) {
             if (client instanceof BaccaratClient baccaratClient) {
@@ -544,7 +584,7 @@ public class BaccaratServer extends Server {
         if (bankerDraws) {
                 drawBankerCard();
         } else {
-            Bukkit.getScheduler().runTaskLater(plugin, this::determineWinner, 40L);
+            determineWinner();
         }
     }
     
@@ -554,7 +594,7 @@ public class BaccaratServer extends Server {
             bankerHand.add(deck.dealCard());
             broadcastUpdate("BANKER_DRAW", bankerHand.get(bankerHand.size() - 1));
             updateHandTotals();
-            Bukkit.getScheduler().runTaskLater(plugin, this::determineWinner, 40L);
+            determineWinner();
         }, 20L);
     }
     
@@ -607,7 +647,16 @@ public class BaccaratServer extends Server {
         broadcastUpdate("RESULT", result);
         currentWinString=result;
         processPayouts(result);
-    
+
+        // Clear bets synchronously now that they're paid, rather than
+        // waiting for resetGame()'s 70-tick visual-reset delay — otherwise
+        // a shutdown landing in that window still sees a payable-looking
+        // bet for a hand that was already paid, and refundForShutdown
+        // would queue a second payout on top of what processPayouts just
+        // gave everyone.
+        playerBets.clear();
+        totalBets.clear();
+
         // Save the current bets before the game resets
         for (Client client : clients.values()) {
             if (client instanceof BaccaratClient &&client.rebetEnabled) {
@@ -622,7 +671,7 @@ public class BaccaratServer extends Server {
     private void processPayouts(String result) {
     	for (UUID playerId : playerBets.keySet()) {
     		Player player = Bukkit.getPlayer(playerId);
-    		if (player == null) continue;
+    		boolean online = player != null && player.isOnline();
 
     		double payout = 0.0;
     		double totalBet = 0.0;
@@ -661,61 +710,130 @@ public class BaccaratServer extends Server {
 				java.math.BigDecimal displayPayout = MoneyHelper.roundDisplay(payoutBD);
 				java.math.BigDecimal displayProfit = MoneyHelper.roundDisplay(payoutBD.subtract(betAmount));
 
-				if (payoutBD.compareTo(java.math.BigDecimal.ZERO) > 0) {
-					((VaultCurrencyProvider) provider).deposit(player, internalName, payoutBD);
-				}
+				if (online) {
+					if (payoutBD.compareTo(java.math.BigDecimal.ZERO) > 0) {
+						((VaultCurrencyProvider) provider).deposit(player, internalName, payoutBD);
+					}
 
-	    		switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-	    			case STANDARD:{
-	    				player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()));
-	    				break;}
-	    			case VERBOSE:{
-	    				player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()) + "\n §r§a§o(profit of " + plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue()) + ")");
-	    				break;     
-	    			}
-	    				case NONE:{
-	    				break;
-	    			}
-	    		}
+		    		switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+		    			case STANDARD:{
+		    				player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()));
+		    				break;}
+		    			case VERBOSE:{
+		    				player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()) + "\n §r§a§o(profit of " + plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue()) + ")");
+		    				break;
+		    			}
+		    				case NONE:{
+		    				break;
+		    			}
+		    		}
+				} else if (payoutBD.compareTo(java.math.BigDecimal.ZERO) > 0) {
+					queuePendingPayout(playerId, payoutBD.doubleValue());
+				}
 			} else {
 	    		// Apply probabilistic rounding only for discrete (item-based) currencies
 	    		payout = applyProbabilisticRoundingIfDiscrete(payout);
 
-	    		if (payout > 0) {
-	    			creditPlayer(player, payout);
-	    		}
-	    		switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-	    			case STANDARD:{
-	    				player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, payout));
-	    				break;}
-	    			case VERBOSE:{
-	    				player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, payout) + "\n §r§a§o(profit of "+(int)(payout-totalBet)+")");
-	    				break;     
-	    			}
-	    				case NONE:{
-	    				break;
-	    			}
-	    		} 
+				if (online) {
+		    		if (payout > 0) {
+		    			creditPlayer(player, payout);
+		    		}
+		    		switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+		    			case STANDARD:{
+		    				player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, payout));
+		    				break;}
+		    			case VERBOSE:{
+		    				player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, payout) + "\n §r§a§o(profit of "+(int)(payout-totalBet)+")");
+		    				break;
+		    			}
+		    				case NONE:{
+		    				break;
+		    			}
+		    		}
+				} else if (payout > 0) {
+					queuePendingPayout(playerId, payout);
+				}
 			}
-    		if (payout > totalBet) {
-    			player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
-    			Random random = new Random();
-    			float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
-    			for (int i = 0; i < 3; i++) {
-    				float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
-    				 if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER,1.0f,chosenPitch);
-    			}
-    		} else if (payout == totalBet) {
-    			if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
-    			player.getWorld().spawnParticle(Particle.SCRAPE, player.getLocation(), 20); 
-    		} else {
-    			if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f, 1.0f);
-    			player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
+
+    		if (online) {
+	    		if (payout > totalBet) {
+	    			player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
+	    			Random random = new Random();
+	    			float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
+	    			for (int i = 0; i < 3; i++) {
+	    				float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
+	    				 if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER,1.0f,chosenPitch);
+	    			}
+	    		} else if (payout == totalBet) {
+	    			if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
+	    			player.getWorld().spawnParticle(Particle.SCRAPE, player.getLocation(), 20);
+	    		} else {
+	    			if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f, 1.0f);
+	    			player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
+	    		}
     		}
 
     	}
 
     	resetGame();
+    }
+
+    /**
+     * Queues a won bet as a durable pending payout when the player is
+     * offline at the exact moment the hand resolves. This runs well after
+     * any disconnect (through the deal/draw/evaluate task chain), so
+     * checking online status here is reliable — not the same uncertain
+     * timing window as resolving directly inside a quit/close handler.
+     */
+    private void queuePendingPayout(UUID playerId, double amount) {
+    	queuePendingPayout(playerId, amount, PayoutMessages.disconnectedMidGameContext("Baccarat"));
+    }
+
+    private void queuePendingPayout(UUID playerId, double amount, String context) {
+    	Material currencyMaterial = plugin.getCurrency(internalName);
+    	PendingPayout pendingPayout = PendingPayout.create(
+    		playerId,
+    		"Baccarat",
+    		internalName,
+    		currencyMode,
+    		currencyMaterial != null ? currencyMaterial.name() : null,
+    		currencyName,
+    		amount,
+    		context
+    	);
+    	boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(pendingPayout);
+    	if (!persisted) {
+    		plugin.getLogger().warning("[NCCasino] Baccarat pending payout failed to persist for " + playerId + ".");
+    	}
+    }
+
+    /**
+     * The server is shutting down with this player's bet still committed
+     * to an in-flight hand. The scheduled deal/draw/evaluate chain that
+     * would normally carry it to a real outcome is about to be cancelled
+     * along with everything else, so refund the wager via the durable
+     * pending-payout store instead.
+     */
+    void refundForShutdown(UUID playerId) {
+    	Map<BaccaratClient.BetOption, Double> bets = playerBets.remove(playerId);
+    	if (bets == null || bets.isEmpty()) {
+    		return;
+    	}
+
+    	double total = bets.values().stream().mapToDouble(Double::doubleValue).sum();
+    	for (Map.Entry<BaccaratClient.BetOption, Double> entry : bets.entrySet()) {
+    		double amount = entry.getValue();
+    		totalBets.computeIfPresent(entry.getKey(), (k, v) -> (v - amount) <= 0 ? null : v - amount);
+    	}
+    	for (BaccaratClient.BetOption betType : BaccaratClient.BetOption.values()) {
+    		broadcastUpdate("UPDATE_BET_DISPLAY", new BetDisplayData(
+    			betType, 0.0, totalBets.getOrDefault(betType, 0.0)
+    		));
+    	}
+
+    	if (total > 0) {
+    		queuePendingPayout(playerId, total, PayoutMessages.serverRestartRefundContext("Baccarat"));
+    	}
     }
 
     /**

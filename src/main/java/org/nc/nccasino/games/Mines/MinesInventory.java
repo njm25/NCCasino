@@ -7,6 +7,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.nc.nccasino.Nccasino;
 import org.bukkit.event.HandlerList;
+import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.SessionRegistry;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -53,13 +55,26 @@ public class MinesInventory extends DealerInventory {
             if (player.getInventory() != null) {
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     if (player.getOpenInventory().getTopInventory().getHolder() == this.getInventory().getHolder()) {
-                 
+
+                        UUID playerId = player.getUniqueId();
+                        if (Tables.containsKey(playerId)) {
+                            // A table from a previous session is still on
+                            // record for this UUID — never let a
+                            // reconnecting player join a second, orphaned
+                            // table. Resolve it through the normal
+                            // disconnect path first (idempotent: a no-op
+                            // if it was already properly cleaned up), then
+                            // guarantee it's gone from Tables regardless.
+                            SessionRegistry.terminatePlayerSession(playerId, ExitReason.DISCONNECTED);
+                            removeTable(playerId);
+                        }
+
                         MinesTable minesTable = new MinesTable(dealerId, player, plugin, internalName, this);
-                        Tables.put(player.getUniqueId(), minesTable);
+                        Tables.put(playerId, minesTable);
                         minesTable.initializeTable();
                         player.openInventory(minesTable.getInventory());
                     }
-                   
+
                 }, 2L);
             }
         }

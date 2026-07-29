@@ -60,6 +60,24 @@ public class DragonDescentMenu extends Menu {
         this.delete();
     }
 
+    /**
+     * Tears down this player's open DragonDescentMenu, if any — that also
+     * clears editDragonSetting and AdminMenu.dragonEditMode via cleanup().
+     * AdminMenu.dragonEditMode is additionally cleared separately and
+     * unconditionally by AdminMenu.clearPlayerEditState, but
+     * editDragonSetting is owned only here, so if no menu instance exists
+     * (e.g. mid chat-wait for a specific setting) it must still be cleared
+     * directly.
+     */
+    public static void clearPlayerState(UUID playerId) {
+        DragonDescentMenu menu = dragonInventories.get(playerId);
+        if (menu != null) {
+            menu.cleanup();
+        } else {
+            editDragonSetting.remove(playerId);
+        }
+    }
+
     @Override
     protected void initializeMenu() {
         String internalName = Dealer.getInternalName(dealer);

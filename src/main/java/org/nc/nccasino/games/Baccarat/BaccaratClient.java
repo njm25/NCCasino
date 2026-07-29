@@ -24,8 +24,13 @@ import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.objects.Card;
+import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.GameTerminationPolicy;
+import org.nc.nccasino.session.TerminationAction;
+import org.nc.nccasino.session.SessionRegistry;
+import org.nc.nccasino.session.TerminableSession;
 
-public class BaccaratClient extends Client {
+public class BaccaratClient extends Client implements TerminableSession {
     private final int[] playerCardSlots = {10,11,12};  // Left to right
     private final int[] bankerCardSlots = {16,15,14};  // Right to left
     private final List<Card> playerHand = new ArrayList<>();
@@ -37,6 +42,7 @@ public class BaccaratClient extends Client {
     protected final List<BetData> betHistory = new ArrayList<>();
      private final Map<Integer, UUID> seatMap = new HashMap<>();
     private final int[] seatSlots = {37, 38, 39, 40, 41, 42, 43};
+    private boolean sessionResolved = false;
     
     protected enum SlotOption {
         EXIT,
@@ -67,6 +73,7 @@ public class BaccaratClient extends Client {
 
         public BaccaratClient(BaccaratServer server, Player player, Nccasino plugin, String internalName) {
             super(server, player, "Baccarat", plugin, internalName);
+            SessionRegistry.register(player.getUniqueId(), this);
             slotMapping.put(53,SlotOption.EXIT );
             slotMapping.put(52,SlotOption.ALLIN);
             slotMapping.put(51,SlotOption.WAGER1);
@@ -793,13 +800,57 @@ public class BaccaratClient extends Client {
 
     @Override
     public void handleClientInventoryClose() {
-    sendUpdateToServer("INVENTORY_CLOSE", null);
-
-    // Remove player from seat and refund bets if game hasn't started
-    if (((BaccaratServer) server).getGameState() == Server.GameState.WAITING) {
-        sendUpdateToServer("PLAYER_LEFT_BEFORE_START", null);
+        // Route through the same idempotent path used for quit/kick rather
+        // than resolving directly here — whichever of this or the quit
+        // event fires first "wins" and the other becomes a safe no-op, and
+        // consumeQuitReason still correctly reports KICKED here even if
+        // this fires first, since the kick is marked as soon as
+        // PlayerKickEvent itself fires.
+        UUID playerId = player.getUniqueId();
+        ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
+        SessionRegistry.terminatePlayerSession(playerId, reason);
     }
-        super.handleClientInventoryClose(); // Calls base logic to remove the client
+
+    /**
+     * Authoritative disconnect/kick resolution, reached via SessionRegistry
+     * regardless of whether this fires from PlayerQuitEvent or from this
+     * client's own InventoryCloseEvent.
+     */
+    @Override
+    public void onSessionTerminated(UUID terminatedPlayerId, ExitReason reason) {
+        if (sessionResolved) {
+            return; // already resolved through another path
+        }
+        sessionResolved = true;
+
+        BaccaratServer baccaratServer = (BaccaratServer) server;
+        sendUpdateToServer("INVENTORY_CLOSE", null);
+
+        boolean waitingForRound = baccaratServer.getGameState() == Server.GameState.WAITING;
+        TerminationAction action = GameTerminationPolicy.baccarat(reason, waitingForRound);
+        if (action == TerminationAction.FORFEIT) {
+            // Forfeit unconditionally regardless of phase — no refund, no
+            // pending payout, seat and bet both stripped outright.
+            baccaratServer.forfeitPlayer(terminatedPlayerId);
+        } else if (action == TerminationAction.REFUND && waitingForRound) {
+            // Pregame: nothing has been risked into an active hand yet,
+            // so this is a plain refund.
+            sendUpdateToServer("PLAYER_LEFT_BEFORE_START", null);
+        } else if (action == TerminationAction.REFUND) {
+            // Mid-hand, but the scheduled deal/draw/evaluate chain that
+            // would normally carry this bet to a real outcome is about to
+            // be cancelled along with everything else — refund instead of
+            // trying to let it ride through a hand that will never finish.
+            baccaratServer.refundForShutdown(terminatedPlayerId);
+            baccaratServer.releaseSeatForDisconnect(terminatedPlayerId);
+        } else {
+            // Mid-hand: the bet already rode into the hand and resolves
+            // normally by UUID at payout time (delivered as a pending
+            // payout if still offline then) — just free the seat.
+            baccaratServer.releaseSeatForDisconnect(terminatedPlayerId);
+        }
+
+        server.removeClient(terminatedPlayerId);
     }
 
     public void saveCurrentBets() {

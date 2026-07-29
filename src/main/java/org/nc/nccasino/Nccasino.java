@@ -53,12 +53,17 @@ import org.nc.nccasino.listeners.DealerDeathHandler;
 import org.nc.nccasino.listeners.DealerEventListener;
 import org.nc.nccasino.listeners.DealerInitializeListener;
 import org.nc.nccasino.listeners.DealerInteractListener;
+import org.nc.nccasino.listeners.PlayerSessionListener;
 import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.economy.VaultHook;
 import org.nc.nccasino.currency.CurrencyManager;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.DealerCurrencySettings;
+import org.nc.nccasino.currency.MoneyHelper;
+import org.nc.nccasino.payout.PendingPayoutStore;
+import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.SessionRegistry;
 import org.bukkit.Chunk;
 import org.bukkit.entity.EntityType;
 
@@ -73,6 +78,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
     private String currencyName;  // Display name for the currency
     private VaultHook vaultHook;
     private CurrencyManager currencyManager;
+    private PendingPayoutStore pendingPayoutStore;
 
     /**
      * This local map was used in your code. If you still need it,
@@ -82,6 +88,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
+        // Settle every active player session (refund/cash-out/forfeit as
+        // appropriate, exactly like a disconnect) before the scheduled
+        // tasks that would otherwise resolve in-flight rounds get
+        // cancelled along with everything else the plugin owns.
+        SessionRegistry.terminateAll(ExitReason.PLUGIN_DISABLE);
         savePreferences();
     }
 
@@ -102,12 +113,16 @@ public final class Nccasino extends JavaPlugin implements Listener {
         // Phase 0 currency scaffolding (unused by gameplay until wired into games)
         currencyManager = new CurrencyManager(this);
 
+        // Durable pending-payout storage (delivered on join once wired up)
+        pendingPayoutStore = new PendingPayoutStore(this);
+
         // Register event listeners
         getServer().getPluginManager().registerEvents(new DealerInteractListener(this), this);
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new DealerDeathHandler(this), this);
         getServer().getPluginManager().registerEvents(new DealerEventListener(), this);
         getServer().getPluginManager().registerEvents(new DealerInitializeListener(this), this); // Register the chunk listener
+        getServer().getPluginManager().registerEvents(new PlayerSessionListener(this), this);
 
 
         // Register the command executor
@@ -389,6 +404,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
         return currencyManager;
     }
 
+    public PendingPayoutStore getPendingPayoutStore() {
+        return pendingPayoutStore;
+    }
+
     private void reinitializeDealers() {
         Bukkit.getWorlds().forEach(world -> {
             for (Entity entity : world.getEntities()) {
@@ -578,12 +597,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
         return getCurrencyMode(internalName) == CurrencyMode.VAULT;
     }
 
-    /** Format wager amount for UI: VAULT → "$5", else → "5 emeralds" (lowercase, plural). Use this overload with cached mode/name to avoid config read per call. */
+    /** Format wager amount for UI: VAULT → "$5.00", else → "5 emeralds" (lowercase, plural). Use this overload with cached mode/name to avoid config read per call. */
     public String formatWagerDisplay(CurrencyMode mode, String currencyName, double amount) {
-        int n = (int) amount;
         if (mode == CurrencyMode.VAULT) {
-            return "$" + n;
+            return "$" + MoneyHelper.roundDisplay(MoneyHelper.bd(amount)).toPlainString();
         }
+        int n = (int) amount;
         String name = currencyName != null ? currencyName.toLowerCase() : "emerald";
         return n + " " + name + (n != 1 ? "s" : "");
     }
@@ -593,12 +612,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
         return formatWagerDisplay(getCurrencyMode(internalName), getCurrencyName(internalName), amount);
     }
 
-    /** Chip button display name: VAULT → "$5", else → "5 Emeralds". Use with cached mode/name to avoid config read per call. */
+    /** Chip button display name: VAULT → "$5.00", else → "5 Emeralds". Use with cached mode/name to avoid config read per call. */
     public String getChipDisplayName(CurrencyMode mode, String currencyName, double value) {
-        int n = (int) value;
         if (mode == CurrencyMode.VAULT) {
-            return "$" + n;
+            return "$" + MoneyHelper.roundDisplay(MoneyHelper.bd(value)).toPlainString();
         }
+        int n = (int) value;
         String name = currencyName != null ? currencyName : "Emerald";
         return n + " " + name + (n != 1 ? "s" : "");
     }

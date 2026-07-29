@@ -21,24 +21,39 @@ import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.currency.VaultCurrencyProvider;
 import org.nc.nccasino.helpers.AttributeHelper;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.payout.PayoutMessages;
+import org.nc.nccasino.payout.PendingPayout;
+import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.GameTerminationPolicy;
+import org.nc.nccasino.session.SessionRegistry;
+import org.nc.nccasino.session.TerminableSession;
 
-public class DragonClient extends Client{
-    private int numColumns = 7; 
+import java.util.UUID;
+
+public class DragonClient extends Client implements TerminableSession {
+    private int numColumns = 7;
     private int numSafeSpots = 5;
-    private int numRows = 4; 
+    private int numRows = 4;
     private int currentFloor = 1;
     private int playerX;
     private int[][] gameGrid;
-    private boolean moveLocked = false; 
+    private boolean moveLocked = false;
     private final List<Integer> taskIDs = new ArrayList<>();
     private boolean gameOverTriggered = false;
     private boolean playerLost = false;
-    private int displayOffset = 0; 
-    private int floorsCleared = 0; 
-    private boolean cashOutTriggered = false; 
+    private int displayOffset = 0;
+    private int floorsCleared = 0;
+    private boolean cashOutTriggered = false;
     private boolean shiftlock = false;
+    // Set synchronously the instant a floor click is accepted, cleared once
+    // the deferred task actually tallies it into floorsCleared. Lets a
+    // disconnect that lands inside that ~10-tick window still count the
+    // move instead of losing a floor the player already safely cleared.
+    private Boolean pendingMoveSafe = null;
+    private boolean sessionResolved = false;
     public DragonClient(DragonServer server, Player player, Nccasino plugin, String internalName) {
         super(server, player, "Dragon Descent", plugin, internalName);
+        SessionRegistry.register(player.getUniqueId(), this);
 
         if (!plugin.getConfig().contains("dealers." + internalName + ".default-columns")) {
             plugin.getConfig().set("dealers." + internalName + ".default-columns", 7);
@@ -505,7 +520,7 @@ public class DragonClient extends Client{
 
             if (!moveLocked && !cashOutTriggered && !playerLost) {
                 moveLocked=true;
-                cashOut(true);
+                cashOut();
             }
                 return;
         }
@@ -540,16 +555,18 @@ public class DragonClient extends Client{
             revealRow(floor);
             if(this.inventory == null||gameGrid==null) return;
             boolean gameOver = (gameGrid[displayOffset + floor - 1][safeGridCol] == 0);
-            if (gameOver) playerLost = true; 
+            if (gameOver) playerLost = true;
+            pendingMoveSafe = !gameOver;
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if(this.inventory == null) return;
                 if (SoundHelper.getSoundSafely("block.cave_vines.step", player) != null)
                     player.playSound(player.getLocation(), Sound.BLOCK_CAVE_VINES_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
                 inventory.setItem(playerX, createCustomItem(Material.VINE, "§aSafe!", 1));
                 playerX = slot;
-                if (gameGrid[displayOffset + floor - 1][safeGridCol] == 1) { 
+                if (gameGrid[displayOffset + floor - 1][safeGridCol] == 1) {
                     floorsCleared++; // Move this BEFORE updatePlayerHead
                 }
+                pendingMoveSafe = null;
                 updatePlayerHead();
         
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -563,7 +580,7 @@ public class DragonClient extends Client{
                         renameAllExcept(playerX, "§aYayyy!");
                         moveLocked = true; 
                         int taskID =Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        cashOut(true); // Auto cash-out if at last floor
+                        cashOut(); // Auto cash-out if at last floor
                     }, 40L).getTaskId();
                     taskIDs.add(taskID);
                     } else if (floor == 5) { // Reached last visible row
@@ -751,8 +768,8 @@ public class DragonClient extends Client{
         }
     }
 
-    private void cashOut(boolean resetGame) {
-        if (cashOutTriggered) return; 
+    private void cashOut() {
+        if (cashOutTriggered) return;
         cashOutTriggered = true;
         moveLocked = true;
         double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
@@ -787,26 +804,7 @@ public class DragonClient extends Client{
         
         playerLost=true;
 
-        if(resetGame){
-            Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 40L); }
-        else{
-
-            betStack.clear(); // If rebet is off, clear the stack.
-            for (int taskID : taskIDs) {
-                Bukkit.getScheduler().cancelTask(taskID);
-            }
-            taskIDs.clear();
-            floorsCleared=0;
-            playerLost=false;
-            gameOverTriggered = false; // Reset game state
-            moveLocked = false;
-            displayOffset = 0;
-            currentFloor = 1;
-            playerX = 4;
-            gameGrid = null; // Clear old game grid safely
-            bettingEnabled = true;
-        }
-
+        Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 40L);
     }
 
     private void resetGame() {
@@ -864,19 +862,109 @@ public class DragonClient extends Client{
 
     @Override
     protected void handleClientInventoryClose() {
-        if(!bettingEnabled && !playerLost){
-            moveLocked=true;
-            cashOut(false);
-        }
-        else if (bettingEnabled && !betStack.isEmpty()) {
-            undoAllBets();
-        }
-        super.handleClientInventoryClose();
+        // Route through the same idempotent path used for quit/kick rather
+        // than resolving directly here — whichever of this or the quit
+        // event fires first "wins" and the other becomes a safe no-op, and
+        // consumeQuitReason still correctly reports KICKED here even if
+        // this fires first, since the kick is marked as soon as
+        // PlayerKickEvent itself fires.
+        UUID playerId = player.getUniqueId();
+        ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
+        SessionRegistry.terminatePlayerSession(playerId, reason);
     }
-    
+
+    /**
+     * Authoritative disconnect/kick resolution, reached via SessionRegistry
+     * regardless of whether this fires from PlayerQuitEvent or from this
+     * client's own InventoryCloseEvent.
+     */
+    @Override
+    public void onSessionTerminated(UUID terminatedPlayerId, ExitReason reason) {
+        if (sessionResolved) {
+            return; // already resolved through another path
+        }
+        sessionResolved = true;
+
+        switch (GameTerminationPolicy.dragon(reason, bettingEnabled, playerLost)) {
+        case REFUND:
+            if (!betStack.isEmpty()) {
+                undoAllBets();
+            }
+            break;
+        case CASH_OUT:
+            resolveMidGameDisconnect(terminatedPlayerId);
+            break;
+        case NO_ACTION:
+        case FORFEIT:
+            break;
+        default:
+            throw new IllegalStateException("Unexpected Dragon Descent termination action");
+            // playerLost already true: already resolved through normal
+            // play — either cashed out or the dragon already got them.
+        }
+        // KICKED: forfeit unconditionally regardless of phase — no refund,
+        // no cash-out.
+
+        betStack.clear();
+
+        for (int taskId : taskIDs) {
+            Bukkit.getScheduler().cancelTask(taskId);
+        }
+        taskIDs.clear();
+
+        server.removeClient(terminatedPlayerId);
+    }
+
+    /**
+     * Cashes out the player's current position (bet x multiplier for
+     * floorsCleared, finishing the tally of an in-flight accepted move if
+     * one hadn't been applied yet) as a durable pending payout for delivery
+     * on reconnect. This deliberately never attempts a direct credit here:
+     * whether the Player object is still safely usable at the exact moment
+     * this runs isn't reliably knowable, so risking a lost payout for
+     * slightly faster delivery isn't an acceptable trade.
+     */
+    private void resolveMidGameDisconnect(UUID terminatedPlayerId) {
+        if (Boolean.TRUE.equals(pendingMoveSafe)) {
+            floorsCleared++;
+        }
+        pendingMoveSafe = null;
+
+        double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
+        double winnings = totalBet * calculatePayoutMultiplier();
+        if (winnings <= 0) {
+            return;
+        }
+
+        Material currencyMaterial = plugin.getCurrency(internalName);
+        PendingPayout payout = PendingPayout.create(
+            terminatedPlayerId,
+            "Dragon Descent",
+            internalName,
+            currencyMode,
+            currencyMaterial != null ? currencyMaterial.name() : null,
+            currencyName,
+            winnings,
+            PayoutMessages.disconnectedMidGameContext("Dragon Descent")
+        );
+
+        boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
+        if (!persisted) {
+            // Durable write failed. Rather than losing the winnings
+            // outright, make a best-effort direct credit attempt as a
+            // last resort — not guaranteed to reach the player, but
+            // strictly better odds than doing nothing.
+            plugin.getLogger().warning("[NCCasino] Dragon Descent pending payout failed to persist for "
+                + terminatedPlayerId + "; attempting direct credit instead.");
+            if (player != null) {
+                creditPlayer(player, winnings);
+            }
+        }
+    }
+
     @Override
     public void onServerUpdate(String eventType, Object data) {
         throw new UnsupportedOperationException("Unimplemented method 'onServerUpdate'");
     }
-    
+
 }

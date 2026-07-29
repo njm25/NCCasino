@@ -1,0 +1,135 @@
+package org.nc.nccasino.session;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.nc.nccasino.session.GameTerminationPolicy.MinesPhase.GAME_OVER_DEPOSIT_PENDING;
+import static org.nc.nccasino.session.GameTerminationPolicy.MinesPhase.PLAYING;
+import static org.nc.nccasino.session.GameTerminationPolicy.MinesPhase.PREGAME;
+import static org.nc.nccasino.session.GameTerminationPolicy.MinesPhase.RESOLVED;
+import static org.nc.nccasino.session.TerminationAction.CASH_OUT;
+import static org.nc.nccasino.session.TerminationAction.FORFEIT;
+import static org.nc.nccasino.session.TerminationAction.NO_ACTION;
+import static org.nc.nccasino.session.TerminationAction.QUEUE_KNOWN_PAYOUT;
+import static org.nc.nccasino.session.TerminationAction.REFUND;
+import static org.nc.nccasino.session.TerminationAction.RIDE_TO_RESULT;
+
+class GameTerminationPolicyTest {
+
+    @Test
+    void kicksAlwaysForfeitAcrossEveryGameAndPhase() {
+        assertEquals(FORFEIT, GameTerminationPolicy.blackjack(ExitReason.KICKED, false));
+        assertEquals(FORFEIT, GameTerminationPolicy.blackjack(ExitReason.KICKED, true));
+        assertEquals(FORFEIT, GameTerminationPolicy.mines(ExitReason.KICKED, PREGAME));
+        assertEquals(FORFEIT, GameTerminationPolicy.mines(ExitReason.KICKED, PLAYING));
+        assertEquals(FORFEIT, GameTerminationPolicy.dragon(ExitReason.KICKED, true, false));
+        assertEquals(FORFEIT, GameTerminationPolicy.dragon(ExitReason.KICKED, false, false));
+        assertEquals(FORFEIT, GameTerminationPolicy.roulette(ExitReason.KICKED, false));
+        assertEquals(FORFEIT, GameTerminationPolicy.roulette(ExitReason.KICKED, true));
+        assertEquals(FORFEIT, GameTerminationPolicy.baccarat(ExitReason.KICKED, true));
+        assertEquals(FORFEIT, GameTerminationPolicy.baccarat(ExitReason.KICKED, false));
+        assertEquals(FORFEIT, GameTerminationPolicy.coinFlip(ExitReason.KICKED, false));
+        assertEquals(FORFEIT, GameTerminationPolicy.coinFlip(ExitReason.KICKED, true));
+    }
+
+    @Test
+    void blackjackRefundsPregameButForfeitsOnceDealStarts() {
+        for (ExitReason reason : new ExitReason[] {
+            ExitReason.DISCONNECTED,
+            ExitReason.VOLUNTARY_INVENTORY_CLOSE
+        }) {
+            assertEquals(REFUND, GameTerminationPolicy.blackjack(reason, false));
+            assertEquals(FORFEIT, GameTerminationPolicy.blackjack(reason, true));
+        }
+        assertEquals(REFUND,
+            GameTerminationPolicy.blackjack(ExitReason.PLUGIN_DISABLE, false));
+        assertEquals(REFUND,
+            GameTerminationPolicy.blackjack(ExitReason.PLUGIN_DISABLE, true));
+        assertEquals(NO_ACTION,
+            GameTerminationPolicy.blackjack(ExitReason.GAME_COMPLETED, false));
+        assertEquals(NO_ACTION,
+            GameTerminationPolicy.blackjack(ExitReason.GAME_COMPLETED, true));
+    }
+
+    @Test
+    void minesRefundsPregameAndCashesOutActivePosition() {
+        for (ExitReason reason : nonKickReasons()) {
+            assertEquals(REFUND, GameTerminationPolicy.mines(reason, PREGAME));
+            assertEquals(CASH_OUT, GameTerminationPolicy.mines(reason, PLAYING));
+            assertEquals(NO_ACTION, GameTerminationPolicy.mines(reason, RESOLVED));
+        }
+        assertEquals(CASH_OUT,
+            GameTerminationPolicy.mines(ExitReason.PLUGIN_DISABLE, GAME_OVER_DEPOSIT_PENDING));
+        assertEquals(CASH_OUT,
+            GameTerminationPolicy.mines(ExitReason.DISCONNECTED, GAME_OVER_DEPOSIT_PENDING));
+        for (GameTerminationPolicy.MinesPhase phase : GameTerminationPolicy.MinesPhase.values()) {
+            assertEquals(NO_ACTION,
+                GameTerminationPolicy.mines(ExitReason.GAME_COMPLETED, phase));
+        }
+    }
+
+    @Test
+    void dragonRefundsBeforeStartCashesOutLiveRunAndDoesNothingAfterResolution() {
+        for (ExitReason reason : nonKickReasons()) {
+            assertEquals(REFUND, GameTerminationPolicy.dragon(reason, true, false));
+            assertEquals(CASH_OUT, GameTerminationPolicy.dragon(reason, false, false));
+            assertEquals(NO_ACTION, GameTerminationPolicy.dragon(reason, false, true));
+        }
+        assertEquals(NO_ACTION,
+            GameTerminationPolicy.dragon(ExitReason.GAME_COMPLETED, true, false));
+        assertEquals(NO_ACTION,
+            GameTerminationPolicy.dragon(ExitReason.GAME_COMPLETED, false, false));
+    }
+
+    @Test
+    void rouletteRidesOrdinaryDisconnectButRefundsShutdown() {
+        assertEquals(RIDE_TO_RESULT,
+            GameTerminationPolicy.roulette(ExitReason.DISCONNECTED, false));
+        assertEquals(RIDE_TO_RESULT,
+            GameTerminationPolicy.roulette(ExitReason.VOLUNTARY_INVENTORY_CLOSE, false));
+        assertEquals(REFUND,
+            GameTerminationPolicy.roulette(ExitReason.PLUGIN_DISABLE, false));
+        assertEquals(QUEUE_KNOWN_PAYOUT,
+            GameTerminationPolicy.roulette(ExitReason.PLUGIN_DISABLE, true));
+        assertEquals(QUEUE_KNOWN_PAYOUT,
+            GameTerminationPolicy.roulette(ExitReason.DISCONNECTED, true));
+        assertEquals(NO_ACTION,
+            GameTerminationPolicy.roulette(ExitReason.GAME_COMPLETED, false));
+        assertEquals(NO_ACTION,
+            GameTerminationPolicy.roulette(ExitReason.GAME_COMPLETED, true));
+    }
+
+    @Test
+    void baccaratRefundsPregameRidesActiveHandAndRefundsShutdown() {
+        assertEquals(REFUND, GameTerminationPolicy.baccarat(ExitReason.DISCONNECTED, true));
+        assertEquals(RIDE_TO_RESULT,
+            GameTerminationPolicy.baccarat(ExitReason.DISCONNECTED, false));
+        assertEquals(REFUND,
+            GameTerminationPolicy.baccarat(ExitReason.PLUGIN_DISABLE, false));
+        assertEquals(NO_ACTION,
+            GameTerminationPolicy.baccarat(ExitReason.GAME_COMPLETED, true));
+        assertEquals(NO_ACTION,
+            GameTerminationPolicy.baccarat(ExitReason.GAME_COMPLETED, false));
+    }
+
+    @Test
+    void coinFlipRefundsPregameRidesAcceptedFlipAndRefundsShutdown() {
+        assertEquals(REFUND, GameTerminationPolicy.coinFlip(ExitReason.DISCONNECTED, false));
+        assertEquals(RIDE_TO_RESULT,
+            GameTerminationPolicy.coinFlip(ExitReason.DISCONNECTED, true));
+        assertEquals(REFUND,
+            GameTerminationPolicy.coinFlip(ExitReason.PLUGIN_DISABLE, true));
+        assertEquals(NO_ACTION,
+            GameTerminationPolicy.coinFlip(ExitReason.GAME_COMPLETED, false));
+        assertEquals(NO_ACTION,
+            GameTerminationPolicy.coinFlip(ExitReason.GAME_COMPLETED, true));
+    }
+
+    private static ExitReason[] nonKickReasons() {
+        return new ExitReason[] {
+            ExitReason.DISCONNECTED,
+            ExitReason.VOLUNTARY_INVENTORY_CLOSE,
+            ExitReason.PLUGIN_DISABLE
+        };
+    }
+}
