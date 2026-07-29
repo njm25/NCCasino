@@ -148,6 +148,19 @@ dragon-descent:
   rebet-reset: "&cNot enough currency for rebet. Wager reset."
   rebet-placed: "&dRebet of {amount} placed."
 
+test-game:
+  title: "Two Player Bet Game"
+  seat-one-open: "Seat 1 (Click to Sit)"
+  seat-one-occupied: "Seat 1 Occupied"
+  seat-two-open: "Seat 2 (Click to Sit)"
+  seat-two-occupied: "Seat 2 Occupied"
+  state-lobby: "Game State: LOBBY"
+  waiting-accept: "Waiting for Seat2 to accept bet..."
+  round-finished: "Round finished. Click reset to start again."
+  unknown-state: "Unknown State!"
+  accept-bet: "Accept Bet: {amount}"
+  reset: "Reset Game"
+
 commands:
   player-only: "&cThis command can only be used by players."
   no-permission: "&cYou do not have permission to use this command."

@@ -148,6 +148,19 @@ dragon-descent:
   rebet-reset: "&cPas assez de monnaie pour rejouer. Mise réinitialisée."
   rebet-placed: "&dNouvelle mise de {amount} placée."
 
+test-game:
+  title: "Pari à deux joueurs"
+  seat-one-open: "Siège 1 (cliquez pour vous asseoir)"
+  seat-one-occupied: "Siège 1 occupé"
+  seat-two-open: "Siège 2 (cliquez pour vous asseoir)"
+  seat-two-occupied: "Siège 2 occupé"
+  state-lobby: "État du jeu : SALON"
+  waiting-accept: "En attente de l’acceptation du pari par le siège 2..."
+  round-finished: "Manche terminée. Cliquez sur réinitialiser pour recommencer."
+  unknown-state: "État inconnu !"
+  accept-bet: "Accepter le pari : {amount}"
+  reset: "Réinitialiser le jeu"
+
 commands:
   player-only: "&cCette commande ne peut être utilisée que dans le jeu."
   no-permission: "&cVous n’avez pas la permission d’utiliser cette commande."

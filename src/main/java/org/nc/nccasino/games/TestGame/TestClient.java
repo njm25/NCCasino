@@ -21,7 +21,7 @@ public class TestClient extends Client {
 
     public TestClient(TestServer server, Player player, Nccasino plugin, String internalName) {
         // 54‐slot inventory with "Two Player Bet Game"
-        super(server, player, "Two Player Bet Game", plugin, internalName);
+        super(server, player, plugin.getLocalization().text(player, "test-game.title"), plugin, internalName);
     }
 
     @Override
@@ -68,33 +68,33 @@ public class TestClient extends Client {
         // Render seat1
         UUID seat1 = testServer.getSeat1();
         if (seat1 == null) {
-            inventory.setItem(SEAT1_SLOT, createCustomItem(Material.OAK_STAIRS, "Seat 1 (Click to Sit)", 1));
+            inventory.setItem(SEAT1_SLOT, createCustomItem(Material.OAK_STAIRS, text("test-game.seat-one-open"), 1));
         } else {
-            inventory.setItem(SEAT1_SLOT, createPlayerHead(seat1, "Seat 1 Occupied"));
+            inventory.setItem(SEAT1_SLOT, createPlayerHead(seat1, text("test-game.seat-one-occupied")));
         }
 
         // Render seat2
         UUID seat2 = testServer.getSeat2();
         if (seat2 == null) {
-            inventory.setItem(SEAT2_SLOT, createCustomItem(Material.OAK_STAIRS, "Seat 2 (Click to Sit)", 1));
+            inventory.setItem(SEAT2_SLOT, createCustomItem(Material.OAK_STAIRS, text("test-game.seat-two-open"), 1));
         } else {
-            inventory.setItem(SEAT2_SLOT, createPlayerHead(seat2, "Seat 2 Occupied"));
+            inventory.setItem(SEAT2_SLOT, createPlayerHead(seat2, text("test-game.seat-two-occupied")));
         }
 
         // Add a status item (slot 22)
         String statusText;
         switch (gameState) {
             case LOBBY:
-                statusText = "Game State: LOBBY";
+                statusText = text("test-game.state-lobby");
                 break;
             case WAITING_FOR_ACCEPT:
-                statusText = "Waiting for Seat2 to accept bet...";
+                statusText = text("test-game.waiting-accept");
                 break;
             case COMPLETED:
-                statusText = "Round finished. Click reset to start again.";
+                statusText = text("test-game.round-finished");
                 break;
             default:
-                statusText = "Unknown State!";
+                statusText = text("test-game.unknown-state");
         }
         inventory.setItem(STATUS_SLOT, createCustomItem(Material.PAPER, statusText, 1));
 
@@ -108,7 +108,11 @@ public class TestClient extends Client {
             double seat1Bet = testServer.getSeat1Bet();
             ItemStack acceptBet = createCustomItem(
                     Material.LIME_WOOL, 
-                    "Accept Bet: " + plugin.formatWagerDisplay(currencyMode, currencyName, seat1Bet), 
+                    text(
+                        "test-game.accept-bet",
+                        "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, seat1Bet)
+                    ),
                     1
             );
             inventory.setItem(ACCEPT_BET_SLOT, acceptBet);
@@ -116,7 +120,7 @@ public class TestClient extends Client {
 
         // If game is COMPLETED, show a reset button
         if (gameState == TestServer.TestGameState.COMPLETED) {
-            ItemStack resetButton = createCustomItem(Material.BARRIER, "Reset Game", 1);
+            ItemStack resetButton = createCustomItem(Material.BARRIER, text("test-game.reset"), 1);
             inventory.setItem(RESET_SLOT, resetButton);
         }
 
@@ -181,6 +185,10 @@ public class TestClient extends Client {
         TestServer testServer = (TestServer) server;
         UUID seat1 = testServer.getSeat1();
         return seat1 != null && seat1.equals(player.getUniqueId());
+    }
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
     }
 
 }

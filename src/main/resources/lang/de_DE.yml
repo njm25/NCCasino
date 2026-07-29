@@ -148,6 +148,19 @@ dragon-descent:
   rebet-reset: "&cNicht genug Währung zum erneuten Setzen. Einsatz zurückgesetzt."
   rebet-placed: "&dErneuter Einsatz von {amount} platziert."
 
+test-game:
+  title: "Zweispieler-Wettspiel"
+  seat-one-open: "Sitz 1 (Klicken zum Hinsetzen)"
+  seat-one-occupied: "Sitz 1 belegt"
+  seat-two-open: "Sitz 2 (Klicken zum Hinsetzen)"
+  seat-two-occupied: "Sitz 2 belegt"
+  state-lobby: "Spielstatus: LOBBY"
+  waiting-accept: "Warten, bis Sitz 2 den Einsatz annimmt..."
+  round-finished: "Runde beendet. Zum Neustart auf Zurücksetzen klicken."
+  unknown-state: "Unbekannter Status!"
+  accept-bet: "Einsatz annehmen: {amount}"
+  reset: "Spiel zurücksetzen"
+
 commands:
   player-only: "&cDieser Befehl kann nur im Spiel verwendet werden."
   no-permission: "&cDu darfst diesen Befehl nicht verwenden."

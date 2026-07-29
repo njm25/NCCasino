@@ -148,6 +148,19 @@ dragon-descent:
   rebet-reset: "&cMoeda insuficiente para reapostar. Aposta reiniciada."
   rebet-placed: "&dReaposta de {amount} realizada."
 
+test-game:
+  title: "Apostas para dois jogadores"
+  seat-one-open: "Assento 1 (clique para sentar)"
+  seat-one-occupied: "Assento 1 ocupado"
+  seat-two-open: "Assento 2 (clique para sentar)"
+  seat-two-occupied: "Assento 2 ocupado"
+  state-lobby: "Estado do jogo: SALA"
+  waiting-accept: "Aguardando o assento 2 aceitar a aposta..."
+  round-finished: "Rodada encerrada. Clique em reiniciar para começar de novo."
+  unknown-state: "Estado desconhecido!"
+  accept-bet: "Aceitar aposta: {amount}"
+  reset: "Reiniciar jogo"
+
 commands:
   player-only: "&cEste comando só pode ser usado dentro do jogo."
   no-permission: "&cVocê não tem permissão para usar este comando."
