@@ -144,7 +144,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     // Field to keep track of selected mine count slot
     private int selectedMineSlot = -1;
     public MinesTable(UUID dealerId, Player player,  Nccasino plugin, String internalName, MinesInventory minesInventory) {
-        super(player.getUniqueId(), 54, "Mines");
+        super(player.getUniqueId(), 54, plugin.getLocalization().text(player, "mines.title"));
         this.playerId = player.getUniqueId();
         this.player = player;
         this.plugin = plugin;
@@ -194,7 +194,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             case STANDARD:{
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aWelcome to Mines.");
+                player.sendMessage(text("mines.welcome"));
                 break;     
             }
                 case NONE:{
@@ -270,17 +270,17 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             updateStartGameLever(false);
         }
     
-        inventory.setItem(36, createCustomItem(Material.SPRUCE_DOOR, "Refund/Exit", 1));
+        inventory.setItem(36, createCustomItem(Material.SPRUCE_DOOR, text("mines.refund-exit"), 1));
         // Add undo buttons
-        inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
-        inventory.setItem(46, createCustomItem(Material.WIND_CHARGE, "Undo Last Bet", 1));
-        inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
+        inventory.setItem(45, createCustomItem(Material.BARRIER, text("mines.undo-all"), 1));
+        inventory.setItem(46, createCustomItem(Material.WIND_CHARGE, text("mines.undo-last"), 1));
+        inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, text("mines.all-in-label"), 1));
     }
     
    // Method to toggle rebet on/off
    private void updateRebetToggle() {
     Material material = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
-    String name = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
+    String name = text(rebetEnabled ? "mines.rebet-on" : "mines.rebet-off");
     inventory.setItem(43, createCustomItem(material, name, 1));  // Slot 48
 }
 
@@ -350,7 +350,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         for (int slot : slots) {
             if (slot == 22) {
                 // Place instruction item in slot 22
-                ItemStack instructions = createCustomItem(Material.BOOK, "Select Number of Mines", 1);
+                ItemStack instructions = createCustomItem(Material.BOOK, text("mines.select-mines"), 1);
                 inventory.setItem(slot, instructions);
                 continue;
             }
@@ -375,12 +375,12 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         setGlassPane(Material.PURPLE_STAINED_GLASS_PANE, new int[]{45,46,47,48,50,51,52,53});
         for (int i = 0; i < gridSlots.length; i++) {
             int slot = gridSlots[i];
-            ItemStack tile = createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Hidden", 1);
+            ItemStack tile = createCustomItem(Material.BLACK_STAINED_GLASS_PANE, text("mines.hidden"), 1);
             inventory.setItem(slot, tile);
         }
 
         // Add cash out button with potential winnings in lore
-        ItemStack cashOutButton = createCustomItem(plugin.getCurrency(internalName), "Cash Out", 1);
+        ItemStack cashOutButton = createCustomItem(plugin.getCurrency(internalName), text("mines.cash-out"), 1);
         updateCashOutLore(cashOutButton);
         inventory.setItem(49, cashOutButton);
     }
@@ -396,7 +396,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 
         ItemMeta meta = cashOutButton.getItemMeta();
         if (meta != null) {
-            meta.setLore(Collections.singletonList("Potential Winnings: " + potentialWinnings));
+            meta.setLore(Collections.singletonList(text("mines.potential-winnings", "amount", potentialWinnings)));
             cashOutButton.setItemMeta(meta);
         }
     }
@@ -417,7 +417,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§bInstrument set to: " + instruments[instrumentIndex].toString());
+                    player.sendMessage(text("mines.instrument-set", "instrument", instruments[instrumentIndex].toString()));
                     break;     
                 }
                     case NONE:{
@@ -435,7 +435,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§eMode set to: " + modeNames[modeIndex]);
+                    player.sendMessage(text("mines.mode-set", "mode", localizedModeName(modeIndex)));
                                         break;     
                 }
                     case NONE:{
@@ -498,7 +498,8 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             case STANDARD:{
                 break;}
             case VERBOSE:{
-                player.sendMessage("§cExiting the game...");                break;     
+                player.sendMessage(text("mines.exiting"));
+                break;
             }
                 case NONE:{
                 break;
@@ -537,10 +538,18 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             if (count <= 0) {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§cInvalid action.");
+                        player.sendMessage(text("mines.invalid-action"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage(currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT ? "§cNo funds.\n" : "§cNo " + plugin.getCurrencyName(internalName).toLowerCase() + (Math.abs(count) == 1 ? "" : "s") + "\n");
+                        player.sendMessage(
+                            currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT
+                                ? text("mines.no-funds")
+                                : text(
+                                    "mines.no-currency",
+                                    "currency",
+                                    plugin.getCurrencyName(internalName).toLowerCase() + (Math.abs(count) == 1 ? "" : "s")
+                                )
+                        );
                         break;     
                     }
                         case NONE:{
@@ -563,10 +572,11 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             updateStartGameLever(true);
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage("§cAll in.");
+                    player.sendMessage(text("mines.all-in"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aAll in with " + plugin.formatWagerDisplay(currencyMode, currencyName, count) + "\n");                    break;     
+                    player.sendMessage(text("mines.all-in-with", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, count)));
+                    break;
                 }
                     case NONE:{
                     break;
@@ -608,7 +618,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aWager: " + plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager));                     
+                    player.sendMessage(text("mines.wager-selected", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager)));
                     break;     
                 }
                     case NONE:{
@@ -659,7 +669,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                         case STANDARD:
                             break;
                         case VERBOSE:
-                            player.sendMessage("§aBet placed: " + plugin.formatWagerDisplay(currencyMode, currencyName, newBetAmount));
+                            player.sendMessage(text("mines.bet-placed", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, newBetAmount)));
                             break;
                         case NONE:
                             break;
@@ -671,10 +681,18 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 } else {
                     switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                         case STANDARD:
-                            player.sendMessage("§cInvalid action.");
+                            player.sendMessage(text("mines.invalid-action"));
                             break;
                         case VERBOSE:
-                            player.sendMessage(currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT ? "§cNot enough funds." : "§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s.");
+                            player.sendMessage(
+                                currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT
+                                    ? text("mines.insufficient-funds")
+                                    : text(
+                                        "mines.insufficient-currency",
+                                        "currency",
+                                        plugin.getCurrencyName(internalName).toLowerCase() + "s"
+                                    )
+                            );
                             break;
                         case NONE:
                             break;
@@ -685,10 +703,10 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             } else {
                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                     case STANDARD:
-                        player.sendMessage("§cInvalid action.");
+                        player.sendMessage(text("mines.invalid-action"));
                         break;
                     case VERBOSE:
-                        player.sendMessage("§cSelect a wager amount first.");
+                        player.sendMessage(text("betting.select-wager"));
                         break;
                     case NONE:
                         break;
@@ -720,7 +738,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                             case STANDARD:{
                                 break;}
                             case VERBOSE:{
-                                player.sendMessage("§d# of mines: " + minesCount);
+                                player.sendMessage(text("mines.mine-count", "count", minesCount));
                                 break;     
                             }
                                 case NONE:{
@@ -742,10 +760,10 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                     } else {
                         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                             case STANDARD:{
-                                player.sendMessage("§cInvalid action.");
+                                player.sendMessage(text("mines.invalid-action"));
                                 break;}
                             case VERBOSE:{
-                                player.sendMessage("§cInvalid number of mines.");
+                                player.sendMessage(text("mines.invalid-mine-count"));
                                 break;     
                             }
                                 case NONE:{
@@ -755,7 +773,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                          if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
                     }
                 } catch (NumberFormatException e) {
-                    player.sendMessage("§cError parsing number of mines.");
+                    player.sendMessage(text("mines.mine-count-error"));
                      if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
                 }
             }
@@ -771,10 +789,10 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 } else {
                     switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                         case STANDARD:{
-                            player.sendMessage("§cInvalid action.");
+                            player.sendMessage(text("mines.invalid-action"));
                             break;}
                         case VERBOSE:{
-                            player.sendMessage("§cPlace a wager first.");
+                            player.sendMessage(text("mines.place-wager-first"));
                             break;     
                         }
                             case NONE:{
@@ -786,10 +804,10 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             } else {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§cInvalid action.");
+                        player.sendMessage(text("mines.invalid-action"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cSelect number of mines.");
+                        player.sendMessage(text("mines.select-mines-first"));
                         break;     
                     }
                         case NONE:{
@@ -808,7 +826,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                     case STANDARD:{
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§dAll bets undone.");                       
+                        player.sendMessage(text("mines.all-bets-undone"));
                          break;     
                     }
                         case NONE:{
@@ -825,11 +843,11 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             else{
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§cInvalid action.");
+                        player.sendMessage(text("mines.invalid-action"));
 
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cNo bets to undo.");
+                        player.sendMessage(text("mines.no-bets-to-undo"));
                         break;     
                     }
                         case NONE:{
@@ -858,7 +876,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                     case STANDARD:{
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§dLast bet undone.");                         
+                        player.sendMessage(text("mines.last-bet-undone"));
                         break;     
                     }
                         case NONE:{
@@ -869,11 +887,11 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             } else {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§cInvalid action.");
+                        player.sendMessage(text("mines.invalid-action"));
 
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cNo bets to undo.");
+                        player.sendMessage(text("mines.no-bets-to-undo"));
                         break;     
                     }
                         case NONE:{
@@ -930,11 +948,11 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     if (revealedGrid[x][y]) {
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage("§cInvalid action.");
+                player.sendMessage(text("mines.invalid-action"));
 
                 break;}
             case VERBOSE:{
-                player.sendMessage("§dTile already revealed.");
+                player.sendMessage(text("mines.tile-revealed"));
              break;     
             }
                 case NONE:{
@@ -963,11 +981,11 @@ public class MinesTable extends DealerInventory implements TerminableSession {
        gameState = GameState.GAME_OVER;
        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
         case STANDARD:{
-            player.sendMessage("§c§lGame Over!");
+            player.sendMessage(text("mines.game-over-message"));
 
             break;}
         case VERBOSE:{
-            player.sendMessage("§c§lGame Over!");
+            player.sendMessage(text("mines.game-over-message"));
             break;     
         }
             case NONE:{
@@ -986,7 +1004,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             case STANDARD:{
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aSafe pick!");                
+                player.sendMessage(text("mines.safe-pick"));
                 break;     
             }
                 case NONE:{
@@ -1005,10 +1023,10 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             if (safePicks == (totalTiles - minesCount)) {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§a§lAll safe tiles cleared!");
+                        player.sendMessage(text("mines.all-safe-cleared"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§a§lAll safe tiles cleared!");
+                        player.sendMessage(text("mines.all-safe-cleared"));
                         break;     
                     }
                         case NONE:{
@@ -1022,7 +1040,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 
     
     private void updateCashOutToBarrier() {
-        ItemStack barrierItem = createCustomItem(Material.BARRIER, "Game Over", 1);
+        ItemStack barrierItem = createCustomItem(Material.BARRIER, text("mines.game-over-label"), 1);
         inventory.setItem(49, barrierItem);
     }
     
@@ -1031,9 +1049,9 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         int slot = gridSlots[index];
         ItemStack tile;
         if (isMine) {
-            tile = createCustomItem(Material.TNT, "Mine", 1); 
+            tile = createCustomItem(Material.TNT, text("mines.mine-label"), 1);
         } else {
-            tile = createCustomItem(plugin.getCurrency(internalName), "Safe", 1);
+            tile = createCustomItem(plugin.getCurrency(internalName), text("mines.safe-label"), 1);
         }
         inventory.setItem(slot, tile);
     }
@@ -1065,12 +1083,12 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     private void setTileToFire(int x, int y) {
         int index = y * 9 + x;
         if (index >= 0 && index < inventory.getSize()) {
-            setTileAtSlot(index, Material.BLAZE_POWDER, "Burning");
+            setTileAtSlot(index, Material.BLAZE_POWDER, text("mines.burning"));
             fireGrid[y][x] = true; // Mark the tile as on fire
     
             // After a quick delay, turn the tile into smoke (wind charge/bone meal)
             BukkitTask smokeTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                setTileAtSlot(index, Material.BONE_MEAL, "Smoke");
+                setTileAtSlot(index, Material.BONE_MEAL, text("mines.smoke"));
     
                 // After a slower delay, turn the tile into air (empty)
                 BukkitTask airTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -1101,13 +1119,13 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                         int index = y * 9 + x;
                         if (index >= 0 && index < inventory.getSize()) {
                             // Set the tile to fire
-                            setTileAtSlot(index, Material.BLAZE_POWDER, "Burning");
+                            setTileAtSlot(index, Material.BLAZE_POWDER, text("mines.burning"));
                             fireGrid[y][x] = true; // Mark as on fire
                             anyTilesSetOnFire = true;
     
                             // After a quick delay, turn the tile into smoke (wind charge/bone meal)
                             BukkitTask smokeTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                                setTileAtSlot(index, Material.BONE_MEAL, "Smoke");
+                                setTileAtSlot(index, Material.BONE_MEAL, text("mines.smoke"));
     
                                 // After a slower delay, turn the tile into air (empty)
                                 BukkitTask airTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -1212,10 +1230,20 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 
 				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 					case STANDARD:{
-						player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayWinnings.doubleValue()));
+						player.sendMessage(text(
+                            "payout.paid",
+                            "amount",
+                            plugin.formatWagerDisplay(currencyMode, currencyName, displayWinnings.doubleValue())
+                        ));
 						break;}
 					case VERBOSE:{
-						player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayWinnings.doubleValue()) + "\n §r§a§o(profit of " + plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue()) + ")");
+						player.sendMessage(text(
+                            "payout.paid-with-profit",
+                            "amount",
+                            plugin.formatWagerDisplay(currencyMode, currencyName, displayWinnings.doubleValue()),
+                            "profit",
+                            plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue())
+                        ));
 						break;     
 					}
 						case NONE:{
@@ -1226,10 +1254,20 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 				winnings = applyProbabilisticRounding(winnings,player); 
 				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 					case STANDARD:{
-						player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, winnings));
+						player.sendMessage(text(
+                            "payout.paid",
+                            "amount",
+                            plugin.formatWagerDisplay(currencyMode, currencyName, winnings)
+                        ));
 						break;}
 					case VERBOSE:{
-						player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, winnings) + "\n §r§a§o(profit of "+(int)Math.abs(winnings-totalBet)+")");
+						player.sendMessage(text(
+                            "payout.paid-with-profit",
+                            "amount",
+                            plugin.formatWagerDisplay(currencyMode, currencyName, winnings),
+                            "profit",
+                            (int) Math.abs(winnings - totalBet)
+                        ));
 						break;     
 					}
 						case NONE:{
@@ -1296,10 +1334,20 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 
 				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 					case STANDARD:{
-						player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayWinnings.doubleValue()));
+						player.sendMessage(text(
+                            "payout.paid",
+                            "amount",
+                            plugin.formatWagerDisplay(currencyMode, currencyName, displayWinnings.doubleValue())
+                        ));
 						break;}
 					case VERBOSE:{
-						player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayWinnings.doubleValue()) + " (profit of " + plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue()) + ")\n");
+						player.sendMessage(text(
+                            "payout.paid-with-profit",
+                            "amount",
+                            plugin.formatWagerDisplay(currencyMode, currencyName, displayWinnings.doubleValue()),
+                            "profit",
+                            plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue())
+                        ));
 						break;     
 					}
 						case NONE:{
@@ -1310,10 +1358,20 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 				winnings = applyProbabilisticRounding(winnings,player); 
 				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 					case STANDARD:{
-						player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, winnings));
+						player.sendMessage(text(
+                            "payout.paid",
+                            "amount",
+                            plugin.formatWagerDisplay(currencyMode, currencyName, winnings)
+                        ));
 						break;}
 					case VERBOSE:{
-						player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, winnings) + " (profit of "+(int)Math.abs(winnings-totalBet)+")\n");
+						player.sendMessage(text(
+                            "payout.paid-with-profit",
+                            "amount",
+                            plugin.formatWagerDisplay(currencyMode, currencyName, winnings),
+                            "profit",
+                            (int) Math.abs(winnings - totalBet)
+                        ));
 						break;     
 					}
 						case NONE:{
@@ -1351,7 +1409,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                         int index = y * 9 + x;
                         if (index >= 0 && index < inventory.getSize()) {
                             // Overwrite every tile with an emerald
-                            setTileAtSlot(index, plugin.getCurrency(internalName), "MMMMMoney!!");
+                            setTileAtSlot(index, plugin.getCurrency(internalName), text("mines.money"));
                             anyTilesSetToEmerald = true;
                         }
                     }
@@ -1385,7 +1443,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             case STANDARD:{
                 break;}
             case VERBOSE:{
-                player.sendMessage("§d# of mines: " + minesCount );
+                player.sendMessage(text("mines.mine-count", "count", minesCount));
                 break;     
             }
                 case NONE:{
@@ -1408,10 +1466,10 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                     updateBetLore(53, previousWager);
                     switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                         case STANDARD:{
-                            player.sendMessage("§dRebet of " + plugin.formatWagerDisplay(currencyMode, currencyName, previousWager) + " placed\n");
+                            player.sendMessage(text("mines.rebet-placed", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, previousWager)));
                             break;}
                         case VERBOSE:{
-                            player.sendMessage("§dRebet of " + plugin.formatWagerDisplay(currencyMode, currencyName, previousWager) + " placed\n");
+                            player.sendMessage(text("mines.rebet-placed", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, previousWager)));
                             break;     
                         }
                             case NONE:{
@@ -1423,10 +1481,10 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             } else {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§c2 broke 4 rebet.");
+                        player.sendMessage(text("mines.rebet-broke"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§c2 broke 4 rebet.");
+                        player.sendMessage(text("mines.rebet-broke"));
                         break;     
                     }
                         case NONE:{
@@ -1445,7 +1503,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cRebet off, wager reset to 0.");
+                    player.sendMessage(text("mines.rebet-off-reset"));
                     break;     
                 }
                     case NONE:{
@@ -1481,7 +1539,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             if (meta != null) {
                 if (totalBet > 0) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Wager: " + plugin.formatWagerDisplay(currencyMode, currencyName, totalBet) + "\n");
+                    lore.add(text("mines.wager-lore", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, totalBet)));
                     meta.setLore(lore);
                 } else {
                     meta.setLore(new ArrayList<>());  // Clear lore if no wager
@@ -1645,10 +1703,10 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         if (totalDropped > 0) {     
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped) + ", dropping...");
+                player.sendMessage(text("mines.inventory-full", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped)));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped) + ", dropping...");
+                player.sendMessage(text("mines.inventory-full", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped)));
                 break;     
             }
                 case NONE:{
@@ -1983,7 +2041,21 @@ default :{
         tileNotes.put(tileKeys.get(i), new float[] {(1.0f)});
     }
     break;
-}
 }   
 }
+}
+
+private String localizedModeName(int index) {
+    return switch (index) {
+        case 0 -> text("mines.mode-all");
+        case 1 -> text("mines.mode-jazz");
+        case 2 -> text("mines.mode-chords");
+        default -> modeNames[index];
+    };
+}
+
+private String text(String key, Object... placeholders) {
+    return plugin.getLocalization().text(player, key, placeholders);
+}
+
 }
