@@ -18,7 +18,7 @@ public class TestMenu extends Menu {
         String returnMessage,
         Consumer<Player> returnCallback
     ) {
-        super(player, plugin, dealerId, "Test Menu", 9, returnMessage, returnCallback);
+        super(player, plugin, dealerId, plugin.getLocalization().text(player, "test-menu.title"), 9, returnMessage, returnCallback);
         
         // Initialize slot mappings
         slotMapping.put(SlotOption.COMPLEX_VAR_1, 2);
@@ -34,15 +34,15 @@ public class TestMenu extends Menu {
          addItemAndLore(
              Material.PAPER, 
              1, 
-             "Option One", 
+             text("test-menu.option-one"),
              slotMapping.get(SlotOption.COMPLEX_VAR_1), 
-             "Click to print a message."
+             text("test-menu.option-one-lore")
          );
          addItemAndLore(Material.BOOK, 
              1, 
-             "Option Two", 
+             text("test-menu.option-two"),
              slotMapping.get(SlotOption.COMPLEX_VAR_2), 
-             "Click to print another message."
+             text("test-menu.option-two-lore")
          );
     }
 
@@ -50,14 +50,18 @@ public class TestMenu extends Menu {
     protected void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
         switch (option) {
             case COMPLEX_VAR_1:
-                player.sendMessage("You clicked Option One!");
+                player.sendMessage(text("test-menu.clicked-one"));
                 break;
             case COMPLEX_VAR_2:
-                player.sendMessage("You clicked Option Two!");
+                player.sendMessage(text("test-menu.clicked-two"));
                 break;
             default:
-                player.sendMessage("§cInvalid option selected.");
+                player.sendMessage(text("test-menu.invalid-option"));
         }
+    }
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
     }
 
 }

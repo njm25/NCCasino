@@ -1002,7 +1002,7 @@ public class AdminMenu extends Menu {
             ConfirmMenu confirmInventory = new ConfirmMenu(
                     player,
                     dealerId,
-                    "Are you sure?",
+                    text("admin.delete-confirmation"),
                     (uuid) -> {
                         // Confirm action
                         player.closeInventory();

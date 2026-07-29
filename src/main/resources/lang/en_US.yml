@@ -439,6 +439,23 @@ admin:
   age-lore: "Age: &a{value}"
   adult: "Adult"
   baby: "Baby"
+  delete-confirmation: "Are you sure?"
+
+confirm:
+  yes: "Yes"
+  no: "No"
+  invalid-option: "&cInvalid option selected."
+  invalid-confirm-option: "&cInvalid confirm menu option selected."
+
+test-menu:
+  title: "Test Menu"
+  option-one: "Option One"
+  option-one-lore: "Click to print a message."
+  option-two: "Option Two"
+  option-two-lore: "Click to print another message."
+  clicked-one: "You clicked Option One!"
+  clicked-two: "You clicked Option Two!"
+  invalid-option: "&cInvalid option selected."
 
 interaction:
   shift-click-disabled: "&cShift-click is disabled."

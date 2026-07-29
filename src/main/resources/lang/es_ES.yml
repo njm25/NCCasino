@@ -439,6 +439,23 @@ admin:
   age-lore: "Edad: &a{value}"
   adult: "Adulto"
   baby: "Bebé"
+  delete-confirmation: "¿Estás seguro?"
+
+confirm:
+  yes: "Sí"
+  no: "No"
+  invalid-option: "&cLa opción seleccionada no es válida."
+  invalid-confirm-option: "&cLa opción del menú de confirmación no es válida."
+
+test-menu:
+  title: "Menú de prueba"
+  option-one: "Opción uno"
+  option-one-lore: "Haz clic para mostrar un mensaje."
+  option-two: "Opción dos"
+  option-two-lore: "Haz clic para mostrar otro mensaje."
+  clicked-one: "¡Hiciste clic en la opción uno!"
+  clicked-two: "¡Hiciste clic en la opción dos!"
+  invalid-option: "&cLa opción seleccionada no es válida."
 
 interaction:
   shift-click-disabled: "&cEl clic con Mayús está desactivado."
