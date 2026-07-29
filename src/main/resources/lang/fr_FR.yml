@@ -356,6 +356,19 @@ blackjack:
   inventory-full: "&cPas de place pour {amount}, objet déposé..."
   card-value: "Valeur des cartes : {value}"
 
+baccarat-settings:
+  title: "Paramètres de Baccarat de {dealer}"
+  edit-decks: "Modifier le nombre de paquets"
+  edit-timer: "Modifier le minuteur"
+  invalid-option: "&cOption sélectionnée invalide."
+  invalid-settings-option: "&cOption des paramètres de Baccarat invalide."
+  prompt-number: "&aSaisissez le nouveau nombre dans le chat."
+  prompt-timer: "&aSaisissez le nouveau minuteur dans le chat."
+  prompt-decks: "&aSaisissez le nouveau nombre de paquets."
+  timer-updated: "&aMinuteur du croupier mis à jour."
+  decks-updated: "&aNombre de paquets du croupier mis à jour."
+  dealer-not-found: "&cCroupier des paramètres de Baccarat introuvable."
+
 blackjack-settings:
   title: "Paramètres de Blackjack de {dealer}"
   edit-timer: "Modifier le minuteur"

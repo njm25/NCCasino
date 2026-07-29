@@ -356,6 +356,19 @@ blackjack:
   inventory-full: "&cSem espaço para {amount}; soltando..."
   card-value: "Valor das cartas: {value}"
 
+baccarat-settings:
+  title: "Configurações de Baccarat de {dealer}"
+  edit-decks: "Editar número de baralhos"
+  edit-timer: "Editar temporizador"
+  invalid-option: "&cOpção selecionada inválida."
+  invalid-settings-option: "&cOpção das configurações de Baccarat inválida."
+  prompt-number: "&aDigite o novo número no chat."
+  prompt-timer: "&aDigite o novo temporizador no chat."
+  prompt-decks: "&aDigite o novo número de baralhos."
+  timer-updated: "&aTemporizador do crupiê atualizado."
+  decks-updated: "&aNúmero de baralhos do crupiê atualizado."
+  dealer-not-found: "&cNão foi possível encontrar o crupiê das configurações de Baccarat."
+
 blackjack-settings:
   title: "Configurações de Blackjack de {dealer}"
   edit-timer: "Editar temporizador"

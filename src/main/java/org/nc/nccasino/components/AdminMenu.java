@@ -632,7 +632,7 @@ public class AdminMenu extends Menu {
                 BaccaratMenu baccaratAdminInventory = new BaccaratMenu(
                     dealerId,
                     player,
-                    Dealer.getInternalName(dealer)+ "'s Baccarat Settings",
+                    text("baccarat-settings.title", "dealer", Dealer.getInternalName(dealer)),
                     (uuid) -> {
         
                         // Cancel action: re-open the AdminInventory
@@ -645,7 +645,7 @@ public class AdminMenu extends Menu {
                         }
         
                     },
-                    plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
+                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer))
             );
                 player.openInventory(baccaratAdminInventory.getInventory());
                 break;

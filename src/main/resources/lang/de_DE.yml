@@ -356,6 +356,19 @@ blackjack:
   inventory-full: "&cKein Platz für {amount}; wird fallen gelassen..."
   card-value: "Kartenwert: {value}"
 
+baccarat-settings:
+  title: "Baccarat-Einstellungen von {dealer}"
+  edit-decks: "Anzahl Decks bearbeiten"
+  edit-timer: "Timer bearbeiten"
+  invalid-option: "&cUngültige Option ausgewählt."
+  invalid-settings-option: "&cUngültige Baccarat-Einstellungsoption."
+  prompt-number: "&aGib die neue Zahl im Chat ein."
+  prompt-timer: "&aGib den neuen Timer im Chat ein."
+  prompt-decks: "&aGib die neue Anzahl Decks ein."
+  timer-updated: "&aDealer-Timer aktualisiert."
+  decks-updated: "&aAnzahl der Dealer-Decks aktualisiert."
+  dealer-not-found: "&cBaccarat-Einstellungsdealer konnte nicht gefunden werden."
+
 blackjack-settings:
   title: "Blackjack-Einstellungen von {dealer}"
   edit-timer: "Timer bearbeiten"
