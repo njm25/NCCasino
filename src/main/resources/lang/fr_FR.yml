@@ -71,6 +71,31 @@ payout:
 game:
   welcome: "&aBienvenue dans {game}"
 
+coin-flip:
+  title: "Pile ou face"
+  click-sit: "&f&oCliquez ici pour vous asseoir"
+  leave: "&f&oQuitter"
+  already-seated: "Vous êtes déjà assis."
+  invalid-action: "&cAction non valide."
+  no-bet: "&cAucun pari placé."
+  player-two-seat: "&f&oSiège du joueur 2"
+  click-leave-chair: "&7&oCliquez pour quitter le siège"
+  player-turn: "&oAu tour de {player}"
+  waiting-bet: "&oEn attente de son pari"
+  accept-bet: "&oAccepter le pari"
+  click-accept-bet: "&oCliquez pour accepter le pari"
+  current: "&oActuel : &o&a{amount}"
+  click-cancel-bet: "&oCliquez pour annuler le pari"
+  seat-unavailable: "&7&oSiège indisponible"
+  sit-other-chair: "&oVeuillez vous asseoir sur l’autre siège"
+  player-two-turn: "&oAu tour du joueur 2"
+  insufficient-currency: "&cPas assez de monnaie pour placer le pari."
+  time-left: "&e&oTemps restant : {seconds}s"
+  submit-bet: "&oValider le pari"
+  click-submit-bet: "&oCliquez pour valider votre pari"
+  pot: "&oPot"
+  coin: "&oPièce"
+
 commands:
   player-only: "&cCette commande ne peut être utilisée que dans le jeu."
   no-permission: "&cVous n’avez pas la permission d’utiliser cette commande."

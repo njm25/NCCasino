@@ -71,6 +71,31 @@ payout:
 game:
   welcome: "&aWillkommen bei {game}"
 
+coin-flip:
+  title: "Münzwurf"
+  click-sit: "&f&oHier klicken, um Platz zu nehmen"
+  leave: "&f&oVerlassen"
+  already-seated: "Du sitzt bereits."
+  invalid-action: "&cUngültige Aktion."
+  no-bet: "&cKein Einsatz platziert."
+  player-two-seat: "&f&oSitz von Spieler 2"
+  click-leave-chair: "&7&oKlicken, um den Sitz zu verlassen"
+  player-turn: "&o{player} ist am Zug"
+  waiting-bet: "&oWarten auf den Einsatz"
+  accept-bet: "&oEinsatz annehmen"
+  click-accept-bet: "&oKlicken, um den Einsatz anzunehmen"
+  current: "&oAktuell: &o&a{amount}"
+  click-cancel-bet: "&oKlicken, um den Einsatz abzubrechen"
+  seat-unavailable: "&7&oSitz nicht verfügbar"
+  sit-other-chair: "&oBitte auf den anderen Stuhl setzen"
+  player-two-turn: "&oSpieler 2 ist am Zug"
+  insufficient-currency: "&cNicht genug Währung für diesen Einsatz."
+  time-left: "&e&oVerbleibende Zeit: {seconds}s"
+  submit-bet: "&oEinsatz abgeben"
+  click-submit-bet: "&oKlicken, um den Einsatz abzugeben"
+  pot: "&oPot"
+  coin: "&oMünze"
+
 commands:
   player-only: "&cDieser Befehl kann nur im Spiel verwendet werden."
   no-permission: "&cDu darfst diesen Befehl nicht verwenden."

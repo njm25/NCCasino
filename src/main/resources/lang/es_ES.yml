@@ -71,6 +71,31 @@ payout:
 game:
   welcome: "&aBienvenido a {game}"
 
+coin-flip:
+  title: "Cara o cruz"
+  click-sit: "&f&oHaz clic aquí para sentarte"
+  leave: "&f&oSalir"
+  already-seated: "Ya estás sentado."
+  invalid-action: "&cAcción no válida."
+  no-bet: "&cNo se ha realizado ninguna apuesta."
+  player-two-seat: "&f&oAsiento del jugador 2"
+  click-leave-chair: "&7&oHaz clic para levantarte"
+  player-turn: "&oTurno de {player}"
+  waiting-bet: "&oEsperando su apuesta"
+  accept-bet: "&oAceptar apuesta"
+  click-accept-bet: "&oHaz clic para aceptar la apuesta"
+  current: "&oActual: &o&a{amount}"
+  click-cancel-bet: "&oHaz clic para cancelar la apuesta"
+  seat-unavailable: "&7&oAsiento no disponible"
+  sit-other-chair: "&oSiéntate en la otra silla"
+  player-two-turn: "&oTurno del jugador 2"
+  insufficient-currency: "&cNo hay suficiente moneda para realizar la apuesta."
+  time-left: "&e&oTiempo restante: {seconds}s"
+  submit-bet: "&oEnviar apuesta"
+  click-submit-bet: "&oHaz clic para enviar tu apuesta"
+  pot: "&oBote"
+  coin: "&oMoneda"
+
 commands:
   player-only: "&cEste comando solo puede usarse dentro del juego."
   no-permission: "&cNo tienes permiso para usar este comando."
