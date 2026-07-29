@@ -70,3 +70,27 @@ payout:
 
 game:
   welcome: "&aWillkommen bei {game}"
+
+commands:
+  player-only: "&cDieser Befehl kann nur im Spiel verwendet werden."
+  no-permission: "&cDu darfst diesen Befehl nicht verwenden."
+  help-hint: "&dVerwende &b/ncc help&d für Hilfe."
+  unknown: "&cUnbekannter Befehl. Verwende &b/ncc help&c für Hilfe."
+  usage-create: "&bVerwendung: /ncc create &e<Name>"
+  usage-delete: "&bVerwendung: /ncc delete &e<Name>"
+  dealer-exists: "&cEin Dealer namens '&e{name}&c' existiert bereits."
+  choose-game: "&aWähle ein Spiel für Dealer '&e{name}&a'."
+  finish-editing: "&cBeende zuerst die Bearbeitung von {occupation} für '&e{name}&c'."
+  invalid-page: "&cUngültige Seitenzahl. Seite 1 wird angezeigt."
+  no-dealers: "&cKeine Dealer gefunden."
+  page-missing: "&cDiese Seite existiert nicht."
+  list-header: "&d&lDealer (Seite {page} von {pages}):"
+  list-entry: "&b- {name} &e[{game}]"
+  reload-success: "&aNCCasino-Konfiguration und Sprachen wurden neu geladen."
+  dealer-not-found: "&cDealer '&e{name}&c' wurde nicht gefunden."
+  dealer-deleted: "&aDealer '&e{name}&a' und alle zugehörigen Komponenten wurden gelöscht."
+  help-title: "&d&lNCCASINO-HILFE"
+  help-create: "&b/ncc create &e<Name> &b- Erstellt einen Dealer an deinem Standort"
+  help-list: "&b/ncc list &e(Seite) &b- Listet die Dealer auf"
+  help-delete: "&b/ncc delete &e<Name> &b- Löscht den angegebenen Dealer"
+  help-reload: "&b/ncc reload &b- Lädt Konfiguration und Sprachen neu"

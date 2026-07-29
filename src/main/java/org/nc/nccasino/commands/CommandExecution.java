@@ -1,6 +1,5 @@
 package org.nc.nccasino.commands;
 
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -15,10 +14,12 @@ public class CommandExecution implements CommandExecutor {
 
     private final Map<String, CasinoCommand> commands = new HashMap<>();
     private final Map<String, String> commandPermissions = new HashMap<>();
+    private final Nccasino plugin;
 
     public CommandExecution(JavaPlugin plugin) {
+        this.plugin = (Nccasino) plugin;
         // Register each subcommand and its handler
-        commands.put("help", new HelpCommand());
+        commands.put("help", new HelpCommand(this.plugin));
         commands.put("create", new CreateCommand(plugin));
         commands.put("reload", new ReloadCommand(plugin));
         commands.put("list", new ListDealersCommand((Nccasino) plugin));
@@ -39,15 +40,13 @@ public class CommandExecution implements CommandExecutor {
                              @NotNull String[] args) {
 
         if (!sender.hasPermission("nccasino.use")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+            sender.sendMessage(plugin.getLocalization().text(sender, "commands.no-permission"));
             return true;
         }
 
         // No subcommand provided -> show usage
         if (args.length == 0) {
-            sender.sendMessage(ChatColor.LIGHT_PURPLE + "Use " +
-                               ChatColor.AQUA + "/ncc help" +
-                               ChatColor.LIGHT_PURPLE + " for help!");
+            sender.sendMessage(plugin.getLocalization().text(sender, "commands.help-hint"));
             return true;
         }
 
@@ -57,15 +56,13 @@ public class CommandExecution implements CommandExecutor {
         String requiredPermission = commandPermissions.get(commandName);
 
         if (commandHandler == null) {
-            sender.sendMessage(ChatColor.RED + "Unknown command. Use " +
-                               ChatColor.AQUA + "/ncc help" +
-                               ChatColor.RED + " for help!");
+            sender.sendMessage(plugin.getLocalization().text(sender, "commands.unknown"));
             return true;
         }
 
         // Check if the sender has permission for the specific command
         if (requiredPermission != null && !sender.hasPermission(requiredPermission)) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+            sender.sendMessage(plugin.getLocalization().text(sender, "commands.no-permission"));
             return true;
         }
 

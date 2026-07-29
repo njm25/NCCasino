@@ -17,6 +17,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.bukkit.ChatColor;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.nc.nccasino.Nccasino;
@@ -117,6 +118,12 @@ public final class LocalizationService {
 
     public String text(Player player, String key, Object... placeholders) {
         return text(effectiveLocale(player.getUniqueId()), key, placeholderMap(placeholders));
+    }
+
+    public String text(CommandSender sender, String key, Object... placeholders) {
+        return sender instanceof Player player
+            ? text(player, key, placeholders)
+            : text(serverDefault, key, placeholderMap(placeholders));
     }
 
     public String text(UUID playerId, String key, Object... placeholders) {

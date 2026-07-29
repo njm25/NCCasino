@@ -70,3 +70,27 @@ payout:
 
 game:
   welcome: "&aBienvenido a {game}"
+
+commands:
+  player-only: "&cEste comando solo puede usarse dentro del juego."
+  no-permission: "&cNo tienes permiso para usar este comando."
+  help-hint: "&dUsa &b/ncc help&d para obtener ayuda."
+  unknown: "&cComando desconocido. Usa &b/ncc help&c para obtener ayuda."
+  usage-create: "&bUso: /ncc create &e<nombre>"
+  usage-delete: "&bUso: /ncc delete &e<nombre>"
+  dealer-exists: "&cYa existe un crupier llamado '&e{name}&c'."
+  choose-game: "&aElige un juego para el crupier '&e{name}&a'."
+  finish-editing: "&cTermina de editar {occupation} para '&e{name}&c'."
+  invalid-page: "&cNúmero de página no válido. Mostrando la página 1."
+  no-dealers: "&cNo se encontraron crupieres."
+  page-missing: "&cEsa página no existe."
+  list-header: "&d&lCrupieres (Página {page} de {pages}):"
+  list-entry: "&b- {name} &e[{game}]"
+  reload-success: "&aLa configuración y los idiomas de NCCasino se recargaron correctamente."
+  dealer-not-found: "&cNo se encontró el crupier '&e{name}&c'."
+  dealer-deleted: "&aSe eliminaron el crupier '&e{name}&a' y todos sus componentes."
+  help-title: "&d&lAYUDA DE NCCASINO"
+  help-create: "&b/ncc create &e<nombre> &b- Crea un crupier en tu ubicación"
+  help-list: "&b/ncc list &e(página) &b- Muestra los crupieres"
+  help-delete: "&b/ncc delete &e<nombre> &b- Elimina el crupier indicado"
+  help-reload: "&b/ncc reload &b- Recarga la configuración y los idiomas"

@@ -70,3 +70,27 @@ payout:
 
 game:
   welcome: "&aWelcome to {game}"
+
+commands:
+  player-only: "&cThis command can only be used by players."
+  no-permission: "&cYou do not have permission to use this command."
+  help-hint: "&dUse &b/ncc help&d for help."
+  unknown: "&cUnknown command. Use &b/ncc help&c for help."
+  usage-create: "&bUsage: /ncc create &e<name>"
+  usage-delete: "&bUsage: /ncc delete &e<name>"
+  dealer-exists: "&cA dealer named '&e{name}&c' already exists."
+  choose-game: "&aChoose a game type for dealer '&e{name}&a'."
+  finish-editing: "&cPlease finish editing {occupation} for '&e{name}&c'."
+  invalid-page: "&cInvalid page number. Showing page 1."
+  no-dealers: "&cNo dealers found."
+  page-missing: "&cThat page does not exist."
+  list-header: "&d&lDealers (Page {page} of {pages}):"
+  list-entry: "&b- {name} &e[{game}]"
+  reload-success: "&aNCCasino configuration and languages reloaded successfully."
+  dealer-not-found: "&cDealer '&e{name}&c' was not found."
+  dealer-deleted: "&aDealer '&e{name}&a' and all associated components were deleted."
+  help-title: "&d&lNCCASINO HELP"
+  help-create: "&b/ncc create &e<name> &b- Creates a dealer at your location"
+  help-list: "&b/ncc list &e(page) &b- Lists the dealers"
+  help-delete: "&b/ncc delete &e<name> &b- Deletes the specified dealer"
+  help-reload: "&b/ncc reload &b- Reloads configuration and languages"

@@ -70,3 +70,27 @@ payout:
 
 game:
   welcome: "&aBienvenue dans {game}"
+
+commands:
+  player-only: "&cCette commande ne peut être utilisée que dans le jeu."
+  no-permission: "&cVous n’avez pas la permission d’utiliser cette commande."
+  help-hint: "&dUtilisez &b/ncc help&d pour obtenir de l’aide."
+  unknown: "&cCommande inconnue. Utilisez &b/ncc help&c pour obtenir de l’aide."
+  usage-create: "&bUtilisation : /ncc create &e<nom>"
+  usage-delete: "&bUtilisation : /ncc delete &e<nom>"
+  dealer-exists: "&cUn croupier nommé '&e{name}&c' existe déjà."
+  choose-game: "&aChoisissez un jeu pour le croupier '&e{name}&a'."
+  finish-editing: "&cTerminez la modification de {occupation} pour '&e{name}&c'."
+  invalid-page: "&cNuméro de page non valide. Affichage de la page 1."
+  no-dealers: "&cAucun croupier trouvé."
+  page-missing: "&cCette page n’existe pas."
+  list-header: "&d&lCroupiers (Page {page} sur {pages}) :"
+  list-entry: "&b- {name} &e[{game}]"
+  reload-success: "&aLa configuration et les langues de NCCasino ont été rechargées."
+  dealer-not-found: "&cLe croupier '&e{name}&c' est introuvable."
+  dealer-deleted: "&aLe croupier '&e{name}&a' et tous ses composants ont été supprimés."
+  help-title: "&d&lAIDE NCCASINO"
+  help-create: "&b/ncc create &e<nom> &b- Crée un croupier à votre position"
+  help-list: "&b/ncc list &e(page) &b- Affiche les croupiers"
+  help-delete: "&b/ncc delete &e<nom> &b- Supprime le croupier indiqué"
+  help-reload: "&b/ncc reload &b- Recharge la configuration et les langues"

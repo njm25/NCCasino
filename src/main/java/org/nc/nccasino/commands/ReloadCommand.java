@@ -1,6 +1,5 @@
 package org.nc.nccasino.commands;
 
-import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
@@ -20,7 +19,9 @@ public class ReloadCommand implements CasinoCommand {
         // Reinitialize dealer configurations
         ((Nccasino) plugin).reloadDealerConfigurations();
         ((Nccasino) plugin).reloadLocalization();
-        sender.sendMessage(ChatColor.GREEN + "NCCASINO configuration reloaded successfully.");
+        sender.sendMessage(
+            ((Nccasino) plugin).getLocalization().text(sender, "commands.reload-success")
+        );
 
         return true;
     }

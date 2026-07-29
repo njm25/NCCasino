@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.List;
 
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.command.CommandSender;
@@ -39,14 +38,16 @@ public class DeleteCommand implements CasinoCommand {
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(plugin.getLocalization().text(sender, "commands.player-only"));
+            return true;
+        }
         if (args.length < 2) {
-            sender.sendMessage(ChatColor.AQUA + "Usage: /ncc delete " + ChatColor.YELLOW + "<name>");
+            sender.sendMessage(plugin.getLocalization().text(sender, "commands.usage-delete"));
             return true;
         }
 
         String internalName = args[1];    
-        
-        Player player = (Player) sender;
 
         List<String> occupations = AdminMenu.playerOccupations(player.getUniqueId());
         List<Mob> mobs = AdminMenu.getOccupiedDealers(player.getUniqueId())
@@ -66,13 +67,19 @@ public class DeleteCommand implements CasinoCommand {
                 Mob mob = mobs.get(i);
                 
                 String mobName = (mob != null) ? Dealer.getInternalName(mob) : "unknown mob";
-                Nccasino.sendErrorMessage(player, "Please finish editing " + occupation + " for '" +
-                    ChatColor.YELLOW + mobName + ChatColor.RED + "'.");
+                player.sendMessage(plugin.getLocalization().text(
+                    player,
+                    "commands.finish-editing",
+                    "occupation",
+                    occupation,
+                    "name",
+                    mobName
+                ));
             }
             return true;
         }
         
-        AdminMenu.deleteAssociatedAdminInventories((Player) sender);
+        AdminMenu.deleteAssociatedAdminInventories(player);
 
         if (internalName.equals("*")) {
             plugin.executeOnAllDealers(sender, true);
@@ -83,7 +90,12 @@ public class DeleteCommand implements CasinoCommand {
         plugin.executeOnDealer(internalName, () -> {
             Mob mob = plugin.getDealerByInternalName(internalName);
             if (mob == null) {
-                sender.sendMessage(ChatColor.RED + "Dealer with internal name '" + ChatColor.YELLOW + internalName + ChatColor.RED + "' not found.");
+                sender.sendMessage(plugin.getLocalization().text(
+                    sender,
+                    "commands.dealer-not-found",
+                    "name",
+                    internalName
+                ));
                 return;
             }
             
@@ -122,12 +134,17 @@ public class DeleteCommand implements CasinoCommand {
                     
                     // Clear any remaining references
                     AdminMenu.clearAllEditModes(mob);
-                    AdminMenu.deleteAssociatedAdminInventories((Player) sender);
+                    AdminMenu.deleteAssociatedAdminInventories(player);
                     
                     // Remove from jockey manager cache
                     DealerEventListener.clearJockeyManagerCache(mob.getUniqueId());
                     
-                    sender.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName + ChatColor.GREEN + "' and all associated components have been deleted.");
+                    sender.sendMessage(plugin.getLocalization().text(
+                        sender,
+                        "commands.dealer-deleted",
+                        "name",
+                        internalName
+                    ));
                 });
             });
         });
