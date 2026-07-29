@@ -191,7 +191,9 @@ public abstract class Menu extends DealerInventory {
             playDefaultSound(player);
             returnCallback.accept(player);
         } else {
-            player.sendMessage("§cNo return callback was set!");
+            player.sendMessage(
+                plugin.getLocalization().text(player, "errors.no-return-target")
+            );
             player.closeInventory();
         }
     }

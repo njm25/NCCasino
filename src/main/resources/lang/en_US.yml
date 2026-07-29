@@ -48,3 +48,25 @@ errors:
   invalid-preferences-option: "&cInvalid preferences menu option selected."
   invalid-language-option: "&cInvalid language menu option selected."
   invalid-player-menu-option: "&cInvalid player menu option selected."
+  no-return-target: "&cNo return destination was set."
+  currency-unavailable: "&cCurrency is not configured, so winnings could not be credited."
+
+betting:
+  select-wager: "&cSelect a wager amount first."
+  insufficient-funds: "&cYou do not have enough currency to place that bet."
+  nothing-to-undo: "&cThere are no bets to undo."
+  inventory-full: "&cNo room for {amount}; dropping it nearby."
+  all-in: "All In"
+  all-in-amount: "All In ({amount})"
+  wager: "Wager: {amount}"
+
+payout:
+  paid: "&a&lPaid {amount}"
+  paid-with-profit: "&a&lPaid {amount}\n&r&a&o(profit of {profit})"
+  lost: "&c&lYou lose!"
+  delivered: "&e{context}\n&aPayout: {amount}"
+  retry-one: "&6You have 1 pending payout that could not be delivered yet. It will retry automatically."
+  retry-many: "&6You have {count} pending payouts that could not be delivered yet. They will retry automatically."
+
+game:
+  welcome: "&aWelcome to {game}"

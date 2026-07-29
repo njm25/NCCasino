@@ -127,7 +127,14 @@ public abstract class Client extends DealerInventory {
         inventory.setItem(46, createCustomItem(Material.WIND_CHARGE, "Undo Last Bet", 1));
 
         // 6) All In: slot 52
-        inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
+        inventory.setItem(
+            52,
+            createCustomItem(
+                Material.SNIFFER_EGG,
+                plugin.getLocalization().text(player, "betting.all-in"),
+                1
+            )
+        );
 
         // If we had any existing bets, update the lore on slot 53
         double curr = betStack.stream().mapToDouble(Double::doubleValue).sum();
@@ -264,10 +271,10 @@ public abstract class Client extends DealerInventory {
         if (selectedWager <= 0 && !usedHeldItem) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(plugin.getLocalization().text(player, "errors.invalid-option"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cSelect a wager amount first.");
+                    player.sendMessage(plugin.getLocalization().text(player, "betting.select-wager"));
                     break;
                 case NONE:
                     break;
@@ -279,10 +286,10 @@ public abstract class Client extends DealerInventory {
         if (!hasEnoughWager(player, selectedWager) && !usedHeldItem) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(plugin.getLocalization().text(player, "errors.invalid-option"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cNot enough currency to place bet.");
+                    player.sendMessage(plugin.getLocalization().text(player, "betting.insufficient-funds"));
                     break;
                 case NONE:
                     break;
@@ -307,7 +314,7 @@ public abstract class Client extends DealerInventory {
 				switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
 					case STANDARD:
 					case VERBOSE:
-						player.sendMessage("§cNot enough currency to place bet.");
+						player.sendMessage(plugin.getLocalization().text(player, "betting.insufficient-funds"));
 						break;
 					case NONE:
 						break;
@@ -341,10 +348,10 @@ public abstract class Client extends DealerInventory {
         if (betStack.isEmpty()) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(plugin.getLocalization().text(player, "errors.invalid-option"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cNo bets to undo.");
+                    player.sendMessage(plugin.getLocalization().text(player, "betting.nothing-to-undo"));
                     break;
                 case NONE:
                     break;
@@ -367,10 +374,10 @@ public abstract class Client extends DealerInventory {
         if (betStack.isEmpty()) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(plugin.getLocalization().text(player, "errors.invalid-option"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cNo bets to undo.");
+                    player.sendMessage(plugin.getLocalization().text(player, "betting.nothing-to-undo"));
                     break;
                 case NONE:
                     break;
@@ -468,7 +475,7 @@ public abstract class Client extends DealerInventory {
 	protected void creditPlayer(Player player, double amount) {
 		Material currencyMaterial = plugin.getCurrency(internalName);
 		if (currencyMaterial == null) {
-			player.sendMessage("Error: Currency material is not set. Unable to credit winnings.");
+			player.sendMessage(plugin.getLocalization().text(player, "errors.currency-unavailable"));
 			return;
 		}
 
@@ -502,11 +509,21 @@ public abstract class Client extends DealerInventory {
 				if (leftoverAmount > 0) {
 					switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 						case STANDARD:{
-							player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount) + ", dropping...");
+							player.sendMessage(plugin.getLocalization().text(
+								player,
+								"betting.inventory-full",
+								"amount",
+								plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount)
+							));
 
 							break;}
 						case VERBOSE:{
-							player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount) + ", dropping...");
+							player.sendMessage(plugin.getLocalization().text(
+								player,
+								"betting.inventory-full",
+								"amount",
+								plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount)
+							));
 							break;     
 						}
 							case NONE:{
@@ -550,11 +567,21 @@ public abstract class Client extends DealerInventory {
 		if (totalLeftoverAmount > 0) {
 			switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 				case STANDARD:{
-					player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
+					player.sendMessage(plugin.getLocalization().text(
+						player,
+						"betting.inventory-full",
+						"amount",
+						plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount)
+					));
 	
 					break;}
 				case VERBOSE:{
-					player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
+					player.sendMessage(plugin.getLocalization().text(
+						player,
+						"betting.inventory-full",
+						"amount",
+						plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount)
+					));
 					break;     
 				}
 					case NONE:{
@@ -615,13 +642,22 @@ public abstract class Client extends DealerInventory {
                 if (s == slot) {
                     inventory.setItem(s, createEnchantedItem(
                         s == 52 ? Material.SNIFFER_EGG : getCurrencyMaterial(),
-                        isAllIn ? "All In (" + plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager) + ")" : chipName,
+                        isAllIn
+                            ? plugin.getLocalization().text(
+                                player,
+                                "betting.all-in-amount",
+                                "amount",
+                                plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager)
+                            )
+                            : chipName,
                         s == 52 ? 1 : (int) chipValue
                     ));
                 } else {
                     inventory.setItem(s, createCustomItem(
                         s == 52 ? Material.SNIFFER_EGG : getCurrencyMaterial(),
-                        s == 52 ? "All In" : chipName,
+                        s == 52
+                            ? plugin.getLocalization().text(player, "betting.all-in")
+                            : chipName,
                         s == 52 ? 1 : (int) chipValue
                     ));
                 }
@@ -638,7 +674,12 @@ public abstract class Client extends DealerInventory {
             if (meta != null) {
                 if (totalBet > 0) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Wager: " + plugin.formatWagerDisplay(currencyMode, currencyName, totalBet));
+                    lore.add(plugin.getLocalization().text(
+                        player,
+                        "betting.wager",
+                        "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, totalBet)
+                    ));
                     meta.setLore(lore);
                 } else {
                     meta.setLore(Collections.emptyList());

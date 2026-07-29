@@ -119,10 +119,23 @@ public class PlayerSessionListener implements Listener {
         DeliveryResult result = store.attemptDeliver(player);
 
         for (PendingPayout payout : result.delivered()) {
-            player.sendMessage(PayoutMessages.formatDelivered(payout));
+            player.sendMessage(plugin.getLocalization().text(
+                player,
+                "payout.delivered",
+                "context",
+                payout.context(),
+                "amount",
+                PayoutMessages.formatAmount(payout)
+            ));
         }
         if (!result.stillPending().isEmpty()) {
-            player.sendMessage(PayoutMessages.formatPendingRetryNotice(result.stillPending().size()));
+            int count = result.stillPending().size();
+            player.sendMessage(plugin.getLocalization().text(
+                player,
+                count == 1 ? "payout.retry-one" : "payout.retry-many",
+                "count",
+                count
+            ));
         }
     }
 }

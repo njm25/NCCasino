@@ -48,3 +48,25 @@ errors:
   invalid-preferences-option: "&cOpción no válida del menú de preferencias."
   invalid-language-option: "&cOpción no válida del menú de idioma."
   invalid-player-menu-option: "&cOpción no válida del menú del jugador."
+  no-return-target: "&cNo se configuró un destino de regreso."
+  currency-unavailable: "&cLa moneda no está configurada; no se pudieron acreditar las ganancias."
+
+betting:
+  select-wager: "&cSelecciona primero una cantidad para apostar."
+  insufficient-funds: "&cNo tienes suficiente moneda para realizar esa apuesta."
+  nothing-to-undo: "&cNo hay apuestas que deshacer."
+  inventory-full: "&cNo hay espacio para {amount}; se dejará cerca."
+  all-in: "Apostar todo"
+  all-in-amount: "Apostar todo ({amount})"
+  wager: "Apuesta: {amount}"
+
+payout:
+  paid: "&a&lPago: {amount}"
+  paid-with-profit: "&a&lPago: {amount}\n&r&a&o(beneficio de {profit})"
+  lost: "&c&l¡Perdiste!"
+  delivered: "&e{context}\n&aPago: {amount}"
+  retry-one: "&6Tienes 1 pago pendiente que aún no pudo entregarse. Se reintentará automáticamente."
+  retry-many: "&6Tienes {count} pagos pendientes que aún no pudieron entregarse. Se reintentarán automáticamente."
+
+game:
+  welcome: "&aBienvenido a {game}"

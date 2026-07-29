@@ -113,7 +113,12 @@ public abstract class Server extends DealerInventory {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aWelcome to " + gameType);
+                    player.sendMessage(plugin.getLocalization().text(
+                        player,
+                        "game.welcome",
+                        "game",
+                        gameType
+                    ));
                     break;     
                 }
                     case NONE:{
@@ -238,14 +243,25 @@ public abstract class Server extends DealerInventory {
 		switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
 			case STANDARD:
 				player.sendMessage(isWinner
-						? "§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, payout)
-						: "§c§lYou lose!");
+						? plugin.getLocalization().text(
+							player,
+							"payout.paid",
+							"amount",
+							plugin.formatWagerDisplay(currencyMode, currencyName, payout)
+						)
+						: plugin.getLocalization().text(player, "payout.lost"));
 				break;
 			case VERBOSE:
 				player.sendMessage(isWinner
-						? "§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, payout) +
-						  "\n §r§a§o(profit of " + plugin.formatWagerDisplay(currencyMode, currencyName, profit) + ")"
-						: "§c§lYou lose!");
+						? plugin.getLocalization().text(
+							player,
+							"payout.paid-with-profit",
+							"amount",
+							plugin.formatWagerDisplay(currencyMode, currencyName, payout),
+							"profit",
+							plugin.formatWagerDisplay(currencyMode, currencyName, profit)
+						)
+						: plugin.getLocalization().text(player, "payout.lost"));
 				break;
 			case NONE:
 				break;
@@ -283,7 +299,7 @@ public abstract class Server extends DealerInventory {
     protected void creditPlayer(Player player, double amount) {
 		Material currencyMaterial = plugin.getCurrency(internalName);
 		if (currencyMaterial == null) {
-			player.sendMessage("Error: Currency material is not set. Unable to credit winnings.");
+			player.sendMessage(plugin.getLocalization().text(player, "errors.currency-unavailable"));
 			return;
 		}
 
@@ -317,11 +333,21 @@ public abstract class Server extends DealerInventory {
 				if (leftoverAmount > 0) {
 					switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 						case STANDARD:{
-							player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount) + ", dropping...");
+							player.sendMessage(plugin.getLocalization().text(
+								player,
+								"betting.inventory-full",
+								"amount",
+								plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount)
+							));
 
 							break;}
 						case VERBOSE:{
-							player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount) + ", dropping...");
+							player.sendMessage(plugin.getLocalization().text(
+								player,
+								"betting.inventory-full",
+								"amount",
+								plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount)
+							));
 							break;     
 						}
 							case NONE:{
@@ -365,11 +391,21 @@ public abstract class Server extends DealerInventory {
 		if (totalLeftoverAmount > 0) {
 			switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 				case STANDARD:{
-					player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
+					player.sendMessage(plugin.getLocalization().text(
+						player,
+						"betting.inventory-full",
+						"amount",
+						plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount)
+					));
 
 					break;}
 				case VERBOSE:{
-					player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
+					player.sendMessage(plugin.getLocalization().text(
+						player,
+						"betting.inventory-full",
+						"amount",
+						plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount)
+					));
 					break;     
 				}
 					case NONE:{

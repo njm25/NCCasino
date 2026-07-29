@@ -1,6 +1,5 @@
 package org.nc.nccasino.payout;
 
-import org.bukkit.ChatColor;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.MoneyHelper;
 
@@ -35,19 +34,7 @@ public final class PayoutMessages {
             + " bet was still awaiting resolution, so it has been refunded.";
     }
 
-    /** The chat message shown when a pending payout/result is delivered on join. */
-    public static String formatDelivered(PendingPayout payout) {
-        return ChatColor.YELLOW + payout.context()
-            + "\n" + ChatColor.GREEN + "Payout: " + formatAmount(payout);
-    }
-
-    /** Shown on join when one or more pending payouts exist but couldn't be delivered yet. */
-    public static String formatPendingRetryNotice(int count) {
-        return ChatColor.GOLD + "You have " + count + " pending payout" + (count == 1 ? "" : "s")
-            + " that could not be delivered yet. It will be delivered automatically once possible.";
-    }
-
-    private static String formatAmount(PendingPayout payout) {
+    public static String formatAmount(PendingPayout payout) {
         if (payout.currencyMode() == CurrencyMode.VAULT) {
             return "$" + MoneyHelper.roundDisplay(MoneyHelper.bd(payout.amount())).toPlainString();
         }

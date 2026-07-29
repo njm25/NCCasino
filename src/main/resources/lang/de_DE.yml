@@ -48,3 +48,25 @@ errors:
   invalid-preferences-option: "&cUngültige Auswahl im Einstellungsmenü."
   invalid-language-option: "&cUngültige Auswahl im Sprachmenü."
   invalid-player-menu-option: "&cUngültige Auswahl im Spielermenü."
+  no-return-target: "&cEs wurde kein Rückkehrziel festgelegt."
+  currency-unavailable: "&cDie Währung ist nicht konfiguriert; der Gewinn konnte nicht gutgeschrieben werden."
+
+betting:
+  select-wager: "&cWähle zuerst einen Einsatz."
+  insufficient-funds: "&cDu hast nicht genug Währung für diesen Einsatz."
+  nothing-to-undo: "&cEs gibt keine Einsätze zum Rückgängigmachen."
+  inventory-full: "&cKein Platz für {amount}; der Betrag wird in der Nähe abgelegt."
+  all-in: "Alles setzen"
+  all-in-amount: "Alles setzen ({amount})"
+  wager: "Einsatz: {amount}"
+
+payout:
+  paid: "&a&lAusgezahlt: {amount}"
+  paid-with-profit: "&a&lAusgezahlt: {amount}\n&r&a&o(Gewinn: {profit})"
+  lost: "&c&lDu hast verloren!"
+  delivered: "&e{context}\n&aAuszahlung: {amount}"
+  retry-one: "&6Du hast 1 ausstehende Auszahlung, die noch nicht zugestellt werden konnte. Sie wird automatisch erneut versucht."
+  retry-many: "&6Du hast {count} ausstehende Auszahlungen, die noch nicht zugestellt werden konnten. Sie werden automatisch erneut versucht."
+
+game:
+  welcome: "&aWillkommen bei {game}"
