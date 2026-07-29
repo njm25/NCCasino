@@ -11,6 +11,8 @@ common:
   return-player-menu: "&dReturn to Player Menu"
   return-preferences: "&dReturn to Preferences"
 
+  return-to: "Return to {menu}"
+
 preferences:
   title: "Preferences"
   sound:
@@ -353,6 +355,28 @@ blackjack:
   result-push-returned: "&6&lIt's a push! Your bet is returned"
   inventory-full: "&cNo room for {amount}, dropping..."
   card-value: "Card Value: {value}"
+
+blackjack-settings:
+  title: "{dealer}'s Blackjack Settings"
+  edit-timer: "Edit Timer"
+  edit-stand-17: "Edit Stand on 17 Chance"
+  edit-decks: "Edit Number of Decks"
+  current-percent: "&7Current: &a{value}%"
+  invalid-option: "&cInvalid option selected."
+  invalid-settings-option: "&cInvalid blackjack settings option selected."
+  prompt-stand-17: "&aType new stand on 17 percent in chat."
+  prompt-stand-17-detailed: "&aType a new stand on 17 percent between 0 and 100 in chat."
+  prompt-number: "&aType new number in chat."
+  prompt-decks: "&aType the new number of decks."
+  prompt-timer: "&aType the new timer in chat."
+  timer-updated: "&aDealer timer updated."
+  stand-17-updated: "&aDealer stand on 17 chance updated."
+  decks-updated: "&aDealer number of decks updated."
+  valid-positive-integer: "Please enter a valid positive integer."
+  invalid-number-format: "Invalid number format."
+  number-range: "Please enter a number between {min} and {max}."
+  updated-detailed: "{setting} to: &e{value}&a."
+  dealer-not-found: "&cCould not find blackjack settings dealer."
 
 admin:
   invalid-option: "&cInvalid option selected."

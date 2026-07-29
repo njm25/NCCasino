@@ -654,7 +654,7 @@ public class AdminMenu extends Menu {
                 BlackjackMenu blackjackAdminInventory = new BlackjackMenu(
                     dealerId,
                     player,
-                    Dealer.getInternalName(dealer)+ "'s Blackjack Settings",
+                    text("blackjack-settings.title", "dealer", Dealer.getInternalName(dealer)),
                     (uuid) -> {
         
                         // Cancel action: re-open the AdminInventory
@@ -667,7 +667,7 @@ public class AdminMenu extends Menu {
                         }
         
                     },
-                    plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
+                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer))
             );
 
                 player.openInventory(blackjackAdminInventory.getInventory());

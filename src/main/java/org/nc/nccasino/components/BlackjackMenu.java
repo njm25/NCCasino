@@ -21,7 +21,6 @@ import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
-import net.md_5.bungee.api.ChatColor;
 
 public class BlackjackMenu extends Menu {
     private UUID dealerId;
@@ -81,11 +80,11 @@ public class BlackjackMenu extends Menu {
         int currentTimer = config.contains("dealers." + internalName + ".timer")? config.getInt("dealers." + internalName + ".timer"): 10; 
         int standOn17Chance = config.getInt("dealers." + internalName + ".stand-on-17", 100);
         int numberOfDecks = config.getInt("dealers." + internalName + ".number-of-decks", 6);
-        addItemAndLore(Material.CLOCK, currentTimer, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Current: §a" + currentTimer);
-        addItemAndLore(Material.SHIELD, standOn17Chance, "Edit Stand on 17 Chance", slotMapping.get(SlotOption.STAND_17), "Current: §a" + standOn17Chance + "%");
-        addItemAndLore(Material.RED_STAINED_GLASS_PANE, numberOfDecks, "Edit Number of Decks", slotMapping.get(SlotOption.NUMBER_OF_DECKS), "Current: §a" + numberOfDecks);
-        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to "+returnName,  slotMapping.get(SlotOption.RETURN));
-        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
+        addItemAndLore(Material.CLOCK, currentTimer, text("blackjack-settings.edit-timer"), slotMapping.get(SlotOption.EDIT_TIMER), text("common.current", "value", currentTimer));
+        addItemAndLore(Material.SHIELD, standOn17Chance, text("blackjack-settings.edit-stand-17"), slotMapping.get(SlotOption.STAND_17), text("blackjack-settings.current-percent", "value", standOn17Chance));
+        addItemAndLore(Material.RED_STAINED_GLASS_PANE, numberOfDecks, text("blackjack-settings.edit-decks"), slotMapping.get(SlotOption.NUMBER_OF_DECKS), text("common.current", "value", numberOfDecks));
+        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, text("common.return-to", "menu", returnName), slotMapping.get(SlotOption.RETURN));
+        addItemAndLore(Material.SPRUCE_DOOR, 1, text("common.exit"), slotMapping.get(SlotOption.EXIT));
 
     }
 
@@ -156,10 +155,10 @@ public class BlackjackMenu extends Menu {
                 if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§cInvalid option selected.");
+                        player.sendMessage(text("blackjack-settings.invalid-option"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cInvalid blackjack settings option selected.");
+                        player.sendMessage(text("blackjack-settings.invalid-settings-option"));
                         break;}
                     case NONE:{
                         break;
@@ -176,13 +175,13 @@ public class BlackjackMenu extends Menu {
         player.closeInventory();
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage("§aType new stand on 17 percent in chat.");
+                player.sendMessage(text("blackjack-settings.prompt-stand-17"));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aType new stand on 17 percent value between 0 and 100 in chat.");
+                player.sendMessage(text("blackjack-settings.prompt-stand-17-detailed"));
                 break;}
             case NONE:{
-                player.sendMessage("§aType new value.");
+                player.sendMessage(text("admin.prompt-new-value"));
                 break;
             }
         }
@@ -195,13 +194,13 @@ public class BlackjackMenu extends Menu {
         player.closeInventory();
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage("§aType new number in chat.");
+                player.sendMessage(text("blackjack-settings.prompt-number"));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aType the new number of decks.");
+                player.sendMessage(text("blackjack-settings.prompt-decks"));
                 break;}
             case NONE:{
-                player.sendMessage("§aType new value.");
+                player.sendMessage(text("admin.prompt-new-value"));
                 break;
             }
         }
@@ -215,13 +214,13 @@ public class BlackjackMenu extends Menu {
         player.closeInventory();
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage("§aType new number in chat.");
+                player.sendMessage(text("blackjack-settings.prompt-number"));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aType the new timer in chat.");
+                player.sendMessage(text("blackjack-settings.prompt-timer"));
                 break;}
             case NONE:{
-                player.sendMessage("§aType new value.");
+                player.sendMessage(text("admin.prompt-new-value"));
                 break;
             }
         }
@@ -239,21 +238,21 @@ public class BlackjackMenu extends Menu {
         }
          if (AdminMenu.timerEditMode.get(playerId) != null) {
             event.setCancelled(true);
-            handleNumericInput(player, message, "timer", 1, 10000, "Dealer timer updated");
+            handleNumericInput(player, message, "timer", 1, 10000, "blackjack-settings.timer-updated");
         } 
         else if (AdminMenu.standOn17Mode.get(playerId) != null) {
             event.setCancelled(true);
-            handleNumericInput(player, message, "stand-on-17", 0, 100, "Dealer stand on 17 chance updated");
+            handleNumericInput(player, message, "stand-on-17", 0, 100, "blackjack-settings.stand-17-updated");
         } 
         else if (AdminMenu.decksEditMode.get(playerId) != null) {
             event.setCancelled(true);
-            handleNumericInput(player, message, "number-of-decks", 1, 10000, "Dealer number of decks updated");
+            handleNumericInput(player, message, "number-of-decks", 1, 10000, "blackjack-settings.decks-updated");
         }
     }
     
-    private void handleNumericInput(Player player, String input, String configPath, long min, long max, String standardMessage) {
+    private void handleNumericInput(Player player, String input, String configPath, long min, long max, String messageKey) {
         if (input.isEmpty() || !input.matches("\\d+")) {
-            denyAction(player, "Please enter a valid positive integer.");
+            denyAction(player, text("blackjack-settings.valid-positive-integer"));
             return;
         }
 
@@ -261,12 +260,12 @@ public class BlackjackMenu extends Menu {
         try {
             value = Long.parseLong(input);
         } catch (NumberFormatException e) {
-            denyAction(player, "Invalid number format.");
+            denyAction(player, text("blackjack-settings.invalid-number-format"));
             return;
         }
 
         if (value < min || value > max) {
-            denyAction(player, "Please enter a number between " + min + " and " + max + ".");
+            denyAction(player, text("blackjack-settings.number-range", "min", min, "max", max));
             return;
         }
 
@@ -282,10 +281,16 @@ public class BlackjackMenu extends Menu {
 
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§a" + standardMessage+".");
+                    player.sendMessage(text(messageKey));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§a" + standardMessage + " to: " + ChatColor.YELLOW + value + "§a.");
+                    player.sendMessage(text(
+                        "blackjack-settings.updated-detailed",
+                        "setting",
+                        text(messageKey),
+                        "value",
+                        value
+                    ));
                     break;
                 case NONE:
                     break;
@@ -295,10 +300,10 @@ public class BlackjackMenu extends Menu {
         } else {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cCould not find dealer.");
+                    player.sendMessage(text("admin.dealer-not-found"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cCould not find blackjack settings dealer.");
+                    player.sendMessage(text("blackjack-settings.dealer-not-found"));
                     break;
                 case NONE:
                     break;
@@ -307,5 +312,9 @@ public class BlackjackMenu extends Menu {
 
         plugin.deleteAssociatedInventories(dealer);
         cleanup();
+    }
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
     }
 }

@@ -11,6 +11,8 @@ common:
   return-player-menu: "&dVoltar ao Menu do Jogador"
   return-preferences: "&dVoltar às Preferências"
 
+  return-to: "Voltar para {menu}"
+
 preferences:
   title: "Preferências"
   sound:
@@ -353,6 +355,28 @@ blackjack:
   result-push-returned: "&6&lEmpate! Sua aposta foi devolvida"
   inventory-full: "&cSem espaço para {amount}; soltando..."
   card-value: "Valor das cartas: {value}"
+
+blackjack-settings:
+  title: "Configurações de Blackjack de {dealer}"
+  edit-timer: "Editar temporizador"
+  edit-stand-17: "Editar chance de parar em 17"
+  edit-decks: "Editar número de baralhos"
+  current-percent: "&7Atual: &a{value}%"
+  invalid-option: "&cOpção selecionada inválida."
+  invalid-settings-option: "&cOpção das configurações de Blackjack inválida."
+  prompt-stand-17: "&aDigite a nova porcentagem para parar em 17."
+  prompt-stand-17-detailed: "&aDigite uma porcentagem entre 0 e 100 para parar em 17."
+  prompt-number: "&aDigite o novo número no chat."
+  prompt-decks: "&aDigite o novo número de baralhos."
+  prompt-timer: "&aDigite o novo temporizador no chat."
+  timer-updated: "&aTemporizador do crupiê atualizado."
+  stand-17-updated: "&aChance de parar em 17 atualizada."
+  decks-updated: "&aNúmero de baralhos do crupiê atualizado."
+  valid-positive-integer: "Digite um número inteiro positivo válido."
+  invalid-number-format: "Formato de número inválido."
+  number-range: "Digite um número entre {min} e {max}."
+  updated-detailed: "{setting} Novo valor: &e{value}&a."
+  dealer-not-found: "&cNão foi possível encontrar o crupiê das configurações de Blackjack."
 
 admin:
   invalid-option: "&cOpção selecionada inválida."

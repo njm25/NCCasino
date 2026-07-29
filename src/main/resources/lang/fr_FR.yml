@@ -11,6 +11,8 @@ common:
   return-player-menu: "&dRetour au menu du joueur"
   return-preferences: "&dRetour aux préférences"
 
+  return-to: "Retour à {menu}"
+
 preferences:
   title: "Préférences"
   sound:
@@ -353,6 +355,28 @@ blackjack:
   result-push-returned: "&6&lÉgalité ! Votre mise est rendue"
   inventory-full: "&cPas de place pour {amount}, objet déposé..."
   card-value: "Valeur des cartes : {value}"
+
+blackjack-settings:
+  title: "Paramètres de Blackjack de {dealer}"
+  edit-timer: "Modifier le minuteur"
+  edit-stand-17: "Modifier la chance de rester à 17"
+  edit-decks: "Modifier le nombre de paquets"
+  current-percent: "&7Actuel : &a{value}%"
+  invalid-option: "&cOption sélectionnée invalide."
+  invalid-settings-option: "&cOption des paramètres de Blackjack invalide."
+  prompt-stand-17: "&aSaisissez le nouveau pourcentage pour rester à 17."
+  prompt-stand-17-detailed: "&aSaisissez un pourcentage entre 0 et 100 pour rester à 17."
+  prompt-number: "&aSaisissez le nouveau nombre dans le chat."
+  prompt-decks: "&aSaisissez le nouveau nombre de paquets."
+  prompt-timer: "&aSaisissez le nouveau minuteur dans le chat."
+  timer-updated: "&aMinuteur du croupier mis à jour."
+  stand-17-updated: "&aChance de rester à 17 mise à jour."
+  decks-updated: "&aNombre de paquets du croupier mis à jour."
+  valid-positive-integer: "Saisissez un entier positif valide."
+  invalid-number-format: "Format de nombre invalide."
+  number-range: "Saisissez un nombre entre {min} et {max}."
+  updated-detailed: "{setting} Nouvelle valeur : &e{value}&a."
+  dealer-not-found: "&cCroupier des paramètres de Blackjack introuvable."
 
 admin:
   invalid-option: "&cOption sélectionnée invalide."

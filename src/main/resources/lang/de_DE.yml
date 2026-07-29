@@ -11,6 +11,8 @@ common:
   return-player-menu: "&dZurück zum Spielermenü"
   return-preferences: "&dZurück zu den Einstellungen"
 
+  return-to: "Zurück zu {menu}"
+
 preferences:
   title: "Einstellungen"
   sound:
@@ -353,6 +355,28 @@ blackjack:
   result-push-returned: "&6&lUnentschieden! Dein Einsatz wird zurückgegeben"
   inventory-full: "&cKein Platz für {amount}; wird fallen gelassen..."
   card-value: "Kartenwert: {value}"
+
+blackjack-settings:
+  title: "Blackjack-Einstellungen von {dealer}"
+  edit-timer: "Timer bearbeiten"
+  edit-stand-17: "Chance für Halten bei 17 bearbeiten"
+  edit-decks: "Anzahl Decks bearbeiten"
+  current-percent: "&7Aktuell: &a{value}%"
+  invalid-option: "&cUngültige Option ausgewählt."
+  invalid-settings-option: "&cUngültige Blackjack-Einstellungsoption."
+  prompt-stand-17: "&aGib den neuen Prozentsatz für Halten bei 17 im Chat ein."
+  prompt-stand-17-detailed: "&aGib einen Prozentsatz zwischen 0 und 100 für Halten bei 17 ein."
+  prompt-number: "&aGib die neue Zahl im Chat ein."
+  prompt-decks: "&aGib die neue Anzahl Decks ein."
+  prompt-timer: "&aGib den neuen Timer im Chat ein."
+  timer-updated: "&aDealer-Timer aktualisiert."
+  stand-17-updated: "&aChance für Halten bei 17 aktualisiert."
+  decks-updated: "&aAnzahl der Dealer-Decks aktualisiert."
+  valid-positive-integer: "Bitte gib eine gültige positive Ganzzahl ein."
+  invalid-number-format: "Ungültiges Zahlenformat."
+  number-range: "Bitte gib eine Zahl zwischen {min} und {max} ein."
+  updated-detailed: "{setting} Neuer Wert: &e{value}&a."
+  dealer-not-found: "&cBlackjack-Einstellungsdealer konnte nicht gefunden werden."
 
 admin:
   invalid-option: "&cUngültige Option ausgewählt."
