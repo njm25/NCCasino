@@ -72,7 +72,7 @@ public class BaccaratClient extends Client implements TerminableSession {
     protected final Map<Integer,BetOption> betMapping = new HashMap<>();
 
         public BaccaratClient(BaccaratServer server, Player player, Nccasino plugin, String internalName) {
-            super(server, player, "Baccarat", plugin, internalName);
+            super(server, player, plugin.getLocalization().text(player, "baccarat.title"), plugin, internalName);
             SessionRegistry.register(player.getUniqueId(), this);
             slotMapping.put(53,SlotOption.EXIT );
             slotMapping.put(52,SlotOption.ALLIN);
@@ -119,7 +119,7 @@ public class BaccaratClient extends Client implements TerminableSession {
         super.initializeUI(switchRebet, betSlip,deafultRebet);
         
         Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
-        String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
+        String rebetName = text(rebetEnabled ? "baccarat.rebet-on" : "baccarat.rebet-off");
         inventory.setItem(53, createCustomItem(rebetMat, rebetName, 1));
         // Table layout
         int[] tableSlots = {0, 1, 2, 3, 5, 6, 7, 8, 9,10,11,12,13,14,15,16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,28,29,30,31,32,33,34, 35, 36,37,38,39,40,41,42,43, 44};
@@ -135,48 +135,48 @@ public class BaccaratClient extends Client implements TerminableSession {
         }
         
         // Dealer slot
-        inventory.setItem(4, createDealerSkull("Dealer"));
+        inventory.setItem(4, createDealerSkull(text("baccarat.dealer")));
         
         // Player bet slots
         int[] playerSlots = {1,2,3};
         for (int slot : playerSlots) {
-            inventory.setItem(slot, createCustomItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, "Player", 1));
+            inventory.setItem(slot, createCustomItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, text("baccarat.player"), 1));
         }
         
         // Banker bet slots
         int[] bankerSlots = {5,6,7};
         for (int slot : bankerSlots) {
-            inventory.setItem(slot, createCustomItem(Material.PINK_STAINED_GLASS_PANE, "Banker", 1));
+            inventory.setItem(slot, createCustomItem(Material.PINK_STAINED_GLASS_PANE, text("baccarat.banker"), 1));
         }
         
         // Player pair bet slots
         int[] playerPairSlots = {19,28};
         for (int slot : playerPairSlots) {
-            inventory.setItem(slot, createCustomItem(Material.CYAN_STAINED_GLASS_PANE, "Player Pair - 11:1", 1));
+            inventory.setItem(slot, createCustomItem(Material.CYAN_STAINED_GLASS_PANE, text("baccarat.player-pair-odds"), 1));
         }
         
         // Player bet additional slots
         int[] playerAdditionalSlots = {20,29, 21,30};
         for (int slot : playerAdditionalSlots) {
-            inventory.setItem(slot, createCustomItem(Material.BLUE_STAINED_GLASS_PANE, "Player Win - 1:1", 1));
+            inventory.setItem(slot, createCustomItem(Material.BLUE_STAINED_GLASS_PANE, text("baccarat.player-win-odds"), 1));
         }
         
         // Tie bet slots
         int[] tieSlots = {22,31};
         for (int slot : tieSlots) {
-            inventory.setItem(slot, createCustomItem(Material.BROWN_STAINED_GLASS_PANE, "Tie - 8:1", 1));
+            inventory.setItem(slot, createCustomItem(Material.BROWN_STAINED_GLASS_PANE, text("baccarat.tie-odds"), 1));
         }
         
         // Banker bet additional slots
         int[] bankerAdditionalSlots = {23,32, 24,33};
         for (int slot : bankerAdditionalSlots) {
-            inventory.setItem(slot, createCustomItem(Material.PURPLE_STAINED_GLASS_PANE, "Banker Win - 0.95:1", 1));
+            inventory.setItem(slot, createCustomItem(Material.PURPLE_STAINED_GLASS_PANE, text("baccarat.banker-win-odds"), 1));
         }
         
         // Banker pair bet slots
         int[] bankerPairSlots = {25,34};
         for (int slot : bankerPairSlots) {
-            inventory.setItem(slot, createCustomItem(Material.MAGENTA_STAINED_GLASS_PANE, "Banker Pair - 11:1", 1));
+            inventory.setItem(slot, createCustomItem(Material.MAGENTA_STAINED_GLASS_PANE, text("baccarat.banker-pair-odds"), 1));
         }
         setupSeats();
 
@@ -196,14 +196,14 @@ public class BaccaratClient extends Client implements TerminableSession {
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
                 if (playerId.equals(viewerId)) {
-                    return createPlayerHead(player.getUniqueId(), player.getName(), "§7§oClick to leave chair");
+                    return createPlayerHead(player.getUniqueId(), player.getName(), text("baccarat.click-leave-chair"));
                 } else {
                     return createPlayerHead(player.getUniqueId(), player.getName());
                 }
             }
         }
         boolean viewerIsSeated = seatMap.containsValue(viewerId);
-        String displayName = viewerIsSeated ? "§oOpen Seat" : "§oClick to Sit";
+        String displayName = text(viewerIsSeated ? "baccarat.open-seat" : "baccarat.click-sit");
         return createCustomItem(Material.OAK_STAIRS, displayName, 1);
     }
 
@@ -336,19 +336,19 @@ public class BaccaratClient extends Client implements TerminableSession {
     private void updateHandTotalDisplay(int playerTotal, int bankerTotal) {
         for (int i=1;i<=3;i++) {
             if(playerTotal==-1){
-            inventory.setItem(i, createCustomItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, "Player", 1));
+            inventory.setItem(i, createCustomItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, text("baccarat.player"), 1));
             }
             else{
-            updateSlotWithTotal(i, "Player", playerTotal, Material.LIGHT_BLUE_STAINED_GLASS_PANE);
+            updateSlotWithTotal(i, text("baccarat.player"), playerTotal, Material.LIGHT_BLUE_STAINED_GLASS_PANE);
 
             }
         }
         for (int i=5;i<=7;i++) {
             if(bankerTotal==-1){
-            inventory.setItem(i, createCustomItem(Material.PINK_STAINED_GLASS_PANE, "Banker", 1));
+            inventory.setItem(i, createCustomItem(Material.PINK_STAINED_GLASS_PANE, text("baccarat.banker"), 1));
         }
         else{
-            updateSlotWithTotal(i, "Banker", bankerTotal, Material.PINK_STAINED_GLASS_PANE);}
+            updateSlotWithTotal(i, text("baccarat.banker"), bankerTotal, Material.PINK_STAINED_GLASS_PANE);}
         }
         player.updateInventory();
     }
@@ -358,7 +358,7 @@ public class BaccaratClient extends Client implements TerminableSession {
         ItemMeta meta = totalItem.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(name);
-            meta.setLore(Arrays.asList("Current Total: " + total));
+            meta.setLore(Arrays.asList(text("baccarat.current-total", "total", total)));
             totalItem.setItemMeta(meta);
         }
         inventory.setItem(slot, totalItem);
@@ -405,11 +405,11 @@ public class BaccaratClient extends Client implements TerminableSession {
 
     private void showGameResult(String result) {
         if (result.equals("PLAYER_WINS")) {
-            animateWinningHand(new int[]{1,2,3}, Material.LIGHT_BLUE_STAINED_GLASS_PANE, "Player Wins!");
+            animateWinningHand(new int[]{1,2,3}, Material.LIGHT_BLUE_STAINED_GLASS_PANE, text("baccarat.player-wins"));
         } else if (result.equals("BANKER_WINS")) {
-            animateWinningHand(new int[]{7,6,5}, Material.PINK_STAINED_GLASS_PANE, "Banker Wins!");
+            animateWinningHand(new int[]{7,6,5}, Material.PINK_STAINED_GLASS_PANE, text("baccarat.banker-wins"));
         } else {
-            applyStaticEnchantment(new int[]{1,2,3,5,6,7}, Material.YELLOW_STAINED_GLASS_PANE, "It's a Tie!");
+            applyStaticEnchantment(new int[]{1,2,3,5,6,7}, Material.YELLOW_STAINED_GLASS_PANE, text("baccarat.tie-result"));
         }
     
         player.updateInventory();
@@ -470,7 +470,7 @@ public class BaccaratClient extends Client implements TerminableSession {
         ItemStack timerItem = new ItemStack(Material.CLOCK, Math.min(seconds, 64));
         ItemMeta meta = timerItem.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName("§eTime Left: " + seconds + "s");
+            meta.setDisplayName(text("baccarat.time-left", "seconds", seconds));
             timerItem.setItemMeta(meta);
         }
     
@@ -498,10 +498,10 @@ public class BaccaratClient extends Client implements TerminableSession {
         if (((BaccaratServer) server).getGameState() != Server.GameState.WAITING) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(text("baccarat.invalid-action"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cBets are closed.");
+                    player.sendMessage(text("baccarat.bets-closed"));
                     break;
                 case NONE:
                     break;
@@ -514,7 +514,7 @@ public class BaccaratClient extends Client implements TerminableSession {
 
             // Update rebet toggle UI
             Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
-            String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
+            String rebetName = text(rebetEnabled ? "baccarat.rebet-on" : "baccarat.rebet-off");
             inventory.setItem(53, createCustomItem(rebetMat, rebetName, 1));
         
             // Play rebet toggle sound
@@ -526,10 +526,10 @@ public class BaccaratClient extends Client implements TerminableSession {
         if (!seatMap.containsValue(player.getUniqueId())) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(text("baccarat.invalid-action"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cMust be seated to place bet.");
+                    player.sendMessage(text("baccarat.must-be-seated"));
                     break;
                 case NONE:
                     break;
@@ -542,10 +542,10 @@ public class BaccaratClient extends Client implements TerminableSession {
             if (betStacks.isEmpty()) {
                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                     case STANDARD:
-                        player.sendMessage("§cInvalid action.");
+                        player.sendMessage(text("baccarat.invalid-action"));
                         break;
                     case VERBOSE:
-                        player.sendMessage("§cNo bets to undo.");
+                        player.sendMessage(text("baccarat.no-bets-to-undo"));
                         break;
                     case NONE:
                         break;
@@ -564,7 +564,7 @@ public class BaccaratClient extends Client implements TerminableSession {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER, 1.0f, 1.0f);
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case VERBOSE:
-                    player.sendMessage("§dAll bets undone.");
+                    player.sendMessage(text("baccarat.all-bets-undone"));
                     break;
                 case NONE:
                 case STANDARD:
@@ -577,10 +577,10 @@ public class BaccaratClient extends Client implements TerminableSession {
             if (betHistory.isEmpty()) {
                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                     case STANDARD:
-                        player.sendMessage("§cInvalid action.");
+                        player.sendMessage(text("baccarat.invalid-action"));
                         break;
                     case VERBOSE:
-                        player.sendMessage("§cNo bets to undo.");
+                        player.sendMessage(text("baccarat.no-bets-to-undo"));
                         break;
                     case NONE:
                         break;
@@ -597,10 +597,10 @@ public class BaccaratClient extends Client implements TerminableSession {
             if (!betStacks.containsKey(lastBetType) || betStacks.get(lastBetType).isEmpty()) {
                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                     case STANDARD:
-                        player.sendMessage("§cInvalid action.");
+                        player.sendMessage(text("baccarat.invalid-action"));
                         break;
                     case VERBOSE:
-                        player.sendMessage("§cNo bets to undo.");
+                        player.sendMessage(text("baccarat.no-bets-to-undo"));
                         break;
                     case NONE:
                         break;
@@ -636,7 +636,7 @@ public class BaccaratClient extends Client implements TerminableSession {
         
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case VERBOSE:
-                    player.sendMessage("§dLast bet undone.");
+                    player.sendMessage(text("baccarat.last-bet-undone"));
                     break;
                 case NONE:
                 case STANDARD:
@@ -664,10 +664,10 @@ public class BaccaratClient extends Client implements TerminableSession {
         if (betAmount <= 0) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(text("baccarat.invalid-action"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cSelect a wager amount first.");
+                    player.sendMessage(text("betting.select-wager"));
                     break;
                 case NONE:
                     break;
@@ -680,10 +680,10 @@ public class BaccaratClient extends Client implements TerminableSession {
             if (!hasEnoughWager(player, betAmount)) {
                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                     case STANDARD:
-                        player.sendMessage("§cInvalid action.");
+                        player.sendMessage(text("baccarat.invalid-action"));
                         break;
                     case VERBOSE:
-                        player.sendMessage("§cNot enough currency to place bet.");
+                        player.sendMessage(text("baccarat.insufficient-currency"));
                         break;
                     case NONE:
                         break;
@@ -727,7 +727,9 @@ public class BaccaratClient extends Client implements TerminableSession {
                                       .stream().mapToDouble(Double::doubleValue).sum();
         int numBettors = ((BaccaratServer) server).getBettorCountForType(betType);
     
-        String playerBetText = playerTotal > 0 ? "Your Bet: " + plugin.formatWagerDisplay(currencyMode, currencyName, playerTotal) : null;
+        String playerBetText = playerTotal > 0
+            ? text("baccarat.your-bet", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, playerTotal))
+            : null;
         String totalBetText = totalBet > 0 ? (numBettors > 1 ? "👥 " : "👤 ") + numBettors + " - " + plugin.formatWagerDisplay(currencyMode, currencyName, totalBet) : null;
     
         for (int slot : betMapping.keySet()) {
@@ -763,10 +765,10 @@ public class BaccaratClient extends Client implements TerminableSession {
         if (!hasEnoughWager(player, totalRequired)) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cRebet Disabled.");
+                    player.sendMessage(text("baccarat.rebet-disabled"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cNot enough to place rebet. Rebet disabled.");
+                    player.sendMessage(text("baccarat.rebet-insufficient"));
                     break;
                 case NONE:
                     break;
@@ -875,6 +877,10 @@ public class BaccaratClient extends Client implements TerminableSession {
         for (BetOption betType : betStacks.keySet()) {
             updateBetDisplay(betType, ((BaccaratServer) server).getTotalBetForType(betType));
         }
+    }
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
     }
     
     
