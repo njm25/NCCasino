@@ -139,7 +139,11 @@ public class RouletteInventory extends DealerInventory implements TerminableSess
     private final Map<Integer, ItemStack> originalSlotItems = new HashMap<>();
 
     public RouletteInventory(UUID dealerId, Nccasino plugin, String internalName) {
-        super(dealerId, 54, "Roulette Wheel");
+        super(
+            dealerId,
+            54,
+            plugin.getLocalization().text(plugin.getLocalization().getServerDefault(), "roulette.wheel-title")
+        );
         this.plugin = plugin;
         this.Bets = new HashMap<>();
         this.Tables = new HashMap<>();
@@ -310,7 +314,8 @@ public class RouletteInventory extends DealerInventory implements TerminableSess
                                 break;}
                             case VERBOSE:{
 
-                                player.sendMessage("§aWelcome to Roulette.");            break;     
+                                player.sendMessage(text(player, "roulette.welcome"));
+                                break;
                             }
                                 case NONE:{
                                 break;
@@ -490,14 +495,14 @@ private void openBettingTable(Player player) {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aOpened betting table.");            break;
+                    player.sendMessage(text(player, "roulette.opened-table"));            break;
                 }
                     case NONE:{
                     break;
                 }
             }
         } else {
-            player.sendMessage("§cError: Dealer not found. Unable to open betting table.");
+            player.sendMessage(text(player, "roulette.dealer-not-found"));
              if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         }
         switchingPlayers.remove(player.getUniqueId()); // Remove the flag after the switch
@@ -517,7 +522,7 @@ private void exitGame(Player player) {
         case STANDARD:{
             break;}
         case VERBOSE:{
-    player.sendMessage("§cYou have left the game.");
+    player.sendMessage(text(player, "roulette.left-game"));
     break;
         }
             case NONE:{
@@ -587,7 +592,11 @@ private void exitGame(Player player) {
                 ItemMeta meta = item.getItemMeta();
                 if (meta != null && betType.equals(meta.getDisplayName())) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Wager: " + plugin.formatWagerDisplay(currencyMode, currencyName, totalBet) + "\n");
+                    lore.add(text(
+                        "roulette.wager-lore",
+                        "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, totalBet)
+                    ));
                     meta.setLore(lore);
                     item.setItemMeta(meta);
                 }
@@ -664,7 +673,7 @@ private void exitGame(Player player) {
                         case STANDARD:{
                             break;}
                         case VERBOSE:{
-                            player.sendMessage("§dBets locked, spinning!");
+                            player.sendMessage(text(player, "roulette.bets-locked"));
                             break;
                         }
                             case NONE:{
@@ -719,7 +728,11 @@ private void startBettingTimer() {
                 }
                 // Update the timer item in the appropriate slot based on the current quadrant
                 int countdownSlot = getCountdownSlotForQuadrant(currentQuadrant);
-                ItemStack countdownItem = createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown + " SECONDS!", countdown);
+                ItemStack countdownItem = createCustomItem(
+                    Material.CLOCK,
+                    text("roulette.bets-close-in", "seconds", countdown),
+                    countdown
+                );
                 inventory.setItem(countdownSlot, countdownItem);  // Update the item in the correct slot
                 
                 countdown--;
@@ -728,26 +741,26 @@ private void startBettingTimer() {
         case 1: // Top-right quadrant
             //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 46);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 47);
-            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 46);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, "Refund and/or Exit", 1), 47);
+            addItem(createCustomItem(Material.BOOK, text("roulette.open-table"), 1), 46);
+            addItem(createCustomItem(Material.SPRUCE_DOOR, text("roulette.refund-exit"), 1), 47);
             break;
         case 2: // Top-left quadrant
             //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 50);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 51);
-            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 52);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, "Refund and/or Exit", 1), 53);
+            addItem(createCustomItem(Material.BOOK, text("roulette.open-table"), 1), 52);
+            addItem(createCustomItem(Material.SPRUCE_DOOR, text("roulette.refund-exit"), 1), 53);
             break;
         case 3: // Bottom-left quadrant
            // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 5);
            // addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 6);
-            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 7);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, "Refund and/or Exit", 1), 8);
+            addItem(createCustomItem(Material.BOOK, text("roulette.open-table"), 1), 7);
+            addItem(createCustomItem(Material.SPRUCE_DOOR, text("roulette.refund-exit"), 1), 8);
             break;
         case 4: // Bottom-right quadrant
            // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 1);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 2);
-            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 1);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, "Refund and/or Exit", 1), 2);
+            addItem(createCustomItem(Material.BOOK, text("roulette.open-table"), 1), 1);
+            addItem(createCustomItem(Material.SPRUCE_DOOR, text("roulette.refund-exit"), 1), 2);
             break;
     }
             } else if (countdown == 0) {
@@ -759,7 +772,7 @@ private void startBettingTimer() {
                 }
 
                 int countdownSlot = getCountdownSlotForQuadrant(currentQuadrant);
-                ItemStack countdownItem = createCustomItem(Material.CLOCK, "BETS CLOSED", 1);
+                ItemStack countdownItem = createCustomItem(Material.CLOCK, text("roulette.bets-closed"), 1);
                 inventory.setItem(countdownSlot, countdownItem);
 
                 clearMenuButtonsForQuadrant(currentQuadrant);
@@ -1267,10 +1280,10 @@ private void handleWinningNumber() {
                 if (isRed(winningNumber)) {
                     switch(plugin.getPreferences(playerId).getMessageSetting()){
                         case STANDARD:{
-                            player.sendMessage("§cHit Red " + winningNumber + "!");
+                            player.sendMessage(text(player, "roulette.hit-red", "number", winningNumber));
                             break;}
                         case VERBOSE:{
-                            player.sendMessage("§cHit Red " + winningNumber + "!");
+                            player.sendMessage(text(player, "roulette.hit-red", "number", winningNumber));
                             break;
                         }
                             case NONE:{
@@ -1280,10 +1293,10 @@ private void handleWinningNumber() {
                 } else if (isBlack(winningNumber)) {
                     switch(plugin.getPreferences(playerId).getMessageSetting()){
                         case STANDARD:{
-                            player.sendMessage("§fHit Black " + winningNumber + "!");
+                            player.sendMessage(text(player, "roulette.hit-black", "number", winningNumber));
                             break;}
                         case VERBOSE:{
-                            player.sendMessage("§fHit Black " + winningNumber + "!");
+                            player.sendMessage(text(player, "roulette.hit-black", "number", winningNumber));
                             break;
                         }
                             case NONE:{
@@ -1293,10 +1306,10 @@ private void handleWinningNumber() {
                 } else {
                     switch(plugin.getPreferences(playerId).getMessageSetting()){
                         case STANDARD:{
-                            player.sendMessage("§aHit Green " + winningNumber + ", WOW!");
+                            player.sendMessage(text(player, "roulette.hit-green", "number", winningNumber));
                             break;}
                         case VERBOSE:{
-                            player.sendMessage("§aHit Green " + winningNumber + ", WOW!");
+                            player.sendMessage(text(player, "roulette.hit-green", "number", winningNumber));
                             break;
                         }
                             case NONE:{
@@ -1450,26 +1463,26 @@ private void updateMenuButtonsForQuadrant(int quadrant) {
         case 1: // Top-right quadrant
             //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 46);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 47);
-            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 46);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, "EXIT (Refund and Exit)", 1), 47);
+            addItem(createCustomItem(Material.BOOK, text("roulette.open-table"), 1), 46);
+            addItem(createCustomItem(Material.SPRUCE_DOOR, text("roulette.exit-refund"), 1), 47);
             break;
         case 2: // Top-left quadrant
             //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 50);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 51);
-            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 52);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, "EXIT (Refund and Exit)", 1), 53);
+            addItem(createCustomItem(Material.BOOK, text("roulette.open-table"), 1), 52);
+            addItem(createCustomItem(Material.SPRUCE_DOOR, text("roulette.exit-refund"), 1), 53);
             break;
         case 3: // Bottom-left quadrant
            // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 5);
            // addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 6);
-            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 7);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, "EXIT (Refund and Exit)", 1), 8);
+            addItem(createCustomItem(Material.BOOK, text("roulette.open-table"), 1), 7);
+            addItem(createCustomItem(Material.SPRUCE_DOOR, text("roulette.exit-refund"), 1), 8);
             break;
         case 4: // Bottom-right quadrant
            // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 1);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 2);
-            addItem(createCustomItem(Material.BOOK, "Open Betting Table", 1), 1);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, "EXIT (Refund and Exit)", 1), 2);
+            addItem(createCustomItem(Material.BOOK, text("roulette.open-table"), 1), 1);
+            addItem(createCustomItem(Material.SPRUCE_DOOR, text("roulette.exit-refund"), 1), 2);
             break;
     }
 }
@@ -1950,6 +1963,22 @@ private void fillDecorativeSlots(int[] slots, Material material) {
         }
 
         SessionRegistry.unregister(playerId, this);
+    }
+
+    private String text(String key, Object... placeholders) {
+        Map<String, Object> values = new HashMap<>();
+        for (int index = 0; index < placeholders.length; index += 2) {
+            values.put(String.valueOf(placeholders[index]), placeholders[index + 1]);
+        }
+        return plugin.getLocalization().text(
+            plugin.getLocalization().getServerDefault(),
+            key,
+            values
+        );
+    }
+
+    private String text(Player player, String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
     }
 }
 

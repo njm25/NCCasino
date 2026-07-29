@@ -230,6 +230,23 @@ mines:
   wager-lore: "Mise : {amount}"
   inventory-full: "&cPas de place pour {amount} ; objet déposé..."
 
+roulette:
+  wheel-title: "Roue de roulette"
+  welcome: "&aBienvenue à la roulette."
+  opened-table: "&aTable de mise ouverte."
+  dealer-not-found: "&cErreur : croupier introuvable. Impossible d'ouvrir la table de mise."
+  left-game: "&cVous avez quitté la partie."
+  wager-lore: "Mise : {amount}\n"
+  bets-locked: "&dMises fermées, la roue tourne !"
+  bets-close-in: "LES MISES FERMENT DANS {seconds} SECONDES !"
+  open-table: "Ouvrir la table de mise"
+  refund-exit: "Rembourser et/ou sortir"
+  exit-refund: "SORTIR (Rembourser et sortir)"
+  bets-closed: "MISES FERMÉES"
+  hit-red: "&cRouge {number} !"
+  hit-black: "&fNoir {number} !"
+  hit-green: "&aVert {number}, INCROYABLE !"
+
 blackjack:
   title: "Table de Blackjack"
   welcome: "&aBienvenue au Blackjack."

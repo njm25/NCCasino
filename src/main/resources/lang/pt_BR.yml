@@ -230,6 +230,23 @@ mines:
   wager-lore: "Aposta: {amount}"
   inventory-full: "&cSem espaço para {amount}; descartando..."
 
+roulette:
+  wheel-title: "Roleta"
+  welcome: "&aBem-vindo à Roleta."
+  opened-table: "&aMesa de apostas aberta."
+  dealer-not-found: "&cErro: crupiê não encontrado. Não foi possível abrir a mesa de apostas."
+  left-game: "&cVocê saiu da partida."
+  wager-lore: "Aposta: {amount}\n"
+  bets-locked: "&dApostas encerradas, girando!"
+  bets-close-in: "AS APOSTAS ENCERRAM EM {seconds} SEGUNDOS!"
+  open-table: "Abrir mesa de apostas"
+  refund-exit: "Reembolsar e/ou sair"
+  exit-refund: "SAIR (Reembolsar e sair)"
+  bets-closed: "APOSTAS ENCERRADAS"
+  hit-red: "&cSaiu vermelho {number}!"
+  hit-black: "&fSaiu preto {number}!"
+  hit-green: "&aSaiu verde {number}, UAU!"
+
 blackjack:
   title: "Mesa de Blackjack"
   welcome: "&aBem-vindo ao Blackjack."

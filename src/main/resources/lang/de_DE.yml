@@ -230,6 +230,23 @@ mines:
   wager-lore: "Einsatz: {amount}"
   inventory-full: "&cKein Platz für {amount}; wird fallen gelassen..."
 
+roulette:
+  wheel-title: "Roulette-Rad"
+  welcome: "&aWillkommen beim Roulette."
+  opened-table: "&aWetttisch geöffnet."
+  dealer-not-found: "&cFehler: Dealer nicht gefunden. Der Wetttisch kann nicht geöffnet werden."
+  left-game: "&cDu hast das Spiel verlassen."
+  wager-lore: "Einsatz: {amount}\n"
+  bets-locked: "&dEinsätze geschlossen, das Rad dreht sich!"
+  bets-close-in: "EINSÄTZE SCHLIESSEN IN {seconds} SEKUNDEN!"
+  open-table: "Wetttisch öffnen"
+  refund-exit: "Erstatten und/oder beenden"
+  exit-refund: "BEENDEN (Erstatten und beenden)"
+  bets-closed: "EINSÄTZE GESCHLOSSEN"
+  hit-red: "&cRot {number}!"
+  hit-black: "&fSchwarz {number}!"
+  hit-green: "&aGrün {number}, WOW!"
+
 blackjack:
   title: "Blackjack-Tisch"
   welcome: "&aWillkommen beim Blackjack."

@@ -230,6 +230,23 @@ mines:
   wager-lore: "Wager: {amount}"
   inventory-full: "&cNo room for {amount}, dropping..."
 
+roulette:
+  wheel-title: "Roulette Wheel"
+  welcome: "&aWelcome to Roulette."
+  opened-table: "&aOpened betting table."
+  dealer-not-found: "&cError: Dealer not found. Unable to open betting table."
+  left-game: "&cYou have left the game."
+  wager-lore: "Wager: {amount}\n"
+  bets-locked: "&dBets locked, spinning!"
+  bets-close-in: "BETS CLOSE IN {seconds} SECONDS!"
+  open-table: "Open Betting Table"
+  refund-exit: "Refund and/or Exit"
+  exit-refund: "EXIT (Refund and Exit)"
+  bets-closed: "BETS CLOSED"
+  hit-red: "&cHit Red {number}!"
+  hit-black: "&fHit Black {number}!"
+  hit-green: "&aHit Green {number}, WOW!"
+
 blackjack:
   title: "Blackjack Table"
   welcome: "&aWelcome to Blackjack."
