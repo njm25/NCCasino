@@ -354,6 +354,11 @@ blackjack:
   inventory-full: "&cPas de place pour {amount}, objet déposé..."
   card-value: "Valeur des cartes : {value}"
 
+interaction:
+  shift-click-disabled: "&cLe Maj-clic est désactivé."
+  click-cooldown: "&cVeuillez attendre avant de cliquer à nouveau !"
+  drag-disabled: "&cImpossible de faire glisser des objets ici."
+
 commands:
   player-only: "&cCette commande ne peut être utilisée que dans le jeu."
   no-permission: "&cVous n’avez pas la permission d’utiliser cette commande."

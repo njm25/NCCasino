@@ -314,7 +314,7 @@ public class DealerInteractListener implements Listener {
                 switch(settings)
                 {
                     case VERBOSE:{
-                        player.sendMessage("§cShift-click is disabled.");
+                player.sendMessage(plugin.getLocalization().text(player, "interaction.shift-click-disabled"));
                         break;}
                     default:{
                         break;}
@@ -343,10 +343,10 @@ public class DealerInteractListener implements Listener {
             else{
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§cPlease wait before clicking again!");
+            player.sendMessage(plugin.getLocalization().text(player, "interaction.click-cooldown"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cPlease wait before clicking again!");
+                player.sendMessage(plugin.getLocalization().text(player, "interaction.click-cooldown"));
                         break;}
                     case NONE:{
                         break;
@@ -366,7 +366,7 @@ public class DealerInteractListener implements Listener {
                     switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting())
                     {
                         case VERBOSE:{
-                            player.sendMessage("§cCannot drag in here.");
+            player.sendMessage(plugin.getLocalization().text(player, "interaction.drag-disabled"));
                             break;}
                         default:{
                             break;}

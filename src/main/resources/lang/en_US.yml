@@ -354,6 +354,11 @@ blackjack:
   inventory-full: "&cNo room for {amount}, dropping..."
   card-value: "Card Value: {value}"
 
+interaction:
+  shift-click-disabled: "&cShift-click is disabled."
+  click-cooldown: "&cPlease wait before clicking again!"
+  drag-disabled: "&cCannot drag in here."
+
 commands:
   player-only: "&cThis command can only be used by players."
   no-permission: "&cYou do not have permission to use this command."
