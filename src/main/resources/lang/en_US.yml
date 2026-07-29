@@ -126,6 +126,9 @@ baccarat:
   your-bet: "Your Bet: {amount}"
   rebet-disabled: "&cRebet Disabled."
   rebet-insufficient: "&cNot enough to place rebet. Rebet disabled."
+  bets-closed-place: "&cBets are closed, cannot place bet."
+  bets-closed-undo: "&cBets are closed, cannot undo bet."
+  already-seated: "&eYou are already seated."
 
 dragon-descent:
   title: "Dragon Descent"
@@ -160,6 +163,12 @@ test-game:
   unknown-state: "Unknown State!"
   accept-bet: "Accept Bet: {amount}"
   reset: "Reset Game"
+  already-seat-one: "You are already seated in seat1!"
+  already-seat-two: "You are already seated in seat2!"
+  seat-one-occupied-message: "Someone else is already seated in seat1!"
+  seat-two-occupied-message: "Someone else is already seated in seat2!"
+  server-won: "You won {amount} {currency}!"
+  server-lost: "You lost! {amount} {currency} was taken."
 
 game-options:
   select-title: "Select Game Type"

@@ -126,6 +126,9 @@ baccarat:
   your-bet: "Tu apuesta: {amount}"
   rebet-disabled: "&cReapuesta desactivada."
   rebet-insufficient: "&cNo tienes suficiente para reapostar. Reapuesta desactivada."
+  bets-closed-place: "&cLas apuestas están cerradas; no puedes apostar."
+  bets-closed-undo: "&cLas apuestas están cerradas; no puedes deshacer la apuesta."
+  already-seated: "&eYa estás sentado."
 
 dragon-descent:
   title: "Descenso del dragón"
@@ -160,6 +163,12 @@ test-game:
   unknown-state: "¡Estado desconocido!"
   accept-bet: "Aceptar apuesta: {amount}"
   reset: "Reiniciar juego"
+  already-seat-one: "¡Ya estás sentado en el asiento 1!"
+  already-seat-two: "¡Ya estás sentado en el asiento 2!"
+  seat-one-occupied-message: "¡Otra persona ya ocupa el asiento 1!"
+  seat-two-occupied-message: "¡Otra persona ya ocupa el asiento 2!"
+  server-won: "¡Ganaste {amount} {currency}!"
+  server-lost: "¡Perdiste! Se retiraron {amount} {currency}."
 
 game-options:
   select-title: "Seleccionar tipo de juego"

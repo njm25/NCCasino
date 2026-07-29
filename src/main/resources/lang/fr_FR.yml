@@ -126,6 +126,9 @@ baccarat:
   your-bet: "Votre pari : {amount}"
   rebet-disabled: "&cRejouer désactivé."
   rebet-insufficient: "&cFonds insuffisants pour rejouer. Rejouer désactivé."
+  bets-closed-place: "&cLes mises sont fermées ; impossible de miser."
+  bets-closed-undo: "&cLes mises sont fermées ; impossible d'annuler la mise."
+  already-seated: "&eVous êtes déjà assis."
 
 dragon-descent:
   title: "Descente du dragon"
@@ -160,6 +163,12 @@ test-game:
   unknown-state: "État inconnu !"
   accept-bet: "Accepter le pari : {amount}"
   reset: "Réinitialiser le jeu"
+  already-seat-one: "Vous êtes déjà assis au siège 1 !"
+  already-seat-two: "Vous êtes déjà assis au siège 2 !"
+  seat-one-occupied-message: "Quelqu'un d'autre occupe déjà le siège 1 !"
+  seat-two-occupied-message: "Quelqu'un d'autre occupe déjà le siège 2 !"
+  server-won: "Vous avez gagné {amount} {currency} !"
+  server-lost: "Vous avez perdu ! {amount} {currency} ont été retirés."
 
 game-options:
   select-title: "Sélectionner le type de jeu"

@@ -161,11 +161,11 @@ public class BaccaratServer extends Server {
             else {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§cInvalid action.");
+                        player.sendMessage(text(player, "baccarat.invalid-action"));
         
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cBets are closed, cannot place bet.");
+                        player.sendMessage(text(player, "baccarat.bets-closed-place"));
                         break;     
                     }
                         case NONE:{
@@ -185,11 +185,11 @@ public class BaccaratServer extends Server {
             else {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§cInvalid action.");
+                        player.sendMessage(text(player, "baccarat.invalid-action"));
         
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cBets are closed, cannot undo bet.");
+                        player.sendMessage(text(player, "baccarat.bets-closed-undo"));
                         break;     
                     }
                         case NONE:{
@@ -206,11 +206,11 @@ public class BaccaratServer extends Server {
             else {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§cInvalid action.");
+                        player.sendMessage(text(player, "baccarat.invalid-action"));
         
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cBets are closed, cannot undo bet.");
+                        player.sendMessage(text(player, "baccarat.bets-closed-undo"));
                         break;     
                     }
                         case NONE:{
@@ -252,10 +252,10 @@ public class BaccaratServer extends Server {
         } else if (seatedPlayers.contains(playerId)) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(text(player, "baccarat.invalid-action"));
                     break;
                 case VERBOSE:
-                player.sendMessage("§eYou are already seated.");
+                player.sendMessage(text(player, "baccarat.already-seated"));
                 break;
                 case NONE:
                     break;
@@ -717,10 +717,22 @@ public class BaccaratServer extends Server {
 
 		    		switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 		    			case STANDARD:{
-		    				player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()));
+							player.sendMessage(text(
+                                player,
+                                "payout.paid",
+                                "amount",
+                                plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue())
+                            ));
 		    				break;}
 		    			case VERBOSE:{
-		    				player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()) + "\n §r§a§o(profit of " + plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue()) + ")");
+							player.sendMessage(text(
+                                player,
+                                "payout.paid-with-profit",
+                                "amount",
+                                plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()),
+                                "profit",
+                                plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue())
+                            ));
 		    				break;
 		    			}
 		    				case NONE:{
@@ -740,10 +752,22 @@ public class BaccaratServer extends Server {
 		    		}
 		    		switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 		    			case STANDARD:{
-		    				player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, payout));
+							player.sendMessage(text(
+                                player,
+                                "payout.paid",
+                                "amount",
+                                plugin.formatWagerDisplay(currencyMode, currencyName, payout)
+                            ));
 		    				break;}
 		    			case VERBOSE:{
-		    				player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, payout) + "\n §r§a§o(profit of "+(int)(payout-totalBet)+")");
+							player.sendMessage(text(
+                                player,
+                                "payout.paid-with-profit",
+                                "amount",
+                                plugin.formatWagerDisplay(currencyMode, currencyName, payout),
+                                "profit",
+                                (int) (payout - totalBet)
+                            ));
 		    				break;
 		    			}
 		    				case NONE:{
@@ -909,6 +933,10 @@ private void resetGame() {
             case TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE -> card.getRank().ordinal() + 2;
             default -> 0;
         };
+    }
+
+    private String text(Player player, String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
     }
 
 }
