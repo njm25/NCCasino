@@ -446,10 +446,10 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§cInvalid option selected.");    
+                player.sendMessage(text("admin.invalid-option"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cInvalid Admin Menu option selected.");
+                player.sendMessage(text("admin.invalid-admin-option"));
                     break;}
                 default:{
                     break;}
@@ -467,7 +467,7 @@ public class AdminMenu extends Menu {
         }
 
         if (dealer == null) {
-            player.sendMessage("§cCould not find dealer.");
+            player.sendMessage(text("admin.dealer-not-found"));
             return;
         }
 
@@ -702,9 +702,9 @@ public class AdminMenu extends Menu {
             Preferences.MessageSetting messPref = plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             if (messPref != Preferences.MessageSetting.NONE) {
                 if (!plugin.getVaultHook().isVaultPresent()) {
-                    player.sendMessage("§cVault not found. Install Vault to use with NCCasino.");
+                    player.sendMessage(text("admin.vault-missing"));
                 } else {
-                    player.sendMessage("§cNo economy plugin. Install an economy plugin to use Vault.");
+                    player.sendMessage(text("admin.economy-missing"));
                 }
             }
             return;
@@ -724,7 +724,7 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref = plugin.getPreferences(player.getUniqueId()).getMessageSetting();
         switch (messPref) {
             case VERBOSE:
-                player.sendMessage("§eSwitched currency mode to: §a" + this.currencyMode.name() + "§e.");
+                player.sendMessage(text("admin.currency-mode-switched", "mode", this.currencyMode.name()));
                 break;
             default:
                 break;
@@ -792,13 +792,13 @@ public class AdminMenu extends Menu {
         case 1:{
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§aType new chip size value in chat.");
+                            player.sendMessage(text("admin.prompt-chip-size"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aType new value for the 1st chip size in chat.");
+                            player.sendMessage(text("admin.prompt-chip-index", "index", 1));
                     break;}
                 case NONE:{
-                    player.sendMessage("§aType new value.");
+                            player.sendMessage(text("admin.prompt-new-value"));
                     break;
                 }
             }
@@ -807,13 +807,13 @@ public class AdminMenu extends Menu {
         case 2:{
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§aType new chip size value in chat.");
+                            player.sendMessage(text("admin.prompt-chip-size"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aType new value for the 2nd chip size in chat.");
+                            player.sendMessage(text("admin.prompt-chip-index", "index", 2));
                     break;}
                 case NONE:{
-                    player.sendMessage("§aType new value.");
+                            player.sendMessage(text("admin.prompt-new-value"));
                     break;
                 }
             }            
@@ -822,13 +822,13 @@ public class AdminMenu extends Menu {
         case 3:{
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§aType new chip size value in chat.");
+                            player.sendMessage(text("admin.prompt-chip-size"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aType new value for the 3rd chip size in chat.");
+                            player.sendMessage(text("admin.prompt-chip-index", "index", 3));
                     break;}
                 case NONE:{
-                    player.sendMessage("§aType new value.");
+                            player.sendMessage(text("admin.prompt-new-value"));
                     break;
                 }
             }            
@@ -837,13 +837,13 @@ public class AdminMenu extends Menu {
         case 4:{
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§aType new chip size value in chat.");
+                            player.sendMessage(text("admin.prompt-chip-size"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aType new value for the 4th chip size in chat.");
+                            player.sendMessage(text("admin.prompt-chip-index", "index", 4));
                     break;}
                 case NONE:{
-                    player.sendMessage("§aType new value.");
+                            player.sendMessage(text("admin.prompt-new-value"));
                     break;
                 }
             }            
@@ -852,13 +852,13 @@ public class AdminMenu extends Menu {
         case 5:{
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§aType new chip size value in chat.");
+                            player.sendMessage(text("admin.prompt-chip-size"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aType new value for the 5th chip size in chat.");
+                            player.sendMessage(text("admin.prompt-chip-index", "index", 5));
                     break;}
                 case NONE:{
-                    player.sendMessage("§aType new value.");
+                            player.sendMessage(text("admin.prompt-new-value"));
                     break;
                 }
             }            
@@ -867,13 +867,13 @@ public class AdminMenu extends Menu {
         default:{
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§aType new chip size valuein chat.");
+                            player.sendMessage(text("admin.prompt-chip-size"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aType new value for chip #"+chipIndex+" in chat.");
+                            player.sendMessage(text("admin.prompt-chip-index", "index", chipIndex));
                     break;}
                 case NONE:{
-                    player.sendMessage("§aType new value.");
+                            player.sendMessage(text("admin.prompt-new-value"));
                     break;
                 }
             }   
@@ -892,13 +892,13 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
         switch(messPref){
             case STANDARD:{
-                player.sendMessage("§aType new message in chat.");
+                    player.sendMessage(text("admin.prompt-message"));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aType the new animation message in chat.");
+                    player.sendMessage(text("admin.prompt-animation-message"));
                 break;}
             case NONE:{
-                player.sendMessage("§aType new value."); break;
+                    player.sendMessage(text("admin.prompt-new-value")); break;
             }
         }   
     }
@@ -912,13 +912,13 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
         switch(messPref){
             case STANDARD:{
-                player.sendMessage("§aType new name in chat.");
+                    player.sendMessage(text("admin.prompt-name"));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aType the new dealer name in chat.");
+                    player.sendMessage(text("admin.prompt-dealer-name"));
                 break;}
             case NONE:{
-                player.sendMessage("§aType new value.");break;
+                    player.sendMessage(text("admin.prompt-new-value"));break;
             }
         }   
     }
@@ -951,13 +951,13 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
         switch(messPref){
             case STANDARD:{
-                player.sendMessage("§aClick a block to move the dealer.");
+                    player.sendMessage(text("admin.prompt-move"));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aClick a block to move the dealer to that position.");
+                    player.sendMessage(text("admin.prompt-move-detailed"));
                  break;}
             case NONE:{
-                player.sendMessage("§aClick destination.");break;
+                    player.sendMessage(text("admin.prompt-destination"));break;
             }
         } 
     }
@@ -1023,10 +1023,10 @@ public class AdminMenu extends Menu {
         if (adminInv.currencyMode == CurrencyMode.VAULT) {
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§cCurrency selection is disabled in VAULT mode.");
+                    player.sendMessage(text("admin.currency-selection-disabled"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cCurrency selection is disabled in VAULT mode. Planned for the future");
+                    player.sendMessage(text("admin.currency-selection-disabled-future"));
                     break;}
                 case NONE:{break;
                 }
@@ -1037,7 +1037,7 @@ public class AdminMenu extends Menu {
         // VANILLA mode: remind how to set currency when clicking with empty cursor
         ItemStack cursorItem = event.getCursor();
         if ((cursorItem == null || cursorItem.getType() == Material.AIR) && (messPref == Preferences.MessageSetting.STANDARD || messPref == Preferences.MessageSetting.VERBOSE)) {
-            player.sendMessage("§eDrag vanilla item here to set as currency.");
+            player.sendMessage(text("admin.prompt-currency-item"));
         }
 
         handleDrag(cursorItem, player, event);
@@ -1079,10 +1079,16 @@ public class AdminMenu extends Menu {
             plugin.reloadDealer(dealer);
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§aCurrency updated.");
+                player.sendMessage(text("admin.currency-updated"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aCurrency updated to: " + ChatColor.YELLOW + displayName + "§a (" + ChatColor.YELLOW + selectedMaterial.name() + "§a).");
+                player.sendMessage(text(
+                    "admin.currency-updated-detailed",
+                    "name",
+                    displayName,
+                    "material",
+                    selectedMaterial.name()
+                ));
                     break;}
                 case NONE:{break;
                 }
@@ -1138,10 +1144,10 @@ public class AdminMenu extends Menu {
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(messPref){
                     case STANDARD:{
-                        player.sendMessage("§aDealer name updated.");
+                    player.sendMessage(text("admin.dealer-name-updated"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§aDealer name updated to: '" + ChatColor.YELLOW + newName + "§a'.");
+                    player.sendMessage(text("admin.dealer-name-updated-detailed", "name", newName));
                         break;}
                     case NONE:{break;
                     }
@@ -1151,10 +1157,10 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
                 switch(messPref){
                     case STANDARD:{
-                        player.sendMessage("§cCould not find dealer.");
+                player.sendMessage(text("admin.dealer-not-found"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cCould not find dealer for admin menu chat response.");
+                player.sendMessage(text("admin.dealer-not-found-chat"));
 
                         break;}
                     case NONE:{break;
@@ -1187,10 +1193,10 @@ public class AdminMenu extends Menu {
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(messPref){
                     case STANDARD:{
-                        player.sendMessage("§aDealer timer updated.");
+                    player.sendMessage(text("admin.timer-updated"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                    player.sendMessage(text("admin.timer-updated-detailed", "timer", newTimer));
                         break;}
                     case NONE:{break;
                     }
@@ -1200,10 +1206,10 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
                 switch(messPref){
                     case STANDARD:{
-                        player.sendMessage("§cCould not find dealer.");
+                player.sendMessage(text("admin.dealer-not-found"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cCould not find dealer for admin menu chat response");
+                player.sendMessage(text("admin.dealer-not-found-chat"));
                         break;}
                     case NONE:{break;
                     }
@@ -1234,10 +1240,10 @@ public class AdminMenu extends Menu {
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(messPref){
                     case STANDARD:{
-                        player.sendMessage("§aDealer animation message updated..");
+                    player.sendMessage(text("admin.animation-updated"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§aDealer animation message updated to: '" + ChatColor.YELLOW + newAmsg + "§a'.");
+                    player.sendMessage(text("admin.animation-updated-detailed", "message", newAmsg));
                         break;}
                     case NONE:{break;
                     }
@@ -1247,10 +1253,10 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
                 switch(messPref){
                     case STANDARD:{
-                        player.sendMessage("§cCould not find dealer.");
+                player.sendMessage(text("admin.dealer-not-found"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cCould not find dealer for admin menu chat response.");
+                player.sendMessage(text("admin.dealer-not-found-chat"));
 
                         break;}
                     case NONE:{break;
@@ -1281,10 +1287,16 @@ public class AdminMenu extends Menu {
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(messPref){
                     case STANDARD:{
-                        player.sendMessage("§aChip size updated.");
+                    player.sendMessage(text("admin.chip-size-updated"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§aChip size "+chipIndex+" updated to: " + ChatColor.YELLOW + newChipSize + "§a.");
+                    player.sendMessage(text(
+                        "admin.chip-size-updated-detailed",
+                        "index",
+                        chipIndex,
+                        "size",
+                        newChipSize
+                    ));
                         break;}
                     case NONE:{break;
                     }
@@ -1294,10 +1306,10 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
                 switch(messPref){
                     case STANDARD:{
-                        player.sendMessage("§cCould not find dealer.");
+                player.sendMessage(text("admin.dealer-not-found"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cCould not find dealer for admin menu chat response.");
+                player.sendMessage(text("admin.dealer-not-found-chat"));
                         break;}
                     case NONE:{break;
                     }
@@ -1329,7 +1341,7 @@ public class AdminMenu extends Menu {
     
             // Prevent duplicate move executions using atomic check
             if (movingDealers.putIfAbsent(dealerId, true) != null) {
-                player.sendMessage("§cDealer is already being moved. Please wait.");
+            player.sendMessage(text("admin.already-moving"));
                 return;
             }
     
@@ -1437,12 +1449,18 @@ public class AdminMenu extends Menu {
             Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch (messPref) {
                 case STANDARD:
-                    player.sendMessage("§aDealer moved to new location.");
+                    player.sendMessage(text("admin.dealer-moved"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§aDealer moved to x: " + ChatColor.YELLOW + newLocation.getX() +
-                            "§a y: " + ChatColor.YELLOW + newLocation.getY() +
-                            "§a z: " + ChatColor.YELLOW + newLocation.getZ() + "§a.");
+                    player.sendMessage(text(
+                        "admin.dealer-moved-detailed",
+                        "x",
+                        newLocation.getX(),
+                        "y",
+                        newLocation.getY(),
+                        "z",
+                        newLocation.getZ()
+                    ));
                     break;
                 case NONE:
                     break;
@@ -1466,10 +1484,10 @@ public class AdminMenu extends Menu {
             Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch (messPref) {
                 case STANDARD:
-                    player.sendMessage("§cFailed to move dealer. Chunk did not load.");
+                    player.sendMessage(text("admin.move-failed"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cFailed to move dealer. Chunk did not load after 30 ticks.");
+                    player.sendMessage(text("admin.move-failed-detailed"));
                     break;
                 case NONE:
                     break;
@@ -1513,10 +1531,10 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§cCan't do that.");
+                    player.sendMessage(text("admin.cant-do-that"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cYou cannot break blocks while moving the dealer.");
+                    player.sendMessage(text("admin.cannot-break-moving"));
                     break;}
                 case NONE:{break;
                 }
@@ -1755,5 +1773,9 @@ public class AdminMenu extends Menu {
         return "Age: §a" + (ageable.isAdult() ? "Adult" : "Baby");
     }
     return "";
+    }
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
     }
 }
