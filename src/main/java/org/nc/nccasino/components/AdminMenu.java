@@ -108,7 +108,12 @@ public class AdminMenu extends Menu {
             player, 
             plugin, 
             dealerId, 
-            Dealer.getInternalName(Dealer.findDealer(dealerId, player.getLocation())) + "'s Admin Menu",
+            plugin.getLocalization().text(
+                player,
+                "admin.title",
+                "dealer",
+                Dealer.getInternalName(Dealer.findDealer(dealerId, player.getLocation()))
+            ),
             45,
             null,
             null
@@ -173,30 +178,36 @@ public class AdminMenu extends Menu {
     
         //String currencyMaterial = config.getString("dealers." + internalName + ".currency.material", "UNKNOWN");
        // String currencyName = config.getString("dealers." + internalName + ".currency.name", "Unknown Currency");
-        addItemAndLore(Material.NAME_TAG, 1, "Edit Display Name",  slotMapping.get(SlotOption.EDIT_DISPLAY_NAME), "Current: §a" + Dealer.getName(dealer));
+        addItemAndLore(
+            Material.NAME_TAG,
+            1,
+            text("admin.edit-display-name"),
+            slotMapping.get(SlotOption.EDIT_DISPLAY_NAME),
+            text("admin.current", "value", Dealer.getName(dealer))
+        );
         switch(currentGame){
             case"Mines":{
-                addItemAndLore(Material.TNT, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
+                addItemAndLore(Material.TNT, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
                 break;
             }
             case"Roulette":{
-                addItemAndLore(Material.ENDER_PEARL, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
+                addItemAndLore(Material.ENDER_PEARL, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
                 break;
             }  
             case"Blackjack":{
-                addItemAndLore(Material.CREEPER_HEAD, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
+                addItemAndLore(Material.CREEPER_HEAD, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
                 break;
             }
             case "Baccarat":{
-                addItemAndLore(Material.SKELETON_SKULL, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
+                addItemAndLore(Material.SKELETON_SKULL, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
                 break;
             }
             case "Coin Flip":{
-                addItemAndLore(Material.SUNFLOWER, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
+                addItemAndLore(Material.SUNFLOWER, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
                 break;
             }
             case "Dragon Descent":{
-                addItemAndLore(Material.DRAGON_HEAD, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
+                addItemAndLore(Material.DRAGON_HEAD, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
                 break;
             }
             default:
@@ -204,21 +215,33 @@ public class AdminMenu extends Menu {
         }
         
         List<String> gameSettingsLore = getGameSettingsLore(config, internalName, currentGame);
-        addItemAndLore(Material.BOOK, 1, currentGame + " Settings", slotMapping.get(SlotOption.GAME_OPTIONS), gameSettingsLore.toArray(new String[0]));
+        addItemAndLore(
+            Material.BOOK,
+            1,
+            text("admin.game-settings", "game", localizedGameName(currentGame)),
+            slotMapping.get(SlotOption.GAME_OPTIONS),
+            gameSettingsLore.toArray(new String[0])
+        );
     
-        addItemAndLore(Material.RED_STAINED_GLASS_PANE, 1, "Edit Animation Message",  slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE), "Current: §a" + currentAnimationMessage);
+        addItemAndLore(
+            Material.RED_STAINED_GLASS_PANE,
+            1,
+            text("admin.edit-animation-message"),
+            slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE),
+            text("admin.current", "value", currentAnimationMessage)
+        );
 
        /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
-        addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
-        addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
-        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
+        addItemAndLore(Material.COMPASS, 1, text("admin.move-dealer"), slotMapping.get(SlotOption.MOVE_DEALER));
+        addItemAndLore(Material.BARRIER, 1, text("admin.delete-dealer"), slotMapping.get(SlotOption.DELETE_DEALER));
+        addItemAndLore(Material.SPRUCE_DOOR, 1, text("admin.exit"), slotMapping.get(SlotOption.EXIT));
 
         ItemStack head=createPlayerHeadItem(player, 1);
-        setCustomItemMeta(head,"Player Menu");
+        setCustomItemMeta(head, text("admin.player-menu"));
         ItemMeta meta = head.getItemMeta();
     
         if (meta != null) {
-            meta.setDisplayName(ChatColor.YELLOW+ "Player Menu");
+            meta.setDisplayName(ChatColor.YELLOW + text("admin.player-menu"));
             head.setItemMeta(meta);
         }
 
@@ -228,7 +251,7 @@ public class AdminMenu extends Menu {
 
         // Now display that egg item in the slot
         List<String> lore = getMobSelectionLore(dealer);
-        addItemAndLore(mobEgg, 1, "Edit Mob Settings", slotMapping.get(SlotOption.MOB_SETTINGS), lore.toArray(new String[0]));
+        addItemAndLore(mobEgg, 1, text("admin.edit-mob-settings"), slotMapping.get(SlotOption.MOB_SETTINGS), lore.toArray(new String[0]));
 
     }
     
@@ -240,42 +263,42 @@ public class AdminMenu extends Menu {
                 int blackjackTimer = config.getInt("dealers." + internalName + ".timer", 30);
                 int standOn17Chance = config.getInt("dealers." + internalName + ".stand-on-17", 100);
                 int blackjackDecks = config.getInt("dealers." + internalName + ".number-of-decks", 6);
-                lore.add("§7Timer: §a" + blackjackTimer);
-                lore.add("§7Stand on 17 Chance: §a" + standOn17Chance + "%");
-                lore.add("§7# of Decks: §a" + blackjackDecks);
+                lore.add(text("admin.timer-lore", "value", blackjackTimer));
+                lore.add(text("admin.stand-17-lore", "value", standOn17Chance));
+                lore.add(text("admin.decks-lore", "value", blackjackDecks));
                 break;
     
             case "Roulette":
                 int rouletteTimer = config.getInt("dealers." + internalName + ".timer", 30);
-                lore.add("§7Timer: §a" + rouletteTimer);
+                lore.add(text("admin.timer-lore", "value", rouletteTimer));
                 break;
     
             case "Mines":
                 int defaultMines = config.getInt("dealers." + internalName + ".default-mines", 3);
-                lore.add("§7Default # of Mines: §a" + defaultMines);
+                lore.add(text("admin.default-mines-lore", "value", defaultMines));
                 break;
     
             case "Baccarat":
                 int baccaratTimer = config.getInt("dealers." + internalName + ".timer", 30);
                 int baccaratDecks = config.getInt("dealers." + internalName + ".number-of-decks", 8);
-                lore.add("§7Timer: §a" + baccaratTimer);
-                lore.add("§7# of Decks: §a" + baccaratDecks);
+                lore.add(text("admin.timer-lore", "value", baccaratTimer));
+                lore.add(text("admin.decks-lore", "value", baccaratDecks));
                 break;
     
             case "Coin Flip":
                 int coinFlipTimer = config.getInt("dealers." + internalName + ".timer", 30);
-                lore.add("§7Timer: §a" + coinFlipTimer);
+                lore.add(text("admin.timer-lore", "value", coinFlipTimer));
                 break;
             case "Dragon Descent":
                 int defaultColumns = config.getInt("dealers." + internalName + ".default-columns", 7);
                 int defaultVines = config.getInt("dealers." + internalName + ".default-vines", 5);
                 int defaultFloors = config.getInt("dealers." + internalName + ".default-floors", 4);
-                lore.add("§7Default # of Columns: §a" + defaultColumns);
-                lore.add("§7Default # of Vines: §a" + defaultVines);
-                lore.add("§7Default # of Floors: §a" + defaultFloors);
+                lore.add(text("admin.default-columns-lore", "value", defaultColumns));
+                lore.add(text("admin.default-vines-lore", "value", defaultVines));
+                lore.add(text("admin.default-floors-lore", "value", defaultFloors));
                 break;
             default:
-                lore.add("§7No settings available.");
+                lore.add(text("admin.no-settings"));
                 break;
         }
         
@@ -740,25 +763,25 @@ public class AdminMenu extends Menu {
 
         switch (this.currencyMode) {
             case CurrencyMode.VAULT:
-                addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, "Select Currency", slotMapping.get(SlotOption.EDIT_CURRENCY), "[Disabled For Vault Mode]");
-                addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Select Currency [Disabled For Vault Mode]"), slotMapping.get(SlotOption.EDIT_CURRENCY));
+                addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, text("admin.select-currency"), slotMapping.get(SlotOption.EDIT_CURRENCY), text("admin.disabled-vault"));
+                addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, text("admin.select-currency-disabled")), slotMapping.get(SlotOption.EDIT_CURRENCY));
                 if (vaultAvailable) {
-                    addItem(createCustomItem(Material.CHEST, "Toggle Currency Mode: " + currencyMode.name()), slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                    addItem(createCustomItem(Material.CHEST, text("admin.toggle-currency-mode", "mode", currencyMode.name())), slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
                 } else {
                     // Vault or economy missing: show disabled state, standard mode used until available
                     String title = (plugin.getVaultHook() != null && plugin.getVaultHook().isVaultPresent())
-                        ? "§cVault (no economy)"
-                        : "§cVault (not found)";
+                        ? text("admin.vault-no-economy")
+                        : text("admin.vault-not-found");
                     String subtitle = (plugin.getVaultHook() != null && plugin.getVaultHook().isVaultPresent())
-                        ? "§7Install an economy plugin to use Vault"
-                        : "§7Install Vault to use with NCCasino";
-                    addItemAndLore(Material.BARRIER, 1, title, slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE), subtitle, "§8Standard mode used until available.");
+                        ? text("admin.install-economy")
+                        : text("admin.install-vault");
+                    addItemAndLore(Material.BARRIER, 1, title, slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE), subtitle, text("admin.standard-mode-fallback"));
                 }
                 break;
             case CurrencyMode.VANILLA:
-                addItemAndLore(plugin.getCurrency(internalName), 1, "Select Currency", slotMapping.get(SlotOption.EDIT_CURRENCY), "Current: §a" + plugin.getCurrencyName(internalName), "Drag or shift-click item here to change");
-                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-                addItem(createCustomItem(Material.GRASS_BLOCK, "Toggle Currency Mode: " + currencyMode.name()), slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                addItemAndLore(plugin.getCurrency(internalName), 1, text("admin.select-currency"), slotMapping.get(SlotOption.EDIT_CURRENCY), text("admin.current", "value", plugin.getCurrencyName(internalName)), text("admin.drag-change"));
+                addItem(createCustomItem(plugin.getCurrency(internalName), text("admin.select-vanilla-currency")), slotMapping.get(SlotOption.EDIT_CURRENCY));
+                addItem(createCustomItem(Material.GRASS_BLOCK, text("admin.toggle-currency-mode", "mode", currencyMode.name())), slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
                 break;
             // CUSTOM commented out for this release (cycle is VANILLA <-> VAULT only)
             // case CurrencyMode.CUSTOM:
@@ -767,8 +790,8 @@ public class AdminMenu extends Menu {
             //     addItem(createCustomItem(Material.ENDER_CHEST,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
             //     break;
             default:
-                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-                addItem(createCustomItem(Material.GRASS_BLOCK, "Toggle Currency Mode: " + currencyMode.name()), slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                addItem(createCustomItem(plugin.getCurrency(internalName), text("admin.select-vanilla-currency")), slotMapping.get(SlotOption.EDIT_CURRENCY));
+                addItem(createCustomItem(Material.GRASS_BLOCK, text("admin.toggle-currency-mode", "mode", currencyMode.name())), slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
                 break;
         }
             // Chip Sizes
@@ -776,7 +799,13 @@ public class AdminMenu extends Menu {
                 int chipValue = plugin.getConfig().contains("dealers." + internalName + ".chip-sizes.size" + i)
                     ? plugin.getConfig().getInt("dealers." + internalName + ".chip-sizes.size" + i)
                     : 1; // Default to 1 if missing
-                addItemAndLore(plugin.getCurrency(internalName), chipValue, "Edit Chip Size #" + i,  slotMapping.get(SlotOption.valueOf("CHIP_SIZE" + i)), "Current: §a" + chipValue);
+                addItemAndLore(
+                    plugin.getCurrency(internalName),
+                    chipValue,
+                    text("admin.edit-chip-size", "index", i),
+                    slotMapping.get(SlotOption.valueOf("CHIP_SIZE" + i)),
+                    text("admin.current", "value", chipValue)
+                );
     } 
     }
 
@@ -1773,6 +1802,19 @@ public class AdminMenu extends Menu {
         return "Age: §a" + (ageable.isAdult() ? "Adult" : "Baby");
     }
     return "";
+    }
+
+    private String localizedGameName(String gameName) {
+        return switch (gameName) {
+            case "Blackjack" -> text("game-options.blackjack");
+            case "Roulette" -> text("game-options.roulette");
+            case "Mines" -> text("game-options.mines");
+            case "Baccarat" -> text("game-options.baccarat");
+            case "Coin Flip" -> text("game-options.coin-flip");
+            case "Dragon Descent" -> text("game-options.dragon-descent");
+            case "Test Game" -> text("game-options.test-game");
+            default -> gameName;
+        };
     }
 
     private String text(String key, Object... placeholders) {
