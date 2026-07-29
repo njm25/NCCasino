@@ -233,7 +233,7 @@ public abstract class Menu extends DealerInventory {
         addItemAndLore(
             Material.SPRUCE_DOOR, 
             1, 
-            "Exit", 
+            plugin.getLocalization().text(player, "common.exit"),
             slotMapping.get(SlotOption.EXIT)
         );
         addItemAndLore(
