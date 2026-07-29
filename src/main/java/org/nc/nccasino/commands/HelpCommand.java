@@ -1,6 +1,7 @@
 package org.nc.nccasino.commands;
 
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.nc.nccasino.Nccasino;
 
@@ -13,6 +14,10 @@ public class HelpCommand implements CasinoCommand {
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(plugin.getLocalization().text(sender, "commands.player-only"));
+            return true;
+        }
         sender.sendMessage(plugin.getLocalization().text(sender, "commands.help-title"));
         sender.sendMessage(plugin.getLocalization().text(sender, "commands.help-create"));
         sender.sendMessage(plugin.getLocalization().text(sender, "commands.help-list"));

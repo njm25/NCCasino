@@ -38,16 +38,13 @@ public class DeleteCommand implements CasinoCommand {
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage(plugin.getLocalization().text(sender, "commands.player-only"));
-            return true;
-        }
         if (args.length < 2) {
             sender.sendMessage(plugin.getLocalization().text(sender, "commands.usage-delete"));
             return true;
         }
 
         String internalName = args[1];    
+        Player player = (Player) sender;
 
         List<String> occupations = AdminMenu.playerOccupations(player.getUniqueId());
         List<Mob> mobs = AdminMenu.getOccupiedDealers(player.getUniqueId())

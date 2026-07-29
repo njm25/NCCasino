@@ -82,17 +82,10 @@ public class Preferences {
         plugin.savePreferences();
     }
 
-    /**
-     * Loads persisted values without triggering a save for every field.
-     */
-    public void load(
-        SoundSetting sound,
-        MessageSetting messages,
+    public void loadLanguage(
         LanguageMode mode,
         String language
     ) {
-        soundSetting = sound != null ? sound : SoundSetting.ON;
-        messageSetting = messages != null ? messages : MessageSetting.STANDARD;
         String normalized = LocaleIds.normalize(language);
         if (mode == LanguageMode.EXPLICIT
             && normalized != null

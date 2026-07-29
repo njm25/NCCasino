@@ -151,7 +151,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
 
      public Preferences getPreferences(UUID playerId) {
-        return playerPreferences.computeIfAbsent(playerId, Preferences::new);
+        return playerPreferences.computeIfAbsent(playerId, id -> {
+            Preferences newPrefs = new Preferences(id);
+            savePreferences();
+            return newPrefs;
+        });
     }
 
     private void loadPreferences() {
@@ -186,24 +190,18 @@ public final class Nccasino extends JavaPlugin implements Listener {
             }
     
             Preferences preferences = new Preferences(playerId);
-            Preferences.SoundSetting sound = parseEnum(
-                Preferences.SoundSetting.class,
-                preferencesConfig.getString(key + ".sound"),
-                Preferences.SoundSetting.ON
-            );
-            Preferences.MessageSetting messages = parseEnum(
-                Preferences.MessageSetting.class,
-                preferencesConfig.getString(key + ".messages"),
-                Preferences.MessageSetting.STANDARD
-            );
+            preferences.setSoundSetting(Preferences.SoundSetting.valueOf(
+                preferencesConfig.getString(key + ".sound", "ON")
+            ));
+            preferences.setMessageSetting(Preferences.MessageSetting.valueOf(
+                preferencesConfig.getString(key + ".messages", "STANDARD")
+            ));
             LanguageMode languageMode = parseEnum(
                 LanguageMode.class,
                 preferencesConfig.getString(key + ".language-mode"),
                 LanguageMode.SERVER_DEFAULT
             );
-            preferences.load(
-                sound,
-                messages,
+            preferences.loadLanguage(
                 languageMode,
                 preferencesConfig.getString(key + ".language")
             );
