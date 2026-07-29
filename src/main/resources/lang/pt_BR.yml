@@ -127,6 +127,27 @@ baccarat:
   rebet-disabled: "&cReaposta desativada."
   rebet-insufficient: "&cSaldo insuficiente para reapostar. Reaposta desativada."
 
+dragon-descent:
+  title: "Descida do Dragão"
+  dragon-name: "Drungus, o Dragão"
+  begin: "Iniciar sua descida?"
+  cash-out: "&e&oRetirar"
+  cashout-value: "&7&oValor do resgate: &a{amount}"
+  click-move: "Clique aqui para mover"
+  safe: "&aSeguro!"
+  unsafe: "&cPerigoso!"
+  start: "&aInício"
+  sweep: "&cO dragão está atacando!"
+  got-you: "&4O dragão pegou você!"
+  invalid-action: "&cAção inválida."
+  invalid-action-capitalized: "&cAção inválida."
+  no-bet: "&cNenhuma aposta foi feita."
+  zone-unavailable: "&cVocê não pode selecionar esta zona!"
+  oof: "&cAi."
+  yay: "&aOba!"
+  rebet-reset: "&cMoeda insuficiente para reapostar. Aposta reiniciada."
+  rebet-placed: "&dReaposta de {amount} realizada."
+
 commands:
   player-only: "&cEste comando só pode ser usado dentro do jogo."
   no-permission: "&cVocê não tem permissão para usar este comando."

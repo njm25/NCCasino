@@ -127,6 +127,27 @@ baccarat:
   rebet-disabled: "&cRebet Disabled."
   rebet-insufficient: "&cNot enough to place rebet. Rebet disabled."
 
+dragon-descent:
+  title: "Dragon Descent"
+  dragon-name: "Drungus The Dragon"
+  begin: "Begin Your Descent?"
+  cash-out: "&e&oCash Out"
+  cashout-value: "&7&oCashout Value: &a{amount}"
+  click-move: "Click Here to Move"
+  safe: "&aSafe!"
+  unsafe: "&cUnsafe!"
+  start: "&aStart"
+  sweep: "&cThe Dragon sweeps through!"
+  got-you: "&4The Dragon got you!"
+  invalid-action: "&cInvalid action."
+  invalid-action-capitalized: "&cInvalid Action."
+  no-bet: "&cNo bet placed."
+  zone-unavailable: "&cYou cannot select this zone!"
+  oof: "&cOof."
+  yay: "&aYayyy!"
+  rebet-reset: "&cNot enough currency for rebet. Wager reset."
+  rebet-placed: "&dRebet of {amount} placed."
+
 commands:
   player-only: "&cThis command can only be used by players."
   no-permission: "&cYou do not have permission to use this command."
