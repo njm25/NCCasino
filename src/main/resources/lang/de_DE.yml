@@ -161,6 +161,23 @@ test-game:
   accept-bet: "Einsatz annehmen: {amount}"
   reset: "Spiel zurücksetzen"
 
+game-options:
+  select-title: "Spieltyp auswählen"
+  edit-title: "Spieltyp bearbeiten"
+  return-admin: "Zurück zum Admin-Menü von {dealer}"
+  exit: "Verlassen"
+  blackjack: "Blackjack"
+  roulette: "Roulette"
+  mines: "Minen"
+  baccarat: "Baccara"
+  coin-flip: "Münzwurf"
+  dragon-descent: "Drachenabstieg"
+  test-game: "Testspiel"
+  created: "&aGeber für &e{game}&a erfolgreich erstellt!"
+  created-at: "&aGeber für &e{game}&a erfolgreich erstellt bei x: &e{x}&a y: &e{y}&a z: &e{z}&a."
+  created-minimal: "&aGeber erfolgreich erstellt!"
+  reset-confirmation: "Konfiguration auf Standard zurücksetzen?"
+
 commands:
   player-only: "&cDieser Befehl kann nur im Spiel verwendet werden."
   no-permission: "&cDu darfst diesen Befehl nicht verwenden."

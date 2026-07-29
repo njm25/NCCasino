@@ -161,6 +161,23 @@ test-game:
   accept-bet: "Accept Bet: {amount}"
   reset: "Reset Game"
 
+game-options:
+  select-title: "Select Game Type"
+  edit-title: "Edit Game Type"
+  return-admin: "Return to {dealer}'s Admin Menu"
+  exit: "Exit"
+  blackjack: "Blackjack"
+  roulette: "Roulette"
+  mines: "Mines"
+  baccarat: "Baccarat"
+  coin-flip: "Coin Flip"
+  dragon-descent: "Dragon Descent"
+  test-game: "Test Game"
+  created: "&aDealer with game type &e{game}&a created successfully!"
+  created-at: "&aDealer with game type &e{game}&a created successfully at x: &e{x}&a y: &e{y}&a z: &e{z}&a."
+  created-minimal: "&aDealer created successfully!"
+  reset-confirmation: "Reset config to default?"
+
 commands:
   player-only: "&cThis command can only be used by players."
   no-permission: "&cYou do not have permission to use this command."

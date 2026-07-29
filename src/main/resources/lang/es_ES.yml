@@ -161,6 +161,23 @@ test-game:
   accept-bet: "Aceptar apuesta: {amount}"
   reset: "Reiniciar juego"
 
+game-options:
+  select-title: "Seleccionar tipo de juego"
+  edit-title: "Editar tipo de juego"
+  return-admin: "Volver al menú de administración de {dealer}"
+  exit: "Salir"
+  blackjack: "Blackjack"
+  roulette: "Ruleta"
+  mines: "Minas"
+  baccarat: "Bacará"
+  coin-flip: "Cara o cruz"
+  dragon-descent: "Descenso del dragón"
+  test-game: "Juego de prueba"
+  created: "&a¡Crupier de &e{game}&a creado correctamente!"
+  created-at: "&aCrupier de &e{game}&a creado correctamente en x: &e{x}&a y: &e{y}&a z: &e{z}&a."
+  created-minimal: "&a¡Crupier creado correctamente!"
+  reset-confirmation: "¿Restablecer la configuración predeterminada?"
+
 commands:
   player-only: "&cEste comando solo puede usarse dentro del juego."
   no-permission: "&cNo tienes permiso para usar este comando."

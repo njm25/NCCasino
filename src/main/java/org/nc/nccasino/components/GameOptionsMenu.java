@@ -1,6 +1,5 @@
 package org.nc.nccasino.components;
 
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
@@ -27,7 +26,15 @@ public class GameOptionsMenu extends Menu {
     private final Mob dealer;
 
     public GameOptionsMenu(Player player, Nccasino plugin, String internalName) {
-        super(player, plugin, UUID.randomUUID(), "Select Game Type", 9, "", null);
+        super(
+            player,
+            plugin,
+            UUID.randomUUID(),
+            plugin.getLocalization().text(player, "game-options.select-title"),
+            9,
+            "",
+            null
+        );
         this.plugin = plugin;
         this.internalName = internalName;
         this.editing = false;
@@ -47,9 +54,14 @@ public class GameOptionsMenu extends Menu {
             player, 
             plugin, 
             dealerId, 
-            "Edit Game Type", 
+            plugin.getLocalization().text(player, "game-options.edit-title"),
             9, 
-            "Return to " + Dealer.getInternalName(dealer) + "'s Admin Menu", 
+            plugin.getLocalization().text(
+                player,
+                "game-options.return-admin",
+                "dealer",
+                Dealer.getInternalName(dealer)
+            ),
             ret
         );
         this.plugin = plugin;
@@ -75,24 +87,24 @@ public class GameOptionsMenu extends Menu {
     protected void initializeMenu() {
 
         if (editing){
-            addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to "+internalName +"'s Admin Menu",  slotMapping.get(SlotOption.RETURN));
-            addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
-            addItemAndLore(Material.CREEPER_HEAD, 1, "Blackjack",  slotMapping.get(SlotOption.BLACKJACK));
-            addItemAndLore(Material.ENDER_PEARL, 1, "Roulette",  slotMapping.get(SlotOption.ROULETTE));
-            addItemAndLore(Material.SKELETON_SKULL, 1, "Baccarat",  slotMapping.get(SlotOption.BACCARAT));
-            addItemAndLore(Material.SUNFLOWER, 1, "Coin Flip",  slotMapping.get(SlotOption.COIN_FLIP));
-            addItemAndLore(Material.TNT, 1, "Mines",  slotMapping.get(SlotOption.MINES));
-            addItemAndLore(Material.DRAGON_HEAD, 1, "Dragon Descent",  slotMapping.get(SlotOption.DRAGON_DESCENT));
+            addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, text("game-options.return-admin", "dealer", internalName), slotMapping.get(SlotOption.RETURN));
+            addItemAndLore(Material.SPRUCE_DOOR, 1, text("game-options.exit"), slotMapping.get(SlotOption.EXIT));
+            addItemAndLore(Material.CREEPER_HEAD, 1, text("game-options.blackjack"), slotMapping.get(SlotOption.BLACKJACK));
+            addItemAndLore(Material.ENDER_PEARL, 1, text("game-options.roulette"), slotMapping.get(SlotOption.ROULETTE));
+            addItemAndLore(Material.SKELETON_SKULL, 1, text("game-options.baccarat"), slotMapping.get(SlotOption.BACCARAT));
+            addItemAndLore(Material.SUNFLOWER, 1, text("game-options.coin-flip"), slotMapping.get(SlotOption.COIN_FLIP));
+            addItemAndLore(Material.TNT, 1, text("game-options.mines"), slotMapping.get(SlotOption.MINES));
+            addItemAndLore(Material.DRAGON_HEAD, 1, text("game-options.dragon-descent"), slotMapping.get(SlotOption.DRAGON_DESCENT));
 
         }
         else{
-            addItemAndLore(Material.CREEPER_HEAD, 1, "Blackjack",  slotMapping.get(SlotOption.BLACKJACK));
-            addItemAndLore(Material.ENDER_PEARL, 1, "Roulette",  slotMapping.get(SlotOption.ROULETTE));
-            addItemAndLore(Material.SUNFLOWER, 1, "Coin Flip",  slotMapping.get(SlotOption.COIN_FLIP));
-            addItemAndLore(Material.SKELETON_SKULL, 1, "Baccarat",  slotMapping.get(SlotOption.BACCARAT));
-            addItemAndLore(Material.TNT, 1, "Mines",  slotMapping.get(SlotOption.MINES));
-            addItemAndLore(Material.DRAGON_HEAD, 1, "Dragon Descent",  slotMapping.get(SlotOption.DRAGON_DESCENT));
-            addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
+            addItemAndLore(Material.CREEPER_HEAD, 1, text("game-options.blackjack"), slotMapping.get(SlotOption.BLACKJACK));
+            addItemAndLore(Material.ENDER_PEARL, 1, text("game-options.roulette"), slotMapping.get(SlotOption.ROULETTE));
+            addItemAndLore(Material.SUNFLOWER, 1, text("game-options.coin-flip"), slotMapping.get(SlotOption.COIN_FLIP));
+            addItemAndLore(Material.SKELETON_SKULL, 1, text("game-options.baccarat"), slotMapping.get(SlotOption.BACCARAT));
+            addItemAndLore(Material.TNT, 1, text("game-options.mines"), slotMapping.get(SlotOption.MINES));
+            addItemAndLore(Material.DRAGON_HEAD, 1, text("game-options.dragon-descent"), slotMapping.get(SlotOption.DRAGON_DESCENT));
+            addItemAndLore(Material.SPRUCE_DOOR, 1, text("game-options.exit"), slotMapping.get(SlotOption.EXIT));
         }
     }
 
@@ -167,13 +179,23 @@ public class GameOptionsMenu extends Menu {
         }
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage("§aDealer with game type " + ChatColor.YELLOW + gameType + ChatColor.GREEN + " created successfully!");
+                player.sendMessage(text("game-options.created", "game", localizedGameType(gameType)));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aDealer with game type " + ChatColor.YELLOW + gameType + ChatColor.GREEN + " created successfully at x: " +ChatColor.YELLOW+centeredLocation.getX()+"§a y: "+ChatColor.YELLOW+centeredLocation.getY()+ "§a z: "+ChatColor.YELLOW+centeredLocation.getZ()+ "§a.");
+                player.sendMessage(text(
+                    "game-options.created-at",
+                    "game",
+                    localizedGameType(gameType),
+                    "x",
+                    centeredLocation.getX(),
+                    "y",
+                    centeredLocation.getY(),
+                    "z",
+                    centeredLocation.getZ()
+                ));
                 break;}
             case NONE:{
-                player.sendMessage("§aDealer created successfully!");
+                player.sendMessage(text("game-options.created-minimal"));
                 break;
             }
         }
@@ -195,7 +217,7 @@ public class GameOptionsMenu extends Menu {
         ConfirmMenu confirmInventory = new ConfirmMenu(
             player,
             dealerId,
-            "Reset config to default?",
+            text("game-options.reset-confirmation"),
             (uuid) -> {
                 // Confirm action
 
@@ -260,7 +282,23 @@ public class GameOptionsMenu extends Menu {
             plugin
             );
         player.openInventory(confirmInventory.getInventory());
-    }    
+    }
 
+    private String localizedGameType(String gameType) {
+        return switch (gameType) {
+            case "Blackjack" -> text("game-options.blackjack");
+            case "Roulette" -> text("game-options.roulette");
+            case "Mines" -> text("game-options.mines");
+            case "Baccarat" -> text("game-options.baccarat");
+            case "Coin Flip" -> text("game-options.coin-flip");
+            case "Dragon Descent" -> text("game-options.dragon-descent");
+            case "Test Game" -> text("game-options.test-game");
+            default -> gameType;
+        };
+    }
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
+    }
 
 }
