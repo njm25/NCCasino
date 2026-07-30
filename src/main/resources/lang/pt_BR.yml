@@ -274,6 +274,7 @@ mines:
   inventory-full: "&cSem espaço para {amount}; descartando..."
 
 roulette:
+  ball: "Bola"
   wheel-title: "Roleta"
   welcome: "&aBem-vindo à Roleta."
   opened-table: "&aMesa de apostas aberta."

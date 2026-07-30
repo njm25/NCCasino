@@ -1136,7 +1136,7 @@ private void updateBallPosition(int ballSpinDirection) {
 
     ItemStack ballItem = new ItemStack(Material.ENDER_PEARL);
     ItemMeta meta = ballItem.getItemMeta();
-    meta.setDisplayName("Ball");
+        meta.setDisplayName(text("roulette.ball"));
     ballItem.setItemMeta(meta);
     inventory.setItem(nextSlot, ballItem);
 
@@ -1614,7 +1614,7 @@ private void switchStayToQuadrant(int quad){
 
                         ItemStack ballItem = new ItemStack(Material.ENDER_PEARL);
                         ItemMeta meta = ballItem.getItemMeta();
-                        meta.setDisplayName("Ball");
+        meta.setDisplayName(text("roulette.ball"));
                         ballItem.setItemMeta(meta);
                         inventory.setItem(extraSlot, ballItem);
                         regTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
@@ -1682,7 +1682,7 @@ private void switchStayToQuadrant(int quad){
                             else{
                             ItemStack ballItem = new ItemStack(Material.ENDER_PEARL);
                             ItemMeta meta = ballItem.getItemMeta();
-                            meta.setDisplayName("Ball");
+        meta.setDisplayName(text("roulette.ball"));
                             ballItem.setItemMeta(meta);
                             inventory.setItem(extraSlot, ballItem);
                             

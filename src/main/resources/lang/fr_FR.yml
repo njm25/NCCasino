@@ -274,6 +274,7 @@ mines:
   inventory-full: "&cPas de place pour {amount} ; objet déposé..."
 
 roulette:
+  ball: "Bille"
   wheel-title: "Roue de roulette"
   welcome: "&aBienvenue à la roulette."
   opened-table: "&aTable de mise ouverte."
