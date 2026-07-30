@@ -2393,9 +2393,6 @@ public void delete() {
             removePlayerData(playerId);
         }
 
-        if (playerSeats.isEmpty()) {
-            sittable = false;
-        }
     }
 
     /**

@@ -264,11 +264,16 @@ public class CoinFlipServer extends Server {
      * round ends.
      */
     void forfeitPlayer(UUID playerId) {
-        forfeited.add(playerId);
-
         if (gameActive) {
+            forfeited.add(playerId);
             return;
         }
+
+        // Pregame forfeiture is complete as soon as the seat/bet is
+        // removed below. Do not retain a round-level marker: the same UUID
+        // may reconnect and legitimately join a later round before any
+        // intervening flip has had a chance to clear the set.
+        forfeited.remove(playerId);
 
         if (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(playerId)) {
             if (chairTwoOccupant != null) {

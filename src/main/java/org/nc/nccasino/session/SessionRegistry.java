@@ -11,43 +11,49 @@ import java.util.logging.Level;
 
 /**
  * Central, UUID-keyed, idempotent entry point for tearing down a player's
- * active game session. Games register themselves as the current owner of a
- * player's session when that player enters a wager-bearing state, and
+ * active game sessions. Games register themselves when that player enters
+ * a wager-bearing state, and
  * unregister when it resolves normally.
  *
  * <p>{@link #terminatePlayerSession} is the single path every disconnect,
  * kick, plugin-shutdown, or voluntary-exit route should funnel through, so
  * a given session is only ever resolved once — regardless of how many
  * events fire around it (Kick, Quit, InventoryClose) or in what order.
- * Idempotency comes from {@link Map#remove(Object)} being atomic: whichever
- * caller removes the registration first is the only one that does any
- * work, every later call for the same UUID finds nothing and no-ops.
+ * Idempotency comes from atomically removing the UUID's complete session
+ * set before invoking any of it: whichever caller removes the set first is
+ * the only one that does any work, and every later call no-ops.
  */
 public final class SessionRegistry {
 
-    private static final Map<UUID, TerminableSession> activeSessions = new ConcurrentHashMap<>();
+    private static final Map<UUID, Set<TerminableSession>> activeSessions = new ConcurrentHashMap<>();
     private static final Set<UUID> pendingKick = ConcurrentHashMap.newKeySet();
 
     private SessionRegistry() {
     }
 
     /**
-     * Registers {@code session} as the current owner of {@code playerId}'s
-     * active game session. Overwrites any previous registration for the
-     * same UUID — a new session always supersedes a stale one.
+     * Registers one independently resolvable session for {@code playerId}.
+     * Adding the same session instance repeatedly is harmless, while other
+     * unresolved games for the player remain registered.
      */
     public static void register(UUID playerId, TerminableSession session) {
-        activeSessions.put(playerId, session);
+        activeSessions.computeIfAbsent(playerId, ignored -> ConcurrentHashMap.newKeySet()).add(session);
     }
 
     /**
-     * Clears the registration for {@code playerId}, but only if it still
-     * points at {@code session}. Prevents a late unregister call from a
-     * superseded session clobbering a newer one already registered for the
-     * same UUID.
+     * Clears only the matching session without disturbing any other
+     * unresolved game registered for the same player.
      */
     public static void unregister(UUID playerId, TerminableSession session) {
-        activeSessions.remove(playerId, session);
+        activeSessions.computeIfPresent(playerId, (ignored, sessions) -> {
+            sessions.remove(session);
+            return sessions.isEmpty() ? null : sessions;
+        });
+    }
+
+    public static boolean isRegistered(UUID playerId, TerminableSession session) {
+        Set<TerminableSession> sessions = activeSessions.get(playerId);
+        return sessions != null && sessions.contains(session);
     }
 
     public static boolean hasActiveSession(UUID playerId) {
@@ -81,15 +87,17 @@ public final class SessionRegistry {
      * work.
      */
     public static void terminatePlayerSession(UUID playerId, ExitReason reason) {
-        TerminableSession session = activeSessions.remove(playerId);
-        if (session == null) {
+        Set<TerminableSession> sessions = activeSessions.remove(playerId);
+        if (sessions == null) {
             return;
         }
-        try {
-            session.onSessionTerminated(playerId, reason);
-        } catch (RuntimeException e) {
-            Bukkit.getLogger().log(Level.SEVERE,
-                "[NCCasino] Failed to terminate session for " + playerId + " (" + reason + ")", e);
+        for (TerminableSession session : sessions) {
+            try {
+                session.onSessionTerminated(playerId, reason);
+            } catch (RuntimeException e) {
+                Bukkit.getLogger().log(Level.SEVERE,
+                    "[NCCasino] Failed to terminate session for " + playerId + " (" + reason + ")", e);
+            }
         }
     }
 
