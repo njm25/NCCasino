@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -105,8 +106,17 @@ public class CoinFlipClient extends Client implements TerminableSession {
         // this fires first, since the kick is marked as soon as
         // PlayerKickEvent itself fires.
         UUID playerId = player.getUniqueId();
-        ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
-        SessionRegistry.terminatePlayerSession(playerId, reason);
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!SessionRegistry.isRegistered(playerId, this)) {
+                return;
+            }
+            if (!player.isOnline()) {
+                ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
+                SessionRegistry.terminatePlayerSession(playerId, reason);
+                return;
+            }
+            SessionRegistry.terminateSession(playerId, this, ExitReason.DISCONNECTED);
+        });
     }
 
     /**
@@ -150,6 +160,9 @@ public class CoinFlipClient extends Client implements TerminableSession {
             // round and resolves normally by UUID at payout time
             // (delivered as a pending payout if still offline then).
             // resolveRound's own post-payout cleanup frees the seat.
+            if (gameActive) {
+                ((CoinFlipServer) server).registerRidingSession(terminatedPlayerId);
+            }
             server.removeClient(terminatedPlayerId);
         }
     }

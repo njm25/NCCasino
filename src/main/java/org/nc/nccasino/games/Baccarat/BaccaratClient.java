@@ -809,8 +809,17 @@ public class BaccaratClient extends Client implements TerminableSession {
         // this fires first, since the kick is marked as soon as
         // PlayerKickEvent itself fires.
         UUID playerId = player.getUniqueId();
-        ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
-        SessionRegistry.terminatePlayerSession(playerId, reason);
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!SessionRegistry.isRegistered(playerId, this)) {
+                return;
+            }
+            if (!player.isOnline()) {
+                ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
+                SessionRegistry.terminatePlayerSession(playerId, reason);
+                return;
+            }
+            SessionRegistry.terminateSession(playerId, this, ExitReason.DISCONNECTED);
+        });
     }
 
     /**
@@ -849,6 +858,7 @@ public class BaccaratClient extends Client implements TerminableSession {
             // Mid-hand: the bet already rode into the hand and resolves
             // normally by UUID at payout time (delivered as a pending
             // payout if still offline then) — just free the seat.
+            baccaratServer.registerRidingSession(terminatedPlayerId);
             baccaratServer.releaseSeatForDisconnect(terminatedPlayerId);
         }
 

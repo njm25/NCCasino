@@ -2354,8 +2354,17 @@ public void delete() {
             // becomes a safe no-op, and consumeQuitReason still correctly
             // reports KICKED here even if this fires first, since the kick
             // is marked as soon as PlayerKickEvent itself fires.
-            ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
-            SessionRegistry.terminatePlayerSession(playerId, reason);
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (!SessionRegistry.isRegistered(playerId, this)) {
+                    return;
+                }
+                if (!player.isOnline()) {
+                    ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
+                    SessionRegistry.terminatePlayerSession(playerId, reason);
+                    return;
+                }
+                SessionRegistry.terminateSession(playerId, this, ExitReason.DISCONNECTED);
+            });
         }
 
     /**

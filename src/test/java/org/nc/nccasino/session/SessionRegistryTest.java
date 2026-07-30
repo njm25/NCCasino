@@ -68,6 +68,26 @@ class SessionRegistryTest {
     }
 
     @Test
+    void targetedTerminationLeavesOtherConcurrentSessionRegistered() {
+        UUID playerId = UUID.randomUUID();
+        AtomicInteger firstCalls = new AtomicInteger();
+        AtomicInteger secondCalls = new AtomicInteger();
+        TerminableSession first = (id, reason) -> firstCalls.incrementAndGet();
+        TerminableSession second = (id, reason) -> secondCalls.incrementAndGet();
+
+        SessionRegistry.register(playerId, first);
+        SessionRegistry.register(playerId, second);
+        SessionRegistry.terminateSession(playerId, first, ExitReason.DISCONNECTED);
+
+        assertEquals(1, firstCalls.get());
+        assertEquals(0, secondCalls.get());
+        assertTrue(SessionRegistry.hasActiveSession(playerId));
+
+        SessionRegistry.terminatePlayerSession(playerId, ExitReason.PLUGIN_DISABLE);
+        assertEquals(1, secondCalls.get());
+    }
+
+    @Test
     void matchingUnregisterClearsSessionWithoutResolvingIt() {
         UUID playerId = UUID.randomUUID();
         AtomicInteger calls = new AtomicInteger();

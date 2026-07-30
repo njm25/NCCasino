@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 
 /**
@@ -56,6 +57,26 @@ public final class SessionRegistry {
         return sessions != null && sessions.contains(session);
     }
 
+    /**
+     * Claims and terminates only {@code session}, leaving every other game
+     * for the UUID registered. Used by voluntary inventory-close paths;
+     * true player exits must use {@link #terminatePlayerSession}.
+     */
+    public static void terminateSession(
+        UUID playerId,
+        TerminableSession session,
+        ExitReason reason
+    ) {
+        AtomicBoolean claimed = new AtomicBoolean(false);
+        activeSessions.computeIfPresent(playerId, (ignored, sessions) -> {
+            claimed.set(sessions.remove(session));
+            return sessions.isEmpty() ? null : sessions;
+        });
+        if (claimed.get()) {
+            invokeTermination(playerId, session, reason);
+        }
+    }
+
     public static boolean hasActiveSession(UUID playerId) {
         return activeSessions.containsKey(playerId);
     }
@@ -92,12 +113,20 @@ public final class SessionRegistry {
             return;
         }
         for (TerminableSession session : sessions) {
-            try {
-                session.onSessionTerminated(playerId, reason);
-            } catch (RuntimeException e) {
-                Bukkit.getLogger().log(Level.SEVERE,
-                    "[NCCasino] Failed to terminate session for " + playerId + " (" + reason + ")", e);
-            }
+            invokeTermination(playerId, session, reason);
+        }
+    }
+
+    private static void invokeTermination(
+        UUID playerId,
+        TerminableSession session,
+        ExitReason reason
+    ) {
+        try {
+            session.onSessionTerminated(playerId, reason);
+        } catch (RuntimeException e) {
+            Bukkit.getLogger().log(Level.SEVERE,
+                "[NCCasino] Failed to terminate session for " + playerId + " (" + reason + ")", e);
         }
     }
 

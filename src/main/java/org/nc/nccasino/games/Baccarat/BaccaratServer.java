@@ -26,12 +26,16 @@ import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Deck;
 import org.nc.nccasino.payout.PayoutMessages;
 import org.nc.nccasino.payout.PendingPayout;
+import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.SessionRegistry;
+import org.nc.nccasino.session.TerminableSession;
 
 public class BaccaratServer extends Server {
     private final Map<BaccaratClient.BetOption, Double> totalBets = new HashMap<>();
     private final Map<UUID, Map<BaccaratClient.BetOption, Double>> playerBets = new HashMap<>();
     private final Map<Integer, UUID> seatMap = new HashMap<>(); // Maps seat slot to player UUID
     private final List<UUID> seatedPlayers = new ArrayList<>();
+    private final Map<UUID, TerminableSession> ridingSessions = new HashMap<>();
 
     private int countdownTaskId = -1;
     private int timeLeft;
@@ -297,6 +301,7 @@ public class BaccaratServer extends Server {
      * still in play.
      */
     void forfeitPlayer(UUID playerId) {
+        clearRidingSession(playerId);
         seatedPlayers.remove(playerId);
         seatMap.values().removeIf(id -> id.equals(playerId));
 
@@ -325,6 +330,45 @@ public class BaccaratServer extends Server {
         seatedPlayers.remove(playerId);
         seatMap.values().removeIf(id -> id.equals(playerId));
         sendSeatUpdates();
+    }
+
+    void registerRidingSession(UUID playerId) {
+        TerminableSession session = ridingSessions.computeIfAbsent(
+            playerId,
+            RidingSession::new
+        );
+        SessionRegistry.register(playerId, session);
+    }
+
+    private void clearRidingSession(UUID playerId) {
+        TerminableSession session = ridingSessions.remove(playerId);
+        if (session != null) {
+            SessionRegistry.unregister(playerId, session);
+        }
+    }
+
+    private final class RidingSession implements TerminableSession {
+        private final UUID playerId;
+
+        private RidingSession(UUID playerId) {
+            this.playerId = playerId;
+        }
+
+        @Override
+        public void onSessionTerminated(UUID terminatedPlayerId, ExitReason reason) {
+            if (!playerBets.containsKey(playerId)) {
+                ridingSessions.remove(playerId, this);
+                return;
+            }
+            if (reason == ExitReason.KICKED) {
+                forfeitPlayer(playerId);
+            } else if (reason == ExitReason.PLUGIN_DISABLE) {
+                refundForShutdown(playerId);
+            } else {
+                // The hand is still live after an ordinary disconnect.
+                SessionRegistry.register(playerId, this);
+            }
+        }
     }
 
     private void sendSeatUpdates() {
@@ -797,6 +841,8 @@ public class BaccaratServer extends Server {
 	    		}
     		}
 
+            clearRidingSession(playerId);
+
     	}
 
     	resetGame();
@@ -839,6 +885,7 @@ public class BaccaratServer extends Server {
      * pending-payout store instead.
      */
     void refundForShutdown(UUID playerId) {
+        clearRidingSession(playerId);
     	Map<BaccaratClient.BetOption, Double> bets = playerBets.remove(playerId);
     	if (bets == null || bets.isEmpty()) {
     		return;

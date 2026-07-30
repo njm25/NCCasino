@@ -1842,6 +1842,11 @@ private void fillDecorativeSlots(int[] slots, Material material) {
             refundForShutdown(terminatedPlayerId);
             break;
         case RIDE_TO_RESULT:
+            // PlayerQuitEvent atomically claimed the old registration, but
+            // this wager is intentionally still unresolved. Keep it
+            // reachable so a later plugin shutdown can refund it.
+            SessionRegistry.register(terminatedPlayerId, this);
+            break;
         case NO_ACTION:
             break;
         default:

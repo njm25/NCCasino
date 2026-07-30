@@ -1,6 +1,8 @@
 package org.nc.nccasino.games.CoinFlip;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -12,6 +14,9 @@ import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
 import org.nc.nccasino.payout.PayoutMessages;
 import org.nc.nccasino.payout.PendingPayout;
+import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.SessionRegistry;
+import org.nc.nccasino.session.TerminableSession;
 
 public class CoinFlipServer extends Server {
 
@@ -25,6 +30,7 @@ public class CoinFlipServer extends Server {
     protected Boolean gameActive;
     private Integer committedWinner;
     private final Set<UUID> forfeited = new HashSet<>();
+    private final Map<UUID, TerminableSession> ridingSessions = new HashMap<>();
 
     public CoinFlipServer(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, plugin, internalName);
@@ -137,6 +143,12 @@ public class CoinFlipServer extends Server {
         timeLeft = 0;
         countdownTaskId = -1;
         handlePayout(payoutOne, payoutTwo, payout, winner);
+        if (payoutOne != null) {
+            clearRidingSession(payoutOne.getUniqueId());
+        }
+        if (payoutTwo != null) {
+            clearRidingSession(payoutTwo.getUniqueId());
+        }
         forfeited.clear();
         if(chairOneOccupant !=null && !hasClient(chairOneOccupant.getUniqueId())){
             if(chairTwoOccupant != null){
@@ -251,6 +263,12 @@ public class CoinFlipServer extends Server {
                 queuePendingPayout(payoutTwo.getUniqueId(), stake, PayoutMessages.serverRestartRefundContext("Coin Flip"));
             }
         }
+        if (payoutOne != null) {
+            clearRidingSession(payoutOne.getUniqueId());
+        }
+        if (payoutTwo != null) {
+            clearRidingSession(payoutTwo.getUniqueId());
+        }
         forfeited.clear();
     }
 
@@ -264,6 +282,7 @@ public class CoinFlipServer extends Server {
      * round ends.
      */
     void forfeitPlayer(UUID playerId) {
+        clearRidingSession(playerId);
         if (gameActive) {
             forfeited.add(playerId);
             return;
@@ -291,6 +310,44 @@ public class CoinFlipServer extends Server {
         } else if (chairTwoOccupant != null && chairTwoOccupant.getUniqueId().equals(playerId)) {
             chairTwoOccupant = null;
             broadcastUpdate("PLAYER_LEAVE_TWO", null);
+        }
+    }
+
+    void registerRidingSession(UUID playerId) {
+        TerminableSession session = ridingSessions.computeIfAbsent(
+            playerId,
+            RidingSession::new
+        );
+        SessionRegistry.register(playerId, session);
+    }
+
+    private void clearRidingSession(UUID playerId) {
+        TerminableSession session = ridingSessions.remove(playerId);
+        if (session != null) {
+            SessionRegistry.unregister(playerId, session);
+        }
+    }
+
+    private final class RidingSession implements TerminableSession {
+        private final UUID playerId;
+
+        private RidingSession(UUID playerId) {
+            this.playerId = playerId;
+        }
+
+        @Override
+        public void onSessionTerminated(UUID terminatedPlayerId, ExitReason reason) {
+            if (!gameActive) {
+                ridingSessions.remove(playerId, this);
+                return;
+            }
+            if (reason == ExitReason.KICKED) {
+                forfeitPlayer(playerId);
+            } else if (reason == ExitReason.PLUGIN_DISABLE) {
+                refundForShutdown();
+            } else {
+                SessionRegistry.register(playerId, this);
+            }
         }
     }
 
