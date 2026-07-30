@@ -77,6 +77,28 @@ payout:
   retry-one: "&6You have 1 pending payout that could not be delivered yet. It will retry automatically."
   retry-many: "&6You have {count} pending payouts that could not be delivered yet. They will retry automatically."
 
+cards:
+  name: "{rank} of {suit}"
+  ranks:
+    two: "Two"
+    three: "Three"
+    four: "Four"
+    five: "Five"
+    six: "Six"
+    seven: "Seven"
+    eight: "Eight"
+    nine: "Nine"
+    ten: "Ten"
+    jack: "Jack"
+    queen: "Queen"
+    king: "King"
+    ace: "Ace"
+  suits:
+    hearts: "Hearts"
+    diamonds: "Diamonds"
+    clubs: "Clubs"
+    spades: "Spades"
+
 game:
   welcome: "&aWelcome to {game}"
 

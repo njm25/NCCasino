@@ -77,6 +77,28 @@ payout:
   retry-one: "&6Vous avez 1 paiement en attente qui n’a pas encore pu être remis. Une nouvelle tentative sera effectuée automatiquement."
   retry-many: "&6Vous avez {count} paiements en attente qui n’ont pas encore pu être remis. Une nouvelle tentative sera effectuée automatiquement."
 
+cards:
+  name: "{rank} de {suit}"
+  ranks:
+    two: "Deux"
+    three: "Trois"
+    four: "Quatre"
+    five: "Cinq"
+    six: "Six"
+    seven: "Sept"
+    eight: "Huit"
+    nine: "Neuf"
+    ten: "Dix"
+    jack: "Valet"
+    queen: "Dame"
+    king: "Roi"
+    ace: "As"
+  suits:
+    hearts: "cœur"
+    diamonds: "carreau"
+    clubs: "trèfle"
+    spades: "pique"
+
 game:
   welcome: "&aBienvenue dans {game}"
 

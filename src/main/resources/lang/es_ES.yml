@@ -77,6 +77,28 @@ payout:
   retry-one: "&6Tienes 1 pago pendiente que aún no pudo entregarse. Se reintentará automáticamente."
   retry-many: "&6Tienes {count} pagos pendientes que aún no pudieron entregarse. Se reintentarán automáticamente."
 
+cards:
+  name: "{rank} de {suit}"
+  ranks:
+    two: "Dos"
+    three: "Tres"
+    four: "Cuatro"
+    five: "Cinco"
+    six: "Seis"
+    seven: "Siete"
+    eight: "Ocho"
+    nine: "Nueve"
+    ten: "Diez"
+    jack: "Jota"
+    queen: "Reina"
+    king: "Rey"
+    ace: "As"
+  suits:
+    hearts: "corazones"
+    diamonds: "diamantes"
+    clubs: "tréboles"
+    spades: "picas"
+
 game:
   welcome: "&aBienvenido a {game}"
 

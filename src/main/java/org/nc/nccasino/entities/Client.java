@@ -438,7 +438,20 @@ public abstract class Client extends DealerInventory {
         ItemStack cardItem = new ItemStack(material, getCardValueStackSize(card));
         ItemMeta meta = cardItem.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(card.getRank() + " of " + card.getSuit());
+            meta.setDisplayName(plugin.getLocalization().text(
+                player,
+                "cards.name",
+                "rank",
+                plugin.getLocalization().text(
+                    player,
+                    "cards.ranks." + card.getRank().name().toLowerCase(Locale.ROOT)
+                ),
+                "suit",
+                plugin.getLocalization().text(
+                    player,
+                    "cards.suits." + card.getSuit().name().toLowerCase(Locale.ROOT)
+                )
+            ));
             cardItem.setItemMeta(meta);
         }
         inventory.setItem(slot, cardItem);

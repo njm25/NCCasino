@@ -77,6 +77,28 @@ payout:
   retry-one: "&6Du hast 1 ausstehende Auszahlung, die noch nicht zugestellt werden konnte. Sie wird automatisch erneut versucht."
   retry-many: "&6Du hast {count} ausstehende Auszahlungen, die noch nicht zugestellt werden konnten. Sie werden automatisch erneut versucht."
 
+cards:
+  name: "{rank} ({suit})"
+  ranks:
+    two: "Zwei"
+    three: "Drei"
+    four: "Vier"
+    five: "Fünf"
+    six: "Sechs"
+    seven: "Sieben"
+    eight: "Acht"
+    nine: "Neun"
+    ten: "Zehn"
+    jack: "Bube"
+    queen: "Dame"
+    king: "König"
+    ace: "Ass"
+  suits:
+    hearts: "Herz"
+    diamonds: "Karo"
+    clubs: "Kreuz"
+    spades: "Pik"
+
 game:
   welcome: "&aWillkommen bei {game}"
 
