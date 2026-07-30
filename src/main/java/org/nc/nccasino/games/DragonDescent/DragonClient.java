@@ -866,21 +866,33 @@ public class DragonClient extends Client implements TerminableSession {
 
     @Override
     protected void handleClientInventoryClose() {
-        // Route through the same idempotent path used for quit/kick rather
-        // than resolving directly here — whichever of this or the quit
-        // event fires first "wins" and the other becomes a safe no-op, and
-        // consumeQuitReason still correctly reports KICKED here even if
-        // this fires first, since the kick is marked as soon as
-        // PlayerKickEvent itself fires.
+        // Defer one tick so PlayerQuitEvent can claim a true disconnect or
+        // kick first. If the player remains online, this is a normal GUI
+        // close and its refund/cash-out is completed immediately.
         UUID playerId = player.getUniqueId();
-        ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
-        SessionRegistry.terminatePlayerSession(playerId, reason);
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!SessionRegistry.isRegistered(playerId, this)) {
+                return;
+            }
+            if (!player.isOnline()) {
+                ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
+                SessionRegistry.terminatePlayerSession(playerId, reason);
+                return;
+            }
+
+            SessionRegistry.unregister(playerId, this);
+            sessionResolved = true;
+            if (!bettingEnabled && !playerLost) {
+                cashOut();
+            } else if (bettingEnabled && !betStack.isEmpty()) {
+                undoAllBets();
+            }
+            server.removeClient(playerId);
+        });
     }
 
     /**
-     * Authoritative disconnect/kick resolution, reached via SessionRegistry
-     * regardless of whether this fires from PlayerQuitEvent or from this
-     * client's own InventoryCloseEvent.
+     * Authoritative disconnect/kick resolution, reached via SessionRegistry.
      */
     @Override
     public void onSessionTerminated(UUID terminatedPlayerId, ExitReason reason) {

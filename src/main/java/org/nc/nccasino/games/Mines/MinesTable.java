@@ -86,6 +86,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     // plugin/server shutdown, where that deferred task would otherwise be
     // cancelled by Bukkit before it ever runs.
     private boolean cashOutDepositPending = false;
+    private int cashOutTaskId = -1;
     // Adjusted fields for grid mapping
     private final int[] gridSlots = {
         2, 3, 4, 5, 6,
@@ -1199,7 +1200,8 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         }
 
         // Step 2: Start emerald expansion from the cash-out button (slot 49)
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        cashOutTaskId = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            cashOutTaskId = -1;
             startEmeraldExpansion(49);
             
             
@@ -1283,7 +1285,8 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             // Reset the game after a delay
             Bukkit.getScheduler().runTaskLater(plugin, this::resetGame, 20L); // Wait 5 seconds before resetting
     
-        }, 10L); // Wait 2 seconds before starting the emerald expansion
+        }, 10L).getTaskId(); // Wait briefly before starting the emerald expansion
+        scheduledTasks.add(cashOutTaskId);
     }
     
     private double applyProbabilisticRounding(double value,Player  player) {
@@ -1774,23 +1777,44 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             return;
         }
 
-        // Route through the same idempotent path used for quit/kick rather
-        // than resolving directly here. It's unclear whether
-        // InventoryCloseEvent reliably fires on a real disconnect, so this
-        // must not race ahead of PlayerQuitEvent and get it wrong (e.g.
-        // cashing out a kicked player) — whichever of this or the quit
-        // event fires first "wins" and the other becomes a safe no-op, and
-        // consumeQuitReason still correctly reports KICKED here even if
-        // this fires first, since the kick is marked as soon as
-        // PlayerKickEvent itself fires.
-        ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
-        SessionRegistry.terminatePlayerSession(playerId, reason);
+        // Defer one tick so PlayerQuitEvent can claim a true disconnect or
+        // kick first. If the player remains online, this is a normal GUI
+        // close and its refund/cash-out is completed immediately.
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!SessionRegistry.isRegistered(playerId, this)) {
+                return;
+            }
+            if (!player.isOnline()) {
+                ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
+                SessionRegistry.terminatePlayerSession(playerId, reason);
+                return;
+            }
+
+            closeFlag = true;
+            SessionRegistry.unregister(playerId, this);
+
+            if (gameState == GameState.GAME_OVER && cashOutDepositPending) {
+                // Cash Out was clicked just before the GUI closed. Claim
+                // its delayed task and complete the same payout now.
+                if (cashOutTaskId != -1) {
+                    Bukkit.getScheduler().cancelTask(cashOutTaskId);
+                    scheduledTasks.remove(Integer.valueOf(cashOutTaskId));
+                    cashOutTaskId = -1;
+                }
+                cashOutDepositPending = false;
+                gameOver = false;
+                closeCashOut();
+            } else if (gameState == GameState.PLAYING) {
+                closeCashOut();
+            }
+
+            endGame();
+        });
     }
 
     /**
-     * Authoritative disconnect/kick resolution, reached via SessionRegistry
-     * regardless of whether this fires from PlayerQuitEvent or from this
-     * table's own InventoryCloseEvent. Mines resolves each tile click
+     * Authoritative disconnect/kick resolution, reached via SessionRegistry.
+     * Mines resolves each tile click
      * synchronously (gameState/safePicks/gameOver are already fully
      * updated the instant a click is accepted, before any reveal
      * animation runs), so whatever this table's state shows at the moment
