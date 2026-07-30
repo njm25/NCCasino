@@ -12,6 +12,8 @@ common:
   return-preferences: "&dReturn to Preferences"
 
   return-to: "Return to {menu}"
+  previous-page: "Previous Page"
+  next-page: "Next Page"
 
 preferences:
   title: "Preferences"
@@ -416,6 +418,14 @@ mob-settings:
   pattern-color-lore: "&7Pattern Color: &a{value}"
   none: "None"
   dealer-not-found: "&cError: Could not find dealer"
+
+jockey-mob:
+  select-vehicle-title: "Select Vehicle Mob"
+  select-jockey-title: "Select Jockey Mob"
+  passenger-added: "&aAdded new passenger: &e{mob}&a."
+  vehicle-added: "&aAdded new vehicle: &e{mob}&a."
+  jockey-changed: "&aChanged jockey to &e{mob}&a."
+  change-failed: "&cFailed to change jockey"
 
 mines-settings:
   title: "{dealer}'s Mines Settings"

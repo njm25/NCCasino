@@ -12,6 +12,8 @@ common:
   return-preferences: "&dRetour aux préférences"
 
   return-to: "Retour à {menu}"
+  previous-page: "Page précédente"
+  next-page: "Page suivante"
 
 preferences:
   title: "Préférences"
@@ -416,6 +418,14 @@ mob-settings:
   pattern-color-lore: "&7Couleur du motif : &a{value}"
   none: "Aucun"
   dealer-not-found: "&cErreur : croupier introuvable"
+
+jockey-mob:
+  select-vehicle-title: "Choisir la créature monture"
+  select-jockey-title: "Choisir la créature de la pile"
+  passenger-added: "&aNouveau passager ajouté : &e{mob}&a."
+  vehicle-added: "&aNouvelle monture ajoutée : &e{mob}&a."
+  jockey-changed: "&aCréature remplacée par &e{mob}&a."
+  change-failed: "&cImpossible de remplacer la créature"
 
 mines-settings:
   title: "Paramètres de Mines de {dealer}"

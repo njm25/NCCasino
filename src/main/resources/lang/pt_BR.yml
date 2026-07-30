@@ -12,6 +12,8 @@ common:
   return-preferences: "&dVoltar às Preferências"
 
   return-to: "Voltar para {menu}"
+  previous-page: "Página anterior"
+  next-page: "Próxima página"
 
 preferences:
   title: "Preferências"
@@ -416,6 +418,14 @@ mob-settings:
   pattern-color-lore: "&7Cor do padrão: &a{value}"
   none: "Nenhum"
   dealer-not-found: "&cErro: não foi possível encontrar o crupiê"
+
+jockey-mob:
+  select-vehicle-title: "Selecionar criatura da montaria"
+  select-jockey-title: "Selecionar criatura da pilha"
+  passenger-added: "&aNovo passageiro adicionado: &e{mob}&a."
+  vehicle-added: "&aNova montaria adicionada: &e{mob}&a."
+  jockey-changed: "&aCriatura alterada para &e{mob}&a."
+  change-failed: "&cNão foi possível alterar a criatura"
 
 mines-settings:
   title: "Configurações de Minas de {dealer}"

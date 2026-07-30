@@ -12,6 +12,8 @@ common:
   return-preferences: "&dZurück zu den Einstellungen"
 
   return-to: "Zurück zu {menu}"
+  previous-page: "Vorherige Seite"
+  next-page: "Nächste Seite"
 
 preferences:
   title: "Einstellungen"
@@ -416,6 +418,14 @@ mob-settings:
   pattern-color-lore: "&7Musterfarbe: &a{value}"
   none: "Keine"
   dealer-not-found: "&cFehler: Geber wurde nicht gefunden"
+
+jockey-mob:
+  select-vehicle-title: "Reittier-Kreatur auswählen"
+  select-jockey-title: "Stapel-Kreatur auswählen"
+  passenger-added: "&aNeuen Passagier hinzugefügt: &e{mob}&a."
+  vehicle-added: "&aNeues Reittier hinzugefügt: &e{mob}&a."
+  jockey-changed: "&aKreatur geändert zu &e{mob}&a."
+  change-failed: "&cKreatur konnte nicht geändert werden"
 
 mines-settings:
   title: "Minen-Einstellungen von {dealer}"
