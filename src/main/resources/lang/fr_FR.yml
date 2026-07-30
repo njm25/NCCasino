@@ -356,6 +356,16 @@ blackjack:
   inventory-full: "&cPas de place pour {amount}, objet déposé..."
   card-value: "Valeur des cartes : {value}"
 
+coin-flip-settings:
+  title: "Paramètres de Pile ou Face de {dealer}"
+  edit-timer: "Modifier le minuteur"
+  invalid-option: "&cOption sélectionnée invalide."
+  invalid-settings-option: "&cOption des paramètres de Pile ou Face invalide."
+  prompt-number: "&aSaisissez le nouveau nombre dans le chat."
+  prompt-timer: "&aSaisissez le nouveau minuteur dans le chat."
+  timer-updated: "&aMinuteur du croupier mis à jour."
+  dealer-not-found: "&cCroupier des paramètres de Pile ou Face introuvable."
+
 roulette-settings:
   title: "Paramètres de Roulette de {dealer}"
   edit-timer: "Modifier le minuteur"

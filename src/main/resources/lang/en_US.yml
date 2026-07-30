@@ -356,6 +356,16 @@ blackjack:
   inventory-full: "&cNo room for {amount}, dropping..."
   card-value: "Card Value: {value}"
 
+coin-flip-settings:
+  title: "{dealer}'s Coin Flip Settings"
+  edit-timer: "Edit Timer"
+  invalid-option: "&cInvalid option selected."
+  invalid-settings-option: "&cInvalid coin flip settings option selected."
+  prompt-number: "&aType the new number in chat."
+  prompt-timer: "&aType the new timer in chat."
+  timer-updated: "&aDealer timer updated."
+  dealer-not-found: "&cCould not find coin flip settings dealer."
+
 roulette-settings:
   title: "{dealer}'s Roulette Settings"
   edit-timer: "Edit Timer"

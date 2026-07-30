@@ -600,7 +600,7 @@ public class AdminMenu extends Menu {
                 CoinFlipMenu rouletteAdminInventory = new CoinFlipMenu(
                     dealerId,
                     player,
-                    Dealer.getInternalName(dealer)+ "'s Coin Flip Settings",
+                    text("coin-flip-settings.title", "dealer", Dealer.getInternalName(dealer)),
                     (uuid) -> {
         
                         // Cancel action: re-open the AdminInventory
@@ -613,7 +613,7 @@ public class AdminMenu extends Menu {
                         }
         
                     },
-                    plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
+                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer))
             );
             
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();

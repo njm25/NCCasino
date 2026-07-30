@@ -356,6 +356,16 @@ blackjack:
   inventory-full: "&cKein Platz für {amount}; wird fallen gelassen..."
   card-value: "Kartenwert: {value}"
 
+coin-flip-settings:
+  title: "Münzwurf-Einstellungen von {dealer}"
+  edit-timer: "Timer bearbeiten"
+  invalid-option: "&cUngültige Option ausgewählt."
+  invalid-settings-option: "&cUngültige Münzwurf-Einstellungsoption."
+  prompt-number: "&aGib die neue Zahl im Chat ein."
+  prompt-timer: "&aGib den neuen Timer im Chat ein."
+  timer-updated: "&aDealer-Timer aktualisiert."
+  dealer-not-found: "&cMünzwurf-Einstellungsdealer konnte nicht gefunden werden."
+
 roulette-settings:
   title: "Roulette-Einstellungen von {dealer}"
   edit-timer: "Timer bearbeiten"
