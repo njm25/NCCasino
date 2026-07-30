@@ -356,6 +356,24 @@ blackjack:
   inventory-full: "&cNo room for {amount}, dropping..."
   card-value: "Card Value: {value}"
 
+dragon-settings:
+  title: "{dealer}'s Dragon Descent Settings"
+  edit-columns: "Edit Default # of Columns"
+  edit-vines: "Edit Default # of Vines"
+  edit-floors: "Edit Default # of Floors"
+  columns: "columns"
+  vines: "vines"
+  floors: "floors"
+  invalid-option: "&cInvalid option selected."
+  invalid-settings-option: "&cInvalid Dragon Descent settings option selected."
+  prompt-setting: "&aType new default # of {setting} in chat."
+  prompt-setting-detailed: "&aType a new default # of {setting} between {min} and {max} in chat."
+  vines-less-columns: "Vines must be less than the number of columns ({columns})."
+  columns-updated: "&aDragon Descent columns updated."
+  vines-updated: "&aDragon Descent vines updated."
+  floors-updated: "&aDragon Descent floors updated."
+  updated-detailed: "{setting} to {value}."
+
 mines-settings:
   title: "{dealer}'s Mines Settings"
   edit-default: "Edit Default # of Mines"

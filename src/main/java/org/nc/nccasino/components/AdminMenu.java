@@ -677,7 +677,7 @@ public class AdminMenu extends Menu {
                 DragonDescentMenu dragonAdminInventory = new DragonDescentMenu(
                     dealerId,
                     player,
-                    Dealer.getInternalName(dealer)+ "'s Dragon Descent Settings",
+                    text("dragon-settings.title", "dealer", Dealer.getInternalName(dealer)),
                     (uuid) -> {
                         // Cancel action: re-open the AdminInventory
                         if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
@@ -688,7 +688,7 @@ public class AdminMenu extends Menu {
                             player.openInventory(adminInventory.getInventory());
                         }
                     },
-                    plugin, Dealer.getInternalName(dealer)+ "'s Admin Menu"
+                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer))
                 );
                 player.openInventory(dragonAdminInventory.getInventory());
                 break;

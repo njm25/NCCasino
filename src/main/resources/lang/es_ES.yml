@@ -356,6 +356,24 @@ blackjack:
   inventory-full: "&cNo hay espacio para {amount}; se soltará..."
   card-value: "Valor de las cartas: {value}"
 
+dragon-settings:
+  title: "Ajustes de Descenso del Dragón de {dealer}"
+  edit-columns: "Editar número predeterminado de columnas"
+  edit-vines: "Editar número predeterminado de lianas"
+  edit-floors: "Editar número predeterminado de pisos"
+  columns: "columnas"
+  vines: "lianas"
+  floors: "pisos"
+  invalid-option: "&cLa opción seleccionada no es válida."
+  invalid-settings-option: "&cLa opción de ajustes de Descenso del Dragón no es válida."
+  prompt-setting: "&aEscribe el nuevo número predeterminado de {setting}."
+  prompt-setting-detailed: "&aEscribe un número predeterminado de {setting} entre {min} y {max}."
+  vines-less-columns: "Las lianas deben ser menos que las columnas ({columns})."
+  columns-updated: "&aColumnas de Descenso del Dragón actualizadas."
+  vines-updated: "&aLianas de Descenso del Dragón actualizadas."
+  floors-updated: "&aPisos de Descenso del Dragón actualizados."
+  updated-detailed: "{setting} Nuevo valor: {value}."
+
 mines-settings:
   title: "Ajustes de Minas de {dealer}"
   edit-default: "Editar número predeterminado de minas"

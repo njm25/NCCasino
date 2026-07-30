@@ -356,6 +356,24 @@ blackjack:
   inventory-full: "&cKein Platz für {amount}; wird fallen gelassen..."
   card-value: "Kartenwert: {value}"
 
+dragon-settings:
+  title: "Dragon-Descent-Einstellungen von {dealer}"
+  edit-columns: "Standardanzahl Spalten bearbeiten"
+  edit-vines: "Standardanzahl Ranken bearbeiten"
+  edit-floors: "Standardanzahl Ebenen bearbeiten"
+  columns: "Spalten"
+  vines: "Ranken"
+  floors: "Ebenen"
+  invalid-option: "&cUngültige Option ausgewählt."
+  invalid-settings-option: "&cUngültige Dragon-Descent-Einstellungsoption."
+  prompt-setting: "&aGib die neue Standardanzahl {setting} im Chat ein."
+  prompt-setting-detailed: "&aGib eine Standardanzahl {setting} zwischen {min} und {max} ein."
+  vines-less-columns: "Die Anzahl Ranken muss kleiner als die Anzahl Spalten sein ({columns})."
+  columns-updated: "&aDragon-Descent-Spalten aktualisiert."
+  vines-updated: "&aDragon-Descent-Ranken aktualisiert."
+  floors-updated: "&aDragon-Descent-Ebenen aktualisiert."
+  updated-detailed: "{setting} Neuer Wert: {value}."
+
 mines-settings:
   title: "Minen-Einstellungen von {dealer}"
   edit-default: "Standardanzahl Minen bearbeiten"

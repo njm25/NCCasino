@@ -86,14 +86,14 @@ public class DragonDescentMenu extends Menu {
         int defaultColumns = config.getInt("dealers." + internalName + ".default-columns", 7);
         int defaultVines = config.getInt("dealers." + internalName + ".default-vines", 5);
         int defaultFloors = config.getInt("dealers." + internalName + ".default-floors", 4);
-        addItemAndLore(Material.WHITE_STAINED_GLASS_PANE, defaultColumns, "Edit Default # of Columns", 
-                       slotMapping.get(SlotOption.EDIT_COLUMNS), "Current: §a" + defaultColumns);
-        addItemAndLore(Material.VINE, defaultVines, "Edit Default # of Vines", 
-                       slotMapping.get(SlotOption.EDIT_VINES), "Current: §a" + defaultVines);
-        addItemAndLore(Material.BLACK_STAINED_GLASS_PANE, defaultFloors, "Edit Default # of Floors", 
-                       slotMapping.get(SlotOption.EDIT_FLOORS), "Current: §a" + defaultFloors);
-        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnName, slotMapping.get(SlotOption.RETURN));
-        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit", slotMapping.get(SlotOption.EXIT));
+        addItemAndLore(Material.WHITE_STAINED_GLASS_PANE, defaultColumns, text("dragon-settings.edit-columns"),
+                       slotMapping.get(SlotOption.EDIT_COLUMNS), text("common.current", "value", defaultColumns));
+        addItemAndLore(Material.VINE, defaultVines, text("dragon-settings.edit-vines"),
+                       slotMapping.get(SlotOption.EDIT_VINES), text("common.current", "value", defaultVines));
+        addItemAndLore(Material.BLACK_STAINED_GLASS_PANE, defaultFloors, text("dragon-settings.edit-floors"),
+                       slotMapping.get(SlotOption.EDIT_FLOORS), text("common.current", "value", defaultFloors));
+        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, text("common.return-to", "menu", returnName), slotMapping.get(SlotOption.RETURN));
+        addItemAndLore(Material.SPRUCE_DOOR, 1, text("common.exit"), slotMapping.get(SlotOption.EXIT));
     }
 
     @EventHandler
@@ -122,15 +122,15 @@ public class DragonDescentMenu extends Menu {
         
         switch (option) {
             case EDIT_COLUMNS:
-                handleEditSetting(player, "default-columns", "columns", 2, 9);
+                handleEditSetting(player, "default-columns", text("dragon-settings.columns"), 2, 9);
                 playDefaultSound(player);
                 break;
             case EDIT_VINES:
-                handleEditSetting(player, "default-vines", "vines", 1, 8);
+                handleEditSetting(player, "default-vines", text("dragon-settings.vines"), 1, 8);
                 playDefaultSound(player);
                 break;
             case EDIT_FLOORS:
-                handleEditSetting(player, "default-floors", "floors", 1, 100);
+                handleEditSetting(player, "default-floors", text("dragon-settings.floors"), 1, 100);
                 playDefaultSound(player);
                 break;
             default:
@@ -139,10 +139,10 @@ public class DragonDescentMenu extends Menu {
                 
                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                     case STANDARD:
-                        player.sendMessage("§cInvalid option selected.");
+                        player.sendMessage(text("dragon-settings.invalid-option"));
                         break;
                     case VERBOSE:
-                        player.sendMessage("§cInvalid Dragon Descent settings option selected.");
+                        player.sendMessage(text("dragon-settings.invalid-settings-option"));
                         break;
                     case NONE:
                         break;
@@ -161,13 +161,21 @@ public class DragonDescentMenu extends Menu {
         
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
             case STANDARD:
-                player.sendMessage("§aType new default # of " + settingName + " in chat.");
+                player.sendMessage(text("dragon-settings.prompt-setting", "setting", settingName));
                 break;
             case VERBOSE:
-                player.sendMessage("§aType new default # of " + settingName + " between " + min + " and " + max + " in chat.");
+                player.sendMessage(text(
+                    "dragon-settings.prompt-setting-detailed",
+                    "setting",
+                    settingName,
+                    "min",
+                    min,
+                    "max",
+                    max
+                ));
                 break;
             case NONE:
-                player.sendMessage("§aType new value.");
+                player.sendMessage(text("admin.prompt-new-value"));
                 break;
         }
     }
@@ -200,14 +208,13 @@ public class DragonDescentMenu extends Menu {
                 max = 100;
             }
             
-            handleNumericInput(player, event.getMessage().trim(), configKey, min, max, 
-                              "Dragon Descent " + configKey.replace("default-", "") + " updated");
+            handleNumericInput(player, event.getMessage().trim(), configKey, min, max);
         }
     }
 
-    private void handleNumericInput(Player player, String input, String configPath, long min, long max, String standardMessage) {
+    private void handleNumericInput(Player player, String input, String configPath, long min, long max) {
         if (input.isEmpty() || !input.matches("\\d+")) {
-            denyAction(player, "Please enter a valid positive integer.");
+            denyAction(player, text("blackjack-settings.valid-positive-integer"));
             return;
         }
 
@@ -215,12 +222,12 @@ public class DragonDescentMenu extends Menu {
         try {
             value = Long.parseLong(input);
         } catch (NumberFormatException e) {
-            denyAction(player, "Invalid number format.");
+            denyAction(player, text("blackjack-settings.invalid-number-format"));
             return;
         }
 
         if (value < min || value > max) {
-            denyAction(player, "Please enter a number between " + min + " and " + max + ".");
+            denyAction(player, text("blackjack-settings.number-range", "min", min, "max", max));
             return;
         }
         
@@ -230,7 +237,7 @@ public class DragonDescentMenu extends Menu {
             int columns = plugin.getConfig().getInt("dealers." + internalName + ".default-columns", 7);
             
             if (value >= columns) {
-                denyAction(player, "Vines must be less than the number of columns (" + columns + ").");
+                denyAction(player, text("dragon-settings.vines-less-columns", "columns", columns));
                 return;
             }
         }
@@ -252,10 +259,16 @@ public class DragonDescentMenu extends Menu {
         // Show success message
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
             case STANDARD:
-                player.sendMessage("§a" + standardMessage + ".");
+                player.sendMessage(text(settingUpdatedKey(configPath)));
                 break;
             case VERBOSE:
-                player.sendMessage("§a" + standardMessage + " to " + value + ".");
+                player.sendMessage(text(
+                    "dragon-settings.updated-detailed",
+                    "setting",
+                    text(settingUpdatedKey(configPath)),
+                    "value",
+                    value
+                ));
                 break;
             case NONE:
                 break;
@@ -273,4 +286,16 @@ public class DragonDescentMenu extends Menu {
         
         player.sendMessage("§c" + message);
     }
-} 
+
+    private String settingUpdatedKey(String configPath) {
+        return switch (configPath) {
+            case "default-columns" -> "dragon-settings.columns-updated";
+            case "default-vines" -> "dragon-settings.vines-updated";
+            default -> "dragon-settings.floors-updated";
+        };
+    }
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
+    }
+}

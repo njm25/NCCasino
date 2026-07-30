@@ -356,6 +356,24 @@ blackjack:
   inventory-full: "&cPas de place pour {amount}, objet déposé..."
   card-value: "Valeur des cartes : {value}"
 
+dragon-settings:
+  title: "Paramètres de Descente du Dragon de {dealer}"
+  edit-columns: "Modifier le nombre de colonnes par défaut"
+  edit-vines: "Modifier le nombre de lianes par défaut"
+  edit-floors: "Modifier le nombre d'étages par défaut"
+  columns: "colonnes"
+  vines: "lianes"
+  floors: "étages"
+  invalid-option: "&cOption sélectionnée invalide."
+  invalid-settings-option: "&cOption des paramètres de Descente du Dragon invalide."
+  prompt-setting: "&aSaisissez le nouveau nombre de {setting} par défaut."
+  prompt-setting-detailed: "&aSaisissez un nombre de {setting} par défaut entre {min} et {max}."
+  vines-less-columns: "Le nombre de lianes doit être inférieur au nombre de colonnes ({columns})."
+  columns-updated: "&aColonnes de Descente du Dragon mises à jour."
+  vines-updated: "&aLianes de Descente du Dragon mises à jour."
+  floors-updated: "&aÉtages de Descente du Dragon mis à jour."
+  updated-detailed: "{setting} Nouvelle valeur : {value}."
+
 mines-settings:
   title: "Paramètres de Mines de {dealer}"
   edit-default: "Modifier le nombre de mines par défaut"
