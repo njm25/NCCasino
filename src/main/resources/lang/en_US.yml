@@ -56,6 +56,11 @@ errors:
   currency-unavailable: "&cCurrency is not configured, so winnings could not be credited."
 
 betting:
+  place-bet: "Click here to place bet"
+  rebet-on: "Rebet: ON"
+  rebet-off: "Rebet: OFF"
+  undo-all: "Undo All Bets"
+  undo-last: "Undo Last Bet"
   select-wager: "&cSelect a wager amount first."
   insufficient-funds: "&cYou do not have enough currency to place that bet."
   nothing-to-undo: "&cThere are no bets to undo."

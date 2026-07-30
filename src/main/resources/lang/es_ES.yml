@@ -56,6 +56,11 @@ errors:
   currency-unavailable: "&cLa moneda no está configurada; no se pudieron acreditar las ganancias."
 
 betting:
+  place-bet: "Haz clic aquí para apostar"
+  rebet-on: "Repetir apuesta: ACTIVADO"
+  rebet-off: "Repetir apuesta: DESACTIVADO"
+  undo-all: "Deshacer todas las apuestas"
+  undo-last: "Deshacer la última apuesta"
   select-wager: "&cSelecciona primero una cantidad para apostar."
   insufficient-funds: "&cNo tienes suficiente moneda para realizar esa apuesta."
   nothing-to-undo: "&cNo hay apuestas que deshacer."

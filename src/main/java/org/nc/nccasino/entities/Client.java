@@ -111,20 +111,35 @@ public abstract class Client extends DealerInventory {
         }
         if(betSlip){
             // 2) Paper in slot 53: "Click here to place bet"
-            inventory.setItem(bettingPaperSlot, createCustomItem(Material.PAPER, "Click here to place bet", 1));
+            inventory.setItem(bettingPaperSlot, createCustomItem(
+                Material.PAPER,
+                plugin.getLocalization().text(player, "betting.place-bet"),
+                1
+            ));
         }
         if(rebetSwitch){
         // 2) Paper in slot 53: "Click here to place bet"
         // 3) Rebet: slot 44
         Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
-        String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
+        String rebetName = plugin.getLocalization().text(
+            player,
+            rebetEnabled ? "betting.rebet-on" : "betting.rebet-off"
+        );
         inventory.setItem(rebetSlot, createCustomItem(rebetMat, rebetName, 1));
         }
         // 4) Undo All: slot 45
-        inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
+        inventory.setItem(45, createCustomItem(
+            Material.BARRIER,
+            plugin.getLocalization().text(player, "betting.undo-all"),
+            1
+        ));
 
         // 5) Undo Last: slot 46
-        inventory.setItem(46, createCustomItem(Material.WIND_CHARGE, "Undo Last Bet", 1));
+        inventory.setItem(46, createCustomItem(
+            Material.WIND_CHARGE,
+            plugin.getLocalization().text(player, "betting.undo-last"),
+            1
+        ));
 
         // 6) All In: slot 52
         inventory.setItem(
@@ -402,7 +417,10 @@ public abstract class Client extends DealerInventory {
 
     protected void updateRebetToggle(int index) {
         Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
-        String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
+        String rebetName = plugin.getLocalization().text(
+            player,
+            rebetEnabled ? "betting.rebet-on" : "betting.rebet-off"
+        );
         inventory.setItem(index, createCustomItem(rebetMat, rebetName, 1));
         player.updateInventory();
     }

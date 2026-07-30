@@ -56,6 +56,11 @@ errors:
   currency-unavailable: "&cDie Währung ist nicht konfiguriert; der Gewinn konnte nicht gutgeschrieben werden."
 
 betting:
+  place-bet: "Hier klicken, um zu setzen"
+  rebet-on: "Erneut setzen: AN"
+  rebet-off: "Erneut setzen: AUS"
+  undo-all: "Alle Einsätze rückgängig"
+  undo-last: "Letzten Einsatz rückgängig"
   select-wager: "&cWähle zuerst einen Einsatz."
   insufficient-funds: "&cDu hast nicht genug Währung für diesen Einsatz."
   nothing-to-undo: "&cEs gibt keine Einsätze zum Rückgängigmachen."

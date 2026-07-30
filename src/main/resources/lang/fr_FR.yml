@@ -56,6 +56,11 @@ errors:
   currency-unavailable: "&cLa monnaie n’est pas configurée ; les gains n’ont pas pu être crédités."
 
 betting:
+  place-bet: "Cliquer ici pour miser"
+  rebet-on: "Rejouer la mise : ACTIVÉ"
+  rebet-off: "Rejouer la mise : DÉSACTIVÉ"
+  undo-all: "Annuler toutes les mises"
+  undo-last: "Annuler la dernière mise"
   select-wager: "&cSélectionnez d’abord un montant à miser."
   insufficient-funds: "&cVous n’avez pas assez de monnaie pour cette mise."
   nothing-to-undo: "&cIl n’y a aucune mise à annuler."
