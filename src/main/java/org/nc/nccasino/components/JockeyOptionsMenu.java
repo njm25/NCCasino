@@ -164,7 +164,7 @@ public class JockeyOptionsMenu extends Menu {
     }
 
     public JockeyOptionsMenu(Player player, Nccasino plugin, JockeyNode jockey, String returnName, Consumer<Player> returnCallback) {
-        super(player, plugin, jockey.getId(), "Jockey Options", 54, returnName, (p) -> {
+        super(player, plugin, jockey.getId(), plugin.getLocalization().text(player, "jockey-options.title"), 54, returnName, (p) -> {
             // Schedule the return with a delay to ensure proper updates
             new BukkitRunnable() {
                 @Override
@@ -232,17 +232,17 @@ public class JockeyOptionsMenu extends Menu {
         }
 
         // Add navigation and control buttons
-        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit", slotMapping.get(SlotOption.EXIT));
-        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnName, slotMapping.get(SlotOption.RETURN));
+        addItemAndLore(Material.SPRUCE_DOOR, 1, text("common.exit"), slotMapping.get(SlotOption.EXIT));
+        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, text("common.return-to", "menu", returnName), slotMapping.get(SlotOption.RETURN));
 
         // Add delete button
-        addItemAndLore(Material.BARRIER, 1, "Delete Jockey", slotMapping.get(SlotOption.DELETE), "Click to delete this jockey");
+        addItemAndLore(Material.BARRIER, 1, text("jockey-options.delete"), slotMapping.get(SlotOption.DELETE), text("jockey-options.delete-lore"));
 
         // Page toggle button
         if (currentPage > 1) {
-            addItemAndLore(Material.ARROW, 1, "Previous Page", slotMapping.get(SlotOption.PAGE_TOGGLE));
+            addItemAndLore(Material.ARROW, 1, text("common.previous-page"), slotMapping.get(SlotOption.PAGE_TOGGLE));
         } else if ((startIndex + PAGE_SIZE) < spawnEggList.size()) {
-            addItemAndLore(Material.ARROW, 1, "Next Page", slotMapping.get(SlotOption.PAGE_TOGGLE));
+            addItemAndLore(Material.ARROW, 1, text("common.next-page"), slotMapping.get(SlotOption.PAGE_TOGGLE));
         }
 
         // Add age toggle if applicable
@@ -345,7 +345,7 @@ public class JockeyOptionsMenu extends Menu {
                 }
                 
                 if (jockeyIndex == -1) {
-                    player.sendMessage("§cFailed to find jockey in stack");
+                    player.sendMessage(text("mob-settings.jockey-not-found"));
                     return;
                 }
                 
@@ -427,13 +427,13 @@ public class JockeyOptionsMenu extends Menu {
                     // Refresh the jockey manager to ensure all relationships are correct
                     jockeyManager.refresh();
                     
-                    player.sendMessage("§aChanged jockey to " + formatEntityName(selectedType.name()));
+                    player.sendMessage(text("jockey-mob.jockey-changed", "mob", formatEntityName(selectedType.name())));
                     playDefaultSound(player);
                     
                     // Return to mobSettingsMenu after successful mob change
                     executeReturn(player);
                 } else {
-                    player.sendMessage("§cFailed to change jockey");
+                    player.sendMessage(text("jockey-mob.change-failed"));
                     newMob.remove();
                     
                     // If we failed, remount everything in original order
@@ -472,7 +472,7 @@ public class JockeyOptionsMenu extends Menu {
             player,
             plugin,
             jockey.getId(),
-            "Return to Options",
+            text("jockey-options.return-to-options"),
             (p) -> p.openInventory(this.getInventory()),
             mob
         );
@@ -488,7 +488,11 @@ public class JockeyOptionsMenu extends Menu {
                 ageable.setAdult();
             }
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case VERBOSE -> player.sendMessage("§a" + formatEntityName(mob.getType().toString()) + " age set to " + ChatColor.YELLOW + (ageable.isAdult() ? "adult" : "baby") + "§a.");
+                case VERBOSE -> player.sendMessage(text(
+                    "jockey-options.age-set",
+                    "mob", formatEntityName(mob.getType().toString()),
+                    "age", text(ageable.isAdult() ? "mob-settings.adult" : "mob-settings.baby")
+                ));
                 default -> {}
             }
         } else if (mob instanceof Slime slime) {
@@ -496,7 +500,11 @@ public class JockeyOptionsMenu extends Menu {
             int newSize = currentSize == 4 ? 1 : currentSize + 1;
             slime.setSize(newSize);
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case VERBOSE -> player.sendMessage("§a" + formatEntityName(slime.getType().toString()) + " size set to " + ChatColor.YELLOW + newSize + "§a.");
+                case VERBOSE -> player.sendMessage(text(
+                    "jockey-options.size-set",
+                    "mob", formatEntityName(slime.getType().toString()),
+                    "size", newSize
+                ));
                 default -> {}
             }
         }
@@ -513,9 +521,9 @@ public class JockeyOptionsMenu extends Menu {
             addItemAndLore(
                 mat, 
                 1,
-                "Edit " + formatEntityName(mob.getType().toString()) + " Variant",
+                text("jockey-options.edit-variant", "mob", formatEntityName(mob.getType().toString())),
                 slot,
-                "Current: §a" + formatEntityName(vt.toString())
+                text("jockey-options.current", "value", formatEntityName(vt.toString()))
             );
             return;
         }
@@ -525,9 +533,9 @@ public class JockeyOptionsMenu extends Menu {
             addItemAndLore(
                 mat, 
                 1,
-                "Edit " + formatEntityName(mob.getType().toString()) + " Variant",
+                text("jockey-options.edit-variant", "mob", formatEntityName(mob.getType().toString())),
                 slot,
-                "Current: §a" + formatEntityName(vt.toString())
+                text("jockey-options.current", "value", formatEntityName(vt.toString()))
             );
             return;
         }
@@ -536,7 +544,7 @@ public class JockeyOptionsMenu extends Menu {
             addItemAndLore(
                 Material.WRITABLE_BOOK,
                 1,
-                "Open "+ formatEntityName(mob.getType().toString())+" Variant Menu",
+                text("jockey-options.open-variant-menu", "mob", formatEntityName(mob.getType().toString())),
                 slot,
                 details.toArray(new String[0])
             );
@@ -547,9 +555,9 @@ public class JockeyOptionsMenu extends Menu {
                 addItemAndLore(
                     Material.BARRIER,
                     1,
-                    "Edit " + formatEntityName(mob.getType().toString()) + " Collar Color",
+                    text("jockey-options.edit-collar-color", "mob", formatEntityName(mob.getType().toString())),
                     slot,
-                    "Current: §aNone"
+                    text("jockey-options.current", "value", text("mob-settings.none"))
                 );
                 return;
             }
@@ -560,9 +568,9 @@ public class JockeyOptionsMenu extends Menu {
             addItemAndLore(
                 dyeMaterial,
                 1,
-                "Edit " + formatEntityName(mob.getType().toString()) + " Collar Color",
+                text("jockey-options.edit-collar-color", "mob", formatEntityName(mob.getType().toString())),
                 slot,
-                "Current: §a" + formatEntityName(currentColor.toString())
+                text("jockey-options.current", "value", formatEntityName(currentColor.toString()))
             );
             return;
         }
@@ -571,9 +579,9 @@ public class JockeyOptionsMenu extends Menu {
             addItemAndLore(
                 variantItem,
                 1,
-                "Edit " + formatEntityName(mob.getType().toString()) + " Variant",
+                text("jockey-options.edit-variant", "mob", formatEntityName(mob.getType().toString())),
                 slot,
-                "Current: §a" + getVariantName(mob)
+                text("jockey-options.current", "value", getVariantName(mob))
             );
             return;
         }
@@ -590,7 +598,7 @@ public class JockeyOptionsMenu extends Menu {
             addItemAndLore(
                 Material.CLOCK,
                 1,
-                "Toggle Age",
+                text("jockey-options.toggle-age"),
                 slot,
                 currentState
             );
@@ -598,7 +606,7 @@ public class JockeyOptionsMenu extends Menu {
             addItemAndLore(
                 Material.SLIME_BALL,
                 1,
-                "Change Size",
+                text("jockey-options.change-size"),
                 slot,
                 currentState
             );
@@ -636,9 +644,9 @@ public class JockeyOptionsMenu extends Menu {
 
     private String getCurrentSizeOrAge(Mob mob) {
         if (mob instanceof Ageable ageable) {
-            return "Current: §a" + (ageable.isAdult() ? "Adult" : "Baby");
+            return text("jockey-options.current", "value", text(ageable.isAdult() ? "mob-settings.adult" : "mob-settings.baby"));
         } else if (mob instanceof Slime slime) {
-            return "Current Size: §a" + slime.getSize();
+            return text("jockey-options.current-size", "value", slime.getSize());
                 }
         return "";
     }
@@ -791,7 +799,11 @@ public class JockeyOptionsMenu extends Menu {
         }
     
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-            case VERBOSE  -> player.sendMessage("§a"+formatEntityName(mob.getType().toString())+" variant changed to " + ChatColor.YELLOW + formatEntityName(variantName)+"§a.");
+            case VERBOSE -> player.sendMessage(text(
+                "jockey-options.variant-changed",
+                "mob", formatEntityName(mob.getType().toString()),
+                "variant", formatEntityName(variantName)
+            ));
             default -> {}
         }
     }
@@ -806,14 +818,14 @@ public class JockeyOptionsMenu extends Menu {
     private List<String> getComplexVariantDetails(Mob mob) {
         List<String> details = new ArrayList<>();
         if (mob instanceof Horse horse) {
-            details.add("Color: §a" + formatEntityName(horse.getColor().toString()));
-            details.add("Style: §a" + formatEntityName(horse.getStyle().toString()));
+            details.add(text("jockey-options.color", "value", formatEntityName(horse.getColor().toString())));
+            details.add(text("jockey-options.style", "value", formatEntityName(horse.getStyle().toString())));
         } else if (mob instanceof Llama llama) {
-            details.add("Color: §a" + formatEntityName(llama.getColor().toString()));
+            details.add(text("jockey-options.color", "value", formatEntityName(llama.getColor().toString())));
         } else if (mob instanceof TropicalFish fish) {
-            details.add("Pattern: §a" + formatEntityName(fish.getPattern().toString()));
-            details.add("Body Color: §a" + formatEntityName(fish.getBodyColor().toString()));
-            details.add("Pattern Color: §a" + formatEntityName(fish.getPatternColor().toString()));
+            details.add(text("jockey-options.pattern", "value", formatEntityName(fish.getPattern().toString())));
+            details.add(text("jockey-options.body-color", "value", formatEntityName(fish.getBodyColor().toString())));
+            details.add(text("jockey-options.pattern-color", "value", formatEntityName(fish.getPatternColor().toString())));
         }
         return details;
     }
@@ -906,7 +918,7 @@ public class JockeyOptionsMenu extends Menu {
         }
 
         if (jockeyIndex == -1) {
-            player.sendMessage("§cFailed to find jockey in stack");
+            player.sendMessage(text("mob-settings.jockey-not-found"));
             return;
         }
 
@@ -1025,12 +1037,16 @@ public class JockeyOptionsMenu extends Menu {
 
         // Send feedback to player
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-            case STANDARD -> player.sendMessage("§aJockey deleted.");
-            case VERBOSE -> player.sendMessage("§aJockey " + ChatColor.YELLOW + jockey.getMob().getType().name() + "§a deleted.");
+            case STANDARD -> player.sendMessage(text("mob-settings.jockey-deleted"));
+            case VERBOSE -> player.sendMessage(text("mob-settings.jockey-deleted-detailed", "mob", jockey.getMob().getType().name()));
             default -> {}
         }
 
         // Return to mobSettingsMenu
         executeReturn(player);
     }
-} 
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
+    }
+}

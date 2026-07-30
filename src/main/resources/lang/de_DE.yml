@@ -427,6 +427,27 @@ jockey-mob:
   jockey-changed: "&aKreatur geändert zu &e{mob}&a."
   change-failed: "&cKreatur konnte nicht geändert werden"
 
+jockey-options:
+  title: "Kreatur-Optionen"
+  delete: "Kreatur löschen"
+  delete-lore: "Klicken, um diese Kreatur zu löschen"
+  return-to-options: "Zurück zu den Optionen"
+  age-set: "&aAlter von {mob} auf &e{age}&a gesetzt."
+  size-set: "&aGröße von {mob} auf &e{size}&a gesetzt."
+  edit-variant: "Variante von {mob} bearbeiten"
+  current: "Aktuell: &a{value}"
+  open-variant-menu: "Variantenmenü von {mob} öffnen"
+  edit-collar-color: "Halsbandfarbe von {mob} bearbeiten"
+  toggle-age: "Alter wechseln"
+  change-size: "Größe ändern"
+  current-size: "Aktuelle Größe: &a{value}"
+  variant-changed: "&aVariante von {mob} zu &e{variant}&a geändert."
+  color: "Farbe: &a{value}"
+  style: "Stil: &a{value}"
+  pattern: "Muster: &a{value}"
+  body-color: "Körperfarbe: &a{value}"
+  pattern-color: "Musterfarbe: &a{value}"
+
 mines-settings:
   title: "Minen-Einstellungen von {dealer}"
   edit-default: "Standardanzahl Minen bearbeiten"

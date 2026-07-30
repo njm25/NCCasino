@@ -427,6 +427,27 @@ jockey-mob:
   jockey-changed: "&aChanged jockey to &e{mob}&a."
   change-failed: "&cFailed to change jockey"
 
+jockey-options:
+  title: "Jockey Options"
+  delete: "Delete Jockey"
+  delete-lore: "Click to delete this jockey"
+  return-to-options: "Return to Options"
+  age-set: "&a{mob} age set to &e{age}&a."
+  size-set: "&a{mob} size set to &e{size}&a."
+  edit-variant: "Edit {mob} Variant"
+  current: "Current: &a{value}"
+  open-variant-menu: "Open {mob} Variant Menu"
+  edit-collar-color: "Edit {mob} Collar Color"
+  toggle-age: "Toggle Age"
+  change-size: "Change Size"
+  current-size: "Current Size: &a{value}"
+  variant-changed: "&a{mob} variant changed to &e{variant}&a."
+  color: "Color: &a{value}"
+  style: "Style: &a{value}"
+  pattern: "Pattern: &a{value}"
+  body-color: "Body Color: &a{value}"
+  pattern-color: "Pattern Color: &a{value}"
+
 mines-settings:
   title: "{dealer}'s Mines Settings"
   edit-default: "Edit Default # of Mines"
