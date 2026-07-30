@@ -117,7 +117,7 @@ public abstract class Server extends DealerInventory {
                         player,
                         "game.welcome",
                         "game",
-                        gameType
+                        localizedGameName(player, gameType)
                     ));
                     break;     
                 }
@@ -237,6 +237,19 @@ public abstract class Server extends DealerInventory {
 
     public boolean hasClient(UUID playerUuid) {
         return clients.containsKey(playerUuid);
+    }
+
+    private String localizedGameName(Player player, String gameType) {
+        return switch (gameType) {
+            case "Blackjack" -> plugin.getLocalization().text(player, "game-options.blackjack");
+            case "Roulette" -> plugin.getLocalization().text(player, "game-options.roulette");
+            case "Mines" -> plugin.getLocalization().text(player, "game-options.mines");
+            case "Baccarat" -> plugin.getLocalization().text(player, "game-options.baccarat");
+            case "Coin Flip" -> plugin.getLocalization().text(player, "game-options.coin-flip");
+            case "Dragon Descent" -> plugin.getLocalization().text(player, "game-options.dragon-descent");
+            case "Test Game" -> plugin.getLocalization().text(player, "game-options.test-game");
+            default -> gameType;
+        };
     }
         
     public void sendPayoutMessage(Player player, double payout, boolean isWinner, double profit) {
