@@ -657,7 +657,12 @@ test-menu:
   clicked-two: "¡Hiciste clic en la opción dos!"
   invalid-option: "&cLa opción seleccionada no es válida."
 
+dealer:
+  game-set: "&aEl crupier '&e{dealer}&a' se configuró como &e{game}&a."
+
 interaction:
+  no-game-assigned: "&cEste crupier no tiene ningún juego asignado."
+  dealer-died: "&cEl crupier '&e{dealer}&c' ha muerto y se eliminaron todos sus datos asociados."
   no-game-permission: "&cNo tienes permiso para jugar a {game}."
   shift-click-disabled: "&cEl clic con Mayús está desactivado."
   click-cooldown: "&c¡Espera antes de volver a hacer clic!"
@@ -674,6 +679,7 @@ occupations:
   currency-item: "la selección del objeto de moneda"
 
 commands:
+  dealers-deleted: "&aSe eliminaron {count} crupieres."
   player-only: "&cEste comando solo puede usarse dentro del juego."
   no-permission: "&cNo tienes permiso para usar este comando."
   help-hint: "&dUsa &b/ncc help&d para obtener ayuda."

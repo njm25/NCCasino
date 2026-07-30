@@ -657,7 +657,12 @@ test-menu:
   clicked-two: "You clicked Option Two!"
   invalid-option: "&cInvalid option selected."
 
+dealer:
+  game-set: "&aDealer '&e{dealer}&a' has been set to &e{game}&a."
+
 interaction:
+  no-game-assigned: "&cThis dealer has no game type assigned."
+  dealer-died: "&cDealer '&e{dealer}&c' has died and all associated data has been removed."
   no-game-permission: "&cYou do not have permission to play {game}."
   shift-click-disabled: "&cShift-click is disabled."
   click-cooldown: "&cPlease wait before clicking again!"
@@ -674,6 +679,7 @@ occupations:
   currency-item: "currency item selection"
 
 commands:
+  dealers-deleted: "&aDeleted {count} dealers."
   player-only: "&cThis command can only be used by players."
   no-permission: "&cYou do not have permission to use this command."
   help-hint: "&dUse &b/ncc help&d for help."

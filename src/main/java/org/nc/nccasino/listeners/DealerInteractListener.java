@@ -125,7 +125,7 @@ public class DealerInteractListener implements Listener {
 
         // Check if dealer has a game type defined
         if (!plugin.getConfig().contains("dealers." + internalName + ".game")) {
-            player.sendMessage(ChatColor.RED + "This dealer has no game type assigned.");
+            player.sendMessage(plugin.getLocalization().text(player, "interaction.no-game-assigned"));
             return;
         }
 

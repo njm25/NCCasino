@@ -657,7 +657,12 @@ test-menu:
   clicked-two: "Du hast Option zwei angeklickt!"
   invalid-option: "&cUngültige Option ausgewählt."
 
+dealer:
+  game-set: "&aGeber '&e{dealer}&a' wurde auf &e{game}&a gesetzt."
+
 interaction:
+  no-game-assigned: "&cDiesem Geber ist kein Spiel zugewiesen."
+  dealer-died: "&cGeber '&e{dealer}&c' ist gestorben und alle zugehörigen Daten wurden entfernt."
   no-game-permission: "&cDu hast keine Berechtigung, {game} zu spielen."
   shift-click-disabled: "&cUmschalt-Klick ist deaktiviert."
   click-cooldown: "&cBitte warte, bevor du erneut klickst!"
@@ -674,6 +679,7 @@ occupations:
   currency-item: "die Auswahl des Währungsgegenstands"
 
 commands:
+  dealers-deleted: "&a{count} Geber wurden gelöscht."
   player-only: "&cDieser Befehl kann nur im Spiel verwendet werden."
   no-permission: "&cDu darfst diesen Befehl nicht verwenden."
   help-hint: "&dVerwende &b/ncc help&d für Hilfe."

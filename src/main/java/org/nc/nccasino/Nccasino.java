@@ -908,7 +908,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
     
         if (!dealersConfig.contains("dealers")||dealersConfig.getConfigurationSection("dealers").getKeys(false).isEmpty()) {
-            sender.sendMessage(ChatColor.RED + "No dealers found.");
+            sender.sendMessage(getLocalization().text(sender, "commands.no-dealers"));
             return;
         }
     
@@ -1020,7 +1020,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
             processedChunks[0]++;
             if (processedChunks[0] == totalChunks && sendMessageOnCompletion) {
                 Bukkit.getScheduler().runTask(this, () ->
-                    sender.sendMessage(ChatColor.GREEN + "Deleted " + totalDeleted[0] + " dealers.")
+                    sender.sendMessage(getLocalization().text(
+                        sender,
+                        "commands.dealers-deleted",
+                        "count",
+                        totalDeleted[0]
+                    ))
                 );
             }
         }

@@ -657,7 +657,12 @@ test-menu:
   clicked-two: "Você clicou na opção dois!"
   invalid-option: "&cOpção selecionada inválida."
 
+dealer:
+  game-set: "&aO crupiê '&e{dealer}&a' foi definido como &e{game}&a."
+
 interaction:
+  no-game-assigned: "&cEste crupiê não tem um jogo atribuído."
+  dealer-died: "&cO crupiê '&e{dealer}&c' morreu e todos os dados associados foram removidos."
   no-game-permission: "&cVocê não tem permissão para jogar {game}."
   shift-click-disabled: "&cO clique com Shift está desativado."
   click-cooldown: "&cAguarde antes de clicar novamente!"
@@ -674,6 +679,7 @@ occupations:
   currency-item: "a seleção do item de moeda"
 
 commands:
+  dealers-deleted: "&aForam excluídos {count} crupiês."
   player-only: "&cEste comando só pode ser usado dentro do jogo."
   no-permission: "&cVocê não tem permissão para usar este comando."
   help-hint: "&dUse &b/ncc help&d para obter ajuda."

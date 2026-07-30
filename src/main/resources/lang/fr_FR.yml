@@ -657,7 +657,12 @@ test-menu:
   clicked-two: "Vous avez cliqué sur l'option deux !"
   invalid-option: "&cOption sélectionnée invalide."
 
+dealer:
+  game-set: "&aLe croupier '&e{dealer}&a' a été défini sur &e{game}&a."
+
 interaction:
+  no-game-assigned: "&cAucun jeu n'est attribué à ce croupier."
+  dealer-died: "&cLe croupier '&e{dealer}&c' est mort et toutes les données associées ont été supprimées."
   no-game-permission: "&cVous n'avez pas la permission de jouer à {game}."
   shift-click-disabled: "&cLe Maj-clic est désactivé."
   click-cooldown: "&cVeuillez attendre avant de cliquer à nouveau !"
@@ -674,6 +679,7 @@ occupations:
   currency-item: "la sélection de l'objet monétaire"
 
 commands:
+  dealers-deleted: "&a{count} croupiers supprimés."
   player-only: "&cCette commande ne peut être utilisée que dans le jeu."
   no-permission: "&cVous n’avez pas la permission d’utiliser cette commande."
   help-hint: "&dUtilisez &b/ncc help&d pour obtenir de l’aide."
