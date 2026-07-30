@@ -577,7 +577,7 @@ public class AdminMenu extends Menu {
                 RouletteMenu rouletteAdminInventory = new RouletteMenu(
                     dealerId,
                     player,
-                    Dealer.getInternalName(dealer)+ "'s Roulette Settings",
+                    text("roulette-settings.title", "dealer", Dealer.getInternalName(dealer)),
                     (uuid) -> {
         
                         // Cancel action: re-open the AdminInventory
@@ -590,7 +590,7 @@ public class AdminMenu extends Menu {
                         }
         
                     },
-                    plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
+                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer))
             );
                 player.openInventory(rouletteAdminInventory.getInventory());
 
