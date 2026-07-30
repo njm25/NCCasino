@@ -240,6 +240,9 @@ public abstract class Server extends DealerInventory {
     }
 
     private String localizedGameName(Player player, String gameType) {
+        if (gameType == null) {
+            return String.valueOf(gameType);
+        }
         return switch (gameType) {
             case "Blackjack" -> plugin.getLocalization().text(player, "game-options.blackjack");
             case "Roulette" -> plugin.getLocalization().text(player, "game-options.roulette");

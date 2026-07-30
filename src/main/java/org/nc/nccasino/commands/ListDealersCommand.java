@@ -60,7 +60,7 @@ public class ListDealersCommand implements CasinoCommand {
                     "name",
                     dealerName,
                     "game",
-                    gameType
+                    localizedGameType(sender, gameType)
                 ));
             }
         } else {
@@ -68,5 +68,21 @@ public class ListDealersCommand implements CasinoCommand {
         }
 
         return true;
+    }
+
+    private String localizedGameType(CommandSender sender, String gameType) {
+        if (gameType == null) {
+            return String.valueOf(gameType);
+        }
+        return switch (gameType) {
+            case "Blackjack" -> plugin.getLocalization().text(sender, "game-options.blackjack");
+            case "Roulette" -> plugin.getLocalization().text(sender, "game-options.roulette");
+            case "Mines" -> plugin.getLocalization().text(sender, "game-options.mines");
+            case "Baccarat" -> plugin.getLocalization().text(sender, "game-options.baccarat");
+            case "Coin Flip" -> plugin.getLocalization().text(sender, "game-options.coin-flip");
+            case "Dragon Descent" -> plugin.getLocalization().text(sender, "game-options.dragon-descent");
+            case "Test Game" -> plugin.getLocalization().text(sender, "game-options.test-game");
+            default -> gameType;
+        };
     }
 }
