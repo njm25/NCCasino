@@ -7,6 +7,7 @@ common:
   click-toggle: "&8Click to toggle."
   click-cycle: "&8Click to cycle."
   click-choose: "&8Click to choose."
+  click-skip: "CLICK TO SKIP"
   exit: "&cExit"
   return-player-menu: "&dReturn to Player Menu"
   return-preferences: "&dReturn to Preferences"
@@ -74,6 +75,8 @@ payout:
   paid-with-profit: "&a&lPaid {amount}\n&r&a&o(profit of {profit})"
   lost: "&c&lYou lose!"
   delivered: "&e{context}\n&aPayout: {amount}"
+  context-disconnected: "You disconnected during an active {game} game. The game finished while you were offline."
+  context-server-restart: "The server restarted while your {game} bet was still awaiting resolution, so it has been refunded."
   retry-one: "&6You have 1 pending payout that could not be delivered yet. It will retry automatically."
   retry-many: "&6You have {count} pending payouts that could not be delivered yet. They will retry automatically."
 
@@ -492,6 +495,8 @@ jockey-options:
   pattern-color: "Pattern Color: &a{value}"
 
 mob-selection:
+  giant: "Giant"
+  illusioner: "Illusioner"
   title: "Dealer Mob Settings"
   data-file-not-found: "&cDealers data file not found!"
   location-not-found: "&cFailed to retrieve dealer location."

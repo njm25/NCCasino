@@ -7,6 +7,7 @@ common:
   click-toggle: "&8Cliquez pour activer ou désactiver."
   click-cycle: "&8Cliquez pour changer."
   click-choose: "&8Cliquez pour choisir."
+  click-skip: "CLIQUEZ POUR PASSER"
   exit: "&cQuitter"
   return-player-menu: "&dRetour au menu du joueur"
   return-preferences: "&dRetour aux préférences"
@@ -74,6 +75,8 @@ payout:
   paid-with-profit: "&a&lPaiement : {amount}\n&r&a&o(bénéfice de {profit})"
   lost: "&c&lVous avez perdu !"
   delivered: "&e{context}\n&aPaiement : {amount}"
+  context-disconnected: "Vous vous êtes déconnecté pendant une partie de {game} en cours. La partie s’est terminée pendant votre absence."
+  context-server-restart: "Le serveur a redémarré alors que votre pari de {game} attendait encore son résultat ; il a donc été remboursé."
   retry-one: "&6Vous avez 1 paiement en attente qui n’a pas encore pu être remis. Une nouvelle tentative sera effectuée automatiquement."
   retry-many: "&6Vous avez {count} paiements en attente qui n’ont pas encore pu être remis. Une nouvelle tentative sera effectuée automatiquement."
 
@@ -492,6 +495,8 @@ jockey-options:
   pattern-color: "Couleur du motif : &a{value}"
 
 mob-selection:
+  giant: "Géant"
+  illusioner: "Illusionniste"
   title: "Paramètres de la créature du croupier"
   data-file-not-found: "&cFichier de données des croupiers introuvable !"
   location-not-found: "&cImpossible de récupérer la position du croupier."

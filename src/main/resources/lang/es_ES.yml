@@ -7,6 +7,7 @@ common:
   click-toggle: "&8Haz clic para alternar."
   click-cycle: "&8Haz clic para cambiar."
   click-choose: "&8Haz clic para elegir."
+  click-skip: "HAZ CLIC PARA OMITIR"
   exit: "&cSalir"
   return-player-menu: "&dVolver al menú del jugador"
   return-preferences: "&dVolver a Preferencias"
@@ -74,6 +75,8 @@ payout:
   paid-with-profit: "&a&lPago: {amount}\n&r&a&o(beneficio de {profit})"
   lost: "&c&l¡Perdiste!"
   delivered: "&e{context}\n&aPago: {amount}"
+  context-disconnected: "Te desconectaste durante una partida activa de {game}. La partida terminó mientras estabas desconectado."
+  context-server-restart: "El servidor se reinició mientras tu apuesta de {game} aún esperaba resolución, por lo que ha sido reembolsada."
   retry-one: "&6Tienes 1 pago pendiente que aún no pudo entregarse. Se reintentará automáticamente."
   retry-many: "&6Tienes {count} pagos pendientes que aún no pudieron entregarse. Se reintentarán automáticamente."
 
@@ -492,6 +495,8 @@ jockey-options:
   pattern-color: "Color del patrón: &a{value}"
 
 mob-selection:
+  giant: "Gigante"
+  illusioner: "Ilusionista"
   title: "Configuración de la criatura del crupier"
   data-file-not-found: "&c¡No se encontró el archivo de datos de crupieres!"
   location-not-found: "&cNo se pudo obtener la ubicación del crupier."

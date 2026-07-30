@@ -7,6 +7,7 @@ common:
   click-toggle: "&8Klicken zum Umschalten."
   click-cycle: "&8Klicken zum Wechseln."
   click-choose: "&8Klicken zum Auswählen."
+  click-skip: "ZUM ÜBERSPRINGEN KLICKEN"
   exit: "&cSchließen"
   return-player-menu: "&dZurück zum Spielermenü"
   return-preferences: "&dZurück zu den Einstellungen"
@@ -74,6 +75,8 @@ payout:
   paid-with-profit: "&a&lAusgezahlt: {amount}\n&r&a&o(Gewinn: {profit})"
   lost: "&c&lDu hast verloren!"
   delivered: "&e{context}\n&aAuszahlung: {amount}"
+  context-disconnected: "Du hast während eines laufenden {game}-Spiels die Verbindung getrennt. Das Spiel wurde beendet, während du offline warst."
+  context-server-restart: "Der Server wurde neu gestartet, während deine {game}-Wette noch nicht entschieden war, daher wurde sie zurückerstattet."
   retry-one: "&6Du hast 1 ausstehende Auszahlung, die noch nicht zugestellt werden konnte. Sie wird automatisch erneut versucht."
   retry-many: "&6Du hast {count} ausstehende Auszahlungen, die noch nicht zugestellt werden konnten. Sie werden automatisch erneut versucht."
 
@@ -492,6 +495,8 @@ jockey-options:
   pattern-color: "Musterfarbe: &a{value}"
 
 mob-selection:
+  giant: "Riese"
+  illusioner: "Illusionist"
   title: "Geber-Kreatur-Einstellungen"
   data-file-not-found: "&cDatendatei der Geber wurde nicht gefunden!"
   location-not-found: "&cPosition des Gebers konnte nicht geladen werden."

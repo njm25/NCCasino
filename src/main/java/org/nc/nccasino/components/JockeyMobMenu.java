@@ -118,11 +118,6 @@ public class JockeyMobMenu extends Menu {
             int slot = i;
 
             ItemStack item = new ItemStack(material);
-            ItemMeta meta = item.getItemMeta();
-            if (meta != null) {
-                meta.setDisplayName(ChatColor.YELLOW + formatEntityName(entityType.name()));
-                item.setItemMeta(meta);
-            }
             inventory.setItem(slot, item);
             slotToEntityType.put(slot, entityType);
         }

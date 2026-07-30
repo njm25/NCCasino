@@ -223,11 +223,6 @@ public class JockeyOptionsMenu extends Menu {
             EntityType entityType = spawnEggToEntity.get(material);
 
             ItemStack item = new ItemStack(material);
-            ItemMeta meta = item.getItemMeta();
-            if (meta != null) {
-                meta.setDisplayName(ChatColor.YELLOW + formatEntityName(entityType.name()));
-                item.setItemMeta(meta);
-            }
             inventory.setItem(i, item);
         }
 

@@ -254,11 +254,11 @@ public class MobSelectionMenu extends Menu {
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
                 if (entityType == EntityType.ILLUSIONER) {
-                    meta.setDisplayName(ChatColor.YELLOW + "Illusioner");
+                    meta.setDisplayName(ChatColor.YELLOW + text("mob-selection.illusioner"));
                     meta.setLore(null); // Remove default enchantment lore
                     item.setItemMeta(meta);
-                } else {
-                    meta.setDisplayName(ChatColor.YELLOW + formatEntityName(entityType.name()));
+                } else if (entityType == EntityType.GIANT) {
+                    meta.setDisplayName(ChatColor.YELLOW + text("mob-selection.giant"));
                     item.setItemMeta(meta);
                 }
             }

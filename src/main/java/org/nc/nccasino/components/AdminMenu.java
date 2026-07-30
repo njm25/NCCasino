@@ -525,7 +525,12 @@ public class AdminMenu extends Menu {
                     player.openInventory(adminInventory.getInventory());
                 }
             },
-                Dealer.getInternalName(dealer) + "'s Admin Menu"
+                plugin.getLocalization().text(
+                    player,
+                    "admin.title",
+                    "dealer",
+                    Dealer.getInternalName(dealer)
+                )
             );
             player.openInventory(pm.getInventory());
         }
@@ -535,7 +540,12 @@ public class AdminMenu extends Menu {
     }
 
     private void handleTestMenu(Player player) {
-        String returnMessage = "Return to "+ Dealer.getInternalName(dealer) + "'s Admin Menu";
+        String returnMessage = plugin.getLocalization().text(
+            player,
+            "game-options.return-admin",
+            "dealer",
+            Dealer.getInternalName(dealer)
+        );
         TestMenu testMenu = new TestMenu(player, plugin, dealerId, returnMessage,(p) -> {
             if (adminInventories.containsKey(player.getUniqueId())) {
                 player.openInventory(adminInventories.get(player.getUniqueId()).getInventory());

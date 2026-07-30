@@ -119,11 +119,12 @@ public class PlayerSessionListener implements Listener {
         DeliveryResult result = store.attemptDeliver(player);
 
         for (PendingPayout payout : result.delivered()) {
+            String context = localizedPayoutContext(player, payout.context());
             player.sendMessage(plugin.getLocalization().text(
                 player,
                 "payout.delivered",
                 "context",
-                payout.context(),
+                context,
                 "amount",
                 PayoutMessages.formatAmount(payout)
             ));
@@ -137,5 +138,24 @@ public class PlayerSessionListener implements Listener {
                 count
             ));
         }
+    }
+
+    private String localizedPayoutContext(Player player, String storedContext) {
+        PayoutMessages.StoredContext context = PayoutMessages.decodeContext(storedContext);
+        if (context == null) {
+            return storedContext == null ? "" : storedContext;
+        }
+
+        String game = context.gameType();
+        String gameKey = PayoutMessages.gameLocalizationKey(context.gameType());
+        if (gameKey != null) {
+            game = plugin.getLocalization().text(player, gameKey);
+        }
+        return plugin.getLocalization().text(
+            player,
+            context.localizationKey(),
+            "game",
+            game
+        );
     }
 }
