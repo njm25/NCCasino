@@ -356,6 +356,16 @@ blackjack:
   inventory-full: "&cSem espaço para {amount}; soltando..."
   card-value: "Valor das cartas: {value}"
 
+mines-settings:
+  title: "Configurações de Minas de {dealer}"
+  edit-default: "Editar número padrão de minas"
+  invalid-option: "&cOpção selecionada inválida."
+  invalid-settings-option: "&cOpção das configurações de Minas inválida."
+  prompt-default: "&aDigite o novo número padrão de minas."
+  prompt-default-detailed: "&aDigite um número padrão de minas entre 1 e 24."
+  default-updated: "&aNúmero padrão de minas atualizado."
+  dealer-not-found: "&cNão foi possível encontrar o crupiê das configurações de Minas."
+
 coin-flip-settings:
   title: "Configurações de Cara ou Coroa de {dealer}"
   edit-timer: "Editar temporizador"

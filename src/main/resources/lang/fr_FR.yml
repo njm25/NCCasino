@@ -356,6 +356,16 @@ blackjack:
   inventory-full: "&cPas de place pour {amount}, objet déposé..."
   card-value: "Valeur des cartes : {value}"
 
+mines-settings:
+  title: "Paramètres de Mines de {dealer}"
+  edit-default: "Modifier le nombre de mines par défaut"
+  invalid-option: "&cOption sélectionnée invalide."
+  invalid-settings-option: "&cOption des paramètres de Mines invalide."
+  prompt-default: "&aSaisissez le nouveau nombre de mines par défaut."
+  prompt-default-detailed: "&aSaisissez un nombre de mines par défaut entre 1 et 24."
+  default-updated: "&aNombre de mines par défaut du croupier mis à jour."
+  dealer-not-found: "&cCroupier des paramètres de Mines introuvable."
+
 coin-flip-settings:
   title: "Paramètres de Pile ou Face de {dealer}"
   edit-timer: "Modifier le minuteur"

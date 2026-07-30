@@ -22,7 +22,6 @@ import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
 
-import net.md_5.bungee.api.ChatColor;
 
 public class MinesMenu extends Menu {
     private UUID dealerId;
@@ -78,9 +77,9 @@ public class MinesMenu extends Menu {
         String internalName = Dealer.getInternalName(dealer);
         FileConfiguration config = plugin.getConfig();
         int defaultMines = config.getInt("dealers." + internalName + ".default-mines", 3);
-        addItemAndLore(Material.TNT, defaultMines, "Edit Default # of Mines",  slotMapping.get(SlotOption.EDIT_MINES), "Current: §a" + defaultMines);
-        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to "+returnName,  slotMapping.get(SlotOption.RETURN));
-        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
+        addItemAndLore(Material.TNT, defaultMines, text("mines-settings.edit-default"), slotMapping.get(SlotOption.EDIT_MINES), text("common.current", "value", defaultMines));
+        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, text("common.return-to", "menu", returnName), slotMapping.get(SlotOption.RETURN));
+        addItemAndLore(Material.SPRUCE_DOOR, 1, text("common.exit"), slotMapping.get(SlotOption.EXIT));
 
     }
 
@@ -140,10 +139,10 @@ public class MinesMenu extends Menu {
                 if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§cInvalid option selected.");
+                        player.sendMessage(text("mines-settings.invalid-option"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cInvalid mines settings option selected.");
+                        player.sendMessage(text("mines-settings.invalid-settings-option"));
                         break;}
                     case NONE:{
                         break;
@@ -160,13 +159,13 @@ public class MinesMenu extends Menu {
         player.closeInventory();
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage("§aType new default # of mines in chat.");
+                player.sendMessage(text("mines-settings.prompt-default"));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aType new default # of mines between 1 and 24 in chat.");
+                player.sendMessage(text("mines-settings.prompt-default-detailed"));
                 break;}
             case NONE:{
-                player.sendMessage("§aType new value.");
+                player.sendMessage(text("admin.prompt-new-value"));
                 break;
             }
         }
@@ -184,13 +183,13 @@ public class MinesMenu extends Menu {
 
         if (AdminMenu.editMinesMode.get(playerId) != null) {
             event.setCancelled(true);
-            handleNumericInput(player, event.getMessage().trim(), "default-mines", 1, 24, "Dealer default mines updated");
+            handleNumericInput(player, event.getMessage().trim(), "default-mines", 1, 24);
         }
     }
 
-    private void handleNumericInput(Player player, String input, String configPath, long min, long max, String standardMessage) {
+    private void handleNumericInput(Player player, String input, String configPath, long min, long max) {
         if (input.isEmpty() || !input.matches("\\d+")) {
-            denyAction(player, "Please enter a valid positive integer.");
+            denyAction(player, text("blackjack-settings.valid-positive-integer"));
             return;
         }
 
@@ -198,12 +197,12 @@ public class MinesMenu extends Menu {
         try {
             value = Long.parseLong(input);
         } catch (NumberFormatException e) {
-            denyAction(player, "Invalid number format.");
+            denyAction(player, text("blackjack-settings.invalid-number-format"));
             return;
         }
 
         if (value < min || value > max) {
-            denyAction(player, "Please enter a number between " + min + " and " + max + ".");
+            denyAction(player, text("blackjack-settings.number-range", "min", min, "max", max));
             return;
         }
 
@@ -219,10 +218,16 @@ public class MinesMenu extends Menu {
 
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§a" + standardMessage + ".");
+                    player.sendMessage(text("mines-settings.default-updated"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§a" + standardMessage + " to: " + ChatColor.YELLOW + value + "§a.");
+                    player.sendMessage(text(
+                        "blackjack-settings.updated-detailed",
+                        "setting",
+                        text("mines-settings.default-updated"),
+                        "value",
+                        value
+                    ));
                     break;
                 case NONE:
                     break;
@@ -232,10 +237,10 @@ public class MinesMenu extends Menu {
         } else {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cCould not find dealer.");
+                    player.sendMessage(text("admin.dealer-not-found"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cCould not find mines settings dealer.");
+                    player.sendMessage(text("mines-settings.dealer-not-found"));
                     break;
                 case NONE:
                     break;
@@ -244,6 +249,9 @@ public class MinesMenu extends Menu {
 
         cleanup();
     }
-    
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
+    }
 
 }

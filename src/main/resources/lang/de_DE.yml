@@ -356,6 +356,16 @@ blackjack:
   inventory-full: "&cKein Platz für {amount}; wird fallen gelassen..."
   card-value: "Kartenwert: {value}"
 
+mines-settings:
+  title: "Minen-Einstellungen von {dealer}"
+  edit-default: "Standardanzahl Minen bearbeiten"
+  invalid-option: "&cUngültige Option ausgewählt."
+  invalid-settings-option: "&cUngültige Minen-Einstellungsoption."
+  prompt-default: "&aGib die neue Standardanzahl Minen im Chat ein."
+  prompt-default-detailed: "&aGib eine Standardanzahl Minen zwischen 1 und 24 ein."
+  default-updated: "&aStandardanzahl Minen des Dealers aktualisiert."
+  dealer-not-found: "&cMinen-Einstellungsdealer konnte nicht gefunden werden."
+
 coin-flip-settings:
   title: "Münzwurf-Einstellungen von {dealer}"
   edit-timer: "Timer bearbeiten"

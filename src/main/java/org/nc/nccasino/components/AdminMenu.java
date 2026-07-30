@@ -555,7 +555,7 @@ public class AdminMenu extends Menu {
                 MinesMenu minesAdminInventory = new MinesMenu(
                     dealerId,
                     player,
-                    Dealer.getInternalName(dealer)+ "'s Mines Settings",
+                    text("mines-settings.title", "dealer", Dealer.getInternalName(dealer)),
                     (uuid) -> {
 
                         // Cancel action: re-open the AdminInventory
@@ -568,7 +568,7 @@ public class AdminMenu extends Menu {
                         }
         
                     },
-                    plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
+                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer))
             );
             player.openInventory(minesAdminInventory.getInventory());
             break;

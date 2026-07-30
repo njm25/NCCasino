@@ -356,6 +356,16 @@ blackjack:
   inventory-full: "&cNo hay espacio para {amount}; se soltará..."
   card-value: "Valor de las cartas: {value}"
 
+mines-settings:
+  title: "Ajustes de Minas de {dealer}"
+  edit-default: "Editar número predeterminado de minas"
+  invalid-option: "&cLa opción seleccionada no es válida."
+  invalid-settings-option: "&cLa opción de ajustes de Minas no es válida."
+  prompt-default: "&aEscribe el nuevo número predeterminado de minas."
+  prompt-default-detailed: "&aEscribe un número predeterminado de minas entre 1 y 24."
+  default-updated: "&aNúmero predeterminado de minas actualizado."
+  dealer-not-found: "&cNo se encontró el crupier de ajustes de Minas."
+
 coin-flip-settings:
   title: "Ajustes de Cara o Cruz de {dealer}"
   edit-timer: "Editar temporizador"

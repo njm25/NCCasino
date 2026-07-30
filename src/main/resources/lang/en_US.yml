@@ -356,6 +356,16 @@ blackjack:
   inventory-full: "&cNo room for {amount}, dropping..."
   card-value: "Card Value: {value}"
 
+mines-settings:
+  title: "{dealer}'s Mines Settings"
+  edit-default: "Edit Default # of Mines"
+  invalid-option: "&cInvalid option selected."
+  invalid-settings-option: "&cInvalid mines settings option selected."
+  prompt-default: "&aType new default # of mines in chat."
+  prompt-default-detailed: "&aType a new default # of mines between 1 and 24 in chat."
+  default-updated: "&aDealer default mines updated."
+  dealer-not-found: "&cCould not find mines settings dealer."
+
 coin-flip-settings:
   title: "{dealer}'s Coin Flip Settings"
   edit-timer: "Edit Timer"
