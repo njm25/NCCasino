@@ -140,6 +140,9 @@ baccarat:
   already-seated: "&eDu sitzt bereits."
 
 dragon-descent:
+  columns: "Spalten"
+  vines-per-floor: "Ranken (sichere Felder pro Etage)"
+  floors: "Etagen"
   title: "Drachenabstieg"
   dragon-name: "Drungus der Drache"
   begin: "Den Abstieg beginnen?"

@@ -140,6 +140,9 @@ baccarat:
   already-seated: "&eYa estás sentado."
 
 dragon-descent:
+  columns: "Columnas"
+  vines-per-floor: "Enredaderas (zonas seguras por piso)"
+  floors: "Pisos"
   title: "Descenso del dragón"
   dragon-name: "Drungus el Dragón"
   begin: "¿Comenzar el descenso?"

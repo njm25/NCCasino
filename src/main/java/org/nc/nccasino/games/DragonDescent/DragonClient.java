@@ -107,9 +107,9 @@ public class DragonClient extends Client implements TerminableSession {
         item.setItemMeta(meta);
         inventory.setItem(5, createPlayerHeadItem(player, 1));
 
-        setupGameSettingRow(9, Material.WHITE_STAINED_GLASS_PANE, "Columns", numColumns, 2, 9);
-        setupGameSettingRow(18, Material.VINE, "Vines (Safe Spots per Floor)", numSafeSpots, 1, numColumns - 1);
-        setupGameSettingRow(27, Material.BLACK_STAINED_GLASS_PANE, "Floors", numRows, 1, 100); // Unlimited Floors (for now)
+        setupGameSettingRow(9, Material.WHITE_STAINED_GLASS_PANE, text("dragon-descent.columns"), numColumns, 2, 9);
+        setupGameSettingRow(18, Material.VINE, text("dragon-descent.vines-per-floor"), numSafeSpots, 1, numColumns - 1);
+        setupGameSettingRow(27, Material.BLACK_STAINED_GLASS_PANE, text("dragon-descent.floors"), numRows, 1, 100); // Unlimited Floors (for now)
     }
 
     private void updatePlayerHead() {

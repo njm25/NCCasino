@@ -140,6 +140,9 @@ baccarat:
   already-seated: "&eYou are already seated."
 
 dragon-descent:
+  columns: "Columns"
+  vines-per-floor: "Vines (Safe Spots per Floor)"
+  floors: "Floors"
   title: "Dragon Descent"
   dragon-name: "Drungus The Dragon"
   begin: "Begin Your Descent?"
