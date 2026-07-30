@@ -601,6 +601,7 @@ admin:
   delete-dealer: "Delete Dealer"
   exit: "Exit"
   player-menu: "Player Menu"
+  player-menu-no-permission: "&cYou do not have permission to use the player menu."
   edit-mob-settings: "Edit Mob Settings"
   timer-lore: "&7Timer: &a{value}"
   stand-17-lore: "&7Stand on 17 Chance: &a{value}%"
@@ -657,9 +658,20 @@ test-menu:
   invalid-option: "&cInvalid option selected."
 
 interaction:
+  no-game-permission: "&cYou do not have permission to play {game}."
   shift-click-disabled: "&cShift-click is disabled."
   click-cooldown: "&cPlease wait before clicking again!"
   drag-disabled: "&cCannot drag in here."
+
+occupations:
+  display-name: "display name"
+  timer: "timer"
+  animation-message: "animation message"
+  location: "location"
+  chip-size: "chip size"
+  stand-on-17: "stand on 17 chance"
+  default-mines: "default number of mines"
+  currency-item: "currency item selection"
 
 commands:
   player-only: "&cThis command can only be used by players."

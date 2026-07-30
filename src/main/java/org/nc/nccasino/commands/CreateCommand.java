@@ -45,7 +45,7 @@ public class CreateCommand implements CasinoCommand {
                 if (i >= mobs.size()) {
                     break; // Prevent index mismatch
                 }
-                String occupation = occupations.get(i);
+                String occupation = plugin.getLocalization().text(player, occupations.get(i));
                 Mob mob = mobs.get(i);
                 
                 String mobName = (mob != null) ? Dealer.getInternalName(mob) : "unknown dealer";

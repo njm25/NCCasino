@@ -601,6 +601,7 @@ admin:
   delete-dealer: "Eliminar crupier"
   exit: "Salir"
   player-menu: "Menú del jugador"
+  player-menu-no-permission: "&cNo tienes permiso para usar el menú del jugador."
   edit-mob-settings: "Editar ajustes de criatura"
   timer-lore: "&7Temporizador: &a{value}"
   stand-17-lore: "&7Probabilidad de plantarse en 17: &a{value}%"
@@ -657,9 +658,20 @@ test-menu:
   invalid-option: "&cLa opción seleccionada no es válida."
 
 interaction:
+  no-game-permission: "&cNo tienes permiso para jugar a {game}."
   shift-click-disabled: "&cEl clic con Mayús está desactivado."
   click-cooldown: "&c¡Espera antes de volver a hacer clic!"
   drag-disabled: "&cNo puedes arrastrar objetos aquí."
+
+occupations:
+  display-name: "el nombre visible"
+  timer: "el temporizador"
+  animation-message: "el mensaje de animación"
+  location: "la ubicación"
+  chip-size: "el valor de la ficha"
+  stand-on-17: "la probabilidad de plantarse en 17"
+  default-mines: "el número predeterminado de minas"
+  currency-item: "la selección del objeto de moneda"
 
 commands:
   player-only: "&cEste comando solo puede usarse dentro del juego."

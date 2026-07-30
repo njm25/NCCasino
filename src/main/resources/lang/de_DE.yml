@@ -601,6 +601,7 @@ admin:
   delete-dealer: "Dealer löschen"
   exit: "Beenden"
   player-menu: "Spielermenü"
+  player-menu-no-permission: "&cDu hast keine Berechtigung, das Spielermenü zu verwenden."
   edit-mob-settings: "Kreatur-Einstellungen bearbeiten"
   timer-lore: "&7Timer: &a{value}"
   stand-17-lore: "&7Chance, bei 17 zu halten: &a{value}%"
@@ -657,9 +658,20 @@ test-menu:
   invalid-option: "&cUngültige Option ausgewählt."
 
 interaction:
+  no-game-permission: "&cDu hast keine Berechtigung, {game} zu spielen."
   shift-click-disabled: "&cUmschalt-Klick ist deaktiviert."
   click-cooldown: "&cBitte warte, bevor du erneut klickst!"
   drag-disabled: "&cHier können keine Gegenstände gezogen werden."
+
+occupations:
+  display-name: "den Anzeigenamen"
+  timer: "den Timer"
+  animation-message: "die Animationsnachricht"
+  location: "den Standort"
+  chip-size: "den Chipwert"
+  stand-on-17: "die Wahrscheinlichkeit, bei 17 zu halten"
+  default-mines: "die Standardanzahl der Minen"
+  currency-item: "die Auswahl des Währungsgegenstands"
 
 commands:
   player-only: "&cDieser Befehl kann nur im Spiel verwendet werden."

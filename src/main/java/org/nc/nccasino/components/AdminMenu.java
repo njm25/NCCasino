@@ -326,28 +326,28 @@ public class AdminMenu extends Menu {
         List<String> occupations = new ArrayList<>();
     
         if (nameEditMode.get(playerId) != null) {
-            occupations.add("display name");
+            occupations.add("occupations.display-name");
         }
         if (timerEditMode.get(playerId) != null) {
-            occupations.add("timer");
+            occupations.add("occupations.timer");
         }
         if (amsgEditMode.get(playerId) != null) {
-            occupations.add("animation message");
+            occupations.add("occupations.animation-message");
         }
         if (moveMode.get(playerId) != null) {
-            occupations.add("location");
+            occupations.add("occupations.location");
         }
         if (chipEditMode.get(playerId) != null) {
-            occupations.add("chip size");
+            occupations.add("occupations.chip-size");
         }
         if (standOn17Mode.get(playerId) != null) {
-            occupations.add("stand on 17 chance");
+            occupations.add("occupations.stand-on-17");
         }
         if (editMinesMode.get(playerId) != null) {
-            occupations.add("default # of mines");
+            occupations.add("occupations.default-mines");
         }
         if (currencyEditMode.get(playerId) != null) {///////////might never get to this
-            occupations.add("selecting currency item");
+            occupations.add("occupations.currency-item");
         }
         return occupations;
     }
@@ -530,7 +530,7 @@ public class AdminMenu extends Menu {
             player.openInventory(pm.getInventory());
         }
         else {
-            player.sendMessage(ChatColor.RED + "You do not have permission to use the player menu.");
+            player.sendMessage(text("admin.player-menu-no-permission"));
         }
     }
 

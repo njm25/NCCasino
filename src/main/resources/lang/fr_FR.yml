@@ -601,6 +601,7 @@ admin:
   delete-dealer: "Supprimer le croupier"
   exit: "Sortir"
   player-menu: "Menu du joueur"
+  player-menu-no-permission: "&cVous n'avez pas la permission d'utiliser le menu du joueur."
   edit-mob-settings: "Modifier les paramètres de la créature"
   timer-lore: "&7Minuteur : &a{value}"
   stand-17-lore: "&7Chance de rester à 17 : &a{value}%"
@@ -657,9 +658,20 @@ test-menu:
   invalid-option: "&cOption sélectionnée invalide."
 
 interaction:
+  no-game-permission: "&cVous n'avez pas la permission de jouer à {game}."
   shift-click-disabled: "&cLe Maj-clic est désactivé."
   click-cooldown: "&cVeuillez attendre avant de cliquer à nouveau !"
   drag-disabled: "&cImpossible de faire glisser des objets ici."
+
+occupations:
+  display-name: "le nom affiché"
+  timer: "le minuteur"
+  animation-message: "le message d'animation"
+  location: "la position"
+  chip-size: "la valeur du jeton"
+  stand-on-17: "la probabilité de rester à 17"
+  default-mines: "le nombre de mines par défaut"
+  currency-item: "la sélection de l'objet monétaire"
 
 commands:
   player-only: "&cCette commande ne peut être utilisée que dans le jeu."

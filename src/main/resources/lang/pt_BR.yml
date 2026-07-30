@@ -601,6 +601,7 @@ admin:
   delete-dealer: "Excluir crupiê"
   exit: "Sair"
   player-menu: "Menu do jogador"
+  player-menu-no-permission: "&cVocê não tem permissão para usar o menu do jogador."
   edit-mob-settings: "Editar configurações da criatura"
   timer-lore: "&7Temporizador: &a{value}"
   stand-17-lore: "&7Chance de parar em 17: &a{value}%"
@@ -657,9 +658,20 @@ test-menu:
   invalid-option: "&cOpção selecionada inválida."
 
 interaction:
+  no-game-permission: "&cVocê não tem permissão para jogar {game}."
   shift-click-disabled: "&cO clique com Shift está desativado."
   click-cooldown: "&cAguarde antes de clicar novamente!"
   drag-disabled: "&cNão é possível arrastar itens aqui."
+
+occupations:
+  display-name: "o nome de exibição"
+  timer: "o temporizador"
+  animation-message: "a mensagem de animação"
+  location: "a localização"
+  chip-size: "o valor da ficha"
+  stand-on-17: "a chance de parar em 17"
+  default-mines: "o número padrão de minas"
+  currency-item: "a seleção do item de moeda"
 
 commands:
   player-only: "&cEste comando só pode ser usado dentro do jogo."
