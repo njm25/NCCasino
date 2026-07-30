@@ -466,6 +466,28 @@ mob-selection:
   edit-age: "Editar idade"
   edit-size: "Editar tamanho"
 
+complex-variant:
+  title: "Menu de variantes complexas"
+  cycle-llama-color: "Alternar cor da lhama"
+  cycle-llama-decor: "Alternar decoração da lhama"
+  cycle-horse-color: "Alternar cor do cavalo"
+  cycle-horse-style: "Alternar estilo do cavalo"
+  cycle-fish-pattern: "Alternar padrão do peixe"
+  cycle-body-color: "Alternar cor do corpo"
+  cycle-pattern-color: "Alternar cor do padrão"
+  none: "Sem variantes complexas"
+  unsupported: "&cA criatura não é uma lhama, um cavalo nem um peixe tropical."
+  unavailable: "&cEsta criatura não tem variantes complexas."
+  llama-color-changed: "Cor da lhama alterada"
+  llama-decor-changed: "Decoração da lhama alterada"
+  horse-color-changed: "Cor do cavalo alterada"
+  horse-style-changed: "Estilo do cavalo alterado"
+  fish-pattern-changed: "Padrão do peixe alterado"
+  body-color-changed: "Cor do corpo alterada"
+  pattern-color-changed: "Cor do padrão alterada"
+  changed: "&a{change}."
+  changed-detailed: "&a{change} para &e{value}&a."
+
 mines-settings:
   title: "Configurações de Minas de {dealer}"
   edit-default: "Editar número padrão de minas"

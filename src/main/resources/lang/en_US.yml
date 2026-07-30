@@ -466,6 +466,28 @@ mob-selection:
   edit-age: "Edit Age"
   edit-size: "Edit Size"
 
+complex-variant:
+  title: "Complex Variant Menu"
+  cycle-llama-color: "Cycle Llama Color"
+  cycle-llama-decor: "Cycle Llama Decor"
+  cycle-horse-color: "Cycle Horse Color"
+  cycle-horse-style: "Cycle Horse Style"
+  cycle-fish-pattern: "Cycle Fish Pattern"
+  cycle-body-color: "Cycle Body Color"
+  cycle-pattern-color: "Cycle Pattern Color"
+  none: "No Complex Variants"
+  unsupported: "&cMob is not a Llama, Horse, or Tropical Fish."
+  unavailable: "&cNo complex variants for this mob."
+  llama-color-changed: "Llama color changed"
+  llama-decor-changed: "Llama decor changed"
+  horse-color-changed: "Horse color changed"
+  horse-style-changed: "Horse style changed"
+  fish-pattern-changed: "Fish pattern changed"
+  body-color-changed: "Body color changed"
+  pattern-color-changed: "Pattern color changed"
+  changed: "&a{change}."
+  changed-detailed: "&a{change} to &e{value}&a."
+
 mines-settings:
   title: "{dealer}'s Mines Settings"
   edit-default: "Edit Default # of Mines"

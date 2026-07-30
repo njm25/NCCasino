@@ -466,6 +466,28 @@ mob-selection:
   edit-age: "Modifier l'âge"
   edit-size: "Modifier la taille"
 
+complex-variant:
+  title: "Menu des variantes complexes"
+  cycle-llama-color: "Changer la couleur du lama"
+  cycle-llama-decor: "Changer la décoration du lama"
+  cycle-horse-color: "Changer la couleur du cheval"
+  cycle-horse-style: "Changer le style du cheval"
+  cycle-fish-pattern: "Changer le motif du poisson"
+  cycle-body-color: "Changer la couleur du corps"
+  cycle-pattern-color: "Changer la couleur du motif"
+  none: "Aucune variante complexe"
+  unsupported: "&cLa créature n'est ni un lama, ni un cheval, ni un poisson tropical."
+  unavailable: "&cCette créature n'a aucune variante complexe."
+  llama-color-changed: "Couleur du lama modifiée"
+  llama-decor-changed: "Décoration du lama modifiée"
+  horse-color-changed: "Couleur du cheval modifiée"
+  horse-style-changed: "Style du cheval modifié"
+  fish-pattern-changed: "Motif du poisson modifié"
+  body-color-changed: "Couleur du corps modifiée"
+  pattern-color-changed: "Couleur du motif modifiée"
+  changed: "&a{change}."
+  changed-detailed: "&a{change} en &e{value}&a."
+
 mines-settings:
   title: "Paramètres de Mines de {dealer}"
   edit-default: "Modifier le nombre de mines par défaut"

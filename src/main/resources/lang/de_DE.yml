@@ -466,6 +466,28 @@ mob-selection:
   edit-age: "Alter bearbeiten"
   edit-size: "Größe bearbeiten"
 
+complex-variant:
+  title: "Menü für komplexe Varianten"
+  cycle-llama-color: "Lama-Farbe wechseln"
+  cycle-llama-decor: "Lama-Dekoration wechseln"
+  cycle-horse-color: "Pferdefarbe wechseln"
+  cycle-horse-style: "Pferdestil wechseln"
+  cycle-fish-pattern: "Fischmuster wechseln"
+  cycle-body-color: "Körperfarbe wechseln"
+  cycle-pattern-color: "Musterfarbe wechseln"
+  none: "Keine komplexen Varianten"
+  unsupported: "&cDie Kreatur ist weder Lama, Pferd noch Tropenfisch."
+  unavailable: "&cDiese Kreatur hat keine komplexen Varianten."
+  llama-color-changed: "Lama-Farbe geändert"
+  llama-decor-changed: "Lama-Dekoration geändert"
+  horse-color-changed: "Pferdefarbe geändert"
+  horse-style-changed: "Pferdestil geändert"
+  fish-pattern-changed: "Fischmuster geändert"
+  body-color-changed: "Körperfarbe geändert"
+  pattern-color-changed: "Musterfarbe geändert"
+  changed: "&a{change}."
+  changed-detailed: "&a{change} zu &e{value}&a."
+
 mines-settings:
   title: "Minen-Einstellungen von {dealer}"
   edit-default: "Standardanzahl Minen bearbeiten"

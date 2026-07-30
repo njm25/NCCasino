@@ -466,6 +466,28 @@ mob-selection:
   edit-age: "Editar edad"
   edit-size: "Editar tamaño"
 
+complex-variant:
+  title: "Menú de variantes complejas"
+  cycle-llama-color: "Cambiar color de la llama"
+  cycle-llama-decor: "Cambiar decoración de la llama"
+  cycle-horse-color: "Cambiar color del caballo"
+  cycle-horse-style: "Cambiar estilo del caballo"
+  cycle-fish-pattern: "Cambiar patrón del pez"
+  cycle-body-color: "Cambiar color del cuerpo"
+  cycle-pattern-color: "Cambiar color del patrón"
+  none: "Sin variantes complejas"
+  unsupported: "&cLa criatura no es una llama, un caballo ni un pez tropical."
+  unavailable: "&cEsta criatura no tiene variantes complejas."
+  llama-color-changed: "Color de la llama cambiado"
+  llama-decor-changed: "Decoración de la llama cambiada"
+  horse-color-changed: "Color del caballo cambiado"
+  horse-style-changed: "Estilo del caballo cambiado"
+  fish-pattern-changed: "Patrón del pez cambiado"
+  body-color-changed: "Color del cuerpo cambiado"
+  pattern-color-changed: "Color del patrón cambiado"
+  changed: "&a{change}."
+  changed-detailed: "&a{change} a &e{value}&a."
+
 mines-settings:
   title: "Ajustes de Minas de {dealer}"
   edit-default: "Editar número predeterminado de minas"

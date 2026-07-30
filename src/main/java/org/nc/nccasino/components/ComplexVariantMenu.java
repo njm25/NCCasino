@@ -137,7 +137,7 @@ public class ComplexVariantMenu extends Menu {
         Mob dealer
     ) {
         // 9-slot menu for simplicity, same style as TestMenu
-        super(player, plugin, dealerId, "Complex Variant Menu", 9, returnMessage, returnCallback);
+        super(player, plugin, dealerId, plugin.getLocalization().text(player, "complex-variant.title"), 9, returnMessage, returnCallback);
 
         // Grab the actual dealer instance
         this.dealer = dealer;
@@ -165,21 +165,21 @@ public class ComplexVariantMenu extends Menu {
             addItemAndLore(
                 LLAMA_TERRACOTTA_MAP.get(llama.getColor()),
                 1,
-                "Cycle Llama Color",
+                text("complex-variant.cycle-llama-color"),
                 slotMapping.get(SlotOption.COMPLEX_VAR_1),
-                "Current: §a" + formatName(llama.getColor().name())
+                text("jockey-options.current", "value", formatName(llama.getColor().name()))
             );
 
             // 2) Llama Decor (the “towel”)
             // Check which carpet we have in the Llama’s inventory
             Material currentCarpet = getLlamaCarpet((LlamaInventory) llama.getInventory());
-            String carpetName = currentCarpet == null ? "None" : formatName(currentCarpet.name().replace("_CARPET", ""));
+            String carpetName = currentCarpet == null ? text("mob-settings.none") : formatName(currentCarpet.name().replace("_CARPET", ""));
             addItemAndLore(
                 currentCarpet != null ? currentCarpet : Material.BARRIER,
                 1,
-                "Cycle Llama Decor",
+                text("complex-variant.cycle-llama-decor"),
                 slotMapping.get(SlotOption.COMPLEX_VAR_2),
-                "Current: §a" + carpetName
+                text("jockey-options.current", "value", carpetName)
             );
         }
         else if (dealer instanceof Horse horse) {
@@ -187,18 +187,18 @@ public class ComplexVariantMenu extends Menu {
             addItemAndLore(
                 HORSE_COLOR_MAP.get(horse.getColor()),
                 1,
-                "Cycle Horse Color",
+                text("complex-variant.cycle-horse-color"),
                 slotMapping.get(SlotOption.COMPLEX_VAR_1),
-                "Current: §a" + formatName(horse.getColor().name())
+                text("jockey-options.current", "value", formatName(horse.getColor().name()))
             );
 
             // 2) Horse Style
             addItemAndLore(
                 HORSE_STYLE_MAP.get(horse.getStyle()),
                 1,
-                "Cycle Horse Style",
+                text("complex-variant.cycle-horse-style"),
                 slotMapping.get(SlotOption.COMPLEX_VAR_2),
-                "Current: §a" + formatName(horse.getStyle().name())
+                text("jockey-options.current", "value", formatName(horse.getStyle().name()))
             );
         }
         else if (dealer instanceof TropicalFish fish) {
@@ -206,25 +206,25 @@ public class ComplexVariantMenu extends Menu {
             addItemAndLore(
                 FISH_PATTERN_TERRACOTTA_MAP.get(fish.getPattern()),
                 1,
-                "Cycle Fish Pattern",
+                text("complex-variant.cycle-fish-pattern"),
                 slotMapping.get(SlotOption.COMPLEX_VAR_1),
-                "Current: §a" + formatName(fish.getPattern().name())
+                text("jockey-options.current", "value", formatName(fish.getPattern().name()))
             );
             // 2) Fish Body Color
             addItemAndLore(
                 DYE_MATERIAL_MAP.get(fish.getBodyColor()),
                 1,
-                "Cycle Body Color",
+                text("complex-variant.cycle-body-color"),
                 slotMapping.get(SlotOption.COMPLEX_VAR_2),
-                "Current: §a" + formatName(fish.getBodyColor().name())
+                text("jockey-options.current", "value", formatName(fish.getBodyColor().name()))
             );
             // 3) Fish Pattern Color
             addItemAndLore(
                 DYE_MATERIAL_MAP.get(fish.getPatternColor()),
                 1,
-                "Cycle Pattern Color",
+                text("complex-variant.cycle-pattern-color"),
                 slotMapping.get(SlotOption.COMPLEX_VAR_3),
-                "Current: §a" + formatName(fish.getPatternColor().name())
+                text("jockey-options.current", "value", formatName(fish.getPatternColor().name()))
             );
         }
         else {
@@ -232,9 +232,9 @@ public class ComplexVariantMenu extends Menu {
             addItemAndLore(
                 Material.BARRIER,
                 1,
-                "No Complex Variants",
+                text("complex-variant.none"),
                 slotMapping.get(SlotOption.COMPLEX_VAR_1),
-                ChatColor.RED + "Mob is not Llama, Horse, or TropicalFish."
+                text("complex-variant.unsupported")
             );
         }
         addExitReturn();
@@ -275,7 +275,7 @@ public class ComplexVariantMenu extends Menu {
         }
         // Catch-all
         else {
-            player.sendMessage(ChatColor.RED + "No complex variants for this mob.");
+            player.sendMessage(text("complex-variant.unavailable"));
         }
 
         // Refresh menu to update “Current: ...” text
@@ -292,7 +292,7 @@ public class ComplexVariantMenu extends Menu {
         int idx = indexOf(LLAMA_COLORS, current);
         int next = (idx + 1) % LLAMA_COLORS.length;
         llama.setColor(LLAMA_COLORS[next]);
-        sendChangeMessage(player, "Llama color changed" , LLAMA_COLORS[next].name());
+        sendChangeMessage(player, "complex-variant.llama-color-changed", LLAMA_COLORS[next].name());
     }
 
     private void cycleLlamaDecor(org.bukkit.entity.Player player, Llama llama) {
@@ -308,11 +308,11 @@ public class ComplexVariantMenu extends Menu {
         // If newCarpet is null, that means “no decor,” so setDecor(null).
         if (newCarpet == null) {
             inv.setDecor(null);
-            sendChangeMessage(player, "Llama decor changed","empty");
+            sendChangeMessage(player, "complex-variant.llama-decor-changed", "empty");
         } else {
             // Place that carpet in the “decor” slot
             inv.setDecor(new ItemStack(newCarpet));
-            sendChangeMessage(player, "Llama decor changed" , newCarpet.name());
+            sendChangeMessage(player, "complex-variant.llama-decor-changed", newCarpet.name());
         }
     }
 
@@ -331,7 +331,7 @@ public class ComplexVariantMenu extends Menu {
         int idx = indexOf(HORSE_COLORS, current);
         int next = (idx + 1) % HORSE_COLORS.length;
         horse.setColor(HORSE_COLORS[next]);
-        sendChangeMessage(player, "Horse color changed" , HORSE_COLORS[next].name());
+        sendChangeMessage(player, "complex-variant.horse-color-changed", HORSE_COLORS[next].name());
     }
 
     private void cycleHorseStyle(org.bukkit.entity.Player player, Horse horse) {
@@ -339,7 +339,7 @@ public class ComplexVariantMenu extends Menu {
         int idx = indexOf(HORSE_STYLES, current);
         int next = (idx + 1) % HORSE_STYLES.length;
         horse.setStyle(HORSE_STYLES[next]);
-        sendChangeMessage(player, "Horse style changed" , HORSE_STYLES[next].name());
+        sendChangeMessage(player, "complex-variant.horse-style-changed", HORSE_STYLES[next].name());
     }
 
     // ------------------------------------------------------------------------
@@ -350,7 +350,7 @@ public class ComplexVariantMenu extends Menu {
         int idx = indexOf(FISH_PATTERNS, current);
         int next = (idx + 1) % FISH_PATTERNS.length;
         fish.setPattern(FISH_PATTERNS[next]);
-        sendChangeMessage(player, "Fish pattern changed" , FISH_PATTERNS[next].name());
+        sendChangeMessage(player, "complex-variant.fish-pattern-changed", FISH_PATTERNS[next].name());
     }
 
     private void cycleFishBodyColor(org.bukkit.entity.Player player, TropicalFish fish) {
@@ -358,7 +358,7 @@ public class ComplexVariantMenu extends Menu {
         int idx = indexOf(DYE_COLORS, current);
         int next = (idx + 1) % DYE_COLORS.length;
         fish.setBodyColor(DYE_COLORS[next]);
-        sendChangeMessage(player, "Body color changed" , DYE_COLORS[next].name());
+        sendChangeMessage(player, "complex-variant.body-color-changed", DYE_COLORS[next].name());
     }
 
     private void cycleFishPatternColor(org.bukkit.entity.Player player, TropicalFish fish) {
@@ -366,19 +366,23 @@ public class ComplexVariantMenu extends Menu {
         int idx = indexOf(DYE_COLORS, current);
         int next = (idx + 1) % DYE_COLORS.length;
         fish.setPatternColor(DYE_COLORS[next]);
-        sendChangeMessage(player, "Pattern color changed" ,DYE_COLORS[next].name());
+        sendChangeMessage(player, "complex-variant.pattern-color-changed", DYE_COLORS[next].name());
     }
 
     // ------------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------------
-    private void sendChangeMessage(org.bukkit.entity.Player player, String info,String verb) {
+    private void sendChangeMessage(org.bukkit.entity.Player player, String messageKey, String value) {
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage(ChatColor.GREEN + info+".");
+                player.sendMessage(text("complex-variant.changed", "change", text(messageKey)));
                 break;}
             case VERBOSE:{
-                player.sendMessage(ChatColor.GREEN + info+" to "+ChatColor.YELLOW+formatName(verb)+ChatColor.GREEN+".");
+                player.sendMessage(text(
+                    "complex-variant.changed-detailed",
+                    "change", text(messageKey),
+                    "value", formatName(value)
+                ));
                 break;}
             case NONE:{break;
             }
@@ -390,6 +394,10 @@ public class ComplexVariantMenu extends Menu {
         return Arrays.stream(raw.toLowerCase().split("_"))
                      .map(str -> str.substring(0,1).toUpperCase() + str.substring(1))
                      .collect(Collectors.joining(" "));
+    }
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
     }
 
     private static <E> int indexOf(E[] arr, E value) {
