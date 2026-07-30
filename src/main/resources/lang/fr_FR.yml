@@ -274,6 +274,16 @@ mines:
   inventory-full: "&cPas de place pour {amount} ; objet déposé..."
 
 roulette:
+  bet-top-row: "Rangée supérieure - 2:1"
+  bet-middle-row: "Rangée centrale - 2:1"
+  bet-bottom-row: "Rangée inférieure - 2:1"
+  bet-first-dozen: "1re douzaine - 2:1"
+  bet-second-dozen: "2e douzaine - 2:1"
+  bet-third-dozen: "3e douzaine - 2:1"
+  bet-red: "Rouge - 1:1"
+  bet-black: "Noir - 1:1"
+  bet-odd: "Impair - 1:1"
+  bet-even: "Pair - 1:1"
   ball: "Bille"
   wheel-title: "Roue de roulette"
   welcome: "&aBienvenue à la roulette."

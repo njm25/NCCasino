@@ -912,7 +912,7 @@ public class BettingTable extends DealerInventory {
                                 "amount",
                                 plugin.formatWagerDisplay(currencyMode, currencyName, wagerAmount),
                                 "bet",
-                                itemName
+                                localizedBetType(itemName)
                             ));
                             break;
                         case NONE:
@@ -1442,6 +1442,22 @@ private void saveBetsToRoulette(Player player) {
             case "Odd/Even" -> text("roulette.category-odd-even");
             case "High/Low" -> text("roulette.category-high-low");
             default -> text("roulette.category-straight-up");
+        };
+    }
+
+    private String localizedBetType(String betType) {
+        return switch (betType) {
+            case "Top Row - 2:1" -> text("roulette.bet-top-row");
+            case "Middle Row - 2:1" -> text("roulette.bet-middle-row");
+            case "Bottom Row - 2:1" -> text("roulette.bet-bottom-row");
+            case "1st Dozen - 2:1" -> text("roulette.bet-first-dozen");
+            case "2nd Dozen - 2:1" -> text("roulette.bet-second-dozen");
+            case "3rd Dozen - 2:1" -> text("roulette.bet-third-dozen");
+            case "Red - 1:1" -> text("roulette.bet-red");
+            case "Black - 1:1" -> text("roulette.bet-black");
+            case "Odd - 1:1" -> text("roulette.bet-odd");
+            case "Even - 1:1" -> text("roulette.bet-even");
+            default -> betType;
         };
     }
 

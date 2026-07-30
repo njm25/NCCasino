@@ -274,6 +274,16 @@ mines:
   inventory-full: "&cSem espaço para {amount}; descartando..."
 
 roulette:
+  bet-top-row: "Fileira superior - 2:1"
+  bet-middle-row: "Fileira central - 2:1"
+  bet-bottom-row: "Fileira inferior - 2:1"
+  bet-first-dozen: "1.ª dúzia - 2:1"
+  bet-second-dozen: "2.ª dúzia - 2:1"
+  bet-third-dozen: "3.ª dúzia - 2:1"
+  bet-red: "Vermelho - 1:1"
+  bet-black: "Preto - 1:1"
+  bet-odd: "Ímpar - 1:1"
+  bet-even: "Par - 1:1"
   ball: "Bola"
   wheel-title: "Roleta"
   welcome: "&aBem-vindo à Roleta."
