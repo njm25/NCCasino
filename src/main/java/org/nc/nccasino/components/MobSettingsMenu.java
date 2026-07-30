@@ -77,20 +77,20 @@ public class MobSettingsMenu extends Menu {
         slotToJockeyMap.clear();
 
         // Add standard menu items
-        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnName, slotMapping.get(SlotOption.RETURN));
-        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit", slotMapping.get(SlotOption.EXIT));
-        addItemAndLore(Material.SADDLE, 1, "Add Vehicle", slotMapping.get(SlotOption.ADD_JOCKEY), "Add a new mob the bottom of the stack");
-        addItemAndLore(Material.LEAD, 1, "Add Passenger", slotMapping.get(SlotOption.ADD_PASSENGER), "Add a new mob to the top of the stack");
+        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, text("common.return-to", "menu", returnName), slotMapping.get(SlotOption.RETURN));
+        addItemAndLore(Material.SPRUCE_DOOR, 1, text("common.exit"), slotMapping.get(SlotOption.EXIT));
+        addItemAndLore(Material.SADDLE, 1, text("mob-settings.add-vehicle"), slotMapping.get(SlotOption.ADD_JOCKEY), text("mob-settings.add-vehicle-lore"));
+        addItemAndLore(Material.LEAD, 1, text("mob-settings.add-passenger"), slotMapping.get(SlotOption.ADD_PASSENGER), text("mob-settings.add-passenger-lore"));
         
         // Update the remove jockey button based on delete mode
         if (deleteMode) {
-            ItemStack deleteButton = createEnchantedItem(Material.BARRIER, "Delete Mode: " + ChatColor.GREEN + "ON", 1);
+            ItemStack deleteButton = createEnchantedItem(Material.BARRIER, text("mob-settings.delete-mode-on"), 1);
             ItemMeta meta = deleteButton.getItemMeta();
             if (meta != null) {
-                meta.setDisplayName(ChatColor.YELLOW + "Delete Mode: " + ChatColor.GREEN + "ON");
+                meta.setDisplayName(ChatColor.YELLOW + text("mob-settings.delete-mode-on"));
                 List<String> lore = Arrays.asList(
-                    ChatColor.GRAY + "Click to exit delete mode",
-                    ChatColor.GRAY + "Click any jockey to delete it"
+                    ChatColor.GRAY + text("mob-settings.exit-delete-mode-lore"),
+                    ChatColor.GRAY + text("mob-settings.delete-jockey-lore")
                 );
                 meta.setLore(lore);
                 meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
@@ -98,10 +98,10 @@ public class MobSettingsMenu extends Menu {
             }
             inventory.setItem(slotMapping.get(SlotOption.REMOVE_JOCKEY), deleteButton);
         } else {
-            addItemAndLore(Material.BARRIER, 1, "Delete Mode: " + ChatColor.RED + "OFF", slotMapping.get(SlotOption.REMOVE_JOCKEY), 
-                ChatColor.GRAY + "Click to enter delete mode,",
-                ChatColor.GRAY + "which stays until clicked again",
-                ChatColor.GRAY + "When active, click jockeys to delete them"
+            addItemAndLore(Material.BARRIER, 1, text("mob-settings.delete-mode-off"), slotMapping.get(SlotOption.REMOVE_JOCKEY),
+                ChatColor.GRAY + text("mob-settings.enter-delete-mode-lore"),
+                ChatColor.GRAY + text("mob-settings.delete-mode-stays-lore"),
+                ChatColor.GRAY + text("mob-settings.delete-active-lore")
             );
         }
 
@@ -140,10 +140,10 @@ public class MobSettingsMenu extends Menu {
         String dealerTypeName = formatEntityName(dealer.getType().name());
         
         if (!deleteMode) {  // Dealer should be enchanted when NOT in delete mode
-            ItemStack dealerItem = createEnchantedItem(dealerSpawnEgg, "Dealer " + dealerTypeName, 1);
+            ItemStack dealerItem = createEnchantedItem(dealerSpawnEgg, text("mob-settings.dealer-label", "mob", dealerTypeName), 1);
             ItemMeta meta = dealerItem.getItemMeta();
             if (meta != null) {
-                meta.setDisplayName(ChatColor.YELLOW + "Dealer " + dealerTypeName);
+                meta.setDisplayName(ChatColor.YELLOW + text("mob-settings.dealer-label", "mob", dealerTypeName));
                 meta.setLore(getMobLore(dealer));
                 meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
                 dealerItem.setItemMeta(meta);
@@ -153,7 +153,7 @@ public class MobSettingsMenu extends Menu {
             addItemAndLore(
                 dealerSpawnEgg,
                 1,
-                "Dealer " + dealerTypeName,
+                text("mob-settings.dealer-label", "mob", dealerTypeName),
                 dealerSlot,
                 getMobLore(dealer).toArray(new String[0])
             );
@@ -355,16 +355,16 @@ public class MobSettingsMenu extends Menu {
         // Check if we've reached the maximum total limit
         int totalCount = vehicleCount + passengerCount;
         if (totalCount >= 44) {
-            player.sendMessage("§cMaximum total number of vehicles and passengers (44) reached!");
+            player.sendMessage(text("mob-settings.maximum-total"));
             return;
         }
 
         // Check if we've reached the maximum limit for the specific type
         if (asPassenger && passengerCount >= 44) {
-            player.sendMessage("§cMaximum number of passengers (44) reached!");
+            player.sendMessage(text("mob-settings.maximum-passengers"));
             return;
         } else if (!asPassenger && vehicleCount >= 44) {
-            player.sendMessage("§cMaximum number of vehicles (44) reached!");
+            player.sendMessage(text("mob-settings.maximum-vehicles"));
             return;
         }
 
@@ -374,7 +374,7 @@ public class MobSettingsMenu extends Menu {
             plugin, 
             this.jockeyManager,
             null, 
-            "Mob Settings Menu",
+            text("mob-settings.menu-name"),
             (p) -> {
                 // After vehicle is selected, if this is the first vehicle and not a passenger
                 if (jockeyManager.getJockeyCount() == 0 && !asPassenger) {
@@ -423,8 +423,8 @@ public class MobSettingsMenu extends Menu {
                         jockeyManager.getJockeys().add(vehicleNode);
                         
                         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                            case STANDARD -> player.sendMessage("§aAdded vehicle.");
-                            case VERBOSE -> player.sendMessage("§aAdded vehicle: " + ChatColor.YELLOW + formatEntityName(selectedType.name()) + "§a.");
+                            case STANDARD -> player.sendMessage(text("mob-settings.vehicle-added"));
+                            case VERBOSE -> player.sendMessage(text("mob-settings.vehicle-added-detailed", "mob", formatEntityName(selectedType.name())));
                             default -> {}
                         }
                         
@@ -452,8 +452,8 @@ public class MobSettingsMenu extends Menu {
         
         // Send feedback to player
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-            case STANDARD -> player.sendMessage(deleteMode ? "§aDelete mode enabled." : "§aDelete mode disabled.");
-            case VERBOSE -> player.sendMessage(deleteMode ? "§aDelete mode enabled. Click any jockey to delete it." : "§aDelete mode disabled.");
+            case STANDARD -> player.sendMessage(text(deleteMode ? "mob-settings.delete-mode-enabled" : "mob-settings.delete-mode-disabled"));
+            case VERBOSE -> player.sendMessage(text(deleteMode ? "mob-settings.delete-mode-enabled-detailed" : "mob-settings.delete-mode-disabled"));
             default -> {}
         }
 
@@ -527,7 +527,7 @@ public class MobSettingsMenu extends Menu {
         }
 
         if (jockeyIndex == -1) {
-            player.sendMessage("§cFailed to find jockey in stack");
+            player.sendMessage(text("mob-settings.jockey-not-found"));
             return;
         }
 
@@ -722,8 +722,8 @@ public class MobSettingsMenu extends Menu {
 
         // Send feedback to player
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-            case STANDARD -> player.sendMessage("§aJockey deleted.");
-            case VERBOSE -> player.sendMessage("§aJockey " + ChatColor.YELLOW + jockey.getMob().getType().name() + "§a deleted.");
+            case STANDARD -> player.sendMessage(text("mob-settings.jockey-deleted"));
+            case VERBOSE -> player.sendMessage(text("mob-settings.jockey-deleted-detailed", "mob", jockey.getMob().getType().name()));
             default -> {}
         }
     }
@@ -733,7 +733,7 @@ public class MobSettingsMenu extends Menu {
             player,
             plugin,
             jockey,
-            Dealer.getInternalName(dealer) + "'s Mob Settings Menu",
+            text("mob-settings.title", "dealer", Dealer.getInternalName(dealer)),
             (p) -> {
                 if (jockeyInventories.containsKey(player.getUniqueId())) {
                     MobSettingsMenu temp=(MobSettingsMenu)MobSettingsMenu.jockeyInventories.get(player.getUniqueId());
@@ -764,9 +764,9 @@ public class MobSettingsMenu extends Menu {
         // Add age/size info if applicable
         if (isAgeable(mob)) {
             org.bukkit.entity.Ageable ageable = (org.bukkit.entity.Ageable) mob;
-            lore.add(ChatColor.GRAY + "Age: " + ChatColor.GREEN + (ageable.isAdult() ? "Adult" : "Baby"));
+            lore.add(text("mob-settings.age-lore", "value", text(ageable.isAdult() ? "mob-settings.adult" : "mob-settings.baby")));
         } else if (mob instanceof Slime slime) {
-            lore.add(ChatColor.GRAY + "Size: " + ChatColor.GREEN  + slime.getSize());
+            lore.add(text("mob-settings.size-lore", "value", slime.getSize()));
         }
 
         // Add variant info
@@ -783,17 +783,17 @@ public class MobSettingsMenu extends Menu {
         } else {
             String variant = getVariantName(mob);
             if (!variant.isEmpty() && !variant.equals("Unknown")) {
-                lore.add(ChatColor.GRAY + "Variant: " + ChatColor.GREEN  + variant);
+                lore.add(text("mob-settings.variant-lore", "value", variant));
             }
         }
 
         // Add click instruction
         if (mob == dealer) {
-            lore.add(ChatColor.GRAY + "Click to edit dealer mob");
+            lore.add(ChatColor.GRAY + text("mob-settings.edit-dealer-lore"));
         } else if (deleteMode) {
-            lore.add(ChatColor.GRAY + "Click to delete");
+            lore.add(ChatColor.GRAY + text("mob-settings.click-delete-lore"));
         } else {
-            lore.add(ChatColor.GRAY + "Click to customize");
+            lore.add(ChatColor.GRAY + text("mob-settings.click-customize-lore"));
         }
 
         return lore;
@@ -816,15 +816,15 @@ public class MobSettingsMenu extends Menu {
     private List<String> getComplexVariantDetails(Mob mob) {
         List<String> details = new ArrayList<>();
         if (mob instanceof Llama llama) {
-            details.add(ChatColor.GRAY + "Color: " + ChatColor.GREEN  + formatEntityName(llama.getColor().toString()));
-            details.add(ChatColor.GRAY + "Decor: " + ChatColor.GREEN  + getLlamaCarpetName(llama));
+            details.add(text("mob-settings.color-lore", "value", formatEntityName(llama.getColor().toString())));
+            details.add(text("mob-settings.decor-lore", "value", getLlamaCarpetName(llama)));
         } else if (mob instanceof Horse horse) {
-            details.add(ChatColor.GRAY + "Color: " + ChatColor.GREEN  + formatEntityName(horse.getColor().toString()));
-            details.add(ChatColor.GRAY + "Style: " + ChatColor.GREEN  + formatEntityName(horse.getStyle().toString()));
+            details.add(text("mob-settings.color-lore", "value", formatEntityName(horse.getColor().toString())));
+            details.add(text("mob-settings.style-lore", "value", formatEntityName(horse.getStyle().toString())));
         } else if (mob instanceof TropicalFish fish) {
-            details.add(ChatColor.GRAY + "Pattern: " + ChatColor.GREEN  + formatEntityName(fish.getPattern().toString()));
-            details.add(ChatColor.GRAY + "Body Color: " + ChatColor.GREEN  + formatEntityName(fish.getBodyColor().toString()));
-            details.add(ChatColor.GRAY + "Pattern Color: " + ChatColor.GREEN  + formatEntityName(fish.getPatternColor().toString()));
+            details.add(text("mob-settings.pattern-lore", "value", formatEntityName(fish.getPattern().toString())));
+            details.add(text("mob-settings.body-color-lore", "value", formatEntityName(fish.getBodyColor().toString())));
+            details.add(text("mob-settings.pattern-color-lore", "value", formatEntityName(fish.getPatternColor().toString())));
         }
         return details;
     }
@@ -833,7 +833,7 @@ public class MobSettingsMenu extends Menu {
         if (llama.getInventory().getDecor() != null) {
             return formatEntityName(llama.getInventory().getDecor().getType().toString().replace("_CARPET", ""));
         }
-        return "None";
+        return text("mob-settings.none");
     }
 
     private String getVariantName(Mob mob) {
@@ -870,7 +870,7 @@ public class MobSettingsMenu extends Menu {
     private void handleDealerClick(Player player) {
         // Ensure we have a valid dealer reference
         if (dealer == null) {
-            player.sendMessage("§cError: Could not find dealer");
+            player.sendMessage(text("mob-settings.dealer-not-found"));
             return;
         }
 
@@ -887,8 +887,12 @@ public class MobSettingsMenu extends Menu {
                     player.openInventory(temp.getInventory());
                 }
             },
-            "Mob Settings Menu"
+            text("mob-settings.menu-name")
         );
         player.openInventory(mobSelectionMenu.getInventory());
     }
-} 
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
+    }
+}

@@ -497,7 +497,7 @@ public class AdminMenu extends Menu {
         MobSettingsMenu mobSettingsMenu = new MobSettingsMenu(
             dealerId,
             player,
-            Dealer.getInternalName(dealer) + "'s Mob Settings Menu",
+            text("mob-settings.title", "dealer", Dealer.getInternalName(dealer)),
             (p) -> {
                 if (adminInventories.containsKey(player.getUniqueId())) {
                     player.openInventory(adminInventories.get(player.getUniqueId()).getInventory());
@@ -507,7 +507,7 @@ public class AdminMenu extends Menu {
                 }
             },
             plugin,
-            Dealer.getInternalName(dealer) + "'s Admin Menu"
+            text("admin.title", "dealer", Dealer.getInternalName(dealer))
         );
         player.openInventory(mobSettingsMenu.getInventory());
     }
