@@ -161,47 +161,47 @@ public class BettingTable extends DealerInventory {
             }
         }
 
-        inventory.setItem(8, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Top Row - 2:1", 1));
-        inventory.setItem(17, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Middle Row - 2:1", 1));
-        inventory.setItem(26, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Bottom Row - 2:1", 1));
+        inventory.setItem(8, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-top-row"), 1));
+        inventory.setItem(17, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-middle-row"), 1));
+        inventory.setItem(26, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-bottom-row"), 1));
     }
 
     private void addDozensAndOtherBetsPageOne() {
-        inventory.setItem(28, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1st Dozen - 2:1", 1));
-        inventory.setItem(29, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1st Dozen - 2:1", 1));
-        inventory.setItem(30, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1st Dozen - 2:1", 1));
-        inventory.setItem(31, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1st Dozen - 2:1", 1));
-        inventory.setItem(32, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen - 2:1", 1));
-        inventory.setItem(33, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen - 2:1", 1));
-        inventory.setItem(34, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen - 2:1", 1));
-        inventory.setItem(35, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen - 2:1", 1));
+        inventory.setItem(28, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-first-dozen"), 1));
+        inventory.setItem(29, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-first-dozen"), 1));
+        inventory.setItem(30, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-first-dozen"), 1));
+        inventory.setItem(31, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-first-dozen"), 1));
+        inventory.setItem(32, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-second-dozen"), 1));
+        inventory.setItem(33, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-second-dozen"), 1));
+        inventory.setItem(34, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-second-dozen"), 1));
+        inventory.setItem(35, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-second-dozen"), 1));
 
         inventory.setItem(37, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1-18 - 1:1", 1));
         inventory.setItem(38, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1-18 - 1:1", 1));
-        inventory.setItem(39, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Even - 1:1", 1));
-        inventory.setItem(40, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Even - 1:1", 1));
-        inventory.setItem(41, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red - 1:1", 1));
-        inventory.setItem(42, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red - 1:1", 1));
-        inventory.setItem(43, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Black - 1:1", 1));
-        inventory.setItem(44, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Black - 1:1", 1));
+        inventory.setItem(39, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-even"), 1));
+        inventory.setItem(40, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-even"), 1));
+        inventory.setItem(41, createCustomItem(Material.RED_STAINED_GLASS_PANE, text("roulette.bet-red"), 1));
+        inventory.setItem(42, createCustomItem(Material.RED_STAINED_GLASS_PANE, text("roulette.bet-red"), 1));
+        inventory.setItem(43, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, text("roulette.bet-black"), 1));
+        inventory.setItem(44, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, text("roulette.bet-black"), 1));
     }
 
     private void addDozensAndOtherBetsPageTwo() {
-        inventory.setItem(27, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen - 2:1", 1));
-        inventory.setItem(28, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen - 2:1", 1));
-        inventory.setItem(29, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen - 2:1", 1));
-        inventory.setItem(30, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen - 2:1", 1));
-        inventory.setItem(31, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "3rd Dozen - 2:1", 1));
-        inventory.setItem(32, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "3rd Dozen - 2:1", 1));
-        inventory.setItem(33, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "3rd Dozen - 2:1", 1));
-        inventory.setItem(34, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "3rd Dozen - 2:1", 1));
+        inventory.setItem(27, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-second-dozen"), 1));
+        inventory.setItem(28, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-second-dozen"), 1));
+        inventory.setItem(29, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-second-dozen"), 1));
+        inventory.setItem(30, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-second-dozen"), 1));
+        inventory.setItem(31, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-third-dozen"), 1));
+        inventory.setItem(32, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-third-dozen"), 1));
+        inventory.setItem(33, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-third-dozen"), 1));
+        inventory.setItem(34, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-third-dozen"), 1));
 
-        inventory.setItem(36, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red - 1:1", 1));
-        inventory.setItem(37, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red - 1:1", 1));
-        inventory.setItem(38, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Black - 1:1", 1));
-        inventory.setItem(39, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Black - 1:1", 1));
-        inventory.setItem(40, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Odd - 1:1", 1));
-        inventory.setItem(41, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Odd - 1:1", 1));
+        inventory.setItem(36, createCustomItem(Material.RED_STAINED_GLASS_PANE, text("roulette.bet-red"), 1));
+        inventory.setItem(37, createCustomItem(Material.RED_STAINED_GLASS_PANE, text("roulette.bet-red"), 1));
+        inventory.setItem(38, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, text("roulette.bet-black"), 1));
+        inventory.setItem(39, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, text("roulette.bet-black"), 1));
+        inventory.setItem(40, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-odd"), 1));
+        inventory.setItem(41, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-odd"), 1));
         inventory.setItem(42, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "19-36 - 1:1", 1));
         inventory.setItem(43, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "19-36 - 1:1", 1));
     }
@@ -263,8 +263,9 @@ public class BettingTable extends DealerInventory {
             ItemStack item = inventory.getItem(slot);
             if (item != null && item.hasItemMeta()) {
                 String itemName = item.getItemMeta().getDisplayName();
-                if (betTotals.containsKey(itemName)) {
-                    int totalBet = betTotals.get(itemName);
+                String betType = canonicalBetType(pageNum, slot, itemName);
+                if (betTotals.containsKey(betType)) {
+                    int totalBet = betTotals.get(betType);
                     updateItemLore(slot, totalBet);
 
                     int oldAmount = item.getAmount(); 
@@ -871,6 +872,7 @@ public class BettingTable extends DealerInventory {
             return;
         }
         if ((pageNum == 1 && isValidSlotPage1(slot)) || (pageNum == 2 && isValidSlotPage2(slot))) {
+            String betType = canonicalBetType(pageNum, slot, itemName);
             // Check if the player is holding the currency item
             ItemStack heldItem = player.getItemOnCursor();
             double wagerAmount = 0;
@@ -912,7 +914,7 @@ public class BettingTable extends DealerInventory {
                                 "amount",
                                 plugin.formatWagerDisplay(currencyMode, currencyName, wagerAmount),
                                 "bet",
-                                localizedBetType(itemName)
+                                localizedBetType(betType)
                             ));
                             break;
                         case NONE:
@@ -922,7 +924,7 @@ public class BettingTable extends DealerInventory {
                     if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
                         player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
         
-                    betStack.push(new Pair<>(itemName, (int) wagerAmount));
+                    betStack.push(new Pair<>(betType, (int) wagerAmount));
         
                     complicatedDifficultHiddenSecretBackdoor(betStack);
                     rouletteInventory.updatePlayerBets(playerId, betStack, player);
@@ -1443,6 +1445,28 @@ private void saveBetsToRoulette(Player player) {
             case "High/Low" -> text("roulette.category-high-low");
             default -> text("roulette.category-straight-up");
         };
+    }
+
+    static String canonicalBetType(int page, int slot, String displayedName) {
+        if (page == 1) {
+            if (slot >= 28 && slot <= 31) return "1st Dozen - 2:1";
+            if (slot >= 32 && slot <= 35) return "2nd Dozen - 2:1";
+            if (slot >= 37 && slot <= 38) return "1-18 - 1:1";
+            if (slot >= 39 && slot <= 40) return "Even - 1:1";
+            if (slot >= 41 && slot <= 42) return "Red - 1:1";
+            if (slot >= 43 && slot <= 44) return "Black - 1:1";
+        } else if (page == 2) {
+            if (slot == 8) return "Top Row - 2:1";
+            if (slot == 17) return "Middle Row - 2:1";
+            if (slot == 26) return "Bottom Row - 2:1";
+            if (slot >= 27 && slot <= 30) return "2nd Dozen - 2:1";
+            if (slot >= 31 && slot <= 34) return "3rd Dozen - 2:1";
+            if (slot >= 36 && slot <= 37) return "Red - 1:1";
+            if (slot >= 38 && slot <= 39) return "Black - 1:1";
+            if (slot >= 40 && slot <= 41) return "Odd - 1:1";
+            if (slot >= 42 && slot <= 43) return "19-36 - 1:1";
+        }
+        return displayedName;
     }
 
     private String localizedBetType(String betType) {
