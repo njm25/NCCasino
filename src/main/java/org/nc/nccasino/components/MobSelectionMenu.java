@@ -230,7 +230,7 @@ public class MobSelectionMenu extends Menu {
             player, 
             plugin, 
             dealerId, 
-            "Dealer Mob Settings", // Use a default title that doesn't depend on dealer name
+            plugin.getLocalization().text(player, "mob-selection.title"),
             54, 
             returnName, 
             returnToAdmin
@@ -269,14 +269,14 @@ public class MobSelectionMenu extends Menu {
        
         slotMapping.put(SlotOption.PAGE_TOGGLE, 49);
         // Navigation & Utility Buttons
-        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit", slotMapping.get(SlotOption.EXIT));
-        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnMessage, slotMapping.get(SlotOption.RETURN));
+        addItemAndLore(Material.SPRUCE_DOOR, 1, text("common.exit"), slotMapping.get(SlotOption.EXIT));
+        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, text("common.return-to", "menu", returnMessage), slotMapping.get(SlotOption.RETURN));
 
         // Single Slot Pagination Button (Switches Between Next & Previous)
         if (currentPage > 1) {
-            addItemAndLore(Material.ARROW, 1, "Previous Page", slotMapping.get(SlotOption.PAGE_TOGGLE));
+            addItemAndLore(Material.ARROW, 1, text("common.previous-page"), slotMapping.get(SlotOption.PAGE_TOGGLE));
         } else if (currentPage < (int) Math.ceil(spawnEggList.size() / (double) PAGE_SIZE)) {
-            addItemAndLore(Material.ARROW, 1, "Next Page", slotMapping.get(SlotOption.PAGE_TOGGLE));
+            addItemAndLore(Material.ARROW, 1, text("common.next-page"), slotMapping.get(SlotOption.PAGE_TOGGLE));
         }
  
         if(isComplicatedVariant(dealer)||hasSingleVariant(dealer)){
@@ -334,7 +334,7 @@ public class MobSelectionMenu extends Menu {
     private void restoreDealerSettings(String internalName, EntityType selectedType, Player player) {
         File dealersFile = new File(plugin.getDataFolder(), "data/dealers.yaml");
         if (!dealersFile.exists()) {
-            player.sendMessage(ChatColor.RED + "Dealers data file not found!");
+            player.sendMessage(text("mob-selection.data-file-not-found"));
             return;
         }
 
@@ -347,13 +347,13 @@ public class MobSelectionMenu extends Menu {
          double z = dealersConfig.getDouble("dealers." + internalName + ".Z");
 
         if (worldName == null) {
-            player.sendMessage(ChatColor.RED + "Failed to retrieve dealer location.");
+            player.sendMessage(text("mob-selection.location-not-found"));
             return;
         }
     
         var world = Bukkit.getWorld(worldName);
         if (world == null) {
-            player.sendMessage(ChatColor.RED + "World '" + worldName + "' does not exist.");
+            player.sendMessage(text("mob-selection.world-not-found", "world", worldName));
             return;
         }
         
@@ -414,7 +414,7 @@ public class MobSelectionMenu extends Menu {
         ConfirmMenu confirmInventory = new ConfirmMenu(
             player,
             dealerId,
-            "Reset config to default?",
+            text("mob-selection.reset-confirmation"),
             (uuid) -> {
                 // Confirm action
                 Bukkit.getScheduler().runTask(plugin, () -> {
@@ -544,12 +544,12 @@ public class MobSelectionMenu extends Menu {
                                 try {
                                     dealersConfig.save(dealersFile);
                                 } catch (Exception e) {
-                                    player.sendMessage(ChatColor.RED + "Failed to save dealer data: " + e.getMessage());
+                                    player.sendMessage(text("mob-selection.save-failed", "error", e.getMessage()));
                                 }
         
                                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                                    case STANDARD -> player.sendMessage(ChatColor.GREEN + "Dealer changed.");
-                                    case VERBOSE -> player.sendMessage(ChatColor.GREEN + "Dealer changed to " + ChatColor.YELLOW + formatEntityName(selectedType.name()) + "§a.");
+                                    case STANDARD -> player.sendMessage(text("mob-selection.dealer-changed"));
+                                    case VERBOSE -> player.sendMessage(text("mob-selection.dealer-changed-detailed", "mob", formatEntityName(selectedType.name())));
                                     default -> {}
                                 }
         
@@ -690,12 +690,12 @@ public class MobSelectionMenu extends Menu {
                                 try {
                                     dealersConfig.save(dealersFile);
                                 } catch (Exception e) {
-                                    player.sendMessage(ChatColor.RED + "Failed to save dealer data: " + e.getMessage());
+                                    player.sendMessage(text("mob-selection.save-failed", "error", e.getMessage()));
                                 }
         
                                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                                    case STANDARD -> player.sendMessage(ChatColor.GREEN + "Dealer changed.");
-                                    case VERBOSE -> player.sendMessage(ChatColor.GREEN + "Dealer changed to " + ChatColor.YELLOW + formatEntityName(selectedType.name()) + "§a.");
+                                    case STANDARD -> player.sendMessage(text("mob-selection.dealer-changed"));
+                                    case VERBOSE -> player.sendMessage(text("mob-selection.dealer-changed-detailed", "mob", formatEntityName(selectedType.name())));
                                     default -> {}
                                 }
         
@@ -766,8 +766,8 @@ public class MobSelectionMenu extends Menu {
            }
            else {
                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                   case STANDARD -> player.sendMessage("§cInvalid Action.");
-                   case VERBOSE  -> player.sendMessage("§cNo variants to cycle for " + ChatColor.YELLOW+dealer.getType()+"§a.");
+                   case STANDARD -> player.sendMessage(text("mob-selection.invalid-action"));
+                   case VERBOSE -> player.sendMessage(text("mob-selection.no-variants", "mob", dealer.getType()));
                    default -> {}
                }
            }
@@ -778,7 +778,7 @@ public class MobSelectionMenu extends Menu {
             player,
             plugin,
             dealerId,
-            "Return to Mob Selection",
+            text("mob-selection.return-to-selection"),
             // This is your return callback: re-open MobSelectionMenu
             (p) -> {
                 // Open this same MobSelectionMenu again
@@ -910,7 +910,7 @@ public class MobSelectionMenu extends Menu {
         }
         else {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case VERBOSE -> player.sendMessage("§cMob type " +ChatColor.YELLOW+formatEntityName(mob.getType().toString())  + "§c does not have any variants.");
+                case VERBOSE -> player.sendMessage(text("mob-selection.no-variants", "mob", formatEntityName(mob.getType().toString())));
                 default -> {}
             }
         }
@@ -927,13 +927,17 @@ public class MobSelectionMenu extends Menu {
         addItemAndLore(
             BIOME_MATERIALS.getOrDefault(newBiome, Material.GRASS_BLOCK),
             1,
-            "Edit " + formatEntityName(dealer.getType().toString()) + " Variant",
+            text("jockey-options.edit-variant", "mob", formatEntityName(dealer.getType().toString())),
             slotMapping.get(SlotOption.VARIANT),
-            "Current: §a" + formatEntityName(newBiome.toString())
+            text("jockey-options.current", "value", formatEntityName(newBiome.toString()))
         );
 
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-            case VERBOSE -> player.sendMessage("§aVillager variant changed to " + ChatColor.YELLOW+ formatEntityName(newBiome.toString())+"§a.");
+            case VERBOSE -> player.sendMessage(text(
+                "jockey-options.variant-changed",
+                "mob", formatEntityName(villager.getType().toString()),
+                "variant", formatEntityName(newBiome.toString())
+            ));
             default -> {}
         }
     }
@@ -944,7 +948,11 @@ public class MobSelectionMenu extends Menu {
         Villager.Type newBiome = VILLAGER_BIOMES.get((index + 1) % VILLAGER_BIOMES.size());
         zombieVillager.setVillagerType(newBiome);
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-            case VERBOSE  -> player.sendMessage("§aZombie Villager variant changed to " + ChatColor.YELLOW+ formatEntityName(newBiome.toString())+"§a.");
+            case VERBOSE -> player.sendMessage(text(
+                "jockey-options.variant-changed",
+                "mob", formatEntityName(zombieVillager.getType().toString()),
+                "variant", formatEntityName(newBiome.toString())
+            ));
             default -> {}
         }
     }
@@ -959,9 +967,9 @@ public class MobSelectionMenu extends Menu {
             addItemAndLore(
                 mat, 
                 1,
-                "Edit " + formatEntityName(dealer.getType().toString()) + " Variant",
+                text("jockey-options.edit-variant", "mob", formatEntityName(dealer.getType().toString())),
                 slot,
-                "Current: §a" + formatEntityName(vt.toString())
+                text("jockey-options.current", "value", formatEntityName(vt.toString()))
             );
             return;
         }
@@ -971,9 +979,9 @@ public class MobSelectionMenu extends Menu {
             addItemAndLore(
                 mat, 
                 1,
-                "Edit " + formatEntityName(dealer.getType().toString()) + " Variant",
+                text("jockey-options.edit-variant", "mob", formatEntityName(dealer.getType().toString())),
                 slot,
-                "Current: §a" + formatEntityName(vt.toString())
+                text("jockey-options.current", "value", formatEntityName(vt.toString()))
             );
             return;
         }
@@ -984,7 +992,7 @@ public class MobSelectionMenu extends Menu {
             addItemAndLore(
                 Material.WRITABLE_BOOK,
                 1,
-                "Open "+ formatEntityName(dealer.getType().toString())+" Variant Menu",
+                text("jockey-options.open-variant-menu", "mob", formatEntityName(dealer.getType().toString())),
                 slot,
                 details.toArray(new String[0])
             );
@@ -995,9 +1003,9 @@ public class MobSelectionMenu extends Menu {
                 addItemAndLore(
                     Material.BARRIER,
                     1,
-                    "Edit " + formatEntityName(dealer.getType().toString()) + " Collar Color",
+                    text("jockey-options.edit-collar-color", "mob", formatEntityName(dealer.getType().toString())),
                     slotMapping.get(SlotOption.VARIANT),
-                     "Current: §aNone"
+                    text("jockey-options.current", "value", text("mob-settings.none"))
                 );
                 return;
             }
@@ -1008,9 +1016,9 @@ public class MobSelectionMenu extends Menu {
             addItemAndLore(
                 dyeMaterial,
                 1,
-                "Edit " + formatEntityName(dealer.getType().toString()) + " Collar Color",
+                text("jockey-options.edit-collar-color", "mob", formatEntityName(dealer.getType().toString())),
                 slotMapping.get(SlotOption.VARIANT),
-                "Current: §a" + formatEntityName(currentColor.toString())
+                text("jockey-options.current", "value", formatEntityName(currentColor.toString()))
             );
             return;
         }
@@ -1020,9 +1028,9 @@ public class MobSelectionMenu extends Menu {
             addItemAndLore(
                 variantItem,
                 1,
-                "Edit " + formatEntityName(dealer.getType().toString()) + " Variant",
+                text("jockey-options.edit-variant", "mob", formatEntityName(dealer.getType().toString())),
                 slot,
-                "Current: §a" + getVariantName(dealer)
+                text("jockey-options.current", "value", getVariantName(dealer))
             );
             return;
         }
@@ -1075,7 +1083,7 @@ public class MobSelectionMenu extends Menu {
     private void handleAgeToggle(Player player) {
         if (dealer == null) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case VERBOSE ->player.sendMessage(ChatColor.RED + "Dealer not found!");
+                case VERBOSE -> player.sendMessage(text("mob-selection.dealer-not-found"));
                 default -> {}
             }
             return;
@@ -1083,7 +1091,7 @@ public class MobSelectionMenu extends Menu {
 
         if (!isAgeable(dealer)&& !(dealer instanceof MagmaCube)&&!(dealer instanceof Slime)) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case VERBOSE ->player.sendMessage(ChatColor.RED + "This mob doesn't support baby/adult toggles.");
+                case VERBOSE -> player.sendMessage(text("mob-selection.age-unsupported"));
                 default -> {}
             }
             return;
@@ -1096,13 +1104,21 @@ public class MobSelectionMenu extends Menu {
             
             ageable.setBaby();
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case VERBOSE -> player.sendMessage("§a"+formatEntityName(ageable.getType().toString())+" set to "+ChatColor.YELLOW+ "baby§a.");
+                case VERBOSE -> player.sendMessage(text(
+                    "mob-selection.age-set",
+                    "mob", formatEntityName(ageable.getType().toString()),
+                    "age", text("mob-settings.baby")
+                ));
                 default -> {}
             }
         } else {
             ageable.setAdult();
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case VERBOSE -> player.sendMessage("§a"+formatEntityName(ageable.getType().toString())+" set to "+ChatColor.YELLOW+"adult§a.");
+                case VERBOSE -> player.sendMessage(text(
+                    "mob-selection.age-set",
+                    "mob", formatEntityName(ageable.getType().toString()),
+                    "age", text("mob-settings.adult")
+                ));
                 default -> {}
             }
         }
@@ -1111,7 +1127,11 @@ public class MobSelectionMenu extends Menu {
             int newSize = (slime.getSize() % 30) + 1; // Cycle through 1 → 2 → 3 → 1
             slime.setSize(newSize);
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case VERBOSE -> player.sendMessage("§aSlime size set to " + ChatColor.YELLOW + newSize + "§a.");
+                case VERBOSE -> player.sendMessage(text(
+                    "jockey-options.size-set",
+                    "mob", formatEntityName(slime.getType().toString()),
+                    "size", newSize
+                ));
                 default -> {}
             }
         } 
@@ -1119,7 +1139,11 @@ public class MobSelectionMenu extends Menu {
             int newSize = (magmaCube.getSize() % 30) + 1;
             magmaCube.setSize(newSize);
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case VERBOSE -> player.sendMessage("§aMagma Cube size set to " + ChatColor.YELLOW + newSize + "§a.");
+                case VERBOSE -> player.sendMessage(text(
+                    "jockey-options.size-set",
+                    "mob", formatEntityName(magmaCube.getType().toString()),
+                    "size", newSize
+                ));
                 default -> {}
             }
         }
@@ -1138,13 +1162,13 @@ public class MobSelectionMenu extends Menu {
             boolean isAdult = ageable.isAdult();
             Material icon = isAdult ? Material.DRAGON_HEAD : Material.DRAGON_EGG;
     
-            String currentAgeText = ageable.isAdult() ? "Adult" : "Baby";
+            String currentAgeText = text(ageable.isAdult() ? "mob-settings.adult" : "mob-settings.baby");
             addItemAndLore(
                 icon,
                 1,
-                "Edit Age",
+                text("mob-selection.edit-age"),
                 slot,
-                "Current: §a" + currentAgeText
+                text("jockey-options.current", "value", currentAgeText)
             );
         }
         else if (dealer instanceof Slime slime&&!(dealer instanceof MagmaCube)) {
@@ -1152,9 +1176,9 @@ public class MobSelectionMenu extends Menu {
             addItemAndLore(
                 Material.SLIME_BALL,
                 1,
-                "Edit Size",
+                text("mob-selection.edit-size"),
                 slot,
-                "Current: §a" + currentSize
+                text("jockey-options.current", "value", currentSize)
             );
         }
         else if (dealer instanceof MagmaCube magmaCube) {
@@ -1162,9 +1186,9 @@ public class MobSelectionMenu extends Menu {
             addItemAndLore(
                 Material.MAGMA_CREAM,
                 1,
-                "Edit Size",
+                text("mob-selection.edit-size"),
                 slot,
-                "Current: §a" + currentSize
+                text("jockey-options.current", "value", currentSize)
             );
         }
 
@@ -1182,7 +1206,11 @@ public class MobSelectionMenu extends Menu {
         }
     
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-            case VERBOSE  -> player.sendMessage("§a"+formatEntityName(mob.getType().toString())+" variant changed to " + ChatColor.YELLOW + formatEntityName(variantName)+"§a.");
+            case VERBOSE -> player.sendMessage(text(
+                "jockey-options.variant-changed",
+                "mob", formatEntityName(mob.getType().toString()),
+                "variant", formatEntityName(variantName)
+            ));
             default -> {}
         }
     }
@@ -1268,15 +1296,15 @@ public class MobSelectionMenu extends Menu {
     private List<String> getComplexVariantDetails(Mob mob) {
         List<String> details = new ArrayList<>();
         if (mob instanceof Llama llama) {
-            details.add("Current Color: §a" + formatEntityName(llama.getColor().toString()));
-            details.add("Current Decor: §a" + getLlamaCarpetName(llama));
+            details.add(text("admin.current-color-lore", "value", formatEntityName(llama.getColor().toString())));
+            details.add(text("admin.current-decor-lore", "value", getLlamaCarpetName(llama)));
         } else if (mob instanceof Horse horse) {
-            details.add("Current Color: §a" + formatEntityName(horse.getColor().toString()));
-            details.add("Current Style: §a" + formatEntityName(horse.getStyle().toString()));
+            details.add(text("admin.current-color-lore", "value", formatEntityName(horse.getColor().toString())));
+            details.add(text("admin.current-style-lore", "value", formatEntityName(horse.getStyle().toString())));
         } else if (mob instanceof TropicalFish fish) {
-            details.add("Current Pattern: §a" + formatEntityName(fish.getPattern().toString()));
-            details.add("Current Body Color: §a" + formatEntityName(fish.getBodyColor().toString()));
-            details.add("Current Pattern Color: §a" + formatEntityName(fish.getPatternColor().toString()));
+            details.add(text("admin.current-pattern-lore", "value", formatEntityName(fish.getPattern().toString())));
+            details.add(text("admin.current-body-color-lore", "value", formatEntityName(fish.getBodyColor().toString())));
+            details.add(text("admin.current-pattern-color-lore", "value", formatEntityName(fish.getPatternColor().toString())));
         }
         return details;
         }
@@ -1285,7 +1313,11 @@ public class MobSelectionMenu extends Menu {
         if (llama.getInventory().getDecor() != null) {
             return formatEntityName(llama.getInventory().getDecor().getType().toString().replace("_CARPET", ""));
         }
-        return "None";
+        return text("mob-settings.none");
+    }
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
     }
     
 }

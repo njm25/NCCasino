@@ -448,6 +448,24 @@ jockey-options:
   body-color: "Body Color: &a{value}"
   pattern-color: "Pattern Color: &a{value}"
 
+mob-selection:
+  title: "Dealer Mob Settings"
+  data-file-not-found: "&cDealers data file not found!"
+  location-not-found: "&cFailed to retrieve dealer location."
+  world-not-found: "&cWorld '{world}' does not exist."
+  reset-confirmation: "Reset config to default?"
+  save-failed: "&cFailed to save dealer data: {error}"
+  dealer-changed: "&aDealer changed."
+  dealer-changed-detailed: "&aDealer changed to &e{mob}&a."
+  invalid-action: "&cInvalid action."
+  no-variants: "&cNo variants to cycle for &e{mob}&c."
+  return-to-selection: "Return to Mob Selection"
+  dealer-not-found: "&cDealer not found!"
+  age-unsupported: "&cThis mob doesn't support baby/adult toggles."
+  age-set: "&a{mob} set to &e{age}&a."
+  edit-age: "Edit Age"
+  edit-size: "Edit Size"
+
 mines-settings:
   title: "{dealer}'s Mines Settings"
   edit-default: "Edit Default # of Mines"

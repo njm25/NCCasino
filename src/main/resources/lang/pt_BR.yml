@@ -448,6 +448,24 @@ jockey-options:
   body-color: "Cor do corpo: &a{value}"
   pattern-color: "Cor do padrão: &a{value}"
 
+mob-selection:
+  title: "Configurações da criatura do crupiê"
+  data-file-not-found: "&cArquivo de dados dos crupiês não encontrado!"
+  location-not-found: "&cNão foi possível obter a localização do crupiê."
+  world-not-found: "&cO mundo '{world}' não existe."
+  reset-confirmation: "Redefinir a configuração para o padrão?"
+  save-failed: "&cNão foi possível salvar os dados do crupiê: {error}"
+  dealer-changed: "&aCriatura do crupiê alterada."
+  dealer-changed-detailed: "&aCriatura do crupiê alterada para &e{mob}&a."
+  invalid-action: "&cAção inválida."
+  no-variants: "&cNão há variantes para alternar em &e{mob}&c."
+  return-to-selection: "Voltar à seleção de criatura"
+  dealer-not-found: "&cCrupiê não encontrado!"
+  age-unsupported: "&cEsta criatura não permite alternar entre filhote e adulto."
+  age-set: "&a{mob} definido como &e{age}&a."
+  edit-age: "Editar idade"
+  edit-size: "Editar tamanho"
+
 mines-settings:
   title: "Configurações de Minas de {dealer}"
   edit-default: "Editar número padrão de minas"

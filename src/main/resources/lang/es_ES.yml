@@ -448,6 +448,24 @@ jockey-options:
   body-color: "Color del cuerpo: &a{value}"
   pattern-color: "Color del patrón: &a{value}"
 
+mob-selection:
+  title: "Configuración de la criatura del crupier"
+  data-file-not-found: "&c¡No se encontró el archivo de datos de crupieres!"
+  location-not-found: "&cNo se pudo obtener la ubicación del crupier."
+  world-not-found: "&cEl mundo '{world}' no existe."
+  reset-confirmation: "¿Restablecer la configuración predeterminada?"
+  save-failed: "&cNo se pudieron guardar los datos del crupier: {error}"
+  dealer-changed: "&aCriatura del crupier cambiada."
+  dealer-changed-detailed: "&aCriatura del crupier cambiada a &e{mob}&a."
+  invalid-action: "&cAcción no válida."
+  no-variants: "&cNo hay variantes para alternar en &e{mob}&c."
+  return-to-selection: "Volver a la selección de criatura"
+  dealer-not-found: "&c¡No se encontró el crupier!"
+  age-unsupported: "&cEsta criatura no permite cambiar entre bebé y adulto."
+  age-set: "&a{mob} establecido en &e{age}&a."
+  edit-age: "Editar edad"
+  edit-size: "Editar tamaño"
+
 mines-settings:
   title: "Ajustes de Minas de {dealer}"
   edit-default: "Editar número predeterminado de minas"

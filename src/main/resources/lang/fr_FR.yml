@@ -448,6 +448,24 @@ jockey-options:
   body-color: "Couleur du corps : &a{value}"
   pattern-color: "Couleur du motif : &a{value}"
 
+mob-selection:
+  title: "Paramètres de la créature du croupier"
+  data-file-not-found: "&cFichier de données des croupiers introuvable !"
+  location-not-found: "&cImpossible de récupérer la position du croupier."
+  world-not-found: "&cLe monde '{world}' n'existe pas."
+  reset-confirmation: "Rétablir la configuration par défaut ?"
+  save-failed: "&cImpossible d'enregistrer les données du croupier : {error}"
+  dealer-changed: "&aCréature du croupier modifiée."
+  dealer-changed-detailed: "&aCréature du croupier remplacée par &e{mob}&a."
+  invalid-action: "&cAction non valide."
+  no-variants: "&cAucune variante à parcourir pour &e{mob}&c."
+  return-to-selection: "Retour au choix de la créature"
+  dealer-not-found: "&cCroupier introuvable !"
+  age-unsupported: "&cCette créature ne permet pas de basculer entre bébé et adulte."
+  age-set: "&a{mob} défini sur &e{age}&a."
+  edit-age: "Modifier l'âge"
+  edit-size: "Modifier la taille"
+
 mines-settings:
   title: "Paramètres de Mines de {dealer}"
   edit-default: "Modifier le nombre de mines par défaut"

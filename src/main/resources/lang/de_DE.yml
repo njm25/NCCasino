@@ -448,6 +448,24 @@ jockey-options:
   body-color: "Körperfarbe: &a{value}"
   pattern-color: "Musterfarbe: &a{value}"
 
+mob-selection:
+  title: "Geber-Kreatur-Einstellungen"
+  data-file-not-found: "&cDatendatei der Geber wurde nicht gefunden!"
+  location-not-found: "&cPosition des Gebers konnte nicht geladen werden."
+  world-not-found: "&cDie Welt '{world}' existiert nicht."
+  reset-confirmation: "Konfiguration auf Standard zurücksetzen?"
+  save-failed: "&cGeberdaten konnten nicht gespeichert werden: {error}"
+  dealer-changed: "&aGeber-Kreatur geändert."
+  dealer-changed-detailed: "&aGeber-Kreatur zu &e{mob}&a geändert."
+  invalid-action: "&cUngültige Aktion."
+  no-variants: "&cFür &e{mob}&c gibt es keine wechselbaren Varianten."
+  return-to-selection: "Zurück zur Kreaturauswahl"
+  dealer-not-found: "&cGeber wurde nicht gefunden!"
+  age-unsupported: "&cDiese Kreatur unterstützt keinen Wechsel zwischen Jungtier und erwachsen."
+  age-set: "&a{mob} auf &e{age}&a gesetzt."
+  edit-age: "Alter bearbeiten"
+  edit-size: "Größe bearbeiten"
+
 mines-settings:
   title: "Minen-Einstellungen von {dealer}"
   edit-default: "Standardanzahl Minen bearbeiten"
