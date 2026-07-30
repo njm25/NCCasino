@@ -231,6 +231,8 @@ mines:
   rebet-on: "Rebet: ON"
   rebet-off: "Rebet: OFF"
   select-mines: "Select Number of Mines"
+  mine-option: "Mines: {count}"
+  start-game: "Start Game"
   hidden: "Hidden"
   cash-out: "Cash Out"
   potential-winnings: "Potential Winnings: {amount}"

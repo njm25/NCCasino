@@ -231,6 +231,8 @@ mines:
   rebet-on: "Rejouer : OUI"
   rebet-off: "Rejouer : NON"
   select-mines: "Sélectionnez le nombre de mines"
+  mine-option: "Mines : {count}"
+  start-game: "Démarrer la partie"
   hidden: "Caché"
   cash-out: "Encaisser"
   potential-winnings: "Gains potentiels : {amount}"

@@ -324,8 +324,8 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             slot++;
         }
 
-        // Add a single betting option - Paper labeled "Click here to place bet" in slot 52
-        inventory.setItem(53, createCustomItem(Material.PAPER, "Click here to place bet", 1));
+        // Add a single betting option in slot 53.
+        inventory.setItem(53, createCustomItem(Material.PAPER, text("betting.place-bet"), 1));
         double currentBet=0;
         for(double t:betStack){
             currentBet+=t;
@@ -357,11 +357,19 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             if (mineCountOption <= 24) {
                 if (mineCountOption == minesCount) {
                     // Selected mine count, show stack of red glass panes
-                    ItemStack selectedMineOption = createEnchantedItem(Material.TNT, "Mines: " + mineCountOption, mineCountOption);
+                    ItemStack selectedMineOption = createEnchantedItem(
+                        Material.TNT,
+                        text("mines.mine-option", "count", mineCountOption),
+                        mineCountOption
+                    );
                     inventory.setItem(slot, selectedMineOption);
                     selectedMineSlot = slot;
                 } else {
-                    ItemStack mineOption = createCustomItem(Material.TNT, "Mines: " + mineCountOption, mineCountOption);
+                    ItemStack mineOption = createCustomItem(
+                        Material.TNT,
+                        text("mines.mine-option", "count", mineCountOption),
+                        mineCountOption
+                    );
                     inventory.setItem(slot, mineOption);
                 }
                 mineCountOption++;
@@ -626,7 +634,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 }
             } 
         }
-        if (itemName.equals("Click here to place bet")) {
+        if (slot == 53 && clickedItem.getType() == Material.PAPER) {
             // Check if the player is holding the currency item
             ItemStack heldItem = player.getItemOnCursor();
             Material currencyType = plugin.getCurrency(internalName);
@@ -717,18 +725,19 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             return;
         }
         
-        if (itemName.startsWith("Mines: ")) {
+        if (clickedItem.getType() == Material.TNT) {
             // Handle mine selection
-            String[] parts = itemName.split(": ");
-            if (parts.length == 2) {
-                try {
-                    int selectedMines = Integer.parseInt(parts[1]);
+            int selectedMines = clickedItem.getAmount();
                     if (selectedMines >= 1 && selectedMines <= (totalTiles - 1)) {
                         // Update the previous selected mine count slot back to default
                         if (selectedMineSlot != -1 && selectedMineSlot != slot) {
                             // Reset previous selection
                             int prevMineCountOption = minesCount; // Previous selected mines count
-                            ItemStack prevMineOption = createCustomItem(Material.TNT, "Mines: " + prevMineCountOption, prevMineCountOption);
+                            ItemStack prevMineOption = createCustomItem(
+                                Material.TNT,
+                                text("mines.mine-option", "count", prevMineCountOption),
+                                prevMineCountOption
+                            );
                             inventory.setItem(selectedMineSlot, prevMineOption);
                         }
 
@@ -751,7 +760,11 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                         selectedMineSlot = slot;
                          if (SoundHelper.getSoundSafely("block.lantern.break", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_LANTERN_BREAK, SoundCategory.MASTER,1.0f, 1.0f);
                         // Change the selected slot to stack of red glass panes
-                                   ItemStack selectedMineOption = createEnchantedItem(Material.TNT, "Mines: " + minesCount, minesCount);
+                        ItemStack selectedMineOption = createEnchantedItem(
+                            Material.TNT,
+                            text("mines.mine-option", "count", minesCount),
+                            minesCount
+                        );
 
                         inventory.setItem(slot, selectedMineOption);
 
@@ -772,15 +785,10 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                         } 
                          if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
                     }
-                } catch (NumberFormatException e) {
-                    player.sendMessage(text("mines.mine-count-error"));
-                     if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
-                }
-            }
             return;
         }
 
-        if (itemName.equals("Start Game")) {
+        if (slot == 44 && clickedItem.getType() == Material.LEVER) {
             // Start the gamet
             if (minesSelected) {
                 if (wager > 0) {
@@ -1551,7 +1559,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 
     private void updateStartGameLever(boolean showLever) {
         if (showLever) {
-            inventory.setItem(44, createCustomItem(Material.LEVER, "Start Game", 1)); // Slot 53
+            inventory.setItem(44, createCustomItem(Material.LEVER, text("mines.start-game"), 1));
         } else {
             inventory.setItem(44, null); // Remove the lever if conditions not met
         }

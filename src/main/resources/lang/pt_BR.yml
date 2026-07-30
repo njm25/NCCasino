@@ -231,6 +231,8 @@ mines:
   rebet-on: "Reapostar: LIGADO"
   rebet-off: "Reapostar: DESLIGADO"
   select-mines: "Selecione o número de minas"
+  mine-option: "Minas: {count}"
+  start-game: "Iniciar jogo"
   hidden: "Oculto"
   cash-out: "Retirar"
   potential-winnings: "Ganhos potenciais: {amount}"

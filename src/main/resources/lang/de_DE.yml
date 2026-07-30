@@ -231,6 +231,8 @@ mines:
   rebet-on: "Erneut setzen: AN"
   rebet-off: "Erneut setzen: AUS"
   select-mines: "Minenanzahl auswählen"
+  mine-option: "Minen: {count}"
+  start-game: "Spiel starten"
   hidden: "Verdeckt"
   cash-out: "Auszahlen"
   potential-winnings: "Möglicher Gewinn: {amount}"
