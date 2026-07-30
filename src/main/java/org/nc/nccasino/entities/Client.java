@@ -13,6 +13,7 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.ChipSlots;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.currency.MoneyHelper;
@@ -38,7 +39,7 @@ public abstract class Client extends DealerInventory {
     protected final Deque<Double> betStack = new ArrayDeque<>();
     public boolean rebetEnabled = false;
     protected double selectedWager = 0.0;
-    protected final Map<String, Double> chipValues = new LinkedHashMap<>();
+    protected final Map<Integer, Double> chipValues = new LinkedHashMap<>();
     protected boolean bettingEnabled = false;
     protected boolean rebetSwitch = false;
     protected boolean betSlip = false; 
@@ -78,18 +79,11 @@ public abstract class Client extends DealerInventory {
     }
 
     private void loadChipValuesFromConfig() {
-        Map<String, Double> temp = new HashMap<>();
+        List<Double> configuredValues = new ArrayList<>();
         for (int i = 1; i <= 5; i++) {
-            double chipValue = plugin.getChipValue(internalName, i);
-            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
-            if (chipValue > 0) {
-                temp.put(chipName, chipValue);
-            }
+            configuredValues.add(plugin.getChipValue(internalName, i));
         }
-        // Sort ascending by value 
-        temp.entrySet().stream()
-            .sorted(Map.Entry.comparingByValue())
-            .forEachOrdered(e -> chipValues.put(e.getKey(), e.getValue()));
+        chipValues.putAll(ChipSlots.assign(configuredValues));
     }
 
 
@@ -98,16 +92,15 @@ public abstract class Client extends DealerInventory {
         // 1) Build the chips (slots 47..51)
         rebetEnabled = defaultRebet; 
         this.rebetSwitch = rebetSwitch;
-        int chipSlot = 47;
-        for (Map.Entry<String, Double> entry : chipValues.entrySet()) {
-            String chipName = entry.getKey();
+        for (Map.Entry<Integer, Double> entry : chipValues.entrySet()) {
+            int chipSlot = entry.getKey();
             double chipVal = entry.getValue();
+            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipVal);
             if (chipVal == selectedWager) {
                 inventory.setItem(chipSlot, createEnchantedItem(getCurrencyMaterial(), chipName, (int) chipVal));
             } else {
                 inventory.setItem(chipSlot, createCustomItem(getCurrencyMaterial(), chipName, (int) chipVal));
             }
-            chipSlot++;
         }
         if(betSlip){
             // 2) Paper in slot 53: "Click here to place bet"
@@ -221,33 +214,24 @@ public abstract class Client extends DealerInventory {
         }
 
         // Chips: 47..51
-        if (slot >= 47 && slot <= 51) {
+        if (ChipSlots.isChipSlot(slot)) {
             playDefaultSound(player);
-            // The user clicked on a chip
-            ItemStack clicked = event.getCurrentItem();
-            if (clicked == null || !clicked.hasItemMeta()) return;
-
-            String itemName = clicked.getItemMeta().getDisplayName();
-            double val = chipValues.getOrDefault(itemName, 0.0);
+            double val = chipValues.getOrDefault(slot, 0.0);
+            if (val <= 0) return;
             // Mark it as selected
             selectedWager = val;
 
             // Re-enchant the clicked chip, revert others
-            for (int s = 47; s <= 51; s++) {
-                ItemStack chip = inventory.getItem(s);
-                if (chip != null && chip.hasItemMeta()) {
-                    String cName = chip.getItemMeta().getDisplayName();
-                    // If it's the clicked chip, enchant it
-                    if (cName.equals(itemName)) {
-                        inventory.setItem(s,
-                            createEnchantedItem(getCurrencyMaterial(), cName, (int) val));
-                    } else if (chipValues.containsKey(cName)) {
-                        // reset 
-                        inventory.clear(s);
-                        inventory.setItem(s,
-                           createCustomItem(getCurrencyMaterial(), cName, (int)chipValues.get(cName).doubleValue()));
-                    }
-                }
+            for (Map.Entry<Integer, Double> entry : chipValues.entrySet()) {
+                int chipSlot = entry.getKey();
+                double chipValue = entry.getValue();
+                String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
+                inventory.setItem(
+                    chipSlot,
+                    chipSlot == slot
+                        ? createEnchantedItem(getCurrencyMaterial(), chipName, (int) chipValue)
+                        : createCustomItem(getCurrencyMaterial(), chipName, (int) chipValue)
+                );
             }
             return;
         }
@@ -646,11 +630,9 @@ public abstract class Client extends DealerInventory {
     }
 
     protected void updateSelectedWager(int slot) {
-        ItemStack clicked = inventory.getItem(slot);
-        if (clicked == null || !clicked.hasItemMeta()) return;
-
         boolean isAllIn = (slot == 52);
-        selectedWager = isAllIn ? getTotalCurrency(player) : chipValues.getOrDefault(clicked.getItemMeta().getDisplayName(), 0.0);
+        selectedWager = isAllIn ? getTotalCurrency(player) : chipValues.getOrDefault(slot, 0.0);
+        if (!isAllIn && selectedWager <= 0) return;
 
         if (isAllIn) {
             if (SoundHelper.getSoundSafely("entity.lightning_bolt.thunder", player) != null) {
@@ -663,37 +645,31 @@ public abstract class Client extends DealerInventory {
         }
 
         // Loop through wager slots (chips & All In) to update enchantment
-        for (int s = 47; s <= 52; s++) {
-            ItemStack chip = inventory.getItem(s);
-            if (chip != null && chip.hasItemMeta()) {
-                ItemMeta meta = chip.getItemMeta();
-                String chipName = meta.getDisplayName();
-                double chipValue = chipValues.getOrDefault(chipName, 0.0);
-
-                if (s == slot) {
-                    inventory.setItem(s, createEnchantedItem(
-                        s == 52 ? Material.SNIFFER_EGG : getCurrencyMaterial(),
-                        isAllIn
-                            ? plugin.getLocalization().text(
-                                player,
-                                "betting.all-in-amount",
-                                "amount",
-                                plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager)
-                            )
-                            : chipName,
-                        s == 52 ? 1 : (int) chipValue
-                    ));
-                } else {
-                    inventory.setItem(s, createCustomItem(
-                        s == 52 ? Material.SNIFFER_EGG : getCurrencyMaterial(),
-                        s == 52
-                            ? plugin.getLocalization().text(player, "betting.all-in")
-                            : chipName,
-                        s == 52 ? 1 : (int) chipValue
-                    ));
-                }
-            }
+        for (Map.Entry<Integer, Double> entry : chipValues.entrySet()) {
+            int chipSlot = entry.getKey();
+            double chipValue = entry.getValue();
+            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
+            inventory.setItem(
+                chipSlot,
+                chipSlot == slot
+                    ? createEnchantedItem(getCurrencyMaterial(), chipName, (int) chipValue)
+                    : createCustomItem(getCurrencyMaterial(), chipName, (int) chipValue)
+            );
         }
+        String allInName = isAllIn
+            ? plugin.getLocalization().text(
+                player,
+                "betting.all-in-amount",
+                "amount",
+                plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager)
+            )
+            : plugin.getLocalization().text(player, "betting.all-in");
+        inventory.setItem(
+            52,
+            isAllIn
+                ? createEnchantedItem(Material.SNIFFER_EGG, allInName, 1)
+                : createCustomItem(Material.SNIFFER_EGG, allInName, 1)
+        );
     }
 
 

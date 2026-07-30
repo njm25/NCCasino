@@ -31,6 +31,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.currency.CurrencyMode;
+import org.nc.nccasino.currency.ChipSlots;
 import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.currency.VaultCurrencyProvider;
@@ -50,7 +51,7 @@ import org.nc.nccasino.session.TerminableSession;
 public class BlackjackInventory extends DealerInventory implements TerminableSession {
 
     private final Nccasino plugin; // Reference to the main plugin
-    private final Map<String, Double> chipValues; // Track chip values
+    private final Map<Integer, Double> chipValues; // Track chip values by fixed inventory slot
     private final String internalName; // Internal name for config lookup
     private final CurrencyMode currencyMode;
     private final String currencyName;
@@ -189,13 +190,11 @@ private void registerListener() {
  
     // Load chip values from the plugin config
     private void loadChipValuesFromConfig() {
+        List<Double> configuredValues = new ArrayList<>();
         for (int i = 1; i <= 5; i++) {
-            double chipValue = plugin.getChipValue(internalName, i);
-            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
-            if (chipValue > 0) { // Ensure chip value is positive
-                this.chipValues.put(chipName, chipValue);
-            }
+            configuredValues.add(plugin.getChipValue(internalName, i));
         }
+        this.chipValues.putAll(ChipSlots.assign(configuredValues));
     }
 
     // CurrencyProvider helper for this dealer/game
@@ -267,13 +266,16 @@ private void registerListener() {
         inventory.setItem(45, createCustomItem(Material.BARRIER, text("blackjack.undo-all"), 1));
         inventory.setItem(46, createCustomItem(Material.WIND_CHARGE, text("blackjack.undo-last"), 1));
 
-        int slot = 47;
-        List<Map.Entry<String, Double>> sortedEntries = new ArrayList<>(chipValues.entrySet());
-        sortedEntries.sort(Map.Entry.comparingByValue());
-
-        for (Map.Entry<String, Double> entry : sortedEntries) {
-            inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
-            slot++;
+        for (Map.Entry<Integer, Double> entry : chipValues.entrySet()) {
+            double value = entry.getValue();
+            inventory.setItem(
+                entry.getKey(),
+                createCustomItem(
+                    plugin.getCurrency(internalName),
+                    plugin.getChipDisplayName(currencyMode, currencyName, value),
+                    (int) value
+                )
+            );
         }
         inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, text("blackjack.all-in"), 1));
         // Add leave chair option with a wooden door
@@ -401,8 +403,8 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
             player.closeInventory();
         } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots (10, 19, 28)
             handleBetClick(slot, player, event);
-        } else if (slot >= 47 && slot <= 51) { // Chip selection
-            handleChipSelection(player, event.getCurrentItem());
+        } else if (ChipSlots.isChipSlot(slot)) { // Chip selection
+            handleChipSelection(player, slot);
         } 
         else if (slot == 0){
 
@@ -978,14 +980,13 @@ private void removePlayerData(UUID playerId) {
 }
 
     // Handle chip selection
-    private void handleChipSelection(Player player, ItemStack clickedItem) {
-        if (clickedItem == null || clickedItem.getItemMeta() == null) {
+    private void handleChipSelection(Player player, int slot) {
+        double selectedWager = chipValues.getOrDefault(slot, 0.0);
+        if (selectedWager <= 0) {
             return;
         }
     
         UUID playerId = player.getUniqueId();
-        String itemName = clickedItem.getItemMeta().getDisplayName();
-        double selectedWager = chipValues.getOrDefault(itemName, 0.0);
          if (SoundHelper.getSoundSafely("item.flintandsteel.use", player) != null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
          switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{

@@ -59,6 +59,7 @@ import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.economy.VaultHook;
 import org.nc.nccasino.currency.CurrencyManager;
 import org.nc.nccasino.currency.CurrencyMode;
+import org.nc.nccasino.currency.CurrencyDisplay;
 import org.nc.nccasino.currency.DealerCurrencySettings;
 import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.payout.PendingPayoutStore;
@@ -659,12 +660,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     /** Chip button display name: VAULT → "$5.00", else → "5 Emeralds". Use with cached mode/name to avoid config read per call. */
     public String getChipDisplayName(CurrencyMode mode, String currencyName, double value) {
-        if (mode == CurrencyMode.VAULT) {
-            return "$" + MoneyHelper.roundDisplay(MoneyHelper.bd(value)).toPlainString();
-        }
-        int n = (int) value;
-        String name = currencyName != null ? currencyName : "Emerald";
-        return n + " " + name + (n != 1 ? "s" : "");
+        return CurrencyDisplay.chipName(mode, currencyName, value);
     }
 
     /** Chip button display name (reads config). Prefer getChipDisplayName(mode, currencyName, value) with cached values. */

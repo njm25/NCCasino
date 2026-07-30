@@ -22,6 +22,7 @@ import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.ChipSlots;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.currency.MoneyHelper;
@@ -44,7 +45,7 @@ public class BettingTable extends DealerInventory {
     private double selectedWager;
     private int pageNum;
     private Boolean allin=false;
-    private final Map<String, Double> chipValues;
+    private final Map<Integer, Double> chipValues;
     private final Stack<Pair<String, Integer>> betStack;
     private Stack<Pair<String, Integer>> testStack;
     private boolean betsClosed=false;
@@ -74,12 +75,11 @@ public class BettingTable extends DealerInventory {
     }
 
     private void loadChipValuesFromConfig() {
-        Nccasino nccasino = (Nccasino) plugin;
+        List<Double> configuredValues = new ArrayList<>();
         for (int i = 1; i <= 5; i++) {
-            double chipValue = nccasino.getChipValue(internalName, i);
-            String chipName = nccasino.getChipDisplayName(currencyMode, currencyName, chipValue);
-            this.chipValues.put(chipName, chipValue);
+            configuredValues.add(plugin.getChipValue(internalName, i));
         }
+        this.chipValues.putAll(ChipSlots.assign(configuredValues));
     }
 
     private void initializeTable() {
@@ -229,19 +229,17 @@ public class BettingTable extends DealerInventory {
         else{
             inventory.setItem(44, createCustomItem(Material.ENDER_PEARL, text("roulette.back-wheel"), 1));
         }
-        int slot = 47;
-        List<Map.Entry<String, Double>> sortedEntries = new ArrayList<>(chipValues.entrySet());
-        sortedEntries.sort(Map.Entry.comparingByValue());
-
-        for (Map.Entry<String, Double> entry : sortedEntries) {
-            if(entry.getValue()==selectedWager){
-                inventory.setItem(slot, createEnchantedItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
+        for (Map.Entry<Integer, Double> entry : chipValues.entrySet()) {
+            int chipSlot = entry.getKey();
+            double chipValue = entry.getValue();
+            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
+            if(chipValue==selectedWager){
+                inventory.setItem(chipSlot, createEnchantedItem(plugin.getCurrency(internalName), chipName, (int) chipValue));
 
             }
             else{
-            inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
+            inventory.setItem(chipSlot, createCustomItem(plugin.getCurrency(internalName), chipName, (int) chipValue));
             }
-            slot++;
         }
 
         inventory.setItem(53, createCustomItem(Material.ARROW, text("roulette.switch-page"), 1));
@@ -822,11 +820,11 @@ public class BettingTable extends DealerInventory {
             inventory.setItem(slot, updatedTotem);
              if (SoundHelper.getSoundSafely("entity.lightning_bolt.thunder", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER,1.0f, 1.0f);
         }
-        if (slot >= 47 && slot <= 51) {
+        if (ChipSlots.isChipSlot(slot)) {
              if (SoundHelper.getSoundSafely("item.flintandsteel.use", player) != null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE,SoundCategory.MASTER, 1.0f, 1.0f);  
             allin=false;
             // The player clicked on one of the chip slots
-            selectedWager = getWagerAmountFromName(itemName); 
+            selectedWager = chipValues.getOrDefault(slot, 0.0);
             if (selectedWager > 0) {
                 // 1) Un-enchant all chips in 47..51
                 for (int i = 47; i <= 51; i++) {
@@ -1091,15 +1089,11 @@ public class BettingTable extends DealerInventory {
 
 
 private void resetChipAtSlot(int slot) {
-    ItemStack chip = inventory.getItem(slot);
-    if (chip == null || !chip.hasItemMeta()) return;
-
-    String chipName = chip.getItemMeta().getDisplayName();
-    // Ensure this is a valid chip from chipValues
-    if (chipValues.containsKey(chipName)) {
-        double value = chipValues.get(chipName);
+    Double value = chipValues.get(slot);
+    if (value != null) {
+        String chipName = plugin.getChipDisplayName(currencyMode, currencyName, value);
         // Replace with the normal, unenchanted item
-        inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), chipName, (int) value));
+        inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), chipName, value.intValue()));
     }
 }
 
@@ -1321,10 +1315,6 @@ private boolean isValidSlotPage2(int slot) {
        testStack.push(new Pair<>("0 - 35:1", 1));
        testStack.push(new Pair<>("0 - 35:1", 1));
        testStack.push(new Pair<>("0 - 35:1", 1)); 
-    }
-
-    private double getWagerAmountFromName(String name) {
-        return chipValues.getOrDefault(name, 0.0);
     }
 
     private boolean hasEnoughWager(Player player, double amount) {

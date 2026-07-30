@@ -31,6 +31,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitTask;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.currency.CurrencyMode;
+import org.nc.nccasino.currency.ChipSlots;
 import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.currency.VaultCurrencyProvider;
@@ -59,7 +60,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     private final CurrencyMode currencyMode;
     private final String currencyName;
     private final MinesInventory minesInventory;
-    private final Map<String, Double> chipValues;
+    private final Map<Integer, Double> chipValues;
     private double selectedWager;
     private final Deque<Double> betStack = new ArrayDeque<>();
     public Boolean closeFlag = false;
@@ -211,19 +212,11 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     }
 
     private void loadChipValuesFromConfig() {
-        // Load chip values from the config
-        Map<String, Double> tempChipValues = new HashMap<>();
+        List<Double> configuredValues = new ArrayList<>();
         for (int i = 1; i <= 5; i++) {
-            double chipValue = plugin.getChipValue(internalName, i);
-            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
-            if (chipValue > 0) {
-                tempChipValues.put(chipName, chipValue);
-            }
+            configuredValues.add(plugin.getChipValue(internalName, i));
         }
-        // Sort chip values in ascending order
-        tempChipValues.entrySet().stream()
-                .sorted(Map.Entry.comparingByValue())
-                .forEachOrdered(entry -> chipValues.put(entry.getKey(), entry.getValue()));
+        chipValues.putAll(ChipSlots.assign(configuredValues));
     }
 
     void initializeTable() {
@@ -318,10 +311,16 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 
     private void addWagerOptions() {
         // Add sorted currency chips (slots 47-51)
-        int slot = 47;
-        for (Map.Entry<String, Double> entry : chipValues.entrySet()) {
-            inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
-            slot++;
+        for (Map.Entry<Integer, Double> entry : chipValues.entrySet()) {
+            double value = entry.getValue();
+            inventory.setItem(
+                entry.getKey(),
+                createCustomItem(
+                    plugin.getCurrency(internalName),
+                    plugin.getChipDisplayName(currencyMode, currencyName, value),
+                    (int) value
+                )
+            );
         }
 
         // Add a single betting option in slot 53.
@@ -598,29 +597,23 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     private void handleWagerPlacement(ItemStack clickedItem, int slot, InventoryClickEvent event) {
         if (clickedItem == null || !clickedItem.hasItemMeta()) return;
 
-        String itemName = clickedItem.getItemMeta().getDisplayName();
-
-        if (slot >= 47 && slot <= 51) {
+        if (ChipSlots.isChipSlot(slot)) {
             // Handle currency chips (slots 47-51)
              if (SoundHelper.getSoundSafely("item.flintandsteel.use", player) != null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-            selectedWager = chipValues.getOrDefault(itemName, 0.0);
+            selectedWager = chipValues.getOrDefault(slot, 0.0);
+            if (selectedWager <= 0) return;
     
             // Update the display of all chips
-            for (int i = 47; i <= 51; i++) {
-                ItemStack chip = inventory.getItem(i);
-                if (chip != null && chip.hasItemMeta()) {
-                    String chipName = chip.getItemMeta().getDisplayName();
-                    if (chipValues.containsKey(chipName)) {
-                        // Enchant the clicked chip
-                        if (i == slot) {
-                            inventory.setItem(i, createEnchantedItem(plugin.getCurrency(internalName), chipName, (int) chipValues.get(chipName).doubleValue()));
-                        } else {
-                            // Reset others to their default state
-                            inventory.clear(i);
-                            inventory.setItem(i, createCustomItem(plugin.getCurrency(internalName), chipName, (int) chipValues.get(chipName).doubleValue()));
-                        }
-                    }
-                }
+            for (Map.Entry<Integer, Double> entry : chipValues.entrySet()) {
+                int chipSlot = entry.getKey();
+                double chipValue = entry.getValue();
+                String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
+                inventory.setItem(
+                    chipSlot,
+                    chipSlot == slot
+                        ? createEnchantedItem(plugin.getCurrency(internalName), chipName, (int) chipValue)
+                        : createCustomItem(plugin.getCurrency(internalName), chipName, (int) chipValue)
+                );
             }
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
