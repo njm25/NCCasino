@@ -62,4 +62,20 @@ public final class MoneyHelper {
 		}
 		return units;
 	}
+
+	public static int probabilisticItemAmount(double amount, double roll) {
+		if (!Double.isFinite(amount) || amount <= 0.0D) {
+			return 0;
+		}
+		if (!Double.isFinite(roll) || roll < 0.0D || roll >= 1.0D) {
+			throw new IllegalArgumentException("roll must be in [0, 1)");
+		}
+		if (amount >= Integer.MAX_VALUE) {
+			return Integer.MAX_VALUE;
+		}
+
+		int whole = (int) Math.floor(amount);
+		double fraction = amount - whole;
+		return roll < fraction ? whole + 1 : whole;
+	}
 }

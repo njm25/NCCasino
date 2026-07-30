@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 
 /**
@@ -272,7 +273,10 @@ public class PendingPayoutStore {
             return false;
         }
 
-        int wholeAmount = (int) payout.amount();
+        int wholeAmount = MoneyHelper.probabilisticItemAmount(
+            payout.amount(),
+            ThreadLocalRandom.current().nextDouble()
+        );
         if (wholeAmount <= 0) {
             return true;
         }

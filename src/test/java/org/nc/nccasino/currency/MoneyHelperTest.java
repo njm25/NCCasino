@@ -31,4 +31,14 @@ class MoneyHelperTest {
         assertEquals(Long.MAX_VALUE,
             MoneyHelper.floorToLong(new BigDecimal("999999999999999999999999")));
     }
+
+    @Test
+    void itemPayoutRoundingPreservesFractionalExpectedValue() {
+        assertEquals(6, MoneyHelper.probabilisticItemAmount(5.625, 0.624));
+        assertEquals(5, MoneyHelper.probabilisticItemAmount(5.625, 0.625));
+        assertEquals(5, MoneyHelper.probabilisticItemAmount(5.0, 0.0));
+        assertEquals(0, MoneyHelper.probabilisticItemAmount(-1.0, 0.5));
+        assertEquals(Integer.MAX_VALUE,
+            MoneyHelper.probabilisticItemAmount(Double.MAX_VALUE, 0.5));
+    }
 }
