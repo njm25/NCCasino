@@ -56,6 +56,21 @@ class LocalizationResourcesTest {
         );
     }
 
+    @Test
+    void confirmationLabelsRemainAddressableByTheirLocalizationPaths() {
+        for (String locale : LOCALES) {
+            YamlConfiguration translation = load(locale);
+            assertTrue(
+                translation.isString("confirm.yes"),
+                () -> locale + " is missing confirm.yes"
+            );
+            assertTrue(
+                translation.isString("confirm.no"),
+                () -> locale + " is missing confirm.no"
+            );
+        }
+    }
+
     private static YamlConfiguration load(String locale) {
         String path = "lang/" + locale + ".yml";
         InputStream stream =

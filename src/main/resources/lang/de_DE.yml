@@ -693,8 +693,8 @@ admin:
   delete-confirmation: "Bist du sicher?"
 
 confirm:
-  yes: "Ja"
-  no: "Nein"
+  "yes": "Ja"
+  "no": "Nein"
   invalid-option: "&cUngültige Option ausgewählt."
   invalid-confirm-option: "&cUngültige Option im Bestätigungsmenü ausgewählt."
 
