@@ -1149,7 +1149,7 @@ public class AdminMenu extends Menu {
             event.setCancelled(true);
             String newName = event.getMessage().trim();
             if (newName.isEmpty()) {
-                denyAction(player, "Invalid name. Try again.");
+                denyAction(player, text("admin.invalid-name"));
                 return;
             }
             if (dealer != null) {
@@ -1209,7 +1209,7 @@ public class AdminMenu extends Menu {
             String newTimer = event.getMessage().trim();
 
             if (newTimer.isEmpty() || !newTimer.matches("\\d+") || Integer.parseInt(newTimer) <= 0) {
-                denyAction(player, "Please enter a positive number.");
+                denyAction(player, text("admin.positive-number"));
                 return;
             }
             if (dealer != null) {
@@ -1256,7 +1256,7 @@ public class AdminMenu extends Menu {
             String newAmsg = event.getMessage().trim();
 
             if (newAmsg.isEmpty()) {
-                denyAction(player, "Invalid input.");
+                denyAction(player, text("admin.invalid-input"));
                 return;
             }
             if (dealer != null) {
@@ -1303,7 +1303,7 @@ public class AdminMenu extends Menu {
             String newChipSize = event.getMessage().trim();
 
             if (newChipSize.isEmpty() || !newChipSize.matches("\\d+") || Integer.parseInt(newChipSize) <= 0) {
-                denyAction(player, "Please enter a positive number.");
+                denyAction(player, text("admin.positive-number"));
                 return;
             }
             if (dealer != null) {

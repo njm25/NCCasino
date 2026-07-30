@@ -597,6 +597,9 @@ blackjack-settings:
 admin:
   invalid-option: "&cOption sélectionnée invalide."
   invalid-admin-option: "&cOption du menu d'administration invalide."
+  invalid-name: "Nom invalide. Réessayez."
+  positive-number: "Saisissez un nombre positif."
+  invalid-input: "Entrée invalide."
   dealer-not-found: "&cCroupier introuvable."
   dealer-not-found-chat: "&cCroupier introuvable pour traiter la réponse du menu."
   vault-missing: "&cVault est introuvable. Installez Vault pour l'utiliser avec NCCasino."
