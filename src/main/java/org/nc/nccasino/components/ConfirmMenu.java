@@ -38,8 +38,8 @@ public class ConfirmMenu extends Menu {
 
     @Override
     protected void initializeMenu(){
-        addItem(createCustomItem(Material.GREEN_STAINED_GLASS_PANE, "Yes"), slotMapping.get(SlotOption.YES));
-        addItem(createCustomItem(Material.RED_STAINED_GLASS_PANE, "No"), slotMapping.get(SlotOption.NO));
+        addItem(createCustomItem(Material.GREEN_STAINED_GLASS_PANE, text("confirm.yes")), slotMapping.get(SlotOption.YES));
+        addItem(createCustomItem(Material.RED_STAINED_GLASS_PANE, text("confirm.no")), slotMapping.get(SlotOption.NO));
     }
 
     public void executeConfirm() {
@@ -67,16 +67,20 @@ public class ConfirmMenu extends Menu {
                 player.closeInventory();
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§cInvalid option selected.");
+                        player.sendMessage(text("confirm.invalid-option"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cInvalid confirm menu option selected.");
+                        player.sendMessage(text("confirm.invalid-confirm-option"));
                         break;}
                     case NONE:{break;
                     }
                 }
                 break;
         }
+    }
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
     }
 
 }

@@ -38,6 +38,13 @@ public abstract class Menu extends DealerInventory {
         // Preferences menu
         SOUNDS,
         MESSAGES,
+        LANGUAGE,
+        LANGUAGE_SERVER_DEFAULT,
+        LANGUAGE_ENGLISH,
+        LANGUAGE_SPANISH,
+        LANGUAGE_PORTUGUESE,
+        LANGUAGE_GERMAN,
+        LANGUAGE_FRENCH,
 
         // Player menu
         PREFERENCES,
@@ -184,7 +191,9 @@ public abstract class Menu extends DealerInventory {
             playDefaultSound(player);
             returnCallback.accept(player);
         } else {
-            player.sendMessage("§cNo return callback was set!");
+            player.sendMessage(
+                plugin.getLocalization().text(player, "errors.no-return-target")
+            );
             player.closeInventory();
         }
     }
@@ -224,7 +233,7 @@ public abstract class Menu extends DealerInventory {
         addItemAndLore(
             Material.SPRUCE_DOOR, 
             1, 
-            "Exit", 
+            plugin.getLocalization().text(player, "common.exit"),
             slotMapping.get(SlotOption.EXIT)
         );
         addItemAndLore(

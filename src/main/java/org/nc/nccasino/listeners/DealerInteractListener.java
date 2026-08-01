@@ -125,7 +125,7 @@ public class DealerInteractListener implements Listener {
 
         // Check if dealer has a game type defined
         if (!plugin.getConfig().contains("dealers." + internalName + ".game")) {
-            player.sendMessage(ChatColor.RED + "This dealer has no game type assigned.");
+            player.sendMessage(plugin.getLocalization().text(player, "interaction.no-game-assigned"));
             return;
         }
 
@@ -133,7 +133,12 @@ public class DealerInteractListener implements Listener {
         String permission = getGamePermission(gameType);
 
         if (permission == null || !player.hasPermission(permission)) {
-            player.sendMessage(ChatColor.RED + "You do not have permission to play " + gameType + ".");
+            player.sendMessage(plugin.getLocalization().text(
+                player,
+                "interaction.no-game-permission",
+                "game",
+                localizedGameType(player, gameType)
+            ));
             return;
         }
 
@@ -151,12 +156,18 @@ public class DealerInteractListener implements Listener {
                 if (i >= mobs.size()) {
                     break; // Prevent index mismatch
                 }
-                String occupation = occupations.get(i);
+                String occupation = plugin.getLocalization().text(player, occupations.get(i));
                 Mob mob = mobs.get(i);
                 
                 String mobName = (mob != null) ? Dealer.getInternalName(mob) : "unknown dealer";
-                Nccasino.sendErrorMessage(player, "Please finish editing " + occupation + " for '" +
-                    ChatColor.YELLOW + mobName + ChatColor.RED + "'.");
+                player.sendMessage(plugin.getLocalization().text(
+                    player,
+                    "commands.finish-editing",
+                    "occupation",
+                    occupation,
+                    "name",
+                    mobName
+                ));
             }
             return;
         }
@@ -171,6 +182,19 @@ public class DealerInteractListener implements Listener {
         }
         
         event.setCancelled(true);
+    }
+
+    private String localizedGameType(Player player, String gameType) {
+        return switch (gameType) {
+            case "Blackjack" -> plugin.getLocalization().text(player, "game-options.blackjack");
+            case "Roulette" -> plugin.getLocalization().text(player, "game-options.roulette");
+            case "Mines" -> plugin.getLocalization().text(player, "game-options.mines");
+            case "Baccarat" -> plugin.getLocalization().text(player, "game-options.baccarat");
+            case "Coin Flip" -> plugin.getLocalization().text(player, "game-options.coin-flip");
+            case "Dragon Descent" -> plugin.getLocalization().text(player, "game-options.dragon-descent");
+            case "Test Game" -> plugin.getLocalization().text(player, "game-options.test-game");
+            default -> gameType;
+        };
     }
 
     private void handlePlayerMenu(Player player, UUID dealerId) {
@@ -314,7 +338,7 @@ public class DealerInteractListener implements Listener {
                 switch(settings)
                 {
                     case VERBOSE:{
-                        player.sendMessage("§cShift-click is disabled.");
+                player.sendMessage(plugin.getLocalization().text(player, "interaction.shift-click-disabled"));
                         break;}
                     default:{
                         break;}
@@ -343,10 +367,10 @@ public class DealerInteractListener implements Listener {
             else{
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§cPlease wait before clicking again!");
+            player.sendMessage(plugin.getLocalization().text(player, "interaction.click-cooldown"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cPlease wait before clicking again!");
+                player.sendMessage(plugin.getLocalization().text(player, "interaction.click-cooldown"));
                         break;}
                     case NONE:{
                         break;
@@ -366,7 +390,7 @@ public class DealerInteractListener implements Listener {
                     switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting())
                     {
                         case VERBOSE:{
-                            player.sendMessage("§cCannot drag in here.");
+            player.sendMessage(plugin.getLocalization().text(player, "interaction.drag-disabled"));
                             break;}
                         default:{
                             break;}

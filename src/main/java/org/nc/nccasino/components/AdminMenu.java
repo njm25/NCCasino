@@ -108,7 +108,12 @@ public class AdminMenu extends Menu {
             player, 
             plugin, 
             dealerId, 
-            Dealer.getInternalName(Dealer.findDealer(dealerId, player.getLocation())) + "'s Admin Menu",
+            plugin.getLocalization().text(
+                player,
+                "admin.title",
+                "dealer",
+                Dealer.getInternalName(Dealer.findDealer(dealerId, player.getLocation()))
+            ),
             45,
             null,
             null
@@ -173,30 +178,36 @@ public class AdminMenu extends Menu {
     
         //String currencyMaterial = config.getString("dealers." + internalName + ".currency.material", "UNKNOWN");
        // String currencyName = config.getString("dealers." + internalName + ".currency.name", "Unknown Currency");
-        addItemAndLore(Material.NAME_TAG, 1, "Edit Display Name",  slotMapping.get(SlotOption.EDIT_DISPLAY_NAME), "Current: §a" + Dealer.getName(dealer));
+        addItemAndLore(
+            Material.NAME_TAG,
+            1,
+            text("admin.edit-display-name"),
+            slotMapping.get(SlotOption.EDIT_DISPLAY_NAME),
+            text("admin.current", "value", Dealer.getName(dealer))
+        );
         switch(currentGame){
             case"Mines":{
-                addItemAndLore(Material.TNT, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
+                addItemAndLore(Material.TNT, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
                 break;
             }
             case"Roulette":{
-                addItemAndLore(Material.ENDER_PEARL, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
+                addItemAndLore(Material.ENDER_PEARL, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
                 break;
             }  
             case"Blackjack":{
-                addItemAndLore(Material.CREEPER_HEAD, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
+                addItemAndLore(Material.CREEPER_HEAD, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
                 break;
             }
             case "Baccarat":{
-                addItemAndLore(Material.SKELETON_SKULL, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
+                addItemAndLore(Material.SKELETON_SKULL, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
                 break;
             }
             case "Coin Flip":{
-                addItemAndLore(Material.SUNFLOWER, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
+                addItemAndLore(Material.SUNFLOWER, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
                 break;
             }
             case "Dragon Descent":{
-                addItemAndLore(Material.DRAGON_HEAD, 1, "Edit Game Type",  slotMapping.get(SlotOption.EDIT_GAME_TYPE), "Current: §a" + currentGame);
+                addItemAndLore(Material.DRAGON_HEAD, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
                 break;
             }
             default:
@@ -204,21 +215,33 @@ public class AdminMenu extends Menu {
         }
         
         List<String> gameSettingsLore = getGameSettingsLore(config, internalName, currentGame);
-        addItemAndLore(Material.BOOK, 1, currentGame + " Settings", slotMapping.get(SlotOption.GAME_OPTIONS), gameSettingsLore.toArray(new String[0]));
+        addItemAndLore(
+            Material.BOOK,
+            1,
+            text("admin.game-settings", "game", localizedGameName(currentGame)),
+            slotMapping.get(SlotOption.GAME_OPTIONS),
+            gameSettingsLore.toArray(new String[0])
+        );
     
-        addItemAndLore(Material.RED_STAINED_GLASS_PANE, 1, "Edit Animation Message",  slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE), "Current: §a" + currentAnimationMessage);
+        addItemAndLore(
+            Material.RED_STAINED_GLASS_PANE,
+            1,
+            text("admin.edit-animation-message"),
+            slotMapping.get(SlotOption.EDIT_ANIMATION_MESSAGE),
+            text("admin.current", "value", currentAnimationMessage)
+        );
 
        /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
-        addItemAndLore(Material.COMPASS, 1, "Move Dealer",  slotMapping.get(SlotOption.MOVE_DEALER));
-        addItemAndLore(Material.BARRIER, 1, "Delete Dealer",  slotMapping.get(SlotOption.DELETE_DEALER));
-        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
+        addItemAndLore(Material.COMPASS, 1, text("admin.move-dealer"), slotMapping.get(SlotOption.MOVE_DEALER));
+        addItemAndLore(Material.BARRIER, 1, text("admin.delete-dealer"), slotMapping.get(SlotOption.DELETE_DEALER));
+        addItemAndLore(Material.SPRUCE_DOOR, 1, text("admin.exit"), slotMapping.get(SlotOption.EXIT));
 
         ItemStack head=createPlayerHeadItem(player, 1);
-        setCustomItemMeta(head,"Player Menu");
+        setCustomItemMeta(head, text("admin.player-menu"));
         ItemMeta meta = head.getItemMeta();
     
         if (meta != null) {
-            meta.setDisplayName(ChatColor.YELLOW+ "Player Menu");
+            meta.setDisplayName(ChatColor.YELLOW + text("admin.player-menu"));
             head.setItemMeta(meta);
         }
 
@@ -228,7 +251,7 @@ public class AdminMenu extends Menu {
 
         // Now display that egg item in the slot
         List<String> lore = getMobSelectionLore(dealer);
-        addItemAndLore(mobEgg, 1, "Edit Mob Settings", slotMapping.get(SlotOption.MOB_SETTINGS), lore.toArray(new String[0]));
+        addItemAndLore(mobEgg, 1, text("admin.edit-mob-settings"), slotMapping.get(SlotOption.MOB_SETTINGS), lore.toArray(new String[0]));
 
     }
     
@@ -240,42 +263,42 @@ public class AdminMenu extends Menu {
                 int blackjackTimer = config.getInt("dealers." + internalName + ".timer", 30);
                 int standOn17Chance = config.getInt("dealers." + internalName + ".stand-on-17", 100);
                 int blackjackDecks = config.getInt("dealers." + internalName + ".number-of-decks", 6);
-                lore.add("§7Timer: §a" + blackjackTimer);
-                lore.add("§7Stand on 17 Chance: §a" + standOn17Chance + "%");
-                lore.add("§7# of Decks: §a" + blackjackDecks);
+                lore.add(text("admin.timer-lore", "value", blackjackTimer));
+                lore.add(text("admin.stand-17-lore", "value", standOn17Chance));
+                lore.add(text("admin.decks-lore", "value", blackjackDecks));
                 break;
     
             case "Roulette":
                 int rouletteTimer = config.getInt("dealers." + internalName + ".timer", 30);
-                lore.add("§7Timer: §a" + rouletteTimer);
+                lore.add(text("admin.timer-lore", "value", rouletteTimer));
                 break;
     
             case "Mines":
                 int defaultMines = config.getInt("dealers." + internalName + ".default-mines", 3);
-                lore.add("§7Default # of Mines: §a" + defaultMines);
+                lore.add(text("admin.default-mines-lore", "value", defaultMines));
                 break;
     
             case "Baccarat":
                 int baccaratTimer = config.getInt("dealers." + internalName + ".timer", 30);
                 int baccaratDecks = config.getInt("dealers." + internalName + ".number-of-decks", 8);
-                lore.add("§7Timer: §a" + baccaratTimer);
-                lore.add("§7# of Decks: §a" + baccaratDecks);
+                lore.add(text("admin.timer-lore", "value", baccaratTimer));
+                lore.add(text("admin.decks-lore", "value", baccaratDecks));
                 break;
     
             case "Coin Flip":
                 int coinFlipTimer = config.getInt("dealers." + internalName + ".timer", 30);
-                lore.add("§7Timer: §a" + coinFlipTimer);
+                lore.add(text("admin.timer-lore", "value", coinFlipTimer));
                 break;
             case "Dragon Descent":
                 int defaultColumns = config.getInt("dealers." + internalName + ".default-columns", 7);
                 int defaultVines = config.getInt("dealers." + internalName + ".default-vines", 5);
                 int defaultFloors = config.getInt("dealers." + internalName + ".default-floors", 4);
-                lore.add("§7Default # of Columns: §a" + defaultColumns);
-                lore.add("§7Default # of Vines: §a" + defaultVines);
-                lore.add("§7Default # of Floors: §a" + defaultFloors);
+                lore.add(text("admin.default-columns-lore", "value", defaultColumns));
+                lore.add(text("admin.default-vines-lore", "value", defaultVines));
+                lore.add(text("admin.default-floors-lore", "value", defaultFloors));
                 break;
             default:
-                lore.add("§7No settings available.");
+                lore.add(text("admin.no-settings"));
                 break;
         }
         
@@ -303,28 +326,28 @@ public class AdminMenu extends Menu {
         List<String> occupations = new ArrayList<>();
     
         if (nameEditMode.get(playerId) != null) {
-            occupations.add("display name");
+            occupations.add("occupations.display-name");
         }
         if (timerEditMode.get(playerId) != null) {
-            occupations.add("timer");
+            occupations.add("occupations.timer");
         }
         if (amsgEditMode.get(playerId) != null) {
-            occupations.add("animation message");
+            occupations.add("occupations.animation-message");
         }
         if (moveMode.get(playerId) != null) {
-            occupations.add("location");
+            occupations.add("occupations.location");
         }
         if (chipEditMode.get(playerId) != null) {
-            occupations.add("chip size");
+            occupations.add("occupations.chip-size");
         }
         if (standOn17Mode.get(playerId) != null) {
-            occupations.add("stand on 17 chance");
+            occupations.add("occupations.stand-on-17");
         }
         if (editMinesMode.get(playerId) != null) {
-            occupations.add("default # of mines");
+            occupations.add("occupations.default-mines");
         }
         if (currencyEditMode.get(playerId) != null) {///////////might never get to this
-            occupations.add("selecting currency item");
+            occupations.add("occupations.currency-item");
         }
         return occupations;
     }
@@ -446,10 +469,10 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§cInvalid option selected.");    
+                player.sendMessage(text("admin.invalid-option"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cInvalid Admin Menu option selected.");
+                player.sendMessage(text("admin.invalid-admin-option"));
                     break;}
                 default:{
                     break;}
@@ -467,14 +490,14 @@ public class AdminMenu extends Menu {
         }
 
         if (dealer == null) {
-            player.sendMessage("§cCould not find dealer.");
+            player.sendMessage(text("admin.dealer-not-found"));
             return;
         }
 
         MobSettingsMenu mobSettingsMenu = new MobSettingsMenu(
             dealerId,
             player,
-            Dealer.getInternalName(dealer) + "'s Mob Settings Menu",
+            text("mob-settings.title", "dealer", Dealer.getInternalName(dealer)),
             (p) -> {
                 if (adminInventories.containsKey(player.getUniqueId())) {
                     player.openInventory(adminInventories.get(player.getUniqueId()).getInventory());
@@ -484,7 +507,7 @@ public class AdminMenu extends Menu {
                 }
             },
             plugin,
-            Dealer.getInternalName(dealer) + "'s Admin Menu"
+            text("admin.title", "dealer", Dealer.getInternalName(dealer))
         );
         player.openInventory(mobSettingsMenu.getInventory());
     }
@@ -502,17 +525,27 @@ public class AdminMenu extends Menu {
                     player.openInventory(adminInventory.getInventory());
                 }
             },
-                Dealer.getInternalName(dealer) + "'s Admin Menu"
+                plugin.getLocalization().text(
+                    player,
+                    "admin.title",
+                    "dealer",
+                    Dealer.getInternalName(dealer)
+                )
             );
             player.openInventory(pm.getInventory());
         }
         else {
-            player.sendMessage(ChatColor.RED + "You do not have permission to use the player menu.");
+            player.sendMessage(text("admin.player-menu-no-permission"));
         }
     }
 
     private void handleTestMenu(Player player) {
-        String returnMessage = "Return to "+ Dealer.getInternalName(dealer) + "'s Admin Menu";
+        String returnMessage = plugin.getLocalization().text(
+            player,
+            "game-options.return-admin",
+            "dealer",
+            Dealer.getInternalName(dealer)
+        );
         TestMenu testMenu = new TestMenu(player, plugin, dealerId, returnMessage,(p) -> {
             if (adminInventories.containsKey(player.getUniqueId())) {
                 player.openInventory(adminInventories.get(player.getUniqueId()).getInventory());
@@ -532,7 +565,7 @@ public class AdminMenu extends Menu {
                 MinesMenu minesAdminInventory = new MinesMenu(
                     dealerId,
                     player,
-                    Dealer.getInternalName(dealer)+ "'s Mines Settings",
+                    text("mines-settings.title", "dealer", Dealer.getInternalName(dealer)),
                     (uuid) -> {
 
                         // Cancel action: re-open the AdminInventory
@@ -545,7 +578,7 @@ public class AdminMenu extends Menu {
                         }
         
                     },
-                    plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
+                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer))
             );
             player.openInventory(minesAdminInventory.getInventory());
             break;
@@ -554,7 +587,7 @@ public class AdminMenu extends Menu {
                 RouletteMenu rouletteAdminInventory = new RouletteMenu(
                     dealerId,
                     player,
-                    Dealer.getInternalName(dealer)+ "'s Roulette Settings",
+                    text("roulette-settings.title", "dealer", Dealer.getInternalName(dealer)),
                     (uuid) -> {
         
                         // Cancel action: re-open the AdminInventory
@@ -567,7 +600,7 @@ public class AdminMenu extends Menu {
                         }
         
                     },
-                    plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
+                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer))
             );
                 player.openInventory(rouletteAdminInventory.getInventory());
 
@@ -577,7 +610,7 @@ public class AdminMenu extends Menu {
                 CoinFlipMenu rouletteAdminInventory = new CoinFlipMenu(
                     dealerId,
                     player,
-                    Dealer.getInternalName(dealer)+ "'s Coin Flip Settings",
+                    text("coin-flip-settings.title", "dealer", Dealer.getInternalName(dealer)),
                     (uuid) -> {
         
                         // Cancel action: re-open the AdminInventory
@@ -590,7 +623,7 @@ public class AdminMenu extends Menu {
                         }
         
                     },
-                    plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
+                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer))
             );
             
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
@@ -609,7 +642,7 @@ public class AdminMenu extends Menu {
                 BaccaratMenu baccaratAdminInventory = new BaccaratMenu(
                     dealerId,
                     player,
-                    Dealer.getInternalName(dealer)+ "'s Baccarat Settings",
+                    text("baccarat-settings.title", "dealer", Dealer.getInternalName(dealer)),
                     (uuid) -> {
         
                         // Cancel action: re-open the AdminInventory
@@ -622,7 +655,7 @@ public class AdminMenu extends Menu {
                         }
         
                     },
-                    plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
+                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer))
             );
                 player.openInventory(baccaratAdminInventory.getInventory());
                 break;
@@ -631,7 +664,7 @@ public class AdminMenu extends Menu {
                 BlackjackMenu blackjackAdminInventory = new BlackjackMenu(
                     dealerId,
                     player,
-                    Dealer.getInternalName(dealer)+ "'s Blackjack Settings",
+                    text("blackjack-settings.title", "dealer", Dealer.getInternalName(dealer)),
                     (uuid) -> {
         
                         // Cancel action: re-open the AdminInventory
@@ -644,7 +677,7 @@ public class AdminMenu extends Menu {
                         }
         
                     },
-                    plugin,Dealer.getInternalName(dealer)+ "'s Admin Menu"
+                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer))
             );
 
                 player.openInventory(blackjackAdminInventory.getInventory());
@@ -654,7 +687,7 @@ public class AdminMenu extends Menu {
                 DragonDescentMenu dragonAdminInventory = new DragonDescentMenu(
                     dealerId,
                     player,
-                    Dealer.getInternalName(dealer)+ "'s Dragon Descent Settings",
+                    text("dragon-settings.title", "dealer", Dealer.getInternalName(dealer)),
                     (uuid) -> {
                         // Cancel action: re-open the AdminInventory
                         if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
@@ -665,7 +698,7 @@ public class AdminMenu extends Menu {
                             player.openInventory(adminInventory.getInventory());
                         }
                     },
-                    plugin, Dealer.getInternalName(dealer)+ "'s Admin Menu"
+                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer))
                 );
                 player.openInventory(dragonAdminInventory.getInventory());
                 break;
@@ -702,9 +735,9 @@ public class AdminMenu extends Menu {
             Preferences.MessageSetting messPref = plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             if (messPref != Preferences.MessageSetting.NONE) {
                 if (!plugin.getVaultHook().isVaultPresent()) {
-                    player.sendMessage("§cVault not found. Install Vault to use with NCCasino.");
+                    player.sendMessage(text("admin.vault-missing"));
                 } else {
-                    player.sendMessage("§cNo economy plugin. Install an economy plugin to use Vault.");
+                    player.sendMessage(text("admin.economy-missing"));
                 }
             }
             return;
@@ -724,7 +757,7 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref = plugin.getPreferences(player.getUniqueId()).getMessageSetting();
         switch (messPref) {
             case VERBOSE:
-                player.sendMessage("§eSwitched currency mode to: §a" + this.currencyMode.name() + "§e.");
+                player.sendMessage(text("admin.currency-mode-switched", "mode", this.currencyMode.name()));
                 break;
             default:
                 break;
@@ -740,25 +773,25 @@ public class AdminMenu extends Menu {
 
         switch (this.currencyMode) {
             case CurrencyMode.VAULT:
-                addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, "Select Currency", slotMapping.get(SlotOption.EDIT_CURRENCY), "[Disabled For Vault Mode]");
-                addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, "Select Currency [Disabled For Vault Mode]"), slotMapping.get(SlotOption.EDIT_CURRENCY));
+                addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, text("admin.select-currency"), slotMapping.get(SlotOption.EDIT_CURRENCY), text("admin.disabled-vault"));
+                addItem(createCustomItem(Material.GRAY_STAINED_GLASS_PANE, text("admin.select-currency-disabled")), slotMapping.get(SlotOption.EDIT_CURRENCY));
                 if (vaultAvailable) {
-                    addItem(createCustomItem(Material.CHEST, "Toggle Currency Mode: " + currencyMode.name()), slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                    addItem(createCustomItem(Material.CHEST, text("admin.toggle-currency-mode", "mode", currencyMode.name())), slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
                 } else {
                     // Vault or economy missing: show disabled state, standard mode used until available
                     String title = (plugin.getVaultHook() != null && plugin.getVaultHook().isVaultPresent())
-                        ? "§cVault (no economy)"
-                        : "§cVault (not found)";
+                        ? text("admin.vault-no-economy")
+                        : text("admin.vault-not-found");
                     String subtitle = (plugin.getVaultHook() != null && plugin.getVaultHook().isVaultPresent())
-                        ? "§7Install an economy plugin to use Vault"
-                        : "§7Install Vault to use with NCCasino";
-                    addItemAndLore(Material.BARRIER, 1, title, slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE), subtitle, "§8Standard mode used until available.");
+                        ? text("admin.install-economy")
+                        : text("admin.install-vault");
+                    addItemAndLore(Material.BARRIER, 1, title, slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE), subtitle, text("admin.standard-mode-fallback"));
                 }
                 break;
             case CurrencyMode.VANILLA:
-                addItemAndLore(plugin.getCurrency(internalName), 1, "Select Currency", slotMapping.get(SlotOption.EDIT_CURRENCY), "Current: §a" + plugin.getCurrencyName(internalName), "Drag or shift-click item here to change");
-                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-                addItem(createCustomItem(Material.GRASS_BLOCK, "Toggle Currency Mode: " + currencyMode.name()), slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                addItemAndLore(plugin.getCurrency(internalName), 1, text("admin.select-currency"), slotMapping.get(SlotOption.EDIT_CURRENCY), text("admin.current", "value", plugin.getCurrencyName(internalName)), text("admin.drag-change"));
+                addItem(createCustomItem(plugin.getCurrency(internalName), text("admin.select-vanilla-currency")), slotMapping.get(SlotOption.EDIT_CURRENCY));
+                addItem(createCustomItem(Material.GRASS_BLOCK, text("admin.toggle-currency-mode", "mode", currencyMode.name())), slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
                 break;
             // CUSTOM commented out for this release (cycle is VANILLA <-> VAULT only)
             // case CurrencyMode.CUSTOM:
@@ -767,8 +800,8 @@ public class AdminMenu extends Menu {
             //     addItem(createCustomItem(Material.ENDER_CHEST,"Toggle Currency Mode: " + currencyMode.name(),1),slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
             //     break;
             default:
-                addItem(createCustomItem(plugin.getCurrency(internalName), "Select Vanilla Currency"), slotMapping.get(SlotOption.EDIT_CURRENCY));
-                addItem(createCustomItem(Material.GRASS_BLOCK, "Toggle Currency Mode: " + currencyMode.name()), slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
+                addItem(createCustomItem(plugin.getCurrency(internalName), text("admin.select-vanilla-currency")), slotMapping.get(SlotOption.EDIT_CURRENCY));
+                addItem(createCustomItem(Material.GRASS_BLOCK, text("admin.toggle-currency-mode", "mode", currencyMode.name())), slotMapping.get(SlotOption.TOGGLE_CURRENCY_MODE));
                 break;
         }
             // Chip Sizes
@@ -776,7 +809,13 @@ public class AdminMenu extends Menu {
                 int chipValue = plugin.getConfig().contains("dealers." + internalName + ".chip-sizes.size" + i)
                     ? plugin.getConfig().getInt("dealers." + internalName + ".chip-sizes.size" + i)
                     : 1; // Default to 1 if missing
-                addItemAndLore(plugin.getCurrency(internalName), chipValue, "Edit Chip Size #" + i,  slotMapping.get(SlotOption.valueOf("CHIP_SIZE" + i)), "Current: §a" + chipValue);
+                addItemAndLore(
+                    plugin.getCurrency(internalName),
+                    chipValue,
+                    text("admin.edit-chip-size", "index", i),
+                    slotMapping.get(SlotOption.valueOf("CHIP_SIZE" + i)),
+                    text("admin.current", "value", chipValue)
+                );
     } 
     }
 
@@ -792,13 +831,13 @@ public class AdminMenu extends Menu {
         case 1:{
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§aType new chip size value in chat.");
+                            player.sendMessage(text("admin.prompt-chip-size"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aType new value for the 1st chip size in chat.");
+                            player.sendMessage(text("admin.prompt-chip-index", "index", 1));
                     break;}
                 case NONE:{
-                    player.sendMessage("§aType new value.");
+                            player.sendMessage(text("admin.prompt-new-value"));
                     break;
                 }
             }
@@ -807,13 +846,13 @@ public class AdminMenu extends Menu {
         case 2:{
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§aType new chip size value in chat.");
+                            player.sendMessage(text("admin.prompt-chip-size"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aType new value for the 2nd chip size in chat.");
+                            player.sendMessage(text("admin.prompt-chip-index", "index", 2));
                     break;}
                 case NONE:{
-                    player.sendMessage("§aType new value.");
+                            player.sendMessage(text("admin.prompt-new-value"));
                     break;
                 }
             }            
@@ -822,13 +861,13 @@ public class AdminMenu extends Menu {
         case 3:{
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§aType new chip size value in chat.");
+                            player.sendMessage(text("admin.prompt-chip-size"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aType new value for the 3rd chip size in chat.");
+                            player.sendMessage(text("admin.prompt-chip-index", "index", 3));
                     break;}
                 case NONE:{
-                    player.sendMessage("§aType new value.");
+                            player.sendMessage(text("admin.prompt-new-value"));
                     break;
                 }
             }            
@@ -837,13 +876,13 @@ public class AdminMenu extends Menu {
         case 4:{
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§aType new chip size value in chat.");
+                            player.sendMessage(text("admin.prompt-chip-size"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aType new value for the 4th chip size in chat.");
+                            player.sendMessage(text("admin.prompt-chip-index", "index", 4));
                     break;}
                 case NONE:{
-                    player.sendMessage("§aType new value.");
+                            player.sendMessage(text("admin.prompt-new-value"));
                     break;
                 }
             }            
@@ -852,13 +891,13 @@ public class AdminMenu extends Menu {
         case 5:{
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§aType new chip size value in chat.");
+                            player.sendMessage(text("admin.prompt-chip-size"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aType new value for the 5th chip size in chat.");
+                            player.sendMessage(text("admin.prompt-chip-index", "index", 5));
                     break;}
                 case NONE:{
-                    player.sendMessage("§aType new value.");
+                            player.sendMessage(text("admin.prompt-new-value"));
                     break;
                 }
             }            
@@ -867,13 +906,13 @@ public class AdminMenu extends Menu {
         default:{
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§aType new chip size valuein chat.");
+                            player.sendMessage(text("admin.prompt-chip-size"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aType new value for chip #"+chipIndex+" in chat.");
+                            player.sendMessage(text("admin.prompt-chip-index", "index", chipIndex));
                     break;}
                 case NONE:{
-                    player.sendMessage("§aType new value.");
+                            player.sendMessage(text("admin.prompt-new-value"));
                     break;
                 }
             }   
@@ -892,13 +931,13 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
         switch(messPref){
             case STANDARD:{
-                player.sendMessage("§aType new message in chat.");
+                    player.sendMessage(text("admin.prompt-message"));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aType the new animation message in chat.");
+                    player.sendMessage(text("admin.prompt-animation-message"));
                 break;}
             case NONE:{
-                player.sendMessage("§aType new value."); break;
+                    player.sendMessage(text("admin.prompt-new-value")); break;
             }
         }   
     }
@@ -912,13 +951,13 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
         switch(messPref){
             case STANDARD:{
-                player.sendMessage("§aType new name in chat.");
+                    player.sendMessage(text("admin.prompt-name"));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aType the new dealer name in chat.");
+                    player.sendMessage(text("admin.prompt-dealer-name"));
                 break;}
             case NONE:{
-                player.sendMessage("§aType new value.");break;
+                    player.sendMessage(text("admin.prompt-new-value"));break;
             }
         }   
     }
@@ -951,13 +990,13 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
         switch(messPref){
             case STANDARD:{
-                player.sendMessage("§aClick a block to move the dealer.");
+                    player.sendMessage(text("admin.prompt-move"));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aClick a block to move the dealer to that position.");
+                    player.sendMessage(text("admin.prompt-move-detailed"));
                  break;}
             case NONE:{
-                player.sendMessage("§aClick destination.");break;
+                    player.sendMessage(text("admin.prompt-destination"));break;
             }
         } 
     }
@@ -973,7 +1012,7 @@ public class AdminMenu extends Menu {
             ConfirmMenu confirmInventory = new ConfirmMenu(
                     player,
                     dealerId,
-                    "Are you sure?",
+                    text("admin.delete-confirmation"),
                     (uuid) -> {
                         // Confirm action
                         player.closeInventory();
@@ -1023,10 +1062,10 @@ public class AdminMenu extends Menu {
         if (adminInv.currencyMode == CurrencyMode.VAULT) {
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§cCurrency selection is disabled in VAULT mode.");
+                    player.sendMessage(text("admin.currency-selection-disabled"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cCurrency selection is disabled in VAULT mode. Planned for the future");
+                    player.sendMessage(text("admin.currency-selection-disabled-future"));
                     break;}
                 case NONE:{break;
                 }
@@ -1037,7 +1076,7 @@ public class AdminMenu extends Menu {
         // VANILLA mode: remind how to set currency when clicking with empty cursor
         ItemStack cursorItem = event.getCursor();
         if ((cursorItem == null || cursorItem.getType() == Material.AIR) && (messPref == Preferences.MessageSetting.STANDARD || messPref == Preferences.MessageSetting.VERBOSE)) {
-            player.sendMessage("§eDrag vanilla item here to set as currency.");
+            player.sendMessage(text("admin.prompt-currency-item"));
         }
 
         handleDrag(cursorItem, player, event);
@@ -1079,10 +1118,16 @@ public class AdminMenu extends Menu {
             plugin.reloadDealer(dealer);
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§aCurrency updated.");
+                player.sendMessage(text("admin.currency-updated"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aCurrency updated to: " + ChatColor.YELLOW + displayName + "§a (" + ChatColor.YELLOW + selectedMaterial.name() + "§a).");
+                player.sendMessage(text(
+                    "admin.currency-updated-detailed",
+                    "name",
+                    displayName,
+                    "material",
+                    selectedMaterial.name()
+                ));
                     break;}
                 case NONE:{break;
                 }
@@ -1114,7 +1159,7 @@ public class AdminMenu extends Menu {
             event.setCancelled(true);
             String newName = event.getMessage().trim();
             if (newName.isEmpty()) {
-                denyAction(player, "Invalid name. Try again.");
+                denyAction(player, text("admin.invalid-name"));
                 return;
             }
             if (dealer != null) {
@@ -1138,10 +1183,10 @@ public class AdminMenu extends Menu {
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(messPref){
                     case STANDARD:{
-                        player.sendMessage("§aDealer name updated.");
+                    player.sendMessage(text("admin.dealer-name-updated"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§aDealer name updated to: '" + ChatColor.YELLOW + newName + "§a'.");
+                    player.sendMessage(text("admin.dealer-name-updated-detailed", "name", newName));
                         break;}
                     case NONE:{break;
                     }
@@ -1151,10 +1196,10 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
                 switch(messPref){
                     case STANDARD:{
-                        player.sendMessage("§cCould not find dealer.");
+                player.sendMessage(text("admin.dealer-not-found"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cCould not find dealer for admin menu chat response.");
+                player.sendMessage(text("admin.dealer-not-found-chat"));
 
                         break;}
                     case NONE:{break;
@@ -1174,7 +1219,7 @@ public class AdminMenu extends Menu {
             String newTimer = event.getMessage().trim();
 
             if (newTimer.isEmpty() || !newTimer.matches("\\d+") || Integer.parseInt(newTimer) <= 0) {
-                denyAction(player, "Please enter a positive number.");
+                denyAction(player, text("admin.positive-number"));
                 return;
             }
             if (dealer != null) {
@@ -1187,10 +1232,10 @@ public class AdminMenu extends Menu {
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(messPref){
                     case STANDARD:{
-                        player.sendMessage("§aDealer timer updated.");
+                    player.sendMessage(text("admin.timer-updated"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§aDealer timer updated to: " + ChatColor.YELLOW + newTimer + "§a.");
+                    player.sendMessage(text("admin.timer-updated-detailed", "timer", newTimer));
                         break;}
                     case NONE:{break;
                     }
@@ -1200,10 +1245,10 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
                 switch(messPref){
                     case STANDARD:{
-                        player.sendMessage("§cCould not find dealer.");
+                player.sendMessage(text("admin.dealer-not-found"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cCould not find dealer for admin menu chat response");
+                player.sendMessage(text("admin.dealer-not-found-chat"));
                         break;}
                     case NONE:{break;
                     }
@@ -1221,7 +1266,7 @@ public class AdminMenu extends Menu {
             String newAmsg = event.getMessage().trim();
 
             if (newAmsg.isEmpty()) {
-                denyAction(player, "Invalid input.");
+                denyAction(player, text("admin.invalid-input"));
                 return;
             }
             if (dealer != null) {
@@ -1234,10 +1279,10 @@ public class AdminMenu extends Menu {
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(messPref){
                     case STANDARD:{
-                        player.sendMessage("§aDealer animation message updated..");
+                    player.sendMessage(text("admin.animation-updated"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§aDealer animation message updated to: '" + ChatColor.YELLOW + newAmsg + "§a'.");
+                    player.sendMessage(text("admin.animation-updated-detailed", "message", newAmsg));
                         break;}
                     case NONE:{break;
                     }
@@ -1247,10 +1292,10 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
                 switch(messPref){
                     case STANDARD:{
-                        player.sendMessage("§cCould not find dealer.");
+                player.sendMessage(text("admin.dealer-not-found"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cCould not find dealer for admin menu chat response.");
+                player.sendMessage(text("admin.dealer-not-found-chat"));
 
                         break;}
                     case NONE:{break;
@@ -1268,7 +1313,7 @@ public class AdminMenu extends Menu {
             String newChipSize = event.getMessage().trim();
 
             if (newChipSize.isEmpty() || !newChipSize.matches("\\d+") || Integer.parseInt(newChipSize) <= 0) {
-                denyAction(player, "Please enter a positive number.");
+                denyAction(player, text("admin.positive-number"));
                 return;
             }
             if (dealer != null) {
@@ -1281,10 +1326,16 @@ public class AdminMenu extends Menu {
                 if(SoundHelper.getSoundSafely("entity.villager.work_cartographer",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
                 switch(messPref){
                     case STANDARD:{
-                        player.sendMessage("§aChip size updated.");
+                    player.sendMessage(text("admin.chip-size-updated"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§aChip size "+chipIndex+" updated to: " + ChatColor.YELLOW + newChipSize + "§a.");
+                    player.sendMessage(text(
+                        "admin.chip-size-updated-detailed",
+                        "index",
+                        chipIndex,
+                        "size",
+                        newChipSize
+                    ));
                         break;}
                     case NONE:{break;
                     }
@@ -1294,10 +1345,10 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
                 switch(messPref){
                     case STANDARD:{
-                        player.sendMessage("§cCould not find dealer.");
+                player.sendMessage(text("admin.dealer-not-found"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cCould not find dealer for admin menu chat response.");
+                player.sendMessage(text("admin.dealer-not-found-chat"));
                         break;}
                     case NONE:{break;
                     }
@@ -1329,7 +1380,7 @@ public class AdminMenu extends Menu {
     
             // Prevent duplicate move executions using atomic check
             if (movingDealers.putIfAbsent(dealerId, true) != null) {
-                player.sendMessage("§cDealer is already being moved. Please wait.");
+            player.sendMessage(text("admin.already-moving"));
                 return;
             }
     
@@ -1437,12 +1488,18 @@ public class AdminMenu extends Menu {
             Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch (messPref) {
                 case STANDARD:
-                    player.sendMessage("§aDealer moved to new location.");
+                    player.sendMessage(text("admin.dealer-moved"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§aDealer moved to x: " + ChatColor.YELLOW + newLocation.getX() +
-                            "§a y: " + ChatColor.YELLOW + newLocation.getY() +
-                            "§a z: " + ChatColor.YELLOW + newLocation.getZ() + "§a.");
+                    player.sendMessage(text(
+                        "admin.dealer-moved-detailed",
+                        "x",
+                        newLocation.getX(),
+                        "y",
+                        newLocation.getY(),
+                        "z",
+                        newLocation.getZ()
+                    ));
                     break;
                 case NONE:
                     break;
@@ -1466,10 +1523,10 @@ public class AdminMenu extends Menu {
             Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch (messPref) {
                 case STANDARD:
-                    player.sendMessage("§cFailed to move dealer. Chunk did not load.");
+                    player.sendMessage(text("admin.move-failed"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cFailed to move dealer. Chunk did not load after 30 ticks.");
+                    player.sendMessage(text("admin.move-failed-detailed"));
                     break;
                 case NONE:
                     break;
@@ -1513,10 +1570,10 @@ public class AdminMenu extends Menu {
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
             switch(messPref){
                 case STANDARD:{
-                    player.sendMessage("§cCan't do that.");
+                    player.sendMessage(text("admin.cant-do-that"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cYou cannot break blocks while moving the dealer.");
+                    player.sendMessage(text("admin.cannot-break-moving"));
                     break;}
                 case NONE:{break;
                 }
@@ -1655,7 +1712,7 @@ public class AdminMenu extends Menu {
 
     private List<String> getMobSelectionLore(Mob mob) {
         List<String> lore = new ArrayList<>();
-        lore.add("Mob: §a" + formatEntityName(mob.getType().toString()));
+        lore.add(text("admin.mob-lore", "mob", formatEntityName(mob.getType().toString())));
         String sizeOrAge = getCurrentSizeOrAge(mob);
         if (!sizeOrAge.isEmpty()) {
             lore.add(sizeOrAge);
@@ -1665,7 +1722,7 @@ public class AdminMenu extends Menu {
         } else {
             String variant = getCurrentVariant(mob);
             if (!variant.isEmpty()) {
-                lore.add("Variant: §a" + variant);
+                lore.add(text("admin.variant-lore", "variant", variant));
             }
         }
 
@@ -1676,13 +1733,13 @@ public class AdminMenu extends Menu {
         int passengerCount = totalJockeys - vehicleCount;
         
         if (vehicleCount > 0) {
-            lore.add("Vehicles: §a" + vehicleCount);
+            lore.add(text("admin.vehicles-lore", "count", vehicleCount));
         }
         if (passengerCount > 0) {
-            lore.add("Passengers: §a" + passengerCount);
+            lore.add(text("admin.passengers-lore", "count", passengerCount));
         }
         else if (passengerCount == 0 && vehicleCount == 0) {
-            lore.add("No passengers or vehicles");
+            lore.add(text("admin.no-passengers-vehicles"));
         }
 
         return lore;
@@ -1720,15 +1777,15 @@ public class AdminMenu extends Menu {
     private List<String> getComplexVariantDetails(Mob mob) {
         List<String> details = new ArrayList<>();
         if (mob instanceof Llama llama) {
-            details.add("Current Color: §a" + formatEntityName(llama.getColor().toString()));
-            details.add("Current Decor: §a" + getLlamaCarpetName(llama));
+            details.add(text("admin.current-color-lore", "value", formatEntityName(llama.getColor().toString())));
+            details.add(text("admin.current-decor-lore", "value", getLlamaCarpetName(llama)));
         } else if (mob instanceof Horse horse) {
-            details.add("Current Color: §a" + formatEntityName(horse.getColor().toString()));
-            details.add("Current Style: §a" + formatEntityName(horse.getStyle().toString()));
+            details.add(text("admin.current-color-lore", "value", formatEntityName(horse.getColor().toString())));
+            details.add(text("admin.current-style-lore", "value", formatEntityName(horse.getStyle().toString())));
         } else if (mob instanceof TropicalFish fish) {
-            details.add("Current Pattern: §a" + formatEntityName(fish.getPattern().toString()));
-            details.add("Current Body Color: §a" + formatEntityName(fish.getBodyColor().toString()));
-            details.add("Current Pattern Color: §a" + formatEntityName(fish.getPatternColor().toString()));
+            details.add(text("admin.current-pattern-lore", "value", formatEntityName(fish.getPattern().toString())));
+            details.add(text("admin.current-body-color-lore", "value", formatEntityName(fish.getBodyColor().toString())));
+            details.add(text("admin.current-pattern-color-lore", "value", formatEntityName(fish.getPatternColor().toString())));
         }
         return details;
     }
@@ -1737,7 +1794,7 @@ public class AdminMenu extends Menu {
         if (llama.getInventory().getDecor() != null) {
             return formatEntityName(llama.getInventory().getDecor().getType().toString().replace("_CARPET", ""));
         }
-        return "None";
+        return text("admin.none");
     }
 
     private boolean isComplicatedVariant(Mob mob) {
@@ -1748,12 +1805,33 @@ public class AdminMenu extends Menu {
 
     private String getCurrentSizeOrAge(Mob mob) {
     if (mob instanceof Slime slime && !(mob instanceof MagmaCube)) {
-        return "Size: §a" + slime.getSize();
+        return text("admin.size-lore", "value", slime.getSize());
     } else if (mob instanceof MagmaCube magmaCube) {
-        return "Size: §a" + magmaCube.getSize();
+        return text("admin.size-lore", "value", magmaCube.getSize());
     } else if (mob instanceof org.bukkit.entity.Ageable ageable&&!(mob instanceof Parrot) &&!(mob instanceof Frog) &&!(mob instanceof PiglinBrute) &&!(mob instanceof WanderingTrader)) {
-        return "Age: §a" + (ageable.isAdult() ? "Adult" : "Baby");
+        return text(
+            "admin.age-lore",
+            "value",
+            ageable.isAdult() ? text("admin.adult") : text("admin.baby")
+        );
     }
     return "";
+    }
+
+    private String localizedGameName(String gameName) {
+        return switch (gameName) {
+            case "Blackjack" -> text("game-options.blackjack");
+            case "Roulette" -> text("game-options.roulette");
+            case "Mines" -> text("game-options.mines");
+            case "Baccarat" -> text("game-options.baccarat");
+            case "Coin Flip" -> text("game-options.coin-flip");
+            case "Dragon Descent" -> text("game-options.dragon-descent");
+            case "Test Game" -> text("game-options.test-game");
+            default -> gameName;
+        };
+    }
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
     }
 }

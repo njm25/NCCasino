@@ -32,19 +32,59 @@ class SessionRegistryTest {
     }
 
     @Test
-    void staleUnregisterCannotRemoveReplacementSession() {
+    void unregisteringOneSessionPreservesOtherConcurrentSession() {
         UUID playerId = UUID.randomUUID();
-        AtomicInteger replacementCalls = new AtomicInteger();
-        TerminableSession stale = (id, reason) -> { };
-        TerminableSession replacement = (id, reason) -> replacementCalls.incrementAndGet();
+        AtomicInteger firstCalls = new AtomicInteger();
+        AtomicInteger secondCalls = new AtomicInteger();
+        TerminableSession first = (id, reason) -> firstCalls.incrementAndGet();
+        TerminableSession second = (id, reason) -> secondCalls.incrementAndGet();
 
-        SessionRegistry.register(playerId, stale);
-        SessionRegistry.register(playerId, replacement);
-        SessionRegistry.unregister(playerId, stale);
+        SessionRegistry.register(playerId, first);
+        SessionRegistry.register(playerId, second);
+        SessionRegistry.unregister(playerId, first);
 
         assertTrue(SessionRegistry.hasActiveSession(playerId));
         SessionRegistry.terminatePlayerSession(playerId, ExitReason.GAME_COMPLETED);
-        assertEquals(1, replacementCalls.get());
+        assertEquals(0, firstCalls.get());
+        assertEquals(1, secondCalls.get());
+    }
+
+    @Test
+    void terminationResolvesEveryConcurrentSessionExactlyOnce() {
+        UUID playerId = UUID.randomUUID();
+        AtomicInteger calls = new AtomicInteger();
+        TerminableSession first = (id, reason) -> calls.incrementAndGet();
+        TerminableSession second = (id, reason) -> calls.incrementAndGet();
+
+        SessionRegistry.register(playerId, first);
+        SessionRegistry.register(playerId, second);
+        SessionRegistry.register(playerId, first);
+
+        SessionRegistry.terminatePlayerSession(playerId, ExitReason.PLUGIN_DISABLE);
+        SessionRegistry.terminatePlayerSession(playerId, ExitReason.PLUGIN_DISABLE);
+
+        assertEquals(2, calls.get());
+        assertFalse(SessionRegistry.hasActiveSession(playerId));
+    }
+
+    @Test
+    void targetedTerminationLeavesOtherConcurrentSessionRegistered() {
+        UUID playerId = UUID.randomUUID();
+        AtomicInteger firstCalls = new AtomicInteger();
+        AtomicInteger secondCalls = new AtomicInteger();
+        TerminableSession first = (id, reason) -> firstCalls.incrementAndGet();
+        TerminableSession second = (id, reason) -> secondCalls.incrementAndGet();
+
+        SessionRegistry.register(playerId, first);
+        SessionRegistry.register(playerId, second);
+        SessionRegistry.terminateSession(playerId, first, ExitReason.DISCONNECTED);
+
+        assertEquals(1, firstCalls.get());
+        assertEquals(0, secondCalls.get());
+        assertTrue(SessionRegistry.hasActiveSession(playerId));
+
+        SessionRegistry.terminatePlayerSession(playerId, ExitReason.PLUGIN_DISABLE);
+        assertEquals(1, secondCalls.get());
     }
 
     @Test

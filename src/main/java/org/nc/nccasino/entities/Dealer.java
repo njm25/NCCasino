@@ -472,15 +472,42 @@ public class Dealer {
         DealerInventory.updateInventory(dealerId, newInventory);
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName+ ChatColor.GREEN + "' has been set to " + ChatColor.YELLOW + gameName + ChatColor.GREEN + ".");
+                player.sendMessage(plugin.getLocalization().text(
+                    player,
+                    "dealer.game-set",
+                    "dealer",
+                    internalName,
+                    "game",
+                    localizedGameType(plugin, player, gameName)
+                ));
                 break;}
             case VERBOSE:{
-                player.sendMessage(ChatColor.GREEN + "Dealer '" + ChatColor.YELLOW + internalName+ ChatColor.GREEN + "' has been set to " + ChatColor.YELLOW + gameName + ChatColor.GREEN + ".");
+                player.sendMessage(plugin.getLocalization().text(
+                    player,
+                    "dealer.game-set",
+                    "dealer",
+                    internalName,
+                    "game",
+                    localizedGameType(plugin, player, gameName)
+                ));
                 break;}
             case NONE:{
                 break;
             }
         }
+    }
+
+    private static String localizedGameType(Nccasino plugin, Player player, String gameType) {
+        return switch (gameType) {
+            case "Blackjack" -> plugin.getLocalization().text(player, "game-options.blackjack");
+            case "Roulette" -> plugin.getLocalization().text(player, "game-options.roulette");
+            case "Mines" -> plugin.getLocalization().text(player, "game-options.mines");
+            case "Baccarat" -> plugin.getLocalization().text(player, "game-options.baccarat");
+            case "Coin Flip" -> plugin.getLocalization().text(player, "game-options.coin-flip");
+            case "Dragon Descent" -> plugin.getLocalization().text(player, "game-options.dragon-descent");
+            case "Test Game" -> plugin.getLocalization().text(player, "game-options.test-game");
+            default -> gameType;
+        };
     }
 
     public static void updateGameType(Mob mob, String gameName, int timer, String anmsg, String newName, List<Integer> chipSizes, String currencyMaterial, String currencyName) {

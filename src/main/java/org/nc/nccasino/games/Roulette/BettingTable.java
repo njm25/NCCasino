@@ -22,6 +22,7 @@ import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.ChipSlots;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.currency.MoneyHelper;
@@ -44,13 +45,13 @@ public class BettingTable extends DealerInventory {
     private double selectedWager;
     private int pageNum;
     private Boolean allin=false;
-    private final Map<String, Double> chipValues;
+    private final Map<Integer, Double> chipValues;
     private final Stack<Pair<String, Integer>> betStack;
     private Stack<Pair<String, Integer>> testStack;
     private boolean betsClosed=false;
     private int countdown1=30;
     public BettingTable(Player player, Mob dealer, Nccasino plugin, Stack<Pair<String, Integer>> existingBets, String internalName,RouletteInventory rouletteInventory,int countdown) {
-        super(player.getUniqueId(), 54, "Your Betting Table");
+        super(player.getUniqueId(), 54, plugin.getLocalization().text(player, "roulette.table-title"));
         this.countdown1=countdown;
         this.playerId = player.getUniqueId();
         this.dealerId = Dealer.getUniqueId(dealer);
@@ -74,12 +75,11 @@ public class BettingTable extends DealerInventory {
     }
 
     private void loadChipValuesFromConfig() {
-        Nccasino nccasino = (Nccasino) plugin;
+        List<Double> configuredValues = new ArrayList<>();
         for (int i = 1; i <= 5; i++) {
-            double chipValue = nccasino.getChipValue(internalName, i);
-            String chipName = nccasino.getChipDisplayName(currencyMode, currencyName, chipValue);
-            this.chipValues.put(chipName, chipValue);
+            configuredValues.add(plugin.getChipValue(internalName, i));
         }
+        this.chipValues.putAll(ChipSlots.assign(configuredValues));
     }
 
     private void initializeTable() {
@@ -123,15 +123,15 @@ public class BettingTable extends DealerInventory {
     private void updateClockItem(int countdown, boolean betsClosed) {
         if (betsClosed) {
             if (pageNum == 1) {
-                inventory.setItem(0, createCustomItem(Material.CLOCK, "BETS CLOSED", 1));
+                inventory.setItem(0, createCustomItem(Material.CLOCK, text("roulette.bets-closed"), 1));
             } else {
-                inventory.setItem(35, createCustomItem(Material.CLOCK, "BETS CLOSED", 1));
+                inventory.setItem(35, createCustomItem(Material.CLOCK, text("roulette.bets-closed"), 1));
             }
         } else if (countdown > 0) {
             if (pageNum == 1) {
-                inventory.setItem(0, createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown1 + " SECONDS!", countdown1));
+                inventory.setItem(0, createCustomItem(Material.CLOCK, text("roulette.bets-close-in", "seconds", countdown1), countdown1));
             } else {
-                inventory.setItem(35, createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown1 + " SECONDS!", countdown1));
+                inventory.setItem(35, createCustomItem(Material.CLOCK, text("roulette.bets-close-in", "seconds", countdown1), countdown1));
             }
         }
     }
@@ -161,82 +161,88 @@ public class BettingTable extends DealerInventory {
             }
         }
 
-        inventory.setItem(8, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Top Row - 2:1", 1));
-        inventory.setItem(17, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Middle Row - 2:1", 1));
-        inventory.setItem(26, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Bottom Row - 2:1", 1));
+        inventory.setItem(8, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-top-row"), 1));
+        inventory.setItem(17, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-middle-row"), 1));
+        inventory.setItem(26, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-bottom-row"), 1));
     }
 
     private void addDozensAndOtherBetsPageOne() {
-        inventory.setItem(28, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1st Dozen - 2:1", 1));
-        inventory.setItem(29, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1st Dozen - 2:1", 1));
-        inventory.setItem(30, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1st Dozen - 2:1", 1));
-        inventory.setItem(31, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1st Dozen - 2:1", 1));
-        inventory.setItem(32, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen - 2:1", 1));
-        inventory.setItem(33, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen - 2:1", 1));
-        inventory.setItem(34, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen - 2:1", 1));
-        inventory.setItem(35, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen - 2:1", 1));
+        inventory.setItem(28, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-first-dozen"), 1));
+        inventory.setItem(29, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-first-dozen"), 1));
+        inventory.setItem(30, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-first-dozen"), 1));
+        inventory.setItem(31, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-first-dozen"), 1));
+        inventory.setItem(32, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-second-dozen"), 1));
+        inventory.setItem(33, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-second-dozen"), 1));
+        inventory.setItem(34, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-second-dozen"), 1));
+        inventory.setItem(35, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-second-dozen"), 1));
 
         inventory.setItem(37, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1-18 - 1:1", 1));
         inventory.setItem(38, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "1-18 - 1:1", 1));
-        inventory.setItem(39, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Even - 1:1", 1));
-        inventory.setItem(40, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Even - 1:1", 1));
-        inventory.setItem(41, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red - 1:1", 1));
-        inventory.setItem(42, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red - 1:1", 1));
-        inventory.setItem(43, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Black - 1:1", 1));
-        inventory.setItem(44, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Black - 1:1", 1));
+        inventory.setItem(39, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-even"), 1));
+        inventory.setItem(40, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-even"), 1));
+        inventory.setItem(41, createCustomItem(Material.RED_STAINED_GLASS_PANE, text("roulette.bet-red"), 1));
+        inventory.setItem(42, createCustomItem(Material.RED_STAINED_GLASS_PANE, text("roulette.bet-red"), 1));
+        inventory.setItem(43, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, text("roulette.bet-black"), 1));
+        inventory.setItem(44, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, text("roulette.bet-black"), 1));
     }
 
     private void addDozensAndOtherBetsPageTwo() {
-        inventory.setItem(27, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen - 2:1", 1));
-        inventory.setItem(28, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen - 2:1", 1));
-        inventory.setItem(29, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen - 2:1", 1));
-        inventory.setItem(30, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "2nd Dozen - 2:1", 1));
-        inventory.setItem(31, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "3rd Dozen - 2:1", 1));
-        inventory.setItem(32, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "3rd Dozen - 2:1", 1));
-        inventory.setItem(33, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "3rd Dozen - 2:1", 1));
-        inventory.setItem(34, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "3rd Dozen - 2:1", 1));
+        inventory.setItem(27, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-second-dozen"), 1));
+        inventory.setItem(28, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-second-dozen"), 1));
+        inventory.setItem(29, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-second-dozen"), 1));
+        inventory.setItem(30, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-second-dozen"), 1));
+        inventory.setItem(31, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-third-dozen"), 1));
+        inventory.setItem(32, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-third-dozen"), 1));
+        inventory.setItem(33, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-third-dozen"), 1));
+        inventory.setItem(34, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-third-dozen"), 1));
 
-        inventory.setItem(36, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red - 1:1", 1));
-        inventory.setItem(37, createCustomItem(Material.RED_STAINED_GLASS_PANE, "Red - 1:1", 1));
-        inventory.setItem(38, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Black - 1:1", 1));
-        inventory.setItem(39, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Black - 1:1", 1));
-        inventory.setItem(40, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Odd - 1:1", 1));
-        inventory.setItem(41, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "Odd - 1:1", 1));
+        inventory.setItem(36, createCustomItem(Material.RED_STAINED_GLASS_PANE, text("roulette.bet-red"), 1));
+        inventory.setItem(37, createCustomItem(Material.RED_STAINED_GLASS_PANE, text("roulette.bet-red"), 1));
+        inventory.setItem(38, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, text("roulette.bet-black"), 1));
+        inventory.setItem(39, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, text("roulette.bet-black"), 1));
+        inventory.setItem(40, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-odd"), 1));
+        inventory.setItem(41, createCustomItem(Material.LIME_STAINED_GLASS_PANE, text("roulette.bet-odd"), 1));
         inventory.setItem(42, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "19-36 - 1:1", 1));
         inventory.setItem(43, createCustomItem(Material.LIME_STAINED_GLASS_PANE, "19-36 - 1:1", 1));
     }
 
     private void addCommonComponents() {
         if(allin){
-            inventory.setItem(52, createEnchantedItem(Material.SNIFFER_EGG, "All In (" + plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager) + ")", 1));
+            inventory.setItem(52, createEnchantedItem(
+                Material.SNIFFER_EGG,
+                text(
+                    "roulette.all-in-display",
+                    "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager)
+                ),
+                1
+            ));
         }
-        else{inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));}
+        else{inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, text("roulette.all-in"), 1));}
 
-        inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
-        inventory.setItem(46, createCustomItem(Material.WIND_CHARGE, "Undo Last Bet", 1));
+        inventory.setItem(45, createCustomItem(Material.BARRIER, text("roulette.undo-all"), 1));
+        inventory.setItem(46, createCustomItem(Material.WIND_CHARGE, text("roulette.undo-last"), 1));
         if(pageNum==1){
-            inventory.setItem(36, createCustomItem(Material.ENDER_PEARL, "Back to Wheel", 1));
+            inventory.setItem(36, createCustomItem(Material.ENDER_PEARL, text("roulette.back-wheel"), 1));
 
         }
         else{
-            inventory.setItem(44, createCustomItem(Material.ENDER_PEARL, "Back to Wheel", 1));
+            inventory.setItem(44, createCustomItem(Material.ENDER_PEARL, text("roulette.back-wheel"), 1));
         }
-        int slot = 47;
-        List<Map.Entry<String, Double>> sortedEntries = new ArrayList<>(chipValues.entrySet());
-        sortedEntries.sort(Map.Entry.comparingByValue());
-
-        for (Map.Entry<String, Double> entry : sortedEntries) {
-            if(entry.getValue()==selectedWager){
-                inventory.setItem(slot, createEnchantedItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
+        for (Map.Entry<Integer, Double> entry : chipValues.entrySet()) {
+            int chipSlot = entry.getKey();
+            double chipValue = entry.getValue();
+            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
+            if(chipValue==selectedWager){
+                inventory.setItem(chipSlot, createEnchantedItem(plugin.getCurrency(internalName), chipName, (int) chipValue));
 
             }
             else{
-            inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
+            inventory.setItem(chipSlot, createCustomItem(plugin.getCurrency(internalName), chipName, (int) chipValue));
             }
-            slot++;
         }
 
-        inventory.setItem(53, createCustomItem(Material.ARROW, "Switch Page", 1));
+        inventory.setItem(53, createCustomItem(Material.ARROW, text("roulette.switch-page"), 1));
     }
     private void updateAllLore() {
         // Map to store the total bet for each bet type
@@ -255,8 +261,9 @@ public class BettingTable extends DealerInventory {
             ItemStack item = inventory.getItem(slot);
             if (item != null && item.hasItemMeta()) {
                 String itemName = item.getItemMeta().getDisplayName();
-                if (betTotals.containsKey(itemName)) {
-                    int totalBet = betTotals.get(itemName);
+                String betType = canonicalBetType(pageNum, slot, itemName);
+                if (betTotals.containsKey(betType)) {
+                    int totalBet = betTotals.get(betType);
                     updateItemLore(slot, totalBet);
 
                     int oldAmount = item.getAmount(); 
@@ -362,7 +369,11 @@ public class BettingTable extends DealerInventory {
                for (int i = 0; i < inventory.getSize(); i++) {
                    ItemStack originalItem = inventory.getItem(i);
                       if (originalItem != null && originalItem.getType() != Material.AIR) {
-                       ItemStack whitePane = createCustomItem(Material.WHITE_STAINED_GLASS_PANE, "BETS ARE CLOSED, WHATS DONE IS DONE", originalItem.getAmount());
+                       ItemStack whitePane = createCustomItem(
+                           Material.WHITE_STAINED_GLASS_PANE,
+                           text("roulette.bets-closed-final"),
+                           originalItem.getAmount()
+                       );
                       inventory.setItem(i, whitePane);
                        // rouletteInventory.updatePlayerBets(playerId(), getBetStack());
 
@@ -391,17 +402,17 @@ public class BettingTable extends DealerInventory {
         }
         if (countdown > 0) {
             if (pageNum == 1) {
-                inventory.setItem(0, createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown + " SECONDS!", countdown));
+                inventory.setItem(0, createCustomItem(Material.CLOCK, text("roulette.bets-close-in", "seconds", countdown), countdown));
             } else {
-                inventory.setItem(35, createCustomItem(Material.CLOCK, "BETS CLOSE IN " + countdown + " SECONDS!", countdown));
+                inventory.setItem(35, createCustomItem(Material.CLOCK, text("roulette.bets-close-in", "seconds", countdown), countdown));
             }
         } else {
             if (pageNum == 1) {
-                inventory.setItem(0, createCustomItem(Material.CLOCK, "BETS CLOSED", 1));
+                inventory.setItem(0, createCustomItem(Material.CLOCK, text("roulette.bets-closed"), 1));
                 
             } else {
 
-                inventory.setItem(35, createCustomItem(Material.CLOCK, "BETS CLOSED", 1));
+                inventory.setItem(35, createCustomItem(Material.CLOCK, text("roulette.bets-closed"), 1));
                 pageNum=1;
             }
         
@@ -472,13 +483,21 @@ public class BettingTable extends DealerInventory {
 
         if (player != null && player.isOnline()) {
             // Build result message
-            StringBuilder msg = new StringBuilder("§e----- Spin Results -----\n");
+            StringBuilder msg = new StringBuilder(text("roulette.spin-results"));
             TableGenerator table = new TableGenerator(TableGenerator.Alignment.LEFT, TableGenerator.Alignment.RIGHT, TableGenerator.Alignment.RIGHT);
-            table.addRow("§eCategory", "§bWager", "§aPayout");
+            table.addRow(
+                text("roulette.category-header"),
+                text("roulette.wager-header"),
+                text("roulette.payout-header")
+            );
 
             for (Map.Entry<String, BetCategory> entry : categoryMap.entrySet()) {
                 BetCategory cat = entry.getValue();
-                table.addRow("§e" + entry.getKey(), "§b" + cat.totalWager, (cat.totalPayout > 0 ? "§a" + cat.totalPayout : "§c0"));
+                table.addRow(
+                    "§e" + localizedCategoryName(entry.getKey()),
+                    "§b" + cat.totalWager,
+                    (cat.totalPayout > 0 ? "§a" + cat.totalPayout : "§c0")
+                );
             }
 
             List<String> tableLines = table.generate(TableGenerator.Receiver.CLIENT, false, false);
@@ -489,7 +508,13 @@ public class BettingTable extends DealerInventory {
             msg.append("\n");
             if (totalPayout > 0) {
                 if(totalPayout-overallWager>0){
-                    msg.append("§a§lPaid ").append(plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout)).append("\n §r§a§o(profit of "+(totalPayout-overallWager)+")");
+                    msg.append(text(
+                        "payout.paid-with-profit",
+                        "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout),
+                        "profit",
+                        totalPayout - overallWager
+                    ));
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
                         Random random = new Random();
@@ -502,21 +527,37 @@ public class BettingTable extends DealerInventory {
                     }, 20L);
                 }
                 else if(totalPayout-overallWager==0){
-                    msg.append("§6§lPaid ").append(plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout)).append("\n §r§6§o (broke even)");
+                    msg.append(text(
+                        "roulette.paid-even",
+                        "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout)
+                    ));
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                          if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
                         player.getWorld().spawnParticle(Particle.SCRAPE, player.getLocation(), 20);
                     }, 20L);
                 }
                 else{
-                    msg.append("§c§lPaid ").append(plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout)).append("\n§r§c§o  (loss of "+Math.abs(totalPayout-overallWager)+")");
+                    msg.append(text(
+                        "roulette.paid-loss",
+                        "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout),
+                        "loss",
+                        Math.abs(totalPayout - overallWager)
+                    ));
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                          if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
                         player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
                     }, 20L);
                 }
             } else {
-                msg.append("§c§lPaid ").append(plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout)).append("\n§r§c§o  (loss of "+Math.abs(totalPayout-overallWager)+")");
+                msg.append(text(
+                    "roulette.paid-loss",
+                    "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, totalPayout),
+                    "loss",
+                    Math.abs(totalPayout - overallWager)
+                ));
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                      if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER,1.0f, 1.0f);
                     player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
@@ -680,7 +721,7 @@ public class BettingTable extends DealerInventory {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aOpened page 2.");            
+                    player.sendMessage(text("roulette.opened-page", "page", 2));
                     break;     
                 }
                     case NONE:{
@@ -697,7 +738,7 @@ public class BettingTable extends DealerInventory {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aOpened page 1.");            
+                    player.sendMessage(text("roulette.opened-page", "page", 1));
                     break;     
                 }
                     case NONE:{
@@ -724,10 +765,19 @@ public class BettingTable extends DealerInventory {
             if (count <= 0) {
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§cInvalid action.");
+                        player.sendMessage(text("roulette.invalid-action"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage(currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT ? "§cNo funds.\n" : "§cNo " + plugin.getCurrencyName(internalName).toLowerCase() + (Math.abs(count) == 1 ? "" : "s") + "\n");
+                        player.sendMessage(
+                            currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT
+                                ? text("roulette.no-funds")
+                                : text(
+                                    "roulette.no-currency",
+                                    "currency",
+                                    plugin.getCurrencyName(internalName).toLowerCase()
+                                        + (Math.abs(count) == 1 ? "" : "s")
+                                )
+                        );
                         break;     
                     }
                         case NONE:{
@@ -747,28 +797,40 @@ public class BettingTable extends DealerInventory {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aAll in wager of " + plugin.formatWagerDisplay(currencyMode, currencyName, count) + " ready to place.");
+                    player.sendMessage(text(
+                        "roulette.all-in-ready",
+                        "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, count)
+                    ));
                     break;     
                 }
                     case NONE:{
                     break;
                 }
             } 
-            ItemStack updatedTotem = createEnchantedItem(Material.SNIFFER_EGG, "All In (" + plugin.formatWagerDisplay(currencyMode, currencyName, count) + ")", 1);
+            ItemStack updatedTotem = createEnchantedItem(
+                Material.SNIFFER_EGG,
+                text(
+                    "roulette.all-in-display",
+                    "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, count)
+                ),
+                1
+            );
             inventory.setItem(slot, updatedTotem);
              if (SoundHelper.getSoundSafely("entity.lightning_bolt.thunder", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER,1.0f, 1.0f);
         }
-        if (slot >= 47 && slot <= 51) {
+        if (ChipSlots.isChipSlot(slot)) {
              if (SoundHelper.getSoundSafely("item.flintandsteel.use", player) != null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE,SoundCategory.MASTER, 1.0f, 1.0f);  
             allin=false;
             // The player clicked on one of the chip slots
-            selectedWager = getWagerAmountFromName(itemName); 
+            selectedWager = chipValues.getOrDefault(slot, 0.0);
             if (selectedWager > 0) {
                 // 1) Un-enchant all chips in 47..51
                 for (int i = 47; i <= 51; i++) {
                     resetChipAtSlot(i);
                 }
-                inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG,"All In",1 ));
+                inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, text("roulette.all-in"), 1));
                 // 2) Enchant only the clicked chip
                 inventory.setItem(slot, createEnchantedItem(
                     plugin.getCurrency(internalName),
@@ -779,7 +841,11 @@ public class BettingTable extends DealerInventory {
                     case STANDARD:{
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§aWager: " + plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager));                     
+                        player.sendMessage(text(
+                            "roulette.wager-selected",
+                            "amount",
+                            plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager)
+                        ));
                         break;     
                     }
                         case NONE:{
@@ -791,7 +857,8 @@ public class BettingTable extends DealerInventory {
                     case STANDARD:{
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cInvalid wager amount selected.");                        break;     
+                        player.sendMessage(text("roulette.invalid-wager-selected"));
+                        break;
                     }
                         case NONE:{
                         break;
@@ -803,6 +870,7 @@ public class BettingTable extends DealerInventory {
             return;
         }
         if ((pageNum == 1 && isValidSlotPage1(slot)) || (pageNum == 2 && isValidSlotPage2(slot))) {
+            String betType = canonicalBetType(pageNum, slot, itemName);
             // Check if the player is holding the currency item
             ItemStack heldItem = player.getItemOnCursor();
             double wagerAmount = 0;
@@ -839,7 +907,13 @@ public class BettingTable extends DealerInventory {
                         case STANDARD:
                             break;
                         case VERBOSE:
-                            player.sendMessage("§6Put " + plugin.formatWagerDisplay(currencyMode, currencyName, wagerAmount) + " on " + itemName);
+                            player.sendMessage(text(
+                                "roulette.bet-placed",
+                                "amount",
+                                plugin.formatWagerDisplay(currencyMode, currencyName, wagerAmount),
+                                "bet",
+                                localizedBetType(betType)
+                            ));
                             break;
                         case NONE:
                             break;
@@ -848,7 +922,7 @@ public class BettingTable extends DealerInventory {
                     if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
                         player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
         
-                    betStack.push(new Pair<>(itemName, (int) wagerAmount));
+                    betStack.push(new Pair<>(betType, (int) wagerAmount));
         
                     complicatedDifficultHiddenSecretBackdoor(betStack);
                     rouletteInventory.updatePlayerBets(playerId, betStack, player);
@@ -856,16 +930,24 @@ public class BettingTable extends DealerInventory {
         
                     if (allin) {
                         allin = false;
-                        inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
+                        inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, text("roulette.all-in"), 1));
                     }
         
                 } else {
                     switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                         case STANDARD:
-                            player.sendMessage("§cInvalid action.");
+                            player.sendMessage(text("roulette.invalid-action"));
                             break;
                         case VERBOSE:
-                            player.sendMessage(currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT ? "§cNot enough funds." : "§cNot enough " + plugin.getCurrencyName(internalName).toLowerCase() + "s");
+                            player.sendMessage(
+                                currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT
+                                    ? text("roulette.not-enough-funds")
+                                    : text(
+                                        "roulette.not-enough-currency",
+                                        "currency",
+                                        plugin.getCurrencyName(internalName).toLowerCase() + "s"
+                                    )
+                            );
                             break;
                         case NONE:
                             break;
@@ -876,10 +958,10 @@ public class BettingTable extends DealerInventory {
             } else {
                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                     case STANDARD:
-                        player.sendMessage("§cInvalid action.");
+                        player.sendMessage(text("roulette.invalid-action"));
                         break;
                     case VERBOSE:
-                        player.sendMessage("§cNo wager selected");
+                        player.sendMessage(text("roulette.no-wager"));
                         break;
                     case NONE:
                         break;
@@ -896,7 +978,7 @@ public class BettingTable extends DealerInventory {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aAll bets undone.");                   
+                    player.sendMessage(text("roulette.all-bets-undone"));
                      break;     
                 }
                     case NONE:{
@@ -911,11 +993,11 @@ public class BettingTable extends DealerInventory {
         else{
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(text("roulette.invalid-action"));
 
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cNo bets to undo");
+                    player.sendMessage(text("roulette.no-bets-undo"));
                     break;     
                 }
                     case NONE:{
@@ -933,7 +1015,7 @@ public class BettingTable extends DealerInventory {
                     case STANDARD:{
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§aLast bet undone.");
+                        player.sendMessage(text("roulette.last-bet-undone"));
                         break;     
                     }
                         case NONE:{
@@ -950,11 +1032,11 @@ public class BettingTable extends DealerInventory {
             else{
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§cInvalid action.");
+                        player.sendMessage(text("roulette.invalid-action"));
     
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cNo bets to undo");
+                        player.sendMessage(text("roulette.no-bets-undo"));
                         break;     
                     }
                         case NONE:{
@@ -972,7 +1054,7 @@ public class BettingTable extends DealerInventory {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aReturning to Roulette...");                    
+                    player.sendMessage(text("roulette.returning"));
                     break;     
                 }
                     case NONE:{
@@ -998,7 +1080,7 @@ public class BettingTable extends DealerInventory {
                 switchingPlayers.remove(player.getUniqueId());
                  },5L);
             } else {
-                player.sendMessage("Error: This dealer is not running Roulette.");
+                player.sendMessage(text("roulette.wrong-game"));
                  if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
 
             }
@@ -1007,15 +1089,11 @@ public class BettingTable extends DealerInventory {
 
 
 private void resetChipAtSlot(int slot) {
-    ItemStack chip = inventory.getItem(slot);
-    if (chip == null || !chip.hasItemMeta()) return;
-
-    String chipName = chip.getItemMeta().getDisplayName();
-    // Ensure this is a valid chip from chipValues
-    if (chipValues.containsKey(chipName)) {
-        double value = chipValues.get(chipName);
+    Double value = chipValues.get(slot);
+    if (value != null) {
+        String chipName = plugin.getChipDisplayName(currencyMode, currencyName, value);
         // Replace with the normal, unenchanted item
-        inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), chipName, (int) value));
+        inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), chipName, value.intValue()));
     }
 }
 
@@ -1056,7 +1134,7 @@ private boolean isValidSlotPage2(int slot) {
     private void refundWagerToInventory(Player player, int amount) {
         Material currencyMaterial = plugin.getCurrency(internalName);
         if (currencyMaterial == null) {
-            player.sendMessage("Error: Currency material is not set. Unable to refund bets.");
+            player.sendMessage(text("roulette.currency-missing"));
             return;
         }
 
@@ -1106,11 +1184,19 @@ private boolean isValidSlotPage2(int slot) {
         if (totalLeftoverAmount > 0) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
+                    player.sendMessage(text(
+                        "roulette.inventory-full",
+                        "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount)
+                    ));
     
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
+                    player.sendMessage(text(
+                        "roulette.inventory-full",
+                        "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount)
+                    ));
                     break;     
                 }
                     case NONE:{
@@ -1200,7 +1286,11 @@ private boolean isValidSlotPage2(int slot) {
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
                 List<String> lore = new ArrayList<>();
-                lore.add("Wager: " + plugin.formatWagerDisplay(currencyMode, currencyName, totalBet) + "\n");
+                lore.add(text(
+                    "roulette.wager-lore",
+                    "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, totalBet)
+                ));
                 meta.setLore(lore);
                 item.setItemMeta(meta);
             }
@@ -1225,10 +1315,6 @@ private boolean isValidSlotPage2(int slot) {
        testStack.push(new Pair<>("0 - 35:1", 1));
        testStack.push(new Pair<>("0 - 35:1", 1));
        testStack.push(new Pair<>("0 - 35:1", 1)); 
-    }
-
-    private double getWagerAmountFromName(String name) {
-        return chipValues.getOrDefault(name, 0.0);
     }
 
     private boolean hasEnoughWager(Player player, double amount) {
@@ -1268,10 +1354,14 @@ private boolean isValidSlotPage2(int slot) {
 
 		switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 			case STANDARD:{
-				player.sendMessage("§cInvalid action.");
+				player.sendMessage(text("roulette.invalid-action"));
 				break;}
 			case VERBOSE:{
-				player.sendMessage("§cInvalid wager amount: " + plugin.formatWagerDisplay(currencyMode, currencyName, amount));
+				player.sendMessage(text(
+                    "roulette.invalid-wager-amount",
+                    "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, amount)
+                ));
 				break;	 
 			}
 				case NONE:{
@@ -1299,7 +1389,7 @@ private boolean isValidSlotPage2(int slot) {
              if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f);
             switchingPlayers.remove(player.getUniqueId());
         } else {
-            player.sendMessage("Error: This dealer is not running Roulette.");
+            player.sendMessage(text("roulette.wrong-game"));
              if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER,1.0f, 1.0f); 
 
         }
@@ -1334,5 +1424,58 @@ private void saveBetsToRoulette(Player player) {
             itemStack.setItemMeta(meta);
         }
         return itemStack;
+    }
+
+    private String localizedCategoryName(String categoryName) {
+        return switch (categoryName) {
+            case "Dozens" -> text("roulette.category-dozens");
+            case "Rows" -> text("roulette.category-rows");
+            case "Colors" -> text("roulette.category-colors");
+            case "Odd/Even" -> text("roulette.category-odd-even");
+            case "High/Low" -> text("roulette.category-high-low");
+            default -> text("roulette.category-straight-up");
+        };
+    }
+
+    static String canonicalBetType(int page, int slot, String displayedName) {
+        if (page == 1) {
+            if (slot >= 28 && slot <= 31) return "1st Dozen - 2:1";
+            if (slot >= 32 && slot <= 35) return "2nd Dozen - 2:1";
+            if (slot >= 37 && slot <= 38) return "1-18 - 1:1";
+            if (slot >= 39 && slot <= 40) return "Even - 1:1";
+            if (slot >= 41 && slot <= 42) return "Red - 1:1";
+            if (slot >= 43 && slot <= 44) return "Black - 1:1";
+        } else if (page == 2) {
+            if (slot == 8) return "Top Row - 2:1";
+            if (slot == 17) return "Middle Row - 2:1";
+            if (slot == 26) return "Bottom Row - 2:1";
+            if (slot >= 27 && slot <= 30) return "2nd Dozen - 2:1";
+            if (slot >= 31 && slot <= 34) return "3rd Dozen - 2:1";
+            if (slot >= 36 && slot <= 37) return "Red - 1:1";
+            if (slot >= 38 && slot <= 39) return "Black - 1:1";
+            if (slot >= 40 && slot <= 41) return "Odd - 1:1";
+            if (slot >= 42 && slot <= 43) return "19-36 - 1:1";
+        }
+        return displayedName;
+    }
+
+    private String localizedBetType(String betType) {
+        return switch (betType) {
+            case "Top Row - 2:1" -> text("roulette.bet-top-row");
+            case "Middle Row - 2:1" -> text("roulette.bet-middle-row");
+            case "Bottom Row - 2:1" -> text("roulette.bet-bottom-row");
+            case "1st Dozen - 2:1" -> text("roulette.bet-first-dozen");
+            case "2nd Dozen - 2:1" -> text("roulette.bet-second-dozen");
+            case "3rd Dozen - 2:1" -> text("roulette.bet-third-dozen");
+            case "Red - 1:1" -> text("roulette.bet-red");
+            case "Black - 1:1" -> text("roulette.bet-black");
+            case "Odd - 1:1" -> text("roulette.bet-odd");
+            case "Even - 1:1" -> text("roulette.bet-even");
+            default -> betType;
+        };
+    }
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(playerId, key, placeholders);
     }
 }

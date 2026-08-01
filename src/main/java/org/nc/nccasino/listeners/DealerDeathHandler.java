@@ -46,9 +46,12 @@ public class DealerDeathHandler implements Listener {
                 // Get the player who killed the mob, if applicable
                 if (event.getEntity().getKiller() instanceof Player killer) {
                     // Send the removal message to the killer
-                    killer.sendMessage(ChatColor.RED + "Dealer '" 
-                            + ChatColor.YELLOW + internalName 
-                            + ChatColor.RED + "' has died and all associated data has been removed.");
+                    killer.sendMessage(plugin.getLocalization().text(
+                        killer,
+                        "interaction.dealer-died",
+                        "dealer",
+                        internalName
+                    ));
                 }
 
                 // Perform any additional cleanup if needed

@@ -21,7 +21,6 @@ import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
-import net.md_5.bungee.api.ChatColor;
 
 public class RouletteMenu extends Menu {
     private UUID dealerId;
@@ -77,9 +76,9 @@ public class RouletteMenu extends Menu {
         int currentTimer = config.contains("dealers." + internalName + ".timer")
         ? config.getInt("dealers." + internalName + ".timer")
         : 10; // Default to 10 if missing
-        addItemAndLore(Material.CLOCK, currentTimer, "Edit Timer",  slotMapping.get(SlotOption.EDIT_TIMER), "Current: §a" + currentTimer);
-        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to "+returnName,  slotMapping.get(SlotOption.RETURN));
-        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit",  slotMapping.get(SlotOption.EXIT));
+        addItemAndLore(Material.CLOCK, currentTimer, text("roulette-settings.edit-timer"), slotMapping.get(SlotOption.EDIT_TIMER), text("common.current", "value", currentTimer));
+        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, text("common.return-to", "menu", returnName), slotMapping.get(SlotOption.RETURN));
+        addItemAndLore(Material.SPRUCE_DOOR, 1, text("common.exit"), slotMapping.get(SlotOption.EXIT));
     }
 
     @EventHandler
@@ -136,10 +135,10 @@ public class RouletteMenu extends Menu {
                 if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                     case STANDARD:{
-                        player.sendMessage("§cInvalid option selected.");
+                        player.sendMessage(text("roulette-settings.invalid-option"));
                         break;}
                     case VERBOSE:{
-                        player.sendMessage("§cInvalid roulette settings option selected.");
+                        player.sendMessage(text("roulette-settings.invalid-settings-option"));
                         break;}
                     case NONE:{
                         break;
@@ -156,13 +155,13 @@ public class RouletteMenu extends Menu {
         player.closeInventory();
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage("§aType the new number in chat.");
+                player.sendMessage(text("roulette-settings.prompt-number"));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aType the new timer in chat.");
+                player.sendMessage(text("roulette-settings.prompt-timer"));
                 break;}
             case NONE:{
-                player.sendMessage("§aType the value.");
+                player.sendMessage(text("admin.prompt-new-value"));
                 break;
             }
         }  
@@ -180,13 +179,13 @@ public class RouletteMenu extends Menu {
 
         if (AdminMenu.timerEditMode.get(playerId) != null) {
             event.setCancelled(true);
-            handleNumericInput(player, event.getMessage().trim(), "timer", 1, 10000, "Dealer timer updated");
+            handleNumericInput(player, event.getMessage().trim(), "timer", 1, 10000);
         }
     }
 
-    private void handleNumericInput(Player player, String input, String configPath, long min, long max, String standardMessage) {
+    private void handleNumericInput(Player player, String input, String configPath, long min, long max) {
         if (input.isEmpty() || !input.matches("\\d+")) {
-            denyAction(player, "Please enter a valid positive integer.");
+            denyAction(player, text("blackjack-settings.valid-positive-integer"));
             return;
         }
 
@@ -194,12 +193,12 @@ public class RouletteMenu extends Menu {
         try {
             value = Long.parseLong(input);
         } catch (NumberFormatException e) {
-            denyAction(player, "Invalid number format.");
+            denyAction(player, text("blackjack-settings.invalid-number-format"));
             return;
         }
 
         if (value < min || value > max) {
-            denyAction(player, "Please enter a number between " + min + " and " + max + ".");
+            denyAction(player, text("blackjack-settings.number-range", "min", min, "max", max));
             return;
         }
 
@@ -215,10 +214,16 @@ public class RouletteMenu extends Menu {
 
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§a" + standardMessage + ".");
+                    player.sendMessage(text("roulette-settings.timer-updated"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§a" + standardMessage + " to: " + ChatColor.YELLOW + value + "§a.");
+                    player.sendMessage(text(
+                        "blackjack-settings.updated-detailed",
+                        "setting",
+                        text("roulette-settings.timer-updated"),
+                        "value",
+                        value
+                    ));
                     break;
                 case NONE:
                     break;
@@ -228,10 +233,10 @@ public class RouletteMenu extends Menu {
         } else {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cCould not find dealer.");
+                    player.sendMessage(text("admin.dealer-not-found"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cCould not find roulette settings dealer.");
+                    player.sendMessage(text("roulette-settings.dealer-not-found"));
                     break;
                 case NONE:
                     break;
@@ -240,6 +245,10 @@ public class RouletteMenu extends Menu {
 
         plugin.deleteAssociatedInventories(dealer);
         cleanup();
+    }
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
     }
 
 }

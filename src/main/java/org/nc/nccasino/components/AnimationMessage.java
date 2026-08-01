@@ -156,7 +156,14 @@ public class AnimationMessage extends DealerInventory {
                             Material material = (blockType == 1) ? Material.RED_STAINED_GLASS_PANE : Material.BLACK_STAINED_GLASS_PANE;
 
                             int slot = row * 9 + col;
-                            inventory.setItem(slot, createCustomItem(material, "CLICK TO SKIP", 1));
+                            inventory.setItem(
+                                slot,
+                                createCustomItem(
+                                    material,
+                                    plugin.getLocalization().text(player, "common.click-skip"),
+                                    1
+                                )
+                            );
                         }
                     }
                 }

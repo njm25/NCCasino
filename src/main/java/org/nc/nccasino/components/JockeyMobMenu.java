@@ -82,8 +82,10 @@ public class JockeyMobMenu extends Menu {
     public JockeyMobMenu(Player player, Nccasino plugin, JockeyManager jockeyManager, JockeyNode targetJockey, String returnName, Consumer<Player> returnCallback, boolean asPassenger) {
         super(player, plugin, jockeyManager.getDealer().getUniqueId(), 
             // Set different titles
-            (jockeyManager.getJockeyCount() == 0 && !asPassenger) ? "Select Vehicle Mob" :
-            "Select Jockey Mob", 
+            plugin.getLocalization().text(player,
+                (jockeyManager.getJockeyCount() == 0 && !asPassenger)
+                    ? "jockey-mob.select-vehicle-title"
+                    : "jockey-mob.select-jockey-title"),
             54, returnName, returnCallback);
         this.plugin = plugin;
         this.returnName = returnName;
@@ -116,24 +118,19 @@ public class JockeyMobMenu extends Menu {
             int slot = i;
 
             ItemStack item = new ItemStack(material);
-            ItemMeta meta = item.getItemMeta();
-            if (meta != null) {
-                meta.setDisplayName(ChatColor.YELLOW + formatEntityName(entityType.name()));
-                item.setItemMeta(meta);
-            }
             inventory.setItem(slot, item);
             slotToEntityType.put(slot, entityType);
         }
 
         // Add navigation buttons
-        addItemAndLore(Material.SPRUCE_DOOR, 1, "Exit", slotMapping.get(SlotOption.EXIT));
-        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, "Return to " + returnName, slotMapping.get(SlotOption.RETURN));
+        addItemAndLore(Material.SPRUCE_DOOR, 1, text("common.exit"), slotMapping.get(SlotOption.EXIT));
+        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, text("common.return-to", "menu", returnName), slotMapping.get(SlotOption.RETURN));
 
         // Page toggle button
         if (currentPage > 1) {
-            addItemAndLore(Material.ARROW, 1, "Previous Page", slotMapping.get(SlotOption.PAGE_TOGGLE));
+            addItemAndLore(Material.ARROW, 1, text("common.previous-page"), slotMapping.get(SlotOption.PAGE_TOGGLE));
         } else if ((startIndex + PAGE_SIZE) < spawnEggList.size()) {
-            addItemAndLore(Material.ARROW, 1, "Next Page", slotMapping.get(SlotOption.PAGE_TOGGLE));
+            addItemAndLore(Material.ARROW, 1, text("common.next-page"), slotMapping.get(SlotOption.PAGE_TOGGLE));
         }
     }
 
@@ -250,7 +247,7 @@ public class JockeyMobMenu extends Menu {
                     // Hide the name of the jockey it's mounted on
                     topMob.setCustomNameVisible(false);
                     
-                    player.sendMessage("§aAdded new passenger: " + formatEntityName(selectedType.name()));
+                    player.sendMessage(text("jockey-mob.passenger-added", "mob", formatEntityName(selectedType.name())));
                     cleanup();
                     jockeyManager.refresh();
 
@@ -307,8 +304,8 @@ public class JockeyMobMenu extends Menu {
                         jockeyManager.getJockeys().add(vehicleNode);
                         
                         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                            case STANDARD -> player.sendMessage("§aAdded vehicle.");
-                            case VERBOSE -> player.sendMessage("§aAdded vehicle: " + ChatColor.YELLOW + formatEntityName(selectedType.name()) + "§a.");
+                            case STANDARD -> player.sendMessage(text("mob-settings.vehicle-added"));
+                            case VERBOSE -> player.sendMessage(text("mob-settings.vehicle-added-detailed", "mob", formatEntityName(selectedType.name())));
                             default -> {}
                         }
                         
@@ -480,13 +477,13 @@ public class JockeyMobMenu extends Menu {
                             targetJockey.setChild(childNode);
                         }
                         
-                        player.sendMessage("§aChanged jockey to " + formatEntityName(selectedType.name()));
+                        player.sendMessage(text("jockey-mob.jockey-changed", "mob", formatEntityName(selectedType.name())));
                         playDefaultSound(player);
                         if (returnCallback != null) {
                             returnCallback.accept(player);
                         }
                     } else {
-                        player.sendMessage("§cFailed to change jockey");
+                        player.sendMessage(text("jockey-mob.change-failed"));
                         newMob.remove();
                         
                         // If we failed, reattach the child to maintain stack
@@ -527,7 +524,7 @@ public class JockeyMobMenu extends Menu {
                         // Hide the name of the jockey it's mounted on
                         topMob.setCustomNameVisible(false);
                         
-                        player.sendMessage("§aAdded new passenger: " + formatEntityName(selectedType.name()));
+                        player.sendMessage(text("jockey-mob.passenger-added", "mob", formatEntityName(selectedType.name())));
                     } else {
                         // Add as vehicle (below stack)
                         Mob dealer = jockeyManager.getDealer();
@@ -543,7 +540,10 @@ public class JockeyMobMenu extends Menu {
                         bottomMob.setCustomNameVisible(false);
                     }
                     
-                    player.sendMessage("§aAdded new " + (asPassenger ? "passenger" : "vehicle") + ": " + formatEntityName(selectedType.name()));
+                    player.sendMessage(text(
+                        asPassenger ? "jockey-mob.passenger-added" : "jockey-mob.vehicle-added",
+                        "mob", formatEntityName(selectedType.name())
+                    ));
                     playDefaultSound(player);
                     if (returnCallback != null) {
                         returnCallback.accept(player);
@@ -553,6 +553,10 @@ public class JockeyMobMenu extends Menu {
         }
     }
 
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
+    }
 
 
-} 
+
+}

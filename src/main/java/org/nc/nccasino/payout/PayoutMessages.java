@@ -1,6 +1,5 @@
 package org.nc.nccasino.payout;
 
-import org.bukkit.ChatColor;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.MoneyHelper;
 
@@ -11,6 +10,8 @@ import org.nc.nccasino.currency.MoneyHelper;
  */
 public final class PayoutMessages {
 
+    private static final String CONTEXT_PREFIX = "@nccasino:v1|";
+
     private PayoutMessages() {
     }
 
@@ -20,8 +21,7 @@ public final class PayoutMessages {
      * active Roulette game. The game finished while you were offline."
      */
     public static String disconnectedMidGameContext(String gameType) {
-        return "You disconnected during an active " + gameType
-            + " game. The game finished while you were offline.";
+        return encodeContext("disconnected", gameType);
     }
 
     /**
@@ -31,23 +31,53 @@ public final class PayoutMessages {
      * rather than played out.
      */
     public static String serverRestartRefundContext(String gameType) {
-        return "The server restarted while your " + gameType
-            + " bet was still awaiting resolution, so it has been refunded.";
+        return encodeContext("server-restart", gameType);
     }
 
-    /** The chat message shown when a pending payout/result is delivered on join. */
-    public static String formatDelivered(PendingPayout payout) {
-        return ChatColor.YELLOW + payout.context()
-            + "\n" + ChatColor.GREEN + "Payout: " + formatAmount(payout);
+    /**
+     * Decodes new localization-aware records. Plain text from older plugin
+     * versions returns {@code null} and is displayed unchanged.
+     */
+    public static StoredContext decodeContext(String storedContext) {
+        if (storedContext == null || !storedContext.startsWith(CONTEXT_PREFIX)) {
+            return null;
+        }
+        String[] parts = storedContext.substring(CONTEXT_PREFIX.length()).split("\\|", 2);
+        if (parts.length != 2 || parts[1].isBlank()) {
+            return null;
+        }
+        String localizationKey = switch (parts[0]) {
+            case "disconnected" -> "payout.context-disconnected";
+            case "server-restart" -> "payout.context-server-restart";
+            default -> null;
+        };
+        return localizationKey == null ? null : new StoredContext(localizationKey, parts[1]);
     }
 
-    /** Shown on join when one or more pending payouts exist but couldn't be delivered yet. */
-    public static String formatPendingRetryNotice(int count) {
-        return ChatColor.GOLD + "You have " + count + " pending payout" + (count == 1 ? "" : "s")
-            + " that could not be delivered yet. It will be delivered automatically once possible.";
+    public static String gameLocalizationKey(String gameType) {
+        if (gameType == null) {
+            return null;
+        }
+        return switch (gameType) {
+            case "Blackjack" -> "game-options.blackjack";
+            case "Roulette" -> "game-options.roulette";
+            case "Mines" -> "game-options.mines";
+            case "Baccarat" -> "game-options.baccarat";
+            case "Coin Flip" -> "game-options.coin-flip";
+            case "Dragon Descent" -> "game-options.dragon-descent";
+            case "Test Game" -> "game-options.test-game";
+            default -> null;
+        };
     }
 
-    private static String formatAmount(PendingPayout payout) {
+    private static String encodeContext(String reason, String gameType) {
+        return CONTEXT_PREFIX + reason + "|" + (gameType == null ? "" : gameType);
+    }
+
+    public record StoredContext(String localizationKey, String gameType) {
+    }
+
+    public static String formatAmount(PendingPayout payout) {
         if (payout.currencyMode() == CurrencyMode.VAULT) {
             return "$" + MoneyHelper.roundDisplay(MoneyHelper.bd(payout.amount())).toPlainString();
         }

@@ -31,6 +31,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.currency.CurrencyMode;
+import org.nc.nccasino.currency.ChipSlots;
 import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.currency.VaultCurrencyProvider;
@@ -50,7 +51,7 @@ import org.nc.nccasino.session.TerminableSession;
 public class BlackjackInventory extends DealerInventory implements TerminableSession {
 
     private final Nccasino plugin; // Reference to the main plugin
-    private final Map<String, Double> chipValues; // Track chip values
+    private final Map<Integer, Double> chipValues; // Track chip values by fixed inventory slot
     private final String internalName; // Internal name for config lookup
     private final CurrencyMode currencyMode;
     private final String currencyName;
@@ -73,7 +74,11 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     private Boolean sittable=true;
     public UUID dealerId;
     public BlackjackInventory(UUID dealerId, Nccasino plugin, String internalName) {
-        super(dealerId, 54, "Blackjack Table"); // Using 54 slots for start menu
+        super(
+            dealerId,
+            54,
+            plugin.getLocalization().text(plugin.getLocalization().getServerDefault(), "blackjack.title")
+        ); // Using 54 slots for start menu
         this.plugin = plugin; // Store the plugin reference
         this.chipValues = new HashMap<>(); // Initialize chip values storage
         this.internalName = internalName; // Store the internal name
@@ -162,7 +167,7 @@ private void registerListener() {
                                 case STANDARD:{
                                     break;}
                                 case VERBOSE:{
-                                    player.sendMessage("§aWelcome to Blackjack.");
+                                    player.sendMessage(text(player, "blackjack.welcome"));
                                     break;     
                                 }
                                     case NONE:{
@@ -185,13 +190,11 @@ private void registerListener() {
  
     // Load chip values from the plugin config
     private void loadChipValuesFromConfig() {
+        List<Double> configuredValues = new ArrayList<>();
         for (int i = 1; i <= 5; i++) {
-            double chipValue = plugin.getChipValue(internalName, i);
-            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
-            if (chipValue > 0) { // Ensure chip value is positive
-                this.chipValues.put(chipName, chipValue);
-            }
+            configuredValues.add(plugin.getChipValue(internalName, i));
         }
+        this.chipValues.putAll(ChipSlots.assign(configuredValues));
     }
 
     // CurrencyProvider helper for this dealer/game
@@ -226,22 +229,22 @@ private void registerListener() {
             inventory.setItem(seatSlot, createPlayerHeadItem(Bukkit.getPlayer(playerId), 1));
         }
         // Add the necessary items for the game menu
-        addItem(createCustomItem(Material.CREEPER_HEAD, "Dealer"), 0); // Dealer
+        addItem(createCustomItem(Material.CREEPER_HEAD, text("blackjack.dealer")), 0); // Dealer
         // The Game Info lever stack will be added when the timer starts.
 
         // Add chairs
-        addItem(createCustomItem(Material.OAK_STAIRS, "Click to sit here"), 9); // Chair 1
-        addItem(createCustomItem(Material.OAK_STAIRS, "Click to sit here"), 18); // Chair 2
-        addItem(createCustomItem(Material.OAK_STAIRS, "Click to sit here"), 27); // Chair 3
+        addItem(createCustomItem(Material.OAK_STAIRS, text("blackjack.click-sit")), 9); // Chair 1
+        addItem(createCustomItem(Material.OAK_STAIRS, text("blackjack.click-sit")), 18); // Chair 2
+        addItem(createCustomItem(Material.OAK_STAIRS, text("blackjack.click-sit")), 27); // Chair 3
         sittable=true;
 
         // Add betting papers
-        addItem(createCustomItem(Material.PAPER, "Click here to place bet"), 10); // Bet 1
-        addItem(createCustomItem(Material.PAPER, "Click here to place bet"), 19); // Bet 2
-        addItem(createCustomItem(Material.PAPER, "Click here to place bet"), 28); // Bet 3
+        addItem(createCustomItem(Material.PAPER, text("blackjack.click-bet")), 10); // Bet 1
+        addItem(createCustomItem(Material.PAPER, text("blackjack.click-bet")), 19); // Bet 2
+        addItem(createCustomItem(Material.PAPER, text("blackjack.click-bet")), 28); // Bet 3
 
         // Add game action buttons
-        addItem(createCustomItem(Material.DIAMOND_SWORD, "Hit"), 36); // Hit
+        addItem(createCustomItem(Material.DIAMOND_SWORD, text("blackjack.hit")), 36); // Hit
         ItemStack item = inventory.getItem(36);
         ItemMeta meta = item.getItemMeta();
         assert meta != null;
@@ -254,26 +257,29 @@ private void registerListener() {
 
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         item.setItemMeta(meta);
-        addItem(createCustomItem(Material.SHIELD, "Stand"), 37); // Stand
-        addItem(createCustomItem(Material.PAPER, "Double Down"), 38); // Double Down
+        addItem(createCustomItem(Material.SHIELD, text("blackjack.stand")), 37); // Stand
+        addItem(createCustomItem(Material.PAPER, text("blackjack.double-down")), 38); // Double Down
         //addItem(createCustomItem(Material.SHEARS, "Split"), 39); // Split
         //addItem(createCustomItem(Material.TOTEM_OF_UNDYING, "Insurance"), 40); // Insurance
 
         // Add undo options and chip denominations
-        inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
-        inventory.setItem(46, createCustomItem(Material.WIND_CHARGE, "Undo Last Bet", 1));
+        inventory.setItem(45, createCustomItem(Material.BARRIER, text("blackjack.undo-all"), 1));
+        inventory.setItem(46, createCustomItem(Material.WIND_CHARGE, text("blackjack.undo-last"), 1));
 
-        int slot = 47;
-        List<Map.Entry<String, Double>> sortedEntries = new ArrayList<>(chipValues.entrySet());
-        sortedEntries.sort(Map.Entry.comparingByValue());
-
-        for (Map.Entry<String, Double> entry : sortedEntries) {
-            inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), entry.getKey(), entry.getValue().intValue()));
-            slot++;
+        for (Map.Entry<Integer, Double> entry : chipValues.entrySet()) {
+            double value = entry.getValue();
+            inventory.setItem(
+                entry.getKey(),
+                createCustomItem(
+                    plugin.getCurrency(internalName),
+                    plugin.getChipDisplayName(currencyMode, currencyName, value),
+                    (int) value
+                )
+            );
         }
-        inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
+        inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, text("blackjack.all-in"), 1));
         // Add leave chair option with a wooden door
-        inventory.setItem(53, createCustomItem(Material.SPRUCE_DOOR, "Leave Chair/Exit", 1));
+        inventory.setItem(53, createCustomItem(Material.SPRUCE_DOOR, text("blackjack.leave-exit"), 1));
     }
 
     // Create an item stack with a custom display name
@@ -325,10 +331,10 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
         else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage("§cInvalid action.");
+                player.sendMessage(text(player, "blackjack.invalid-action"));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§cCan't bet during a game.");
+                player.sendMessage(text(player, "blackjack.betting-closed"));
                 break;}
             case NONE:{
                 break;
@@ -369,7 +375,7 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aLeft chair.");
+                    player.sendMessage(text(player, "blackjack.left-chair"));
                     break;     
     
                 }
@@ -386,7 +392,7 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§aLeft game.");
+                    player.sendMessage(text(player, "blackjack.left-game"));
                     break;     
                 }
                     case NONE:{
@@ -397,8 +403,8 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
             player.closeInventory();
         } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots (10, 19, 28)
             handleBetClick(slot, player, event);
-        } else if (slot >= 47 && slot <= 51) { // Chip selection
-            handleChipSelection(player, event.getCurrentItem());
+        } else if (ChipSlots.isChipSlot(slot)) { // Chip selection
+            handleChipSelection(player, slot);
         } 
         else if (slot == 0){
 
@@ -467,10 +473,10 @@ private void handleAllIn(Player player) {
     if (!playerSeats.containsKey(playerId)) {
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-        player.sendMessage("§cInvalid action.");
+        player.sendMessage(text(player, "blackjack.invalid-action"));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§cMust be seated to go all in.");
+                player.sendMessage(text(player, "blackjack.must-sit-all-in"));
                 break;}
             case NONE:{
                 break;
@@ -486,10 +492,19 @@ private void handleAllIn(Player player) {
     if (totalBalance <= 0) {
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage("§cInvalid action.");
+                player.sendMessage(text(player, "blackjack.invalid-action"));
                 break;}
             case VERBOSE:{
-                player.sendMessage(currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT ? "§cNo funds.\n" : "§cNo " + plugin.getCurrencyName(internalName).toLowerCase() + "s\n");
+                player.sendMessage(
+                    currencyMode == org.nc.nccasino.currency.CurrencyMode.VAULT
+                        ? text(player, "blackjack.no-funds")
+                        : text(
+                            player,
+                            "blackjack.no-currency",
+                            "currency",
+                            plugin.getCurrencyName(internalName).toLowerCase() + "s"
+                        )
+                );
                 break;}
             case NONE:{
                 break;
@@ -520,7 +535,12 @@ private void handleAllIn(Player player) {
         case STANDARD:{
             break;}
         case VERBOSE:{
-            player.sendMessage("§aAll in with " + plugin.formatWagerDisplay(currencyMode, currencyName, newTotal) + "\n");
+            player.sendMessage(text(
+                player,
+                "blackjack.all-in-with",
+                "amount",
+                plugin.formatWagerDisplay(currencyMode, currencyName, newTotal)
+            ));
                         break;}
         case NONE:{
             break;
@@ -569,10 +589,10 @@ private void handlePlayerAction(Player player, int slot) {
         if (!playerTurnActive.getOrDefault(playerId, false)) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(text(player, "blackjack.invalid-action"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cNot your turn.");
+                    player.sendMessage(text(player, "blackjack.not-your-turn"));
                     break;     
                 }
                 case NONE:{
@@ -628,10 +648,10 @@ private void handlePlayerAction(Player player, int slot) {
             default:
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage("§cInvalid action. ");
+                    player.sendMessage(text(player, "blackjack.invalid-action-spaced"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cInvalid action. ");
+                    player.sendMessage(text(player, "blackjack.invalid-action-spaced"));
                     break;     
                 }
                     case NONE:{
@@ -672,7 +692,12 @@ private void handleHit(Player player) {
                     break;}
                 case VERBOSE:{
                  
-                    player.sendMessage("§aYou drew a "+newCard.getRank().toString().toLowerCase()+".");
+                    player.sendMessage(text(
+                        player,
+                        "blackjack.drew-card",
+                        "rank",
+                        newCard.getRank().toString().toLowerCase()
+                    ));
                     break;     
                 }
                     case NONE:{
@@ -707,10 +732,10 @@ private void handleStand(Player player) {
          if (SoundHelper.getSoundSafely("item.shield.block", player) != null)player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BLOCK, SoundCategory.MASTER,1.0f, 1.0f);
          switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage("§9You stood.");
+                player.sendMessage(text(player, "blackjack.stood"));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§9You stood.");
+                player.sendMessage(text(player, "blackjack.stood"));
                 break;     
             }
                 case NONE:{
@@ -733,10 +758,10 @@ private void handleDoubleDown(Player player) {
         if (!hasEnoughWager(player, currentBet)) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage("§cNot enough funds.");
+                    player.sendMessage(text(player, "blackjack.insufficient-funds"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cNot enough funds for double down.");}
+                    player.sendMessage(text(player, "blackjack.insufficient-double-down"));}
                     case NONE:{
                     break;
                 }
@@ -766,10 +791,10 @@ private void handleDoubleDown(Player player) {
          if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
          switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage("§9You doubled down.");
+                player.sendMessage(text(player, "blackjack.doubled-down"));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§9You doubled down.");
+                player.sendMessage(text(player, "blackjack.doubled-down"));
                 break;     
 
             }
@@ -813,10 +838,10 @@ private void handleInsurance(Player player) {
             if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                case STANDARD:{
-                player.sendMessage("§cYou're sitting buster");
+                player.sendMessage(text(player, "blackjack.already-seated"));
                 break;}
                case VERBOSE:{
-                player.sendMessage("§cCannot switch chairs");
+                player.sendMessage(text(player, "blackjack.cannot-switch"));
                 break;     
 
             }
@@ -835,7 +860,7 @@ private void handleInsurance(Player player) {
             case STANDARD:{
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aSat down.");
+                player.sendMessage(text(player, "blackjack.sat-down"));
                 break;     
 
             }
@@ -861,7 +886,7 @@ private void handleLeaveChair(Player player) {
 
      if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
     // Reset the chair to its original state
-    inventory.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, "Click to sit here"));
+    inventory.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, text("blackjack.click-sit")));
 
     // If the timer is still running, undo all bets
     if (countdownTaskId != -1 && !gameActive) {
@@ -898,7 +923,7 @@ private void handleLeaveChairDuringGame(Player player) {
 
      if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
     // Reset the chair to its original state
-    inventory.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, "Click to sit here"));
+    inventory.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, text("blackjack.click-sit")));
   
     
     // Check if all players have left the game
@@ -923,7 +948,7 @@ private void removePlayerData(UUID playerId) {
         }
 
         // Remove the player's head from the seat
-        inventory.setItem(seatSlot, createCustomItem(Material.OAK_STAIRS, "Click to sit here"));
+        inventory.setItem(seatSlot, createCustomItem(Material.OAK_STAIRS, text("blackjack.click-sit")));
 
         // Remove player's data from tracking maps
         playerHands.remove(playerId);
@@ -955,20 +980,24 @@ private void removePlayerData(UUID playerId) {
 }
 
     // Handle chip selection
-    private void handleChipSelection(Player player, ItemStack clickedItem) {
-        if (clickedItem == null || clickedItem.getItemMeta() == null) {
+    private void handleChipSelection(Player player, int slot) {
+        double selectedWager = chipValues.getOrDefault(slot, 0.0);
+        if (selectedWager <= 0) {
             return;
         }
     
         UUID playerId = player.getUniqueId();
-        String itemName = clickedItem.getItemMeta().getDisplayName();
-        double selectedWager = chipValues.getOrDefault(itemName, 0.0);
          if (SoundHelper.getSoundSafely("item.flintandsteel.use", player) != null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
          switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
                 break;}
             case VERBOSE:{
-                player.sendMessage("§aWager: " + plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager));                     
+                player.sendMessage(text(
+                    player,
+                    "blackjack.wager-selected",
+                    "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager)
+                ));
                 break;     
             }
                 case NONE:{
@@ -996,10 +1025,10 @@ private void removePlayerData(UUID playerId) {
         if (!playerSeats.containsKey(playerId)) {
             switch (plugin.getPreferences(playerId).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cSit to bet.");
+                    player.sendMessage(text(player, "blackjack.sit-to-bet"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cMust be seated to bet.");
+                    player.sendMessage(text(player, "blackjack.must-sit-to-bet"));
                     break;
                 case NONE:
                     break;
@@ -1016,10 +1045,10 @@ private void removePlayerData(UUID playerId) {
         if (slot != betSlot) {
             switch (plugin.getPreferences(playerId).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cNot your betting paper");
+                    player.sendMessage(text(player, "blackjack.not-your-bet"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cCannot bet on someone else.");
+                    player.sendMessage(text(player, "blackjack.cannot-bet-other"));
                     break;
                 case NONE:
                     break;
@@ -1069,10 +1098,10 @@ private void removePlayerData(UUID playerId) {
         } else {
             switch (plugin.getPreferences(playerId).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(text(player, "blackjack.invalid-action"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cToo broke to place bet.");
+                    player.sendMessage(text(player, "blackjack.insufficient-bet"));
                     break;
                 case NONE:
                     break;
@@ -1086,10 +1115,10 @@ private void removePlayerData(UUID playerId) {
         if (gameActive) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(text(player, "blackjack.invalid-action"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cGame started, can't undo all bets");
+                    player.sendMessage(text(player, "blackjack.cannot-undo-all"));
                     break;     
 
                 }
@@ -1110,7 +1139,7 @@ private void removePlayerData(UUID playerId) {
                     break;}
                 case VERBOSE:{
                  
-                    player.sendMessage("§aAll bets undone.");
+                    player.sendMessage(text(player, "blackjack.all-bets-undone"));
                     break;     
                 }
                     case NONE:{
@@ -1140,7 +1169,7 @@ private void removePlayerData(UUID playerId) {
             Bukkit.getScheduler().cancelTask(countdownTaskId);
             countdownTaskId = -1;
             // Clear the Game Info lever stack to reset the display
-            inventory.setItem(1, createCustomItem(Material.CLOCK, "Game Info"));
+            inventory.setItem(1, createCustomItem(Material.CLOCK, text("blackjack.game-info")));
         }
     }
 
@@ -1149,10 +1178,10 @@ private void removePlayerData(UUID playerId) {
         if (gameActive) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(text(player, "blackjack.invalid-action"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cGame started, can't undo bets");
+                    player.sendMessage(text(player, "blackjack.cannot-undo"));
                     break;     
 
                 }
@@ -1174,7 +1203,7 @@ private void removePlayerData(UUID playerId) {
                     break;}
                 case VERBOSE:{
                  
-                    player.sendMessage("§aLast bet undone.");
+                    player.sendMessage(text(player, "blackjack.last-bet-undone"));
                     break;     
                 }
                     case NONE:{
@@ -1219,7 +1248,7 @@ private void removePlayerData(UUID playerId) {
             if (meta != null) {
                 if (wager > 0) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Wager: " + plugin.formatWagerDisplay(currencyMode, currencyName, wager) + "\n");
+                    lore.add(text("blackjack.wager-lore", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, wager)));
                     meta.setLore(lore);
                 } else {
                     meta.setLore(new ArrayList<>()); // Clear lore if no wager
@@ -1335,7 +1364,11 @@ private void removePlayerData(UUID playerId) {
             @Override
             public void run() {
                 if (countdown > 0) {
-                    inventory.setItem(1, createCustomItem(Material.CLOCK, "Game starts in: " + countdown, countdown));
+                    inventory.setItem(1, createCustomItem(
+                        Material.CLOCK,
+                        text("blackjack.starts-in", "seconds", countdown),
+                        countdown
+                    ));
                     if (countdown <=3 ){
                         for (UUID uuid : playerSeats.keySet()) {
                             Player player = Bukkit.getPlayer(uuid);
@@ -1377,7 +1410,7 @@ private void activateGame() {
     if (lever != null && lever.getType() == Material.CLOCK) {
         ItemMeta leverMeta = lever.getItemMeta();
         if (leverMeta != null) {
-            leverMeta.setDisplayName("Dealer's turn"); // Set the display name to "Dealer's turn"
+            leverMeta.setDisplayName(text("blackjack.dealer-turn")); // Set the display name to "Dealer's turn"
             lever.setItemMeta(leverMeta); // Apply the updated meta to the lever
         }
     }
@@ -1456,7 +1489,7 @@ private void startNextPlayerTurn() {
         UUID previousPlayerId = currentPlayerId;
         if (previousPlayerId != null) {
             ItemStack prevItem = inventory.getItem(playerSeats.get(previousPlayerId) + 1);
-            ItemStack replacementItem = createCustomItem(Material.PAPER, "Your turn is over.", 1);
+            ItemStack replacementItem = createCustomItem(Material.PAPER, text("blackjack.turn-over"), 1);
             
             // Retrieve and transfer lore properly using ItemMeta
             if (prevItem != null && prevItem.hasItemMeta()) {
@@ -1476,13 +1509,13 @@ private void startNextPlayerTurn() {
             Player currentPlayer = Bukkit.getPlayer(currentPlayerId);
             ItemStack item = inventory.getItem(playerSeats.get(currentPlayerId) + 1);
             
-            ItemStack enchantedItem = createEnchantedItem(Material.BOOK, "Your turn.", 1);
+            ItemStack enchantedItem = createEnchantedItem(Material.BOOK, text("blackjack.your-turn"), 1);
             switch(plugin.getPreferences(currentPlayer.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
                  
-                    currentPlayer.sendMessage("§aYour turn.");
+                    currentPlayer.sendMessage(text(currentPlayer, "blackjack.your-turn-message"));
                     break;     
                 }
                     case NONE:{
@@ -1523,7 +1556,7 @@ private void startNextPlayerTurn() {
 
     if (playerSeats.get(currentPlayerId) != null) {
         ItemStack prevItem = inventory.getItem(playerSeats.get(currentPlayerId) + 1);
-        ItemStack replacementItem = createCustomItem(Material.PAPER, "Your turn is over.", 1);
+        ItemStack replacementItem = createCustomItem(Material.PAPER, text("blackjack.turn-over"), 1);
         
         // Retrieve and transfer lore properly using ItemMeta
         if (prevItem != null && prevItem.hasItemMeta()) {
@@ -1570,7 +1603,7 @@ private void startDealerTurn() {
         finishGame(); // Directly finish the game if all players are busted
         return;
     }
-    updateLeverDisplayName("Dealer's Turn");
+    updateLeverDisplayName(text("blackjack.dealer-turn-capitalized"));
 
     // Reveal the dealer's hidden card with delay
     revealDealerCardWithDelay(20L);
@@ -1702,10 +1735,10 @@ private void finishGame() {
         if (isBlackjack) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage("§a§lBlackjack!");
+                    player.sendMessage(text(player, "blackjack.result-blackjack"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§a§lBlackjack!");
+                    player.sendMessage(text(player, "blackjack.result-blackjack"));
                     break;     
 
                 }
@@ -1719,10 +1752,10 @@ private void finishGame() {
         } else if (playerCardSum > 21) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage("§c§lYou busted");
+                    player.sendMessage(text(player, "blackjack.result-busted"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§c§lYou busted");
+                    player.sendMessage(text(player, "blackjack.result-busted"));
                     break;     
                 }
                     case NONE:{
@@ -1734,10 +1767,10 @@ private void finishGame() {
         } else if (dealerBusted || playerCardSum > dealerCardSum) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage("§a§lYou won!");
+                    player.sendMessage(text(player, "blackjack.result-won"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§a§lYou won!");
+                    player.sendMessage(text(player, "blackjack.result-won"));
                     break;     
 
                 }
@@ -1759,10 +1792,10 @@ private void finishGame() {
         } else if (playerCardSum < dealerCardSum) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage("§c§lYou lost");
+                    player.sendMessage(text(player, "blackjack.result-lost"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§c§lYou lost");
+                    player.sendMessage(text(player, "blackjack.result-lost"));
                     break;     
                 }
                     case NONE:{
@@ -1774,10 +1807,10 @@ private void finishGame() {
         } else {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage("§6§lPush");
+                    player.sendMessage(text(player, "blackjack.result-push"));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§6§lIt's a push! Your bet is returned");
+                    player.sendMessage(text(player, "blackjack.result-push-returned"));
                     break;     
 
                 }
@@ -1812,10 +1845,22 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
 
 			switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 				case STANDARD:{
-					player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()));
+					player.sendMessage(text(
+                        player,
+                        "payout.paid",
+                        "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue())
+                    ));
 					break;}
 				case VERBOSE:{
-					player.sendMessage("§a§lPaid " + plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()) + "\n §r§a§o(profit of " + plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue()) + ")");
+					player.sendMessage(text(
+                        player,
+                        "payout.paid-with-profit",
+                        "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()),
+                        "profit",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue())
+                    ));
 					break;     
 				}
 					case NONE:{
@@ -1866,10 +1911,22 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
         }
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
-                player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, totalAmount));
+                player.sendMessage(text(
+                    player,
+                    "payout.paid",
+                    "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, totalAmount)
+                ));
                 break;}
             case VERBOSE:{
-                player.sendMessage("§a§lPaid "+ plugin.formatWagerDisplay(currencyMode, currencyName, totalAmount) + "\n §r§a§o(profit of "+(int)Math.abs(totalAmount-totalBet)+")");
+                player.sendMessage(text(
+                    player,
+                    "payout.paid-with-profit",
+                    "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, totalAmount),
+                    "profit",
+                    (int) Math.abs(totalAmount - totalBet)
+                ));
                 break;     
             }
                 case NONE:{
@@ -1882,10 +1939,20 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
         if (totalDropped > 0) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped) + ", dropping...");       
+                    player.sendMessage(text(
+                        player,
+                        "blackjack.inventory-full",
+                        "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped)
+                    ));
                     break;}
                 case VERBOSE:{
-                    player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped) + ", dropping...");  
+                    player.sendMessage(text(
+                        player,
+                        "blackjack.inventory-full",
+                        "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped)
+                    ));
                     break;     
                 }
                     case NONE:{
@@ -1947,7 +2014,7 @@ private void resetGame() {
     inventory.clear();
 
     // Set up the Game Info lever in the second slot
-    addItem(createCustomItem(Material.CLOCK, "Game Info"), 1);
+    addItem(createCustomItem(Material.CLOCK, text("blackjack.game-info")), 1);
 
     // Reinitialize the game menu but do not clear player seats
     initializeGameMenu();
@@ -2020,7 +2087,7 @@ private void updatePlayerHead(UUID playerId) {
 
 private void updateDealerHead() {
     String handValue = calculateHandValueWithSoftCheck(dealerHand);
-    updateHeadLore(0, handValue, "Dealer");
+    updateHeadLore(0, handValue, text("blackjack.dealer"));
 }
 
 
@@ -2031,7 +2098,7 @@ private void updateHeadLore(int slot, String cardValue, String name) {
         if (meta != null) {
             meta.setDisplayName(name);
             List<String> lore = new ArrayList<>();
-            lore.add("Card Value: " + cardValue);
+            lore.add(text("blackjack.card-value", "value", cardValue));
             meta.setLore(lore);
             headItem.setItemMeta(meta);
             inventory.setItem(slot, headItem);
@@ -2136,7 +2203,7 @@ private void scheduleHiddenCardDealing(int slot, int delay) {
         ItemStack hiddenCard = new ItemStack(material, 1);
         ItemMeta meta = hiddenCard.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName("Hidden Card");
+            meta.setDisplayName(text("blackjack.hidden-card"));
             hiddenCard.setItemMeta(meta);
         }
         
@@ -2287,8 +2354,17 @@ public void delete() {
             // becomes a safe no-op, and consumeQuitReason still correctly
             // reports KICKED here even if this fires first, since the kick
             // is marked as soon as PlayerKickEvent itself fires.
-            ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
-            SessionRegistry.terminatePlayerSession(playerId, reason);
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (!SessionRegistry.isRegistered(playerId, this)) {
+                    return;
+                }
+                if (!player.isOnline()) {
+                    ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
+                    SessionRegistry.terminatePlayerSession(playerId, reason);
+                    return;
+                }
+                SessionRegistry.terminateSession(playerId, this, ExitReason.DISCONNECTED);
+            });
         }
 
     /**
@@ -2326,9 +2402,6 @@ public void delete() {
             removePlayerData(playerId);
         }
 
-        if (playerSeats.isEmpty()) {
-            sittable = false;
-        }
     }
 
     /**
@@ -2368,6 +2441,22 @@ public void delete() {
                 addWagerToInventory(player, total);
             }
         }
+    }
+
+    private String text(String key, Object... placeholders) {
+        Map<String, Object> values = new HashMap<>();
+        for (int index = 0; index < placeholders.length; index += 2) {
+            values.put(String.valueOf(placeholders[index]), placeholders[index + 1]);
+        }
+        return plugin.getLocalization().text(
+            plugin.getLocalization().getServerDefault(),
+            key,
+            values
+        );
+    }
+
+    private String text(Player player, String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
     }
 
 }

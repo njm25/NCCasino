@@ -59,9 +59,12 @@ import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.economy.VaultHook;
 import org.nc.nccasino.currency.CurrencyManager;
 import org.nc.nccasino.currency.CurrencyMode;
+import org.nc.nccasino.currency.CurrencyDisplay;
 import org.nc.nccasino.currency.DealerCurrencySettings;
 import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.payout.PendingPayoutStore;
+import org.nc.nccasino.localization.LanguageMode;
+import org.nc.nccasino.localization.LocalizationService;
 import org.nc.nccasino.session.ExitReason;
 import org.nc.nccasino.session.SessionRegistry;
 import org.bukkit.Chunk;
@@ -79,6 +82,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
     private VaultHook vaultHook;
     private CurrencyManager currencyManager;
     private PendingPayoutStore pendingPayoutStore;
+    private LocalizationService localizationService;
 
     /**
      * This local map was used in your code. If you still need it,
@@ -101,6 +105,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
         INTERNAL_NAME_KEY = new NamespacedKey(this, "internal_name");
         checkForUpdates();
         saveDefaultConfig();
+        localizationService = new LocalizationService(this);
+        localizationService.load();
         loadPreferences();
 
         // Load currency from config
@@ -185,8 +191,21 @@ public final class Nccasino extends JavaPlugin implements Listener {
             }
     
             Preferences preferences = new Preferences(playerId);
-            preferences.setSoundSetting(Preferences.SoundSetting.valueOf(preferencesConfig.getString(key + ".sound", "ON")));
-            preferences.setMessageSetting(Preferences.MessageSetting.valueOf(preferencesConfig.getString(key + ".messages", "STANDARD")));
+            preferences.setSoundSetting(Preferences.SoundSetting.valueOf(
+                preferencesConfig.getString(key + ".sound", "ON")
+            ));
+            preferences.setMessageSetting(Preferences.MessageSetting.valueOf(
+                preferencesConfig.getString(key + ".messages", "STANDARD")
+            ));
+            LanguageMode languageMode = parseEnum(
+                LanguageMode.class,
+                preferencesConfig.getString(key + ".language-mode"),
+                LanguageMode.SERVER_DEFAULT
+            );
+            preferences.loadLanguage(
+                languageMode,
+                preferencesConfig.getString(key + ".language")
+            );
             playerPreferences.put(playerId, preferences);
         }
     }
@@ -361,6 +380,13 @@ public final class Nccasino extends JavaPlugin implements Listener {
             Preferences preferences = entry.getValue();
             preferencesConfig.set(entry.getKey() + ".sound", preferences.getSoundSetting().name());
             preferencesConfig.set(entry.getKey() + ".messages", preferences.getMessageSetting().name());
+            preferencesConfig.set(entry.getKey() + ".language-mode", preferences.getLanguageMode().name());
+            preferencesConfig.set(
+                entry.getKey() + ".language",
+                preferences.getLanguageMode() == LanguageMode.EXPLICIT
+                    ? preferences.getExplicitLanguage()
+                    : null
+            );
         }
     
         try {
@@ -369,6 +395,26 @@ public final class Nccasino extends JavaPlugin implements Listener {
         } catch (IOException e) {
             getLogger().severe("Could not save data/preferences.yml!");
         }
+    }
+
+    private <E extends Enum<E>> E parseEnum(Class<E> type, String value, E fallback) {
+        if (value == null) {
+            return fallback;
+        }
+        try {
+            return Enum.valueOf(type, value);
+        } catch (IllegalArgumentException exception) {
+            getLogger().warning("Ignoring invalid " + type.getSimpleName() + " value: " + value);
+            return fallback;
+        }
+    }
+
+    public LocalizationService getLocalization() {
+        return localizationService;
+    }
+
+    public void reloadLocalization() {
+        localizationService.reload();
     }
     
 
@@ -614,12 +660,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     /** Chip button display name: VAULT → "$5.00", else → "5 Emeralds". Use with cached mode/name to avoid config read per call. */
     public String getChipDisplayName(CurrencyMode mode, String currencyName, double value) {
-        if (mode == CurrencyMode.VAULT) {
-            return "$" + MoneyHelper.roundDisplay(MoneyHelper.bd(value)).toPlainString();
-        }
-        int n = (int) value;
-        String name = currencyName != null ? currencyName : "Emerald";
-        return n + " " + name + (n != 1 ? "s" : "");
+        return CurrencyDisplay.chipName(mode, currencyName, value);
     }
 
     /** Chip button display name (reads config). Prefer getChipDisplayName(mode, currencyName, value) with cached values. */
@@ -863,7 +904,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
     
         if (!dealersConfig.contains("dealers")||dealersConfig.getConfigurationSection("dealers").getKeys(false).isEmpty()) {
-            sender.sendMessage(ChatColor.RED + "No dealers found.");
+            sender.sendMessage(getLocalization().text(sender, "commands.no-dealers"));
             return;
         }
     
@@ -975,7 +1016,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
             processedChunks[0]++;
             if (processedChunks[0] == totalChunks && sendMessageOnCompletion) {
                 Bukkit.getScheduler().runTask(this, () ->
-                    sender.sendMessage(ChatColor.GREEN + "Deleted " + totalDeleted[0] + " dealers.")
+                    sender.sendMessage(getLocalization().text(
+                        sender,
+                        "commands.dealers-deleted",
+                        "count",
+                        totalDeleted[0]
+                    ))
                 );
             }
         }

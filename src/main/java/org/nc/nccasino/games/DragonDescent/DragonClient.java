@@ -52,7 +52,7 @@ public class DragonClient extends Client implements TerminableSession {
     private Boolean pendingMoveSafe = null;
     private boolean sessionResolved = false;
     public DragonClient(DragonServer server, Player player, Nccasino plugin, String internalName) {
-        super(server, player, "Dragon Descent", plugin, internalName);
+        super(server, player, plugin.getLocalization().text(player, "dragon-descent.title"), plugin, internalName);
         SessionRegistry.register(player.getUniqueId(), this);
 
         if (!plugin.getConfig().contains("dealers." + internalName + ".default-columns")) {
@@ -93,8 +93,8 @@ public class DragonClient extends Client implements TerminableSession {
             }
             inventory.setItem(slot, item);
         }
-        inventory.setItem(3, createCustomItem(Material.DRAGON_HEAD, "Drungus The Dragon", 1));
-        addItem(createCustomItem(Material.DIAMOND_SWORD, "Begin Your Descent?"), 4); // Hit
+        inventory.setItem(3, createCustomItem(Material.DRAGON_HEAD, text("dragon-descent.dragon-name"), 1));
+        addItem(createCustomItem(Material.DIAMOND_SWORD, text("dragon-descent.begin")), 4); // Hit
         ItemStack item = inventory.getItem(4);
         ItemMeta meta = item.getItemMeta();
         assert meta != null;
@@ -107,9 +107,9 @@ public class DragonClient extends Client implements TerminableSession {
         item.setItemMeta(meta);
         inventory.setItem(5, createPlayerHeadItem(player, 1));
 
-        setupGameSettingRow(9, Material.WHITE_STAINED_GLASS_PANE, "Columns", numColumns, 2, 9);
-        setupGameSettingRow(18, Material.VINE, "Vines (Safe Spots per Floor)", numSafeSpots, 1, numColumns - 1);
-        setupGameSettingRow(27, Material.BLACK_STAINED_GLASS_PANE, "Floors", numRows, 1, 100); // Unlimited Floors (for now)
+        setupGameSettingRow(9, Material.WHITE_STAINED_GLASS_PANE, text("dragon-descent.columns"), numColumns, 2, 9);
+        setupGameSettingRow(18, Material.VINE, text("dragon-descent.vines-per-floor"), numSafeSpots, 1, numColumns - 1);
+        setupGameSettingRow(27, Material.BLACK_STAINED_GLASS_PANE, text("dragon-descent.floors"), numRows, 1, 100); // Unlimited Floors (for now)
     }
 
     private void updatePlayerHead() {
@@ -117,8 +117,8 @@ public class DragonClient extends Client implements TerminableSession {
         double payoutMultiplier = calculatePayoutMultiplier();
         double potentialWinnings = totalBet * payoutMultiplier;
         potentialWinnings = Math.round(potentialWinnings * 100.0) / 100.0;
-        inventory.setItem(playerX, createPlayerHead(player.getUniqueId(), "§e§oCash Out", 
-            "§7§oCashout Value: §a" + potentialWinnings)); // Show exact double value
+        inventory.setItem(playerX, createPlayerHead(player.getUniqueId(), text("dragon-descent.cash-out"),
+            text("dragon-descent.cashout-value", "amount", potentialWinnings))); // Show exact double value
     }
     
     private void setupGameSettingRow(int startSlot, Material material, String settingName, int value, int min, int max) {
@@ -200,8 +200,8 @@ public class DragonClient extends Client implements TerminableSession {
         double payoutMultiplier = calculatePayoutMultiplier();
         double potentialWinnings = totalBet * payoutMultiplier;
         potentialWinnings = Math.round(potentialWinnings * 100.0) / 100.0;
-        inventory.setItem(playerX, createPlayerHead(player.getUniqueId(), "§e§oCash Out", 
-            "§7§oCashout Value: §a" + potentialWinnings)); // Show exact double value
+        inventory.setItem(playerX, createPlayerHead(player.getUniqueId(), text("dragon-descent.cash-out"),
+            text("dragon-descent.cashout-value", "amount", potentialWinnings))); // Show exact double value
     }
 
     private void setupGameBoard() {
@@ -238,7 +238,7 @@ public class DragonClient extends Client implements TerminableSession {
     
                     if (gridCol >= 0 && gridCol < numColumns) {
                         if(row==0){
-                            inventory.setItem(slot, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "Click Here to Move", 1));
+                            inventory.setItem(slot, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, text("dragon-descent.click-move"), 1));
                         }
                         else {
                             inventory.setItem(slot, createCustomItem(Material.BLACK_STAINED_GLASS_PANE, "§r", 1));
@@ -274,9 +274,9 @@ public class DragonClient extends Client implements TerminableSession {
     
                 if (gridCol >= 0 && gridCol < numColumns) {
                     if (gameGrid[actualFloor][gridCol] == 1) {
-                        inventory.setItem(slot, createCustomItem(Material.VINE, "§aSafe!", 1));
+                        inventory.setItem(slot, createCustomItem(Material.VINE, text("dragon-descent.safe"), 1));
                     } else {
-                        inventory.setItem(slot, createCustomItem(Material.AIR, "§cUnsafe!", 1));
+                        inventory.setItem(slot, createCustomItem(Material.AIR, text("dragon-descent.unsafe"), 1));
                     }
                 }
             }
@@ -324,10 +324,10 @@ public class DragonClient extends Client implements TerminableSession {
         // Now read whether it's safe (1) or unsafe (0) from the gameGrid
         if (gameGrid[floor - 1][gridCol] == 1) {
             // It's safe => restore vine (or "Start" if you prefer)
-            inventory.setItem(slot, createCustomItem(Material.VINE, "§aStart", 1));
+            inventory.setItem(slot, createCustomItem(Material.VINE, text("dragon-descent.start"), 1));
         } else {
             // It's unsafe => restore air
-            inventory.setItem(slot, createCustomItem(Material.AIR, "§cUnsafe!", 1));
+            inventory.setItem(slot, createCustomItem(Material.AIR, text("dragon-descent.unsafe"), 1));
         }
     }
     
@@ -377,7 +377,7 @@ public class DragonClient extends Client implements TerminableSession {
                     if (lastPlacedSlot.get() != -1) {
                     restoreTile(lastPlacedSlot.get(), actualFloor+1);
                 }
-                inventory.setItem(slot, createCustomItem(Material.DRAGON_HEAD, "§cThe Dragon sweeps through!", 1));
+                inventory.setItem(slot, createCustomItem(Material.DRAGON_HEAD, text("dragon-descent.sweep"), 1));
                 player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_FLAP, SoundCategory.MASTER, 1.0f, 1.0f);
     
                 if (slot == playerX) {
@@ -450,7 +450,7 @@ public class DragonClient extends Client implements TerminableSession {
         taskIDs.clear();
     
         // Set dragon head where the player is
-        inventory.setItem(playerX, createCustomItem(Material.DRAGON_HEAD, "§4The Dragon got you!", 1));
+        inventory.setItem(playerX, createCustomItem(Material.DRAGON_HEAD, text("dragon-descent.got-you"), 1));
         
         server.applyLoseEffects(player);
 
@@ -475,10 +475,10 @@ public class DragonClient extends Client implements TerminableSession {
                 else {
                     switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                         case STANDARD:
-                            player.sendMessage("§cInvalid action.");
+                            player.sendMessage(text("dragon-descent.invalid-action"));
                             break;
                         case VERBOSE:
-                            player.sendMessage("§cNo bet placed.");
+                            player.sendMessage(text("dragon-descent.no-bet"));
                             break;
                         case NONE:
                             break;
@@ -528,10 +528,10 @@ public class DragonClient extends Client implements TerminableSession {
         if (col == middleCol) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cInvalid Action.");
+                    player.sendMessage(text("dragon-descent.invalid-action-capitalized"));
                 break;
                 case VERBOSE:
-                    player.sendMessage("§cYou cannot select this zone!");
+                    player.sendMessage(text("dragon-descent.zone-unavailable"));
                     break;
                 case NONE:
                     break;
@@ -561,7 +561,7 @@ public class DragonClient extends Client implements TerminableSession {
                 if(this.inventory == null) return;
                 if (SoundHelper.getSoundSafely("block.cave_vines.step", player) != null)
                     player.playSound(player.getLocation(), Sound.BLOCK_CAVE_VINES_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
-                inventory.setItem(playerX, createCustomItem(Material.VINE, "§aSafe!", 1));
+                inventory.setItem(playerX, createCustomItem(Material.VINE, text("dragon-descent.safe"), 1));
                 playerX = slot;
                 if (gameGrid[displayOffset + floor - 1][safeGridCol] == 1) {
                     floorsCleared++; // Move this BEFORE updatePlayerHead
@@ -574,10 +574,10 @@ public class DragonClient extends Client implements TerminableSession {
                 }, 10L);
         
                 if (gameOver) {
-                    renameAllExcept(playerX, "§cOof.");
+                    renameAllExcept(playerX, text("dragon-descent.oof"));
                 } else {
                     if (currentFloor == numRows) {
-                        renameAllExcept(playerX, "§aYayyy!");
+                        renameAllExcept(playerX, text("dragon-descent.yay"));
                         moveLocked = true; 
                         int taskID =Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         cashOut(); // Auto cash-out if at last floor
@@ -634,7 +634,7 @@ public class DragonClient extends Client implements TerminableSession {
                 ItemStack item = inventory.getItem(slot);
                 if (item != null) {
                     Material material = item.getType(); // Keep material
-                    inventory.setItem(slot, createCustomItem(material, "Click Here to Move", 1));
+                    inventory.setItem(slot, createCustomItem(material, text("dragon-descent.click-move"), 1));
                 }
             }
         }
@@ -833,7 +833,7 @@ public class DragonClient extends Client implements TerminableSession {
                 int rebetUnits = org.nc.nccasino.currency.MoneyHelper.toWagerUnits(totalRebetAmount);
                 boolean removed = rebetUnits > 0 && tryRemoveCurrencyFromInventory(player, rebetUnits);
 				if (!removed) {
-					player.sendMessage("§cNot enough currency for rebet. Wager reset.");
+					player.sendMessage(text("dragon-descent.rebet-reset"));
 					betStack.clear();
 					initializeUI(true, true,rebetEnabled,40,53);
 					setupPregame();
@@ -842,14 +842,18 @@ public class DragonClient extends Client implements TerminableSession {
                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                     case STANDARD:
                     case VERBOSE:
-                        player.sendMessage("§dRebet of " + plugin.formatWagerDisplay(currencyMode, currencyName, totalRebetAmount) + " placed.");
+                        player.sendMessage(text(
+                            "dragon-descent.rebet-placed",
+                            "amount",
+                            plugin.formatWagerDisplay(currencyMode, currencyName, totalRebetAmount)
+                        ));
                         break;
                     case NONE:
                         break;
                 }
             } else {
                 // Not enough funds for rebet, clear the bet stack
-                player.sendMessage("§cNot enough currency for rebet. Wager reset.");
+                player.sendMessage(text("dragon-descent.rebet-reset"));
                 betStack.clear();
             }
         } else {
@@ -862,21 +866,33 @@ public class DragonClient extends Client implements TerminableSession {
 
     @Override
     protected void handleClientInventoryClose() {
-        // Route through the same idempotent path used for quit/kick rather
-        // than resolving directly here — whichever of this or the quit
-        // event fires first "wins" and the other becomes a safe no-op, and
-        // consumeQuitReason still correctly reports KICKED here even if
-        // this fires first, since the kick is marked as soon as
-        // PlayerKickEvent itself fires.
+        // Defer one tick so PlayerQuitEvent can claim a true disconnect or
+        // kick first. If the player remains online, this is a normal GUI
+        // close and its refund/cash-out is completed immediately.
         UUID playerId = player.getUniqueId();
-        ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
-        SessionRegistry.terminatePlayerSession(playerId, reason);
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!SessionRegistry.isRegistered(playerId, this)) {
+                return;
+            }
+            if (!player.isOnline()) {
+                ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
+                SessionRegistry.terminatePlayerSession(playerId, reason);
+                return;
+            }
+
+            SessionRegistry.unregister(playerId, this);
+            sessionResolved = true;
+            if (!bettingEnabled && !playerLost) {
+                cashOut();
+            } else if (bettingEnabled && !betStack.isEmpty()) {
+                undoAllBets();
+            }
+            server.removeClient(playerId);
+        });
     }
 
     /**
-     * Authoritative disconnect/kick resolution, reached via SessionRegistry
-     * regardless of whether this fires from PlayerQuitEvent or from this
-     * client's own InventoryCloseEvent.
+     * Authoritative disconnect/kick resolution, reached via SessionRegistry.
      */
     @Override
     public void onSessionTerminated(UUID terminatedPlayerId, ExitReason reason) {
@@ -965,6 +981,10 @@ public class DragonClient extends Client implements TerminableSession {
     @Override
     public void onServerUpdate(String eventType, Object data) {
         throw new UnsupportedOperationException("Unimplemented method 'onServerUpdate'");
+    }
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
     }
 
 }

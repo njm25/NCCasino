@@ -2,7 +2,6 @@ package org.nc.nccasino.commands;
 
 import java.util.List;
 
-import org.bukkit.ChatColor;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.command.CommandSender;
@@ -17,16 +16,16 @@ import org.nc.nccasino.helpers.SoundHelper;
 import org.bukkit.entity.Mob;
 
 public class CreateCommand implements CasinoCommand {
-    private final JavaPlugin plugin;
+    private final Nccasino plugin;
 
     public CreateCommand(JavaPlugin plugin) {
-        this.plugin = plugin;
+        this.plugin = (Nccasino) plugin;
     }
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "This command can only be used by players.");
+            sender.sendMessage(plugin.getLocalization().text(sender, "commands.player-only"));
             return true;
         }
 
@@ -46,18 +45,24 @@ public class CreateCommand implements CasinoCommand {
                 if (i >= mobs.size()) {
                     break; // Prevent index mismatch
                 }
-                String occupation = occupations.get(i);
+                String occupation = plugin.getLocalization().text(player, occupations.get(i));
                 Mob mob = mobs.get(i);
                 
                 String mobName = (mob != null) ? Dealer.getInternalName(mob) : "unknown dealer";
-                Nccasino.sendErrorMessage(player, "Please finish editing " + occupation + " for '" +
-                    ChatColor.YELLOW + mobName + ChatColor.RED + "'.");
+                player.sendMessage(plugin.getLocalization().text(
+                    player,
+                    "commands.finish-editing",
+                    "occupation",
+                    occupation,
+                    "name",
+                    mobName
+                ));
             }
             return true;
         }
 
         if (args.length < 2) {
-            sender.sendMessage(ChatColor.AQUA + "Usage: /ncc create " + ChatColor.YELLOW + "<name>");
+            sender.sendMessage(plugin.getLocalization().text(sender, "commands.usage-create"));
             return true;
         }
 
@@ -65,17 +70,25 @@ public class CreateCommand implements CasinoCommand {
 
         // Check if the internal name already exists
         if (plugin.getConfig().contains("dealers." + internalName)) {
-            sender.sendMessage(ChatColor.RED + "A dealer with the internal name '" +
-                    ChatColor.YELLOW + internalName + ChatColor.RED + "' already exists.");
+            sender.sendMessage(plugin.getLocalization().text(
+                sender,
+                "commands.dealer-exists",
+                "name",
+                internalName
+            ));
             return true;
         }
 
         // Open the Game Options Inventory
-        GameOptionsMenu inventory = new GameOptionsMenu(player, (Nccasino)plugin, internalName);
+        GameOptionsMenu inventory = new GameOptionsMenu(player, plugin, internalName);
         player.openInventory(inventory.getInventory());
 
-        sender.sendMessage(ChatColor.GREEN + "Choose a game type for the dealer '" +
-                ChatColor.YELLOW + internalName + ChatColor.GREEN + "'.");
+        sender.sendMessage(plugin.getLocalization().text(
+            sender,
+            "commands.choose-game",
+            "name",
+            internalName
+        ));
 
         return true;
     }

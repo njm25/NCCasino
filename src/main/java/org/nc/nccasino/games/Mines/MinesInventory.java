@@ -65,7 +65,11 @@ public class MinesInventory extends DealerInventory {
                             // disconnect path first (idempotent: a no-op
                             // if it was already properly cleaned up), then
                             // guarantee it's gone from Tables regardless.
-                            SessionRegistry.terminatePlayerSession(playerId, ExitReason.DISCONNECTED);
+                            SessionRegistry.terminateSession(
+                                playerId,
+                                Tables.get(playerId),
+                                ExitReason.DISCONNECTED
+                            );
                             removeTable(playerId);
                         }
 

@@ -95,12 +95,12 @@ public class TestServer extends Server {
         // If the player is already in seat1 or seat2, deny sitting in the other.
         if (seat1 != null && seat1.equals(playerId) && seatIndex == 1) {
             // The same player is already in seat1 and is now trying to sit in seat2
-            player.sendMessage("You are already seated in seat1!");
+            player.sendMessage(text(player, "test-game.already-seat-one"));
             return;
         }
         if (seat2 != null && seat2.equals(playerId) && seatIndex == 0) {
             // The same player is already in seat2 and is now trying to sit in seat1
-            player.sendMessage("You are already seated in seat2!");
+            player.sendMessage(text(player, "test-game.already-seat-two"));
             return;
         }
     
@@ -111,7 +111,7 @@ public class TestServer extends Server {
                 seat1 = playerId; // Occupy seat1
             } else {
                 // seat1 is taken by another player
-                player.sendMessage("Someone else is already seated in seat1!");
+                player.sendMessage(text(player, "test-game.seat-one-occupied-message"));
             }
         } else {
             // Seat2
@@ -119,7 +119,7 @@ public class TestServer extends Server {
                 seat2 = playerId; // Occupy seat2
             } else {
                 // seat2 is taken by another player
-                player.sendMessage("Someone else is already seated in seat2!");
+                player.sendMessage(text(player, "test-game.seat-two-occupied-message"));
             }
         }
     
@@ -180,12 +180,26 @@ public class TestServer extends Server {
                 if (seat1Client != null) {
                     seat1Client.refundCurrency(winner, totalWin);
                 }
-                winner.sendMessage("You won " + totalWin + " " + plugin.getCurrencyName(internalName) + "!");
+                winner.sendMessage(text(
+                    winner,
+                    "test-game.server-won",
+                    "amount",
+                    totalWin,
+                    "currency",
+                    plugin.getCurrencyName(internalName)
+                ));
             }
             if (seat2 != null) {
                 Player loser = Bukkit.getPlayer(seat2);
                 if (loser != null) {
-                    loser.sendMessage("You lost! " + seat1Bet + " " + plugin.getCurrencyName(internalName) + " was taken.");
+                    loser.sendMessage(text(
+                        loser,
+                        "test-game.server-lost",
+                        "amount",
+                        seat1Bet,
+                        "currency",
+                        plugin.getCurrencyName(internalName)
+                    ));
                 }
             }
         } else {
@@ -197,12 +211,26 @@ public class TestServer extends Server {
                 if (seat2Client != null) {
                     seat2Client.refundCurrency(winner, totalWin);
                 }
-                winner.sendMessage("You won " + totalWin + " " + plugin.getCurrencyName(internalName) + "!");
+                winner.sendMessage(text(
+                    winner,
+                    "test-game.server-won",
+                    "amount",
+                    totalWin,
+                    "currency",
+                    plugin.getCurrencyName(internalName)
+                ));
             }
             if (seat1 != null) {
                 Player loser = Bukkit.getPlayer(seat1);
                 if (loser != null) {
-                    loser.sendMessage("You lost! " + seat1Bet + " " + plugin.getCurrencyName(internalName) + " was taken.");
+                    loser.sendMessage(text(
+                        loser,
+                        "test-game.server-lost",
+                        "amount",
+                        seat1Bet,
+                        "currency",
+                        plugin.getCurrencyName(internalName)
+                    ));
                 }
             }
         }
@@ -247,4 +275,8 @@ public class TestServer extends Server {
     public double getSeat1Bet() { return seat1Bet; }
     public double getSeat2Bet() { return seat2Bet; }
     public TestGameState getTestGameState() {return testGameState;}
+
+    private String text(Player player, String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
+    }
 }

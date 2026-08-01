@@ -13,6 +13,7 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.ChipSlots;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.currency.MoneyHelper;
@@ -38,7 +39,7 @@ public abstract class Client extends DealerInventory {
     protected final Deque<Double> betStack = new ArrayDeque<>();
     public boolean rebetEnabled = false;
     protected double selectedWager = 0.0;
-    protected final Map<String, Double> chipValues = new LinkedHashMap<>();
+    protected final Map<Integer, Double> chipValues = new LinkedHashMap<>();
     protected boolean bettingEnabled = false;
     protected boolean rebetSwitch = false;
     protected boolean betSlip = false; 
@@ -78,18 +79,11 @@ public abstract class Client extends DealerInventory {
     }
 
     private void loadChipValuesFromConfig() {
-        Map<String, Double> temp = new HashMap<>();
+        List<Double> configuredValues = new ArrayList<>();
         for (int i = 1; i <= 5; i++) {
-            double chipValue = plugin.getChipValue(internalName, i);
-            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
-            if (chipValue > 0) {
-                temp.put(chipName, chipValue);
-            }
+            configuredValues.add(plugin.getChipValue(internalName, i));
         }
-        // Sort ascending by value 
-        temp.entrySet().stream()
-            .sorted(Map.Entry.comparingByValue())
-            .forEachOrdered(e -> chipValues.put(e.getKey(), e.getValue()));
+        chipValues.putAll(ChipSlots.assign(configuredValues));
     }
 
 
@@ -98,36 +92,57 @@ public abstract class Client extends DealerInventory {
         // 1) Build the chips (slots 47..51)
         rebetEnabled = defaultRebet; 
         this.rebetSwitch = rebetSwitch;
-        int chipSlot = 47;
-        for (Map.Entry<String, Double> entry : chipValues.entrySet()) {
-            String chipName = entry.getKey();
+        for (Map.Entry<Integer, Double> entry : chipValues.entrySet()) {
+            int chipSlot = entry.getKey();
             double chipVal = entry.getValue();
+            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipVal);
             if (chipVal == selectedWager) {
                 inventory.setItem(chipSlot, createEnchantedItem(getCurrencyMaterial(), chipName, (int) chipVal));
             } else {
                 inventory.setItem(chipSlot, createCustomItem(getCurrencyMaterial(), chipName, (int) chipVal));
             }
-            chipSlot++;
         }
         if(betSlip){
             // 2) Paper in slot 53: "Click here to place bet"
-            inventory.setItem(bettingPaperSlot, createCustomItem(Material.PAPER, "Click here to place bet", 1));
+            inventory.setItem(bettingPaperSlot, createCustomItem(
+                Material.PAPER,
+                plugin.getLocalization().text(player, "betting.place-bet"),
+                1
+            ));
         }
         if(rebetSwitch){
         // 2) Paper in slot 53: "Click here to place bet"
         // 3) Rebet: slot 44
         Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
-        String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
+        String rebetName = plugin.getLocalization().text(
+            player,
+            rebetEnabled ? "betting.rebet-on" : "betting.rebet-off"
+        );
         inventory.setItem(rebetSlot, createCustomItem(rebetMat, rebetName, 1));
         }
         // 4) Undo All: slot 45
-        inventory.setItem(45, createCustomItem(Material.BARRIER, "Undo All Bets", 1));
+        inventory.setItem(45, createCustomItem(
+            Material.BARRIER,
+            plugin.getLocalization().text(player, "betting.undo-all"),
+            1
+        ));
 
         // 5) Undo Last: slot 46
-        inventory.setItem(46, createCustomItem(Material.WIND_CHARGE, "Undo Last Bet", 1));
+        inventory.setItem(46, createCustomItem(
+            Material.WIND_CHARGE,
+            plugin.getLocalization().text(player, "betting.undo-last"),
+            1
+        ));
 
         // 6) All In: slot 52
-        inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, "All In", 1));
+        inventory.setItem(
+            52,
+            createCustomItem(
+                Material.SNIFFER_EGG,
+                plugin.getLocalization().text(player, "betting.all-in"),
+                1
+            )
+        );
 
         // If we had any existing bets, update the lore on slot 53
         double curr = betStack.stream().mapToDouble(Double::doubleValue).sum();
@@ -199,33 +214,24 @@ public abstract class Client extends DealerInventory {
         }
 
         // Chips: 47..51
-        if (slot >= 47 && slot <= 51) {
+        if (ChipSlots.isChipSlot(slot)) {
             playDefaultSound(player);
-            // The user clicked on a chip
-            ItemStack clicked = event.getCurrentItem();
-            if (clicked == null || !clicked.hasItemMeta()) return;
-
-            String itemName = clicked.getItemMeta().getDisplayName();
-            double val = chipValues.getOrDefault(itemName, 0.0);
+            double val = chipValues.getOrDefault(slot, 0.0);
+            if (val <= 0) return;
             // Mark it as selected
             selectedWager = val;
 
             // Re-enchant the clicked chip, revert others
-            for (int s = 47; s <= 51; s++) {
-                ItemStack chip = inventory.getItem(s);
-                if (chip != null && chip.hasItemMeta()) {
-                    String cName = chip.getItemMeta().getDisplayName();
-                    // If it's the clicked chip, enchant it
-                    if (cName.equals(itemName)) {
-                        inventory.setItem(s,
-                            createEnchantedItem(getCurrencyMaterial(), cName, (int) val));
-                    } else if (chipValues.containsKey(cName)) {
-                        // reset 
-                        inventory.clear(s);
-                        inventory.setItem(s,
-                           createCustomItem(getCurrencyMaterial(), cName, (int)chipValues.get(cName).doubleValue()));
-                    }
-                }
+            for (Map.Entry<Integer, Double> entry : chipValues.entrySet()) {
+                int chipSlot = entry.getKey();
+                double chipValue = entry.getValue();
+                String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
+                inventory.setItem(
+                    chipSlot,
+                    chipSlot == slot
+                        ? createEnchantedItem(getCurrencyMaterial(), chipName, (int) chipValue)
+                        : createCustomItem(getCurrencyMaterial(), chipName, (int) chipValue)
+                );
             }
             return;
         }
@@ -264,10 +270,10 @@ public abstract class Client extends DealerInventory {
         if (selectedWager <= 0 && !usedHeldItem) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(plugin.getLocalization().text(player, "errors.invalid-option"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cSelect a wager amount first.");
+                    player.sendMessage(plugin.getLocalization().text(player, "betting.select-wager"));
                     break;
                 case NONE:
                     break;
@@ -279,10 +285,10 @@ public abstract class Client extends DealerInventory {
         if (!hasEnoughWager(player, selectedWager) && !usedHeldItem) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(plugin.getLocalization().text(player, "errors.invalid-option"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cNot enough currency to place bet.");
+                    player.sendMessage(plugin.getLocalization().text(player, "betting.insufficient-funds"));
                     break;
                 case NONE:
                     break;
@@ -307,7 +313,7 @@ public abstract class Client extends DealerInventory {
 				switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
 					case STANDARD:
 					case VERBOSE:
-						player.sendMessage("§cNot enough currency to place bet.");
+						player.sendMessage(plugin.getLocalization().text(player, "betting.insufficient-funds"));
 						break;
 					case NONE:
 						break;
@@ -341,10 +347,10 @@ public abstract class Client extends DealerInventory {
         if (betStack.isEmpty()) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(plugin.getLocalization().text(player, "errors.invalid-option"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cNo bets to undo.");
+                    player.sendMessage(plugin.getLocalization().text(player, "betting.nothing-to-undo"));
                     break;
                 case NONE:
                     break;
@@ -367,10 +373,10 @@ public abstract class Client extends DealerInventory {
         if (betStack.isEmpty()) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage("§cInvalid action.");
+                    player.sendMessage(plugin.getLocalization().text(player, "errors.invalid-option"));
                     break;
                 case VERBOSE:
-                    player.sendMessage("§cNo bets to undo.");
+                    player.sendMessage(plugin.getLocalization().text(player, "betting.nothing-to-undo"));
                     break;
                 case NONE:
                     break;
@@ -395,7 +401,10 @@ public abstract class Client extends DealerInventory {
 
     protected void updateRebetToggle(int index) {
         Material rebetMat = rebetEnabled ? Material.GREEN_WOOL : Material.RED_WOOL;
-        String rebetName = rebetEnabled ? "Rebet: ON" : "Rebet: OFF";
+        String rebetName = plugin.getLocalization().text(
+            player,
+            rebetEnabled ? "betting.rebet-on" : "betting.rebet-off"
+        );
         inventory.setItem(index, createCustomItem(rebetMat, rebetName, 1));
         player.updateInventory();
     }
@@ -413,7 +422,20 @@ public abstract class Client extends DealerInventory {
         ItemStack cardItem = new ItemStack(material, getCardValueStackSize(card));
         ItemMeta meta = cardItem.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(card.getRank() + " of " + card.getSuit());
+            meta.setDisplayName(plugin.getLocalization().text(
+                player,
+                "cards.name",
+                "rank",
+                plugin.getLocalization().text(
+                    player,
+                    "cards.ranks." + card.getRank().name().toLowerCase(Locale.ROOT)
+                ),
+                "suit",
+                plugin.getLocalization().text(
+                    player,
+                    "cards.suits." + card.getSuit().name().toLowerCase(Locale.ROOT)
+                )
+            ));
             cardItem.setItemMeta(meta);
         }
         inventory.setItem(slot, cardItem);
@@ -468,7 +490,7 @@ public abstract class Client extends DealerInventory {
 	protected void creditPlayer(Player player, double amount) {
 		Material currencyMaterial = plugin.getCurrency(internalName);
 		if (currencyMaterial == null) {
-			player.sendMessage("Error: Currency material is not set. Unable to credit winnings.");
+			player.sendMessage(plugin.getLocalization().text(player, "errors.currency-unavailable"));
 			return;
 		}
 
@@ -502,11 +524,21 @@ public abstract class Client extends DealerInventory {
 				if (leftoverAmount > 0) {
 					switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 						case STANDARD:{
-							player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount) + ", dropping...");
+							player.sendMessage(plugin.getLocalization().text(
+								player,
+								"betting.inventory-full",
+								"amount",
+								plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount)
+							));
 
 							break;}
 						case VERBOSE:{
-							player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount) + ", dropping...");
+							player.sendMessage(plugin.getLocalization().text(
+								player,
+								"betting.inventory-full",
+								"amount",
+								plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount)
+							));
 							break;     
 						}
 							case NONE:{
@@ -550,11 +582,21 @@ public abstract class Client extends DealerInventory {
 		if (totalLeftoverAmount > 0) {
 			switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 				case STANDARD:{
-					player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
+					player.sendMessage(plugin.getLocalization().text(
+						player,
+						"betting.inventory-full",
+						"amount",
+						plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount)
+					));
 	
 					break;}
 				case VERBOSE:{
-					player.sendMessage("§cNo room for " + plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount) + ", dropping...");
+					player.sendMessage(plugin.getLocalization().text(
+						player,
+						"betting.inventory-full",
+						"amount",
+						plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount)
+					));
 					break;     
 				}
 					case NONE:{
@@ -588,11 +630,9 @@ public abstract class Client extends DealerInventory {
     }
 
     protected void updateSelectedWager(int slot) {
-        ItemStack clicked = inventory.getItem(slot);
-        if (clicked == null || !clicked.hasItemMeta()) return;
-
         boolean isAllIn = (slot == 52);
-        selectedWager = isAllIn ? getTotalCurrency(player) : chipValues.getOrDefault(clicked.getItemMeta().getDisplayName(), 0.0);
+        selectedWager = isAllIn ? getTotalCurrency(player) : chipValues.getOrDefault(slot, 0.0);
+        if (!isAllIn && selectedWager <= 0) return;
 
         if (isAllIn) {
             if (SoundHelper.getSoundSafely("entity.lightning_bolt.thunder", player) != null) {
@@ -605,28 +645,31 @@ public abstract class Client extends DealerInventory {
         }
 
         // Loop through wager slots (chips & All In) to update enchantment
-        for (int s = 47; s <= 52; s++) {
-            ItemStack chip = inventory.getItem(s);
-            if (chip != null && chip.hasItemMeta()) {
-                ItemMeta meta = chip.getItemMeta();
-                String chipName = meta.getDisplayName();
-                double chipValue = chipValues.getOrDefault(chipName, 0.0);
-
-                if (s == slot) {
-                    inventory.setItem(s, createEnchantedItem(
-                        s == 52 ? Material.SNIFFER_EGG : getCurrencyMaterial(),
-                        isAllIn ? "All In (" + plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager) + ")" : chipName,
-                        s == 52 ? 1 : (int) chipValue
-                    ));
-                } else {
-                    inventory.setItem(s, createCustomItem(
-                        s == 52 ? Material.SNIFFER_EGG : getCurrencyMaterial(),
-                        s == 52 ? "All In" : chipName,
-                        s == 52 ? 1 : (int) chipValue
-                    ));
-                }
-            }
+        for (Map.Entry<Integer, Double> entry : chipValues.entrySet()) {
+            int chipSlot = entry.getKey();
+            double chipValue = entry.getValue();
+            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, chipValue);
+            inventory.setItem(
+                chipSlot,
+                chipSlot == slot
+                    ? createEnchantedItem(getCurrencyMaterial(), chipName, (int) chipValue)
+                    : createCustomItem(getCurrencyMaterial(), chipName, (int) chipValue)
+            );
         }
+        String allInName = isAllIn
+            ? plugin.getLocalization().text(
+                player,
+                "betting.all-in-amount",
+                "amount",
+                plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager)
+            )
+            : plugin.getLocalization().text(player, "betting.all-in");
+        inventory.setItem(
+            52,
+            isAllIn
+                ? createEnchantedItem(Material.SNIFFER_EGG, allInName, 1)
+                : createCustomItem(Material.SNIFFER_EGG, allInName, 1)
+        );
     }
 
 
@@ -638,7 +681,12 @@ public abstract class Client extends DealerInventory {
             if (meta != null) {
                 if (totalBet > 0) {
                     List<String> lore = new ArrayList<>();
-                    lore.add("Wager: " + plugin.formatWagerDisplay(currencyMode, currencyName, totalBet));
+                    lore.add(plugin.getLocalization().text(
+                        player,
+                        "betting.wager",
+                        "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, totalBet)
+                    ));
                     meta.setLore(lore);
                 } else {
                     meta.setLore(Collections.emptyList());

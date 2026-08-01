@@ -1,0 +1,4 @@
+language:
+  # Language inherited by players who have not explicitly selected one.
+  # Supported: en_US, es_ES, pt_BR, de_DE, fr_FR
+  default: en_US
