@@ -7,7 +7,7 @@ for /f "usebackq tokens=1,* delims==" %%i in ("config.txt") do (
 )
 
 REM Navigate to the project directory
-cd "%PROJECT_DIR%" || exit /b
+cd /d "%PROJECT_DIR%" || exit /b
 
 REM Build the project using Gradle
 call .\gradlew.bat clean build || exit /b
@@ -22,7 +22,7 @@ REM Copy the new plugin JAR to the server plugins directory
 copy /Y "%PLUGIN_NAME%" "%SERVER_DIR%\plugins\" || exit /b
 
 REM Navigate to the server directory
-cd "%SERVER_DIR%" || exit /b
+cd /d "%SERVER_DIR%" || exit /b
 
 REM Start the Minecraft server
 java -Xms2G -Xmx2G -jar "%SERVER_JAR%" --nogui || exit /b
