@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -20,6 +21,9 @@ import org.nc.nccasino.session.TerminableSession;
 
 public class RockPaperScissorsServer extends Server {
 
+    /** Stands in for a real player UUID in {@code picks} when the dealer is the opponent (PLAYER_VS_DEALER). */
+    private static final UUID DEALER_ID = new UUID(0L, 0L);
+
     private int countdownTaskId = -1;
     private int timeLeft = 0;
 
@@ -31,6 +35,8 @@ public class RockPaperScissorsServer extends Server {
     private final Map<UUID, Throw> picks = new HashMap<>();
     private final Set<UUID> forfeited = new HashSet<>();
     private final Map<UUID, TerminableSession> ridingSessions = new HashMap<>();
+    /** Resolved once at construction, like currencyMode -- changing it requires reloading this dealer. */
+    private final RpsMode mode;
 
     public RockPaperScissorsServer(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, plugin, internalName);
@@ -39,6 +45,7 @@ public class RockPaperScissorsServer extends Server {
         this.chairTwoOccupant = null;
         this.betAmount = 0;
         this.gameActive = false;
+        this.mode = plugin.getRockPaperScissorsMode(internalName);
     }
 
     @Override
@@ -56,7 +63,7 @@ public class RockPaperScissorsServer extends Server {
                 broadcastUpdate("PLAYER_SIT_ONE", chairOneOccupant);
                 break;
             case "PLAYER_SIT_TWO":
-                if (gameActive) return;
+                if (gameActive || mode == RpsMode.PLAYER_VS_DEALER) return;
                 chairTwoOccupant = client.getPlayer();
                 broadcastUpdate("PLAYER_SIT_TWO", chairTwoOccupant);
                 break;
@@ -76,7 +83,7 @@ public class RockPaperScissorsServer extends Server {
                 }
                 break;
             case "PLAYER_LEAVE_TWO":
-                if (gameActive) return;
+                if (gameActive || mode == RpsMode.PLAYER_VS_DEALER) return;
                 chairTwoOccupant = null;
                 broadcastUpdate("PLAYER_LEAVE_TWO", null);
                 break;
@@ -85,7 +92,13 @@ public class RockPaperScissorsServer extends Server {
                 if (chairOneOccupant != null) {
                     if (betAmount == 0) {
                         betAmount = (int) data;
-                        broadcastUpdate("PLAYER_SUBMIT_BET", data);
+                        if (mode == RpsMode.PLAYER_VS_DEALER) {
+                            // No second human to accept -- the house takes
+                            // the other side of the bet immediately.
+                            beginActiveRound(Boolean.TRUE);
+                        } else {
+                            broadcastUpdate("PLAYER_SUBMIT_BET", data);
+                        }
                     } else {
                         betAmount = 0;
                         broadcastUpdate("PLAYER_CANCEL_BET", null);
@@ -95,11 +108,7 @@ public class RockPaperScissorsServer extends Server {
             case "PLAYER_ACCEPT_BET":
                 if (gameActive) return;
                 if (chairTwoOccupant != null && betAmount != 0) {
-                    broadcastUpdate("PLAYER_ACCEPT_BET", data);
-                    gameActive = true;
-                    betAmount = betAmount * 2;
-                    picks.clear();
-                    startTimer();
+                    beginActiveRound(data);
                 }
                 break;
             case "PLAYER_CHOOSE":
@@ -127,6 +136,15 @@ public class RockPaperScissorsServer extends Server {
         }
     }
 
+    /** Shared tail of both "player 2 accepted" and "the house auto-accepted" -- doubles the pot and opens the pick phase. */
+    private void beginActiveRound(Object acceptPayload) {
+        broadcastUpdate("PLAYER_ACCEPT_BET", acceptPayload);
+        gameActive = true;
+        betAmount = betAmount * 2;
+        picks.clear();
+        startTimer();
+    }
+
     private void handlePlayerChoose(Client client, Object data) {
         if (!gameActive) return;
         if (!(data instanceof Throw chosen)) return;
@@ -139,25 +157,45 @@ public class RockPaperScissorsServer extends Server {
 
         picks.put(chooserId, chosen);
 
-        UUID opponentId = opponentOf(chooserId);
-        if (opponentId != null) {
-            Client opponentClient = clients.get(opponentId);
-            if (opponentClient != null) {
-                opponentClient.onServerUpdate("OPPONENT_LOCKED_IN", null);
+        if (mode == RpsMode.PLAYER_VS_DEALER && isChairOne) {
+            // The house only ever throws in direct response to the
+            // player's own pick -- never ahead of time -- so there's
+            // nothing to notify and no opponent client to look up.
+            picks.put(DEALER_ID, randomThrow());
+        } else {
+            UUID opponentId = opponentOf(chooserId);
+            if (opponentId != null) {
+                Client opponentClient = clients.get(opponentId);
+                if (opponentClient != null) {
+                    opponentClient.onServerUpdate("OPPONENT_LOCKED_IN", null);
+                }
             }
         }
 
         evaluatePicks();
     }
 
+    private Throw randomThrow() {
+        Throw[] values = Throw.values();
+        return values[ThreadLocalRandom.current().nextInt(values.length)];
+    }
+
     private UUID opponentOf(UUID playerId) {
         if (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(playerId)) {
-            return chairTwoOccupant != null ? chairTwoOccupant.getUniqueId() : null;
+            return chairTwoKey();
         }
         if (chairTwoOccupant != null && chairTwoOccupant.getUniqueId().equals(playerId)) {
             return chairOneOccupant != null ? chairOneOccupant.getUniqueId() : null;
         }
         return null;
+    }
+
+    /** Chair 2's identity for {@code picks} lookups: the real occupant in PvP, the dealer sentinel in PvE. */
+    private UUID chairTwoKey() {
+        if (chairTwoOccupant != null) {
+            return chairTwoOccupant.getUniqueId();
+        }
+        return mode == RpsMode.PLAYER_VS_DEALER ? DEALER_ID : null;
     }
 
     /**
@@ -167,10 +205,12 @@ public class RockPaperScissorsServer extends Server {
      * whole span as a single "ride to result" session.
      */
     private void evaluatePicks() {
-        if (chairOneOccupant == null || chairTwoOccupant == null) return;
+        if (chairOneOccupant == null) return;
+        UUID twoKey = chairTwoKey();
+        if (twoKey == null) return;
 
         Throw one = picks.get(chairOneOccupant.getUniqueId());
-        Throw two = picks.get(chairTwoOccupant.getUniqueId());
+        Throw two = picks.get(twoKey);
         if (one == null || two == null) return;
 
         // Stop the pick-timer countdown for the ~70-tick reveal window
@@ -524,6 +564,17 @@ public class RockPaperScissorsServer extends Server {
         if (countdownTaskId != -1) {
             Bukkit.getScheduler().cancelTask(countdownTaskId);
             countdownTaskId = -1;
+        }
+
+        if (mode == RpsMode.PLAYER_VS_DEALER) {
+            // The house only ever throws in direct response to the
+            // player's own pick, so reaching the timeout here always means
+            // the player never chose -- forfeit to the house, same as a
+            // PvP player who lets the timer run out.
+            committedWinner = 1;
+            broadcastUpdate("FORFEIT_TIMEOUT", 1);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> resolveRound(committedWinner != null ? committedWinner : 1), 20L);
+            return;
         }
 
         UUID oneId = chairOneOccupant != null ? chairOneOccupant.getUniqueId() : null;

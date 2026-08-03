@@ -162,6 +162,7 @@ rock-paper-scissors:
   tie: "&eÉgalité ! On rejoue..."
   forfeit-no-choice: "&cVous n’avez pas choisi à temps et avez perdu la manche."
   round-voided: "&eAucun joueur n’a choisi à temps. Paris remboursés."
+  the-dealer: "&oLe Croupier"
 
 baccarat:
   title: "Baccara"
@@ -599,6 +600,10 @@ rock-paper-scissors-settings:
   prompt-timer: "&aSaisissez le nouveau minuteur dans le chat."
   timer-updated: "&aMinuteur du croupier mis à jour."
   dealer-not-found: "&cCroupier des paramètres de Pierre-Feuille-Ciseaux introuvable."
+  toggle-mode: "Changer de mode"
+  mode-pvp: "Joueur contre joueur"
+  mode-pvd: "Joueur contre croupier"
+  mode-updated: "&aMode du croupier mis à jour."
 
 roulette-settings:
   title: "Paramètres de Roulette de {dealer}"

@@ -20,6 +20,7 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.games.RockPaperScissors.RpsMode;
 import org.nc.nccasino.helpers.SoundHelper;
 
 public class RockPaperScissorsMenu extends Menu {
@@ -40,6 +41,7 @@ public class RockPaperScissorsMenu extends Menu {
         slotMapping.put(SlotOption.EXIT, 8);
         slotMapping.put(SlotOption.RETURN, 0);
         slotMapping.put(SlotOption.EDIT_TIMER, 1);
+        slotMapping.put(SlotOption.TOGGLE_RPS_MODE, 2);
         initializeMenu();
     }
 
@@ -71,8 +73,18 @@ public class RockPaperScissorsMenu extends Menu {
         ? config.getInt("dealers." + internalName + ".timer")
         : 10;
         addItemAndLore(Material.CLOCK, currentTimer, text("rock-paper-scissors-settings.edit-timer"), slotMapping.get(SlotOption.EDIT_TIMER), text("common.current", "value", currentTimer));
+        addModeItem(internalName);
         addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, text("common.return-to", "menu", returnName), slotMapping.get(SlotOption.RETURN));
         addItemAndLore(Material.SPRUCE_DOOR, 1, text("common.exit"), slotMapping.get(SlotOption.EXIT));
+    }
+
+    private void addModeItem(String internalName) {
+        RpsMode mode = plugin.getRockPaperScissorsMode(internalName);
+        Material icon = mode == RpsMode.PLAYER_VS_DEALER ? Material.ZOMBIE_HEAD : Material.PLAYER_HEAD;
+        String modeLabel = text(mode == RpsMode.PLAYER_VS_DEALER
+            ? "rock-paper-scissors-settings.mode-pvd"
+            : "rock-paper-scissors-settings.mode-pvp");
+        addItemAndLore(icon, 1, text("rock-paper-scissors-settings.toggle-mode"), slotMapping.get(SlotOption.TOGGLE_RPS_MODE), text("common.current", "value", modeLabel));
     }
 
     @EventHandler
@@ -121,6 +133,9 @@ public class RockPaperScissorsMenu extends Menu {
                 handleEditTimer(player);
                 playDefaultSound(player);
                 break;
+            case TOGGLE_RPS_MODE:
+                handleToggleMode(player);
+                break;
             default:
                 if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f);
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -155,6 +170,57 @@ public class RockPaperScissorsMenu extends Menu {
                 break;
             }
         }
+    }
+
+    private void handleToggleMode(Player player) {
+        if (dealer == null) {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD:
+                    player.sendMessage(text("admin.dealer-not-found"));
+                    break;
+                case VERBOSE:
+                    player.sendMessage(text("rock-paper-scissors-settings.dealer-not-found"));
+                    break;
+                case NONE:
+                    break;
+            }
+            return;
+        }
+
+        String internalName = Dealer.getInternalName(dealer);
+        RpsMode current = plugin.getRockPaperScissorsMode(internalName);
+        RpsMode next = current == RpsMode.PLAYER_VS_PLAYER ? RpsMode.PLAYER_VS_DEALER : RpsMode.PLAYER_VS_PLAYER;
+        plugin.getConfig().set("dealers." + internalName + ".rps-mode", next.name());
+        plugin.saveConfig();
+        plugin.reloadDealer(dealer);
+
+        if (SoundHelper.getSoundSafely("ui.button.click", player) != null) {
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
+        }
+
+        String modeLabel = text(next == RpsMode.PLAYER_VS_DEALER
+            ? "rock-paper-scissors-settings.mode-pvd"
+            : "rock-paper-scissors-settings.mode-pvp");
+
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case STANDARD:
+                player.sendMessage(text("rock-paper-scissors-settings.mode-updated"));
+                break;
+            case VERBOSE:
+                player.sendMessage(text(
+                    "blackjack-settings.updated-detailed",
+                    "setting",
+                    text("rock-paper-scissors-settings.mode-updated"),
+                    "value",
+                    modeLabel
+                ));
+                break;
+            case NONE:
+                break;
+        }
+
+        plugin.deleteAssociatedInventories(dealer);
+        cleanup();
     }
 
     @EventHandler

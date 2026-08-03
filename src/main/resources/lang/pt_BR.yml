@@ -162,6 +162,7 @@ rock-paper-scissors:
   tie: "&eEmpate! Jogando novamente..."
   forfeit-no-choice: "&cVocê não escolheu a tempo e perdeu a rodada."
   round-voided: "&eNenhum jogador escolheu a tempo. Apostas reembolsadas."
+  the-dealer: "&oO Crupiê"
 
 baccarat:
   title: "Bacará"
@@ -599,6 +600,10 @@ rock-paper-scissors-settings:
   prompt-timer: "&aDigite o novo temporizador no chat."
   timer-updated: "&aTemporizador do crupiê atualizado."
   dealer-not-found: "&cNão foi possível encontrar o crupiê das configurações de Pedra, Papel e Tesoura."
+  toggle-mode: "Alternar modo"
+  mode-pvp: "Jogador contra jogador"
+  mode-pvd: "Jogador contra crupiê"
+  mode-updated: "&aModo do crupiê atualizado."
 
 roulette-settings:
   title: "Configurações de Roleta de {dealer}"

@@ -62,6 +62,9 @@ public abstract class Menu extends DealerInventory {
         
         // Default game settings
         EDIT_TIMER,
+
+        // Rock Paper Scissors settings menu
+        TOGGLE_RPS_MODE,
         
         // Mines settings menu
         EDIT_MINES,

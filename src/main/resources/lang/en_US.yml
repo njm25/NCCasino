@@ -162,6 +162,7 @@ rock-paper-scissors:
   tie: "&eIt's a tie! Throwing again..."
   forfeit-no-choice: "&cYou didn't choose in time and forfeited the round."
   round-voided: "&eNeither player chose in time. Bets refunded."
+  the-dealer: "&oThe Dealer"
 
 baccarat:
   title: "Baccarat"
@@ -599,6 +600,10 @@ rock-paper-scissors-settings:
   prompt-timer: "&aType the new timer in chat."
   timer-updated: "&aDealer timer updated."
   dealer-not-found: "&cCould not find rock paper scissors settings dealer."
+  toggle-mode: "Toggle Mode"
+  mode-pvp: "Player vs Player"
+  mode-pvd: "Player vs Dealer"
+  mode-updated: "&aDealer mode updated."
 
 roulette-settings:
   title: "{dealer}'s Roulette Settings"

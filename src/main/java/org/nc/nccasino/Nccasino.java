@@ -684,6 +684,16 @@ public final class Nccasino extends JavaPlugin implements Listener {
         return (int) timer;
     }
 
+    /** Resolved once per game instance, mirroring getCurrencyMode: no cache, safe fallback for missing/invalid config. */
+    public org.nc.nccasino.games.RockPaperScissors.RpsMode getRockPaperScissorsMode(String internalName) {
+        String raw = getConfig().getString("dealers." + internalName + ".rps-mode", "PLAYER_VS_PLAYER");
+        try {
+            return org.nc.nccasino.games.RockPaperScissors.RpsMode.valueOf(raw);
+        } catch (IllegalArgumentException e) {
+            return org.nc.nccasino.games.RockPaperScissors.RpsMode.PLAYER_VS_PLAYER;
+        }
+    }
+
     // Dragon Descent specific configuration methods
     public int getDragonDescentColumns(String internalName) {
         int columns;

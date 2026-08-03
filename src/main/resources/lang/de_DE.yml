@@ -162,6 +162,7 @@ rock-paper-scissors:
   tie: "&eUnentschieden! Neuer Wurf..."
   forfeit-no-choice: "&cDu hast nicht rechtzeitig gewählt und die Runde verloren."
   round-voided: "&eKeiner der Spieler hat rechtzeitig gewählt. Einsätze wurden erstattet."
+  the-dealer: "&oDer Dealer"
 
 baccarat:
   title: "Baccara"
@@ -599,6 +600,10 @@ rock-paper-scissors-settings:
   prompt-timer: "&aGib den neuen Timer im Chat ein."
   timer-updated: "&aDealer-Timer aktualisiert."
   dealer-not-found: "&cSchere-Stein-Papier-Einstellungsdealer konnte nicht gefunden werden."
+  toggle-mode: "Modus wechseln"
+  mode-pvp: "Spieler gegen Spieler"
+  mode-pvd: "Spieler gegen Dealer"
+  mode-updated: "&aDealer-Modus aktualisiert."
 
 roulette-settings:
   title: "Roulette-Einstellungen von {dealer}"

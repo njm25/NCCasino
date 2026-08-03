@@ -52,6 +52,8 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     private boolean myChoiceLocked = false;
     private boolean opponentLockedIn = false;
     private boolean sessionResolved = false;
+    /** Resolved once at construction, same as the server -- reflects the config at the moment this GUI was opened. */
+    private final RpsMode mode;
 
     public RockPaperScissorsClient(Server server, Player player, Nccasino plugin, String internalName) {
         super(server, player, plugin.getLocalization().text(player, "rock-paper-scissors.title"), plugin, internalName);
@@ -59,6 +61,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         this.clickHereToSit = text("rock-paper-scissors.click-sit");
         this.chairOneOccupant = null;
         this.chairTwoOccupant = null;
+        this.mode = plugin.getRockPaperScissorsMode(internalName);
 
         slotMapping.put(SlotOption.HANDLE_CHAIR_1, 20);
         slotMapping.put(SlotOption.HANDLE_CHAIR_2, 24);
@@ -70,6 +73,9 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
 
         addItemAndLore(Material.SPRUCE_DOOR, 1, text("rock-paper-scissors.leave"), slotMapping.get(SlotOption.LEAVE));
         populateGlassPattern();
+        if (mode == RpsMode.PLAYER_VS_DEALER) {
+            renderDealerSeat();
+        }
         sendUpdateToServer("GET_CHAIRS", null);
     }
 
@@ -188,6 +194,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     }
 
     private void handleChairTwo(){
+        if (mode == RpsMode.PLAYER_VS_DEALER) return;
         if (chairOneOccupant != null && chairTwoOccupant == null){
             if (chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
                 denyAction(player, text("rock-paper-scissors.already-seated"));
@@ -329,12 +336,16 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         if(playerData.getUniqueId().equals(player.getUniqueId())){
             initializeUI(false, true, false);
             resetPlayerOneUI();
-            addItemAndLore(Material.OAK_STAIRS, 1, text("rock-paper-scissors.player-two-seat"), slotMapping.get(SlotOption.HANDLE_CHAIR_2));
+            if (mode == RpsMode.PLAYER_VS_PLAYER) {
+                addItemAndLore(Material.OAK_STAIRS, 1, text("rock-paper-scissors.player-two-seat"), slotMapping.get(SlotOption.HANDLE_CHAIR_2));
+            }
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1),
                 createPlayerHead(playerData.getUniqueId(), playerData.getDisplayName(), text("rock-paper-scissors.click-leave-chair")));
         }
         else{
-            addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_2));
+            if (mode == RpsMode.PLAYER_VS_PLAYER) {
+                addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_2));
+            }
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1),
                 createPlayerHead(playerData.getUniqueId(), playerData.getDisplayName()));
         }
@@ -397,7 +408,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         hidePotChest();
         chairOneOccupant = null;
         addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
-        if(chairTwoOccupant == null){
+        if(chairTwoOccupant == null && mode == RpsMode.PLAYER_VS_PLAYER){
             addItemAndLore(Material.OAK_STAIRS, 1, text("rock-paper-scissors.seat-unavailable"), slotMapping.get(SlotOption.HANDLE_CHAIR_2), text("rock-paper-scissors.sit-other-chair"));
         }
     }
@@ -477,13 +488,22 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
             gameActive = true;
             myChoiceLocked = false;
             opponentLockedIn = false;
+            // In PvE this is the first broadcast the player's own submit
+            // triggers (PLAYER_SUBMIT_BET is skipped entirely -- there's no
+            // second human to show a "their turn" prompt to), so the chip
+            // row needs clearing here rather than relying on that handler
+            // having already done it.
+            bettingEnabled = false;
+            replaceBottomRow();
             updatePotChest();
             if (SoundHelper.getSoundSafely("block.enchantment_table.use", player) != null) player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f);
 
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1),
                 createPlayerHead(chairOneOccupant.getUniqueId(), chairOneOccupant.getDisplayName()));
-            inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2),
-                createPlayerHead(chairTwoOccupant.getUniqueId(), chairTwoOccupant.getDisplayName()));
+            if (chairTwoOccupant != null) {
+                inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2),
+                    createPlayerHead(chairTwoOccupant.getUniqueId(), chairTwoOccupant.getDisplayName()));
+            }
 
             showChoiceButtonsIfSeated();
             updateStatusIndicator();
@@ -673,7 +693,9 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         }
         if (chairOne == null && chairTwo == null) {
             addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
-            addItemAndLore(Material.OAK_STAIRS, 1, text("rock-paper-scissors.seat-unavailable"), slotMapping.get(SlotOption.HANDLE_CHAIR_2), text("rock-paper-scissors.sit-other-chair"));
+            if (mode == RpsMode.PLAYER_VS_PLAYER) {
+                addItemAndLore(Material.OAK_STAIRS, 1, text("rock-paper-scissors.seat-unavailable"), slotMapping.get(SlotOption.HANDLE_CHAIR_2), text("rock-paper-scissors.sit-other-chair"));
+            }
         } else if (chairOne != null && chairTwo != null) {
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1),
                 createPlayerHead(chairOne.getUniqueId(), chairOne.getDisplayName()));
@@ -687,7 +709,9 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1),
                 createPlayerHead(chairOne.getUniqueId(), chairOne.getDisplayName()));
             chairOneOccupant = chairOne;
-            addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_2));
+            if (mode == RpsMode.PLAYER_VS_PLAYER) {
+                addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_2));
+            }
         } else {
             addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
             if (chairTwo != null)
@@ -707,6 +731,16 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
 
     private void clearHandleButton(){
         inventory.setItem(slotMapping.get(SlotOption.HANDLE_SUBMIT_BET), null);
+    }
+
+    /**
+     * PLAYER_VS_DEALER only: chair 2 is never sittable, so it permanently
+     * shows the house's seat instead of a "click here to sit" prompt.
+     * Nothing else ever writes to this slot in that mode, so this only
+     * needs to run once.
+     */
+    private void renderDealerSeat() {
+        addItemAndLore(Material.ZOMBIE_HEAD, 1, text("rock-paper-scissors.the-dealer"), slotMapping.get(SlotOption.HANDLE_CHAIR_2));
     }
 
     private void showChoiceButtonsIfSeated() {
