@@ -44,7 +44,8 @@ public class GameOptionsMenu extends Menu {
         slotMapping.put(SlotOption.MINES, 2);
         slotMapping.put(SlotOption.BACCARAT, 3);
         slotMapping.put(SlotOption.COIN_FLIP, 4);
-        slotMapping.put(SlotOption.DRAGON_DESCENT, 5);
+        slotMapping.put(SlotOption.ROCK_PAPER_SCISSORS, 5);
+        slotMapping.put(SlotOption.DRAGON_DESCENT, 6);
         slotMapping.put(SlotOption.EXIT, 8);
         initializeMenu();
     }
@@ -76,10 +77,11 @@ public class GameOptionsMenu extends Menu {
         slotMapping.put(SlotOption.MINES, 3);
         slotMapping.put(SlotOption.BACCARAT, 4);
         slotMapping.put(SlotOption.COIN_FLIP, 5);
-        slotMapping.put(SlotOption.DRAGON_DESCENT, 6);
+        slotMapping.put(SlotOption.ROCK_PAPER_SCISSORS, 6);
+        slotMapping.put(SlotOption.DRAGON_DESCENT, 7);
 
-        
-    
+
+
        initializeMenu();
     }
 
@@ -93,6 +95,7 @@ public class GameOptionsMenu extends Menu {
             addItemAndLore(Material.ENDER_PEARL, 1, text("game-options.roulette"), slotMapping.get(SlotOption.ROULETTE));
             addItemAndLore(Material.SKELETON_SKULL, 1, text("game-options.baccarat"), slotMapping.get(SlotOption.BACCARAT));
             addItemAndLore(Material.SUNFLOWER, 1, text("game-options.coin-flip"), slotMapping.get(SlotOption.COIN_FLIP));
+            addItemAndLore(Material.PAPER, 1, text("game-options.rock-paper-scissors"), slotMapping.get(SlotOption.ROCK_PAPER_SCISSORS));
             addItemAndLore(Material.TNT, 1, text("game-options.mines"), slotMapping.get(SlotOption.MINES));
             addItemAndLore(Material.DRAGON_HEAD, 1, text("game-options.dragon-descent"), slotMapping.get(SlotOption.DRAGON_DESCENT));
 
@@ -101,6 +104,7 @@ public class GameOptionsMenu extends Menu {
             addItemAndLore(Material.CREEPER_HEAD, 1, text("game-options.blackjack"), slotMapping.get(SlotOption.BLACKJACK));
             addItemAndLore(Material.ENDER_PEARL, 1, text("game-options.roulette"), slotMapping.get(SlotOption.ROULETTE));
             addItemAndLore(Material.SUNFLOWER, 1, text("game-options.coin-flip"), slotMapping.get(SlotOption.COIN_FLIP));
+            addItemAndLore(Material.PAPER, 1, text("game-options.rock-paper-scissors"), slotMapping.get(SlotOption.ROCK_PAPER_SCISSORS));
             addItemAndLore(Material.SKELETON_SKULL, 1, text("game-options.baccarat"), slotMapping.get(SlotOption.BACCARAT));
             addItemAndLore(Material.TNT, 1, text("game-options.mines"), slotMapping.get(SlotOption.MINES));
             addItemAndLore(Material.DRAGON_HEAD, 1, text("game-options.dragon-descent"), slotMapping.get(SlotOption.DRAGON_DESCENT));
@@ -136,6 +140,10 @@ public class GameOptionsMenu extends Menu {
             case COIN_FLIP:
                 playDefaultSound(player);
                 gameType = "Coin Flip";
+                break;
+            case ROCK_PAPER_SCISSORS:
+                playDefaultSound(player);
+                gameType = "Rock Paper Scissors";
                 break;
             case DRAGON_DESCENT:
                 playDefaultSound(player);
@@ -291,6 +299,7 @@ public class GameOptionsMenu extends Menu {
             case "Mines" -> text("game-options.mines");
             case "Baccarat" -> text("game-options.baccarat");
             case "Coin Flip" -> text("game-options.coin-flip");
+            case "Rock Paper Scissors" -> text("game-options.rock-paper-scissors");
             case "Dragon Descent" -> text("game-options.dragon-descent");
             case "Test Game" -> text("game-options.test-game");
             default -> gameType;

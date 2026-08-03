@@ -30,6 +30,8 @@ class GameTerminationPolicyTest {
         assertEquals(FORFEIT, GameTerminationPolicy.baccarat(ExitReason.KICKED, false));
         assertEquals(FORFEIT, GameTerminationPolicy.coinFlip(ExitReason.KICKED, false));
         assertEquals(FORFEIT, GameTerminationPolicy.coinFlip(ExitReason.KICKED, true));
+        assertEquals(FORFEIT, GameTerminationPolicy.rockPaperScissors(ExitReason.KICKED, false));
+        assertEquals(FORFEIT, GameTerminationPolicy.rockPaperScissors(ExitReason.KICKED, true));
     }
 
     @Test
@@ -123,6 +125,19 @@ class GameTerminationPolicyTest {
             GameTerminationPolicy.coinFlip(ExitReason.GAME_COMPLETED, false));
         assertEquals(NO_ACTION,
             GameTerminationPolicy.coinFlip(ExitReason.GAME_COMPLETED, true));
+    }
+
+    @Test
+    void rockPaperScissorsRefundsPregameRidesAcceptedRoundIncludingTiesAndRefundsShutdown() {
+        assertEquals(REFUND, GameTerminationPolicy.rockPaperScissors(ExitReason.DISCONNECTED, false));
+        assertEquals(RIDE_TO_RESULT,
+            GameTerminationPolicy.rockPaperScissors(ExitReason.DISCONNECTED, true));
+        assertEquals(REFUND,
+            GameTerminationPolicy.rockPaperScissors(ExitReason.PLUGIN_DISABLE, true));
+        assertEquals(NO_ACTION,
+            GameTerminationPolicy.rockPaperScissors(ExitReason.GAME_COMPLETED, false));
+        assertEquals(NO_ACTION,
+            GameTerminationPolicy.rockPaperScissors(ExitReason.GAME_COMPLETED, true));
     }
 
     private static ExitReason[] nonKickReasons() {

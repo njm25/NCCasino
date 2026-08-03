@@ -206,6 +206,10 @@ public class AdminMenu extends Menu {
                 addItemAndLore(Material.SUNFLOWER, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
                 break;
             }
+            case "Rock Paper Scissors":{
+                addItemAndLore(Material.PAPER, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
+                break;
+            }
             case "Dragon Descent":{
                 addItemAndLore(Material.DRAGON_HEAD, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
                 break;
@@ -288,6 +292,10 @@ public class AdminMenu extends Menu {
             case "Coin Flip":
                 int coinFlipTimer = config.getInt("dealers." + internalName + ".timer", 30);
                 lore.add(text("admin.timer-lore", "value", coinFlipTimer));
+                break;
+            case "Rock Paper Scissors":
+                int rpsTimer = config.getInt("dealers." + internalName + ".timer", 30);
+                lore.add(text("admin.timer-lore", "value", rpsTimer));
                 break;
             case "Dragon Descent":
                 int defaultColumns = config.getInt("dealers." + internalName + ".default-columns", 7);
@@ -636,6 +644,28 @@ public class AdminMenu extends Menu {
             }
                 player.openInventory(rouletteAdminInventory.getInventory());
 
+                break;
+            }
+            case "Rock Paper Scissors":{
+                RockPaperScissorsMenu rpsAdminInventory = new RockPaperScissorsMenu(
+                    dealerId,
+                    player,
+                    text("rock-paper-scissors-settings.title", "dealer", Dealer.getInternalName(dealer)),
+                    (uuid) -> {
+
+                        // Cancel action: re-open the AdminInventory
+                        if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
+                            player.openInventory(adminInventory.getInventory());
+                        } else {
+                            AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
+                            player.openInventory(adminInventory.getInventory());
+                        }
+
+                    },
+                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer))
+            );
+                player.openInventory(rpsAdminInventory.getInventory());
                 break;
             }
             case "Baccarat":{
@@ -1825,6 +1855,7 @@ public class AdminMenu extends Menu {
             case "Mines" -> text("game-options.mines");
             case "Baccarat" -> text("game-options.baccarat");
             case "Coin Flip" -> text("game-options.coin-flip");
+            case "Rock Paper Scissors" -> text("game-options.rock-paper-scissors");
             case "Dragon Descent" -> text("game-options.dragon-descent");
             case "Test Game" -> text("game-options.test-game");
             default -> gameName;

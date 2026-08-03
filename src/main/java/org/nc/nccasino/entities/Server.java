@@ -249,6 +249,7 @@ public abstract class Server extends DealerInventory {
             case "Mines" -> plugin.getLocalization().text(player, "game-options.mines");
             case "Baccarat" -> plugin.getLocalization().text(player, "game-options.baccarat");
             case "Coin Flip" -> plugin.getLocalization().text(player, "game-options.coin-flip");
+            case "Rock Paper Scissors" -> plugin.getLocalization().text(player, "game-options.rock-paper-scissors");
             case "Dragon Descent" -> plugin.getLocalization().text(player, "game-options.dragon-descent");
             case "Test Game" -> plugin.getLocalization().text(player, "game-options.test-game");
             default -> gameType;

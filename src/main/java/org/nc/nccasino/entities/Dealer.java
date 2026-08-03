@@ -23,6 +23,7 @@ import org.nc.nccasino.components.AdminMenu;
 import org.nc.nccasino.games.Baccarat.BaccaratServer;
 import org.nc.nccasino.games.Blackjack.BlackjackInventory;
 import org.nc.nccasino.games.CoinFlip.CoinFlipServer;
+import org.nc.nccasino.games.RockPaperScissors.RockPaperScissorsServer;
 import org.nc.nccasino.games.DragonDescent.DragonServer;
 import org.nc.nccasino.games.Mines.MinesInventory;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
@@ -292,6 +293,11 @@ public class Dealer {
                 name = "Coin Flip Dealer";
                 defaultTimer = 3;
                 break;
+            case "Rock Paper Scissors":
+                inventory = new RockPaperScissorsServer(uniqueId, plugin, internalName);
+                name = "Rock Paper Scissors Dealer";
+                defaultTimer = 15;
+                break;
             case "Dragon Descent":
                 inventory = new DragonServer(uniqueId, plugin, internalName);
                 name = "Dragon Descent Dealer";
@@ -413,6 +419,11 @@ public class Dealer {
                 newName = "Coin Flip Dealer";
                 defaultTimer = 3;
                 break;
+            case "Rock Paper Scissors":
+                newInventory = new RockPaperScissorsServer(dealerId, plugin, internalName);
+                newName = "Rock Paper Scissors Dealer";
+                defaultTimer = 15;
+                break;
             case "Dragon Descent":
                 newInventory = new DragonServer(dealerId, plugin, internalName);
                 newName = "Dragon Descent Dealer";
@@ -504,6 +515,7 @@ public class Dealer {
             case "Mines" -> plugin.getLocalization().text(player, "game-options.mines");
             case "Baccarat" -> plugin.getLocalization().text(player, "game-options.baccarat");
             case "Coin Flip" -> plugin.getLocalization().text(player, "game-options.coin-flip");
+            case "Rock Paper Scissors" -> plugin.getLocalization().text(player, "game-options.rock-paper-scissors");
             case "Dragon Descent" -> plugin.getLocalization().text(player, "game-options.dragon-descent");
             case "Test Game" -> plugin.getLocalization().text(player, "game-options.test-game");
             default -> gameType;
@@ -555,6 +567,9 @@ public class Dealer {
                 break;            
             case "Coin Flip":
                 newInventory = new CoinFlipServer(dealerId, plugin, internalName);
+                break;
+            case "Rock Paper Scissors":
+                newInventory = new RockPaperScissorsServer(dealerId, plugin, internalName);
                 break;
             case "Dragon Descent":
                 newInventory = new DragonServer(dealerId, plugin, internalName);

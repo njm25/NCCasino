@@ -57,6 +57,7 @@ public abstract class Menu extends DealerInventory {
         BACCARAT,
         TEST_GAME,
         COIN_FLIP,
+        ROCK_PAPER_SCISSORS,
         DRAGON_DESCENT,
         
         // Default game settings
