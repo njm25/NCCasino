@@ -192,11 +192,29 @@ public class RockPaperScissorsMenu extends Menu {
         RpsMode next = current == RpsMode.PLAYER_VS_PLAYER ? RpsMode.PLAYER_VS_DEALER : RpsMode.PLAYER_VS_PLAYER;
         plugin.getConfig().set("dealers." + internalName + ".rps-mode", next.name());
         plugin.saveConfig();
-        plugin.reloadDealer(dealer);
+
+        // Swap in a fresh RockPaperScissorsServer so the running game
+        // re-reads the new mode. Any *other* player currently looking at
+        // the actual game inventory (or another admin's menu for this same
+        // dealer) is now pointed at a dead Server instance and needs to be
+        // kicked out -- but not through the blanket
+        // reloadDealer()/deleteAssociatedInventories() sweep, which would
+        // also close this settings menu out from under the admin who just
+        // clicked the toggle.
+        UUID dealerUuid = Dealer.getUniqueId(dealer);
+        if (dealerUuid != null) {
+            org.nc.nccasino.entities.DealerInventory.updateInventory(
+                dealerUuid,
+                new org.nc.nccasino.games.RockPaperScissors.RockPaperScissorsServer(dealerUuid, plugin, internalName)
+            );
+            closeStaleViewsExceptSelf(player, internalName, dealerUuid);
+        }
 
         if (SoundHelper.getSoundSafely("ui.button.click", player) != null) {
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
         }
+
+        addModeItem(internalName);
 
         String modeLabel = text(next == RpsMode.PLAYER_VS_DEALER
             ? "rock-paper-scissors-settings.mode-pvd"
@@ -218,9 +236,25 @@ public class RockPaperScissorsMenu extends Menu {
             case NONE:
                 break;
         }
+    }
 
-        plugin.deleteAssociatedInventories(dealer);
-        cleanup();
+    /**
+     * Closes every view left pointing at the now-replaced Server instance:
+     * anyone actually playing the game itself (always stale after the
+     * swap), and any other admin's menu for this same dealer (their
+     * displayed mode/settings are now stale too). Deliberately spares the
+     * given player's own currently-open inventory -- that's this settings
+     * menu, mid-click, and it already refreshes itself in place.
+     */
+    private void closeStaleViewsExceptSelf(Player self, String internalName, UUID dealerUuid) {
+        for (Player viewer : org.nc.nccasino.entities.Client.getOpenInventories(internalName)) {
+            viewer.closeInventory();
+        }
+        for (Player viewer : Menu.getOpenInventories(dealerUuid)) {
+            if (!viewer.getUniqueId().equals(self.getUniqueId())) {
+                viewer.closeInventory();
+            }
+        }
     }
 
     @EventHandler

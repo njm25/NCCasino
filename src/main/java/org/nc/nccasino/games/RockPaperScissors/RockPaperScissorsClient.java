@@ -39,8 +39,8 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     protected final Map<SlotOption, Integer> slotMapping = new HashMap<>();
 
     private static final int STATUS_SLOT = 13;
-    private static final int MY_REVEAL_SLOT = 21;
-    private static final int OPPONENT_REVEAL_SLOT = 23;
+    private static final int CHAIR_ONE_REVEAL_SLOT = 21;
+    private static final int CHAIR_TWO_REVEAL_SLOT = 23;
 
     protected Player chairOneOccupant;
     protected Player chairTwoOccupant;
@@ -157,7 +157,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
             server.removeClient(terminatedPlayerId);
             ((RockPaperScissorsServer) server).forfeitPlayer(terminatedPlayerId);
         } else if (action == TerminationAction.REFUND && gameActive) {
-            ((RockPaperScissorsServer) server).refundForShutdown();
+            ((RockPaperScissorsServer) server).refundForShutdown(terminatedPlayerId);
             server.removeClient(terminatedPlayerId);
         } else {
             if (action == TerminationAction.REFUND && !gameActive) {
@@ -194,7 +194,11 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     }
 
     private void handleChairTwo(){
-        if (mode == RpsMode.PLAYER_VS_DEALER) return;
+        if (mode == RpsMode.PLAYER_VS_DEALER) {
+            if (SoundHelper.getSoundSafely("entity.zombie.hurt", player) != null)
+                player.playSound(player.getLocation(), Sound.ENTITY_ZOMBIE_HURT, SoundCategory.MASTER, 1.0f, 1.0f);
+            return;
+        }
         if (chairOneOccupant != null && chairTwoOccupant == null){
             if (chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
                 denyAction(player, text("rock-paper-scissors.already-seated"));
@@ -620,39 +624,25 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         resetAfterRound();
     }
 
+    /**
+     * Reveal slots are anchored to the chairs themselves (chair 1's throw
+     * always lands next to chair 1's seat, chair 2's next to chair 2's),
+     * not to "me vs. opponent" -- a viewer-relative framing would put
+     * chair 2's own throw in the slot sitting next to chair 1's head for
+     * whoever's actually seated in chair 2, making it look swapped.
+     */
     private void handleReveal(Object[] data) {
         Throw chairOneThrow = (Throw) data[0];
         Throw chairTwoThrow = (Throw) data[1];
         int winner = (int) data[2];
 
-        boolean iAmChairOne = chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(player.getUniqueId());
-        boolean iAmChairTwo = chairTwoOccupant != null && chairTwoOccupant.getUniqueId().equals(player.getUniqueId());
-
-        Throw myThrow;
-        Throw opponentThrow;
-        boolean amIWinner;
-        if (iAmChairTwo && !iAmChairOne) {
-            myThrow = chairTwoThrow;
-            opponentThrow = chairOneThrow;
-            amIWinner = winner == 1;
-        } else {
-            // Chair 1 occupant, or a spectator: show chair 1 on "my" side.
-            myThrow = chairOneThrow;
-            opponentThrow = chairTwoThrow;
-            amIWinner = winner == 0;
-        }
-
         clearStatusIndicator();
-        startRevealAnimation(myThrow, opponentThrow, amIWinner, winner);
+        startRevealAnimation(chairOneThrow, chairTwoThrow, winner);
     }
 
     private void handleTieReveal(Object[] data) {
         Throw chairOneThrow = (Throw) data[0];
         Throw chairTwoThrow = (Throw) data[1];
-
-        boolean iAmChairTwo = chairTwoOccupant != null && chairTwoOccupant.getUniqueId().equals(player.getUniqueId());
-        Throw myThrow = iAmChairTwo ? chairTwoThrow : chairOneThrow;
-        Throw opponentThrow = iAmChairTwo ? chairOneThrow : chairTwoThrow;
 
         clearStatusIndicator();
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
@@ -666,7 +656,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
 
-        startTieRevealAnimation(myThrow, opponentThrow);
+        startTieRevealAnimation(chairOneThrow, chairTwoThrow);
     }
 
     /*
@@ -836,7 +826,12 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         addItemAndLore(Material.BLACK_STAINED_GLASS_PANE, 1, "", 40);
     }
 
+    /** PvE has no shared pot to show -- the payout is just your stake doubled or lost, so the chest stays hidden. */
     private void updatePotChest(){
+        if (mode == RpsMode.PLAYER_VS_DEALER) {
+            hidePotChest();
+            return;
+        }
         addItemAndLore(Material.CHEST, 1, text("rock-paper-scissors.pot"), 40, text("rock-paper-scissors.current", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, betAmount)));
     }
 
@@ -882,7 +877,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         };
     }
 
-    private void startRevealAnimation(Throw myThrow, Throw opponentThrow, boolean amIWinner, int winner) {
+    private void startRevealAnimation(Throw chairOneThrow, Throw chairTwoThrow, int winner) {
         if (revealTaskId != -1) return; // Prevent multiple animations from running
 
         new BukkitRunnable() {
@@ -901,15 +896,15 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                     if (SoundHelper.getSoundSafely("ui.toast.out", player) != null)
                         player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
 
-                    addItemAndLore(THROW_CYCLE[ticks % THROW_CYCLE.length], 1, "", MY_REVEAL_SLOT);
-                    addItemAndLore(THROW_CYCLE[(ticks + 1) % THROW_CYCLE.length], 1, "", OPPONENT_REVEAL_SLOT);
+                    addItemAndLore(THROW_CYCLE[ticks % THROW_CYCLE.length], 1, "", CHAIR_ONE_REVEAL_SLOT);
+                    addItemAndLore(THROW_CYCLE[(ticks + 1) % THROW_CYCLE.length], 1, "", CHAIR_TWO_REVEAL_SLOT);
                     ticks++;
                 } else {
                     revealTaskId = -1;
                     cancel();
 
-                    addItemAndLore(materialFor(myThrow), 1, throwLabel(myThrow), amIWinner ? ChatColor.GREEN : ChatColor.WHITE, MY_REVEAL_SLOT);
-                    addItemAndLore(materialFor(opponentThrow), 1, throwLabel(opponentThrow), !amIWinner ? ChatColor.GREEN : ChatColor.WHITE, OPPONENT_REVEAL_SLOT);
+                    addItemAndLore(materialFor(chairOneThrow), 1, throwLabel(chairOneThrow), winner == 0 ? ChatColor.GREEN : ChatColor.WHITE, CHAIR_ONE_REVEAL_SLOT);
+                    addItemAndLore(materialFor(chairTwoThrow), 1, throwLabel(chairTwoThrow), winner == 1 ? ChatColor.GREEN : ChatColor.WHITE, CHAIR_TWO_REVEAL_SLOT);
 
                     if (SoundHelper.getSoundSafely("block.note_block.chime", player) != null)
                         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 3f, 1.0f);
@@ -931,7 +926,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
      * the server resolves a tie on its own fixed delay (matching this
      * animation's total length) since there's no payout riding on it.
      */
-    private void startTieRevealAnimation(Throw myThrow, Throw opponentThrow) {
+    private void startTieRevealAnimation(Throw chairOneThrow, Throw chairTwoThrow) {
         if (revealTaskId != -1) return;
 
         new BukkitRunnable() {
@@ -950,15 +945,15 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                     if (SoundHelper.getSoundSafely("ui.toast.out", player) != null)
                         player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
 
-                    addItemAndLore(THROW_CYCLE[ticks % THROW_CYCLE.length], 1, "", MY_REVEAL_SLOT);
-                    addItemAndLore(THROW_CYCLE[(ticks + 1) % THROW_CYCLE.length], 1, "", OPPONENT_REVEAL_SLOT);
+                    addItemAndLore(THROW_CYCLE[ticks % THROW_CYCLE.length], 1, "", CHAIR_ONE_REVEAL_SLOT);
+                    addItemAndLore(THROW_CYCLE[(ticks + 1) % THROW_CYCLE.length], 1, "", CHAIR_TWO_REVEAL_SLOT);
                     ticks++;
                 } else {
                     revealTaskId = -1;
                     cancel();
 
-                    addItemAndLore(materialFor(myThrow), 1, throwLabel(myThrow), ChatColor.YELLOW, MY_REVEAL_SLOT);
-                    addItemAndLore(materialFor(opponentThrow), 1, throwLabel(opponentThrow), ChatColor.YELLOW, OPPONENT_REVEAL_SLOT);
+                    addItemAndLore(materialFor(chairOneThrow), 1, throwLabel(chairOneThrow), ChatColor.YELLOW, CHAIR_ONE_REVEAL_SLOT);
+                    addItemAndLore(materialFor(chairTwoThrow), 1, throwLabel(chairTwoThrow), ChatColor.YELLOW, CHAIR_TWO_REVEAL_SLOT);
 
                     if (SoundHelper.getSoundSafely("block.note_block.bass", player) != null)
                         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 3f, 1.0f);
