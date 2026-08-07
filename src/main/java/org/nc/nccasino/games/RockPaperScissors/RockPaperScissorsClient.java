@@ -39,8 +39,13 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     protected final Map<SlotOption, Integer> slotMapping = new HashMap<>();
 
     private static final int STATUS_SLOT = 13;
-    private static final int CHAIR_ONE_REVEAL_SLOT = 21;
-    private static final int CHAIR_TWO_REVEAL_SLOT = 23;
+    /** Vertical throw columns mirrored across the inventory's center column. */
+    private static final int[] CHAIR_ONE_THROW_SLOTS = { 12, 21, 30 };
+    private static final int[] CHAIR_TWO_THROW_SLOTS = { 14, 23, 32 };
+    private static final int PULSE_INTERVAL_TICKS = 6;
+    private static final int PULSE_PHASES = 7;
+    /** Keeps the complete reveal window at the server's existing 70 ticks. */
+    private static final int RESULT_HOLD_TICKS = 70 - ((PULSE_PHASES - 1) * PULSE_INTERVAL_TICKS);
 
     protected Player chairOneOccupant;
     protected Player chairTwoOccupant;
@@ -67,9 +72,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         slotMapping.put(SlotOption.HANDLE_CHAIR_2, 24);
         slotMapping.put(SlotOption.LEAVE, 36);
         slotMapping.put(SlotOption.HANDLE_SUBMIT_BET, 44);
-        slotMapping.put(SlotOption.CHOOSE_ROCK, 30);
-        slotMapping.put(SlotOption.CHOOSE_PAPER, 31);
-        slotMapping.put(SlotOption.CHOOSE_SCISSORS, 32);
+        setChoiceSlotMapping(CHAIR_ONE_THROW_SLOTS);
 
         addItemAndLore(Material.SPRUCE_DOOR, 1, text("rock-paper-scissors.leave"), slotMapping.get(SlotOption.LEAVE));
         populateGlassPattern();
@@ -734,20 +737,41 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     }
 
     private void showChoiceButtonsIfSeated() {
-        boolean seated = (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(player.getUniqueId()))
-            || (chairTwoOccupant != null && chairTwoOccupant.getUniqueId().equals(player.getUniqueId()));
+        boolean seatedInChairOne = chairOneOccupant != null
+            && chairOneOccupant.getUniqueId().equals(player.getUniqueId());
+        boolean seatedInChairTwo = chairTwoOccupant != null
+            && chairTwoOccupant.getUniqueId().equals(player.getUniqueId());
+        boolean seated = seatedInChairOne || seatedInChairTwo;
         if (!seated || myChoiceLocked) {
             return;
         }
+        // Each player chooses from the column immediately inside their own
+        // head. Chair 1 uses the left column; chair 2 sees the mirrored
+        // right column. The opposite column remains blank until the shared
+        // Rock-Paper-Scissors-SHOOT reveal begins.
+        setChoiceSlotMapping(seatedInChairTwo ? CHAIR_TWO_THROW_SLOTS : CHAIR_ONE_THROW_SLOTS);
         addItemAndLore(Material.COBBLESTONE, 1, text("rock-paper-scissors.choose-rock"), slotMapping.get(SlotOption.CHOOSE_ROCK), text("rock-paper-scissors.click-choose"));
         addItemAndLore(Material.PAPER, 1, text("rock-paper-scissors.choose-paper"), slotMapping.get(SlotOption.CHOOSE_PAPER), text("rock-paper-scissors.click-choose"));
         addItemAndLore(Material.SHEARS, 1, text("rock-paper-scissors.choose-scissors"), slotMapping.get(SlotOption.CHOOSE_SCISSORS), text("rock-paper-scissors.click-choose"));
     }
 
     private void clearChoiceButtons() {
-        addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, "", slotMapping.get(SlotOption.CHOOSE_ROCK));
-        addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, "", slotMapping.get(SlotOption.CHOOSE_PAPER));
-        addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, "", slotMapping.get(SlotOption.CHOOSE_SCISSORS));
+        clearThrowColumns();
+    }
+
+    private void setChoiceSlotMapping(int[] slots) {
+        slotMapping.put(SlotOption.CHOOSE_ROCK, slots[Throw.ROCK.ordinal()]);
+        slotMapping.put(SlotOption.CHOOSE_PAPER, slots[Throw.PAPER.ordinal()]);
+        slotMapping.put(SlotOption.CHOOSE_SCISSORS, slots[Throw.SCISSORS.ordinal()]);
+    }
+
+    private void clearThrowColumns() {
+        for (int slot : CHAIR_ONE_THROW_SLOTS) {
+            addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, "", slot);
+        }
+        for (int slot : CHAIR_TWO_THROW_SLOTS) {
+            addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, "", slot);
+        }
     }
 
     private void updateStatusIndicator() {
@@ -858,8 +882,6 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     }
 
     private int revealTaskId = -1;
-    private static final Material[] THROW_CYCLE = { Material.COBBLESTONE, Material.PAPER, Material.SHEARS };
-    private static final int REVEAL_CYCLE_TICKS = 8;
 
     private Material materialFor(Throw t) {
         return switch (t) {
@@ -878,46 +900,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     }
 
     private void startRevealAnimation(Throw chairOneThrow, Throw chairTwoThrow, int winner) {
-        if (revealTaskId != -1) return; // Prevent multiple animations from running
-
-        new BukkitRunnable() {
-            int ticks = 0;
-
-            @Override
-            public void run() {
-                if (inventory == null) {
-                    revealTaskId = -1;
-                    cancel();
-                    return;
-                }
-                if (ticks < REVEAL_CYCLE_TICKS) {
-                    if (SoundHelper.getSoundSafely("ui.toast.in", player) != null)
-                        player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
-                    if (SoundHelper.getSoundSafely("ui.toast.out", player) != null)
-                        player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
-
-                    addItemAndLore(THROW_CYCLE[ticks % THROW_CYCLE.length], 1, "", CHAIR_ONE_REVEAL_SLOT);
-                    addItemAndLore(THROW_CYCLE[(ticks + 1) % THROW_CYCLE.length], 1, "", CHAIR_TWO_REVEAL_SLOT);
-                    ticks++;
-                } else {
-                    revealTaskId = -1;
-                    cancel();
-
-                    addItemAndLore(materialFor(chairOneThrow), 1, throwLabel(chairOneThrow), winner == 0 ? ChatColor.GREEN : ChatColor.WHITE, CHAIR_ONE_REVEAL_SLOT);
-                    addItemAndLore(materialFor(chairTwoThrow), 1, throwLabel(chairTwoThrow), winner == 1 ? ChatColor.GREEN : ChatColor.WHITE, CHAIR_TWO_REVEAL_SLOT);
-
-                    if (SoundHelper.getSoundSafely("block.note_block.chime", player) != null)
-                        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 3f, 1.0f);
-
-                    new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            sendUpdateToServer("ANIMATION_FINISHED", winner);
-                        }
-                    }.runTaskLater(plugin, 30L);
-                }
-            }
-        }.runTaskTimer(plugin, 0L, 5L);
+        startThrowPulse(chairOneThrow, chairTwoThrow, winner, false);
     }
 
     /**
@@ -927,10 +910,22 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
      * animation's total length) since there's no payout riding on it.
      */
     private void startTieRevealAnimation(Throw chairOneThrow, Throw chairTwoThrow) {
+        startThrowPulse(chairOneThrow, chairTwoThrow, -1, true);
+    }
+
+    /**
+     * Performs the familiar spoken cadence:
+     * ROCK -> blank -> PAPER -> blank -> SCISSORS -> blank -> SHOOT.
+     *
+     * Both chair columns pulse in unison. Until SHOOT they show identical
+     * public cadence items, so neither player's locked choice is leaked.
+     * The final phase places each real throw in the row matching that throw.
+     */
+    private void startThrowPulse(Throw chairOneThrow, Throw chairTwoThrow, int winner, boolean tie) {
         if (revealTaskId != -1) return;
 
-        new BukkitRunnable() {
-            int ticks = 0;
+        BukkitRunnable pulse = new BukkitRunnable() {
+            private int phase = 0;
 
             @Override
             public void run() {
@@ -939,27 +934,90 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                     cancel();
                     return;
                 }
-                if (ticks < REVEAL_CYCLE_TICKS) {
-                    if (SoundHelper.getSoundSafely("ui.toast.in", player) != null)
-                        player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
-                    if (SoundHelper.getSoundSafely("ui.toast.out", player) != null)
-                        player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
 
-                    addItemAndLore(THROW_CYCLE[ticks % THROW_CYCLE.length], 1, "", CHAIR_ONE_REVEAL_SLOT);
-                    addItemAndLore(THROW_CYCLE[(ticks + 1) % THROW_CYCLE.length], 1, "", CHAIR_TWO_REVEAL_SLOT);
-                    ticks++;
-                } else {
-                    revealTaskId = -1;
-                    cancel();
+                clearThrowColumns();
+                switch (phase) {
+                    case 0 -> showCadenceThrow(Throw.ROCK);
+                    case 1, 3, 5 -> {
+                        // The empty beat between each spoken word is
+                        // intentionally represented by the background panes.
+                    }
+                    case 2 -> showCadenceThrow(Throw.PAPER);
+                    case 4 -> showCadenceThrow(Throw.SCISSORS);
+                    case 6 -> {
+                        showFinalThrows(chairOneThrow, chairTwoThrow, winner, tie);
+                        playShootSound();
+                        revealTaskId = -1;
+                        cancel();
 
-                    addItemAndLore(materialFor(chairOneThrow), 1, throwLabel(chairOneThrow), ChatColor.YELLOW, CHAIR_ONE_REVEAL_SLOT);
-                    addItemAndLore(materialFor(chairTwoThrow), 1, throwLabel(chairTwoThrow), ChatColor.YELLOW, CHAIR_TWO_REVEAL_SLOT);
-
-                    if (SoundHelper.getSoundSafely("block.note_block.bass", player) != null)
-                        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 3f, 1.0f);
+                        if (tie) {
+                            if (SoundHelper.getSoundSafely("block.note_block.bass", player) != null)
+                                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, SoundCategory.MASTER, 1.5f, 0.8f);
+                        } else {
+                            if (SoundHelper.getSoundSafely("block.note_block.chime", player) != null)
+                                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MASTER, 1.5f, 1.2f);
+                            Bukkit.getScheduler().runTaskLater(
+                                plugin,
+                                () -> sendUpdateToServer("ANIMATION_FINISHED", winner),
+                                RESULT_HOLD_TICKS
+                            );
+                        }
+                        return;
+                    }
+                    default -> {
+                        revealTaskId = -1;
+                        cancel();
+                        return;
+                    }
                 }
+                phase++;
             }
-        }.runTaskTimer(plugin, 0L, 5L);
+        };
+        pulse.runTaskTimer(plugin, 0L, PULSE_INTERVAL_TICKS);
+        revealTaskId = pulse.getTaskId();
+    }
+
+    private void showCadenceThrow(Throw cadenceThrow) {
+        int row = cadenceThrow.ordinal();
+        addItemAndLore(materialFor(cadenceThrow), 1, throwLabel(cadenceThrow), CHAIR_ONE_THROW_SLOTS[row]);
+        addItemAndLore(materialFor(cadenceThrow), 1, throwLabel(cadenceThrow), CHAIR_TWO_THROW_SLOTS[row]);
+
+        Sound sound = switch (cadenceThrow) {
+            case ROCK -> Sound.BLOCK_NOTE_BLOCK_BASEDRUM;
+            case PAPER -> Sound.BLOCK_NOTE_BLOCK_SNARE;
+            case SCISSORS -> Sound.BLOCK_NOTE_BLOCK_HAT;
+        };
+        float pitch = switch (cadenceThrow) {
+            case ROCK -> 0.8f;
+            case PAPER -> 1.0f;
+            case SCISSORS -> 1.2f;
+        };
+        player.playSound(player.getLocation(), sound, SoundCategory.MASTER, 1.25f, pitch);
+    }
+
+    private void showFinalThrows(Throw chairOneThrow, Throw chairTwoThrow, int winner, boolean tie) {
+        ChatColor chairOneColor = tie ? ChatColor.YELLOW : winner == 0 ? ChatColor.GREEN : ChatColor.WHITE;
+        ChatColor chairTwoColor = tie ? ChatColor.YELLOW : winner == 1 ? ChatColor.GREEN : ChatColor.WHITE;
+        addItemAndLore(
+            materialFor(chairOneThrow),
+            1,
+            throwLabel(chairOneThrow),
+            chairOneColor,
+            CHAIR_ONE_THROW_SLOTS[chairOneThrow.ordinal()]
+        );
+        addItemAndLore(
+            materialFor(chairTwoThrow),
+            1,
+            throwLabel(chairTwoThrow),
+            chairTwoColor,
+            CHAIR_TWO_THROW_SLOTS[chairTwoThrow.ordinal()]
+        );
+    }
+
+    private void playShootSound() {
+        if (SoundHelper.getSoundSafely("entity.firework_rocket.blast", player) != null) {
+            player.playSound(player.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_BLAST, SoundCategory.MASTER, 1.4f, 1.0f);
+        }
     }
 
     private String text(String key, Object... placeholders) {
