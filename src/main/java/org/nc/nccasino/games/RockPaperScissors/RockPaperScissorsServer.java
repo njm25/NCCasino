@@ -31,6 +31,8 @@ public class RockPaperScissorsServer extends Server {
 
     /** Stands in for a real player UUID in a match's {@code picks} when the opponent is the house. */
     private static final UUID DEALER_ID = new UUID(0L, 0L);
+    private static final long PRE_REVEAL_DELAY_TICKS = 10L;
+    private static final long REVEAL_WINDOW_TICKS = 70L;
 
     /** Resolved once at construction, like currencyMode -- changing it requires reloading this dealer. */
     private final RpsMode mode;
@@ -122,6 +124,7 @@ public class RockPaperScissorsServer extends Server {
         private Player chairTwoOccupant;
         private int betAmount;
         private boolean gameActive;
+        private boolean revealInProgress;
         private Integer committedWinner;
         private final Map<UUID, Throw> picks = new HashMap<>();
         private final Set<UUID> forfeited = new HashSet<>();
@@ -234,13 +237,14 @@ public class RockPaperScissorsServer extends Server {
         private void beginActiveRound(Object acceptPayload) {
             send("PLAYER_ACCEPT_BET", acceptPayload);
             gameActive = true;
+            revealInProgress = false;
             betAmount = betAmount * 2;
             picks.clear();
             startTimer();
         }
 
         private void handlePlayerChoose(Client client, Object data) {
-            if (!gameActive) return;
+            if (!gameActive || revealInProgress) return;
             if (!(data instanceof Throw chosen)) return;
 
             UUID chooserId = client.getPlayer().getUniqueId();
@@ -301,15 +305,23 @@ public class RockPaperScissorsServer extends Server {
             Throw one = picks.get(chairOneOccupant.getUniqueId());
             Throw two = picks.get(twoKey);
             if (one == null || two == null) return;
+            revealInProgress = true;
 
-            // Stop the pick-timer countdown for the ~70-tick reveal window
-            // regardless of outcome -- nothing to pick during the animation,
-            // and a fresh timer starts once a tie actually rethrows.
+            // Stop the pick timer as soon as both choices lock. Hold for a
+            // short anticipation beat before beginning the reveal cadence.
             if (countdownTaskId != -1) {
                 Bukkit.getScheduler().cancelTask(countdownTaskId);
                 countdownTaskId = -1;
             }
+            Bukkit.getScheduler().runTaskLater(
+                plugin,
+                () -> beginReveal(one, two),
+                PRE_REVEAL_DELAY_TICKS
+            );
+        }
 
+        private void beginReveal(Throw one, Throw two) {
+            if (!gameActive || !revealInProgress) return;
             if (one == two) {
                 send("TIE_REVEAL", new Object[]{one, two});
                 // Deliberately not resolved from a client callback the way
@@ -317,7 +329,7 @@ public class RockPaperScissorsServer extends Server {
                 // tie, so a single fixed delay (matching the client's
                 // cycle-then-settle animation length) is all that's needed
                 // before the same accepted round throws again.
-                Bukkit.getScheduler().runTaskLater(plugin, this::rethrow, 70L);
+                Bukkit.getScheduler().runTaskLater(plugin, this::rethrow, REVEAL_WINDOW_TICKS);
                 return;
             }
 
@@ -328,7 +340,11 @@ public class RockPaperScissorsServer extends Server {
             // Authoritative fallback, same safety net Coin Flip uses:
             // resolves the round even if every client disconnects before
             // its local reveal animation reports back.
-            Bukkit.getScheduler().runTaskLater(plugin, () -> resolveRound(committedWinner != null ? committedWinner : winner), 70L);
+            Bukkit.getScheduler().runTaskLater(
+                plugin,
+                () -> resolveRound(committedWinner != null ? committedWinner : winner),
+                REVEAL_WINDOW_TICKS
+            );
         }
 
         /**
@@ -340,6 +356,7 @@ public class RockPaperScissorsServer extends Server {
         private void rethrow() {
             if (!gameActive) return;
 
+            revealInProgress = false;
             picks.clear();
             send("RETHROW", null);
             timeLeft = plugin.getTimer(internalName);
@@ -361,6 +378,7 @@ public class RockPaperScissorsServer extends Server {
             Player payoutTwo = chairTwoOccupant;
             int payout = betAmount;
             gameActive = false;
+            revealInProgress = false;
             committedWinner = null;
             betAmount = 0;
             timeLeft = 0;
@@ -390,6 +408,7 @@ public class RockPaperScissorsServer extends Server {
             Player payoutTwo = chairTwoOccupant;
             int stake = betAmount / 2;
             gameActive = false;
+            revealInProgress = false;
             committedWinner = null;
             betAmount = 0;
             timeLeft = 0;
@@ -494,6 +513,7 @@ public class RockPaperScissorsServer extends Server {
             Player payoutOne = chairOneOccupant;
             Player payoutTwo = chairTwoOccupant;
             gameActive = false;
+            revealInProgress = false;
             committedWinner = null;
             betAmount = 0;
             timeLeft = 0;

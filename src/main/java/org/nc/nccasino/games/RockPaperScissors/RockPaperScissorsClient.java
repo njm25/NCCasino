@@ -42,10 +42,16 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     /** Vertical throw columns mirrored across the inventory's center column. */
     private static final int[] CHAIR_ONE_THROW_SLOTS = { 12, 21, 30 };
     private static final int[] CHAIR_TWO_THROW_SLOTS = { 14, 23, 32 };
-    private static final int PULSE_INTERVAL_TICKS = 6;
-    private static final int PULSE_PHASES = 7;
+    private static final int[] CHAIR_ONE_ORBIT_SLOTS = { 10, 11, 12, 21, 30, 29, 28, 19 };
+    private static final int[] CHAIR_TWO_ORBIT_SLOTS = { 14, 15, 16, 25, 34, 33, 32, 23 };
+    private static final int CADENCE_VISIBLE_TICKS = 10;
+    private static final int CADENCE_BLANK_TICKS = 2;
+    private static final int CADENCE_TO_SHOOT_TICKS =
+        3 * (CADENCE_VISIBLE_TICKS + CADENCE_BLANK_TICKS);
     /** Keeps the complete reveal window at the server's existing 70 ticks. */
-    private static final int RESULT_HOLD_TICKS = 70 - ((PULSE_PHASES - 1) * PULSE_INTERVAL_TICKS);
+    private static final int RESULT_HOLD_TICKS = 70 - CADENCE_TO_SHOOT_TICKS;
+    private static final long WINNER_ORBIT_INTERVAL_TICKS = 2L;
+    private static final float[] WINNER_ORBIT_DING_PITCHES = { 1.4f, 1.7f, 2.0f };
 
     protected Player chairOneOccupant;
     protected Player chairTwoOccupant;
@@ -589,6 +595,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
      * just fires once that animation's window has elapsed.
      */
     private void handleRethrow() {
+        stopWinnerOrbit();
         myChoiceLocked = false;
         opponentLockedIn = false;
         populateGlassPattern();
@@ -860,6 +867,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     }
 
     private void resetAfterRound() {
+        stopWinnerOrbit();
         gameActive = false;
         myChoiceLocked = false;
         opponentLockedIn = false;
@@ -882,6 +890,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     }
 
     private int revealTaskId = -1;
+    private int winnerOrbitTaskId = -1;
 
     private Material materialFor(Throw t) {
         return switch (t) {
@@ -926,6 +935,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
 
         BukkitRunnable pulse = new BukkitRunnable() {
             private int phase = 0;
+            private int ticksUntilNextPhase = 0;
 
             @Override
             public void run() {
@@ -934,19 +944,37 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                     cancel();
                     return;
                 }
+                if (ticksUntilNextPhase > 0) {
+                    ticksUntilNextPhase--;
+                    return;
+                }
 
                 clearThrowColumns();
                 switch (phase) {
-                    case 0 -> showCadenceThrow(Throw.ROCK);
+                    case 0 -> {
+                        showCadenceThrow(Throw.ROCK);
+                        ticksUntilNextPhase = CADENCE_VISIBLE_TICKS - 1;
+                    }
                     case 1, 3, 5 -> {
                         // The empty beat between each spoken word is
                         // intentionally represented by the background panes.
+                        ticksUntilNextPhase = CADENCE_BLANK_TICKS - 1;
                     }
-                    case 2 -> showCadenceThrow(Throw.PAPER);
-                    case 4 -> showCadenceThrow(Throw.SCISSORS);
+                    case 2 -> {
+                        showCadenceThrow(Throw.PAPER);
+                        ticksUntilNextPhase = CADENCE_VISIBLE_TICKS - 1;
+                    }
+                    case 4 -> {
+                        showCadenceThrow(Throw.SCISSORS);
+                        ticksUntilNextPhase = CADENCE_VISIBLE_TICKS - 1;
+                    }
                     case 6 -> {
                         showFinalThrows(chairOneThrow, chairTwoThrow, winner, tie);
                         playShootSound();
+                        if (!tie) {
+                            Throw winningThrow = winner == 0 ? chairOneThrow : chairTwoThrow;
+                            startWinnerOrbit(winner, winningThrow);
+                        }
                         revealTaskId = -1;
                         cancel();
 
@@ -954,8 +982,13 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                             if (SoundHelper.getSoundSafely("block.note_block.bass", player) != null)
                                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, SoundCategory.MASTER, 1.5f, 0.8f);
                         } else {
-                            if (SoundHelper.getSoundSafely("block.note_block.chime", player) != null)
-                                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MASTER, 1.5f, 1.2f);
+                            if (isViewerWinner(winner)) {
+                                if (SoundHelper.getSoundSafely("block.note_block.chime", player) != null)
+                                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MASTER, 1.5f, 1.2f);
+                            } else {
+                                if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)
+                                    player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER, 1.0f, 1.0f);
+                            }
                             Bukkit.getScheduler().runTaskLater(
                                 plugin,
                                 () -> sendUpdateToServer("ANIMATION_FINISHED", winner),
@@ -973,7 +1006,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                 phase++;
             }
         };
-        pulse.runTaskTimer(plugin, 0L, PULSE_INTERVAL_TICKS);
+        pulse.runTaskTimer(plugin, 0L, 1L);
         revealTaskId = pulse.getTaskId();
     }
 
@@ -983,16 +1016,15 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         addItemAndLore(materialFor(cadenceThrow), 1, throwLabel(cadenceThrow), CHAIR_TWO_THROW_SLOTS[row]);
 
         Sound sound = switch (cadenceThrow) {
-            case ROCK -> Sound.BLOCK_NOTE_BLOCK_BASEDRUM;
-            case PAPER -> Sound.BLOCK_NOTE_BLOCK_SNARE;
-            case SCISSORS -> Sound.BLOCK_NOTE_BLOCK_HAT;
+            case ROCK -> Sound.BLOCK_STONE_PLACE;
+            case PAPER -> Sound.ITEM_BOOK_PAGE_TURN;
+            case SCISSORS -> Sound.ITEM_SHEARS_SNIP;
         };
         float pitch = switch (cadenceThrow) {
             case ROCK -> 0.8f;
-            case PAPER -> 1.0f;
-            case SCISSORS -> 1.2f;
+            case PAPER, SCISSORS -> 1.1f;
         };
-        player.playSound(player.getLocation(), sound, SoundCategory.MASTER, 1.25f, pitch);
+        player.playSound(player.getLocation(), sound, SoundCategory.MASTER, 1.0f, pitch);
     }
 
     private void showFinalThrows(Throw chairOneThrow, Throw chairTwoThrow, int winner, boolean tie) {
@@ -1012,6 +1044,89 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
             chairTwoColor,
             CHAIR_TWO_THROW_SLOTS[chairTwoThrow.ordinal()]
         );
+    }
+
+    private void startWinnerOrbit(int winner, Throw winningThrow) {
+        stopWinnerOrbit();
+        int[] orbitSlots = winner == 0 ? CHAIR_ONE_ORBIT_SLOTS : CHAIR_TWO_ORBIT_SLOTS;
+        int initialSlot = (winner == 0 ? CHAIR_ONE_THROW_SLOTS : CHAIR_TWO_THROW_SLOTS)
+            [winningThrow.ordinal()];
+        int initialIndex = orbitIndexOf(orbitSlots, initialSlot);
+        ItemStack cometItem = inventory.getItem(initialSlot);
+        if (initialIndex < 0 || cometItem == null) {
+            return;
+        }
+
+        boolean isWinner = isViewerWinner(winner);
+        renderWinnerOrbit(orbitSlots, initialIndex, cometItem);
+
+        int[] loserOrbitSlots = winner == 0 ? CHAIR_TWO_ORBIT_SLOTS : CHAIR_ONE_ORBIT_SLOTS;
+        for (int slot : loserOrbitSlots) {
+            addItemAndLore(Material.RED_STAINED_GLASS_PANE, 1, "", slot);
+        }
+
+        BukkitRunnable orbit = new BukkitRunnable() {
+            private int cometIndex = initialIndex;
+            private int dingStep = 0;
+
+            @Override
+            public void run() {
+                if (!gameActive) {
+                    stopWinnerOrbit();
+                    return;
+                }
+                cometIndex = (cometIndex + 1) % orbitSlots.length;
+                renderWinnerOrbit(orbitSlots, cometIndex, cometItem);
+                if (isWinner) {
+                    float pitch = WINNER_ORBIT_DING_PITCHES[dingStep];
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.MASTER, 1.0f, pitch);
+                    dingStep = (dingStep + 1) % WINNER_ORBIT_DING_PITCHES.length;
+                }
+            }
+        };
+        orbit.runTaskTimer(
+            plugin,
+            WINNER_ORBIT_INTERVAL_TICKS,
+            WINNER_ORBIT_INTERVAL_TICKS
+        );
+        winnerOrbitTaskId = orbit.getTaskId();
+    }
+
+    private boolean isViewerWinner(int winner) {
+        Player winningOccupant = winner == 0 ? chairOneOccupant : chairTwoOccupant;
+        return winningOccupant != null && winningOccupant.getUniqueId().equals(player.getUniqueId());
+    }
+
+    private int orbitIndexOf(int[] orbitSlots, int slot) {
+        for (int i = 0; i < orbitSlots.length; i++) {
+            if (orbitSlots[i] == slot) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private void renderWinnerOrbit(int[] orbitSlots, int cometIndex, ItemStack cometItem) {
+        for (int slot : orbitSlots) {
+            addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, "", slot);
+        }
+
+        setOrbitPane(orbitSlots, cometIndex - 3, Material.PINK_STAINED_GLASS_PANE);
+        setOrbitPane(orbitSlots, cometIndex - 2, Material.PURPLE_STAINED_GLASS_PANE);
+        setOrbitPane(orbitSlots, cometIndex - 1, Material.MAGENTA_STAINED_GLASS_PANE);
+        inventory.setItem(orbitSlots[cometIndex], cometItem.clone());
+    }
+
+    private void setOrbitPane(int[] orbitSlots, int index, Material material) {
+        int wrappedIndex = Math.floorMod(index, orbitSlots.length);
+        addItemAndLore(material, 1, "", orbitSlots[wrappedIndex]);
+    }
+
+    private void stopWinnerOrbit() {
+        if (winnerOrbitTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(winnerOrbitTaskId);
+            winnerOrbitTaskId = -1;
+        }
     }
 
     private void playShootSound() {
