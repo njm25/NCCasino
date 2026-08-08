@@ -53,6 +53,7 @@ permissions:
       nccasino.games.mines: true
       nccasino.games.baccarat: true
       nccasino.games.coinflip: true
+      nccasino.games.rockpaperscissors: true
       nccasino.games.dragon: true
 
   nccasino.games.blackjack:
@@ -73,6 +74,10 @@ permissions:
   
   nccasino.games.coinflip:
     description: Allows playing coinflip
+    default: true
+
+  nccasino.games.rockpaperscissors:
+    description: Allows playing rock paper scissors
     default: true
 
   nccasino.games.dragon:

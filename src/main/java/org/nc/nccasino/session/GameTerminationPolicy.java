@@ -112,4 +112,22 @@ public final class GameTerminationPolicy {
         }
         return RIDE_TO_RESULT;
     }
+
+    /**
+     * Covers the whole accepted-bet span, including the tie-rethrow loop:
+     * a rethrow never leaves {@code gameActive}, so the round rides to its
+     * result exactly like Coin Flip's single flip does.
+     */
+    public static TerminationAction rockPaperScissors(ExitReason reason, boolean gameActive) {
+        if (reason == ExitReason.GAME_COMPLETED) {
+            return NO_ACTION;
+        }
+        if (reason == ExitReason.KICKED) {
+            return FORFEIT;
+        }
+        if (!gameActive || reason == ExitReason.PLUGIN_DISABLE) {
+            return REFUND;
+        }
+        return RIDE_TO_RESULT;
+    }
 }

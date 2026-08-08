@@ -57,10 +57,14 @@ public abstract class Menu extends DealerInventory {
         BACCARAT,
         TEST_GAME,
         COIN_FLIP,
+        ROCK_PAPER_SCISSORS,
         DRAGON_DESCENT,
         
         // Default game settings
         EDIT_TIMER,
+
+        // Rock Paper Scissors settings menu
+        TOGGLE_RPS_MODE,
         
         // Mines settings menu
         EDIT_MINES,
