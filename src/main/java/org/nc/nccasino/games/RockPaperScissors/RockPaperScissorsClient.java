@@ -79,7 +79,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         slotMapping.put(SlotOption.HANDLE_CHAIR_2, 24);
         slotMapping.put(SlotOption.LEAVE, 36);
         slotMapping.put(SlotOption.HANDLE_SUBMIT_BET, 44);
-        slotMapping.put(SlotOption.TOGGLE_MODE, 31);
+        slotMapping.put(SlotOption.TOGGLE_MODE, 4);
         setChoiceSlotMapping(CHAIR_ONE_THROW_SLOTS);
 
         addItemAndLore(Material.SPRUCE_DOOR, 1, text("rock-paper-scissors.leave"), slotMapping.get(SlotOption.LEAVE));
@@ -958,11 +958,11 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     }
 
     /**
-     * Compass at slot 31, directly above the pot chest -- always visible,
+     * Compass at slot 4, top row middle column -- always visible,
      * regardless of seating, since switching modes is each viewer's own
      * personal choice. Re-rendered here (rather than only at construction)
-     * because populateGlassPattern repaints this same slot as plain
-     * background on every reset (new round, rethrow, mode switch).
+     * because populateGlassPattern repaints this same slot as a plain
+     * border pane on every reset (new round, rethrow, mode switch).
      */
     private void renderModeToggleButton() {
         RpsMode target = mode == RpsMode.PLAYER_VS_PLAYER ? RpsMode.PLAYER_VS_DEALER : RpsMode.PLAYER_VS_PLAYER;

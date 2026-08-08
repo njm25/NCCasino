@@ -91,8 +91,9 @@ public class RockPaperScissorsServer extends Server {
      * own current match is active -- leaving mid-round would either abandon
      * a live PvP opponent or orphan their own PvE round. Cleanly exits
      * whichever seat they're in via the same eviction/promotion path a
-     * normal chair-leave uses, then hands them a fresh snapshot of the
-     * table they just switched into.
+     * normal chair-leave uses, then -- if they were seated at all -- drops
+     * them straight into chair 1 of the table they just switched into,
+     * rather than making them click to sit down again.
      */
     private void handleToggleMode(Client client) {
         UUID playerId = client.getPlayer().getUniqueId();
@@ -101,6 +102,7 @@ public class RockPaperScissorsServer extends Server {
             client.onServerUpdate("TOGGLE_MODE_DENIED", null);
             return;
         }
+        boolean wasSeated = currentMatch.isSeated(playerId);
         forfeitPlayer(playerId);
 
         RpsMode next = viewFor(playerId) == RpsMode.PLAYER_VS_PLAYER
@@ -108,7 +110,12 @@ public class RockPaperScissorsServer extends Server {
             : RpsMode.PLAYER_VS_PLAYER;
         playerView.put(playerId, next);
         client.onServerUpdate("MODE_CHANGED", next);
-        matchFor(playerId).sendChairSnapshotTo(client);
+
+        RpsMatch newMatch = matchFor(playerId);
+        if (wasSeated && newMatch.chairOneEmpty()) {
+            newMatch.handle(client, "PLAYER_SIT_ONE", null);
+        }
+        newMatch.sendChairSnapshotTo(client);
     }
 
     /**
@@ -320,6 +327,16 @@ public class RockPaperScissorsServer extends Server {
                 opponentId != null && picks.containsKey(opponentId),
             };
             client.onServerUpdate("GET_CHAIRS", chairs);
+        }
+
+        /** Whether playerId currently occupies either chair of this match. */
+        private boolean isSeated(UUID playerId) {
+            return (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(playerId))
+                || (chairTwoOccupant != null && chairTwoOccupant.getUniqueId().equals(playerId));
+        }
+
+        private boolean chairOneEmpty() {
+            return chairOneOccupant == null;
         }
 
         /** Shared tail of both "player 2 accepted" and "the house auto-accepted" -- doubles the pot and opens the pick phase. */
