@@ -605,7 +605,15 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
             case NONE:
                 break;
         }
-        resetPlayerTwoUI();
+        // The rejection can arrive after this player was reseated into
+        // chair one in the same window (e.g. chair one left and this
+        // player's own chair-two occupancy got promoted) -- reset whichever
+        // seat's UI they're actually sitting in now, not always chair two's.
+        if (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(player.getUniqueId())) {
+            resetPlayerOneUI();
+        } else {
+            resetPlayerTwoUI();
+        }
     }
 
     private void updateTimerUI(int seconds) {
@@ -1047,7 +1055,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                             if (isViewerWinner(winner)) {
                                 if (SoundHelper.getSoundSafely("block.note_block.chime", player) != null)
                                     player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MASTER, 1.5f, 1.2f);
-                            } else {
+                            } else if (isViewerLoser(winner)) {
                                 // Hiss now, so it plays out over the
                                 // RESULT_HOLD_TICKS wait below -- the actual
                                 // bang (Server.applyLoseEffects' explode
@@ -1057,9 +1065,15 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                                 if (SoundHelper.getSoundSafely("entity.creeper.primed", player) != null)
                                     player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_PRIMED, SoundCategory.MASTER, 1.0f, 1.0f);
                             }
+                            // Captured now, not read from the field inside
+                            // the lambda -- a REVEAL for a newer round can
+                            // legitimately overwrite pendingRoundToken
+                            // before this delayed send fires, which would
+                            // otherwise echo the wrong round's token back.
+                            int tokenAtSchedule = pendingRoundToken;
                             Bukkit.getScheduler().runTaskLater(
                                 plugin,
-                                () -> sendUpdateToServer("ANIMATION_FINISHED", new Object[]{winner, pendingRoundToken}),
+                                () -> sendUpdateToServer("ANIMATION_FINISHED", new Object[]{winner, tokenAtSchedule}),
                                 RESULT_HOLD_TICKS
                             );
                         }
@@ -1170,6 +1184,11 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     private boolean isViewerWinner(int winner) {
         Player winningOccupant = winner == 0 ? chairOneOccupant : chairTwoOccupant;
         return winningOccupant != null && winningOccupant.getUniqueId().equals(player.getUniqueId());
+    }
+
+    private boolean isViewerLoser(int winner) {
+        Player losingOccupant = winner == 0 ? chairTwoOccupant : chairOneOccupant;
+        return losingOccupant != null && losingOccupant.getUniqueId().equals(player.getUniqueId());
     }
 
     private int orbitIndexOf(int[] orbitSlots, int slot) {

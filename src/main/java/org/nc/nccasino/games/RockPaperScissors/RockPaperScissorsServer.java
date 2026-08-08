@@ -9,10 +9,12 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
+import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.payout.PayoutMessages;
 import org.nc.nccasino.payout.PendingPayout;
 import org.nc.nccasino.session.ExitReason;
@@ -95,8 +97,8 @@ public class RockPaperScissorsServer extends Server {
     void cleanupIdleMatch(UUID playerId) {
         if (mode != RpsMode.PLAYER_VS_DEALER) return;
         RpsMatch match = pveMatches.get(playerId);
-        if (match != null && !match.gameActive) {
-            pveMatches.remove(playerId);
+        if (match != null && !match.gameActive && !hasClient(playerId)) {
+            pveMatches.remove(playerId, match);
         }
     }
 
@@ -440,6 +442,7 @@ public class RockPaperScissorsServer extends Server {
             }
             forfeited.clear();
             reseatDisconnectedOccupants();
+            cleanupPrivateMatchIfAbandoned();
         }
 
         /**
@@ -473,6 +476,7 @@ public class RockPaperScissorsServer extends Server {
             }
             forfeited.clear();
             reseatDisconnectedOccupants();
+            cleanupPrivateMatchIfAbandoned();
         }
 
         private void refundStakeIfDue(Player seatedPlayer, int stake) {
@@ -592,6 +596,13 @@ public class RockPaperScissorsServer extends Server {
                 clearRidingSession(payoutTwo.getUniqueId());
             }
             forfeited.clear();
+            cleanupPrivateMatchIfAbandoned();
+        }
+
+        private void cleanupPrivateMatchIfAbandoned() {
+            if (owningPlayerId != null) {
+                cleanupIdleMatch(owningPlayerId);
+            }
         }
 
         /**
@@ -686,10 +697,23 @@ public class RockPaperScissorsServer extends Server {
                 timeLeft--;
 
                 if (timeLeft <= 3) {
-                    playCountdownSound();
+                    playCountdownSoundForMatch();
                 }
 
             }, 0L, 20L); // Run every second
+        }
+
+        private void playCountdownSoundForMatch() {
+            if (!isPve()) {
+                RockPaperScissorsServer.this.playCountdownSound();
+                return;
+            }
+
+            Client owner = clients.get(owningPlayerId);
+            Player ownerPlayer = owner != null ? owner.getPlayer() : null;
+            if (ownerPlayer != null && SoundHelper.getSoundSafely("block.note_block.hat", ownerPlayer) != null) {
+                ownerPlayer.playSound(ownerPlayer.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.0f);
+            }
         }
 
         /**
