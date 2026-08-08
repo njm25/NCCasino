@@ -83,6 +83,23 @@ public class RockPaperScissorsServer extends Server {
         matchFor(playerId).registerRidingSession(playerId);
     }
 
+    /**
+     * Frees a PvE player's private match once it's fully idle -- no-op in
+     * PvP (the shared table isn't per-player and must never be removed) and
+     * a no-op if the match is still riding out an active round, since that
+     * round's own resolution path (resolveRound/refundForShutdown) is what
+     * eventually leaves it idle. Without this, {@link #pveMatches} grows by
+     * one permanent entry per unique player who ever interacts with this
+     * dealer, mirroring the eviction Mines does per-player via removeTable.
+     */
+    void cleanupIdleMatch(UUID playerId) {
+        if (mode != RpsMode.PLAYER_VS_DEALER) return;
+        RpsMatch match = pveMatches.get(playerId);
+        if (match != null && !match.gameActive) {
+            pveMatches.remove(playerId);
+        }
+    }
+
     private void queuePendingPayout(UUID playerId, double amount) {
         queuePendingPayout(playerId, amount, PayoutMessages.disconnectedMidGameContext("Rock Paper Scissors"));
     }
@@ -119,6 +136,17 @@ public class RockPaperScissorsServer extends Server {
 
         private int countdownTaskId = -1;
         private int timeLeft = 0;
+
+        /**
+         * Bumped once per accepted bet (never on a tie's rethrow, which
+         * stays the same round). Deferred resolution callbacks -- the
+         * reveal's own fallback timer and the client's echoed
+         * ANIMATION_FINISHED -- capture this at schedule/broadcast time and
+         * compare it back before resolving, so a callback that outlives its
+         * round (e.g. a delayed packet arriving after a new round already
+         * started) becomes a safe no-op instead of resolving the wrong round.
+         */
+        private int roundToken = 0;
 
         private Player chairOneOccupant;
         private Player chairTwoOccupant;
@@ -184,7 +212,7 @@ public class RockPaperScissorsServer extends Server {
                     break;
                 case "PLAYER_SUBMIT_BET":
                     if (gameActive) return;
-                    if (chairOneOccupant != null) {
+                    if (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(client.getPlayer().getUniqueId())) {
                         if (betAmount == 0) {
                             betAmount = (int) data;
                             if (isPve()) {
@@ -202,16 +230,28 @@ public class RockPaperScissorsServer extends Server {
                     break;
                 case "PLAYER_ACCEPT_BET":
                     if (gameActive) return;
-                    if (chairTwoOccupant != null && betAmount != 0) {
+                    if (chairTwoOccupant != null && chairTwoOccupant.getUniqueId().equals(client.getPlayer().getUniqueId())
+                        && betAmount != 0) {
                         beginActiveRound(data);
+                    } else {
+                        // The accepting client already deducted the wager
+                        // locally before this arrived (e.g. chair one left
+                        // and chair two got promoted/cleared in the same
+                        // window) -- tell that client directly so it can
+                        // refund what it already took, instead of silently
+                        // dropping the accept and losing the player's currency.
+                        client.onServerUpdate("PLAYER_ACCEPT_REJECTED", null);
                     }
                     break;
                 case "PLAYER_CHOOSE":
                     handlePlayerChoose(client, data);
                     break;
                 case "ANIMATION_FINISHED":
-                    if (data instanceof Integer w) {
-                        resolveRound(committedWinner != null ? committedWinner : w);
+                    if (data instanceof Object[] arr && arr.length == 2
+                        && arr[0] instanceof Integer w && arr[1] instanceof Integer token) {
+                        if (token == roundToken) {
+                            resolveRound(committedWinner != null ? committedWinner : w);
+                        }
                     }
                     break;
                 case "GET_CHAIRS":
@@ -238,6 +278,7 @@ public class RockPaperScissorsServer extends Server {
             send("PLAYER_ACCEPT_BET", acceptPayload);
             gameActive = true;
             revealInProgress = false;
+            roundToken++;
             betAmount = betAmount * 2;
             picks.clear();
             startTimer();
@@ -336,13 +377,19 @@ public class RockPaperScissorsServer extends Server {
             int winner = one.beats(two) ? 0 : 1;
             committedWinner = winner;
 
-            send("REVEAL", new Object[]{one, two, winner});
+            int token = roundToken;
+            send("REVEAL", new Object[]{one, two, winner, token});
             // Authoritative fallback, same safety net Coin Flip uses:
             // resolves the round even if every client disconnects before
-            // its local reveal animation reports back.
+            // its local reveal animation reports back. Guarded by roundToken
+            // so a fallback scheduled for a since-superseded round can't fire.
             Bukkit.getScheduler().runTaskLater(
                 plugin,
-                () -> resolveRound(committedWinner != null ? committedWinner : winner),
+                () -> {
+                    if (token == roundToken) {
+                        resolveRound(committedWinner != null ? committedWinner : winner);
+                    }
+                },
                 REVEAL_WINDOW_TICKS
             );
         }
@@ -531,10 +578,10 @@ public class RockPaperScissorsServer extends Server {
                     );
                 }
             } else {
-                if (payoutOne != null && stake > 0) {
+                if (payoutOne != null && stake > 0 && !forfeited.contains(payoutOne.getUniqueId())) {
                     queuePendingPayout(payoutOne.getUniqueId(), stake, PayoutMessages.serverRestartRefundContext("Rock Paper Scissors"));
                 }
-                if (payoutTwo != null && stake > 0) {
+                if (payoutTwo != null && stake > 0 && !forfeited.contains(payoutTwo.getUniqueId())) {
                     queuePendingPayout(payoutTwo.getUniqueId(), stake, PayoutMessages.serverRestartRefundContext("Rock Paper Scissors"));
                 }
             }
@@ -661,9 +708,15 @@ public class RockPaperScissorsServer extends Server {
                 // player's own pick, so reaching the timeout here always
                 // means the player never chose -- forfeit to the house,
                 // same as a PvP player who lets the timer run out.
+                revealInProgress = true;
                 committedWinner = 1;
+                int pveToken = roundToken;
                 send("FORFEIT_TIMEOUT", 1);
-                Bukkit.getScheduler().runTaskLater(plugin, () -> resolveRound(committedWinner != null ? committedWinner : 1), 20L);
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (pveToken == roundToken) {
+                        resolveRound(committedWinner != null ? committedWinner : 1);
+                    }
+                }, 20L);
                 return;
             }
 
@@ -677,10 +730,21 @@ public class RockPaperScissorsServer extends Server {
                 return;
             }
 
+            // Block any pick that was still in flight when the timer hit
+            // zero -- otherwise a late arrival could pair up with the
+            // forfeiting side's pick, trigger its own tie/rethrow via
+            // evaluatePicks, and leave this forfeit's committedWinner stale
+            // for the fallback resolveRound scheduled below to wrongly act on.
+            revealInProgress = true;
             int winner = oneChose ? 0 : 1;
             committedWinner = winner;
+            int token = roundToken;
             send("FORFEIT_TIMEOUT", winner);
-            Bukkit.getScheduler().runTaskLater(plugin, () -> resolveRound(committedWinner != null ? committedWinner : winner), 20L);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (token == roundToken) {
+                    resolveRound(committedWinner != null ? committedWinner : winner);
+                }
+            }, 20L);
         }
 
         private Throw randomThrow() {

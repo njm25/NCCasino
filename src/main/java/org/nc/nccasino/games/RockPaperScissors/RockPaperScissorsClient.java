@@ -161,6 +161,17 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         }
         sessionResolved = true;
 
+        // Both the reveal cadence and the winner orbit are repeating tasks
+        // that only self-cancel via a broadcast round-trip -- once this
+        // client is removed below, no further broadcast can ever reach it,
+        // so they must be stopped explicitly here or they'd tick forever
+        // against a now-offline player.
+        stopWinnerOrbit();
+        if (revealTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(revealTaskId);
+            revealTaskId = -1;
+        }
+
         TerminationAction action = GameTerminationPolicy.rockPaperScissors(reason, gameActive);
         if (action == TerminationAction.FORFEIT) {
             server.removeClient(terminatedPlayerId);
@@ -185,6 +196,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
             }
             server.removeClient(terminatedPlayerId);
         }
+        ((RockPaperScissorsServer) server).cleanupIdleMatch(terminatedPlayerId);
     }
 
     private void handleChairOne(){
@@ -255,6 +267,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                 int amount = betAmount;
                 boolean betAccepted = handlePlayerTwoAccept(amount);
                 if (betAccepted){
+                    pendingAcceptAmount = amount;
                     sendUpdateToServer("PLAYER_ACCEPT_BET", betAccepted);
                 }
             }
@@ -311,6 +324,9 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                 break;
             case "PLAYER_ACCEPT_BET":
                 handleAcceptBet((Boolean) data);
+                break;
+            case "PLAYER_ACCEPT_REJECTED":
+                handleAcceptRejected();
                 break;
             case "UPDATE_TIMER":
                 updateTimerUI((int) data);
@@ -497,6 +513,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
 
     private void handleAcceptBet(Boolean accepted){
         if(accepted){
+            pendingAcceptAmount = 0;
             betAmount = betAmount * 2;
             gameActive = true;
             myChoiceLocked = false;
@@ -564,6 +581,31 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         betStack.push(wagerAmount);
         return true;
 
+    }
+
+    /**
+     * The server rejected an accept that already deducted this player's
+     * wager locally -- e.g. chair one left in the same window the accept
+     * was in flight. Refund what was taken and drop back to an idle chair
+     * two view rather than leaving the currency simply gone.
+     */
+    private void handleAcceptRejected() {
+        if (pendingAcceptAmount > 0) {
+            creditPlayer(player, pendingAcceptAmount);
+            pendingAcceptAmount = 0;
+        }
+        if (!betStack.isEmpty()) {
+            betStack.pop();
+        }
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case STANDARD:
+            case VERBOSE:
+                player.sendMessage(text("rock-paper-scissors.invalid-action"));
+                break;
+            case NONE:
+                break;
+        }
+        resetPlayerTwoUI();
     }
 
     private void updateTimerUI(int seconds) {
@@ -645,6 +687,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         Throw chairOneThrow = (Throw) data[0];
         Throw chairTwoThrow = (Throw) data[1];
         int winner = (int) data[2];
+        pendingRoundToken = (data.length > 3 && data[3] instanceof Integer) ? (int) data[3] : -1;
 
         clearStatusIndicator();
         startRevealAnimation(chairOneThrow, chairTwoThrow, winner);
@@ -891,6 +934,10 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
 
     private int revealTaskId = -1;
     private int winnerOrbitTaskId = -1;
+    /** Echoed back with ANIMATION_FINISHED so the server can ignore a callback for a since-superseded round. */
+    private int pendingRoundToken = -1;
+    /** Wager already deducted locally for an in-flight PLAYER_ACCEPT_BET, refunded if the server rejects it. */
+    private int pendingAcceptAmount = 0;
 
     private Material materialFor(Throw t) {
         return switch (t) {
@@ -939,11 +986,6 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
 
             @Override
             public void run() {
-                if (inventory == null) {
-                    revealTaskId = -1;
-                    cancel();
-                    return;
-                }
                 if (ticksUntilNextPhase > 0) {
                     ticksUntilNextPhase--;
                     return;
@@ -991,7 +1033,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                             }
                             Bukkit.getScheduler().runTaskLater(
                                 plugin,
-                                () -> sendUpdateToServer("ANIMATION_FINISHED", winner),
+                                () -> sendUpdateToServer("ANIMATION_FINISHED", new Object[]{winner, pendingRoundToken}),
                                 RESULT_HOLD_TICKS
                             );
                         }

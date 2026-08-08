@@ -739,6 +739,9 @@ public class MobSelectionMenu extends Menu {
                 settings.put("default-vines", config.getInt(basePath + "default-vines", 5));
                 settings.put("default-floors", config.getInt(basePath + "default-floors", 4));
             }
+            case "Rock Paper Scissors" -> {
+                settings.put("rps-mode", config.getString(basePath + "rps-mode", "PLAYER_VS_PLAYER"));
+            }
         }
         return settings;
     }
