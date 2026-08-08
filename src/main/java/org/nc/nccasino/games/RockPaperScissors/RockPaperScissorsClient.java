@@ -840,12 +840,13 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, "", STATUS_SLOT);
     }
 
+    private static final int[] BACKGROUND_LIME_SLOTS =
+        {10, 11, 12, 13, 14, 15, 16, 19, 21, 22, 23, 25, 28, 29, 30, 31, 32, 33, 34};
+
     private void populateGlassPattern() {
         Material blackPane = Material.BLACK_STAINED_GLASS_PANE;
         Material limePane = Material.LIME_STAINED_GLASS_PANE;
         String paneName = "";
-
-        int[] limeSlots = {10, 11, 12, 13, 14, 15, 16, 19, 21, 22, 23, 25, 28, 29, 30, 31, 32, 33, 34};
 
         int[] blackSlots = new int[]{
             0, 1, 2, 3, 4, 5, 6, 7, 8,
@@ -860,8 +861,24 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
             addItemAndLore(blackPane, 1, paneName, slot);
         }
 
-        for (int slot : limeSlots) {
+        for (int slot : BACKGROUND_LIME_SLOTS) {
             addItemAndLore(limePane, 1, paneName, slot);
+        }
+    }
+
+    /**
+     * Recolors the ambient background from lime to light blue as the "tie"
+     * cue for the rethrow window. Skips only the two slots showFinalThrows
+     * just placed the tied items in -- the other four throw-column slots
+     * are still plain background panes (their own throw wasn't picked) and
+     * should tint like the rest of the board.
+     */
+    private void tintBackgroundForTie(Throw chairOneThrow, Throw chairTwoThrow) {
+        int usedSlotOne = CHAIR_ONE_THROW_SLOTS[chairOneThrow.ordinal()];
+        int usedSlotTwo = CHAIR_TWO_THROW_SLOTS[chairTwoThrow.ordinal()];
+        for (int slot : BACKGROUND_LIME_SLOTS) {
+            if (slot == usedSlotOne || slot == usedSlotTwo) continue;
+            addItemAndLore(Material.LIGHT_BLUE_STAINED_GLASS_PANE, 1, "", slot);
         }
     }
 
@@ -1013,9 +1030,12 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                     case 6 -> {
                         showFinalThrows(chairOneThrow, chairTwoThrow, winner, tie);
                         playShootSound();
-                        if (!tie) {
+                        if (tie) {
+                            tintBackgroundForTie(chairOneThrow, chairTwoThrow);
+                        } else {
                             Throw winningThrow = winner == 0 ? chairOneThrow : chairTwoThrow;
-                            startWinnerOrbit(winner, winningThrow);
+                            Throw losingThrow = winner == 0 ? chairTwoThrow : chairOneThrow;
+                            startWinnerOrbit(winner, winningThrow, losingThrow);
                         }
                         revealTaskId = -1;
                         cancel();
@@ -1028,8 +1048,14 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                                 if (SoundHelper.getSoundSafely("block.note_block.chime", player) != null)
                                     player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MASTER, 1.5f, 1.2f);
                             } else {
-                                if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)
-                                    player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER, 1.0f, 1.0f);
+                                // Hiss now, so it plays out over the
+                                // RESULT_HOLD_TICKS wait below -- the actual
+                                // bang (Server.applyLoseEffects' explode
+                                // sound) fires right as the loss message
+                                // lands in chat, once ANIMATION_FINISHED
+                                // resolves the round.
+                                if (SoundHelper.getSoundSafely("entity.creeper.primed", player) != null)
+                                    player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_PRIMED, SoundCategory.MASTER, 1.0f, 1.0f);
                             }
                             Bukkit.getScheduler().runTaskLater(
                                 plugin,
@@ -1088,7 +1114,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         );
     }
 
-    private void startWinnerOrbit(int winner, Throw winningThrow) {
+    private void startWinnerOrbit(int winner, Throw winningThrow, Throw losingThrow) {
         stopWinnerOrbit();
         int[] orbitSlots = winner == 0 ? CHAIR_ONE_ORBIT_SLOTS : CHAIR_TWO_ORBIT_SLOTS;
         int initialSlot = (winner == 0 ? CHAIR_ONE_THROW_SLOTS : CHAIR_TWO_THROW_SLOTS)
@@ -1102,8 +1128,15 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         boolean isWinner = isViewerWinner(winner);
         renderWinnerOrbit(orbitSlots, initialIndex, cometItem);
 
+        // Paint the loser's ring red, but leave the slot holding their own
+        // picked item alone -- it overlaps this ring (same slots double as
+        // both a throw column and an orbit position) and would otherwise
+        // get erased the instant the orbit starts.
         int[] loserOrbitSlots = winner == 0 ? CHAIR_TWO_ORBIT_SLOTS : CHAIR_ONE_ORBIT_SLOTS;
+        int loserThrowSlot = (winner == 0 ? CHAIR_TWO_THROW_SLOTS : CHAIR_ONE_THROW_SLOTS)
+            [losingThrow.ordinal()];
         for (int slot : loserOrbitSlots) {
+            if (slot == loserThrowSlot) continue;
             addItemAndLore(Material.RED_STAINED_GLASS_PANE, 1, "", slot);
         }
 
