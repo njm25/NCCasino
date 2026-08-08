@@ -163,6 +163,9 @@ rock-paper-scissors:
   forfeit-no-choice: "&cNo elegiste a tiempo y perdiste la ronda."
   round-voided: "&eNingún jugador eligió a tiempo. Apuestas reembolsadas."
   the-dealer: "&oEl Crupier"
+  mode-current: "&oModo actual: {mode}"
+  mode-switch: "&oCambiar a modo {mode}"
+  mode-switch-denied: "&cTermina esta ronda antes de cambiar de modo."
 
 baccarat:
   title: "Bacará"

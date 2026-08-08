@@ -163,6 +163,9 @@ rock-paper-scissors:
   forfeit-no-choice: "&cDu hast nicht rechtzeitig gewählt und die Runde verloren."
   round-voided: "&eKeiner der Spieler hat rechtzeitig gewählt. Einsätze wurden erstattet."
   the-dealer: "&oDer Dealer"
+  mode-current: "&oAktueller Modus: {mode}"
+  mode-switch: "&oModus wechseln zu {mode}"
+  mode-switch-denied: "&cBeende diese Runde, bevor du den Modus wechselst."
 
 baccarat:
   title: "Baccara"

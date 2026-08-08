@@ -163,6 +163,9 @@ rock-paper-scissors:
   forfeit-no-choice: "&cVous n’avez pas choisi à temps et avez perdu la manche."
   round-voided: "&eAucun joueur n’a choisi à temps. Paris remboursés."
   the-dealer: "&oLe Croupier"
+  mode-current: "&oMode actuel : {mode}"
+  mode-switch: "&oPasser en mode {mode}"
+  mode-switch-denied: "&cTerminez cette manche avant de changer de mode."
 
 baccarat:
   title: "Baccara"

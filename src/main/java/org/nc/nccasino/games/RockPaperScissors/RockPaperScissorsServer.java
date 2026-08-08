@@ -36,18 +36,26 @@ public class RockPaperScissorsServer extends Server {
     private static final long PRE_REVEAL_DELAY_TICKS = 10L;
     private static final long REVEAL_WINDOW_TICKS = 70L;
 
-    /** Resolved once at construction, like currencyMode -- changing it requires reloading this dealer. */
-    private final RpsMode mode;
-
-    /** PLAYER_VS_PLAYER only: the single shared table. Unused (never populated) in PLAYER_VS_DEALER. */
+    /**
+     * The single shared table -- always live, exactly like Coin Flip.
+     * Independent of any player's individually-chosen view below.
+     */
     private final RpsMatch sharedMatch = new RpsMatch(null);
 
-    /** PLAYER_VS_DEALER only: one private match per player, created on first interaction. */
+    /** One private match per player, created on first interaction, independent of the shared table. */
     private final Map<UUID, RpsMatch> pveMatches = new HashMap<>();
+
+    /**
+     * Each player's own currently-selected view of this dealer -- PvP (the
+     * shared table) or PvE (their own private match). Seeded lazily from
+     * the admin's configured default on first interaction, then mutable
+     * per player via the in-game toggle button, independent of every other
+     * player's choice.
+     */
+    private final Map<UUID, RpsMode> playerView = new HashMap<>();
 
     public RockPaperScissorsServer(UUID dealerId, Nccasino plugin, String internalName) {
         super(dealerId, plugin, internalName);
-        this.mode = plugin.getRockPaperScissorsMode(internalName);
     }
 
     @Override
@@ -58,14 +66,49 @@ public class RockPaperScissorsServer extends Server {
 
     @Override
     public void onClientUpdate(Client client, String eventType, Object data) {
+        if ("PLAYER_TOGGLE_MODE".equals(eventType)) {
+            handleToggleMode(client);
+            return;
+        }
         matchFor(client.getPlayer().getUniqueId()).handle(client, eventType, data);
     }
 
+    RpsMode viewFor(UUID playerId) {
+        return playerView.computeIfAbsent(playerId, id -> plugin.getRockPaperScissorsMode(internalName));
+    }
+
     private RpsMatch matchFor(UUID playerId) {
-        if (mode == RpsMode.PLAYER_VS_DEALER) {
+        if (viewFor(playerId) == RpsMode.PLAYER_VS_DEALER) {
             return pveMatches.computeIfAbsent(playerId, RpsMatch::new);
         }
         return sharedMatch;
+    }
+
+    /**
+     * Switches the requesting player's own personal view between the
+     * shared PvP table and their private PvE match, independent of every
+     * other player currently at this dealer. Blocked while the requester's
+     * own current match is active -- leaving mid-round would either abandon
+     * a live PvP opponent or orphan their own PvE round. Cleanly exits
+     * whichever seat they're in via the same eviction/promotion path a
+     * normal chair-leave uses, then hands them a fresh snapshot of the
+     * table they just switched into.
+     */
+    private void handleToggleMode(Client client) {
+        UUID playerId = client.getPlayer().getUniqueId();
+        RpsMatch currentMatch = matchFor(playerId);
+        if (currentMatch.gameActive) {
+            client.onServerUpdate("TOGGLE_MODE_DENIED", null);
+            return;
+        }
+        forfeitPlayer(playerId);
+
+        RpsMode next = viewFor(playerId) == RpsMode.PLAYER_VS_PLAYER
+            ? RpsMode.PLAYER_VS_DEALER
+            : RpsMode.PLAYER_VS_PLAYER;
+        playerView.put(playerId, next);
+        client.onServerUpdate("MODE_CHANGED", next);
+        matchFor(playerId).sendChairSnapshotTo(client);
     }
 
     /**
@@ -95,7 +138,6 @@ public class RockPaperScissorsServer extends Server {
      * dealer, mirroring the eviction Mines does per-player via removeTable.
      */
     void cleanupIdleMatch(UUID playerId) {
-        if (mode != RpsMode.PLAYER_VS_DEALER) return;
         RpsMatch match = pveMatches.get(playerId);
         if (match != null && !match.gameActive && !hasClient(playerId)) {
             pveMatches.remove(playerId, match);
@@ -257,22 +299,27 @@ public class RockPaperScissorsServer extends Server {
                     }
                     break;
                 case "GET_CHAIRS":
-                    UUID viewerId = client.getPlayer().getUniqueId();
-                    UUID opponentId = opponentOf(viewerId);
-                    Object[] chairs = {
-                        chairOneOccupant,
-                        chairTwoOccupant,
-                        betAmount,
-                        gameActive,
-                        timeLeft,
-                        picks.containsKey(viewerId),
-                        opponentId != null && picks.containsKey(opponentId),
-                    };
-                    client.onServerUpdate("GET_CHAIRS", chairs);
+                    sendChairSnapshotTo(client);
                     break;
                 default:
                     break;
             }
+        }
+
+        /** Pushes this match's current chairs/bet/round state to a single client -- shared by GET_CHAIRS and a just-completed mode switch. */
+        private void sendChairSnapshotTo(Client client) {
+            UUID viewerId = client.getPlayer().getUniqueId();
+            UUID opponentId = opponentOf(viewerId);
+            Object[] chairs = {
+                chairOneOccupant,
+                chairTwoOccupant,
+                betAmount,
+                gameActive,
+                timeLeft,
+                picks.containsKey(viewerId),
+                opponentId != null && picks.containsKey(opponentId),
+            };
+            client.onServerUpdate("GET_CHAIRS", chairs);
         }
 
         /** Shared tail of both "player 2 accepted" and "the house auto-accepted" -- doubles the pot and opens the pick phase. */

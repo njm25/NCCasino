@@ -163,6 +163,9 @@ rock-paper-scissors:
   forfeit-no-choice: "&cYou didn't choose in time and forfeited the round."
   round-voided: "&eNeither player chose in time. Bets refunded."
   the-dealer: "&oThe Dealer"
+  mode-current: "&oCurrent Mode: {mode}"
+  mode-switch: "&oSwitch mode to {mode}"
+  mode-switch-denied: "&cFinish this round before switching modes."
 
 baccarat:
   title: "Baccarat"

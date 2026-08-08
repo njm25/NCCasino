@@ -34,7 +34,8 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         CHOOSE_ROCK,
         CHOOSE_PAPER,
         CHOOSE_SCISSORS,
-        LEAVE
+        LEAVE,
+        TOGGLE_MODE
     }
     protected final Map<SlotOption, Integer> slotMapping = new HashMap<>();
 
@@ -63,8 +64,8 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     private boolean myChoiceLocked = false;
     private boolean opponentLockedIn = false;
     private boolean sessionResolved = false;
-    /** Resolved once at construction, same as the server -- reflects the config at the moment this GUI was opened. */
-    private final RpsMode mode;
+    /** Seeded from the config default at construction; mutable afterward via the in-game toggle button, independent of every other viewer of this dealer. */
+    private RpsMode mode;
 
     public RockPaperScissorsClient(Server server, Player player, Nccasino plugin, String internalName) {
         super(server, player, plugin.getLocalization().text(player, "rock-paper-scissors.title"), plugin, internalName);
@@ -78,6 +79,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         slotMapping.put(SlotOption.HANDLE_CHAIR_2, 24);
         slotMapping.put(SlotOption.LEAVE, 36);
         slotMapping.put(SlotOption.HANDLE_SUBMIT_BET, 44);
+        slotMapping.put(SlotOption.TOGGLE_MODE, 31);
         setChoiceSlotMapping(CHAIR_ONE_THROW_SLOTS);
 
         addItemAndLore(Material.SPRUCE_DOOR, 1, text("rock-paper-scissors.leave"), slotMapping.get(SlotOption.LEAVE));
@@ -123,6 +125,9 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                 break;
             case LEAVE:
                 player.closeInventory();
+                break;
+            case TOGGLE_MODE:
+                handleToggleModeClick();
                 break;
         }
     }
@@ -274,6 +279,75 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         }
     }
 
+    /**
+     * Visible any time the dealer is open, seated or not -- this is each
+     * viewer's own personal choice of which independent system (the shared
+     * PvP table, or their own private PvE match) they're currently looking
+     * at, so there's nothing to gate it on. Blocked only while a round of
+     * whichever match the player is currently in is active; the server
+     * enforces the same guard authoritatively via TOGGLE_MODE_DENIED.
+     */
+    private void handleToggleModeClick() {
+        if (gameActive) {
+            denyToggleMode();
+            return;
+        }
+        sendUpdateToServer("PLAYER_TOGGLE_MODE", null);
+    }
+
+    private void denyToggleMode() {
+        if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case STANDARD:
+            case VERBOSE:
+                player.sendMessage(text("rock-paper-scissors.mode-switch-denied"));
+                break;
+            case NONE:
+                break;
+        }
+    }
+
+    private void handleToggleModeDenied() {
+        denyToggleMode();
+    }
+
+    /**
+     * The server confirmed this player's own view switched -- resets local
+     * state to a clean idle slate for whichever system (shared PvP table or
+     * private PvE match) they just switched into. The follow-up GET_CHAIRS
+     * snapshot the server sends right after this fills in the new match's
+     * actual current chairs.
+     */
+    private void handleModeChanged(RpsMode newMode) {
+        stopWinnerOrbit();
+        if (revealTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(revealTaskId);
+            revealTaskId = -1;
+        }
+        this.mode = newMode;
+        chairOneOccupant = null;
+        chairTwoOccupant = null;
+        betAmount = 0;
+        betStack.clear();
+        gameActive = false;
+        myChoiceLocked = false;
+        opponentLockedIn = false;
+        populateGlassPattern();
+        replaceBottomRow();
+        hidePotChest();
+        clearStatusIndicator();
+        addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
+        if (newMode == RpsMode.PLAYER_VS_DEALER) {
+            renderDealerSeat();
+        } else {
+            addItemAndLore(Material.OAK_STAIRS, 1, text("rock-paper-scissors.seat-unavailable"), slotMapping.get(SlotOption.HANDLE_CHAIR_2), text("rock-paper-scissors.sit-other-chair"));
+        }
+        if (SoundHelper.getSoundSafely("ui.button.click", player) != null)
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
+        player.updateInventory();
+    }
+
     private void handleChoose(Throw choice) {
         if (!gameActive || myChoiceLocked) return;
         boolean seated = (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(player.getUniqueId()))
@@ -354,6 +428,12 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                 break;
             case "ANIMATION_FINISHED":
                 handleAnimationFinished();
+                break;
+            case "MODE_CHANGED":
+                handleModeChanged((RpsMode) data);
+                break;
+            case "TOGGLE_MODE_DENIED":
+                handleToggleModeDenied();
                 break;
             default:
                 break;
@@ -787,8 +867,9 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     /**
      * PLAYER_VS_DEALER only: chair 2 is never sittable, so it permanently
      * shows the house's seat instead of a "click here to sit" prompt.
-     * Nothing else ever writes to this slot in that mode, so this only
-     * needs to run once.
+     * Nothing else ever writes to this slot while in that mode -- called
+     * once at construction if that's the starting view, and again whenever
+     * the player switches into PvE via the in-game mode toggle.
      */
     private void renderDealerSeat() {
         addItemAndLore(Material.ZOMBIE_HEAD, 1, text("rock-paper-scissors.the-dealer"), slotMapping.get(SlotOption.HANDLE_CHAIR_2));
@@ -861,7 +942,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
             9, 17,
             18, 26,
             27, 35,
-            37, 38, 39, 40, 41, 42, 43,
+            37, 38, 39, 40, 41, 42, 43, 44,
             45, 46, 47, 48, 49, 50, 51, 52, 53
         };
 
@@ -872,6 +953,32 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         for (int slot : BACKGROUND_LIME_SLOTS) {
             addItemAndLore(limePane, 1, paneName, slot);
         }
+
+        renderModeToggleButton();
+    }
+
+    /**
+     * Compass at slot 31, directly above the pot chest -- always visible,
+     * regardless of seating, since switching modes is each viewer's own
+     * personal choice. Re-rendered here (rather than only at construction)
+     * because populateGlassPattern repaints this same slot as plain
+     * background on every reset (new round, rethrow, mode switch).
+     */
+    private void renderModeToggleButton() {
+        RpsMode target = mode == RpsMode.PLAYER_VS_PLAYER ? RpsMode.PLAYER_VS_DEALER : RpsMode.PLAYER_VS_PLAYER;
+        String currentLabel = text(mode == RpsMode.PLAYER_VS_DEALER
+            ? "rock-paper-scissors-settings.mode-pvd"
+            : "rock-paper-scissors-settings.mode-pvp");
+        String targetLabel = text(target == RpsMode.PLAYER_VS_DEALER
+            ? "rock-paper-scissors-settings.mode-pvd"
+            : "rock-paper-scissors-settings.mode-pvp");
+        addItemAndLore(
+            Material.COMPASS,
+            1,
+            text("rock-paper-scissors.mode-current", "mode", currentLabel),
+            slotMapping.get(SlotOption.TOGGLE_MODE),
+            text("rock-paper-scissors.mode-switch", "mode", targetLabel)
+        );
     }
 
     /**
