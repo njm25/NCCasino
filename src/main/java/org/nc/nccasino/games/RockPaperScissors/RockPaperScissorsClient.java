@@ -85,6 +85,8 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     private boolean sessionResolved = false;
     /** Seeded from the config default at construction; mutable afterward via the in-game toggle button, independent of every other viewer of this dealer. */
     private RpsMode mode;
+    /** Admin setting: whether the in-game toggle button renders/functions at all. Dealer-wide, re-read fresh on every new Client (see onSessionTerminated). */
+    private final boolean modeSwitchingEnabled;
 
     public RockPaperScissorsClient(Server server, Player player, Nccasino plugin, String internalName) {
         super(server, player, plugin.getLocalization().text(player, "rock-paper-scissors.title"), plugin, internalName);
@@ -99,6 +101,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         // renders/behaves as one mode while the server routes their actions
         // to the other.
         this.mode = ((RockPaperScissorsServer) server).viewFor(player.getUniqueId());
+        this.modeSwitchingEnabled = plugin.getRpsModeSwitchingEnabled(internalName);
 
         slotMapping.put(SlotOption.HANDLE_CHAIR_1, 20);
         slotMapping.put(SlotOption.HANDLE_CHAIR_2, 24);
@@ -236,11 +239,22 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                     sendUpdateToServer("PLAYER_LEAVE_TWO", null);
                 }
             }
-            // gameActive: let it ride -- the accepted round (including any
-            // tie-rethrow) resolves normally by UUID at payout time
-            // (delivered as a pending payout if still offline then).
+            // gameActive: keep the authoritative server result alive. PvP
+            // rides normally; PvE marks this as the terminal reveal so a
+            // tie or chain win cashes out rather than reopening without the
+            // owner (delivered as pending if still offline).
             if (gameActive) {
-                ((RockPaperScissorsServer) server).registerRidingSession(terminatedPlayerId);
+                RockPaperScissorsServer rpsServer = (RockPaperScissorsServer) server;
+                rpsServer.registerRidingSession(terminatedPlayerId);
+                if (mode == RpsMode.PLAYER_VS_DEALER) {
+                    // A PvE chain has no timer at its decision points, so a
+                    // plain "ride to result" can otherwise become permanent:
+                    // a tie or an uncapped win reopens a match with no client
+                    // attached. Cash out now if the server is already at a
+                    // safe checkpoint, or immediately after the committed
+                    // reveal finishes (win compounds first; loss still loses).
+                    rpsServer.requestPveExitSettlement(terminatedPlayerId);
+                }
             }
             server.removeClient(terminatedPlayerId);
         }
@@ -341,6 +355,11 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
      * TOGGLE_MODE_DENIED for every case this local check can't already rule out.
      */
     private void handleToggleModeClick() {
+        // The button itself isn't even rendered when this is disabled, but
+        // the slot can still be clicked (it's just a decorative pane) --
+        // silently no-op rather than sending a request the server would
+        // just deny anyway.
+        if (!modeSwitchingEnabled) return;
         boolean safeToAutoCashOut = mode == RpsMode.PLAYER_VS_DEALER && gameActive && !myChoiceLocked;
         if (gameActive && !safeToAutoCashOut) {
             denyToggleMode();
@@ -1064,8 +1083,14 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
      * personal choice. Re-rendered here (rather than only at construction)
      * because populateGlassPattern repaints this same slot as a plain
      * border pane on every reset (new round, rethrow, mode switch).
+     * Hidden entirely (left as the plain border pane) when the admin has
+     * disabled player mode switching for this dealer.
      */
     private void renderModeToggleButton() {
+        if (!modeSwitchingEnabled) {
+            addItemAndLore(Material.BLACK_STAINED_GLASS_PANE, 1, "", slotMapping.get(SlotOption.TOGGLE_MODE));
+            return;
+        }
         RpsMode target = mode == RpsMode.PLAYER_VS_PLAYER ? RpsMode.PLAYER_VS_DEALER : RpsMode.PLAYER_VS_PLAYER;
         String currentLabel = text(mode == RpsMode.PLAYER_VS_DEALER
             ? "rock-paper-scissors-settings.mode-pvd"

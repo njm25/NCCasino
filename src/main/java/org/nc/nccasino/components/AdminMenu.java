@@ -300,6 +300,11 @@ public class AdminMenu extends Menu {
                     ? "rock-paper-scissors-settings.mode-pvd"
                     : "rock-paper-scissors-settings.mode-pvp");
                 lore.add(text("admin.rps-mode-lore", "value", rpsModeLabel));
+                boolean rpsModeSwitching = plugin.getRpsModeSwitchingEnabled(internalName);
+                String rpsModeSwitchingLabel = text(rpsModeSwitching
+                    ? "rock-paper-scissors-settings.mode-switching-enabled"
+                    : "rock-paper-scissors-settings.mode-switching-disabled");
+                lore.add(text("admin.rps-mode-switching-lore", "value", rpsModeSwitchingLabel));
                 int rpsTimer = config.getInt("dealers." + internalName + ".timer", 30);
                 lore.add(text("admin.rps-timer-lore", "value", rpsTimer));
                 int rpsMaxChain = plugin.getRpsMaxChainRounds(internalName);

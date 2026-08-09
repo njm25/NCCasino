@@ -701,6 +701,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
         return (int) rounds;
     }
 
+    /** Whether players may use the in-game PvP/PvE toggle button at all. Defaults to enabled for every existing dealer. */
+    public boolean getRpsModeSwitchingEnabled(String internalName) {
+        return getConfig().getBoolean("dealers." + internalName + ".rps-mode-switching-enabled", true);
+    }
+
     /** Resolved once per game instance, mirroring getCurrencyMode: no cache, safe fallback for missing/invalid config. */
     public org.nc.nccasino.games.RockPaperScissors.RpsMode getRockPaperScissorsMode(String internalName) {
         String raw = getConfig().getString("dealers." + internalName + ".rps-mode", "PLAYER_VS_PLAYER");

@@ -114,6 +114,13 @@ public class RockPaperScissorsServer extends Server {
      * only version of this convenience that can never step on someone else.
      */
     private void handleToggleMode(Client client) {
+        if (!plugin.getRpsModeSwitchingEnabled(internalName)) {
+            // Authoritative -- the client is expected to hide its own
+            // toggle button when this is disabled, but a stale client
+            // (or one bypassing the UI entirely) must still be refused here.
+            client.onServerUpdate("TOGGLE_MODE_DENIED", null);
+            return;
+        }
         UUID playerId = client.getPlayer().getUniqueId();
         RpsMatch currentMatch = matchFor(playerId);
         if (currentMatch.gameActive) {
@@ -155,6 +162,15 @@ public class RockPaperScissorsServer extends Server {
 
     void registerRidingSession(UUID playerId) {
         matchFor(playerId).registerRidingSession(playerId);
+    }
+
+    /**
+     * Makes a disconnected/closed PvE match terminal without changing an
+     * already-committed reveal. Safe checkpoints cash out immediately;
+     * otherwise the reveal finishes and its result decides the settlement.
+     */
+    void requestPveExitSettlement(UUID playerId) {
+        matchFor(playerId).requestExitSettlement(playerId);
     }
 
     /**
@@ -233,6 +249,8 @@ public class RockPaperScissorsServer extends Server {
         private int chainWins;
         private boolean gameActive;
         private boolean revealInProgress;
+        /** PvE only: the owner left, so the current reveal is the final one. */
+        private boolean exitSettlementPending;
         private Integer committedWinner;
         private final Map<UUID, Throw> picks = new HashMap<>();
         private final Set<UUID> forfeited = new HashSet<>();
@@ -403,6 +421,7 @@ public class RockPaperScissorsServer extends Server {
             originalWager = betAmount;
             betAmount = isPve() ? betAmount : betAmount * 2;
             chainWins = 0;
+            exitSettlementPending = false;
             picks.clear();
             startTimer();
         }
@@ -536,6 +555,19 @@ public class RockPaperScissorsServer extends Server {
         private void rethrow() {
             if (!gameActive) return;
 
+            if (isPve() && RpsExitSettlementPolicy.afterReveal(
+                    RpsExitSettlementPolicy.Outcome.TIE,
+                    exitSettlementPending,
+                    false
+                ) == RpsExitSettlementPolicy.Action.CASH_OUT) {
+                // A tie does not change the chain pot. Once the owner has
+                // left, bank that existing amount instead of reopening an
+                // untimed rethrow with no client attached.
+                revealInProgress = false;
+                cashOut(owningPlayerId);
+                return;
+            }
+
             revealInProgress = false;
             picks.clear();
             send("RETHROW", null);
@@ -556,10 +588,30 @@ public class RockPaperScissorsServer extends Server {
          * still under the cap instead reopens the pick phase via advanceChain().
          */
         private void settleRound(int winner) {
+            if (!gameActive) return;
+
             if (isPve() && winner == 0) {
                 chainWins++;
-                betAmount = (int) Math.round(betAmount * CHAIN_MULTIPLIER);
-                if (!chainCapped()) {
+                // RPS wager units are ints end-to-end. Saturate instead of
+                // narrowing an oversized rounded long back into a negative
+                // value, which would make cash-out's payout > 0 guard erase
+                // an otherwise valid high-value chain.
+                betAmount = RpsPayoutMath.compound(betAmount, CHAIN_MULTIPLIER);
+                boolean cappedWin = chainCapped();
+                RpsExitSettlementPolicy.Action action = RpsExitSettlementPolicy.afterReveal(
+                    RpsExitSettlementPolicy.Outcome.WIN,
+                    exitSettlementPending,
+                    cappedWin
+                );
+                if (action == RpsExitSettlementPolicy.Action.CASH_OUT) {
+                    // The committed win still earns this round's multiplier,
+                    // but an owner who left must not be advanced into another
+                    // untimed decision point.
+                    revealInProgress = false;
+                    cashOut(owningPlayerId);
+                    return;
+                }
+                if (action == RpsExitSettlementPolicy.Action.CONTINUE) {
                     advanceChain();
                     return;
                 }
@@ -607,6 +659,14 @@ public class RockPaperScissorsServer extends Server {
             UUID playerId = client.getPlayer().getUniqueId();
             if (chairOneOccupant == null || !chairOneOccupant.getUniqueId().equals(playerId)) return;
 
+            cashOut(playerId);
+        }
+
+        /** Authoritative PvE cash-out shared by clicks, closes, and disconnect settlement. */
+        private void cashOut(UUID playerId) {
+            if (!isPve() || !gameActive) return;
+            if (chairOneOccupant == null || !chairOneOccupant.getUniqueId().equals(playerId)) return;
+
             send("ANIMATION_FINISHED", 0);
             int wager = originalWager;
             int payout = betAmount;
@@ -616,6 +676,7 @@ public class RockPaperScissorsServer extends Server {
             betAmount = 0;
             originalWager = 0;
             chainWins = 0;
+            exitSettlementPending = false;
             timeLeft = 0;
             countdownTaskId = -1;
             picks.clear();
@@ -634,6 +695,21 @@ public class RockPaperScissorsServer extends Server {
             forfeited.clear();
             reseatDisconnectedOccupants();
             cleanupPrivateMatchIfAbandoned();
+        }
+
+        /**
+         * Called after a voluntary close or true disconnect has claimed the
+         * client session. At a pick checkpoint there is no future timer, so
+         * settle immediately. During a reveal, leave the authoritative result
+         * untouched and let rethrow/settleRound finish it exactly once.
+         */
+        private void requestExitSettlement(UUID playerId) {
+            if (!isPve() || !gameActive || !owningPlayerId.equals(playerId)) return;
+
+            exitSettlementPending = true;
+            if (!revealInProgress) {
+                cashOut(playerId);
+            }
         }
 
         /**
@@ -661,6 +737,7 @@ public class RockPaperScissorsServer extends Server {
             betAmount = 0;
             originalWager = 0;
             chainWins = 0;
+            exitSettlementPending = false;
             timeLeft = 0;
             countdownTaskId = -1;
             picks.clear();
@@ -787,6 +864,12 @@ public class RockPaperScissorsServer extends Server {
                 if (loserPlayer != null && loserPlayer.isOnline()) {
                     sendPayoutMessage(loserPlayer, payout, false, wager);
                     applyLoseEffects(loserPlayer);
+                } else {
+                    // PendingPayout explicitly supports zero-value outcome
+                    // records. Persist the loss so an Alt+F4/network-drop
+                    // player still learns how the committed reveal ended on
+                    // their next join; no currency is deposited for amount 0.
+                    queuePendingPayout(loserId, 0);
                 }
             }
         }
@@ -817,6 +900,7 @@ public class RockPaperScissorsServer extends Server {
             betAmount = 0;
             originalWager = 0;
             chainWins = 0;
+            exitSettlementPending = false;
             timeLeft = 0;
             countdownTaskId = -1;
             picks.clear();
@@ -868,6 +952,16 @@ public class RockPaperScissorsServer extends Server {
             clearRidingSession(playerId);
             if (gameActive) {
                 forfeited.add(playerId);
+                if (isPve() && owningPlayerId.equals(playerId)) {
+                    // A kick still forfeits, but it must also make the private
+                    // no-timer match terminal. At a checkpoint discard it now;
+                    // during a reveal, the committed loss/win/tie finishes and
+                    // cashOut's forfeited guard prevents any award.
+                    exitSettlementPending = true;
+                    if (!revealInProgress) {
+                        cashOut(playerId);
+                    }
+                }
                 return;
             }
 

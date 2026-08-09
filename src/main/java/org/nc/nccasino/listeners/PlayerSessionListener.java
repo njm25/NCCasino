@@ -122,14 +122,22 @@ public class PlayerSessionListener implements Listener {
 
         for (PendingPayout payout : result.delivered()) {
             String context = localizedPayoutContext(player, payout.context());
-            player.sendMessage(plugin.getLocalization().text(
-                player,
-                "payout.delivered",
-                "context",
-                context,
-                "amount",
-                PayoutMessages.formatAmount(payout)
-            ));
+            if (payout.amount() <= 0) {
+                // A zero-value pending record is an outcome-only loss, not a
+                // $0 payout. Preserve the disconnect context and deliver the
+                // same localized loss result the live game would have sent.
+                player.sendMessage(context);
+                player.sendMessage(plugin.getLocalization().text(player, "payout.lost"));
+            } else {
+                player.sendMessage(plugin.getLocalization().text(
+                    player,
+                    "payout.delivered",
+                    "context",
+                    context,
+                    "amount",
+                    PayoutMessages.formatAmount(payout)
+                ));
+            }
         }
         if (!result.stillPending().isEmpty()) {
             int count = result.stillPending().size();

@@ -300,6 +300,10 @@ public class GameOptionsMenu extends Menu {
                             plugin.getConfig().set("dealers." + internalName + ".rps-max-chain-rounds", -1);
                         }
                     }
+
+                    if (!plugin.getConfig().contains("dealers." + internalName + ".rps-mode-switching-enabled")) {
+                        plugin.getConfig().set("dealers." + internalName + ".rps-mode-switching-enabled", true);
+                    }
                 }
 
                 this.delete();
