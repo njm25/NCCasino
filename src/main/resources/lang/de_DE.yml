@@ -77,6 +77,7 @@ payout:
   delivered: "&e{context}\n&aAuszahlung: {amount}"
   context-disconnected: "Du hast während eines laufenden {game}-Spiels die Verbindung getrennt. Das Spiel wurde beendet, während du offline warst."
   context-server-restart: "Der Server wurde neu gestartet, während deine {game}-Wette noch nicht entschieden war, daher wurde sie zurückerstattet."
+  context-committed-result: "Der Server wurde neu gestartet, nachdem das Ergebnis deines {game}-Spiels bereits feststand. Dein Ergebnis wurde beibehalten."
   retry-one: "&6Du hast 1 ausstehende Auszahlung, die noch nicht zugestellt werden konnte. Sie wird automatisch erneut versucht."
   retry-many: "&6Du hast {count} ausstehende Auszahlungen, die noch nicht zugestellt werden konnten. Sie werden automatisch erneut versucht."
 

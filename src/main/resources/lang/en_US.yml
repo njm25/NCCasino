@@ -77,6 +77,7 @@ payout:
   delivered: "&e{context}\n&aPayout: {amount}"
   context-disconnected: "You disconnected during an active {game} game. The game finished while you were offline."
   context-server-restart: "The server restarted while your {game} bet was still awaiting resolution, so it has been refunded."
+  context-committed-result: "The server restarted after your {game} result had already been determined. Your outcome was preserved."
   retry-one: "&6You have 1 pending payout that could not be delivered yet. It will retry automatically."
   retry-many: "&6You have {count} pending payouts that could not be delivered yet. They will retry automatically."
 

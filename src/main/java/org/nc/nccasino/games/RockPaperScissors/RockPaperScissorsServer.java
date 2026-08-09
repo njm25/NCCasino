@@ -906,13 +906,30 @@ public class RockPaperScissorsServer extends Server {
             picks.clear();
 
             if (winner != null) {
+                // settleRound() applies this round's chain multiplier before
+                // paying out a PvE win; a shutdown caught between committing
+                // the winner (beginReveal) and settleRound() running must
+                // apply that same multiplier itself, or the saved payout is
+                // short by 1.98x.
+                boolean pveWin = isPve() && winner == 0;
+                int winnerPayout = pveWin ? RpsPayoutMath.compound(payout, CHAIN_MULTIPLIER) : payout;
                 Player winningPlayer = winner == 0 ? payoutOne : payoutTwo;
-                if (winningPlayer != null && payout > 0
+                if (winningPlayer != null && winnerPayout > 0
                     && !forfeited.contains(winningPlayer.getUniqueId())) {
                     queuePendingPayout(
                         winningPlayer.getUniqueId(),
-                        payout,
-                        "The server restarted after your Rock Paper Scissors result was determined. Your payout was saved."
+                        winnerPayout,
+                        PayoutMessages.committedResultContext("Rock Paper Scissors")
+                    );
+                } else if (isPve() && winner == 1 && payoutOne != null
+                    && !forfeited.contains(payoutOne.getUniqueId())) {
+                    // PvE loss: there's no winning player to pay, but the
+                    // player still needs to learn the round's outcome on
+                    // next join, same as handlePayout()'s zero-value record.
+                    queuePendingPayout(
+                        payoutOne.getUniqueId(),
+                        0,
+                        PayoutMessages.committedResultContext("Rock Paper Scissors")
                     );
                 }
             } else {

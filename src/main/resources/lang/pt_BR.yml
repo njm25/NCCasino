@@ -77,6 +77,7 @@ payout:
   delivered: "&e{context}\n&aPagamento: {amount}"
   context-disconnected: "Você se desconectou durante uma partida ativa de {game}. A partida terminou enquanto você estava offline."
   context-server-restart: "O servidor reiniciou enquanto sua aposta de {game} ainda aguardava resolução, por isso ela foi reembolsada."
+  context-committed-result: "O servidor reiniciou depois que o resultado da sua partida de {game} já havia sido determinado. Seu resultado foi preservado."
   retry-one: "&6Você tem 1 pagamento pendente que ainda não pôde ser entregue. Ele será tentado novamente."
   retry-many: "&6Você tem {count} pagamentos pendentes que ainda não puderam ser entregues. Eles serão tentados novamente."
 
