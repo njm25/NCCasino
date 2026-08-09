@@ -92,7 +92,13 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         this.clickHereToSit = text("rock-paper-scissors.click-sit");
         this.chairOneOccupant = null;
         this.chairTwoOccupant = null;
-        this.mode = plugin.getRockPaperScissorsMode(internalName);
+        // Not the dealer's static config default -- a returning player who
+        // previously toggled away from it needs this fresh Client (closing
+        // the inventory always drops the old one, see onSessionTerminated)
+        // to agree with the server's own per-player view, or the client
+        // renders/behaves as one mode while the server routes their actions
+        // to the other.
+        this.mode = ((RockPaperScissorsServer) server).viewFor(player.getUniqueId());
 
         slotMapping.put(SlotOption.HANDLE_CHAIR_1, 20);
         slotMapping.put(SlotOption.HANDLE_CHAIR_2, 24);

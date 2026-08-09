@@ -407,10 +407,10 @@ public class RockPaperScissorsServer extends Server {
             startTimer();
         }
 
-        /** Whether one more chain win would meet/exceed the admin-configured cap. A cap <= 0 (the -1 default) means unbounded. */
+        /** Whether the just-applied win (chainWins already reflects it) has met/exceeded the admin-configured cap. A cap <= 0 (the -1 default) means unbounded. */
         private boolean chainCapped() {
             int cap = plugin.getRpsMaxChainRounds(internalName);
-            return cap > 0 && chainWins + 1 >= cap;
+            return cap > 0 && chainWins >= cap;
         }
 
         private void handlePlayerChoose(Client client, Object data) {
@@ -546,24 +546,32 @@ public class RockPaperScissorsServer extends Server {
         }
 
         /**
-         * Routes a decisive round's outcome: PvP, a PvE loss, or a PvE win
-         * that would meet/exceed the configured chain cap all resolve and
-         * pay out normally. A PvE win under the cap instead compounds the
-         * pot and reopens the pick phase via advanceChain().
+         * Routes a decisive round's outcome. A PvE win always compounds the
+         * pot at the fixed 1%-edge multiplier first -- including the win
+         * that meets the cap, otherwise that capping win would be paid out
+         * at the PREVIOUS win's pot instead of its own (a cap of 1 would
+         * pay back only the bare wager; a cap of 2 would pay 1.98x instead
+         * of 1.98^2x). PvP, a PvE loss, or a PvE win that (now) meets the
+         * cap all fall through to resolveRound() to pay out; a PvE win
+         * still under the cap instead reopens the pick phase via advanceChain().
          */
         private void settleRound(int winner) {
-            if (isPve() && winner == 0 && !chainCapped()) {
-                advanceChain();
-                return;
+            if (isPve() && winner == 0) {
+                chainWins++;
+                betAmount = (int) Math.round(betAmount * CHAIN_MULTIPLIER);
+                if (!chainCapped()) {
+                    advanceChain();
+                    return;
+                }
             }
             resolveRound(winner);
         }
 
         /**
-         * A PvE win under the chain cap: compounds the pot at the fixed
-         * 1%-edge multiplier, counts it toward the cap, and reopens the pick
-         * phase -- same shape as a tie's rethrow(), but the pot grows
-         * instead of staying flat.
+         * Reopens the pick phase after a PvE win under the chain cap --
+         * same shape as a tie's rethrow() (same accepted bet, no timer).
+         * Called only after settleRound() has already applied this win's
+         * multiplier and confirmed the cap isn't met.
          *
          * Unlike a tie, a decisive reveal always has two independent
          * completions racing for the same token: the client's own
@@ -580,8 +588,6 @@ public class RockPaperScissorsServer extends Server {
         private void advanceChain() {
             if (!gameActive) return;
 
-            chainWins++;
-            betAmount = (int) Math.round(betAmount * CHAIN_MULTIPLIER);
             revealInProgress = false;
             committedWinner = null;
             roundToken++;
