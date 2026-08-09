@@ -165,7 +165,13 @@ rock-paper-scissors:
   the-dealer: "&oEl Crupier"
   mode-current: "&oModo actual: {mode}"
   mode-switch: "&oCambiar a modo {mode}"
+  mode-switch-cashout-notice: "&eTe pagará &a{amount}"
   mode-switch-denied: "&cTermina esta ronda antes de cambiar de modo."
+  cash-out: "&oCobrar"
+  cash-out-lore: "&oClic para cobrar: &o&a{amount}"
+  chain-win: "&a¡Ganaste! Racha: {streak}. Cobra o vuelve a jugar por &e{amount}&a."
+  round-started: "&cRonda iniciada, ¡buena suerte!"
+  round-started-wager: "&7Apuesta: &a{amount}"
 
 baccarat:
   title: "Bacará"
@@ -607,6 +613,11 @@ rock-paper-scissors-settings:
   mode-pvp: "Jugador contra jugador"
   mode-pvd: "Jugador contra crupier"
   mode-updated: "&aModo del crupier actualizado."
+  edit-max-chain: "Editar Máximo de Rondas en Cadena"
+  prompt-max-chain: "&aEscribe el nuevo máximo de rondas en cadena en el chat (-1 para ilimitado)."
+  max-chain-updated: "&aMáximo de rondas en cadena del crupier actualizado."
+  max-chain-current: "&7Actual: {rounds}, pago de {multiplier}x al ganar"
+  max-chain-unbounded: "&7Actual: Ilimitado"
 
 roulette-settings:
   title: "Ajustes de Ruleta de {dealer}"
@@ -780,6 +791,7 @@ occupations:
   stand-on-17: "la probabilidad de plantarse en 17"
   default-mines: "el número predeterminado de minas"
   currency-item: "la selección del objeto de moneda"
+  rps-max-chain: "máximo de rondas en cadena de piedra, papel o tijera"
 
 commands:
   dealers-deleted: "&aSe eliminaron {count} crupieres."

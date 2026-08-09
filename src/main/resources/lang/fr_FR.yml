@@ -165,7 +165,13 @@ rock-paper-scissors:
   the-dealer: "&oLe Croupier"
   mode-current: "&oMode actuel : {mode}"
   mode-switch: "&oPasser en mode {mode}"
+  mode-switch-cashout-notice: "&eVous encaissera &a{amount}"
   mode-switch-denied: "&cTerminez cette manche avant de changer de mode."
+  cash-out: "&oEncaisser"
+  cash-out-lore: "&oCliquez pour encaisser : &o&a{amount}"
+  chain-win: "&aVous avez gagné ! Série : {streak}. Encaissez ou rejouez pour &e{amount}&a."
+  round-started: "&cManche commencée, bonne chance !"
+  round-started-wager: "&7Mise : &a{amount}"
 
 baccarat:
   title: "Baccara"
@@ -607,6 +613,11 @@ rock-paper-scissors-settings:
   mode-pvp: "Joueur contre joueur"
   mode-pvd: "Joueur contre croupier"
   mode-updated: "&aMode du croupier mis à jour."
+  edit-max-chain: "Modifier le Max. de Manches Enchaînées"
+  prompt-max-chain: "&aTapez le nouveau max. de manches enchaînées dans le chat (-1 pour illimité)."
+  max-chain-updated: "&aMax. de manches enchaînées du croupier mis à jour."
+  max-chain-current: "&7Actuel : {rounds}, paiement de {multiplier}x à la victoire"
+  max-chain-unbounded: "&7Actuel : Illimité"
 
 roulette-settings:
   title: "Paramètres de Roulette de {dealer}"
@@ -780,6 +791,7 @@ occupations:
   stand-on-17: "la probabilité de rester à 17"
   default-mines: "le nombre de mines par défaut"
   currency-item: "la sélection de l'objet monétaire"
+  rps-max-chain: "max. de manches enchaînées de pierre-papier-ciseaux"
 
 commands:
   dealers-deleted: "&a{count} croupiers supprimés."

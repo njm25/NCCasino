@@ -165,7 +165,13 @@ rock-paper-scissors:
   the-dealer: "&oThe Dealer"
   mode-current: "&oCurrent Mode: {mode}"
   mode-switch: "&oSwitch mode to {mode}"
+  mode-switch-cashout-notice: "&eWill cash you out at &a{amount}"
   mode-switch-denied: "&cFinish this round before switching modes."
+  cash-out: "&oCash Out"
+  cash-out-lore: "&oClick to cash out: &o&a{amount}"
+  chain-win: "&aYou won! Streak: {streak}. Cash out or throw again for &e{amount}&a."
+  round-started: "&cRound started, good luck!"
+  round-started-wager: "&7Wager: &a{amount}"
 
 baccarat:
   title: "Baccarat"
@@ -607,6 +613,11 @@ rock-paper-scissors-settings:
   mode-pvp: "Player vs Player"
   mode-pvd: "Player vs Dealer"
   mode-updated: "&aDealer mode updated."
+  edit-max-chain: "Edit Max Chain Rounds"
+  prompt-max-chain: "&aType the new max chain rounds in chat (-1 for unbounded)."
+  max-chain-updated: "&aDealer max chain rounds updated."
+  max-chain-current: "&7Current: {rounds}, {multiplier}x payout on win"
+  max-chain-unbounded: "&7Current: Unbounded"
 
 roulette-settings:
   title: "{dealer}'s Roulette Settings"
@@ -780,6 +791,7 @@ occupations:
   stand-on-17: "stand on 17 chance"
   default-mines: "default number of mines"
   currency-item: "currency item selection"
+  rps-max-chain: "rock paper scissors max chain rounds"
 
 commands:
   dealers-deleted: "&aDeleted {count} dealers."

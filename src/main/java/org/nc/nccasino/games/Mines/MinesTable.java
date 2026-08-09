@@ -394,12 +394,13 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     }
 
     private void updateCashOutLore(ItemStack cashOutButton) {
-        double payoutMultiplier = calculatePayoutMultiplier(safePicks);
         double totalBet = 0;
         for (double t : betStack) {
          totalBet += t;
         }
-        double potentialWinnings = totalBet * payoutMultiplier;
+        // Mirrors the safePicks==0 guard in closeCashOut/final-pick/disconnect
+        // payout paths -- no risk taken yet means no house edge applied.
+        double potentialWinnings = safePicks == 0 ? totalBet : totalBet * calculatePayoutMultiplier(safePicks);
         potentialWinnings = Math.round(potentialWinnings * 100.0) / 100.0;
 
         ItemMeta meta = cashOutButton.getItemMeta();

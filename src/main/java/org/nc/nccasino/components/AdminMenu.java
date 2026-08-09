@@ -83,6 +83,7 @@ public class AdminMenu extends Menu {
     private static final Map<UUID, Mob> currencyEditMode = new HashMap<>();
     public static final Map<UUID, Mob> decksEditMode = new HashMap<>();
     public static final Map<UUID, Mob> dragonEditMode = new HashMap<>();
+    public static final Map<UUID, Mob> editRpsChainMode = new HashMap<>();
 
     // All active AdminInventories by player ID
     public static final Map<UUID, AdminMenu> adminInventories = new HashMap<>();
@@ -321,6 +322,7 @@ public class AdminMenu extends Menu {
         return (mob != null)
             || (standOn17Mode.get(playerId) != null)
             || (editMinesMode.get(playerId) != null)
+            || (editRpsChainMode.get(playerId) != null)
             || (timerEditMode.get(playerId) != null)
             || (amsgEditMode.get(playerId) != null)
             || (moveMode.get(playerId) != null)
@@ -354,6 +356,9 @@ public class AdminMenu extends Menu {
         if (editMinesMode.get(playerId) != null) {
             occupations.add("occupations.default-mines");
         }
+        if (editRpsChainMode.get(playerId) != null) {
+            occupations.add("occupations.rps-max-chain");
+        }
         if (currencyEditMode.get(playerId) != null) {///////////might never get to this
             occupations.add("occupations.currency-item");
         }
@@ -374,6 +379,9 @@ public class AdminMenu extends Menu {
             mobs.add(mob);
         }
         if ((mob = editMinesMode.get(playerId)) != null) {
+            mobs.add(mob);
+        }
+        if ((mob = editRpsChainMode.get(playerId)) != null) {
             mobs.add(mob);
         }
         if ((mob = amsgEditMode.get(playerId)) != null) {
@@ -1696,6 +1704,7 @@ public class AdminMenu extends Menu {
         timerEditMode.remove(playerId);
         standOn17Mode.remove(playerId);
         editMinesMode.remove(playerId);
+        editRpsChainMode.remove(playerId);
         amsgEditMode.remove(playerId);
         chipEditMode.remove(playerId);
         currencyEditMode.remove(playerId);

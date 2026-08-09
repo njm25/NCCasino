@@ -42,6 +42,7 @@ public class RockPaperScissorsMenu extends Menu {
         slotMapping.put(SlotOption.RETURN, 0);
         slotMapping.put(SlotOption.EDIT_TIMER, 1);
         slotMapping.put(SlotOption.TOGGLE_RPS_MODE, 2);
+        slotMapping.put(SlotOption.EDIT_RPS_MAX_CHAIN, 3);
         initializeMenu();
     }
 
@@ -54,6 +55,7 @@ public class RockPaperScissorsMenu extends Menu {
         HandlerList.unregisterAll(this);
         RAInventories.remove(ownerId);
         AdminMenu.timerEditMode.remove(ownerId);
+        AdminMenu.editRpsChainMode.remove(ownerId);
         this.delete();
     }
 
@@ -74,8 +76,21 @@ public class RockPaperScissorsMenu extends Menu {
         : 10;
         addItemAndLore(Material.CLOCK, currentTimer, text("rock-paper-scissors-settings.edit-timer"), slotMapping.get(SlotOption.EDIT_TIMER), text("common.current", "value", currentTimer));
         addModeItem(internalName);
+        addMaxChainItem(internalName);
         addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, text("common.return-to", "menu", returnName), slotMapping.get(SlotOption.RETURN));
         addItemAndLore(Material.SPRUCE_DOOR, 1, text("common.exit"), slotMapping.get(SlotOption.EXIT));
+    }
+
+    private void addMaxChainItem(String internalName) {
+        int maxChain = plugin.getRpsMaxChainRounds(internalName);
+        String subtitle = maxChain <= 0
+            ? text("rock-paper-scissors-settings.max-chain-unbounded")
+            : text(
+                "rock-paper-scissors-settings.max-chain-current",
+                "rounds", maxChain,
+                "multiplier", String.format("%.2f", Math.pow(1.98, maxChain))
+            );
+        addItemAndLore(Material.IRON_INGOT, 1, text("rock-paper-scissors-settings.edit-max-chain"), slotMapping.get(SlotOption.EDIT_RPS_MAX_CHAIN), subtitle);
     }
 
     private void addModeItem(String internalName) {
@@ -93,7 +108,7 @@ public class RockPaperScissorsMenu extends Menu {
         UUID playerId = player.getUniqueId();
         if(event.getInventory().getHolder() instanceof RockPaperScissorsMenu){
             if (RAInventories.containsKey(playerId)) {
-                if (!AdminMenu.timerEditMode.containsKey(playerId)) {
+                if (!AdminMenu.timerEditMode.containsKey(playerId) && !AdminMenu.editRpsChainMode.containsKey(playerId)) {
                     RockPaperScissorsMenu inventory = RAInventories.remove(playerId);
 
                     if (inventory != null) {
@@ -136,6 +151,10 @@ public class RockPaperScissorsMenu extends Menu {
             case TOGGLE_RPS_MODE:
                 handleToggleMode(player);
                 break;
+            case EDIT_RPS_MAX_CHAIN:
+                handleEditMaxChain(player);
+                playDefaultSound(player);
+                break;
             default:
                 if(SoundHelper.getSoundSafely("entity.villager.no",player)!=null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f);
                 switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -166,6 +185,27 @@ public class RockPaperScissorsMenu extends Menu {
                 player.sendMessage(text("rock-paper-scissors-settings.prompt-timer"));
                 break;}
             case NONE:{
+                player.sendMessage(text("admin.prompt-new-value"));
+                break;
+            }
+        }
+    }
+
+    private void handleEditMaxChain(Player player) {
+        UUID playerId = player.getUniqueId();
+        AdminMenu.localMob.put(playerId, dealer);
+        AdminMenu.editRpsChainMode.put(playerId, dealer);
+        player.closeInventory();
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case STANDARD: {
+                player.sendMessage(text("rock-paper-scissors-settings.prompt-number"));
+                break;
+            }
+            case VERBOSE: {
+                player.sendMessage(text("rock-paper-scissors-settings.prompt-max-chain"));
+                break;
+            }
+            case NONE: {
                 player.sendMessage(text("admin.prompt-new-value"));
                 break;
             }
@@ -270,18 +310,25 @@ public class RockPaperScissorsMenu extends Menu {
         if (AdminMenu.timerEditMode.get(playerId) != null) {
             event.setCancelled(true);
             handleNumericInput(player, event.getMessage().trim(), "timer", 1, 10000);
+        } else if (AdminMenu.editRpsChainMode.get(playerId) != null) {
+            event.setCancelled(true);
+            handleNumericInput(player, event.getMessage().trim(), "rps-max-chain-rounds", -1, 9999);
         }
     }
 
     private void handleNumericInput(Player player, String input, String configPath, long min, long max) {
-        if (input.isEmpty() || !input.matches("\\d+")) {
+        // -1 is only a valid input for settings whose min allows it (the
+        // "unbounded" sentinel for max-chain-rounds) -- the timer's own
+        // min=1 call rejects it via the normal range check below.
+        boolean isUnboundedSentinel = min < 0 && input.equals("-1");
+        if (!isUnboundedSentinel && (input.isEmpty() || !input.matches("\\d+"))) {
             denyAction(player, text("blackjack-settings.valid-positive-integer"));
             return;
         }
 
         long value;
         try {
-            value = Long.parseLong(input);
+            value = isUnboundedSentinel ? -1L : Long.parseLong(input);
         } catch (NumberFormatException e) {
             denyAction(player, text("blackjack-settings.invalid-number-format"));
             return;
@@ -302,15 +349,19 @@ public class RockPaperScissorsMenu extends Menu {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER, 1.0f, 1.0f);
             }
 
+            String updatedKey = configPath.equals("rps-max-chain-rounds")
+                ? "rock-paper-scissors-settings.max-chain-updated"
+                : "rock-paper-scissors-settings.timer-updated";
+
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage(text("rock-paper-scissors-settings.timer-updated"));
+                    player.sendMessage(text(updatedKey));
                     break;
                 case VERBOSE:
                     player.sendMessage(text(
                         "blackjack-settings.updated-detailed",
                         "setting",
-                        text("rock-paper-scissors-settings.timer-updated"),
+                        text(updatedKey),
                         "value",
                         value
                     ));

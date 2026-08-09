@@ -165,7 +165,13 @@ rock-paper-scissors:
   the-dealer: "&oDer Dealer"
   mode-current: "&oAktueller Modus: {mode}"
   mode-switch: "&oModus wechseln zu {mode}"
+  mode-switch-cashout-notice: "&eZahlt dich aus: &a{amount}"
   mode-switch-denied: "&cBeende diese Runde, bevor du den Modus wechselst."
+  cash-out: "&oAuszahlen"
+  cash-out-lore: "&oKlicken zum Auszahlen: &o&a{amount}"
+  chain-win: "&aDu hast gewonnen! Serie: {streak}. Auszahlen oder erneut werfen für &e{amount}&a."
+  round-started: "&cRunde gestartet, viel Glück!"
+  round-started-wager: "&7Einsatz: &a{amount}"
 
 baccarat:
   title: "Baccara"
@@ -607,6 +613,11 @@ rock-paper-scissors-settings:
   mode-pvp: "Spieler gegen Spieler"
   mode-pvd: "Spieler gegen Dealer"
   mode-updated: "&aDealer-Modus aktualisiert."
+  edit-max-chain: "Max. Serienrunden Bearbeiten"
+  prompt-max-chain: "&aGib die neue maximale Anzahl an Serienrunden im Chat ein (-1 für unbegrenzt)."
+  max-chain-updated: "&aMax. Serienrunden des Dealers aktualisiert."
+  max-chain-current: "&7Aktuell: {rounds}, {multiplier}x Auszahlung bei Gewinn"
+  max-chain-unbounded: "&7Aktuell: Unbegrenzt"
 
 roulette-settings:
   title: "Roulette-Einstellungen von {dealer}"
@@ -780,6 +791,7 @@ occupations:
   stand-on-17: "die Wahrscheinlichkeit, bei 17 zu halten"
   default-mines: "die Standardanzahl der Minen"
   currency-item: "die Auswahl des Währungsgegenstands"
+  rps-max-chain: "maximale Serienrunden bei Schere-Stein-Papier"
 
 commands:
   dealers-deleted: "&a{count} Geber wurden gelöscht."

@@ -9,12 +9,10 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
-import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.payout.PayoutMessages;
 import org.nc.nccasino.payout.PendingPayout;
 import org.nc.nccasino.session.ExitReason;
@@ -35,6 +33,20 @@ public class RockPaperScissorsServer extends Server {
     private static final UUID DEALER_ID = new UUID(0L, 0L);
     private static final long PRE_REVEAL_DELAY_TICKS = 10L;
     private static final long REVEAL_WINDOW_TICKS = 70L;
+    /**
+     * PvE's own pacing -- there's no second human to keep pace with, and the
+     * chain format means a player sits through this same beat many times in
+     * a row. REVEAL_WINDOW_PVE_TICKS drives both the decisive-round fallback
+     * below and the tie's dead hold before rethrow -- it's split, on the
+     * client side (see RockPaperScissorsClient's PVE constants), into a
+     * 24-tick cadence chant and a 16-tick post-shoot hold. That hold is
+     * shorter than the loser's ~1.5s creeper-hiss sound, so the explosion
+     * overlaps it -- deliberate, per explicit request. Both constants here
+     * MUST stay equal to their client-side counterparts, or the client's own
+     * ANIMATION_FINISHED echo and this fallback stop agreeing on timing.
+     */
+    private static final long PRE_REVEAL_DELAY_PVE_TICKS = 8L;
+    private static final long REVEAL_WINDOW_PVE_TICKS = 40L;
 
     /**
      * The single shared table -- always live, exactly like Coin Flip.
@@ -89,18 +101,28 @@ public class RockPaperScissorsServer extends Server {
      * shared PvP table and their private PvE match, independent of every
      * other player currently at this dealer. Blocked while the requester's
      * own current match is active -- leaving mid-round would either abandon
-     * a live PvP opponent or orphan their own PvE round. Cleanly exits
-     * whichever seat they're in via the same eviction/promotion path a
-     * normal chair-leave uses, then -- if they were seated at all -- drops
-     * them straight into chair 1 of the table they just switched into,
-     * rather than making them click to sit down again.
+     * a live PvP opponent or orphan their own PvE round -- except at a safe
+     * PvE checkpoint (awaiting a pick, chain pot live), where switching
+     * first auto-cashes-out the same way closing the inventory there does,
+     * rather than just refusing the switch. Cleanly exits whichever seat
+     * they're in via the same eviction/promotion path a normal chair-leave
+     * uses, then -- if they were seated and switching INTO their own PvE
+     * match -- drops them straight into chair 1 there, rather than making
+     * them click to sit down again. Switching INTO PvP never auto-seats:
+     * that table is shared, so guessing a chair could put them in another
+     * real player's way; landing unseated and letting them choose is the
+     * only version of this convenience that can never step on someone else.
      */
     private void handleToggleMode(Client client) {
         UUID playerId = client.getPlayer().getUniqueId();
         RpsMatch currentMatch = matchFor(playerId);
         if (currentMatch.gameActive) {
-            client.onServerUpdate("TOGGLE_MODE_DENIED", null);
-            return;
+            currentMatch.handleCashOut(client);
+            if (currentMatch.gameActive) {
+                // Still active -- not a safe checkpoint (PvP, or mid-reveal).
+                client.onServerUpdate("TOGGLE_MODE_DENIED", null);
+                return;
+            }
         }
         boolean wasSeated = currentMatch.isSeated(playerId);
         forfeitPlayer(playerId);
@@ -112,7 +134,7 @@ public class RockPaperScissorsServer extends Server {
         client.onServerUpdate("MODE_CHANGED", next);
 
         RpsMatch newMatch = matchFor(playerId);
-        if (wasSeated && newMatch.chairOneEmpty()) {
+        if (wasSeated && next == RpsMode.PLAYER_VS_DEALER && newMatch.chairOneEmpty()) {
             newMatch.handle(client, "PLAYER_SIT_ONE", null);
         }
         newMatch.sendChairSnapshotTo(client);
@@ -181,6 +203,9 @@ public class RockPaperScissorsServer extends Server {
      * player in PvE ({@code owningPlayerId} set, updates go only to that
      * player's own client -- chair 2 is always the house).
      */
+    /** Fixed compounding multiplier for a PvE chain win -- bakes in the same 1% house edge convention as Mines/Dragon Descent's 0.99 multiplier. */
+    private static final double CHAIN_MULTIPLIER = 1.98;
+
     private final class RpsMatch {
 
         private final UUID owningPlayerId;
@@ -202,6 +227,10 @@ public class RockPaperScissorsServer extends Server {
         private Player chairOneOccupant;
         private Player chairTwoOccupant;
         private int betAmount;
+        /** The player's own stake before the house/opponent match, captured once per accepted bet -- used to report true profit even after a chain has compounded the pot past a simple double. */
+        private int originalWager;
+        /** PvE-only: consecutive chain wins since the bet was accepted. Never incremented by a tie. */
+        private int chainWins;
         private boolean gameActive;
         private boolean revealInProgress;
         private Integer committedWinner;
@@ -218,9 +247,24 @@ public class RockPaperScissorsServer extends Server {
         }
 
         /** Broadcasts to every client of the dealer (PvP), or pushes straight to the one owning client (PvE). */
+        /**
+         * PvP and PvE share a single Client instance per player (whichever
+         * one they currently have open), so broadcastUpdate() -- which
+         * reaches every client attached to this dealer, PvP or PvE viewer
+         * alike -- is NOT safe to use for the shared table: a player
+         * currently looking at their own private PvE match would still
+         * receive the PvP table's chair-leave/reveal/etc. broadcasts and
+         * apply them to fields describing their unrelated PvE state (a real
+         * crash: PLAYER_LEAVE_ONE on a client whose own chairOneOccupant is
+         * null). Only clients whose current view is actually PvP get this.
+         */
         private void send(String eventType, Object data) {
             if (owningPlayerId == null) {
-                broadcastUpdate(eventType, data);
+                for (Map.Entry<UUID, Client> entry : clients.entrySet()) {
+                    if (viewFor(entry.getKey()) == RpsMode.PLAYER_VS_PLAYER) {
+                        entry.getValue().onServerUpdate(eventType, data);
+                    }
+                }
             } else {
                 Client owner = clients.get(owningPlayerId);
                 if (owner != null) {
@@ -301,9 +345,12 @@ public class RockPaperScissorsServer extends Server {
                     if (data instanceof Object[] arr && arr.length == 2
                         && arr[0] instanceof Integer w && arr[1] instanceof Integer token) {
                         if (token == roundToken) {
-                            resolveRound(committedWinner != null ? committedWinner : w);
+                            settleRound(committedWinner != null ? committedWinner : w);
                         }
                     }
+                    break;
+                case "PLAYER_CASH_OUT":
+                    handleCashOut(client);
                     break;
                 case "GET_CHAIRS":
                     sendChairSnapshotTo(client);
@@ -339,15 +386,31 @@ public class RockPaperScissorsServer extends Server {
             return chairOneOccupant == null;
         }
 
-        /** Shared tail of both "player 2 accepted" and "the house auto-accepted" -- doubles the pot and opens the pick phase. */
+        /**
+         * Shared tail of both "player 2 accepted" and "the house
+         * auto-accepted" -- opens the pick phase. PvP doubles the pot (the
+         * opponent/house matches the stake, fair 2x on a win); PvE does not
+         * -- the whole payout curve there is CHAIN_MULTIPLIER itself
+         * (wager, then wager*1.98 on the first win, wager*1.98^2 on the
+         * second, ...), so starting from an already-doubled pot would pay
+         * 3.96x on a single win instead of the intended 1.98x.
+         */
         private void beginActiveRound(Object acceptPayload) {
             send("PLAYER_ACCEPT_BET", acceptPayload);
             gameActive = true;
             revealInProgress = false;
             roundToken++;
-            betAmount = betAmount * 2;
+            originalWager = betAmount;
+            betAmount = isPve() ? betAmount : betAmount * 2;
+            chainWins = 0;
             picks.clear();
             startTimer();
+        }
+
+        /** Whether one more chain win would meet/exceed the admin-configured cap. A cap <= 0 (the -1 default) means unbounded. */
+        private boolean chainCapped() {
+            int cap = plugin.getRpsMaxChainRounds(internalName);
+            return cap > 0 && chainWins + 1 >= cap;
         }
 
         private void handlePlayerChoose(Client client, Object data) {
@@ -423,7 +486,7 @@ public class RockPaperScissorsServer extends Server {
             Bukkit.getScheduler().runTaskLater(
                 plugin,
                 () -> beginReveal(one, two),
-                PRE_REVEAL_DELAY_TICKS
+                isPve() ? PRE_REVEAL_DELAY_PVE_TICKS : PRE_REVEAL_DELAY_TICKS
             );
         }
 
@@ -436,7 +499,7 @@ public class RockPaperScissorsServer extends Server {
                 // tie, so a single fixed delay (matching the client's
                 // cycle-then-settle animation length) is all that's needed
                 // before the same accepted round throws again.
-                Bukkit.getScheduler().runTaskLater(plugin, this::rethrow, REVEAL_WINDOW_TICKS);
+                Bukkit.getScheduler().runTaskLater(plugin, this::rethrow, isPve() ? REVEAL_WINDOW_PVE_TICKS : REVEAL_WINDOW_TICKS);
                 return;
             }
 
@@ -448,15 +511,19 @@ public class RockPaperScissorsServer extends Server {
             // Authoritative fallback, same safety net Coin Flip uses:
             // resolves the round even if every client disconnects before
             // its local reveal animation reports back. Guarded by roundToken
-            // so a fallback scheduled for a since-superseded round can't fire.
+            // so a fallback scheduled for a since-superseded round can't
+            // fire. Routed through settleRound (not resolveRound directly)
+            // so a PvE win still advances the chain even when this fallback
+            // -- rather than the client's own ANIMATION_FINISHED echo --
+            // is what actually resolves it.
             Bukkit.getScheduler().runTaskLater(
                 plugin,
                 () -> {
                     if (token == roundToken) {
-                        resolveRound(committedWinner != null ? committedWinner : winner);
+                        settleRound(committedWinner != null ? committedWinner : winner);
                     }
                 },
-                REVEAL_WINDOW_TICKS
+                isPve() ? REVEAL_WINDOW_PVE_TICKS : REVEAL_WINDOW_TICKS
             );
         }
 
@@ -472,8 +539,95 @@ public class RockPaperScissorsServer extends Server {
             revealInProgress = false;
             picks.clear();
             send("RETHROW", null);
-            timeLeft = plugin.getTimer(internalName);
-            startTimer();
+            if (!isPve()) {
+                timeLeft = plugin.getTimer(internalName);
+                startTimer();
+            }
+        }
+
+        /**
+         * Routes a decisive round's outcome: PvP, a PvE loss, or a PvE win
+         * that would meet/exceed the configured chain cap all resolve and
+         * pay out normally. A PvE win under the cap instead compounds the
+         * pot and reopens the pick phase via advanceChain().
+         */
+        private void settleRound(int winner) {
+            if (isPve() && winner == 0 && !chainCapped()) {
+                advanceChain();
+                return;
+            }
+            resolveRound(winner);
+        }
+
+        /**
+         * A PvE win under the chain cap: compounds the pot at the fixed
+         * 1%-edge multiplier, counts it toward the cap, and reopens the pick
+         * phase -- same shape as a tie's rethrow(), but the pot grows
+         * instead of staying flat.
+         *
+         * Unlike a tie, a decisive reveal always has two independent
+         * completions racing for the same token: the client's own
+         * ANIMATION_FINISHED echo, and beginReveal's server-side fallback
+         * timer, both guarded by "token == roundToken" so whichever loses
+         * the race becomes a safe no-op. resolveRound() satisfies that
+         * guard by setting gameActive=false, but this path deliberately
+         * keeps the round alive -- so it must invalidate the token itself,
+         * or the loser of the race still passes the check and re-runs this
+         * exact win a second time (double payout multiplier, doubled chat
+         * message, and a stale duplicate that can fire arbitrarily later
+         * and force a bogus resolveRound mid-chain).
+         */
+        private void advanceChain() {
+            if (!gameActive) return;
+
+            chainWins++;
+            betAmount = (int) Math.round(betAmount * CHAIN_MULTIPLIER);
+            revealInProgress = false;
+            committedWinner = null;
+            roundToken++;
+            picks.clear();
+            send("CHAIN_WIN", new Object[]{chainWins, betAmount});
+        }
+
+        /**
+         * Cashes out the current chain pot on request, valid only while PvE
+         * and awaiting a pick. betAmount is never doubled at accept for PvE
+         * (see beginActiveRound), so it already equals originalWager before
+         * any win and the compounded pot after one -- no special-casing
+         * needed, the exact wager comes back on a pre-first-win cash-out.
+         */
+        private void handleCashOut(Client client) {
+            if (!isPve() || !gameActive || revealInProgress) return;
+            UUID playerId = client.getPlayer().getUniqueId();
+            if (chairOneOccupant == null || !chairOneOccupant.getUniqueId().equals(playerId)) return;
+
+            send("ANIMATION_FINISHED", 0);
+            int wager = originalWager;
+            int payout = betAmount;
+            gameActive = false;
+            revealInProgress = false;
+            committedWinner = null;
+            betAmount = 0;
+            originalWager = 0;
+            chainWins = 0;
+            timeLeft = 0;
+            countdownTaskId = -1;
+            picks.clear();
+
+            if (payout > 0 && !forfeited.contains(playerId)) {
+                Player onlinePlayer = Bukkit.getPlayer(playerId);
+                if (onlinePlayer != null && onlinePlayer.isOnline()) {
+                    creditPlayer(onlinePlayer, payout);
+                    sendPayoutMessage(onlinePlayer, payout, true, payout - wager);
+                    applyWinEffects(onlinePlayer);
+                } else {
+                    queuePendingPayout(playerId, payout);
+                }
+            }
+            clearRidingSession(playerId);
+            forfeited.clear();
+            reseatDisconnectedOccupants();
+            cleanupPrivateMatchIfAbandoned();
         }
 
         /**
@@ -490,14 +644,17 @@ public class RockPaperScissorsServer extends Server {
             Player payoutOne = chairOneOccupant;
             Player payoutTwo = chairTwoOccupant;
             int payout = betAmount;
+            int wager = originalWager;
             gameActive = false;
             revealInProgress = false;
             committedWinner = null;
             betAmount = 0;
+            originalWager = 0;
+            chainWins = 0;
             timeLeft = 0;
             countdownTaskId = -1;
             picks.clear();
-            handlePayout(payoutOne, payoutTwo, payout, winner);
+            handlePayout(payoutOne, payoutTwo, payout, winner, wager);
             if (payoutOne != null) {
                 clearRidingSession(payoutOne.getUniqueId());
             }
@@ -577,7 +734,7 @@ public class RockPaperScissorsServer extends Server {
             }
         }
 
-        private void handlePayout(Player one, Player two, int payout, int winner) {
+        private void handlePayout(Player one, Player two, int payout, int winner, int wager) {
             UUID winnerId = (winner == 0)
                 ? (one != null ? one.getUniqueId() : null)
                 : (two != null ? two.getUniqueId() : null);
@@ -594,7 +751,7 @@ public class RockPaperScissorsServer extends Server {
                 Player winnerPlayer = Bukkit.getPlayer(winnerId);
                 if (winnerPlayer != null && winnerPlayer.isOnline()) {
                     creditPlayer(winnerPlayer, payout);
-                    sendPayoutMessage(winnerPlayer, payout, true, payout / 2);
+                    sendPayoutMessage(winnerPlayer, payout, true, payout - wager);
                     applyWinEffects(winnerPlayer);
                 } else {
                     queuePendingPayout(winnerId, payout);
@@ -604,7 +761,7 @@ public class RockPaperScissorsServer extends Server {
             if (loserId != null && !forfeited.contains(loserId)) {
                 Player loserPlayer = Bukkit.getPlayer(loserId);
                 if (loserPlayer != null && loserPlayer.isOnline()) {
-                    sendPayoutMessage(loserPlayer, payout, false, payout / 2);
+                    sendPayoutMessage(loserPlayer, payout, false, wager);
                     applyLoseEffects(loserPlayer);
                 }
             }
@@ -623,7 +780,10 @@ public class RockPaperScissorsServer extends Server {
             }
 
             int payout = betAmount;
-            int stake = payout / 2;
+            // In PvE there's no second real party to split the pot with --
+            // a chain's compounded pot is entirely the player's own stake
+            // and winnings, so the whole thing is refunded rather than half.
+            int stake = isPve() ? payout : payout / 2;
             Integer winner = committedWinner;
             Player payoutOne = chairOneOccupant;
             Player payoutTwo = chairTwoOccupant;
@@ -631,6 +791,8 @@ public class RockPaperScissorsServer extends Server {
             revealInProgress = false;
             committedWinner = null;
             betAmount = 0;
+            originalWager = 0;
+            chainWins = 0;
             timeLeft = 0;
             countdownTaskId = -1;
             picks.clear();
@@ -746,6 +908,10 @@ public class RockPaperScissorsServer extends Server {
         }
 
         private void startTimer() {
+            // PvE never runs a pick timer -- the whole point of a chain is
+            // letting the player decide when to bank, with no pressure to
+            // pick before they're ready.
+            if (isPve()) return;
             if (countdownTaskId != -1) return; // Timer is already running
 
             gameState = GameState.WAITING;
@@ -761,51 +927,24 @@ public class RockPaperScissorsServer extends Server {
                 timeLeft--;
 
                 if (timeLeft <= 3) {
-                    playCountdownSoundForMatch();
+                    // Only ever reached in PvP -- startTimer() returns
+                    // immediately for PvE, so this repeating task never runs there.
+                    RockPaperScissorsServer.this.playCountdownSound();
                 }
 
             }, 0L, 20L); // Run every second
         }
 
-        private void playCountdownSoundForMatch() {
-            if (!isPve()) {
-                RockPaperScissorsServer.this.playCountdownSound();
-                return;
-            }
-
-            Client owner = clients.get(owningPlayerId);
-            Player ownerPlayer = owner != null ? owner.getPlayer() : null;
-            if (ownerPlayer != null && SoundHelper.getSoundSafely("block.note_block.hat", ownerPlayer) != null) {
-                ownerPlayer.playSound(ownerPlayer.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.0f);
-            }
-        }
-
         /**
-         * The pick timer ran out. If exactly one seated player locked in a
-         * throw, they win by forfeit; if neither did, there's no one to
-         * award the pot to, so the round is voided instead.
+         * The pick timer ran out (PvP only -- PvE never schedules one). If
+         * exactly one seated player locked in a throw, they win by forfeit;
+         * if neither did, there's no one to award the pot to, so the round
+         * is voided instead.
          */
         private void handleTimeout() {
             if (countdownTaskId != -1) {
                 Bukkit.getScheduler().cancelTask(countdownTaskId);
                 countdownTaskId = -1;
-            }
-
-            if (isPve()) {
-                // The house only ever throws in direct response to the
-                // player's own pick, so reaching the timeout here always
-                // means the player never chose -- forfeit to the house,
-                // same as a PvP player who lets the timer run out.
-                revealInProgress = true;
-                committedWinner = 1;
-                int pveToken = roundToken;
-                send("FORFEIT_TIMEOUT", 1);
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    if (pveToken == roundToken) {
-                        resolveRound(committedWinner != null ? committedWinner : 1);
-                    }
-                }, 20L);
-                return;
             }
 
             UUID oneId = chairOneOccupant != null ? chairOneOccupant.getUniqueId() : null;
