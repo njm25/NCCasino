@@ -295,13 +295,13 @@ public class AdminMenu extends Menu {
                 lore.add(text("admin.timer-lore", "value", coinFlipTimer));
                 break;
             case "Rock Paper Scissors":
-                int rpsTimer = config.getInt("dealers." + internalName + ".timer", 30);
-                lore.add(text("admin.timer-lore", "value", rpsTimer));
                 org.nc.nccasino.games.RockPaperScissors.RpsMode rpsMode = plugin.getRockPaperScissorsMode(internalName);
                 String rpsModeLabel = text(rpsMode == org.nc.nccasino.games.RockPaperScissors.RpsMode.PLAYER_VS_DEALER
                     ? "rock-paper-scissors-settings.mode-pvd"
                     : "rock-paper-scissors-settings.mode-pvp");
                 lore.add(text("admin.rps-mode-lore", "value", rpsModeLabel));
+                int rpsTimer = config.getInt("dealers." + internalName + ".timer", 30);
+                lore.add(text("admin.rps-timer-lore", "value", rpsTimer));
                 int rpsMaxChain = plugin.getRpsMaxChainRounds(internalName);
                 lore.add(rpsMaxChain <= 0
                     ? text("admin.rps-max-chain-lore-unbounded")

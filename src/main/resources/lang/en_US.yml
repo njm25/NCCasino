@@ -603,7 +603,7 @@ coin-flip-settings:
 
 rock-paper-scissors-settings:
   title: "{dealer}'s Rock Paper Scissors Settings"
-  edit-timer: "Edit Timer"
+  edit-timer: "Edit Timer (PvP)"
   invalid-option: "&cInvalid option selected."
   invalid-settings-option: "&cInvalid rock paper scissors settings option selected."
   prompt-number: "&aType the new number in chat."
@@ -726,8 +726,9 @@ admin:
   default-vines-lore: "&7Default # of Vines: &a{value}"
   default-floors-lore: "&7Default # of Floors: &a{value}"
   rps-mode-lore: "&7Mode: &a{value}"
-  rps-max-chain-lore: "&7Max Chain Rounds: &a{value}"
-  rps-max-chain-lore-unbounded: "&7Max Chain Rounds: &aUnbounded"
+  rps-timer-lore: "&7Timer: &a{value} &7(PvP)"
+  rps-max-chain-lore: "&7Max Chain Rounds: &a{value} &7(PvE)"
+  rps-max-chain-lore-unbounded: "&7Max Chain Rounds: &aUnbounded &7(PvE)"
   no-settings: "&7No settings available."
   select-currency: "Select Currency"
   disabled-vault: "[Disabled For Vault Mode]"

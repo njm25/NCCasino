@@ -40,8 +40,8 @@ public class RockPaperScissorsMenu extends Menu {
 
         slotMapping.put(SlotOption.EXIT, 8);
         slotMapping.put(SlotOption.RETURN, 0);
-        slotMapping.put(SlotOption.EDIT_TIMER, 1);
-        slotMapping.put(SlotOption.TOGGLE_RPS_MODE, 2);
+        slotMapping.put(SlotOption.TOGGLE_RPS_MODE, 1);
+        slotMapping.put(SlotOption.EDIT_TIMER, 2);
         slotMapping.put(SlotOption.EDIT_RPS_MAX_CHAIN, 3);
         initializeMenu();
     }

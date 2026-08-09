@@ -603,7 +603,7 @@ coin-flip-settings:
 
 rock-paper-scissors-settings:
   title: "Schere-Stein-Papier-Einstellungen von {dealer}"
-  edit-timer: "Timer bearbeiten"
+  edit-timer: "Timer Bearbeiten (PvP)"
   invalid-option: "&cUngültige Option ausgewählt."
   invalid-settings-option: "&cUngültige Schere-Stein-Papier-Einstellungsoption."
   prompt-number: "&aGib die neue Zahl im Chat ein."
@@ -726,8 +726,9 @@ admin:
   default-vines-lore: "&7Standardanzahl Ranken: &a{value}"
   default-floors-lore: "&7Standardanzahl Ebenen: &a{value}"
   rps-mode-lore: "&7Modus: &a{value}"
-  rps-max-chain-lore: "&7Max. Serienrunden: &a{value}"
-  rps-max-chain-lore-unbounded: "&7Max. Serienrunden: &aUnbegrenzt"
+  rps-timer-lore: "&7Timer: &a{value} &7(PvP)"
+  rps-max-chain-lore: "&7Max. Serienrunden: &a{value} &7(PvE)"
+  rps-max-chain-lore-unbounded: "&7Max. Serienrunden: &aUnbegrenzt &7(PvE)"
   no-settings: "&7Keine Einstellungen verfügbar."
   select-currency: "Währung auswählen"
   disabled-vault: "[Im Vault-Modus deaktiviert]"

@@ -603,7 +603,7 @@ coin-flip-settings:
 
 rock-paper-scissors-settings:
   title: "Ajustes de Piedra, Papel o Tijera de {dealer}"
-  edit-timer: "Editar temporizador"
+  edit-timer: "Editar Temporizador (PvP)"
   invalid-option: "&cLa opción seleccionada no es válida."
   invalid-settings-option: "&cLa opción de ajustes de Piedra, Papel o Tijera no es válida."
   prompt-number: "&aEscribe el nuevo número en el chat."
@@ -726,8 +726,9 @@ admin:
   default-vines-lore: "&7N.º predeterminado de lianas: &a{value}"
   default-floors-lore: "&7N.º predeterminado de pisos: &a{value}"
   rps-mode-lore: "&7Modo: &a{value}"
-  rps-max-chain-lore: "&7Máx. de Rondas en Cadena: &a{value}"
-  rps-max-chain-lore-unbounded: "&7Máx. de Rondas en Cadena: &aIlimitado"
+  rps-timer-lore: "&7Temporizador: &a{value} &7(PvP)"
+  rps-max-chain-lore: "&7Máx. de Rondas en Cadena: &a{value} &7(PvE)"
+  rps-max-chain-lore-unbounded: "&7Máx. de Rondas en Cadena: &aIlimitado &7(PvE)"
   no-settings: "&7No hay ajustes disponibles."
   select-currency: "Seleccionar moneda"
   disabled-vault: "[Desactivado en modo Vault]"

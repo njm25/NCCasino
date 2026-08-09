@@ -603,7 +603,7 @@ coin-flip-settings:
 
 rock-paper-scissors-settings:
   title: "Paramètres de Pierre-Feuille-Ciseaux de {dealer}"
-  edit-timer: "Modifier le minuteur"
+  edit-timer: "Modifier le Minuteur (PvP)"
   invalid-option: "&cOption sélectionnée invalide."
   invalid-settings-option: "&cOption des paramètres de Pierre-Feuille-Ciseaux invalide."
   prompt-number: "&aSaisissez le nouveau nombre dans le chat."
@@ -726,8 +726,9 @@ admin:
   default-vines-lore: "&7Nombre de lianes par défaut : &a{value}"
   default-floors-lore: "&7Nombre d'étages par défaut : &a{value}"
   rps-mode-lore: "&7Mode : &a{value}"
-  rps-max-chain-lore: "&7Max. de Manches Enchaînées : &a{value}"
-  rps-max-chain-lore-unbounded: "&7Max. de Manches Enchaînées : &aIllimité"
+  rps-timer-lore: "&7Minuteur : &a{value} &7(PvP)"
+  rps-max-chain-lore: "&7Max. de Manches Enchaînées : &a{value} &7(PvE)"
+  rps-max-chain-lore-unbounded: "&7Max. de Manches Enchaînées : &aIllimité &7(PvE)"
   no-settings: "&7Aucun paramètre disponible."
   select-currency: "Sélectionner la monnaie"
   disabled-vault: "[Désactivé en mode Vault]"

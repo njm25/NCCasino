@@ -278,7 +278,30 @@ public class GameOptionsMenu extends Menu {
                         plugin.getConfig().set("dealers." + internalName + ".default-floors", 4);
                     }
                 }
-                
+
+                // Set default values for Rock Paper Scissors
+                if (gameType.equals("Rock Paper Scissors")) {
+                    if (!plugin.getConfig().contains("dealers." + internalName + ".rps-mode")) {
+                        plugin.getConfig().set("dealers." + internalName + ".rps-mode", "PLAYER_VS_PLAYER");
+                    } else {
+                        String rpsModeValue = plugin.getConfig().getString("dealers." + internalName + ".rps-mode", "PLAYER_VS_PLAYER");
+                        try {
+                            org.nc.nccasino.games.RockPaperScissors.RpsMode.valueOf(rpsModeValue);
+                        } catch (IllegalArgumentException e) {
+                            plugin.getConfig().set("dealers." + internalName + ".rps-mode", "PLAYER_VS_PLAYER");
+                        }
+                    }
+
+                    if (!plugin.getConfig().contains("dealers." + internalName + ".rps-max-chain-rounds")) {
+                        plugin.getConfig().set("dealers." + internalName + ".rps-max-chain-rounds", -1);
+                    } else {
+                        int rpsMaxChain = plugin.getConfig().getInt("dealers." + internalName + ".rps-max-chain-rounds");
+                        if (rpsMaxChain < -1 || rpsMaxChain > 9999) {
+                            plugin.getConfig().set("dealers." + internalName + ".rps-max-chain-rounds", -1);
+                        }
+                    }
+                }
+
                 this.delete();
             },
             (uuid) -> {
