@@ -640,6 +640,10 @@ public class RockPaperScissorsServer extends Server {
         private void resolveRound(int winner) {
             if (!gameActive) return;
 
+            // The only way settleRound() ever reaches resolveRound() with a
+            // PvE win is chainCapped() having been true -- a genuine
+            // advanceChain-eligible win never gets here.
+            boolean cappedWin = isPve() && winner == 0;
             send("ANIMATION_FINISHED", winner);
             Player payoutOne = chairOneOccupant;
             Player payoutTwo = chairTwoOccupant;
@@ -654,7 +658,7 @@ public class RockPaperScissorsServer extends Server {
             timeLeft = 0;
             countdownTaskId = -1;
             picks.clear();
-            handlePayout(payoutOne, payoutTwo, payout, winner, wager);
+            handlePayout(payoutOne, payoutTwo, payout, winner, wager, cappedWin);
             if (payoutOne != null) {
                 clearRidingSession(payoutOne.getUniqueId());
             }
@@ -734,7 +738,7 @@ public class RockPaperScissorsServer extends Server {
             }
         }
 
-        private void handlePayout(Player one, Player two, int payout, int winner, int wager) {
+        private void handlePayout(Player one, Player two, int payout, int winner, int wager, boolean cappedWin) {
             UUID winnerId = (winner == 0)
                 ? (one != null ? one.getUniqueId() : null)
                 : (two != null ? two.getUniqueId() : null);
@@ -750,6 +754,20 @@ public class RockPaperScissorsServer extends Server {
             if (winnerId != null && payout > 0 && !forfeited.contains(winnerId)) {
                 Player winnerPlayer = Bukkit.getPlayer(winnerId);
                 if (winnerPlayer != null && winnerPlayer.isOnline()) {
+                    if (cappedWin) {
+                        switch (plugin.getPreferences(winnerId).getMessageSetting()) {
+                            case STANDARD:
+                            case VERBOSE:
+                                winnerPlayer.sendMessage(plugin.getLocalization().text(
+                                    winnerPlayer,
+                                    "rock-paper-scissors.max-chain-hit",
+                                    "rounds", plugin.getRpsMaxChainRounds(internalName)
+                                ));
+                                break;
+                            case NONE:
+                                break;
+                        }
+                    }
                     creditPlayer(winnerPlayer, payout);
                     sendPayoutMessage(winnerPlayer, payout, true, payout - wager);
                     applyWinEffects(winnerPlayer);
