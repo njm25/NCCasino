@@ -325,27 +325,21 @@ public class CoinFlipClient extends Client implements TerminableSession {
     }
 
     /**
-     * Visible any time the dealer is open, seated or not -- this is each
-     * viewer's own personal choice of which independent system (the shared
-     * PvP table, or their own private PvE match) they're currently looking
-     * at, so there's nothing to gate it on. Blocked while a round of
-     * whichever match the player is currently in is active, EXCEPT at a
-     * safe PvE checkpoint (awaiting a pick) -- there the request still goes
-     * through, since the server will auto-cash-out before switching rather
-     * than deny. The server enforces the same guard authoritatively via
-     * TOGGLE_MODE_DENIED for every case this local check can't already rule out.
+     * Visible any time the dealer is open and no round is active -- this is
+     * each viewer's own personal choice of which independent system (the
+     * shared PvP table, or their own private PvE match) they're currently
+     * looking at, so there's nothing else to gate it on. Blocked outright
+     * while a round of whichever match the player is currently in is
+     * active -- cash out (or finish the round) first, then switch. The
+     * server enforces the same guard authoritatively via TOGGLE_MODE_DENIED
+     * for every case this local check can't already rule out.
      */
     private void handleToggleModeClick() {
-        // The button itself isn't even rendered when this is disabled, but
-        // the slot can still be clicked (it's just a decorative pane) --
-        // silently no-op rather than sending a request the server would
-        // just deny anyway.
-        if (!modeSwitchingEnabled) return;
-        boolean safeToAutoCashOut = mode == CoinFlipMode.PLAYER_VS_DEALER && gameActive && playerPick == null;
-        if (gameActive && !safeToAutoCashOut) {
-            denyToggleMode();
-            return;
-        }
+        // The button itself isn't even rendered when this is disabled or a
+        // round is active, but the slot can still be clicked (it's just a
+        // decorative pane at that point) -- silently no-op rather than
+        // sending a request the server would just deny anyway.
+        if (!modeSwitchingEnabled || gameActive) return;
         sendUpdateToServer("PLAYER_TOGGLE_MODE", null);
     }
 
@@ -405,11 +399,18 @@ public class CoinFlipClient extends Client implements TerminableSession {
         if (mode != CoinFlipMode.PLAYER_VS_DEALER || !gameActive || playerPick != null) return;
 
         playerPick = pick;
-        sendUpdateToServer(pick == 0 ? "PLAYER_PICK_LEFT" : "PLAYER_PICK_RIGHT", null);
+        // Render this player's own pick BEFORE sending the update --
+        // sendUpdateToServer is a synchronous in-process call, not real
+        // networking, so the entire server round-trip (including
+        // startFlipAnimation placing the house's head in the opposite
+        // chair) can complete before this method returns. Rendering after
+        // that call, as before, would immediately clobber the just-placed
+        // house head with this method's own blank "other slot" pane.
         renderPveSeats();
         updatePotChest();
         if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
             player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
+        sendUpdateToServer(pick == 0 ? "PLAYER_PICK_LEFT" : "PLAYER_PICK_RIGHT", null);
         // The server may resolve (and broadcast a reset) synchronously
         // within this same click before Bukkit finishes processing it --
         // force a resync so the clicking player's own view doesn't stall
@@ -908,8 +909,12 @@ public class CoinFlipClient extends Client implements TerminableSession {
             addItemAndLore(Material.OAK_STAIRS, 1, text("coin-flip.awaiting-wager"), leftSlot, text("coin-flip.awaiting-wager-lore"));
             addItemAndLore(Material.OAK_STAIRS, 1, text("coin-flip.awaiting-wager"), rightSlot, text("coin-flip.awaiting-wager-lore"));
         } else if (playerPick == null) {
-            addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, text("coin-flip.pick-left"), leftSlot, text("coin-flip.click-pick"));
-            addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, text("coin-flip.pick-right"), rightSlot, text("coin-flip.click-pick"));
+            // Solid block, not a glass pane -- the surrounding border
+            // (populateGlassPattern) is built entirely out of stained glass
+            // panes, so a pick button in that same material would blend
+            // straight into the decoration and read as an empty slot.
+            addItemAndLore(Material.OAK_STAIRS, 1, text("coin-flip.pick-left"), leftSlot, text("coin-flip.click-pick"));
+            addItemAndLore(Material.OAK_STAIRS, 1, text("coin-flip.pick-right"), rightSlot, text("coin-flip.click-pick"));
         } else {
             int pickedSlot = playerPick == 0 ? leftSlot : rightSlot;
             int otherSlot = playerPick == 0 ? rightSlot : leftSlot;
@@ -955,16 +960,19 @@ public class CoinFlipClient extends Client implements TerminableSession {
     }
 
     /**
-     * Compass at slot 4, top row middle column -- always visible,
-     * regardless of seating, since switching modes is each viewer's own
-     * personal choice. Re-rendered here (rather than only at construction)
-     * because populateGlassPattern repaints this same slot as a plain
-     * border pane on every reset (new round, mode switch). Hidden entirely
-     * (left as the plain border pane) when the admin has disabled player
-     * mode switching for this dealer.
+     * Compass at slot 4, top row middle column -- visible whenever a viewer
+     * isn't mid-round, since switching modes is each viewer's own personal
+     * choice. Re-rendered here (rather than only at construction) because
+     * populateGlassPattern repaints this same slot as a plain border pane
+     * on every reset (new round, mode switch). Left as a plain black tile
+     * -- not just visually, but non-functional too, see
+     * handleToggleModeClick -- both when the admin has disabled player mode
+     * switching for this dealer, and while a round is active: switching
+     * mid-round isn't offered at all anymore, so the button reflects that
+     * instead of secretly still working via an auto-cash-out exception.
      */
     private void renderModeToggleButton() {
-        if (!modeSwitchingEnabled) {
+        if (!modeSwitchingEnabled || gameActive) {
             addItemAndLore(Material.BLACK_STAINED_GLASS_PANE, 1, "", slotMapping.get(SlotOption.TOGGLE_MODE));
             return;
         }
@@ -976,33 +984,13 @@ public class CoinFlipClient extends Client implements TerminableSession {
             ? "coin-flip-settings.mode-pvd"
             : "coin-flip-settings.mode-pvp");
         String switchLine = text("coin-flip.mode-switch", "mode", targetLabel);
-
-        // Matches the safe-checkpoint condition handleToggleModeClick uses
-        // to let the switch through instead of denying it -- switching here
-        // actually cashes you out first, so say so.
-        boolean safeToAutoCashOut = mode == CoinFlipMode.PLAYER_VS_DEALER && gameActive && playerPick == null;
-        if (safeToAutoCashOut) {
-            String cashOutLine = text(
-                "coin-flip.mode-switch-cashout-notice",
-                "amount", plugin.formatWagerDisplay(currencyMode, currencyName, betAmount)
-            );
-            addItemAndLore(
-                Material.COMPASS,
-                1,
-                text("coin-flip.mode-current", "mode", currentLabel),
-                slotMapping.get(SlotOption.TOGGLE_MODE),
-                switchLine,
-                cashOutLine
-            );
-        } else {
-            addItemAndLore(
-                Material.COMPASS,
-                1,
-                text("coin-flip.mode-current", "mode", currentLabel),
-                slotMapping.get(SlotOption.TOGGLE_MODE),
-                switchLine
-            );
-        }
+        addItemAndLore(
+            Material.COMPASS,
+            1,
+            text("coin-flip.mode-current", "mode", currentLabel),
+            slotMapping.get(SlotOption.TOGGLE_MODE),
+            switchLine
+        );
     }
 
     private void replaceBottomRow() {
@@ -1103,6 +1091,18 @@ public class CoinFlipClient extends Client implements TerminableSession {
     }
 
     /**
+     * The actual chair slot (20/24) for side {@code index} (0 = left,
+     * 1 = right) -- PvE picks are made directly on the chair slots now, so
+     * the house's head belongs in the real opposite seat, not the
+     * PvP-only neutral display slots. Only for the persistent house-head
+     * marker; the coin animation itself still lands in finalSlots, one
+     * column short of the seat, so it doesn't cover up either head.
+     */
+    private int houseSlotFor(int index) {
+        return index == 0 ? slotMapping.get(SlotOption.HANDLE_CHAIR_1) : slotMapping.get(SlotOption.HANDLE_CHAIR_2);
+    }
+
+    /**
      * The flip trajectory (flipSlots) passes through slot 4, which now
      * permanently hosts the mode-toggle button -- a blind material restore
      * there would drop the button's lore/click behavior until the next
@@ -1132,13 +1132,12 @@ public class CoinFlipClient extends Client implements TerminableSession {
         addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, "", 31);
         if (flipTask != -1) return; // Prevent multiple animations from running
 
-        // PvE also shows the house's call in the slot the player didn't
-        // pick, right where the flip's own final coin will land in the
-        // other slot -- there's no second seated human to place a real
-        // head for, so this stands in for "the house's side" the same
-        // moment the flip begins.
+        // PvE also shows the house's call in the seat the player didn't
+        // pick -- there's no second seated human to place a real head for,
+        // so this stands in for "the house's side," visible for the whole
+        // round rather than just during the flip.
         if (mode == CoinFlipMode.PLAYER_VS_DEALER && (playerPick != null && (playerPick == 0 || playerPick == 1))) {
-            int houseSlot = finalSlots[playerPick == 0 ? 1 : 0];
+            int houseSlot = houseSlotFor(playerPick == 0 ? 1 : 0);
             addItemAndLore(Material.ZOMBIE_HEAD, 1, text("coin-flip.the-dealer"), houseSlot);
         }
 
@@ -1175,8 +1174,11 @@ public class CoinFlipClient extends Client implements TerminableSession {
                         restoreFlipSlot(lastSlot, formerMaterial);
                     }
 
-                    // Place the final coin in the winner's slot
-                    int finalSlot = finalSlots[winner]; // 0 -> 21, 1 -> 23
+                    // Place the final coin one slot short of the winning
+                    // seat, not on top of it -- the winner's own head (or
+                    // the house's) already lives there and shouldn't be
+                    // covered up by the coin.
+                    int finalSlot = finalSlots[winner];
                     createCoin(finalSlot);
 
                     flipTask = -1; // Reset task ID

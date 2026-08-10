@@ -121,12 +121,11 @@ public class CoinFlipServer extends Server {
     /**
      * Switches the requesting player's own personal view between the
      * shared PvP table and their private PvE match, independent of every
-     * other player currently at this dealer. Blocked while the requester's
-     * own current match is active -- leaving mid-round would either abandon
-     * a live PvP opponent or orphan their own PvE round -- except at a safe
-     * PvE checkpoint (awaiting a pick, chain pot live), where switching
-     * first auto-cashes-out the same way closing the inventory there does,
-     * rather than just refusing the switch.
+     * other player currently at this dealer. Blocked outright while the
+     * requester's own current match is active -- leaving mid-round would
+     * either abandon a live PvP opponent or orphan their own PvE round, and
+     * switching is no longer offered as an implicit "cash out and switch"
+     * shortcut -- cash out (or finish the round) first, then switch.
      */
     private void handleToggleMode(Client client) {
         if (!plugin.getCoinFlipModeSwitchingEnabled(internalName)) {
@@ -139,12 +138,11 @@ public class CoinFlipServer extends Server {
         UUID playerId = client.getPlayer().getUniqueId();
         CoinFlipMatch currentMatch = matchFor(playerId);
         if (currentMatch.gameActive) {
-            currentMatch.handleCashOut(client);
-            if (currentMatch.gameActive) {
-                // Still active -- not a safe checkpoint (PvP, or mid-flip).
-                client.onServerUpdate("TOGGLE_MODE_DENIED", null);
-                return;
-            }
+            // Authoritative -- the client is expected to hide/no-op its own
+            // toggle button while a round is active, but a stale client (or
+            // one bypassing the UI entirely) must still be refused here.
+            client.onServerUpdate("TOGGLE_MODE_DENIED", null);
+            return;
         }
         forfeitPlayer(playerId);
 
