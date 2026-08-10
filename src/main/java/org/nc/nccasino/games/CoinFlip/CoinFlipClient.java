@@ -33,9 +33,7 @@ public class CoinFlipClient extends Client implements TerminableSession {
         HANDLE_SUBMIT_BET,
         LEAVE,
         TOGGLE_MODE,
-        CASH_OUT,
-        PICK_LEFT,
-        PICK_RIGHT
+        CASH_OUT
     }
     protected final Map<SlotOption, Integer> slotMapping = new HashMap<>();
 
@@ -80,13 +78,14 @@ public class CoinFlipClient extends Client implements TerminableSession {
         slotMapping.put(SlotOption.HANDLE_SUBMIT_BET, 44);
         slotMapping.put(SlotOption.TOGGLE_MODE, 4);
         slotMapping.put(SlotOption.CASH_OUT, 40);
-        slotMapping.put(SlotOption.PICK_LEFT, 21);
-        slotMapping.put(SlotOption.PICK_RIGHT, 23);
 
         addItemAndLore(Material.SPRUCE_DOOR, 1, text("coin-flip.leave"), slotMapping.get(SlotOption.LEAVE));
         populateGlassPattern();
         if (mode == CoinFlipMode.PLAYER_VS_DEALER) {
-            renderDealerSeat();
+            chairOneOccupant = player;
+            initializeUI(false, true, false);
+            renderPveSubmitLever();
+            renderPveSeats();
         }
         sendUpdateToServer("GET_CHAIRS", null);
     }
@@ -109,10 +108,18 @@ public class CoinFlipClient extends Client implements TerminableSession {
         switch(option)
         {
             case HANDLE_CHAIR_1:
+                if (mode == CoinFlipMode.PLAYER_VS_DEALER) {
+                    if (gameActive) handlePick(0);
+                    return;
+                }
                 if (gameActive) return;
                 handleChairOne();
                 break;
             case HANDLE_CHAIR_2:
+                if (mode == CoinFlipMode.PLAYER_VS_DEALER) {
+                    if (gameActive) handlePick(1);
+                    return;
+                }
                 if (gameActive) return;
                 handleChairTwo();
                 break;
@@ -130,12 +137,6 @@ public class CoinFlipClient extends Client implements TerminableSession {
                 if (mode == CoinFlipMode.PLAYER_VS_DEALER && gameActive && playerPick == null) {
                     sendUpdateToServer("PLAYER_CASH_OUT", null);
                 }
-                break;
-            case PICK_LEFT:
-                handlePick(0);
-                break;
-            case PICK_RIGHT:
-                handlePick(1);
                 break;
         }
     }
@@ -385,10 +386,13 @@ public class CoinFlipClient extends Client implements TerminableSession {
         populateGlassPattern();
         replaceBottomRow();
         hidePotChest();
-        addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
         if (newMode == CoinFlipMode.PLAYER_VS_DEALER) {
-            renderDealerSeat();
+            chairOneOccupant = player;
+            initializeUI(false, true, false);
+            renderPveSubmitLever();
+            renderPveSeats();
         } else {
+            addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
             addItemAndLore(Material.OAK_STAIRS, 1, text("coin-flip.seat-unavailable"), slotMapping.get(SlotOption.HANDLE_CHAIR_2), text("coin-flip.sit-other-chair"));
         }
         if (SoundHelper.getSoundSafely("ui.button.click", player) != null)
@@ -399,13 +403,10 @@ public class CoinFlipClient extends Client implements TerminableSession {
     /** PvE only: locks in a left/right pick while awaiting the flip. */
     private void handlePick(int pick) {
         if (mode != CoinFlipMode.PLAYER_VS_DEALER || !gameActive || playerPick != null) return;
-        boolean seatedInChairOne = chairOneOccupant != null
-            && chairOneOccupant.getUniqueId().equals(player.getUniqueId());
-        if (!seatedInChairOne) return;
 
         playerPick = pick;
         sendUpdateToServer(pick == 0 ? "PLAYER_PICK_LEFT" : "PLAYER_PICK_RIGHT", null);
-        clearPickButtons();
+        renderPveSeats();
         updatePotChest();
         if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
             player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
@@ -650,12 +651,14 @@ public class CoinFlipClient extends Client implements TerminableSession {
             renderModeToggleButton();
             if (SoundHelper.getSoundSafely("block.enchantment_table.use", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f);
 
-            inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1), headForOccupant(chairOneOccupant));
-            if (chairTwoOccupant != null) {
-                inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2), headForOccupant(chairTwoOccupant));
+            if (mode == CoinFlipMode.PLAYER_VS_DEALER) {
+                renderPveSeats();
+            } else {
+                inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1), headForOccupant(chairOneOccupant));
+                if (chairTwoOccupant != null) {
+                    inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2), headForOccupant(chairTwoOccupant));
+                }
             }
-
-            showPickButtonsIfSeated();
             player.updateInventory();
         }
     }
@@ -797,7 +800,7 @@ public class CoinFlipClient extends Client implements TerminableSession {
         }
         populateGlassPattern();
         updatePotChest();
-        showPickButtonsIfSeated();
+        renderPveSeats();
         player.updateInventory();
     }
 
@@ -809,7 +812,14 @@ public class CoinFlipClient extends Client implements TerminableSession {
         playerPick = null;
         betStack.clear();
         populateGlassPattern();
-        if(chairOneOccupant!=null && chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
+        if (mode == CoinFlipMode.PLAYER_VS_DEALER) {
+            bettingEnabled = true;
+            initializeUI(rebetEnabled, bettingEnabled, false);
+            updateBetLore(53, 0);
+            renderPveSubmitLever();
+            renderPveSeats();
+        }
+        else if(chairOneOccupant!=null && chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
             bettingEnabled = true;
             initializeUI(rebetEnabled, bettingEnabled,false);
             updateBetLore(53, 0);
@@ -836,15 +846,17 @@ public class CoinFlipClient extends Client implements TerminableSession {
         int betAmountValue = (dataArr.length > 2 && dataArr[2] instanceof Integer) ? (int) dataArr[2] : 0;
         gameActive = (dataArr.length > 3 && dataArr[3] instanceof Boolean) ? (boolean) dataArr[3] : false;
         int timeLeft = (dataArr.length > 4 && dataArr[4] instanceof Integer) ? (int) dataArr[4] : 0;
-        boolean iHavePicked = (dataArr.length > 5 && dataArr[5] instanceof Boolean) ? (boolean) dataArr[5] : false;
+        Integer pick = (dataArr.length > 5 && dataArr[5] instanceof Integer) ? (Integer) dataArr[5] : null;
         if(timeLeft > 0){
             updateTimerUI(timeLeft);
         }
-        if (chairOne == null && chairTwo == null) {
+        if (mode == CoinFlipMode.PLAYER_VS_DEALER) {
+            chairOneOccupant = chairOne;
+            playerPick = pick;
+            renderPveSeats();
+        } else if (chairOne == null && chairTwo == null) {
             addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
-            if (mode == CoinFlipMode.PLAYER_VS_PLAYER) {
-                addItemAndLore(Material.OAK_STAIRS, 1, text("coin-flip.seat-unavailable"), slotMapping.get(SlotOption.HANDLE_CHAIR_2), text("coin-flip.sit-other-chair"));
-            }
+            addItemAndLore(Material.OAK_STAIRS, 1, text("coin-flip.seat-unavailable"), slotMapping.get(SlotOption.HANDLE_CHAIR_2), text("coin-flip.sit-other-chair"));
         } else if (chairOne != null && chairTwo != null) {
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1),
                 createPlayerHead(chairOne.getUniqueId(), chairOne.getDisplayName()));
@@ -858,9 +870,7 @@ public class CoinFlipClient extends Client implements TerminableSession {
             inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1),
                 createPlayerHead(chairOne.getUniqueId(), chairOne.getDisplayName()));
             chairOneOccupant = chairOne;
-            if (mode == CoinFlipMode.PLAYER_VS_PLAYER) {
-                addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_2));
-            }
+            addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_2));
         } else {
             addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
             if (chairTwo != null)
@@ -871,22 +881,6 @@ public class CoinFlipClient extends Client implements TerminableSession {
             this.betAmount = betAmountValue;
             updatePotChest();
         }
-        if (gameActive) {
-            // The snapshot only tells us whether a pick was already made,
-            // not which side -- use -1 as an "unknown side" marker rather
-            // than guessing 0/1, since startFlipAnimation's house-head
-            // rendering would otherwise show the wrong side on a mid-round
-            // GUI reopen.
-            if (iHavePicked) {
-                if (playerPick == null) {
-                    playerPick = -1;
-                }
-            } else {
-                playerPick = null;
-                showPickButtonsIfSeated();
-            }
-            updatePotChest();
-        }
     }
 
 
@@ -894,28 +888,34 @@ public class CoinFlipClient extends Client implements TerminableSession {
         inventory.setItem(slotMapping.get(SlotOption.HANDLE_SUBMIT_BET), null);
     }
 
+    /** PvE only: the submit-bet lever, re-rendered wherever the seats reset to their idle pre-round state. */
+    private void renderPveSubmitLever() {
+        addItemAndLore(Material.LEVER, 1, text("coin-flip.submit-bet"), slotMapping.get(SlotOption.HANDLE_SUBMIT_BET), text("coin-flip.click-submit-bet"));
+    }
+
     /**
-     * PLAYER_VS_DEALER only: chair 2 is never sittable, so it permanently
-     * shows the house's seat instead of a "click here to sit" prompt.
+     * PvE only: both seats (20/24) double as the pick interaction, so what
+     * they show depends entirely on the round's phase -- an idle hint
+     * before a wager, the left/right pick prompts once a round is active
+     * and awaiting a pick, or the player's own head in whichever seat
+     * matches their locked-in pick.
      */
-    private void renderDealerSeat() {
-        addItemAndLore(Material.ZOMBIE_HEAD, 1, text("coin-flip.the-dealer"), slotMapping.get(SlotOption.HANDLE_CHAIR_2));
-    }
-
-    /** PvE only: shows the left/right pick buttons while a round is active and no pick has been locked in yet. */
-    private void showPickButtonsIfSeated() {
-        if (mode != CoinFlipMode.PLAYER_VS_DEALER || playerPick != null) return;
-        boolean seatedInChairOne = chairOneOccupant != null
-            && chairOneOccupant.getUniqueId().equals(player.getUniqueId());
-        if (!seatedInChairOne) return;
-
-        addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, text("coin-flip.pick-left"), slotMapping.get(SlotOption.PICK_LEFT), text("coin-flip.click-pick"));
-        addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, text("coin-flip.pick-right"), slotMapping.get(SlotOption.PICK_RIGHT), text("coin-flip.click-pick"));
-    }
-
-    private void clearPickButtons() {
-        addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, "", slotMapping.get(SlotOption.PICK_LEFT));
-        addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, "", slotMapping.get(SlotOption.PICK_RIGHT));
+    private void renderPveSeats() {
+        if (mode != CoinFlipMode.PLAYER_VS_DEALER) return;
+        int leftSlot = slotMapping.get(SlotOption.HANDLE_CHAIR_1);
+        int rightSlot = slotMapping.get(SlotOption.HANDLE_CHAIR_2);
+        if (!gameActive) {
+            addItemAndLore(Material.OAK_STAIRS, 1, text("coin-flip.awaiting-wager"), leftSlot, text("coin-flip.awaiting-wager-lore"));
+            addItemAndLore(Material.OAK_STAIRS, 1, text("coin-flip.awaiting-wager"), rightSlot, text("coin-flip.awaiting-wager-lore"));
+        } else if (playerPick == null) {
+            addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, text("coin-flip.pick-left"), leftSlot, text("coin-flip.click-pick"));
+            addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, text("coin-flip.pick-right"), rightSlot, text("coin-flip.click-pick"));
+        } else {
+            int pickedSlot = playerPick == 0 ? leftSlot : rightSlot;
+            int otherSlot = playerPick == 0 ? rightSlot : leftSlot;
+            inventory.setItem(pickedSlot, createPlayerHead(player.getUniqueId(), player.getDisplayName()));
+            addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, "", otherSlot);
+        }
     }
 
     private void populateGlassPattern() {
@@ -950,7 +950,7 @@ public class CoinFlipClient extends Client implements TerminableSession {
         createCoin(31);
         renderModeToggleButton();
         if (gameActive) {
-            showPickButtonsIfSeated();
+            renderPveSeats();
         }
     }
 

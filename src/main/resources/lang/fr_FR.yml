@@ -144,6 +144,8 @@ coin-flip:
   pick-left: "&oGauche"
   pick-right: "&oDroite"
   click-pick: "&8Cliquez pour valider votre choix."
+  awaiting-wager: "&f&oPlacez une mise pour commencer"
+  awaiting-wager-lore: "&7&oChoisissez ensuite votre côté avec sagesse"
 
 rock-paper-scissors:
   title: "Pierre-Feuille-Ciseaux"

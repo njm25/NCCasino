@@ -144,6 +144,8 @@ coin-flip:
   pick-left: "&oLeft"
   pick-right: "&oRight"
   click-pick: "&8Click to lock in your pick."
+  awaiting-wager: "&f&oSubmit a wager to begin"
+  awaiting-wager-lore: "&7&oThen choose your side wisely"
 
 rock-paper-scissors:
   title: "Rock Paper Scissors"

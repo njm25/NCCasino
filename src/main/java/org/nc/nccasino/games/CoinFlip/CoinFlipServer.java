@@ -146,7 +146,6 @@ public class CoinFlipServer extends Server {
                 return;
             }
         }
-        boolean wasSeated = currentMatch.isSeated(playerId);
         forfeitPlayer(playerId);
 
         CoinFlipMode next = viewFor(playerId) == CoinFlipMode.PLAYER_VS_PLAYER
@@ -156,9 +155,7 @@ public class CoinFlipServer extends Server {
         client.onServerUpdate("MODE_CHANGED", next);
 
         CoinFlipMatch newMatch = matchFor(playerId);
-        if (wasSeated && next == CoinFlipMode.PLAYER_VS_DEALER && newMatch.chairOneEmpty()) {
-            newMatch.handle(client, "PLAYER_SIT_ONE", null);
-        }
+        newMatch.ensurePveSeated(client);
         newMatch.sendChairSnapshotTo(client);
     }
 
@@ -294,6 +291,7 @@ public class CoinFlipServer extends Server {
         }
 
         private void handle(Client client, String eventType, Object data) {
+            ensurePveSeated(client);
             switch (eventType) {
                 case "PLAYER_SIT_ONE":
                     if (gameActive) return;
@@ -391,19 +389,21 @@ public class CoinFlipServer extends Server {
                 betAmount,
                 gameActive,
                 timeLeft,
-                playerPick != null,
+                playerPick,
             };
             client.onServerUpdate("GET_CHAIRS", chairs);
         }
 
-        /** Whether playerId currently occupies either chair of this match. */
-        private boolean isSeated(UUID playerId) {
-            return (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(playerId))
-                || (chairTwoOccupant != null && chairTwoOccupant.getUniqueId().equals(playerId));
-        }
-
-        private boolean chairOneEmpty() {
-            return chairOneOccupant == null;
+        /**
+         * PvE only: this match belongs to exactly one player, so there's no
+         * real "sit" gesture to wait for -- seat them the moment any event
+         * reaches this match, silently and without a PLAYER_SIT_ONE
+         * broadcast (the client no longer has a seat-click UI to react to).
+         */
+        private void ensurePveSeated(Client client) {
+            if (isPve() && chairOneOccupant == null) {
+                chairOneOccupant = client.getPlayer();
+            }
         }
 
         /**

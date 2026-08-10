@@ -144,6 +144,8 @@ coin-flip:
   pick-left: "&oLinks"
   pick-right: "&oRechts"
   click-pick: "&8Klicken, um deine Wahl festzulegen."
+  awaiting-wager: "&f&oSetze einen Einsatz, um zu beginnen"
+  awaiting-wager-lore: "&7&oWähle danach deine Seite mit Bedacht"
 
 rock-paper-scissors:
   title: "Schere, Stein, Papier"

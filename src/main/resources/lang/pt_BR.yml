@@ -144,6 +144,8 @@ coin-flip:
   pick-left: "&oEsquerda"
   pick-right: "&oDireita"
   click-pick: "&8Clique para confirmar sua escolha."
+  awaiting-wager: "&f&oFaça uma aposta para começar"
+  awaiting-wager-lore: "&7&oDepois escolha seu lado com sabedoria"
 
 rock-paper-scissors:
   title: "Pedra, Papel e Tesoura"
