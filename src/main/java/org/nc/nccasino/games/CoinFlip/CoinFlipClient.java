@@ -886,7 +886,7 @@ public class CoinFlipClient extends Client implements TerminableSession {
 
 
     private void clearHandleButton(){
-        inventory.setItem(slotMapping.get(SlotOption.HANDLE_SUBMIT_BET), null);
+        addItemAndLore(Material.BLACK_STAINED_GLASS_PANE, 1, "", slotMapping.get(SlotOption.HANDLE_SUBMIT_BET));
     }
 
     /** PvE only: the submit-bet lever, re-rendered wherever the seats reset to their idle pre-round state. */
@@ -938,7 +938,7 @@ public class CoinFlipClient extends Client implements TerminableSession {
             9, 17,
             18, 26,
             27, 35,
-            37, 38, 39, 40, 41, 42, 43,
+            37, 38, 39, 40, 41, 42, 43, 44,
             45, 46, 47, 48, 49, 50, 51, 52, 53
         };
 
