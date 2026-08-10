@@ -684,6 +684,28 @@ public final class Nccasino extends JavaPlugin implements Listener {
         return (int) timer;
     }
 
+    /** Max consecutive PvE chain wins before an automatic cash-out. -1 (the default) means unbounded. */
+    public int getRpsMaxChainRounds(String internalName) {
+        String value = getConfig().getString("dealers." + internalName + ".rps-max-chain-rounds", "-1").trim();
+
+        long rounds;
+        try {
+            rounds = Long.parseLong(value);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+
+        if (rounds < -1) return -1;
+        if (rounds > 9999) return 9999;
+
+        return (int) rounds;
+    }
+
+    /** Whether players may use the in-game PvP/PvE toggle button at all. Defaults to enabled for every existing dealer. */
+    public boolean getRpsModeSwitchingEnabled(String internalName) {
+        return getConfig().getBoolean("dealers." + internalName + ".rps-mode-switching-enabled", true);
+    }
+
     /** Resolved once per game instance, mirroring getCurrencyMode: no cache, safe fallback for missing/invalid config. */
     public org.nc.nccasino.games.RockPaperScissors.RpsMode getRockPaperScissorsMode(String internalName) {
         String raw = getConfig().getString("dealers." + internalName + ".rps-mode", "PLAYER_VS_PLAYER");

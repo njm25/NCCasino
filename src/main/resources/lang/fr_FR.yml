@@ -77,6 +77,7 @@ payout:
   delivered: "&e{context}\n&aPaiement : {amount}"
   context-disconnected: "Vous vous êtes déconnecté pendant une partie de {game} en cours. La partie s’est terminée pendant votre absence."
   context-server-restart: "Le serveur a redémarré alors que votre pari de {game} attendait encore son résultat ; il a donc été remboursé."
+  context-committed-result: "Le serveur a redémarré après que le résultat de votre partie de {game} a déjà été déterminé. Votre résultat a été conservé."
   retry-one: "&6Vous avez 1 paiement en attente qui n’a pas encore pu être remis. Une nouvelle tentative sera effectuée automatiquement."
   retry-many: "&6Vous avez {count} paiements en attente qui n’ont pas encore pu être remis. Une nouvelle tentative sera effectuée automatiquement."
 
@@ -163,6 +164,16 @@ rock-paper-scissors:
   forfeit-no-choice: "&cVous n’avez pas choisi à temps et avez perdu la manche."
   round-voided: "&eAucun joueur n’a choisi à temps. Paris remboursés."
   the-dealer: "&oLe Croupier"
+  mode-current: "&oMode actuel : {mode}"
+  mode-switch: "&oPasser en mode {mode}"
+  mode-switch-cashout-notice: "&eVous encaissera &a{amount}"
+  mode-switch-denied: "&cTerminez cette manche avant de changer de mode."
+  cash-out: "&oEncaisser"
+  cash-out-lore: "&oCliquez pour encaisser : &o&a{amount}"
+  chain-win: "&aVous avez gagné ! Série : {streak}. Encaissez ou rejouez pour &e{amount}&a."
+  round-started: "&cManche commencée, bonne chance !"
+  round-started-wager: "&7Mise : &a{amount}"
+  max-chain-hit: "&6Ce croupier est configuré avec une série de victoires maximale de {rounds} manches, que vous venez d'atteindre. Félicitations pour la série maximale !"
 
 baccarat:
   title: "Baccara"
@@ -593,17 +604,26 @@ coin-flip-settings:
 
 rock-paper-scissors-settings:
   title: "Paramètres de Pierre-Feuille-Ciseaux de {dealer}"
-  edit-timer: "Modifier le minuteur"
+  edit-timer: "Modifier le Minuteur (PvP)"
   invalid-option: "&cOption sélectionnée invalide."
   invalid-settings-option: "&cOption des paramètres de Pierre-Feuille-Ciseaux invalide."
   prompt-number: "&aSaisissez le nouveau nombre dans le chat."
   prompt-timer: "&aSaisissez le nouveau minuteur dans le chat."
   timer-updated: "&aMinuteur du croupier mis à jour."
   dealer-not-found: "&cCroupier des paramètres de Pierre-Feuille-Ciseaux introuvable."
-  toggle-mode: "Changer de mode"
+  toggle-mode: "Changer le Mode par Défaut"
   mode-pvp: "Joueur contre joueur"
   mode-pvd: "Joueur contre croupier"
   mode-updated: "&aMode du croupier mis à jour."
+  toggle-mode-switching: "Changement de Mode par les Joueurs"
+  mode-switching-enabled: "Activé"
+  mode-switching-disabled: "Désactivé"
+  mode-switching-updated: "&aChangement de mode par les joueurs mis à jour."
+  edit-max-chain: "Modifier le Max. de Manches Enchaînées (PvE)"
+  prompt-max-chain: "&aTapez le nouveau max. de manches enchaînées dans le chat (-1 pour illimité)."
+  max-chain-updated: "&aMax. de manches enchaînées du croupier mis à jour."
+  max-chain-current: "&7Actuel : {rounds}, paiement de {multiplier}x à la victoire"
+  max-chain-unbounded: "&7Actuel : Illimité"
 
 roulette-settings:
   title: "Paramètres de Roulette de {dealer}"
@@ -710,6 +730,11 @@ admin:
   default-columns-lore: "&7Nombre de colonnes par défaut : &a{value}"
   default-vines-lore: "&7Nombre de lianes par défaut : &a{value}"
   default-floors-lore: "&7Nombre d'étages par défaut : &a{value}"
+  rps-mode-lore: "&7Mode : &a{value}"
+  rps-mode-switching-lore: "&7Changement de Mode par les Joueurs : &a{value}"
+  rps-timer-lore: "&7Minuteur : &a{value} &7(PvP)"
+  rps-max-chain-lore: "&7Max. de Manches Enchaînées : &a{value} &7(PvE)"
+  rps-max-chain-lore-unbounded: "&7Max. de Manches Enchaînées : &aIllimité &7(PvE)"
   no-settings: "&7Aucun paramètre disponible."
   select-currency: "Sélectionner la monnaie"
   disabled-vault: "[Désactivé en mode Vault]"
@@ -777,6 +802,7 @@ occupations:
   stand-on-17: "la probabilité de rester à 17"
   default-mines: "le nombre de mines par défaut"
   currency-item: "la sélection de l'objet monétaire"
+  rps-max-chain: "max. de manches enchaînées de pierre-papier-ciseaux"
 
 commands:
   dealers-deleted: "&a{count} croupiers supprimés."

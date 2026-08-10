@@ -83,6 +83,7 @@ public class AdminMenu extends Menu {
     private static final Map<UUID, Mob> currencyEditMode = new HashMap<>();
     public static final Map<UUID, Mob> decksEditMode = new HashMap<>();
     public static final Map<UUID, Mob> dragonEditMode = new HashMap<>();
+    public static final Map<UUID, Mob> editRpsChainMode = new HashMap<>();
 
     // All active AdminInventories by player ID
     public static final Map<UUID, AdminMenu> adminInventories = new HashMap<>();
@@ -294,8 +295,22 @@ public class AdminMenu extends Menu {
                 lore.add(text("admin.timer-lore", "value", coinFlipTimer));
                 break;
             case "Rock Paper Scissors":
+                org.nc.nccasino.games.RockPaperScissors.RpsMode rpsMode = plugin.getRockPaperScissorsMode(internalName);
+                String rpsModeLabel = text(rpsMode == org.nc.nccasino.games.RockPaperScissors.RpsMode.PLAYER_VS_DEALER
+                    ? "rock-paper-scissors-settings.mode-pvd"
+                    : "rock-paper-scissors-settings.mode-pvp");
+                lore.add(text("admin.rps-mode-lore", "value", rpsModeLabel));
+                boolean rpsModeSwitching = plugin.getRpsModeSwitchingEnabled(internalName);
+                String rpsModeSwitchingLabel = text(rpsModeSwitching
+                    ? "rock-paper-scissors-settings.mode-switching-enabled"
+                    : "rock-paper-scissors-settings.mode-switching-disabled");
+                lore.add(text("admin.rps-mode-switching-lore", "value", rpsModeSwitchingLabel));
                 int rpsTimer = config.getInt("dealers." + internalName + ".timer", 30);
-                lore.add(text("admin.timer-lore", "value", rpsTimer));
+                lore.add(text("admin.rps-timer-lore", "value", rpsTimer));
+                int rpsMaxChain = plugin.getRpsMaxChainRounds(internalName);
+                lore.add(rpsMaxChain <= 0
+                    ? text("admin.rps-max-chain-lore-unbounded")
+                    : text("admin.rps-max-chain-lore", "value", rpsMaxChain));
                 break;
             case "Dragon Descent":
                 int defaultColumns = config.getInt("dealers." + internalName + ".default-columns", 7);
@@ -321,6 +336,7 @@ public class AdminMenu extends Menu {
         return (mob != null)
             || (standOn17Mode.get(playerId) != null)
             || (editMinesMode.get(playerId) != null)
+            || (editRpsChainMode.get(playerId) != null)
             || (timerEditMode.get(playerId) != null)
             || (amsgEditMode.get(playerId) != null)
             || (moveMode.get(playerId) != null)
@@ -354,6 +370,9 @@ public class AdminMenu extends Menu {
         if (editMinesMode.get(playerId) != null) {
             occupations.add("occupations.default-mines");
         }
+        if (editRpsChainMode.get(playerId) != null) {
+            occupations.add("occupations.rps-max-chain");
+        }
         if (currencyEditMode.get(playerId) != null) {///////////might never get to this
             occupations.add("occupations.currency-item");
         }
@@ -374,6 +393,9 @@ public class AdminMenu extends Menu {
             mobs.add(mob);
         }
         if ((mob = editMinesMode.get(playerId)) != null) {
+            mobs.add(mob);
+        }
+        if ((mob = editRpsChainMode.get(playerId)) != null) {
             mobs.add(mob);
         }
         if ((mob = amsgEditMode.get(playerId)) != null) {
@@ -1696,6 +1718,7 @@ public class AdminMenu extends Menu {
         timerEditMode.remove(playerId);
         standOn17Mode.remove(playerId);
         editMinesMode.remove(playerId);
+        editRpsChainMode.remove(playerId);
         amsgEditMode.remove(playerId);
         chipEditMode.remove(playerId);
         currencyEditMode.remove(playerId);

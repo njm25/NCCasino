@@ -114,9 +114,10 @@ public final class GameTerminationPolicy {
     }
 
     /**
-     * Covers the whole accepted-bet span, including the tie-rethrow loop:
-     * a rethrow never leaves {@code gameActive}, so the round rides to its
-     * result exactly like Coin Flip's single flip does.
+     * Covers the whole accepted-bet span. The game performs the final
+     * phase-aware settlement: PvP rides through tie rethrows, while PvE
+     * marks the current reveal terminal so a tie or chain win cashes out
+     * instead of reopening an untimed match without its owner.
      */
     public static TerminationAction rockPaperScissors(ExitReason reason, boolean gameActive) {
         if (reason == ExitReason.GAME_COMPLETED) {

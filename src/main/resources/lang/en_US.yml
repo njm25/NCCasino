@@ -77,6 +77,7 @@ payout:
   delivered: "&e{context}\n&aPayout: {amount}"
   context-disconnected: "You disconnected during an active {game} game. The game finished while you were offline."
   context-server-restart: "The server restarted while your {game} bet was still awaiting resolution, so it has been refunded."
+  context-committed-result: "The server restarted after your {game} result had already been determined. Your outcome was preserved."
   retry-one: "&6You have 1 pending payout that could not be delivered yet. It will retry automatically."
   retry-many: "&6You have {count} pending payouts that could not be delivered yet. They will retry automatically."
 
@@ -163,6 +164,16 @@ rock-paper-scissors:
   forfeit-no-choice: "&cYou didn't choose in time and forfeited the round."
   round-voided: "&eNeither player chose in time. Bets refunded."
   the-dealer: "&oThe Dealer"
+  mode-current: "&oCurrent Mode: {mode}"
+  mode-switch: "&oSwitch mode to {mode}"
+  mode-switch-cashout-notice: "&eWill cash you out at &a{amount}"
+  mode-switch-denied: "&cFinish this round before switching modes."
+  cash-out: "&oCash Out"
+  cash-out-lore: "&oClick to cash out: &o&a{amount}"
+  chain-win: "&aYou won! Streak: {streak}. Cash out or throw again for &e{amount}&a."
+  round-started: "&cRound started, good luck!"
+  round-started-wager: "&7Wager: &a{amount}"
+  max-chain-hit: "&6This dealer has been configured to a max win streak of {rounds} games, which you hit. Congrats on the max win!"
 
 baccarat:
   title: "Baccarat"
@@ -593,17 +604,26 @@ coin-flip-settings:
 
 rock-paper-scissors-settings:
   title: "{dealer}'s Rock Paper Scissors Settings"
-  edit-timer: "Edit Timer"
+  edit-timer: "Edit Timer (PvP)"
   invalid-option: "&cInvalid option selected."
   invalid-settings-option: "&cInvalid rock paper scissors settings option selected."
   prompt-number: "&aType the new number in chat."
   prompt-timer: "&aType the new timer in chat."
   timer-updated: "&aDealer timer updated."
   dealer-not-found: "&cCould not find rock paper scissors settings dealer."
-  toggle-mode: "Toggle Mode"
+  toggle-mode: "Toggle Default Mode"
   mode-pvp: "Player vs Player"
   mode-pvd: "Player vs Dealer"
   mode-updated: "&aDealer mode updated."
+  toggle-mode-switching: "Player Game Mode Switching"
+  mode-switching-enabled: "Enabled"
+  mode-switching-disabled: "Disabled"
+  mode-switching-updated: "&aPlayer game mode switching updated."
+  edit-max-chain: "Edit Max Chain Rounds (PvE)"
+  prompt-max-chain: "&aType the new max chain rounds in chat (-1 for unbounded)."
+  max-chain-updated: "&aDealer max chain rounds updated."
+  max-chain-current: "&7Current: {rounds}, {multiplier}x payout on win"
+  max-chain-unbounded: "&7Current: Unbounded"
 
 roulette-settings:
   title: "{dealer}'s Roulette Settings"
@@ -710,6 +730,11 @@ admin:
   default-columns-lore: "&7Default # of Columns: &a{value}"
   default-vines-lore: "&7Default # of Vines: &a{value}"
   default-floors-lore: "&7Default # of Floors: &a{value}"
+  rps-mode-lore: "&7Mode: &a{value}"
+  rps-mode-switching-lore: "&7Player Mode Switching: &a{value}"
+  rps-timer-lore: "&7Timer: &a{value} &7(PvP)"
+  rps-max-chain-lore: "&7Max Chain Rounds: &a{value} &7(PvE)"
+  rps-max-chain-lore-unbounded: "&7Max Chain Rounds: &aUnbounded &7(PvE)"
   no-settings: "&7No settings available."
   select-currency: "Select Currency"
   disabled-vault: "[Disabled For Vault Mode]"
@@ -777,6 +802,7 @@ occupations:
   stand-on-17: "stand on 17 chance"
   default-mines: "default number of mines"
   currency-item: "currency item selection"
+  rps-max-chain: "rock paper scissors max chain rounds"
 
 commands:
   dealers-deleted: "&aDeleted {count} dealers."

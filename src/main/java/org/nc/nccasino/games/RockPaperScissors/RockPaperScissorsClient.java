@@ -15,6 +15,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
 import org.nc.nccasino.helpers.SoundHelper;
@@ -34,7 +35,9 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         CHOOSE_ROCK,
         CHOOSE_PAPER,
         CHOOSE_SCISSORS,
-        LEAVE
+        LEAVE,
+        TOGGLE_MODE,
+        CASH_OUT
     }
     protected final Map<SlotOption, Integer> slotMapping = new HashMap<>();
 
@@ -51,20 +54,39 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     /** Keeps the complete reveal window at the server's existing 70 ticks. */
     private static final int RESULT_HOLD_TICKS = 70 - CADENCE_TO_SHOOT_TICKS;
     private static final long WINNER_ORBIT_INTERVAL_TICKS = 2L;
+    /**
+     * PvE mirrors of the above -- matches the server's
+     * PRE_REVEAL_DELAY_PVE_TICKS/REVEAL_WINDOW_PVE_TICKS split. Cadence
+     * chant is 36 (PvP's length) cut by 1/3, i.e. 24 total. RESULT_HOLD_PVE_TICKS
+     * stays at 16 (shorter than the loser's ~1.5s creeper-hiss sound, so the
+     * explosion overlaps it, deliberate per earlier explicit request); the
+     * 40 total below is CADENCE_TO_SHOOT_PVE_TICKS(24) + that same 16. See
+     * RockPaperScissorsServer.REVEAL_WINDOW_PVE_TICKS, which must match.
+     */
+    private static final int CADENCE_VISIBLE_PVE_TICKS = 6;
+    private static final int CADENCE_BLANK_PVE_TICKS = 2;
+    private static final int CADENCE_TO_SHOOT_PVE_TICKS =
+        3 * (CADENCE_VISIBLE_PVE_TICKS + CADENCE_BLANK_PVE_TICKS);
+    private static final int RESULT_HOLD_PVE_TICKS = 40 - CADENCE_TO_SHOOT_PVE_TICKS;
+    private static final long WINNER_ORBIT_INTERVAL_PVE_TICKS = 1L;
     private static final float[] WINNER_ORBIT_DING_PITCHES = { 1.4f, 1.7f, 2.0f };
 
     protected Player chairOneOccupant;
     protected Player chairTwoOccupant;
 
     protected int betAmount = 0;
+    /** PvE chain display only -- authoritative count lives server-side. */
+    private int chainWins = 0;
 
     private final String clickHereToSit;
     private boolean gameActive = false;
     private boolean myChoiceLocked = false;
     private boolean opponentLockedIn = false;
     private boolean sessionResolved = false;
-    /** Resolved once at construction, same as the server -- reflects the config at the moment this GUI was opened. */
-    private final RpsMode mode;
+    /** Seeded from the config default at construction; mutable afterward via the in-game toggle button, independent of every other viewer of this dealer. */
+    private RpsMode mode;
+    /** Admin setting: whether the in-game toggle button renders/functions at all. Dealer-wide, re-read fresh on every new Client (see onSessionTerminated). */
+    private final boolean modeSwitchingEnabled;
 
     public RockPaperScissorsClient(Server server, Player player, Nccasino plugin, String internalName) {
         super(server, player, plugin.getLocalization().text(player, "rock-paper-scissors.title"), plugin, internalName);
@@ -72,12 +94,21 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         this.clickHereToSit = text("rock-paper-scissors.click-sit");
         this.chairOneOccupant = null;
         this.chairTwoOccupant = null;
-        this.mode = plugin.getRockPaperScissorsMode(internalName);
+        // Not the dealer's static config default -- a returning player who
+        // previously toggled away from it needs this fresh Client (closing
+        // the inventory always drops the old one, see onSessionTerminated)
+        // to agree with the server's own per-player view, or the client
+        // renders/behaves as one mode while the server routes their actions
+        // to the other.
+        this.mode = ((RockPaperScissorsServer) server).viewFor(player.getUniqueId());
+        this.modeSwitchingEnabled = plugin.getRpsModeSwitchingEnabled(internalName);
 
         slotMapping.put(SlotOption.HANDLE_CHAIR_1, 20);
         slotMapping.put(SlotOption.HANDLE_CHAIR_2, 24);
         slotMapping.put(SlotOption.LEAVE, 36);
         slotMapping.put(SlotOption.HANDLE_SUBMIT_BET, 44);
+        slotMapping.put(SlotOption.TOGGLE_MODE, 4);
+        slotMapping.put(SlotOption.CASH_OUT, 40);
         setChoiceSlotMapping(CHAIR_ONE_THROW_SLOTS);
 
         addItemAndLore(Material.SPRUCE_DOOR, 1, text("rock-paper-scissors.leave"), slotMapping.get(SlotOption.LEAVE));
@@ -124,6 +155,14 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
             case LEAVE:
                 player.closeInventory();
                 break;
+            case TOGGLE_MODE:
+                handleToggleModeClick();
+                break;
+            case CASH_OUT:
+                if (mode == RpsMode.PLAYER_VS_DEALER && gameActive && !myChoiceLocked) {
+                    sendUpdateToServer("PLAYER_CASH_OUT", null);
+                }
+                break;
         }
     }
 
@@ -144,6 +183,18 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                 ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
                 SessionRegistry.terminatePlayerSession(playerId, reason);
                 return;
+            }
+            // Still online -- this is just a GUI close, not a real
+            // disconnect. In PvE, if we're sitting at a safe checkpoint
+            // (awaiting a pick, chain pot live), auto-cash-out rather than
+            // letting the "let it ride" disconnect policy kick in for a
+            // round the player never actually walked away from -- mirrors
+            // Mines' onInventoryClose cashing out while GameState.PLAYING.
+            // This resolves synchronously, so gameActive is already false
+            // by the time the normal termination path below runs, which
+            // then correctly just does standard seat/client cleanup.
+            if (mode == RpsMode.PLAYER_VS_DEALER && gameActive && !myChoiceLocked) {
+                sendUpdateToServer("PLAYER_CASH_OUT", null);
             }
             SessionRegistry.terminateSession(playerId, this, ExitReason.DISCONNECTED);
         });
@@ -188,11 +239,22 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                     sendUpdateToServer("PLAYER_LEAVE_TWO", null);
                 }
             }
-            // gameActive: let it ride -- the accepted round (including any
-            // tie-rethrow) resolves normally by UUID at payout time
-            // (delivered as a pending payout if still offline then).
+            // gameActive: keep the authoritative server result alive. PvP
+            // rides normally; PvE marks this as the terminal reveal so a
+            // tie or chain win cashes out rather than reopening without the
+            // owner (delivered as pending if still offline).
             if (gameActive) {
-                ((RockPaperScissorsServer) server).registerRidingSession(terminatedPlayerId);
+                RockPaperScissorsServer rpsServer = (RockPaperScissorsServer) server;
+                rpsServer.registerRidingSession(terminatedPlayerId);
+                if (mode == RpsMode.PLAYER_VS_DEALER) {
+                    // A PvE chain has no timer at its decision points, so a
+                    // plain "ride to result" can otherwise become permanent:
+                    // a tie or an uncapped win reopens a match with no client
+                    // attached. Cash out now if the server is already at a
+                    // safe checkpoint, or immediately after the committed
+                    // reveal finishes (win compounds first; loss still loses).
+                    rpsServer.requestPveExitSettlement(terminatedPlayerId);
+                }
             }
             server.removeClient(terminatedPlayerId);
         }
@@ -245,6 +307,13 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
             if(!betStack.isEmpty()){
                 int totalBet = (int) betStack.stream().mapToDouble(Double::doubleValue).sum();
                 if(totalBet > 0){
+                    // Set locally rather than waiting on the server's echo --
+                    // PvP gets one back via the PLAYER_SUBMIT_BET broadcast
+                    // (handleSubmitBet(int), harmless to overwrite with the
+                    // same value again), but PvE skips that broadcast
+                    // entirely and jumps straight to PLAYER_ACCEPT_BET, which
+                    // would otherwise double a still-zero betAmount.
+                    betAmount = totalBet;
                     sendUpdateToServer("PLAYER_SUBMIT_BET", totalBet);
                 }
             }
@@ -274,6 +343,84 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         }
     }
 
+    /**
+     * Visible any time the dealer is open, seated or not -- this is each
+     * viewer's own personal choice of which independent system (the shared
+     * PvP table, or their own private PvE match) they're currently looking
+     * at, so there's nothing to gate it on. Blocked while a round of
+     * whichever match the player is currently in is active, EXCEPT at a
+     * safe PvE checkpoint (awaiting a pick) -- there the request still goes
+     * through, since the server will auto-cash-out before switching rather
+     * than deny. The server enforces the same guard authoritatively via
+     * TOGGLE_MODE_DENIED for every case this local check can't already rule out.
+     */
+    private void handleToggleModeClick() {
+        // The button itself isn't even rendered when this is disabled, but
+        // the slot can still be clicked (it's just a decorative pane) --
+        // silently no-op rather than sending a request the server would
+        // just deny anyway.
+        if (!modeSwitchingEnabled) return;
+        boolean safeToAutoCashOut = mode == RpsMode.PLAYER_VS_DEALER && gameActive && !myChoiceLocked;
+        if (gameActive && !safeToAutoCashOut) {
+            denyToggleMode();
+            return;
+        }
+        sendUpdateToServer("PLAYER_TOGGLE_MODE", null);
+    }
+
+    private void denyToggleMode() {
+        if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case STANDARD:
+            case VERBOSE:
+                player.sendMessage(text("rock-paper-scissors.mode-switch-denied"));
+                break;
+            case NONE:
+                break;
+        }
+    }
+
+    private void handleToggleModeDenied() {
+        denyToggleMode();
+    }
+
+    /**
+     * The server confirmed this player's own view switched -- resets local
+     * state to a clean idle slate for whichever system (shared PvP table or
+     * private PvE match) they just switched into. The follow-up GET_CHAIRS
+     * snapshot the server sends right after this fills in the new match's
+     * actual current chairs.
+     */
+    private void handleModeChanged(RpsMode newMode) {
+        stopWinnerOrbit();
+        if (revealTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(revealTaskId);
+            revealTaskId = -1;
+        }
+        this.mode = newMode;
+        chairOneOccupant = null;
+        chairTwoOccupant = null;
+        betAmount = 0;
+        betStack.clear();
+        gameActive = false;
+        myChoiceLocked = false;
+        opponentLockedIn = false;
+        populateGlassPattern();
+        replaceBottomRow();
+        hidePotChest();
+        clearStatusIndicator();
+        addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
+        if (newMode == RpsMode.PLAYER_VS_DEALER) {
+            renderDealerSeat();
+        } else {
+            addItemAndLore(Material.OAK_STAIRS, 1, text("rock-paper-scissors.seat-unavailable"), slotMapping.get(SlotOption.HANDLE_CHAIR_2), text("rock-paper-scissors.sit-other-chair"));
+        }
+        if (SoundHelper.getSoundSafely("ui.button.click", player) != null)
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
+        player.updateInventory();
+    }
+
     private void handleChoose(Throw choice) {
         if (!gameActive || myChoiceLocked) return;
         boolean seated = (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(player.getUniqueId()))
@@ -284,6 +431,8 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         sendUpdateToServer("PLAYER_CHOOSE", choice);
         clearChoiceButtons();
         updateStatusIndicator();
+        renderModeToggleButton();
+        updatePotChest();
         if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
             player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
         // The server may resolve (and broadcast a reset) synchronously
@@ -343,6 +492,9 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
             case "RETHROW":
                 handleRethrow();
                 break;
+            case "CHAIN_WIN":
+                handleChainWin((Object[]) data);
+                break;
             case "FORFEIT_TIMEOUT":
                 handleForfeitTimeout((int) data);
                 break;
@@ -354,6 +506,12 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                 break;
             case "ANIMATION_FINISHED":
                 handleAnimationFinished();
+                break;
+            case "MODE_CHANGED":
+                handleModeChanged((RpsMode) data);
+                break;
+            case "TOGGLE_MODE_DENIED":
+                handleToggleModeDenied();
                 break;
             default:
                 break;
@@ -514,7 +672,12 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     private void handleAcceptBet(Boolean accepted){
         if(accepted){
             pendingAcceptAmount = 0;
-            betAmount = betAmount * 2;
+            // Mirrors the server's beginActiveRound: PvP doubles the pot
+            // (the opponent/house matches the stake), PvE does not -- its
+            // whole payout curve is the chain multiplier itself, starting
+            // from the bare wager.
+            betAmount = mode == RpsMode.PLAYER_VS_DEALER ? betAmount : betAmount * 2;
+            chainWins = 0;
             gameActive = true;
             myChoiceLocked = false;
             opponentLockedIn = false;
@@ -526,13 +689,12 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
             bettingEnabled = false;
             replaceBottomRow();
             updatePotChest();
+            renderModeToggleButton();
             if (SoundHelper.getSoundSafely("block.enchantment_table.use", player) != null) player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f);
 
-            inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1),
-                createPlayerHead(chairOneOccupant.getUniqueId(), chairOneOccupant.getDisplayName()));
+            inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1), headForOccupant(chairOneOccupant));
             if (chairTwoOccupant != null) {
-                inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2),
-                    createPlayerHead(chairTwoOccupant.getUniqueId(), chairTwoOccupant.getDisplayName()));
+                inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2), headForOccupant(chairTwoOccupant));
             }
 
             showChoiceButtonsIfSeated();
@@ -655,6 +817,36 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         player.updateInventory();
     }
 
+    /**
+     * A PvE win under the chain cap: same reopening as a tie's rethrow, but
+     * the pot has compounded and there's a streak worth reporting.
+     */
+    private void handleChainWin(Object[] data) {
+        chainWins = (data.length > 0 && data[0] instanceof Integer) ? (int) data[0] : chainWins;
+        betAmount = (data.length > 1 && data[1] instanceof Integer) ? (int) data[1] : betAmount;
+
+        stopWinnerOrbit();
+        myChoiceLocked = false;
+        opponentLockedIn = false;
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case STANDARD:
+            case VERBOSE:
+                player.sendMessage(text(
+                    "rock-paper-scissors.chain-win",
+                    "streak", chainWins,
+                    "amount", plugin.formatWagerDisplay(currencyMode, currencyName, betAmount)
+                ));
+                break;
+            case NONE:
+                break;
+        }
+        populateGlassPattern();
+        updatePotChest();
+        showChoiceButtonsIfSeated();
+        updateStatusIndicator();
+        player.updateInventory();
+    }
+
     private void handleForfeitTimeout(int winner) {
         boolean iAmSeated = (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(player.getUniqueId()))
             || (chairTwoOccupant != null && chairTwoOccupant.getUniqueId().equals(player.getUniqueId()));
@@ -705,18 +897,15 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         Throw chairOneThrow = (Throw) data[0];
         Throw chairTwoThrow = (Throw) data[1];
 
+        // Message and buzzer sound are deliberately NOT fired here -- they
+        // used to be, which announced the tie in chat before the player had
+        // even seen the ROCK-PAPER-SCISSORS-SHOOT cadence play out and
+        // reveal the tied throws, spoiling the result early. Both now fire
+        // from startThrowPulse's phase-6 tie branch instead, alongside the
+        // rest of the tie's reveal-moment sound/visual cues -- same pattern
+        // a decisive round already uses (no message here either; those are
+        // sent server-side only after the animation fully resolves).
         clearStatusIndicator();
-        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-            case STANDARD:
-            case VERBOSE:
-                player.sendMessage(text("rock-paper-scissors.tie"));
-                break;
-            case NONE:
-                break;
-        }
-        if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
-
         startTieRevealAnimation(chairOneThrow, chairTwoThrow);
     }
 
@@ -728,6 +917,13 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
      *
      *
      */
+
+    /** Same head every other seating path uses: your own seat gets the "click to leave" lore, anyone else's doesn't. */
+    private ItemStack headForOccupant(Player occupant) {
+        return occupant.getUniqueId().equals(player.getUniqueId())
+            ? createPlayerHead(occupant.getUniqueId(), occupant.getDisplayName(), text("rock-paper-scissors.click-leave-chair"))
+            : createPlayerHead(occupant.getUniqueId(), occupant.getDisplayName());
+    }
 
     private void handleGetChairs(Object data){
         Object[] dataArr = (Object[]) data;
@@ -748,17 +944,14 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                 addItemAndLore(Material.OAK_STAIRS, 1, text("rock-paper-scissors.seat-unavailable"), slotMapping.get(SlotOption.HANDLE_CHAIR_2), text("rock-paper-scissors.sit-other-chair"));
             }
         } else if (chairOne != null && chairTwo != null) {
-            inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1),
-                createPlayerHead(chairOne.getUniqueId(), chairOne.getDisplayName()));
-            inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2),
-                createPlayerHead(chairTwo.getUniqueId(), chairTwo.getDisplayName()));
+            inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1), headForOccupant(chairOne));
+            inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2), headForOccupant(chairTwo));
 
             chairOneOccupant = chairOne;
             chairTwoOccupant = chairTwo;
 
         } else if (chairOne != null) {
-            inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1),
-                createPlayerHead(chairOne.getUniqueId(), chairOne.getDisplayName()));
+            inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_1), headForOccupant(chairOne));
             chairOneOccupant = chairOne;
             if (mode == RpsMode.PLAYER_VS_PLAYER) {
                 addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_2));
@@ -766,8 +959,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         } else {
             addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
             if (chairTwo != null)
-            inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2),
-                createPlayerHead(chairTwo.getUniqueId(), chairTwo.getDisplayName()));
+            inventory.setItem(slotMapping.get(SlotOption.HANDLE_CHAIR_2), headForOccupant(chairTwo));
         }
         if(betAmountValue!=0){
             this.betAmount = betAmountValue;
@@ -787,8 +979,9 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     /**
      * PLAYER_VS_DEALER only: chair 2 is never sittable, so it permanently
      * shows the house's seat instead of a "click here to sit" prompt.
-     * Nothing else ever writes to this slot in that mode, so this only
-     * needs to run once.
+     * Nothing else ever writes to this slot while in that mode -- called
+     * once at construction if that's the starting view, and again whenever
+     * the player switches into PvE via the in-game mode toggle.
      */
     private void renderDealerSeat() {
         addItemAndLore(Material.ZOMBIE_HEAD, 1, text("rock-paper-scissors.the-dealer"), slotMapping.get(SlotOption.HANDLE_CHAIR_2));
@@ -836,7 +1029,15 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         if (myChoiceLocked && opponentLockedIn) {
             addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, "", STATUS_SLOT);
         } else if (myChoiceLocked) {
-            addItemAndLore(Material.CLOCK, 1, text("rock-paper-scissors.waiting-for-opponent"), STATUS_SLOT);
+            // PvE never sends OPPONENT_LOCKED_IN -- the dealer picks
+            // synchronously the instant you choose, so there's nothing to
+            // wait on. Without this, the clock would flash for the
+            // pre-reveal delay every single round.
+            if (mode == RpsMode.PLAYER_VS_DEALER) {
+                addItemAndLore(Material.LIME_STAINED_GLASS_PANE, 1, "", STATUS_SLOT);
+            } else {
+                addItemAndLore(Material.CLOCK, 1, text("rock-paper-scissors.waiting-for-opponent"), STATUS_SLOT);
+            }
         } else if (opponentLockedIn) {
             addItemAndLore(Material.BELL, 1, text("rock-paper-scissors.opponent-locked-in"), STATUS_SLOT);
         } else {
@@ -861,7 +1062,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
             9, 17,
             18, 26,
             27, 35,
-            37, 38, 39, 40, 41, 42, 43,
+            37, 38, 39, 40, 41, 42, 43, 44,
             45, 46, 47, 48, 49, 50, 51, 52, 53
         };
 
@@ -871,6 +1072,59 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
 
         for (int slot : BACKGROUND_LIME_SLOTS) {
             addItemAndLore(limePane, 1, paneName, slot);
+        }
+
+        renderModeToggleButton();
+    }
+
+    /**
+     * Compass at slot 4, top row middle column -- always visible,
+     * regardless of seating, since switching modes is each viewer's own
+     * personal choice. Re-rendered here (rather than only at construction)
+     * because populateGlassPattern repaints this same slot as a plain
+     * border pane on every reset (new round, rethrow, mode switch).
+     * Hidden entirely (left as the plain border pane) when the admin has
+     * disabled player mode switching for this dealer.
+     */
+    private void renderModeToggleButton() {
+        if (!modeSwitchingEnabled) {
+            addItemAndLore(Material.BLACK_STAINED_GLASS_PANE, 1, "", slotMapping.get(SlotOption.TOGGLE_MODE));
+            return;
+        }
+        RpsMode target = mode == RpsMode.PLAYER_VS_PLAYER ? RpsMode.PLAYER_VS_DEALER : RpsMode.PLAYER_VS_PLAYER;
+        String currentLabel = text(mode == RpsMode.PLAYER_VS_DEALER
+            ? "rock-paper-scissors-settings.mode-pvd"
+            : "rock-paper-scissors-settings.mode-pvp");
+        String targetLabel = text(target == RpsMode.PLAYER_VS_DEALER
+            ? "rock-paper-scissors-settings.mode-pvd"
+            : "rock-paper-scissors-settings.mode-pvp");
+        String switchLine = text("rock-paper-scissors.mode-switch", "mode", targetLabel);
+
+        // Matches the safe-checkpoint condition handleToggleModeClick uses
+        // to let the switch through instead of denying it -- switching here
+        // actually cashes you out first, so say so.
+        boolean safeToAutoCashOut = mode == RpsMode.PLAYER_VS_DEALER && gameActive && !myChoiceLocked;
+        if (safeToAutoCashOut) {
+            String cashOutLine = text(
+                "rock-paper-scissors.mode-switch-cashout-notice",
+                "amount", plugin.formatWagerDisplay(currencyMode, currencyName, betAmount)
+            );
+            addItemAndLore(
+                Material.COMPASS,
+                1,
+                text("rock-paper-scissors.mode-current", "mode", currentLabel),
+                slotMapping.get(SlotOption.TOGGLE_MODE),
+                switchLine,
+                cashOutLine
+            );
+        } else {
+            addItemAndLore(
+                Material.COMPASS,
+                1,
+                text("rock-paper-scissors.mode-current", "mode", currentLabel),
+                slotMapping.get(SlotOption.TOGGLE_MODE),
+                switchLine
+            );
         }
     }
 
@@ -925,13 +1179,54 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         addItemAndLore(Material.BLACK_STAINED_GLASS_PANE, 1, "", 40);
     }
 
-    /** PvE has no shared pot to show -- the payout is just your stake doubled or lost, so the chest stays hidden. */
+    /**
+     * PvE has no shared pot to show a chest for -- shows the chain cash-out
+     * button in its place while awaiting a pick, or a "round started" marker
+     * once a pick is locked in and cash-out is no longer available (matches
+     * the server's handleCashOut guard, which requires !revealInProgress).
+     */
     private void updatePotChest(){
         if (mode == RpsMode.PLAYER_VS_DEALER) {
-            hidePotChest();
+            if (gameActive && !myChoiceLocked) {
+                renderCashOutButton();
+            } else if (gameActive) {
+                renderRoundStartedMarker();
+            } else {
+                hidePotChest();
+            }
             return;
         }
         addItemAndLore(Material.CHEST, 1, text("rock-paper-scissors.pot"), 40, text("rock-paper-scissors.current", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, betAmount)));
+    }
+
+    /**
+     * PvE-only cash-out button, reusing PvP's dead pot-chest slot. Icon
+     * matches whatever currency actually gets paid out (Emerald for Vault,
+     * else the configured item currency), so what's shown is what you get.
+     * betAmount is never doubled at accept for PvE (see handleAcceptBet),
+     * so it already equals the exact wager pre-win and the compounded pot
+     * after -- no special-casing needed here either.
+     */
+    private void renderCashOutButton() {
+        Material icon = currencyMode == CurrencyMode.VAULT ? Material.EMERALD : plugin.getCurrency(internalName);
+        addItemAndLore(
+            icon,
+            1,
+            text("rock-paper-scissors.cash-out"),
+            40,
+            text("rock-paper-scissors.cash-out-lore", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, betAmount))
+        );
+    }
+
+    /** Purely visual -- signals cash-out isn't available right now (a pick is locked in, reveal pending), same slot the cash-out button occupies between picks. */
+    private void renderRoundStartedMarker() {
+        addItemAndLore(
+            Material.BARRIER,
+            1,
+            text("rock-paper-scissors.round-started"),
+            40,
+            text("rock-paper-scissors.round-started-wager", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, betAmount))
+        );
     }
 
     private void resetAfterRound() {
@@ -940,6 +1235,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         myChoiceLocked = false;
         opponentLockedIn = false;
         betAmount = 0;
+        chainWins = 0;
         betStack.clear();
         populateGlassPattern();
         if(chairOneOccupant!=null && chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
@@ -1005,6 +1301,11 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     private void startThrowPulse(Throw chairOneThrow, Throw chairTwoThrow, int winner, boolean tie) {
         if (revealTaskId != -1) return;
 
+        boolean pve = mode == RpsMode.PLAYER_VS_DEALER;
+        int cadenceVisibleTicks = pve ? CADENCE_VISIBLE_PVE_TICKS : CADENCE_VISIBLE_TICKS;
+        int cadenceBlankTicks = pve ? CADENCE_BLANK_PVE_TICKS : CADENCE_BLANK_TICKS;
+        int resultHoldTicks = pve ? RESULT_HOLD_PVE_TICKS : RESULT_HOLD_TICKS;
+
         BukkitRunnable pulse = new BukkitRunnable() {
             private int phase = 0;
             private int ticksUntilNextPhase = 0;
@@ -1020,20 +1321,20 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                 switch (phase) {
                     case 0 -> {
                         showCadenceThrow(Throw.ROCK);
-                        ticksUntilNextPhase = CADENCE_VISIBLE_TICKS - 1;
+                        ticksUntilNextPhase = cadenceVisibleTicks - 1;
                     }
                     case 1, 3, 5 -> {
                         // The empty beat between each spoken word is
                         // intentionally represented by the background panes.
-                        ticksUntilNextPhase = CADENCE_BLANK_TICKS - 1;
+                        ticksUntilNextPhase = cadenceBlankTicks - 1;
                     }
                     case 2 -> {
                         showCadenceThrow(Throw.PAPER);
-                        ticksUntilNextPhase = CADENCE_VISIBLE_TICKS - 1;
+                        ticksUntilNextPhase = cadenceVisibleTicks - 1;
                     }
                     case 4 -> {
                         showCadenceThrow(Throw.SCISSORS);
-                        ticksUntilNextPhase = CADENCE_VISIBLE_TICKS - 1;
+                        ticksUntilNextPhase = cadenceVisibleTicks - 1;
                     }
                     case 6 -> {
                         showFinalThrows(chairOneThrow, chairTwoThrow, winner, tie);
@@ -1049,6 +1350,16 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                         cancel();
 
                         if (tie) {
+                            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                                case STANDARD:
+                                case VERBOSE:
+                                    player.sendMessage(text("rock-paper-scissors.tie"));
+                                    break;
+                                case NONE:
+                                    break;
+                            }
+                            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
                             if (SoundHelper.getSoundSafely("block.note_block.bass", player) != null)
                                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, SoundCategory.MASTER, 1.5f, 0.8f);
                         } else {
@@ -1074,7 +1385,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                             Bukkit.getScheduler().runTaskLater(
                                 plugin,
                                 () -> sendUpdateToServer("ANIMATION_FINISHED", new Object[]{winner, tokenAtSchedule}),
-                                RESULT_HOLD_TICKS
+                                resultHoldTicks
                             );
                         }
                         return;
@@ -1173,10 +1484,11 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                 }
             }
         };
+        long orbitIntervalTicks = mode == RpsMode.PLAYER_VS_DEALER ? WINNER_ORBIT_INTERVAL_PVE_TICKS : WINNER_ORBIT_INTERVAL_TICKS;
         orbit.runTaskTimer(
             plugin,
-            WINNER_ORBIT_INTERVAL_TICKS,
-            WINNER_ORBIT_INTERVAL_TICKS
+            orbitIntervalTicks,
+            orbitIntervalTicks
         );
         winnerOrbitTaskId = orbit.getTaskId();
     }

@@ -65,7 +65,9 @@ public abstract class Menu extends DealerInventory {
 
         // Rock Paper Scissors settings menu
         TOGGLE_RPS_MODE,
-        
+        TOGGLE_RPS_MODE_SWITCHING,
+        EDIT_RPS_MAX_CHAIN,
+
         // Mines settings menu
         EDIT_MINES,
 

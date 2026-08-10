@@ -35,6 +35,18 @@ public final class PayoutMessages {
     }
 
     /**
+     * The context line stored on a pending record created because the
+     * server shut down after a round's winner was already committed (the
+     * decisive reveal/forfeit happened, but final settlement -- payout,
+     * multiplier, loss notice -- hadn't run yet). Unlike
+     * {@link #serverRestartRefundContext}, the round's outcome is honored
+     * rather than refunded.
+     */
+    public static String committedResultContext(String gameType) {
+        return encodeContext("committed-result", gameType);
+    }
+
+    /**
      * Decodes new localization-aware records. Plain text from older plugin
      * versions returns {@code null} and is displayed unchanged.
      */
@@ -49,6 +61,7 @@ public final class PayoutMessages {
         String localizationKey = switch (parts[0]) {
             case "disconnected" -> "payout.context-disconnected";
             case "server-restart" -> "payout.context-server-restart";
+            case "committed-result" -> "payout.context-committed-result";
             default -> null;
         };
         return localizationKey == null ? null : new StoredContext(localizationKey, parts[1]);

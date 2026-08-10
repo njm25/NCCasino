@@ -77,6 +77,7 @@ payout:
   delivered: "&e{context}\n&aPagamento: {amount}"
   context-disconnected: "Você se desconectou durante uma partida ativa de {game}. A partida terminou enquanto você estava offline."
   context-server-restart: "O servidor reiniciou enquanto sua aposta de {game} ainda aguardava resolução, por isso ela foi reembolsada."
+  context-committed-result: "O servidor reiniciou depois que o resultado da sua partida de {game} já havia sido determinado. Seu resultado foi preservado."
   retry-one: "&6Você tem 1 pagamento pendente que ainda não pôde ser entregue. Ele será tentado novamente."
   retry-many: "&6Você tem {count} pagamentos pendentes que ainda não puderam ser entregues. Eles serão tentados novamente."
 
@@ -163,6 +164,16 @@ rock-paper-scissors:
   forfeit-no-choice: "&cVocê não escolheu a tempo e perdeu a rodada."
   round-voided: "&eNenhum jogador escolheu a tempo. Apostas reembolsadas."
   the-dealer: "&oO Crupiê"
+  mode-current: "&oModo atual: {mode}"
+  mode-switch: "&oMudar para o modo {mode}"
+  mode-switch-cashout-notice: "&eVai te pagar &a{amount}"
+  mode-switch-denied: "&cTermine esta rodada antes de mudar de modo."
+  cash-out: "&oSacar"
+  cash-out-lore: "&oClique para sacar: &o&a{amount}"
+  chain-win: "&aVocê venceu! Sequência: {streak}. Saque ou jogue novamente por &e{amount}&a."
+  round-started: "&cRodada iniciada, boa sorte!"
+  round-started-wager: "&7Aposta: &a{amount}"
+  max-chain-hit: "&6Este crupiê está configurado com uma sequência máxima de vitórias de {rounds} rodadas, e você a alcançou. Parabéns pela sequência máxima!"
 
 baccarat:
   title: "Bacará"
@@ -593,17 +604,26 @@ coin-flip-settings:
 
 rock-paper-scissors-settings:
   title: "Configurações de Pedra, Papel e Tesoura de {dealer}"
-  edit-timer: "Editar temporizador"
+  edit-timer: "Editar Temporizador (PvP)"
   invalid-option: "&cOpção selecionada inválida."
   invalid-settings-option: "&cOpção das configurações de Pedra, Papel e Tesoura inválida."
   prompt-number: "&aDigite o novo número no chat."
   prompt-timer: "&aDigite o novo temporizador no chat."
   timer-updated: "&aTemporizador do crupiê atualizado."
   dealer-not-found: "&cNão foi possível encontrar o crupiê das configurações de Pedra, Papel e Tesoura."
-  toggle-mode: "Alternar modo"
+  toggle-mode: "Alternar Modo Padrão"
   mode-pvp: "Jogador contra jogador"
   mode-pvd: "Jogador contra crupiê"
   mode-updated: "&aModo do crupiê atualizado."
+  toggle-mode-switching: "Troca de Modo pelo Jogador"
+  mode-switching-enabled: "Ativado"
+  mode-switching-disabled: "Desativado"
+  mode-switching-updated: "&aTroca de modo pelo jogador atualizada."
+  edit-max-chain: "Editar Máx. de Rodadas em Sequência (PvE)"
+  prompt-max-chain: "&aDigite o novo máximo de rodadas em sequência no chat (-1 para ilimitado)."
+  max-chain-updated: "&aMáx. de rodadas em sequência do crupiê atualizado."
+  max-chain-current: "&7Atual: {rounds}, pagamento de {multiplier}x ao vencer"
+  max-chain-unbounded: "&7Atual: Ilimitado"
 
 roulette-settings:
   title: "Configurações de Roleta de {dealer}"
@@ -710,6 +730,11 @@ admin:
   default-columns-lore: "&7N.º padrão de colunas: &a{value}"
   default-vines-lore: "&7N.º padrão de cipós: &a{value}"
   default-floors-lore: "&7N.º padrão de andares: &a{value}"
+  rps-mode-lore: "&7Modo: &a{value}"
+  rps-mode-switching-lore: "&7Troca de Modo pelo Jogador: &a{value}"
+  rps-timer-lore: "&7Timer: &a{value} &7(PvP)"
+  rps-max-chain-lore: "&7Máx. de Rodadas em Sequência: &a{value} &7(PvE)"
+  rps-max-chain-lore-unbounded: "&7Máx. de Rodadas em Sequência: &aIlimitado &7(PvE)"
   no-settings: "&7Nenhuma configuração disponível."
   select-currency: "Selecionar moeda"
   disabled-vault: "[Desativado no modo Vault]"
@@ -777,6 +802,7 @@ occupations:
   stand-on-17: "a chance de parar em 17"
   default-mines: "o número padrão de minas"
   currency-item: "a seleção do item de moeda"
+  rps-max-chain: "máximo de rodadas em sequência de pedra, papel e tesoura"
 
 commands:
   dealers-deleted: "&aForam excluídos {count} crupiês."

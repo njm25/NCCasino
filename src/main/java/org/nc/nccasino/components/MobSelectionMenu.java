@@ -741,6 +741,8 @@ public class MobSelectionMenu extends Menu {
             }
             case "Rock Paper Scissors" -> {
                 settings.put("rps-mode", config.getString(basePath + "rps-mode", "PLAYER_VS_PLAYER"));
+                settings.put("rps-max-chain-rounds", config.getInt(basePath + "rps-max-chain-rounds", -1));
+                settings.put("rps-mode-switching-enabled", config.getBoolean(basePath + "rps-mode-switching-enabled", true));
             }
         }
         return settings;

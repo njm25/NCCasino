@@ -77,6 +77,7 @@ payout:
   delivered: "&e{context}\n&aPago: {amount}"
   context-disconnected: "Te desconectaste durante una partida activa de {game}. La partida terminó mientras estabas desconectado."
   context-server-restart: "El servidor se reinició mientras tu apuesta de {game} aún esperaba resolución, por lo que ha sido reembolsada."
+  context-committed-result: "El servidor se reinició después de que se determinara el resultado de tu partida de {game}. Tu resultado se conservó."
   retry-one: "&6Tienes 1 pago pendiente que aún no pudo entregarse. Se reintentará automáticamente."
   retry-many: "&6Tienes {count} pagos pendientes que aún no pudieron entregarse. Se reintentarán automáticamente."
 
@@ -163,6 +164,16 @@ rock-paper-scissors:
   forfeit-no-choice: "&cNo elegiste a tiempo y perdiste la ronda."
   round-voided: "&eNingún jugador eligió a tiempo. Apuestas reembolsadas."
   the-dealer: "&oEl Crupier"
+  mode-current: "&oModo actual: {mode}"
+  mode-switch: "&oCambiar a modo {mode}"
+  mode-switch-cashout-notice: "&eTe pagará &a{amount}"
+  mode-switch-denied: "&cTermina esta ronda antes de cambiar de modo."
+  cash-out: "&oCobrar"
+  cash-out-lore: "&oClic para cobrar: &o&a{amount}"
+  chain-win: "&a¡Ganaste! Racha: {streak}. Cobra o vuelve a jugar por &e{amount}&a."
+  round-started: "&cRonda iniciada, ¡buena suerte!"
+  round-started-wager: "&7Apuesta: &a{amount}"
+  max-chain-hit: "&6Este crupier está configurado con una racha máxima de {rounds} partidas, y la alcanzaste. ¡Felicidades por la racha máxima!"
 
 baccarat:
   title: "Bacará"
@@ -593,17 +604,26 @@ coin-flip-settings:
 
 rock-paper-scissors-settings:
   title: "Ajustes de Piedra, Papel o Tijera de {dealer}"
-  edit-timer: "Editar temporizador"
+  edit-timer: "Editar Temporizador (PvP)"
   invalid-option: "&cLa opción seleccionada no es válida."
   invalid-settings-option: "&cLa opción de ajustes de Piedra, Papel o Tijera no es válida."
   prompt-number: "&aEscribe el nuevo número en el chat."
   prompt-timer: "&aEscribe el nuevo temporizador en el chat."
   timer-updated: "&aTemporizador del crupier actualizado."
   dealer-not-found: "&cNo se encontró el crupier de ajustes de Piedra, Papel o Tijera."
-  toggle-mode: "Cambiar modo"
+  toggle-mode: "Cambiar Modo Predeterminado"
   mode-pvp: "Jugador contra jugador"
   mode-pvd: "Jugador contra crupier"
   mode-updated: "&aModo del crupier actualizado."
+  toggle-mode-switching: "Cambio de Modo por Jugadores"
+  mode-switching-enabled: "Activado"
+  mode-switching-disabled: "Desactivado"
+  mode-switching-updated: "&aCambio de modo por jugadores actualizado."
+  edit-max-chain: "Editar Máximo de Rondas en Cadena (PvE)"
+  prompt-max-chain: "&aEscribe el nuevo máximo de rondas en cadena en el chat (-1 para ilimitado)."
+  max-chain-updated: "&aMáximo de rondas en cadena del crupier actualizado."
+  max-chain-current: "&7Actual: {rounds}, pago de {multiplier}x al ganar"
+  max-chain-unbounded: "&7Actual: Ilimitado"
 
 roulette-settings:
   title: "Ajustes de Ruleta de {dealer}"
@@ -710,6 +730,11 @@ admin:
   default-columns-lore: "&7N.º predeterminado de columnas: &a{value}"
   default-vines-lore: "&7N.º predeterminado de lianas: &a{value}"
   default-floors-lore: "&7N.º predeterminado de pisos: &a{value}"
+  rps-mode-lore: "&7Modo: &a{value}"
+  rps-mode-switching-lore: "&7Cambio de Modo por Jugadores: &a{value}"
+  rps-timer-lore: "&7Temporizador: &a{value} &7(PvP)"
+  rps-max-chain-lore: "&7Máx. de Rondas en Cadena: &a{value} &7(PvE)"
+  rps-max-chain-lore-unbounded: "&7Máx. de Rondas en Cadena: &aIlimitado &7(PvE)"
   no-settings: "&7No hay ajustes disponibles."
   select-currency: "Seleccionar moneda"
   disabled-vault: "[Desactivado en modo Vault]"
@@ -777,6 +802,7 @@ occupations:
   stand-on-17: "la probabilidad de plantarse en 17"
   default-mines: "el número predeterminado de minas"
   currency-item: "la selección del objeto de moneda"
+  rps-max-chain: "máximo de rondas en cadena de piedra, papel o tijera"
 
 commands:
   dealers-deleted: "&aSe eliminaron {count} crupieres."
