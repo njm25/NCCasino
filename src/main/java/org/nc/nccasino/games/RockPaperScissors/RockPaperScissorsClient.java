@@ -232,10 +232,15 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
             server.removeClient(terminatedPlayerId);
         } else {
             if (action == TerminationAction.REFUND && !gameActive) {
-                if (player == chairOneOccupant) {
+                // UUID, not object identity -- a reconnect hands Bukkit a
+                // new Player instance for the same person, so a stale
+                // chairOneOccupant/chairTwoOccupant reference captured
+                // before the reconnect would otherwise never match and
+                // leave a ghost seat nobody ever vacates.
+                if (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(player.getUniqueId())) {
                     sendUpdateToServer("PLAYER_LEAVE_ONE", null);
                 }
-                if (player == chairTwoOccupant) {
+                if (chairTwoOccupant != null && chairTwoOccupant.getUniqueId().equals(player.getUniqueId())) {
                     sendUpdateToServer("PLAYER_LEAVE_TWO", null);
                 }
             }

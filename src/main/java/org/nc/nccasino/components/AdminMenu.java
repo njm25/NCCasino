@@ -84,6 +84,7 @@ public class AdminMenu extends Menu {
     public static final Map<UUID, Mob> decksEditMode = new HashMap<>();
     public static final Map<UUID, Mob> dragonEditMode = new HashMap<>();
     public static final Map<UUID, Mob> editRpsChainMode = new HashMap<>();
+    public static final Map<UUID, Mob> editCoinFlipChainMode = new HashMap<>();
 
     // All active AdminInventories by player ID
     public static final Map<UUID, AdminMenu> adminInventories = new HashMap<>();
@@ -291,8 +292,22 @@ public class AdminMenu extends Menu {
                 break;
     
             case "Coin Flip":
+                org.nc.nccasino.games.CoinFlip.CoinFlipMode coinFlipMode = plugin.getCoinFlipMode(internalName);
+                String coinFlipModeLabel = text(coinFlipMode == org.nc.nccasino.games.CoinFlip.CoinFlipMode.PLAYER_VS_DEALER
+                    ? "coin-flip-settings.mode-pvd"
+                    : "coin-flip-settings.mode-pvp");
+                lore.add(text("admin.coin-flip-mode-lore", "value", coinFlipModeLabel));
+                boolean coinFlipModeSwitching = plugin.getCoinFlipModeSwitchingEnabled(internalName);
+                String coinFlipModeSwitchingLabel = text(coinFlipModeSwitching
+                    ? "coin-flip-settings.mode-switching-enabled"
+                    : "coin-flip-settings.mode-switching-disabled");
+                lore.add(text("admin.coin-flip-mode-switching-lore", "value", coinFlipModeSwitchingLabel));
                 int coinFlipTimer = config.getInt("dealers." + internalName + ".timer", 30);
-                lore.add(text("admin.timer-lore", "value", coinFlipTimer));
+                lore.add(text("admin.coin-flip-timer-lore", "value", coinFlipTimer));
+                int coinFlipMaxChain = plugin.getCoinFlipMaxChainRounds(internalName);
+                lore.add(coinFlipMaxChain <= 0
+                    ? text("admin.coin-flip-max-chain-lore-unbounded")
+                    : text("admin.coin-flip-max-chain-lore", "value", coinFlipMaxChain));
                 break;
             case "Rock Paper Scissors":
                 org.nc.nccasino.games.RockPaperScissors.RpsMode rpsMode = plugin.getRockPaperScissorsMode(internalName);
@@ -337,6 +352,7 @@ public class AdminMenu extends Menu {
             || (standOn17Mode.get(playerId) != null)
             || (editMinesMode.get(playerId) != null)
             || (editRpsChainMode.get(playerId) != null)
+            || (editCoinFlipChainMode.get(playerId) != null)
             || (timerEditMode.get(playerId) != null)
             || (amsgEditMode.get(playerId) != null)
             || (moveMode.get(playerId) != null)
@@ -373,6 +389,9 @@ public class AdminMenu extends Menu {
         if (editRpsChainMode.get(playerId) != null) {
             occupations.add("occupations.rps-max-chain");
         }
+        if (editCoinFlipChainMode.get(playerId) != null) {
+            occupations.add("occupations.coin-flip-max-chain");
+        }
         if (currencyEditMode.get(playerId) != null) {///////////might never get to this
             occupations.add("occupations.currency-item");
         }
@@ -396,6 +415,9 @@ public class AdminMenu extends Menu {
             mobs.add(mob);
         }
         if ((mob = editRpsChainMode.get(playerId)) != null) {
+            mobs.add(mob);
+        }
+        if ((mob = editCoinFlipChainMode.get(playerId)) != null) {
             mobs.add(mob);
         }
         if ((mob = amsgEditMode.get(playerId)) != null) {
@@ -1719,6 +1741,7 @@ public class AdminMenu extends Menu {
         standOn17Mode.remove(playerId);
         editMinesMode.remove(playerId);
         editRpsChainMode.remove(playerId);
+        editCoinFlipChainMode.remove(playerId);
         amsgEditMode.remove(playerId);
         chipEditMode.remove(playerId);
         currencyEditMode.remove(playerId);

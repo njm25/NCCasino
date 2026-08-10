@@ -306,6 +306,33 @@ public class GameOptionsMenu extends Menu {
                     }
                 }
 
+                // Set default values for Coin Flip
+                if (gameType.equals("Coin Flip")) {
+                    if (!plugin.getConfig().contains("dealers." + internalName + ".coin-flip-mode")) {
+                        plugin.getConfig().set("dealers." + internalName + ".coin-flip-mode", "PLAYER_VS_PLAYER");
+                    } else {
+                        String coinFlipModeValue = plugin.getConfig().getString("dealers." + internalName + ".coin-flip-mode", "PLAYER_VS_PLAYER");
+                        try {
+                            org.nc.nccasino.games.CoinFlip.CoinFlipMode.valueOf(coinFlipModeValue);
+                        } catch (IllegalArgumentException e) {
+                            plugin.getConfig().set("dealers." + internalName + ".coin-flip-mode", "PLAYER_VS_PLAYER");
+                        }
+                    }
+
+                    if (!plugin.getConfig().contains("dealers." + internalName + ".coin-flip-max-chain-rounds")) {
+                        plugin.getConfig().set("dealers." + internalName + ".coin-flip-max-chain-rounds", -1);
+                    } else {
+                        int coinFlipMaxChain = plugin.getConfig().getInt("dealers." + internalName + ".coin-flip-max-chain-rounds");
+                        if (coinFlipMaxChain < -1 || coinFlipMaxChain > 9999) {
+                            plugin.getConfig().set("dealers." + internalName + ".coin-flip-max-chain-rounds", -1);
+                        }
+                    }
+
+                    if (!plugin.getConfig().contains("dealers." + internalName + ".coin-flip-mode-switching-enabled")) {
+                        plugin.getConfig().set("dealers." + internalName + ".coin-flip-mode-switching-enabled", true);
+                    }
+                }
+
                 this.delete();
             },
             (uuid) -> {
