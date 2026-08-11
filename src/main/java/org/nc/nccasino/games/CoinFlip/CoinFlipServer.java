@@ -431,10 +431,24 @@ public class CoinFlipServer extends Server {
             startTimer();
         }
 
-        /** Whether the just-applied win (chainWins already reflects it) has met/exceeded the admin-configured cap. A cap <= 0 (the -1 default) means unbounded. */
+        /**
+         * Whether the just-applied win (chainWins/betAmount already reflect
+         * it) must stop here -- either the admin-configured cap (a cap <= 0,
+         * the -1 default, means unbounded), or the pot is already at
+         * CoinFlipPayoutMath.MAX_SAFE_POT, the currency system's
+         * representable ceiling. Without the latter check, an unbounded
+         * chain that reaches that ceiling would keep compounding a pot that
+         * can no longer actually grow -- CoinFlipPayoutMath.compound()
+         * would keep returning the same clamped value every win -- letting
+         * the player play on indefinitely at a frozen payout instead of
+         * being cashed out.
+         */
         private boolean chainCapped() {
             int cap = plugin.getCoinFlipMaxChainRounds(internalName);
-            return cap > 0 && chainWins >= cap;
+            if (cap > 0 && chainWins >= cap) {
+                return true;
+            }
+            return betAmount >= CoinFlipPayoutMath.MAX_SAFE_POT;
         }
 
         private void handlePick(Client client, int pick) {
@@ -685,11 +699,22 @@ public class CoinFlipServer extends Server {
                         switch (plugin.getPreferences(playerId).getMessageSetting()) {
                             case STANDARD:
                             case VERBOSE:
-                                onlinePlayer.sendMessage(plugin.getLocalization().text(
-                                    onlinePlayer,
-                                    "coin-flip.max-chain-hit",
-                                    "rounds", plugin.getCoinFlipMaxChainRounds(internalName)
-                                ));
+                                // resolveRound only ever sees a PvE win once
+                                // chainCapped() was true, for one of two
+                                // reasons -- distinguish them so a pot that
+                                // hit the representable ceiling doesn't
+                                // claim it hit an admin-configured round
+                                // count instead (which may not even be set).
+                                if (payout >= CoinFlipPayoutMath.MAX_SAFE_POT) {
+                                    onlinePlayer.sendMessage(plugin.getLocalization().text(
+                                        onlinePlayer, "coin-flip.max-pot-hit"));
+                                } else {
+                                    onlinePlayer.sendMessage(plugin.getLocalization().text(
+                                        onlinePlayer,
+                                        "coin-flip.max-chain-hit",
+                                        "rounds", plugin.getCoinFlipMaxChainRounds(internalName)
+                                    ));
+                                }
                                 break;
                             case NONE:
                                 break;

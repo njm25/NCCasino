@@ -467,10 +467,23 @@ public class RockPaperScissorsServer extends Server {
             startTimer();
         }
 
-        /** Whether the just-applied win (chainWins already reflects it) has met/exceeded the admin-configured cap. A cap <= 0 (the -1 default) means unbounded. */
+        /**
+         * Whether the just-applied win (chainWins/betAmount already reflect
+         * it) must stop here -- either the admin-configured cap (a cap <= 0,
+         * the -1 default, means unbounded), or the pot is already at
+         * RpsPayoutMath.MAX_SAFE_POT, the currency system's representable
+         * ceiling. Without the latter check, an unbounded chain that
+         * reaches that ceiling would keep compounding a pot that can no
+         * longer actually grow -- RpsPayoutMath.compound() would keep
+         * returning the same clamped value every win -- letting the player
+         * play on indefinitely at a frozen payout instead of being cashed out.
+         */
         private boolean chainCapped() {
             int cap = plugin.getRpsMaxChainRounds(internalName);
-            return cap > 0 && chainWins >= cap;
+            if (cap > 0 && chainWins >= cap) {
+                return true;
+            }
+            return betAmount >= RpsPayoutMath.MAX_SAFE_POT;
         }
 
         private void handlePlayerChoose(Client client, Object data) {
@@ -878,11 +891,22 @@ public class RockPaperScissorsServer extends Server {
                         switch (plugin.getPreferences(winnerId).getMessageSetting()) {
                             case STANDARD:
                             case VERBOSE:
-                                winnerPlayer.sendMessage(plugin.getLocalization().text(
-                                    winnerPlayer,
-                                    "rock-paper-scissors.max-chain-hit",
-                                    "rounds", plugin.getRpsMaxChainRounds(internalName)
-                                ));
+                                // resolveRound only ever sees a PvE win once
+                                // chainCapped() was true, for one of two
+                                // reasons -- distinguish them so a pot that
+                                // hit the representable ceiling doesn't
+                                // claim it hit an admin-configured round
+                                // count instead (which may not even be set).
+                                if (payout >= RpsPayoutMath.MAX_SAFE_POT) {
+                                    winnerPlayer.sendMessage(plugin.getLocalization().text(
+                                        winnerPlayer, "rock-paper-scissors.max-pot-hit"));
+                                } else {
+                                    winnerPlayer.sendMessage(plugin.getLocalization().text(
+                                        winnerPlayer,
+                                        "rock-paper-scissors.max-chain-hit",
+                                        "rounds", plugin.getRpsMaxChainRounds(internalName)
+                                    ));
+                                }
                                 break;
                             case NONE:
                                 break;

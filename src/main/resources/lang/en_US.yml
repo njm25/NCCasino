@@ -141,6 +141,7 @@ coin-flip:
   round-started: "&cRound started, good luck!"
   round-started-wager: "&7Wager: &a{amount}"
   max-chain-hit: "&6This dealer has been configured to a max win streak of {rounds} games, which you hit. Congrats on the max win!"
+  max-pot-hit: "&6Your winnings reached the maximum amount this game can pay out at once. Congrats on the max win!"
   pick-left: "&oLeft"
   pick-right: "&oRight"
   click-pick: "&8Click to lock in your pick."
@@ -190,6 +191,7 @@ rock-paper-scissors:
   round-started: "&cRound started, good luck!"
   round-started-wager: "&7Wager: &a{amount}"
   max-chain-hit: "&6This dealer has been configured to a max win streak of {rounds} games, which you hit. Congrats on the max win!"
+  max-pot-hit: "&6Your winnings reached the maximum amount this game can pay out at once. Congrats on the max win!"
 
 baccarat:
   title: "Baccarat"

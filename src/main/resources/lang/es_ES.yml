@@ -141,6 +141,7 @@ coin-flip:
   round-started: "&cRonda iniciada, ¡buena suerte!"
   round-started-wager: "&7Apuesta: &a{amount}"
   max-chain-hit: "&6Este crupier está configurado con una racha máxima de {rounds} partidas, y la alcanzaste. ¡Felicidades por la racha máxima!"
+  max-pot-hit: "&6Tus ganancias alcanzaron el monto máximo que este juego puede pagar de una vez. ¡Felicidades por la ganancia máxima!"
   pick-left: "&oIzquierda"
   pick-right: "&oDerecha"
   click-pick: "&8Haz clic para confirmar tu elección."
@@ -190,6 +191,7 @@ rock-paper-scissors:
   round-started: "&cRonda iniciada, ¡buena suerte!"
   round-started-wager: "&7Apuesta: &a{amount}"
   max-chain-hit: "&6Este crupier está configurado con una racha máxima de {rounds} partidas, y la alcanzaste. ¡Felicidades por la racha máxima!"
+  max-pot-hit: "&6Tus ganancias alcanzaron el monto máximo que este juego puede pagar de una vez. ¡Felicidades por la ganancia máxima!"
 
 baccarat:
   title: "Bacará"

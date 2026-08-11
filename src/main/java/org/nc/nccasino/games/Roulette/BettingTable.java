@@ -1050,23 +1050,36 @@ private boolean isValidSlotPage2(int slot) {
 		if (provider != null && provider.getMode() != org.nc.nccasino.currency.CurrencyMode.STANDARD) {
 			// CUSTOM (non-Vault) providers: CurrencyProvider#deposit is
 			// itself int-typed, so an amount above Integer.MAX_VALUE is
-			// clamped here rather than silently wrapped -- a remaining
-			// platform limit for non-Vault custom providers this focused
-			// fix does not change the shared interface to lift.
-			int toGive = amount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) amount;
-			provider.deposit(player, internalName, toGive);
+			// delivered as multiple int-sized deposits rather than clamped
+			// to one -- clamping here would announce the full long total in
+			// the round message but only pay out the size of a single chunk.
+			long remaining = amount;
+			while (remaining > 0) {
+				int chunk = remaining > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) remaining;
+				provider.deposit(player, internalName, chunk);
+				remaining -= chunk;
+			}
 			return;
 		}
 
-		// STANDARD / no provider: item-stack based, and
-		// CurrencyProvider#getBalance is itself int-typed for this mode --
-		// same pre-existing platform limit as the CUSTOM branch above.
-		int amountToGive = amount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) amount;
+		// STANDARD / no provider: item-stack based. Same reasoning as the
+		// CUSTOM branch above -- delivered as multiple int-sized chunks
+		// rather than clamped to one, so the amount actually paid always
+		// matches the amount already announced in the round message.
+		long remaining = amount;
+		while (remaining > 0) {
+			int amountToGive = remaining > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) remaining;
+			remaining -= amountToGive;
+			giveItemChunk(player, provider, currencyMaterial, amountToGive);
+		}
+    }
+
+    private void giveItemChunk(Player player, CurrencyProvider provider, Material currencyMaterial, int amountToGive) {
         int fullStacks = amountToGive / 64;
         int remainder = amountToGive % 64;
         int totalLeftoverAmount = 0;
         HashMap<Integer, ItemStack> leftover;
-    
+
         // Try adding full stacks
         for (int i = 0; i < fullStacks; i++) {
             ItemStack stack = null;
@@ -1081,7 +1094,7 @@ private boolean isValidSlotPage2(int slot) {
                 totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
             }
         }
-    
+
         // Try adding remainder
         if (remainder > 0) {
             ItemStack remainderStack = null;
@@ -1096,8 +1109,8 @@ private boolean isValidSlotPage2(int slot) {
                 totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
             }
         }
-    
-    
+
+
         if (totalLeftoverAmount > 0) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
@@ -1106,7 +1119,7 @@ private boolean isValidSlotPage2(int slot) {
                         "amount",
                         plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount)
                     ));
-    
+
                     break;}
                 case VERBOSE:{
                     player.sendMessage(text(
@@ -1114,12 +1127,12 @@ private boolean isValidSlotPage2(int slot) {
                         "amount",
                         plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount)
                     ));
-                    break;     
+                    break;
                 }
                     case NONE:{
                     break;
                 }
-            } 
+            }
             dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
         }
     }
