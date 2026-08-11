@@ -396,6 +396,7 @@ roulette:
   currency-missing: "Error: Currency material is not set. Unable to refund bets."
   inventory-full: "&cNo room for {amount}, dropping..."
   invalid-wager-amount: "&cInvalid wager amount: {amount}"
+  item-payout-too-large: "&cThat bet's possible payout is too large for item currency. Lower your wager or spread it across fewer bets."
   spin-results: "&e----- Spin Results -----\n"
   category-header: "&eCategory"
   wager-header: "&bWager"

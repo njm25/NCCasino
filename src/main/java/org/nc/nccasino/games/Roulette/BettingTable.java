@@ -780,8 +780,29 @@ public class BettingTable extends DealerInventory {
         
             // Ensure the player has selected a valid wager
             if (wagerAmount > 0) {
+                if (isItemMode() && wouldExceedItemModePayoutCeiling(betStack, betType, (int) wagerAmount)) {
+                    // Reject before any currency moves -- item-mode
+                    // delivery can only safely hand out up to
+                    // MAX_ITEM_MODE_PAYOUT synchronously (see
+                    // refundWagerToInventory), so a bet whose possible
+                    // payout could exceed that must never be accepted in
+                    // the first place.
+                    switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                        case STANDARD:
+                            player.sendMessage(text("roulette.invalid-action"));
+                            break;
+                        case VERBOSE:
+                            player.sendMessage(text("roulette.item-payout-too-large"));
+                            break;
+                        case NONE:
+                            break;
+                    }
+                    if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+                    return;
+                }
                 boolean canBet = usedHeldItem || hasEnoughWager(player, wagerAmount);
-        
+
                 if (canBet) {
                     if (usedHeldItem) {
                         player.setItemOnCursor(null); // Remove the held stack
@@ -1064,70 +1085,66 @@ private boolean isValidSlotPage2(int slot) {
 
 		// STANDARD / no provider: item-stack based, delivered through
 		// giveItemChunk's synchronous 64-item ItemStack loop on the main
-		// thread. Unlike the CUSTOM branch above (one cheap deposit call
-		// per Integer.MAX_VALUE chunk), an item-mode chunk that size needs
-		// on the order of 33 million addItem calls -- looping that here
-		// would hang the server, not just clamp a value. Deliver only up
-		// to MAX_SYNCHRONOUS_ITEM_PAYOUT synchronously and durably queue
-		// any excess as a pending payout instead of ever attempting a
-		// loop anywhere near that size.
-		long toDeliverNow = synchronousItemPortion(amount);
-		long remainder = amount - toDeliverNow;
-		if (toDeliverNow > 0) {
-			giveItemChunk(player, provider, currencyMaterial, (int) toDeliverNow);
+		// thread. This is safe to do in one call, unchunked, because
+		// item-mode bet placement rejects any wager whose worst-case
+		// payout would exceed MAX_ITEM_MODE_PAYOUT before it's ever
+		// withdrawn -- see wouldExceedItemModePayoutCeiling and its call
+		// site in handleClick. amount here can therefore never approach a
+		// size that would need looping or queuing. The clamp below is a
+		// last-resort guard against that invariant somehow being violated
+		// (a bug elsewhere, not an expected path) -- if it ever fires, it
+		// logs loudly rather than silently under- or over-delivering.
+		if (amount > DEFENSIVE_ITEM_DELIVERY_CEILING) {
+			plugin.getLogger().severe("[NCCasino] Roulette item-mode payout of " + amount
+				+ " for " + player.getUniqueId() + " exceeds the pre-acceptance exposure cap -- "
+				+ "delivering only " + DEFENSIVE_ITEM_DELIVERY_CEILING + " and dropping the rest. "
+				+ "This should be unreachable; the bet-placement exposure check has a bug.");
+			amount = DEFENSIVE_ITEM_DELIVERY_CEILING;
 		}
-		if (remainder > 0) {
-			queueExcessItemPayout(player, remainder);
-		}
+		giveItemChunk(player, provider, currencyMaterial, (int) amount);
     }
 
     /**
-     * Hard ceiling on how much STANDARD/item-mode currency
-     * {@link #refundWagerToInventory} will hand out via synchronous
-     * 64-item {@code ItemStack} batches in one call -- see the comment
-     * there. Generous for any realistic chip-based Roulette payout (a
-     * million currency units is already an enormous item-mode win) while
-     * staying far below the iteration count that would start to hang the
-     * main thread.
+     * Worst-case total payout (across every possible spin result, 0-36)
+     * that STANDARD/item-mode bet placement will allow the current table
+     * to expose a player to. Chosen so a single {@code giveItemChunk} call
+     * for exactly this amount needs at most a few hundred synchronous
+     * {@code addItem} calls (this / 64) -- comfortably instant, and even a
+     * completely full inventory would only need to drop that same handful
+     * of item stacks, not thousands.
      */
-    static final long MAX_SYNCHRONOUS_ITEM_PAYOUT = 1_000_000L;
+    static final long MAX_ITEM_MODE_PAYOUT = 10_000L;
 
     /**
-     * The portion of {@code amount} safe to deliver via a synchronous
-     * item-giving loop right now; {@code amount} minus this is what must be
-     * queued instead. Pulled out as pure arithmetic (package-private, not
-     * private) so this policy is testable without a live Bukkit inventory.
+     * Belt-and-suspenders ceiling for the actual item-giving loop in
+     * {@link #refundWagerToInventory}, independent of and well above
+     * MAX_ITEM_MODE_PAYOUT -- see the comment there.
      */
-    static long synchronousItemPortion(long amount) {
-        if (amount <= 0) {
-            return 0L;
+    private static final long DEFENSIVE_ITEM_DELIVERY_CEILING = 1_000_000L;
+
+    /**
+     * Whether adding a hypothetical bet of {@code wagerAmount} on
+     * {@code betType} to {@code currentBets} would let SOME possible spin
+     * result (0-36) pay out more than MAX_ITEM_MODE_PAYOUT. Evaluated
+     * against every possible result, not just an approximation, by reusing
+     * the same RoulettePayoutMath a real spin resolves with -- pure and
+     * package-private so it's testable without a live inventory.
+     */
+    static boolean wouldExceedItemModePayoutCeiling(List<Pair<String, Integer>> currentBets, String betType, int wagerAmount) {
+        List<Pair<String, Integer>> hypothetical = new ArrayList<>(currentBets);
+        hypothetical.add(new Pair<>(betType, wagerAmount));
+        for (int result = 0; result <= 36; result++) {
+            if (RoulettePayoutMath.evaluate(result, hypothetical).totalPayout > MAX_ITEM_MODE_PAYOUT) {
+                return true;
+            }
         }
-        return Math.min(amount, MAX_SYNCHRONOUS_ITEM_PAYOUT);
+        return false;
     }
 
-    /**
-     * Durably queues a STANDARD/item-mode payout too large to deliver
-     * synchronously right now (see MAX_SYNCHRONOUS_ITEM_PAYOUT) through the
-     * same pending-payout path already used for offline winners -- the
-     * amount is still fully honored, just delivered later instead of via
-     * an unbounded item-giving loop on the main thread right now.
-     */
-    private void queueExcessItemPayout(Player player, long remainder) {
-        Material currencyMaterial = plugin.getCurrency(internalName);
-        PendingPayout payout = PendingPayout.create(
-            player.getUniqueId(),
-            "Roulette",
-            internalName,
-            currencyMode,
-            currencyMaterial != null ? currencyMaterial.name() : null,
-            currencyName,
-            remainder,
-            PayoutMessages.committedResultContext("Roulette")
-        );
-        boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
-        if (!persisted) {
-            plugin.getLogger().warning("[NCCasino] Roulette overflow item-mode payout failed to persist for " + player.getUniqueId() + ".");
-        }
+    /** Whether this dealer's currency ultimately settles as physical items rather than a Vault/CUSTOM balance -- the only mode MAX_ITEM_MODE_PAYOUT applies to. */
+    private boolean isItemMode() {
+        CurrencyProvider provider = getCurrencyProvider();
+        return provider == null || provider.getMode() == org.nc.nccasino.currency.CurrencyMode.STANDARD;
     }
 
     private void giveItemChunk(Player player, CurrencyProvider provider, Material currencyMaterial, int amountToGive) {

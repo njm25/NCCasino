@@ -396,6 +396,7 @@ roulette:
   currency-missing: "Error: no se configuró el material de moneda. No se pueden reembolsar las apuestas."
   inventory-full: "&cNo hay espacio para {amount}; se soltará..."
   invalid-wager-amount: "&cCantidad de apuesta no válida: {amount}"
+  item-payout-too-large: "&cLa posible ganancia de esa apuesta es demasiado grande para moneda de objetos. Reduce tu apuesta o repártela entre menos apuestas."
   spin-results: "&e----- Resultados del giro -----\n"
   category-header: "&eCategoría"
   wager-header: "&bApuesta"

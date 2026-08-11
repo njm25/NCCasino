@@ -396,6 +396,7 @@ roulette:
   currency-missing: "Erro: o material da moeda não está definido. Não foi possível reembolsar as apostas."
   inventory-full: "&cSem espaço para {amount}; soltando..."
   invalid-wager-amount: "&cValor de aposta inválido: {amount}"
+  item-payout-too-large: "&cO possível ganho dessa aposta é grande demais para moeda de itens. Reduza sua aposta ou divida-a em menos apostas."
   spin-results: "&e----- Resultados da rodada -----\n"
   category-header: "&eCategoria"
   wager-header: "&bAposta"
