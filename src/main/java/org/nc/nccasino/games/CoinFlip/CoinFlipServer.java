@@ -417,7 +417,11 @@ public class CoinFlipServer extends Server {
             revealInProgress = false;
             roundToken++;
             originalWager = betAmount;
-            betAmount = isPve() ? betAmount : betAmount * 2;
+            // Widen to long before doubling -- a plain int * 2 wraps
+            // negative once betAmount exceeds ~1.073B, which would zero
+            // out the eventual payout despite the stake already having
+            // been withdrawn from both sides. Clamp instead of wrapping.
+            betAmount = isPve() ? betAmount : (int) Math.min((long) betAmount * 2, Integer.MAX_VALUE);
             chainWins = 0;
             exitSettlementPending = false;
             playerPick = null;

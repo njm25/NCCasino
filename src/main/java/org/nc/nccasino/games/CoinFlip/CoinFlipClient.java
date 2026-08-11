@@ -83,9 +83,17 @@ public class CoinFlipClient extends Client implements TerminableSession {
         populateGlassPattern();
         if (mode == CoinFlipMode.PLAYER_VS_DEALER) {
             chairOneOccupant = player;
-            initializeUI(false, true, false);
             renderPveSubmitLever();
             renderPveSeats();
+            // initializeUI() is deliberately NOT called here -- it arms the
+            // real chip/bet-placement row (bettingEnabled = true), which
+            // actually withdraws currency on a click. Whether a round is
+            // already active for this player isn't known yet at this point
+            // (that's what the GET_CHAIRS round-trip below is for); arming
+            // it unconditionally let a reconnect/reopen mid-round place a
+            // real wager into a betStack nothing would ever submit or
+            // refund, silently destroying it when the round resolved.
+            // handleGetChairs() arms it once gameActive is confirmed false.
         }
         sendUpdateToServer("GET_CHAIRS", null);
     }
@@ -854,6 +862,14 @@ public class CoinFlipClient extends Client implements TerminableSession {
         if (mode == CoinFlipMode.PLAYER_VS_DEALER) {
             chairOneOccupant = chairOne;
             playerPick = pick;
+            // Only arm the real betting row once a round is confirmed NOT
+            // active -- see the matching comment in the constructor. A
+            // reconnect/reopen mid-round leaves bettingEnabled false, so
+            // the chip/place-bet slots stay inert instead of accepting a
+            // wager nothing will ever submit or refund.
+            if (!gameActive) {
+                initializeUI(false, true, false);
+            }
             renderPveSeats();
         } else if (chairOne == null && chairTwo == null) {
             addItemAndLore(Material.OAK_STAIRS, 1, clickHereToSit, slotMapping.get(SlotOption.HANDLE_CHAIR_1));
