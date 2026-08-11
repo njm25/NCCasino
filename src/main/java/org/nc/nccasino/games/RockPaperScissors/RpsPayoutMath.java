@@ -25,4 +25,21 @@ final class RpsPayoutMath {
         double compounded = Math.round((double) currentPot * multiplier);
         return compounded >= MAX_SAFE_POT ? MAX_SAFE_POT : (long) compounded;
     }
+
+    /**
+     * Whether compounding {@code currentPot} one more time would need to
+     * clamp -- i.e. whether it's still safe to offer another round from
+     * this pot. Callers must check this BEFORE offering that next round
+     * (not after playing it): a round that's offered when this is already
+     * true would have its own true win silently clamped by {@link #compound}
+     * once it resolves, underpaying a real win instead of never letting the
+     * player reach it.
+     */
+    static boolean wouldExceedSafeMaxIfCompoundedAgain(long currentPot, double multiplier) {
+        if (currentPot <= 0) {
+            return false;
+        }
+        double compounded = Math.round((double) currentPot * multiplier);
+        return compounded > MAX_SAFE_POT;
+    }
 }

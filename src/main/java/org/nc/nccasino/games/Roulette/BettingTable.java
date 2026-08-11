@@ -1062,16 +1062,72 @@ private boolean isValidSlotPage2(int slot) {
 			return;
 		}
 
-		// STANDARD / no provider: item-stack based. Same reasoning as the
-		// CUSTOM branch above -- delivered as multiple int-sized chunks
-		// rather than clamped to one, so the amount actually paid always
-		// matches the amount already announced in the round message.
-		long remaining = amount;
-		while (remaining > 0) {
-			int amountToGive = remaining > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) remaining;
-			remaining -= amountToGive;
-			giveItemChunk(player, provider, currencyMaterial, amountToGive);
+		// STANDARD / no provider: item-stack based, delivered through
+		// giveItemChunk's synchronous 64-item ItemStack loop on the main
+		// thread. Unlike the CUSTOM branch above (one cheap deposit call
+		// per Integer.MAX_VALUE chunk), an item-mode chunk that size needs
+		// on the order of 33 million addItem calls -- looping that here
+		// would hang the server, not just clamp a value. Deliver only up
+		// to MAX_SYNCHRONOUS_ITEM_PAYOUT synchronously and durably queue
+		// any excess as a pending payout instead of ever attempting a
+		// loop anywhere near that size.
+		long toDeliverNow = synchronousItemPortion(amount);
+		long remainder = amount - toDeliverNow;
+		if (toDeliverNow > 0) {
+			giveItemChunk(player, provider, currencyMaterial, (int) toDeliverNow);
 		}
+		if (remainder > 0) {
+			queueExcessItemPayout(player, remainder);
+		}
+    }
+
+    /**
+     * Hard ceiling on how much STANDARD/item-mode currency
+     * {@link #refundWagerToInventory} will hand out via synchronous
+     * 64-item {@code ItemStack} batches in one call -- see the comment
+     * there. Generous for any realistic chip-based Roulette payout (a
+     * million currency units is already an enormous item-mode win) while
+     * staying far below the iteration count that would start to hang the
+     * main thread.
+     */
+    static final long MAX_SYNCHRONOUS_ITEM_PAYOUT = 1_000_000L;
+
+    /**
+     * The portion of {@code amount} safe to deliver via a synchronous
+     * item-giving loop right now; {@code amount} minus this is what must be
+     * queued instead. Pulled out as pure arithmetic (package-private, not
+     * private) so this policy is testable without a live Bukkit inventory.
+     */
+    static long synchronousItemPortion(long amount) {
+        if (amount <= 0) {
+            return 0L;
+        }
+        return Math.min(amount, MAX_SYNCHRONOUS_ITEM_PAYOUT);
+    }
+
+    /**
+     * Durably queues a STANDARD/item-mode payout too large to deliver
+     * synchronously right now (see MAX_SYNCHRONOUS_ITEM_PAYOUT) through the
+     * same pending-payout path already used for offline winners -- the
+     * amount is still fully honored, just delivered later instead of via
+     * an unbounded item-giving loop on the main thread right now.
+     */
+    private void queueExcessItemPayout(Player player, long remainder) {
+        Material currencyMaterial = plugin.getCurrency(internalName);
+        PendingPayout payout = PendingPayout.create(
+            player.getUniqueId(),
+            "Roulette",
+            internalName,
+            currencyMode,
+            currencyMaterial != null ? currencyMaterial.name() : null,
+            currencyName,
+            remainder,
+            PayoutMessages.committedResultContext("Roulette")
+        );
+        boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
+        if (!persisted) {
+            plugin.getLogger().warning("[NCCasino] Roulette overflow item-mode payout failed to persist for " + player.getUniqueId() + ".");
+        }
     }
 
     private void giveItemChunk(Player player, CurrencyProvider provider, Material currencyMaterial, int amountToGive) {
