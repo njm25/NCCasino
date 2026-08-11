@@ -733,6 +733,9 @@ public class MobSelectionMenu extends Menu {
                 settings.put("number-of-decks", config.getInt(basePath + "number-of-decks", 8));
             }
             case "Coin Flip" -> {
+                settings.put("coin-flip-mode", config.getString(basePath + "coin-flip-mode", "PLAYER_VS_PLAYER"));
+                settings.put("coin-flip-max-chain-rounds", config.getInt(basePath + "coin-flip-max-chain-rounds", -1));
+                settings.put("coin-flip-mode-switching-enabled", config.getBoolean(basePath + "coin-flip-mode-switching-enabled", true));
             }
             case "Dragon Descent" -> {
                 settings.put("default-columns", config.getInt(basePath + "default-columns", 7));

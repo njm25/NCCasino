@@ -716,6 +716,38 @@ public final class Nccasino extends JavaPlugin implements Listener {
         }
     }
 
+    /** Max consecutive PvE chain wins before an automatic cash-out. -1 (the default) means unbounded. */
+    public int getCoinFlipMaxChainRounds(String internalName) {
+        String value = getConfig().getString("dealers." + internalName + ".coin-flip-max-chain-rounds", "-1").trim();
+
+        long rounds;
+        try {
+            rounds = Long.parseLong(value);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+
+        if (rounds < -1) return -1;
+        if (rounds > 9999) return 9999;
+
+        return (int) rounds;
+    }
+
+    /** Whether players may use the in-game PvP/PvE toggle button at all. Defaults to enabled for every existing dealer. */
+    public boolean getCoinFlipModeSwitchingEnabled(String internalName) {
+        return getConfig().getBoolean("dealers." + internalName + ".coin-flip-mode-switching-enabled", true);
+    }
+
+    /** Resolved once per game instance, mirroring getCurrencyMode: no cache, safe fallback for missing/invalid config. */
+    public org.nc.nccasino.games.CoinFlip.CoinFlipMode getCoinFlipMode(String internalName) {
+        String raw = getConfig().getString("dealers." + internalName + ".coin-flip-mode", "PLAYER_VS_PLAYER");
+        try {
+            return org.nc.nccasino.games.CoinFlip.CoinFlipMode.valueOf(raw);
+        } catch (IllegalArgumentException e) {
+            return org.nc.nccasino.games.CoinFlip.CoinFlipMode.PLAYER_VS_PLAYER;
+        }
+    }
+
     // Dragon Descent specific configuration methods
     public int getDragonDescentColumns(String internalName) {
         int columns;

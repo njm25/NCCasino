@@ -9,10 +9,12 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
+import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.payout.PayoutMessages;
 import org.nc.nccasino.payout.PendingPayout;
 import org.nc.nccasino.session.ExitReason;
@@ -78,6 +80,20 @@ public class RockPaperScissorsServer extends Server {
 
     @Override
     public void onClientUpdate(Client client, String eventType, Object data) {
+        // A delayed callback scheduled by an old Client instance (e.g. one
+        // dropped by a disconnect/reconnect while its reveal animation was
+        // still in flight) can still fire after a new Client has been
+        // registered for the same player. Reject it here rather than
+        // letting it act on whichever match the player's *current* view
+        // now resolves to -- possibly a different match than the one that
+        // scheduled the callback. GET_CHAIRS is exempt: the constructor
+        // sends it before Server.getOrCreateClient has a chance to insert
+        // this very client into `clients`, so the guard would otherwise
+        // reject every initial snapshot request; it's a read-only query
+        // with no state to corrupt.
+        if (!"GET_CHAIRS".equals(eventType) && clients.get(client.getPlayer().getUniqueId()) != client) {
+            return;
+        }
         if ("PLAYER_TOGGLE_MODE".equals(eventType)) {
             handleToggleMode(client);
             return;
@@ -94,6 +110,24 @@ public class RockPaperScissorsServer extends Server {
             return pveMatches.computeIfAbsent(playerId, RpsMatch::new);
         }
         return sharedMatch;
+    }
+
+    /**
+     * The inherited {@code Server.playCountdownSound()} plays to every
+     * client attached to this dealer, regardless of which match they're
+     * currently viewing -- fine when every viewer shares the one PvP table,
+     * but the shared table's own countdown has no business being audible to
+     * a player currently inside their own private PvE match. Scoped the
+     * same way {@code RpsMatch.send()} scopes its PvP broadcasts.
+     */
+    private void playPvpCountdownSound() {
+        for (Map.Entry<UUID, Client> entry : clients.entrySet()) {
+            if (viewFor(entry.getKey()) != RpsMode.PLAYER_VS_PLAYER) continue;
+            Player player = entry.getValue().getPlayer();
+            if (player != null && SoundHelper.getSoundSafely("block.note_block.hat", player) != null) {
+                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.0f);
+            }
+        }
     }
 
     /**
@@ -419,7 +453,11 @@ public class RockPaperScissorsServer extends Server {
             revealInProgress = false;
             roundToken++;
             originalWager = betAmount;
-            betAmount = isPve() ? betAmount : betAmount * 2;
+            // Widen to long before doubling -- a plain int * 2 wraps
+            // negative once betAmount exceeds ~1.073B, which would zero
+            // out the eventual payout despite the stake already having
+            // been withdrawn from both sides. Clamp instead of wrapping.
+            betAmount = isPve() ? betAmount : (int) Math.min((long) betAmount * 2, Integer.MAX_VALUE);
             chainWins = 0;
             exitSettlementPending = false;
             picks.clear();
@@ -932,6 +970,21 @@ public class RockPaperScissorsServer extends Server {
                         PayoutMessages.committedResultContext("Rock Paper Scissors")
                     );
                 }
+                if (!isPve()) {
+                    // PvP: the winner branch above only pays the winning
+                    // occupant -- the non-forfeited loser still needs a
+                    // zero-value outcome-only record so they learn how the
+                    // round they rode into ended, same as the normal
+                    // (non-shutdown) offline-loser path in handlePayout().
+                    Player losingPlayer = winner == 0 ? payoutTwo : payoutOne;
+                    if (losingPlayer != null && !forfeited.contains(losingPlayer.getUniqueId())) {
+                        queuePendingPayout(
+                            losingPlayer.getUniqueId(),
+                            0,
+                            PayoutMessages.committedResultContext("Rock Paper Scissors")
+                        );
+                    }
+                }
             } else {
                 if (payoutOne != null && stake > 0 && !forfeited.contains(payoutOne.getUniqueId())) {
                     queuePendingPayout(payoutOne.getUniqueId(), stake, PayoutMessages.serverRestartRefundContext("Rock Paper Scissors"));
@@ -1064,7 +1117,7 @@ public class RockPaperScissorsServer extends Server {
                 if (timeLeft <= 3) {
                     // Only ever reached in PvP -- startTimer() returns
                     // immediately for PvE, so this repeating task never runs there.
-                    RockPaperScissorsServer.this.playCountdownSound();
+                    playPvpCountdownSound();
                 }
 
             }, 0L, 20L); // Run every second

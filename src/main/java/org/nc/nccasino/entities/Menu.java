@@ -68,6 +68,11 @@ public abstract class Menu extends DealerInventory {
         TOGGLE_RPS_MODE_SWITCHING,
         EDIT_RPS_MAX_CHAIN,
 
+        // Coin Flip settings menu
+        TOGGLE_COIN_FLIP_MODE,
+        TOGGLE_COIN_FLIP_MODE_SWITCHING,
+        EDIT_COIN_FLIP_MAX_CHAIN,
+
         // Mines settings menu
         EDIT_MINES,
 
