@@ -276,9 +276,10 @@ public class RockPaperScissorsServer extends Server {
 
         private Player chairOneOccupant;
         private Player chairTwoOccupant;
-        private int betAmount;
+        /** Long, not int -- a PvP pot doubles two accepted stakes together, which can exceed Integer.MAX_VALUE even though neither individual stake does. */
+        private long betAmount;
         /** The player's own stake before the house/opponent match, captured once per accepted bet -- used to report true profit even after a chain has compounded the pot past a simple double. */
-        private int originalWager;
+        private long originalWager;
         /** PvE-only: consecutive chain wins since the bet was accepted. Never incremented by a tie. */
         private int chainWins;
         private boolean gameActive;
@@ -361,7 +362,7 @@ public class RockPaperScissorsServer extends Server {
                     if (gameActive) return;
                     if (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(client.getPlayer().getUniqueId())) {
                         if (betAmount == 0) {
-                            betAmount = (int) data;
+                            betAmount = (long) data;
                             if (isPve()) {
                                 // No second human to accept -- the house
                                 // takes the other side of the bet immediately.
@@ -453,11 +454,13 @@ public class RockPaperScissorsServer extends Server {
             revealInProgress = false;
             roundToken++;
             originalWager = betAmount;
-            // Widen to long before doubling -- a plain int * 2 wraps
-            // negative once betAmount exceeds ~1.073B, which would zero
-            // out the eventual payout despite the stake already having
-            // been withdrawn from both sides. Clamp instead of wrapping.
-            betAmount = isPve() ? betAmount : (int) Math.min((long) betAmount * 2, Integer.MAX_VALUE);
+            // betAmount/originalWager are long specifically so this doubling
+            // can't wrap or need clamping -- a clamped int pot would still
+            // silently destroy the difference between the real combined
+            // stake (already withdrawn from both wallets) and whatever it
+            // got capped to, paying the winner less than what was actually
+            // put in.
+            betAmount = isPve() ? betAmount : betAmount * 2;
             chainWins = 0;
             exitSettlementPending = false;
             picks.clear();
@@ -630,10 +633,6 @@ public class RockPaperScissorsServer extends Server {
 
             if (isPve() && winner == 0) {
                 chainWins++;
-                // RPS wager units are ints end-to-end. Saturate instead of
-                // narrowing an oversized rounded long back into a negative
-                // value, which would make cash-out's payout > 0 guard erase
-                // an otherwise valid high-value chain.
                 betAmount = RpsPayoutMath.compound(betAmount, CHAIN_MULTIPLIER);
                 boolean cappedWin = chainCapped();
                 RpsExitSettlementPolicy.Action action = RpsExitSettlementPolicy.afterReveal(
@@ -706,8 +705,8 @@ public class RockPaperScissorsServer extends Server {
             if (chairOneOccupant == null || !chairOneOccupant.getUniqueId().equals(playerId)) return;
 
             send("ANIMATION_FINISHED", 0);
-            int wager = originalWager;
-            int payout = betAmount;
+            long wager = originalWager;
+            long payout = betAmount;
             gameActive = false;
             revealInProgress = false;
             committedWinner = null;
@@ -767,8 +766,8 @@ public class RockPaperScissorsServer extends Server {
             send("ANIMATION_FINISHED", winner);
             Player payoutOne = chairOneOccupant;
             Player payoutTwo = chairTwoOccupant;
-            int payout = betAmount;
-            int wager = originalWager;
+            long payout = betAmount;
+            long wager = originalWager;
             gameActive = false;
             revealInProgress = false;
             committedWinner = null;
@@ -802,7 +801,7 @@ public class RockPaperScissorsServer extends Server {
             send("ROUND_VOID", null);
             Player payoutOne = chairOneOccupant;
             Player payoutTwo = chairTwoOccupant;
-            int stake = betAmount / 2;
+            long stake = betAmount / 2;
             gameActive = false;
             revealInProgress = false;
             committedWinner = null;
@@ -825,7 +824,7 @@ public class RockPaperScissorsServer extends Server {
             cleanupPrivateMatchIfAbandoned();
         }
 
-        private void refundStakeIfDue(Player seatedPlayer, int stake) {
+        private void refundStakeIfDue(Player seatedPlayer, long stake) {
             if (seatedPlayer == null || stake <= 0 || forfeited.contains(seatedPlayer.getUniqueId())) {
                 return;
             }
@@ -859,7 +858,7 @@ public class RockPaperScissorsServer extends Server {
             }
         }
 
-        private void handlePayout(Player one, Player two, int payout, int winner, int wager, boolean cappedWin) {
+        private void handlePayout(Player one, Player two, long payout, int winner, long wager, boolean cappedWin) {
             UUID winnerId = (winner == 0)
                 ? (one != null ? one.getUniqueId() : null)
                 : (two != null ? two.getUniqueId() : null);
@@ -924,11 +923,11 @@ public class RockPaperScissorsServer extends Server {
                 return;
             }
 
-            int payout = betAmount;
+            long payout = betAmount;
             // In PvE there's no second real party to split the pot with --
             // a chain's compounded pot is entirely the player's own stake
             // and winnings, so the whole thing is refunded rather than half.
-            int stake = isPve() ? payout : payout / 2;
+            long stake = isPve() ? payout : payout / 2;
             Integer winner = committedWinner;
             Player payoutOne = chairOneOccupant;
             Player payoutTwo = chairTwoOccupant;
@@ -950,7 +949,7 @@ public class RockPaperScissorsServer extends Server {
                 // apply that same multiplier itself, or the saved payout is
                 // short by 1.98x.
                 boolean pveWin = isPve() && winner == 0;
-                int winnerPayout = pveWin ? RpsPayoutMath.compound(payout, CHAIN_MULTIPLIER) : payout;
+                long winnerPayout = pveWin ? RpsPayoutMath.compound(payout, CHAIN_MULTIPLIER) : payout;
                 Player winningPlayer = winner == 0 ? payoutOne : payoutTwo;
                 if (winningPlayer != null && winnerPayout > 0
                     && !forfeited.contains(winningPlayer.getUniqueId())) {
