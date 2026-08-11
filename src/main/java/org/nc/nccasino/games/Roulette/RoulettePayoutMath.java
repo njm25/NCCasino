@@ -65,9 +65,15 @@ final class RoulettePayoutMath {
     static long payoutFor(String betType, long wager, int result) {
         if (betType.equalsIgnoreCase(result + " - 35:1")) {
             return wager * 36;
-        } else if (betType.contains("Row - 2:1") && betType.toLowerCase().contains(getColumn(result).toLowerCase() + " row")) {
+        } else if (result != 0 && betType.contains("Row - 2:1") && betType.toLowerCase().contains(getColumn(result).toLowerCase() + " row")) {
+            // getColumn(0) falls through to "Top" and getDozen(0) falls
+            // through to "3rd" purely as an artifact of their %/range
+            // checks not having a zero case of their own -- zero has no
+            // row or dozen in real roulette and must lose every outside
+            // bet, so it's excluded here rather than by redesigning those
+            // helpers to return a "none" column/dozen for it.
             return wager * 3;
-        } else if (betType.contains("Dozen - 2:1") && betType.toLowerCase().contains(getDozen(result).toLowerCase() + " dozen")) {
+        } else if (result != 0 && betType.contains("Dozen - 2:1") && betType.toLowerCase().contains(getDozen(result).toLowerCase() + " dozen")) {
             return wager * 3;
         } else if (betType.equalsIgnoreCase("red - 1:1") && isRed(result)) {
             return wager * 2;

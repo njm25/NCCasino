@@ -62,6 +62,30 @@ class RoulettePayoutMathTest {
     }
 
     @Test
+    void zeroPaysTheStraightUpBetButLosesEveryOutsideBet() {
+        // getColumn(0) and getDozen(0) fall through to "Top"/"3rd" as a
+        // side effect of their %/range checks having no zero case of their
+        // own -- zero has no row or dozen in real roulette, and must lose
+        // every one of these bets, not just row/dozen.
+        assertEquals(3_600L, RoulettePayoutMath.payoutFor("0 - 35:1", 100, 0));
+
+        assertEquals(0L, RoulettePayoutMath.payoutFor("Top Row - 2:1", 100, 0));
+        assertEquals(0L, RoulettePayoutMath.payoutFor("Middle Row - 2:1", 100, 0));
+        assertEquals(0L, RoulettePayoutMath.payoutFor("Bottom Row - 2:1", 100, 0));
+
+        assertEquals(0L, RoulettePayoutMath.payoutFor("1st Dozen - 2:1", 100, 0));
+        assertEquals(0L, RoulettePayoutMath.payoutFor("2nd Dozen - 2:1", 100, 0));
+        assertEquals(0L, RoulettePayoutMath.payoutFor("3rd Dozen - 2:1", 100, 0));
+
+        assertEquals(0L, RoulettePayoutMath.payoutFor("Red - 1:1", 100, 0));
+        assertEquals(0L, RoulettePayoutMath.payoutFor("Black - 1:1", 100, 0));
+        assertEquals(0L, RoulettePayoutMath.payoutFor("Odd - 1:1", 100, 0));
+        assertEquals(0L, RoulettePayoutMath.payoutFor("Even - 1:1", 100, 0));
+        assertEquals(0L, RoulettePayoutMath.payoutFor("1-18 - 1:1", 100, 0));
+        assertEquals(0L, RoulettePayoutMath.payoutFor("19-36 - 1:1", 100, 0));
+    }
+
+    @Test
     void losingBetsContributeWagerButNoPayout() {
         List<Pair<String, Integer>> bets = List.of(
             new Pair<>("Red - 1:1", 500),
