@@ -141,6 +141,7 @@ coin-flip:
   round-started: "&cRunde gestartet, viel Glück!"
   round-started-wager: "&7Einsatz: &a{amount}"
   max-chain-hit: "&6Dieser Dealer ist auf eine maximale Siegesserie von {rounds} Runden eingestellt, die du erreicht hast. Glückwunsch zur maximalen Serie!"
+  max-pot-hit: "&6Dein Gewinn hat den maximalen Betrag erreicht, den dieses Spiel auf einmal auszahlen kann. Glückwunsch zum maximalen Gewinn!"
   pick-left: "&oLinks"
   pick-right: "&oRechts"
   click-pick: "&8Klicken, um deine Wahl festzulegen."
@@ -190,6 +191,7 @@ rock-paper-scissors:
   round-started: "&cRunde gestartet, viel Glück!"
   round-started-wager: "&7Einsatz: &a{amount}"
   max-chain-hit: "&6Dieser Dealer ist auf eine maximale Siegesserie von {rounds} Runden eingestellt, die du erreicht hast. Glückwunsch zur maximalen Serie!"
+  max-pot-hit: "&6Dein Gewinn hat den maximalen Betrag erreicht, den dieses Spiel auf einmal auszahlen kann. Glückwunsch zum maximalen Gewinn!"
 
 baccarat:
   title: "Baccara"
@@ -394,6 +396,7 @@ roulette:
   currency-missing: "Fehler: Währungsmaterial ist nicht festgelegt. Einsätze können nicht erstattet werden."
   inventory-full: "&cKein Platz für {amount}; wird fallen gelassen..."
   invalid-wager-amount: "&cUngültiger Einsatzbetrag: {amount}"
+  item-payout-too-large: "&cDer mögliche Gewinn dieser Wette ist für Item-Währung zu groß. Verringere deinen Einsatz oder verteile ihn auf weniger Wetten."
   spin-results: "&e----- Drehergebnis -----\n"
   category-header: "&eKategorie"
   wager-header: "&bEinsatz"

@@ -241,9 +241,10 @@ public class CoinFlipServer extends Server {
 
         private Player chairOneOccupant;
         private Player chairTwoOccupant;
-        private int betAmount;
+        /** Long, not int -- a PvP pot doubles two accepted stakes together, which can exceed Integer.MAX_VALUE even though neither individual stake does. */
+        private long betAmount;
         /** The player's own stake before any chain compounding, captured once per accepted bet. */
-        private int originalWager;
+        private long originalWager;
         /** PvE-only: consecutive chain wins since the bet was accepted. */
         private int chainWins;
         private boolean gameActive;
@@ -325,7 +326,7 @@ public class CoinFlipServer extends Server {
                     if (gameActive) return;
                     if (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(client.getPlayer().getUniqueId())) {
                         if (betAmount == 0) {
-                            betAmount = (int) data;
+                            betAmount = (long) data;
                             if (isPve()) {
                                 // No second human to accept -- the round
                                 // starts the instant the bet is placed.
@@ -417,21 +418,45 @@ public class CoinFlipServer extends Server {
             revealInProgress = false;
             roundToken++;
             originalWager = betAmount;
-            // Widen to long before doubling -- a plain int * 2 wraps
-            // negative once betAmount exceeds ~1.073B, which would zero
-            // out the eventual payout despite the stake already having
-            // been withdrawn from both sides. Clamp instead of wrapping.
-            betAmount = isPve() ? betAmount : (int) Math.min((long) betAmount * 2, Integer.MAX_VALUE);
+            // betAmount/originalWager are long specifically so this doubling
+            // can't wrap or need clamping -- a clamped int pot would still
+            // silently destroy the difference between the real combined
+            // stake (already withdrawn from both wallets) and whatever it
+            // got capped to, paying the winner less than what was actually
+            // put in.
+            betAmount = isPve() ? betAmount : betAmount * 2;
             chainWins = 0;
             exitSettlementPending = false;
             playerPick = null;
             startTimer();
         }
 
-        /** Whether the just-applied win (chainWins already reflects it) has met/exceeded the admin-configured cap. A cap <= 0 (the -1 default) means unbounded. */
+        /**
+         * Whether the just-applied win (chainWins/betAmount already reflect
+         * it, both exact and never clamped -- see below) must stop the
+         * chain here instead of offering another pick -- either the
+         * admin-configured cap (a cap <= 0, the -1 default, means
+         * unbounded), or offering one more round could produce a win that
+         * exceeds CoinFlipPayoutMath.MAX_SAFE_POT, the currency system's
+         * representable ceiling.
+         *
+         * <p>This is deliberately a forward-looking check on the round that
+         * would come NEXT, not a check of whether the current pot already
+         * sits at the ceiling. Checking backward (whether betAmount itself
+         * had already reached the ceiling) would only ever notice AFTER
+         * compound() had already clamped that same round's own win,
+         * silently underpaying the exact win the player just earned.
+         * Checking forward instead means a round is only ever offered when
+         * its win, if it happens, is guaranteed to compound to an exact
+         * value -- compound() itself never actually needs to clamp along
+         * this path.
+         */
         private boolean chainCapped() {
             int cap = plugin.getCoinFlipMaxChainRounds(internalName);
-            return cap > 0 && chainWins >= cap;
+            if (cap > 0 && chainWins >= cap) {
+                return true;
+            }
+            return CoinFlipPayoutMath.wouldExceedSafeMaxIfCompoundedAgain(betAmount, CHAIN_MULTIPLIER);
         }
 
         private void handlePick(Client client, int pick) {
@@ -543,8 +568,8 @@ public class CoinFlipServer extends Server {
             if (chairOneOccupant == null || !chairOneOccupant.getUniqueId().equals(playerId)) return;
 
             send("ANIMATION_FINISHED", 0);
-            int wager = originalWager;
-            int payout = betAmount;
+            long wager = originalWager;
+            long payout = betAmount;
             gameActive = false;
             revealInProgress = false;
             committedWinner = null;
@@ -603,8 +628,8 @@ public class CoinFlipServer extends Server {
             send("ANIMATION_FINISHED", winner);
             Player payoutOne = chairOneOccupant;
             Player payoutTwo = chairTwoOccupant;
-            int payout = betAmount;
-            int wager = originalWager;
+            long payout = betAmount;
+            long wager = originalWager;
             gameActive = false;
             revealInProgress = false;
             committedWinner = null;
@@ -657,7 +682,7 @@ public class CoinFlipServer extends Server {
          * RPS's null-occupant-is-a-no-op pattern but simplified since
          * there's no second UUID to look up in the first place.
          */
-        private void handlePayout(Player one, Player two, int payout, int winner, int wager, boolean pveWin) {
+        private void handlePayout(Player one, Player two, long payout, int winner, long wager, boolean pveWin) {
             if (isPve()) {
                 if (one == null) return;
                 UUID playerId = one.getUniqueId();
@@ -682,11 +707,23 @@ public class CoinFlipServer extends Server {
                         switch (plugin.getPreferences(playerId).getMessageSetting()) {
                             case STANDARD:
                             case VERBOSE:
-                                onlinePlayer.sendMessage(plugin.getLocalization().text(
-                                    onlinePlayer,
-                                    "coin-flip.max-chain-hit",
-                                    "rounds", plugin.getCoinFlipMaxChainRounds(internalName)
-                                ));
+                                // resolveRound only ever sees a PvE win once
+                                // chainCapped() was true, for one of two
+                                // reasons -- distinguish them so a pot that
+                                // stopped because one more round could have
+                                // exceeded the representable ceiling doesn't
+                                // claim it hit an admin-configured round
+                                // count instead (which may not even be set).
+                                if (CoinFlipPayoutMath.wouldExceedSafeMaxIfCompoundedAgain(payout, CHAIN_MULTIPLIER)) {
+                                    onlinePlayer.sendMessage(plugin.getLocalization().text(
+                                        onlinePlayer, "coin-flip.max-pot-hit"));
+                                } else {
+                                    onlinePlayer.sendMessage(plugin.getLocalization().text(
+                                        onlinePlayer,
+                                        "coin-flip.max-chain-hit",
+                                        "rounds", plugin.getCoinFlipMaxChainRounds(internalName)
+                                    ));
+                                }
                                 break;
                             case NONE:
                                 break;
@@ -750,8 +787,8 @@ public class CoinFlipServer extends Server {
                 return;
             }
 
-            int payout = betAmount;
-            int stake = isPve() ? payout : payout / 2;
+            long payout = betAmount;
+            long stake = isPve() ? payout : payout / 2;
             Integer winner = committedWinner;
             Integer pick = playerPick;
             Player payoutOne = chairOneOccupant;
@@ -777,7 +814,7 @@ public class CoinFlipServer extends Server {
                 if (isPve()) {
                     if (payoutOne != null && !forfeited.contains(payoutOne.getUniqueId())) {
                         if (pveWin) {
-                            int winnerPayout = CoinFlipPayoutMath.compound(payout, CHAIN_MULTIPLIER);
+                            long winnerPayout = CoinFlipPayoutMath.compound(payout, CHAIN_MULTIPLIER);
                             if (winnerPayout > 0) {
                                 queuePendingPayout(
                                     payoutOne.getUniqueId(),

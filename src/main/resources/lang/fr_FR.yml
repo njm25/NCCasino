@@ -141,6 +141,7 @@ coin-flip:
   round-started: "&cManche commencée, bonne chance !"
   round-started-wager: "&7Mise : &a{amount}"
   max-chain-hit: "&6Ce croupier est configuré avec une série de victoires maximale de {rounds} manches, que vous venez d'atteindre. Félicitations pour la série maximale !"
+  max-pot-hit: "&6Vos gains ont atteint le montant maximal que ce jeu peut verser en une fois. Félicitations pour le gain maximal !"
   pick-left: "&oGauche"
   pick-right: "&oDroite"
   click-pick: "&8Cliquez pour valider votre choix."
@@ -190,6 +191,7 @@ rock-paper-scissors:
   round-started: "&cManche commencée, bonne chance !"
   round-started-wager: "&7Mise : &a{amount}"
   max-chain-hit: "&6Ce croupier est configuré avec une série de victoires maximale de {rounds} manches, que vous venez d'atteindre. Félicitations pour la série maximale !"
+  max-pot-hit: "&6Vos gains ont atteint le montant maximal que ce jeu peut verser en une fois. Félicitations pour le gain maximal !"
 
 baccarat:
   title: "Baccara"
@@ -394,6 +396,7 @@ roulette:
   currency-missing: "Erreur : le matériau de la monnaie n'est pas défini. Impossible de rembourser les mises."
   inventory-full: "&cPas de place pour {amount}, objet déposé..."
   invalid-wager-amount: "&cMontant de mise invalide : {amount}"
+  item-payout-too-large: "&cLe gain possible de cette mise est trop élevé pour une monnaie en objets. Réduisez votre mise ou répartissez-la sur moins de paris."
   spin-results: "&e----- Résultats du tour -----\n"
   category-header: "&eCatégorie"
   wager-header: "&bMise"

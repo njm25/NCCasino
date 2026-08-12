@@ -427,58 +427,18 @@ public class BettingTable extends DealerInventory {
     }
 
     public void processSpinResult(int result, Stack<Pair<String, Integer>> dastack) {
-        int overallWager=0;
-        // We'll group categories into a data structure
-        class BetCategory {
-            int totalWager = 0;
-            int totalPayout = 0;
-        }
-        Map<String, BetCategory> categoryMap = new LinkedHashMap<>();
-    
-        int totalPayout = 0;
-    
-        // Process each bet
-        while (!dastack.isEmpty()) {
-            Pair<String, Integer> bet = dastack.pop();
-            String betType = bet.getFirst();
-            int wager = bet.getSecond();
-    
-            // 1) Determine the category from betType
-            String categoryName = parseCategory(betType);
-            // 2) Create or get BetCategory
-            BetCategory cat = categoryMap.computeIfAbsent(categoryName, k -> new BetCategory());
-            cat.totalWager += wager;
-            overallWager += wager;
-            // 3) Calculate payout for this specific bet
-            int payout = 0;
-    
-            // Determine if bet wins and calculate payout
-            if (betType.equalsIgnoreCase(result + " - 35:1")) {
-                payout = wager * 36;
-            } else if (betType.contains("Row - 2:1") && betType.toLowerCase().contains(getColumn(result).toLowerCase() + " row")) {
-                payout = wager * 3;
-            } else if (betType.contains("Dozen - 2:1") && betType.toLowerCase().contains(getDozen(result).toLowerCase() + " dozen")) {
-                payout = wager * 3;
-            } else if (betType.equalsIgnoreCase("red - 1:1") && isRed(result)) {
-                payout = wager * 2;
-            } else if (betType.equalsIgnoreCase("black - 1:1") && isBlack(result)) {
-                payout = wager * 2;
-            } else if (betType.equalsIgnoreCase(getOddEven(result))) {
-                payout = wager * 2;
-            } else if (betType.equals("1-18 - 1:1") && (1 <= result && result <= 18)) {
-                payout = wager * 2;
-            } else if (betType.equals("19-36 - 1:1") && (19 <= result && result <= 36)) {
-                payout = wager * 2;
-            }
-    
-            // Only count payouts from winning bets
-            if (payout > 0) {
-                cat.totalPayout += payout;
-                totalPayout += payout;
-            }
-        }
-    
-        final int totalPayoutFinal = categoryMap.values().stream().mapToInt(cat -> cat.totalPayout).sum();
+        // Evaluation itself is pure and long-based (see RoulettePayoutMath) --
+        // a straight-up payout is wager * 36, and both category and round
+        // totals sum many bets together, either of which can carry the
+        // result past Integer.MAX_VALUE even though no single wager does.
+        List<Pair<String, Integer>> bets = new ArrayList<>(dastack);
+        dastack.clear();
+        RoulettePayoutMath.Result evaluation = RoulettePayoutMath.evaluate(result, bets);
+        Map<String, RoulettePayoutMath.BetCategoryTotals> categoryMap = evaluation.categories;
+        long overallWager = evaluation.overallWager;
+        long totalPayout = evaluation.totalPayout;
+
+        final long totalPayoutFinal = totalPayout;
         Player player = Bukkit.getPlayer(playerId);
 
         if (player != null && player.isOnline()) {
@@ -491,8 +451,8 @@ public class BettingTable extends DealerInventory {
                 text("roulette.payout-header")
             );
 
-            for (Map.Entry<String, BetCategory> entry : categoryMap.entrySet()) {
-                BetCategory cat = entry.getValue();
+            for (Map.Entry<String, RoulettePayoutMath.BetCategoryTotals> entry : categoryMap.entrySet()) {
+                RoulettePayoutMath.BetCategoryTotals cat = entry.getValue();
                 table.addRow(
                     "§e" + localizedCategoryName(entry.getKey()),
                     "§b" + cat.totalWager,
@@ -622,77 +582,6 @@ public class BettingTable extends DealerInventory {
         } else {
             rouletteInventory.finalizeRoundResolution(playerId);
         }
-    }
-    
-    private String parseCategory(String betType) {
-        // Example rules (adjust to your actual naming):
-        betType = betType.toLowerCase();
-    
-        if (betType.contains("dozen")) {
-            return "Dozens";
-        } else if (betType.contains("row")) {
-            return "Rows";
-        } else if (betType.contains("red") || betType.contains("black")) {
-            return "Colors";
-        } else if (betType.contains("odd") || betType.contains("even")) {
-            return "Odd/Even";
-        } else if (betType.contains("1-18") || betType.contains("19-36")) {
-            return "High/Low";
-        }
-    
-        // Fallback if something doesn't match
-        return "Straight Up";
-    }
-    
-
-    private String getColumn(int result) {
-        // Determine the column of the result (1st, 2nd, 3rd)
-        if (result % 3 == 1) {
-            return "Bottom";
-        } else if (result % 3 == 2) {
-            return "Middle";
-        } else {
-            return "Top";
-        }
-    }
-    
-    private String getDozen(int result) {
-        // Determine the dozen of the result (1st, 2nd, 3rd)
-        if (result >= 1 && result <= 12) {
-            return "1st";
-        } else if (result >= 13 && result <= 24) {
-            return "2nd";
-        } else {
-            return "3rd";
-        }
-    }
-    
-    private boolean isRed(int result) {
-        int[] redNumbers = {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36};
-        for (int num : redNumbers) {
-            if (num == result) {
-                return true;
-            }
-        }
-        return false;
-    }
-    
-    private boolean isBlack(int result) {
-        int[] blackNumbers = {2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35};
-        for (int num : blackNumbers) {
-            if (num == result) {
-                return true;
-            }
-        }
-        return false;
-    }
-    
-    
-    private String getOddEven(int result) {
-        if (result == 0) {
-            return "none"; // No odd/even for 0
-        }
-        return (result % 2 == 0) ? "Even - 1:1" : "Odd - 1:1";
     }
     
 
@@ -891,8 +780,29 @@ public class BettingTable extends DealerInventory {
         
             // Ensure the player has selected a valid wager
             if (wagerAmount > 0) {
+                if (isItemMode() && wouldExceedItemModePayoutCeiling(betStack, betType, (int) wagerAmount)) {
+                    // Reject before any currency moves -- item-mode
+                    // delivery can only safely hand out up to
+                    // MAX_ITEM_MODE_PAYOUT synchronously (see
+                    // refundWagerToInventory), so a bet whose possible
+                    // payout could exceed that must never be accepted in
+                    // the first place.
+                    switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                        case STANDARD:
+                            player.sendMessage(text("roulette.invalid-action"));
+                            break;
+                        case VERBOSE:
+                            player.sendMessage(text("roulette.item-payout-too-large"));
+                            break;
+                        case NONE:
+                            break;
+                    }
+                    if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)
+                        player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+                    return;
+                }
                 boolean canBet = usedHeldItem || hasEnoughWager(player, wagerAmount);
-        
+
                 if (canBet) {
                     if (usedHeldItem) {
                         player.setItemOnCursor(null); // Remove the held stack
@@ -1073,7 +983,7 @@ public class BettingTable extends DealerInventory {
                 rouletteInventory.getMCE().addPlayerToChannel("RouletteWheel", player);
                 rouletteInventory.getMCE().removePlayerFromChannel("BettingTable", player);
                 }
-                player.openInventory(((RouletteInventory) dealerInventory).getInventory());
+                player.openInventory(((RouletteInventory) dealerInventory).getOrCreateView(player));
                  if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f);
                  Bukkit.getScheduler().runTaskLater(plugin, () -> {
 
@@ -1127,11 +1037,17 @@ private boolean isValidSlotPage2(int slot) {
 }
 
     public void clearAllBetsAndRefund(Player player) {
-        int totalRefund = betStack.stream().mapToInt(Pair::getSecond).sum();
+        long totalRefund = betStack.stream().mapToLong(Pair::getSecond).sum();
         refundWagerToInventory(player, totalRefund);
         betStack.clear();
     }
-    private void refundWagerToInventory(Player player, int amount) {
+    /**
+     * Handles both small single-bet refunds/undoes and a round's full
+     * winnings ({@code totalPayoutFinal} in processSpinResult), so
+     * {@code amount} is long end-to-end -- multiple aggregated bets can
+     * carry a payout past Integer.MAX_VALUE even though no single wager does.
+     */
+    private void refundWagerToInventory(Player player, long amount) {
         Material currencyMaterial = plugin.getCurrency(internalName);
         if (currencyMaterial == null) {
             player.sendMessage(text("roulette.currency-missing"));
@@ -1139,17 +1055,104 @@ private boolean isValidSlotPage2(int slot) {
         }
 
 		CurrencyProvider provider = getCurrencyProvider();
-		if (provider != null && provider.getMode() != org.nc.nccasino.currency.CurrencyMode.STANDARD) {
-			// VAULT/CUSTOM: refunds are handled as balance credits (no item fallback).
-			provider.deposit(player, internalName, amount);
+		if (provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT
+				&& provider instanceof org.nc.nccasino.currency.VaultCurrencyProvider vaultProvider) {
+			// Route through the precise BigDecimal deposit (same path
+			// Client#creditPlayer uses for Vault) instead of
+			// CurrencyProvider's int-typed deposit below -- that overload
+			// would silently wrap a long amount above Integer.MAX_VALUE
+			// rather than preserving it.
+			java.math.BigDecimal preciseAmount = MoneyHelper.clampNonNegative(MoneyHelper.bd(amount));
+			if (preciseAmount.compareTo(java.math.BigDecimal.ZERO) > 0) {
+				vaultProvider.deposit(player, internalName, preciseAmount);
+			}
 			return;
 		}
-    
-        int fullStacks = amount / 64;
-        int remainder = amount % 64;
+		if (provider != null && provider.getMode() != org.nc.nccasino.currency.CurrencyMode.STANDARD) {
+			// CUSTOM (non-Vault) providers: CurrencyProvider#deposit is
+			// itself int-typed, so an amount above Integer.MAX_VALUE is
+			// delivered as multiple int-sized deposits rather than clamped
+			// to one -- clamping here would announce the full long total in
+			// the round message but only pay out the size of a single chunk.
+			long remaining = amount;
+			while (remaining > 0) {
+				int chunk = remaining > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) remaining;
+				provider.deposit(player, internalName, chunk);
+				remaining -= chunk;
+			}
+			return;
+		}
+
+		// STANDARD / no provider: item-stack based, delivered through
+		// giveItemChunk's synchronous 64-item ItemStack loop on the main
+		// thread. This is safe to do in one call, unchunked, because
+		// item-mode bet placement rejects any wager whose worst-case
+		// payout would exceed MAX_ITEM_MODE_PAYOUT before it's ever
+		// withdrawn -- see wouldExceedItemModePayoutCeiling and its call
+		// site in handleClick. amount here can therefore never approach a
+		// size that would need looping or queuing. The clamp below is a
+		// last-resort guard against that invariant somehow being violated
+		// (a bug elsewhere, not an expected path) -- if it ever fires, it
+		// logs loudly rather than silently under- or over-delivering.
+		if (amount > DEFENSIVE_ITEM_DELIVERY_CEILING) {
+			plugin.getLogger().severe("[NCCasino] Roulette item-mode payout of " + amount
+				+ " for " + player.getUniqueId() + " exceeds the pre-acceptance exposure cap -- "
+				+ "delivering only " + DEFENSIVE_ITEM_DELIVERY_CEILING + " and dropping the rest. "
+				+ "This should be unreachable; the bet-placement exposure check has a bug.");
+			amount = DEFENSIVE_ITEM_DELIVERY_CEILING;
+		}
+		giveItemChunk(player, provider, currencyMaterial, (int) amount);
+    }
+
+    /**
+     * Worst-case total payout (across every possible spin result, 0-36)
+     * that STANDARD/item-mode bet placement will allow the current table
+     * to expose a player to. Chosen so a single {@code giveItemChunk} call
+     * for exactly this amount needs at most a few hundred synchronous
+     * {@code addItem} calls (this / 64) -- comfortably instant, and even a
+     * completely full inventory would only need to drop that same handful
+     * of item stacks, not thousands.
+     */
+    static final long MAX_ITEM_MODE_PAYOUT = 10_000L;
+
+    /**
+     * Belt-and-suspenders ceiling for the actual item-giving loop in
+     * {@link #refundWagerToInventory}, independent of and well above
+     * MAX_ITEM_MODE_PAYOUT -- see the comment there.
+     */
+    private static final long DEFENSIVE_ITEM_DELIVERY_CEILING = 1_000_000L;
+
+    /**
+     * Whether adding a hypothetical bet of {@code wagerAmount} on
+     * {@code betType} to {@code currentBets} would let SOME possible spin
+     * result (0-36) pay out more than MAX_ITEM_MODE_PAYOUT. Evaluated
+     * against every possible result, not just an approximation, by reusing
+     * the same RoulettePayoutMath a real spin resolves with -- pure and
+     * package-private so it's testable without a live inventory.
+     */
+    static boolean wouldExceedItemModePayoutCeiling(List<Pair<String, Integer>> currentBets, String betType, int wagerAmount) {
+        List<Pair<String, Integer>> hypothetical = new ArrayList<>(currentBets);
+        hypothetical.add(new Pair<>(betType, wagerAmount));
+        for (int result = 0; result <= 36; result++) {
+            if (RoulettePayoutMath.evaluate(result, hypothetical).totalPayout > MAX_ITEM_MODE_PAYOUT) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Whether this dealer's currency ultimately settles as physical items rather than a Vault/CUSTOM balance -- the only mode MAX_ITEM_MODE_PAYOUT applies to. */
+    private boolean isItemMode() {
+        CurrencyProvider provider = getCurrencyProvider();
+        return provider == null || provider.getMode() == org.nc.nccasino.currency.CurrencyMode.STANDARD;
+    }
+
+    private void giveItemChunk(Player player, CurrencyProvider provider, Material currencyMaterial, int amountToGive) {
+        int fullStacks = amountToGive / 64;
+        int remainder = amountToGive % 64;
         int totalLeftoverAmount = 0;
         HashMap<Integer, ItemStack> leftover;
-    
+
         // Try adding full stacks
         for (int i = 0; i < fullStacks; i++) {
             ItemStack stack = null;
@@ -1164,7 +1167,7 @@ private boolean isValidSlotPage2(int slot) {
                 totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
             }
         }
-    
+
         // Try adding remainder
         if (remainder > 0) {
             ItemStack remainderStack = null;
@@ -1179,8 +1182,8 @@ private boolean isValidSlotPage2(int slot) {
                 totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
             }
         }
-    
-    
+
+
         if (totalLeftoverAmount > 0) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
@@ -1189,7 +1192,7 @@ private boolean isValidSlotPage2(int slot) {
                         "amount",
                         plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount)
                     ));
-    
+
                     break;}
                 case VERBOSE:{
                     player.sendMessage(text(
@@ -1197,12 +1200,12 @@ private boolean isValidSlotPage2(int slot) {
                         "amount",
                         plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount)
                     ));
-                    break;     
+                    break;
                 }
                     case NONE:{
                     break;
                 }
-            } 
+            }
             dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
         }
     }
@@ -1385,7 +1388,7 @@ private boolean isValidSlotPage2(int slot) {
             rouletteInventory.getMCE().addPlayerToChannel("RouletteWheel", player);
             rouletteInventory.getMCE().removePlayerFromChannel("BettingTable", player);
             }
-            player.openInventory(((RouletteInventory) dealerInventory).getInventory());
+            player.openInventory(((RouletteInventory) dealerInventory).getOrCreateView(player));
              if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f);
             switchingPlayers.remove(player.getUniqueId());
         } else {

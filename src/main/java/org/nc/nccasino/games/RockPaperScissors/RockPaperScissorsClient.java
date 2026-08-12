@@ -74,7 +74,8 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     protected Player chairOneOccupant;
     protected Player chairTwoOccupant;
 
-    protected int betAmount = 0;
+    /** Long, not int -- mirrors RockPaperScissorsServer.RpsMatch.betAmount, which is long specifically so a PvP pot can't overflow/clamp past what was actually withdrawn from both wallets. */
+    protected long betAmount = 0;
     /** PvE chain display only -- authoritative count lives server-side. */
     private int chainWins = 0;
 
@@ -310,7 +311,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     private void handleSubmitBet() {
         if (chairOneOccupant!=null && chairOneOccupant.getUniqueId().equals(player.getUniqueId())) {
             if(!betStack.isEmpty()){
-                int totalBet = (int) betStack.stream().mapToDouble(Double::doubleValue).sum();
+                long totalBet = (long) betStack.stream().mapToDouble(Double::doubleValue).sum();
                 if(totalBet > 0){
                     // Set locally rather than waiting on the server's echo --
                     // PvP gets one back via the PLAYER_SUBMIT_BET broadcast
@@ -338,7 +339,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
             }
         } else if (chairTwoOccupant !=null && chairTwoOccupant.getUniqueId().equals(player.getUniqueId())) {
             if(betAmount>0){
-                int amount = betAmount;
+                long amount = betAmount;
                 boolean betAccepted = handlePlayerTwoAccept(amount);
                 if (betAccepted){
                     pendingAcceptAmount = amount;
@@ -471,7 +472,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                 handlePlayerTwoLeave();
                 break;
             case "PLAYER_SUBMIT_BET":
-                handleSubmitBet((int) data);
+                handleSubmitBet((long) data);
                 break;
             case "PLAYER_CANCEL_BET":
                 handleCancelBet();
@@ -626,7 +627,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         chairTwoOccupant = null;
     }
 
-    private void handleSubmitBet(int data){
+    private void handleSubmitBet(long data){
         betAmount = data;
         if(chairOneOccupant.getUniqueId().equals(player.getUniqueId())){
             if(chairTwoOccupant == null){
@@ -708,7 +709,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         }
     }
 
-    protected Boolean handlePlayerTwoAccept(int amount) {
+    protected Boolean handlePlayerTwoAccept(long amount) {
         double wagerAmount = amount;
 
         if (!hasEnoughWager(player, wagerAmount)) {
@@ -828,7 +829,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
      */
     private void handleChainWin(Object[] data) {
         chainWins = (data.length > 0 && data[0] instanceof Integer) ? (int) data[0] : chainWins;
-        betAmount = (data.length > 1 && data[1] instanceof Integer) ? (int) data[1] : betAmount;
+        betAmount = (data.length > 1 && data[1] instanceof Long) ? (long) data[1] : betAmount;
 
         stopWinnerOrbit();
         myChoiceLocked = false;
@@ -934,7 +935,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         Object[] dataArr = (Object[]) data;
         Player chairOne = (dataArr.length > 0 && dataArr[0] instanceof Player) ? (Player) dataArr[0] : null;
         Player chairTwo = (dataArr.length > 1 && dataArr[1] instanceof Player) ? (Player) dataArr[1] : null;
-        int betAmountValue = (dataArr.length > 2 && dataArr[2] instanceof Integer) ? (int) dataArr[2] : 0;
+        long betAmountValue = (dataArr.length > 2 && dataArr[2] instanceof Long) ? (long) dataArr[2] : 0L;
         gameActive = (dataArr.length > 3 && dataArr[3] instanceof Boolean) ? (boolean) dataArr[3] : false;
         int timeLeft = (dataArr.length > 4 && dataArr[4] instanceof Integer) ? (int) dataArr[4] : 0;
         myChoiceLocked = (dataArr.length > 5 && dataArr[5] instanceof Boolean) ? (boolean) dataArr[5] : false;
@@ -1263,7 +1264,7 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     /** Echoed back with ANIMATION_FINISHED so the server can ignore a callback for a since-superseded round. */
     private int pendingRoundToken = -1;
     /** Wager already deducted locally for an in-flight PLAYER_ACCEPT_BET, refunded if the server rejects it. */
-    private int pendingAcceptAmount = 0;
+    private long pendingAcceptAmount = 0;
 
     private Material materialFor(Throw t) {
         return switch (t) {

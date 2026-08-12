@@ -141,6 +141,7 @@ coin-flip:
   round-started: "&cRodada iniciada, boa sorte!"
   round-started-wager: "&7Aposta: &a{amount}"
   max-chain-hit: "&6Este crupiê está configurado com uma sequência máxima de vitórias de {rounds} rodadas, e você a alcançou. Parabéns pela sequência máxima!"
+  max-pot-hit: "&6Seus ganhos atingiram o valor máximo que este jogo pode pagar de uma vez. Parabéns pelo ganho máximo!"
   pick-left: "&oEsquerda"
   pick-right: "&oDireita"
   click-pick: "&8Clique para confirmar sua escolha."
@@ -190,6 +191,7 @@ rock-paper-scissors:
   round-started: "&cRodada iniciada, boa sorte!"
   round-started-wager: "&7Aposta: &a{amount}"
   max-chain-hit: "&6Este crupiê está configurado com uma sequência máxima de vitórias de {rounds} rodadas, e você a alcançou. Parabéns pela sequência máxima!"
+  max-pot-hit: "&6Seus ganhos atingiram o valor máximo que este jogo pode pagar de uma vez. Parabéns pelo ganho máximo!"
 
 baccarat:
   title: "Bacará"
@@ -394,6 +396,7 @@ roulette:
   currency-missing: "Erro: o material da moeda não está definido. Não foi possível reembolsar as apostas."
   inventory-full: "&cSem espaço para {amount}; soltando..."
   invalid-wager-amount: "&cValor de aposta inválido: {amount}"
+  item-payout-too-large: "&cO possível ganho dessa aposta é grande demais para moeda de itens. Reduza sua aposta ou divida-a em menos apostas."
   spin-results: "&e----- Resultados da rodada -----\n"
   category-header: "&eCategoria"
   wager-header: "&bAposta"
