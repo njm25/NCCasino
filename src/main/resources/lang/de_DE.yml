@@ -458,6 +458,7 @@ blackjack:
   dealer-turn-capitalized: "Der Dealer ist am Zug"
   your-turn: "Du bist am Zug."
   your-turn-message: "&aDu bist am Zug."
+  current-player-turn: "{player} ist am Zug"
   turn-over: "Dein Zug ist vorbei."
   hidden-card: "Verdeckte Karte"
   result-blackjack: "&a&lBlackjack!"

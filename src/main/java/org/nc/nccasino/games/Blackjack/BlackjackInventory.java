@@ -24,6 +24,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
@@ -73,6 +74,36 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     private Boolean firstFin=true;
     private Boolean sittable=true;
     public UUID dealerId;
+    // Per-player localized views onto this shared table. The legacy
+    // `inventory` (from DealerInventory) stays the internal/default render
+    // target and every mutation fans out from it to each of these -- see
+    // getOrCreateView/BlackjackView. Never a source of canonical state.
+    private final Map<UUID, BlackjackView> views = new HashMap<>();
+    // Canonical record of what the lever (slot 1) is currently telling the
+    // player, kept in sync everywhere the lever is set so a freshly opened
+    // view can reproduce it exactly instead of guessing from an item's
+    // current material/amount. Null until the lever is set for the first
+    // time (matches slot 1 being genuinely empty before that).
+    private String leverKey;
+    private Object[] leverPlaceholders = new Object[0];
+    // Last value the countdown clock was rendered with, read by
+    // captureFrame for late-view bootstrap. The running task only has this
+    // as a Runnable-local variable otherwise.
+    private int countdownSecondsRemaining;
+    // Canonical, locale-neutral record of whether the dealer's hidden-card
+    // placeholder has actually been rendered yet -- set only inside the
+    // scheduled hidden-card render callback and cleared on reveal and on
+    // every reset/cancel/delete path, so a view bootstrapped before that
+    // callback has run never shows the placeholder early.
+    private boolean hiddenCardPlaceholderVisible;
+    // Canonical, locale-neutral record of what each seated player's bet
+    // slot is currently presenting, updated at the exact same production
+    // transitions that fan the rendered item out to every view -- never
+    // inferred from playerDone/currentPlayerId, so bootstrap reproduces
+    // exactly what existing viewers see (including the hit-to-21 and
+    // double-down quirks where the slot stays YOUR_TURN until the next
+    // turn's transition explicitly overwrites it).
+    private final Map<UUID, BlackjackFrame.BetPresentation> betPresentation = new HashMap<>();
     public BlackjackInventory(UUID dealerId, Nccasino plugin, String internalName) {
         super(
             dealerId,
@@ -158,33 +189,15 @@ private void registerListener() {
 
       @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event){
+        // Defensive fallback only: with per-player views wired up, nobody
+        // has this legacy inventory open directly anymore (see the `views`
+        // field), but keep this reachable in case it ever is.
         if (event.getInventory() == this.getInventory()){
             Player player=(Player)event.getPlayer();
             if(player.getInventory() !=null){
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        if (player != null) {
-                            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                                case STANDARD:{
-                                    break;}
-                                case VERBOSE:{
-                                    player.sendMessage(text(player, "blackjack.welcome"));
-                                    break;     
-                                }
-                                    case NONE:{
-                                    break;
-                                }
-                            } 
-                            if(firstFin){
-                        firstFin=false;
-                        initializeGameMenu();
-            
-                            }
-            
-                            // No need to register the listener here since it's handled in the constructor
-                        }
-                }, 2L);    
+                onViewOpened(player);
             }
-        }   
+        }
       
     }
  
@@ -218,57 +231,208 @@ private void registerListener() {
         return mat != null && stack.getType() == mat;
     }
 
-    // Initialize Blackjack-specific game menu
-    @SuppressWarnings("removal")
-    private void initializeGameMenu() {
+    // ---- Per-player BlackjackView plumbing --------------------------
 
-        inventory.clear(); // Clear the inventory before setting up the page
-
-        for (UUID playerId : playerSeats.keySet()) {
-            int seatSlot = playerSeats.get(playerId);
-            inventory.setItem(seatSlot, createPlayerHeadItem(Bukkit.getPlayer(playerId), 1));
+    /**
+     * Returns this player's localized table view, creating and immediately
+     * painting it with the current round state if it doesn't exist yet --
+     * so a late or returning viewer never sees a blank or stale board while
+     * waiting for the next scheduled render.
+     */
+    public Inventory getOrCreateView(Player player) {
+        UUID id = player.getUniqueId();
+        BlackjackView existing = views.get(id);
+        if (existing != null) {
+            return existing.getInventory();
         }
-        // Add the necessary items for the game menu
-        addItem(createCustomItem(Material.CREEPER_HEAD, text("blackjack.dealer")), 0); // Dealer
-        // The Game Info lever stack will be added when the timer starts.
+        BlackjackView view = new BlackjackView(player, this, plugin);
+        views.put(id, view);
+        bootstrapView(view);
+        return view.getInventory();
+    }
 
-        // Add chairs
-        addItem(createCustomItem(Material.OAK_STAIRS, text("blackjack.click-sit")), 9); // Chair 1
-        addItem(createCustomItem(Material.OAK_STAIRS, text("blackjack.click-sit")), 18); // Chair 2
-        addItem(createCustomItem(Material.OAK_STAIRS, text("blackjack.click-sit")), 27); // Chair 3
-        sittable=true;
+    /**
+     * Paints a freshly created view with the exact current table state,
+     * captured as a {@link BlackjackFrame} so the same reconstruction logic
+     * is unit-testable without Bukkit. The static controls (buttons, chip
+     * denominations) never depend on round state, so they're painted the
+     * same way initializeGameMenu paints them for the legacy inventory.
+     */
+    private void bootstrapView(BlackjackView view) {
+        Inventory target = view.getInventory();
+        Player viewer = Bukkit.getPlayer(view.getPlayerId());
 
-        // Add betting papers
-        addItem(createCustomItem(Material.PAPER, text("blackjack.click-bet")), 10); // Bet 1
-        addItem(createCustomItem(Material.PAPER, text("blackjack.click-bet")), 19); // Bet 2
-        addItem(createCustomItem(Material.PAPER, text("blackjack.click-bet")), 28); // Bet 3
+        paintStaticControls(target, viewer);
 
-        // Add game action buttons
-        addItem(createCustomItem(Material.DIAMOND_SWORD, text("blackjack.hit")), 36); // Hit
-        ItemStack item = inventory.getItem(36);
+        BlackjackFrame frame = captureFrame();
+
+        if (leverKey != null) {
+            target.setItem(BlackjackSlotLayout.LEVER_SLOT, buildLeverItem(frame, viewer));
+        }
+
+        target.setItem(BlackjackSlotLayout.DEALER_HEAD_SLOT, createCustomItem(Material.CREEPER_HEAD, localize(viewer, "blackjack.dealer")));
+        if (!frame.dealerHand().isEmpty()) {
+            applyHeadLore(target, BlackjackSlotLayout.DEALER_HEAD_SLOT, calculateHandValueWithSoftCheck(frame.dealerHand()), null, "blackjack.dealer", viewer);
+        }
+        for (int i = 0; i < frame.dealerHand().size(); i++) {
+            target.setItem(BlackjackSlotLayout.dealerCardSlot(i), buildCardItem(frame.dealerHand().get(i), viewer));
+        }
+        if (frame.dealerHoleCardHidden()) {
+            target.setItem(BlackjackSlotLayout.DEALER_HIDDEN_CARD_SLOT, buildHiddenCardItem(viewer));
+        }
+
+        // Every chair/bet-slot pair is painted unconditionally -- empty
+        // seats get the default click-sit/click-bet items, occupied ones
+        // are overlaid with the seated player's head, hand, and bet-slot
+        // presentation. This must hold in every phase (lobby, countdown,
+        // active, and again after a reset), not just while a round is active.
+        for (int chairSlot : BlackjackSlotLayout.CHAIR_SLOTS) {
+            int betSlot = BlackjackSlotLayout.betSlot(chairSlot);
+            BlackjackFrame.Seat seat = frame.seatAt(chairSlot);
+
+            if (seat == null) {
+                target.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, localize(viewer, "blackjack.click-sit"), 1));
+                target.setItem(betSlot, createCustomItem(Material.PAPER, localize(viewer, "blackjack.click-bet"), 1));
+                continue;
+            }
+
+            Player seatOwnerPlayer = Bukkit.getPlayer(seat.getPlayerId());
+            if (seatOwnerPlayer != null) {
+                target.setItem(chairSlot, createPlayerHeadItem(seatOwnerPlayer, 1));
+                if (!seat.getHand().isEmpty()) {
+                    applyHeadLore(target, chairSlot, calculateHandValueWithSoftCheck(seat.getHand()), seatOwnerPlayer.getName(), null, viewer);
+                }
+            } else {
+                // Seat tracked but the player can't be resolved (e.g. just
+                // disconnected) -- fall back to the empty-chair item rather
+                // than leave the slot blank.
+                target.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, localize(viewer, "blackjack.click-sit"), 1));
+            }
+
+            for (int i = 0; i < seat.getHand().size(); i++) {
+                target.setItem(BlackjackSlotLayout.seatCardSlot(chairSlot, i), buildCardItem(seat.getHand().get(i), viewer));
+            }
+
+            BlackjackFrame.BetSlotRender render = BlackjackFrame.betSlotRenderFor(seat.getPresentation());
+            ItemStack betItem = render.isEnchanted()
+                ? createEnchantedItem(Material.BOOK, localize(viewer, render.getKey()), 1)
+                : createCustomItem(Material.PAPER, localize(viewer, render.getKey()), 1);
+            target.setItem(betSlot, withWagerLore(betItem, seat.getWager(), viewer));
+        }
+    }
+
+    private ItemStack withWagerLore(ItemStack item, double wager, Player viewer) {
+        if (wager <= 0) {
+            return item;
+        }
         ItemMeta meta = item.getItemMeta();
-        assert meta != null;
-        meta.addAttributeModifier(AttributeHelper.getAttributeSafely("ATTACK_DAMAGE"), 
-            new AttributeModifier("foo", 0, AttributeModifier.Operation.MULTIPLY_SCALAR_1));
-     // This is necessary as of 1.20.6
-        for(ItemFlag flag : ItemFlag.values()) {
-            meta.addItemFlags(flag);
+        if (meta != null) {
+            List<String> lore = new ArrayList<>();
+            lore.add(localize(viewer, "blackjack.wager-lore", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, wager)));
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    /**
+     * Captures the current canonical state as a locale-neutral, immutable
+     * snapshot. Pure data derivation only -- no Bukkit types, no player
+     * references, no localized strings -- so BlackjackFrameTest can exercise
+     * it directly.
+     */
+    private BlackjackFrame captureFrame() {
+        BlackjackFrame.Phase phase;
+        if (gameActive) {
+            phase = BlackjackFrame.Phase.ACTIVE;
+        } else if (countdownTaskId != -1) {
+            phase = BlackjackFrame.Phase.COUNTDOWN;
+        } else {
+            phase = BlackjackFrame.Phase.LOBBY;
         }
 
-        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-        item.setItemMeta(meta);
-        addItem(createCustomItem(Material.SHIELD, text("blackjack.stand")), 37); // Stand
-        addItem(createCustomItem(Material.PAPER, text("blackjack.double-down")), 38); // Double Down
-        //addItem(createCustomItem(Material.SHEARS, "Split"), 39); // Split
-        //addItem(createCustomItem(Material.TOTEM_OF_UNDYING, "Insurance"), 40); // Insurance
+        List<BlackjackFrame.Seat> seats = new ArrayList<>();
+        for (Map.Entry<UUID, Integer> entry : playerSeats.entrySet()) {
+            UUID playerId = entry.getKey();
+            int seatSlot = entry.getValue();
+            double wager = playerBets.containsKey(playerId)
+                ? playerBets.get(playerId).values().stream().mapToDouble(Double::doubleValue).sum()
+                : 0.0;
+            List<Card> hand = playerHands.getOrDefault(playerId, List.of());
+            boolean done = playerDone.getOrDefault(playerId, false);
+            boolean currentTurn = playerId.equals(currentPlayerId) && playerTurnActive.getOrDefault(playerId, false);
+            BlackjackFrame.BetPresentation presentation = betPresentation.getOrDefault(playerId, BlackjackFrame.BetPresentation.CLICK_BET);
+            seats.add(new BlackjackFrame.Seat(playerId, seatSlot, wager, hand, done, currentTurn, presentation));
+        }
 
-        // Add undo options and chip denominations
-        inventory.setItem(45, createCustomItem(Material.BARRIER, text("blackjack.undo-all"), 1));
-        inventory.setItem(46, createCustomItem(Material.WIND_CHARGE, text("blackjack.undo-last"), 1));
+        return new BlackjackFrame(
+            phase,
+            countdownSecondsRemaining,
+            leverKey != null ? leverKey : "blackjack.game-info",
+            List.of(leverPlaceholders),
+            dealerHand,
+            hiddenCardPlaceholderVisible,
+            seats
+        );
+    }
 
+    private String localize(Player viewer, String key, Object... placeholders) {
+        return viewer != null ? plugin.getLocalization().text(viewer, key, placeholders) : text(key, placeholders);
+    }
+
+    void handleViewClick(int slot, Player player, InventoryClickEvent event) {
+        handleClick(slot, player, event);
+    }
+
+    void onViewClosed(Player player, BlackjackView view) {
+        views.remove(player.getUniqueId(), view);
+        view.cleanupListener();
+        handlePlayerClose(player);
+    }
+
+    /**
+     * Reproduces the legacy handleInventoryOpen behavior (welcome message,
+     * one-time initializeGameMenu on firstFin) from a per-player view's own
+     * open event instead of the shared inventory's -- same 2-tick delay,
+     * same preference-gated message, same firstFin gate.
+     */
+    void onViewOpened(Player player) {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (player != null) {
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage(text(player, "blackjack.welcome"));
+                        break;
+                    }
+                        case NONE:{
+                        break;
+                    }
+                }
+                if(firstFin){
+                    firstFin=false;
+                    initializeGameMenu();
+                }
+            }
+        }, 2L);
+    }
+
+    /**
+     * Paints every state-independent control (buttons, undo options, chip
+     * denominations) into {@code target} for {@code viewer}'s locale. Used
+     * both by initializeGameMenu (legacy inventory, viewer null) and
+     * bootstrapView (a freshly opened view).
+     */
+    private void paintStaticControls(Inventory target, Player viewer) {
+        target.setItem(BlackjackSlotLayout.HIT_SLOT, buildHitSwordItem(localize(viewer, "blackjack.hit")));
+        target.setItem(BlackjackSlotLayout.STAND_SLOT, createCustomItem(Material.SHIELD, localize(viewer, "blackjack.stand")));
+        target.setItem(BlackjackSlotLayout.DOUBLE_DOWN_SLOT, createCustomItem(Material.PAPER, localize(viewer, "blackjack.double-down")));
+        target.setItem(BlackjackSlotLayout.UNDO_ALL_SLOT, createCustomItem(Material.BARRIER, localize(viewer, "blackjack.undo-all"), 1));
+        target.setItem(BlackjackSlotLayout.UNDO_LAST_SLOT, createCustomItem(Material.WIND_CHARGE, localize(viewer, "blackjack.undo-last"), 1));
         for (Map.Entry<Integer, Double> entry : chipValues.entrySet()) {
             double value = entry.getValue();
-            inventory.setItem(
+            target.setItem(
                 entry.getKey(),
                 createCustomItem(
                     plugin.getCurrency(internalName),
@@ -277,9 +441,258 @@ private void registerListener() {
                 )
             );
         }
-        inventory.setItem(52, createCustomItem(Material.SNIFFER_EGG, text("blackjack.all-in"), 1));
-        // Add leave chair option with a wooden door
-        inventory.setItem(53, createCustomItem(Material.SPRUCE_DOOR, text("blackjack.leave-exit"), 1));
+        target.setItem(BlackjackSlotLayout.ALL_IN_SLOT, createCustomItem(Material.SNIFFER_EGG, localize(viewer, "blackjack.all-in"), 1));
+        target.setItem(BlackjackSlotLayout.LEAVE_EXIT_SLOT, createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1));
+    }
+
+    @SuppressWarnings("removal")
+    private ItemStack buildHitSwordItem(String label) {
+        ItemStack item = createCustomItem(Material.DIAMOND_SWORD, label);
+        ItemMeta meta = item.getItemMeta();
+        assert meta != null;
+        meta.addAttributeModifier(AttributeHelper.getAttributeSafely("ATTACK_DAMAGE"),
+            new AttributeModifier("foo", 0, AttributeModifier.Operation.MULTIPLY_SCALAR_1));
+        // This is necessary as of 1.20.6
+        for (ItemFlag flag : ItemFlag.values()) {
+            meta.addItemFlags(flag);
+        }
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private ItemStack buildLeverItem(BlackjackFrame frame, Player viewer) {
+        int amount = frame.phase() == BlackjackFrame.Phase.COUNTDOWN ? Math.max(frame.countdownSeconds(), 1) : 1;
+        return createCustomItem(Material.CLOCK, localize(viewer, frame.leverKey(), frame.leverPlaceholders().toArray()), amount);
+    }
+
+    private ItemStack buildCardItem(Card card, Player viewer) {
+        Material material = (card.getSuit() == Suit.HEARTS || card.getSuit() == Suit.DIAMONDS)
+            ? Material.RED_STAINED_GLASS_PANE : Material.BLACK_STAINED_GLASS_PANE;
+        ItemStack cardItem = new ItemStack(material, BlackjackRules.cardStackSize(card));
+        ItemMeta meta = cardItem.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(localizedCardName(viewer, card));
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+            cardItem.setItemMeta(meta);
+        }
+        return cardItem;
+    }
+
+    /** Localizes a card's display name via BlackjackFrame's pure "{rank} of {suit}" resolution. */
+    private String localizedCardName(Player viewer, Card card) {
+        return BlackjackFrame.localizedCardName(
+            card,
+            (key, args) -> localize(viewer, key, args),
+            key -> localize(viewer, key)
+        );
+    }
+
+    private ItemStack buildHiddenCardItem(Player viewer) {
+        ItemStack hiddenCard = new ItemStack(Material.WHITE_STAINED_GLASS_PANE, 1);
+        ItemMeta meta = hiddenCard.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(localize(viewer, "blackjack.hidden-card"));
+            hiddenCard.setItemMeta(meta);
+        }
+        return hiddenCard;
+    }
+
+    /**
+     * Overwrites a head item's display name and card-value lore, preserving
+     * whatever head item (player or dealer) is already at {@code slot}.
+     * Exactly one of {@code literalName}/{@code nameKey} is non-null:
+     * player heads keep their real (untranslated) Minecraft name; the
+     * dealer head's name is localized per viewer.
+     */
+    private void applyHeadLore(Inventory target, int slot, String cardValueText, String literalName, String nameKey, Player viewer) {
+        ItemStack headItem = target.getItem(slot);
+        if (headItem == null || (headItem.getType() != Material.PLAYER_HEAD && headItem.getType() != Material.CREEPER_HEAD)) {
+            return;
+        }
+        ItemMeta meta = headItem.getItemMeta();
+        if (meta == null) {
+            return;
+        }
+        meta.setDisplayName(literalName != null ? literalName : localize(viewer, nameKey));
+        List<String> lore = new ArrayList<>();
+        lore.add(localize(viewer, "blackjack.card-value", "value", cardValueText));
+        meta.setLore(lore);
+        headItem.setItemMeta(meta);
+        target.setItem(slot, headItem);
+    }
+
+    /** Fans a head-lore update (player or dealer) out to the legacy inventory and every open view. */
+    private void renderHeadLoreToAllViews(int slot, String cardValueText, String literalName, String nameKey) {
+        applyHeadLore(inventory, slot, cardValueText, literalName, nameKey, null);
+        for (BlackjackView view : views.values()) {
+            Player viewer = Bukkit.getPlayer(view.getPlayerId());
+            applyHeadLore(view.getInventory(), slot, cardValueText, literalName, nameKey, viewer);
+        }
+    }
+
+    /** Writes a localized item to the legacy inventory and every open view, each resolved against its own locale. */
+    private void renderLocalizedToAllViews(int slot, Material material, int amount, String key, Object... placeholders) {
+        inventory.setItem(slot, createCustomItem(material, text(key, placeholders), amount));
+        for (BlackjackView view : views.values()) {
+            Player viewer = Bukkit.getPlayer(view.getPlayerId());
+            view.getInventory().setItem(slot, createCustomItem(material, localize(viewer, key, placeholders), amount));
+        }
+    }
+
+    /** Writes a locale-independent item (or null to clear) to the legacy inventory and every open view. */
+    private void renderToAllViews(int slot, ItemStack item) {
+        inventory.setItem(slot, item);
+        for (BlackjackView view : views.values()) {
+            view.getInventory().setItem(slot, item == null ? null : item.clone());
+        }
+    }
+
+    /** Deals one Card into the legacy inventory and every open view, each rendered in its own locale. */
+    private void renderCardToAllViews(int slot, Card card) {
+        inventory.setItem(slot, buildCardItem(card, null));
+        for (BlackjackView view : views.values()) {
+            Player viewer = Bukkit.getPlayer(view.getPlayerId());
+            view.getInventory().setItem(slot, buildCardItem(card, viewer));
+        }
+    }
+
+    /** Draws the dealer's hidden-card placeholder into the legacy inventory and every open view. */
+    private void renderHiddenCardToAllViews(int slot) {
+        inventory.setItem(slot, buildHiddenCardItem(null));
+        for (BlackjackView view : views.values()) {
+            Player viewer = Bukkit.getPlayer(view.getPlayerId());
+            view.getInventory().setItem(slot, buildHiddenCardItem(viewer));
+        }
+    }
+
+    /**
+     * Records the lever's canonical (key, placeholders) state and paints a
+     * brand-new CLOCK item with an explicit stack amount into the legacy
+     * inventory and every open view. Used for the countdown ticks and the
+     * "game-info" idle resets, which have always replaced the lever item
+     * outright rather than relabeling it in place.
+     */
+    private void renderLeverToAllViews(int amount, String key, Object... placeholders) {
+        leverKey = key;
+        leverPlaceholders = placeholders;
+        inventory.setItem(BlackjackSlotLayout.LEVER_SLOT, createCustomItem(Material.CLOCK, text(key, placeholders), amount));
+        for (BlackjackView view : views.values()) {
+            Player viewer = Bukkit.getPlayer(view.getPlayerId());
+            view.getInventory().setItem(BlackjackSlotLayout.LEVER_SLOT, createCustomItem(Material.CLOCK, localize(viewer, key, placeholders), amount));
+        }
+    }
+
+    /**
+     * Records the lever's canonical (key, placeholders) state and relabels
+     * whatever CLOCK item is already at the lever slot, preserving its
+     * existing stack amount -- matching the original's mutate-in-place
+     * updateLeverDisplayName, which never touched the amount.
+     */
+    private void relabelLeverToAllViews(String key, Object... placeholders) {
+        leverKey = key;
+        leverPlaceholders = placeholders;
+        applyLeverDisplayName(inventory, key, placeholders, null);
+        for (BlackjackView view : views.values()) {
+            Player viewer = Bukkit.getPlayer(view.getPlayerId());
+            applyLeverDisplayName(view.getInventory(), key, placeholders, viewer);
+        }
+    }
+
+    private void applyLeverDisplayName(Inventory target, String key, Object[] placeholders, Player viewer) {
+        ItemStack lever = target.getItem(BlackjackSlotLayout.LEVER_SLOT);
+        if (lever != null && lever.getType() == Material.CLOCK) {
+            ItemMeta leverMeta = lever.getItemMeta();
+            if (leverMeta != null) {
+                leverMeta.setDisplayName(localize(viewer, key, placeholders));
+                lever.setItemMeta(leverMeta);
+                target.setItem(BlackjackSlotLayout.LEVER_SLOT, lever);
+            }
+        }
+    }
+
+    /**
+     * Replaces a bet-slot's item (turn-over paper or the enchanted
+     * "your-turn" book), carrying over whatever lore was already on that
+     * slot in each target -- matching the original's per-target lore
+     * transfer exactly, just repeated once per open view instead of only
+     * the legacy inventory.
+     */
+    private void relabelBetSlotToAllViews(int betSlot, Material material, boolean enchanted, String key) {
+        applyBetSlotRelabel(inventory, betSlot, material, enchanted, key, null);
+        for (BlackjackView view : views.values()) {
+            Player viewer = Bukkit.getPlayer(view.getPlayerId());
+            applyBetSlotRelabel(view.getInventory(), betSlot, material, enchanted, key, viewer);
+        }
+    }
+
+    /**
+     * Records {@code playerId}'s canonical bet-slot presentation (used to
+     * reconstruct a late view exactly) and fans the corresponding item out
+     * to the legacy inventory and every open view via
+     * {@link BlackjackFrame#betSlotRenderFor}, the same pure mapping
+     * BlackjackFrameTest exercises directly -- so the tracked state and the
+     * rendered item can never drift apart.
+     */
+    private void setBetPresentation(UUID playerId, int betSlot, BlackjackFrame.BetPresentation presentation) {
+        betPresentation.put(playerId, presentation);
+        BlackjackFrame.BetSlotRender render = BlackjackFrame.betSlotRenderFor(presentation);
+        relabelBetSlotToAllViews(betSlot, render.isEnchanted() ? Material.BOOK : Material.PAPER, render.isEnchanted(), render.getKey());
+    }
+
+    private void applyBetSlotRelabel(Inventory target, int betSlot, Material material, boolean enchanted, String key, Player viewer) {
+        ItemStack prevItem = target.getItem(betSlot);
+        ItemStack replacement = enchanted
+            ? createEnchantedItem(material, localize(viewer, key), 1)
+            : createCustomItem(material, localize(viewer, key), 1);
+        if (prevItem != null && prevItem.hasItemMeta()) {
+            ItemMeta prevMeta = prevItem.getItemMeta();
+            if (prevMeta.hasLore()) {
+                ItemMeta replacementMeta = replacement.getItemMeta();
+                replacementMeta.setLore(prevMeta.getLore());
+                replacement.setItemMeta(replacementMeta);
+            }
+        }
+        target.setItem(betSlot, replacement);
+    }
+
+    // Initialize Blackjack-specific game menu
+    @SuppressWarnings("removal")
+    private void initializeGameMenu() {
+
+        inventory.clear(); // Clear the inventory before setting up the page
+        for (BlackjackView view : views.values()) {
+            view.getInventory().clear();
+        }
+
+        for (UUID playerId : playerSeats.keySet()) {
+            int seatSlot = playerSeats.get(playerId);
+            Player seated = Bukkit.getPlayer(playerId);
+            renderToAllViews(seatSlot, createPlayerHeadItem(seated, 1));
+        }
+        // Add the necessary items for the game menu
+        renderLocalizedToAllViews(BlackjackSlotLayout.DEALER_HEAD_SLOT, Material.CREEPER_HEAD, 1, "blackjack.dealer"); // Dealer
+        // The Game Info lever stack will be added when the timer starts.
+
+        // Add chairs
+        for (int chairSlot : BlackjackSlotLayout.CHAIR_SLOTS) {
+            renderLocalizedToAllViews(chairSlot, Material.OAK_STAIRS, 1, "blackjack.click-sit");
+        }
+        sittable=true;
+
+        // Add betting papers
+        for (int chairSlot : BlackjackSlotLayout.CHAIR_SLOTS) {
+            renderLocalizedToAllViews(BlackjackSlotLayout.betSlot(chairSlot), Material.PAPER, 1, "blackjack.click-bet");
+        }
+
+        // Add game action buttons and the rest of the state-independent controls
+        paintStaticControls(inventory, null);
+        for (BlackjackView view : views.values()) {
+            Player viewer = Bukkit.getPlayer(view.getPlayerId());
+            paintStaticControls(view.getInventory(), viewer);
+        }
+        //addItem(createCustomItem(Material.SHEARS, "Split"), 39); // Split
+        //addItem(createCustomItem(Material.TOTEM_OF_UNDYING, "Insurance"), 40); // Insurance
     }
 
     // Create an item stack with a custom display name
@@ -696,7 +1109,7 @@ private void handleHit(Player player) {
                         player,
                         "blackjack.drew-card",
                         "rank",
-                        newCard.getRank().toString().toLowerCase()
+                        localize(player, "cards.ranks." + newCard.getRank().name().toLowerCase(java.util.Locale.ROOT))
                     ));
                     break;     
                 }
@@ -862,9 +1275,9 @@ private void handleInsurance(Player player) {
             return;
         }
 
-         if (SoundHelper.getSoundSafely("block.wood.place", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE,SoundCategory.MASTER, 1.0f, 1.0f); 
+         if (SoundHelper.getSoundSafely("block.wood.place", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE,SoundCategory.MASTER, 1.0f, 1.0f);
         // Set the player's actual head at the chair's position
-        inventory.setItem(slot, createPlayerHeadItem(player, 1));
+        renderToAllViews(slot, createPlayerHeadItem(player, 1));
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
                 break;}
@@ -895,7 +1308,7 @@ private void handleLeaveChair(Player player) {
 
      if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
     // Reset the chair to its original state
-    inventory.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, text("blackjack.click-sit")));
+    renderLocalizedToAllViews(chairSlot, Material.OAK_STAIRS, 1, "blackjack.click-sit");
 
     // If the timer is still running, undo all bets
     if (countdownTaskId != -1 && !gameActive) {
@@ -932,7 +1345,7 @@ private void handleLeaveChairDuringGame(Player player) {
 
      if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
     // Reset the chair to its original state
-    inventory.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, text("blackjack.click-sit")));
+    renderLocalizedToAllViews(chairSlot, Material.OAK_STAIRS, 1, "blackjack.click-sit");
   
     
     // Check if all players have left the game
@@ -952,18 +1365,19 @@ private void removePlayerData(UUID playerId) {
         List<Card> hand = playerHands.get(playerId);
         if (hand != null) {
             for (int i = 0; i < hand.size(); i++) {
-                inventory.setItem(seatSlot + 2 + i, new ItemStack(Material.AIR)); // Clear each card slot in the player's row
+                renderToAllViews(seatSlot + 2 + i, new ItemStack(Material.AIR)); // Clear each card slot in the player's row
             }
         }
 
         // Remove the player's head from the seat
-        inventory.setItem(seatSlot, createCustomItem(Material.OAK_STAIRS, text("blackjack.click-sit")));
+        renderLocalizedToAllViews(seatSlot, Material.OAK_STAIRS, 1, "blackjack.click-sit");
 
         // Remove player's data from tracking maps
         playerHands.remove(playerId);
         playerCardCounts.remove(playerId);
         playerTurnActive.remove(playerId);
         playerDone.remove(playerId);
+        betPresentation.remove(playerId);
 
         // Remove player's bets and related lore
         clearPlayerBetLore(playerId);
@@ -1178,7 +1592,7 @@ private void removePlayerData(UUID playerId) {
             Bukkit.getScheduler().cancelTask(countdownTaskId);
             countdownTaskId = -1;
             // Clear the Game Info lever stack to reset the display
-            inventory.setItem(1, createCustomItem(Material.CLOCK, text("blackjack.game-info")));
+            renderLeverToAllViews(1, "blackjack.game-info");
         }
     }
 
@@ -1251,18 +1665,27 @@ private void removePlayerData(UUID playerId) {
     }
     
     private void updateItemLore(int slot, double wager) {
-        ItemStack item = inventory.getItem(slot);
+        applyWagerLore(inventory, slot, wager, null);
+        for (BlackjackView view : views.values()) {
+            Player viewer = Bukkit.getPlayer(view.getPlayerId());
+            applyWagerLore(view.getInventory(), slot, wager, viewer);
+        }
+    }
+
+    private void applyWagerLore(Inventory target, int slot, double wager, Player viewer) {
+        ItemStack item = target.getItem(slot);
         if (item != null) {
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
                 if (wager > 0) {
                     List<String> lore = new ArrayList<>();
-                    lore.add(text("blackjack.wager-lore", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, wager)));
+                    lore.add(localize(viewer, "blackjack.wager-lore", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, wager)));
                     meta.setLore(lore);
                 } else {
                     meta.setLore(new ArrayList<>()); // Clear lore if no wager
                 }
                 item.setItemMeta(meta);
+                target.setItem(slot, item);
             }
         }
     }
@@ -1373,11 +1796,8 @@ private void removePlayerData(UUID playerId) {
             @Override
             public void run() {
                 if (countdown > 0) {
-                    inventory.setItem(1, createCustomItem(
-                        Material.CLOCK,
-                        text("blackjack.starts-in", "seconds", countdown),
-                        countdown
-                    ));
+                    countdownSecondsRemaining = countdown;
+                    renderLeverToAllViews(countdown, "blackjack.starts-in", "seconds", countdown);
                     if (countdown <=3 ){
                         for (UUID uuid : playerSeats.keySet()) {
                             Player player = Bukkit.getPlayer(uuid);
@@ -1415,14 +1835,7 @@ private void activateGame() {
     }
 
     // Update the display name of the lever to say "Dealer's turn"
-    ItemStack lever = inventory.getItem(1);
-    if (lever != null && lever.getType() == Material.CLOCK) {
-        ItemMeta leverMeta = lever.getItemMeta();
-        if (leverMeta != null) {
-            leverMeta.setDisplayName(text("blackjack.dealer-turn")); // Set the display name to "Dealer's turn"
-            lever.setItemMeta(leverMeta); // Apply the updated meta to the lever
-        }
-    }
+    relabelLeverToAllViews("blackjack.dealer-turn");
 
     // Ensure player heads are updated correctly
     for (UUID playerId : playerSeats.keySet()) {
@@ -1496,53 +1909,28 @@ private void startNextPlayerTurn() {
 
         UUID previousPlayerId = currentPlayerId;
         if (previousPlayerId != null) {
-            ItemStack prevItem = inventory.getItem(playerSeats.get(previousPlayerId) + 1);
-            ItemStack replacementItem = createCustomItem(Material.PAPER, text("blackjack.turn-over"), 1);
-            
-            // Retrieve and transfer lore properly using ItemMeta
-            if (prevItem != null && prevItem.hasItemMeta()) {
-                ItemMeta prevMeta = prevItem.getItemMeta();
-                if (prevMeta.hasLore()) {
-                    ItemMeta replacementMeta = replacementItem.getItemMeta();
-                    replacementMeta.setLore(prevMeta.getLore());
-                    replacementItem.setItemMeta(replacementMeta);
-                }
-            }
-            
-            inventory.setItem(playerSeats.get(previousPlayerId) + 1, replacementItem);
+            setBetPresentation(previousPlayerId, playerSeats.get(previousPlayerId) + 1, BlackjackFrame.BetPresentation.TURN_OVER);
         }
-        
+
         currentPlayerId = playerIterator.next();
         if (!playerDone.getOrDefault(currentPlayerId, false)) { // Skip players who are done
             Player currentPlayer = Bukkit.getPlayer(currentPlayerId);
-            ItemStack item = inventory.getItem(playerSeats.get(currentPlayerId) + 1);
-            
-            ItemStack enchantedItem = createEnchantedItem(Material.BOOK, text("blackjack.your-turn"), 1);
+
             switch(plugin.getPreferences(currentPlayer.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                 
+
                     currentPlayer.sendMessage(text(currentPlayer, "blackjack.your-turn-message"));
-                    break;     
+                    break;
                 }
                     case NONE:{
                     break;
                 }
-            } 
-            // Retrieve and transfer lore properly using ItemMeta
-            if (item != null && item.hasItemMeta()) {
-                ItemMeta itemMeta = item.getItemMeta();
-                if (itemMeta.hasLore()) {
-                    ItemMeta enchantedMeta = enchantedItem.getItemMeta();
-                    enchantedMeta.setLore(itemMeta.getLore());
-                    enchantedItem.setItemMeta(enchantedMeta);
-                }
             }
+            setBetPresentation(currentPlayerId, playerSeats.get(currentPlayerId) + 1, BlackjackFrame.BetPresentation.YOUR_TURN);
+             if (SoundHelper.getSoundSafely("block.enchantment_table.use", currentPlayer) != null)currentPlayer.playSound(currentPlayer.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f);
 
-            addItem(enchantedItem, playerSeats.get(currentPlayerId) + 1);
-             if (SoundHelper.getSoundSafely("block.enchantment_table.use", currentPlayer) != null)currentPlayer.playSound(currentPlayer.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f); 
-            
             // Check if the player's hand value is 21
             int handValue = calculateHandValue(playerHands.get(currentPlayerId));
             if (handValue == 21) {
@@ -1553,7 +1941,7 @@ private void startNextPlayerTurn() {
             }
 
             // Update lever to show current player's turn
-            updateLeverDisplayName(currentPlayer.getName() + "'s Turn");
+            relabelLeverToAllViews("blackjack.current-player-turn", "player", currentPlayer.getName());
 
             // Set player's turn as active
             playerTurnActive.put(currentPlayerId, true);
@@ -1563,36 +1951,11 @@ private void startNextPlayerTurn() {
     }
 
     if (playerSeats.get(currentPlayerId) != null) {
-        ItemStack prevItem = inventory.getItem(playerSeats.get(currentPlayerId) + 1);
-        ItemStack replacementItem = createCustomItem(Material.PAPER, text("blackjack.turn-over"), 1);
-        
-        // Retrieve and transfer lore properly using ItemMeta
-        if (prevItem != null && prevItem.hasItemMeta()) {
-            ItemMeta prevMeta = prevItem.getItemMeta();
-            if (prevMeta.hasLore()) {
-                ItemMeta replacementMeta = replacementItem.getItemMeta();
-                replacementMeta.setLore(prevMeta.getLore());
-                replacementItem.setItemMeta(replacementMeta);
-            }
-        }
-
-        inventory.setItem(playerSeats.get(currentPlayerId) + 1, replacementItem);
+        setBetPresentation(currentPlayerId, playerSeats.get(currentPlayerId) + 1, BlackjackFrame.BetPresentation.TURN_OVER);
     }
 
     // No more players left, proceed to the dealer's turn
     startDealerTurn();
-}
-
-
-private void updateLeverDisplayName(String displayName) {
-    ItemStack lever = inventory.getItem(1);
-    if (lever != null && lever.getType() == Material.CLOCK) {
-        ItemMeta leverMeta = lever.getItemMeta();
-        if (leverMeta != null) {
-            leverMeta.setDisplayName(displayName);
-            lever.setItemMeta(leverMeta);
-        }
-    }
 }
 
 private void startDealerTurn() {
@@ -1611,7 +1974,7 @@ private void startDealerTurn() {
         finishGame(); // Directly finish the game if all players are busted
         return;
     }
-    updateLeverDisplayName(text("blackjack.dealer-turn-capitalized"));
+    relabelLeverToAllViews("blackjack.dealer-turn-capitalized");
 
     // Reveal the dealer's hidden card with delay
     revealDealerCardWithDelay(20L);
@@ -1625,6 +1988,7 @@ private void revealDealerCardWithDelay(long delay) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
         ItemStack hiddenCard = inventory.getItem(3);
         if (hiddenCard != null && hiddenCard.getType() == Material.WHITE_STAINED_GLASS_PANE) {
+            hiddenCardPlaceholderVisible = false;
             Card revealedCard = deck.dealCard(); // Reveal the actual card
             dealCardToPlayer(3, revealedCard, null); // Replace the hidden card with the revealed card
             updateDealerHead(); // Update dealer's head with new card value
@@ -2001,7 +2365,7 @@ private int applyProbabilisticRounding(double value) {
 
 private void resetGame() {
     gameActive = false;
-    
+
     playerBets.clear();
     lastBetAmounts.clear();
     playerCardCounts.clear(); // Clear the card count map
@@ -2010,6 +2374,8 @@ private void resetGame() {
     dealerHand.clear(); // Clear dealer's hand
     playerIterator = null;
     currentPlayerId = null;
+    hiddenCardPlaceholderVisible = false;
+    betPresentation.clear();
 
     // Cancel any ongoing countdown
     if (countdownTaskId != -1) {
@@ -2019,9 +2385,12 @@ private void resetGame() {
 
     // Clear the inventory to ensure no leftover items
     inventory.clear();
+    for (BlackjackView view : views.values()) {
+        view.getInventory().clear();
+    }
 
     // Set up the Game Info lever in the second slot
-    addItem(createCustomItem(Material.CLOCK, text("blackjack.game-info")), 1);
+    renderLeverToAllViews(1, "blackjack.game-info");
 
     // Reinitialize the game menu but do not clear player seats
     initializeGameMenu();
@@ -2029,7 +2398,7 @@ private void resetGame() {
     // Re-populate the player heads in the seats
     for (UUID playerId : playerSeats.keySet()) {
         int seatSlot = playerSeats.get(playerId);
-        inventory.setItem(seatSlot, createPlayerHeadItem(Bukkit.getPlayer(playerId), 1));
+        renderToAllViews(seatSlot, createPlayerHeadItem(Bukkit.getPlayer(playerId), 1));
     }
 
 }
@@ -2063,33 +2432,17 @@ private void updatePlayerHead(UUID playerId) {
     if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty() || playerSeats.get(playerId) == null) {
         return; // Skip updating if the player hasn't placed a bet
     }
-    
+
     List<Card> hand = playerHands.get(playerId);
     String handValue = calculateHandValueWithSoftCheck(hand);
-    
+
     int seatSlot = playerSeats.get(playerId);
-    updateHeadLore(seatSlot, handValue, Bukkit.getPlayer(playerId).getName());
+    renderHeadLoreToAllViews(seatSlot, handValue, Bukkit.getPlayer(playerId).getName(), null);
 }
 
 private void updateDealerHead() {
     String handValue = calculateHandValueWithSoftCheck(dealerHand);
-    updateHeadLore(0, handValue, text("blackjack.dealer"));
-}
-
-
-private void updateHeadLore(int slot, String cardValue, String name) {
-    ItemStack headItem = inventory.getItem(slot);
-    if (headItem != null && (headItem.getType() == Material.PLAYER_HEAD || headItem.getType() == Material.CREEPER_HEAD)) {
-        ItemMeta meta = headItem.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(name);
-            List<String> lore = new ArrayList<>();
-            lore.add(text("blackjack.card-value", "value", cardValue));
-            meta.setLore(lore);
-            headItem.setItemMeta(meta);
-            inventory.setItem(slot, headItem);
-        }
-    }
+    renderHeadLoreToAllViews(BlackjackSlotLayout.DEALER_HEAD_SLOT, handValue, null, "blackjack.dealer");
 }
 private String calculateHandValueWithSoftCheck(List<Card> hand) {
     if (hand == null || hand.isEmpty()) {
@@ -2111,32 +2464,23 @@ private void scheduleHiddenCardDealing(int slot, int delay) {
         if (!gameActive || playerSeats.isEmpty()) {
             return;
         }
-        Material material = Material.WHITE_STAINED_GLASS_PANE; // Hidden card is now white
-        ItemStack hiddenCard = new ItemStack(material, 1);
-        ItemMeta meta = hiddenCard.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(text("blackjack.hidden-card"));
-            hiddenCard.setItemMeta(meta);
-        }
-        
         for (UUID uuid : playerSeats.keySet()) {
             Player player = Bukkit.getPlayer(uuid);
             if (player != null && player.isOnline()) {
                  if (SoundHelper.getSoundSafely("block.soul_soil.step", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
             }
         }
-        inventory.setItem(slot, hiddenCard);
+        hiddenCardPlaceholderVisible = true;
+        renderHiddenCardToAllViews(slot);
     }, delay);
 }
 
 private void dealCardToPlayer(int slot, Card card, UUID playerId) {
     // No changes needed here; the deck will reshuffle automatically if it's empty.
-    
+
     if (!playerSeats.containsKey(playerId) && slot > 9) {
         return;
     }
-    Material material = (card.getSuit() == Suit.HEARTS || card.getSuit() == Suit.DIAMONDS) ? Material.RED_STAINED_GLASS_PANE : Material.BLACK_STAINED_GLASS_PANE;
-    int stackSize = BlackjackRules.cardStackSize(card);
     for (UUID uuid : playerSeats.keySet()) {
         Player player = Bukkit.getPlayer(uuid);
         if (player != null && player.isOnline()) {
@@ -2144,15 +2488,7 @@ private void dealCardToPlayer(int slot, Card card, UUID playerId) {
         }
     }
 
-    ItemStack cardItem = new ItemStack(material, stackSize);
-    ItemMeta meta = cardItem.getItemMeta();
-    if (meta != null) {
-        meta.setDisplayName(card.getRank() + " of " + card.getSuit());
-        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES); // Hide item attributes
-        cardItem.setItemMeta(meta);
-    }
-
-    inventory.setItem(slot, cardItem); // Place the card in the inventory slot
+    renderCardToAllViews(slot, card); // Place the card in the inventory slot
 
     if (playerId != null) { // If this card is dealt to a player
         playerHands.computeIfAbsent(playerId, k -> new ArrayList<>()).add(card);
@@ -2177,11 +2513,30 @@ public void delete() {
     playerDone.clear();
     selectedWagers.clear();
     lastBetAmounts.clear();
+    hiddenCardPlaceholderVisible = false;
+    betPresentation.clear();
 
     // Remove any scheduled tasks related to this game
     if (countdownTaskId != -1) {
         Bukkit.getScheduler().cancelTask(countdownTaskId);
     }
+
+    // Close and clean up every currently open per-player view. Views hold
+    // their own Bukkit inventory (a different InventoryHolder than this
+    // controller), so a generic holder-matching close loop elsewhere can't
+    // find them by comparing against this instance -- do it here instead,
+    // using the map we actually control, so a replaced/removed dealer never
+    // leaves a stale view open against a deleted controller.
+    for (BlackjackView view : new ArrayList<>(views.values())) {
+        Player player = Bukkit.getPlayer(view.getPlayerId());
+        if (player != null && player.isOnline()) {
+            player.closeInventory();
+        } else {
+            views.remove(view.getPlayerId());
+            view.cleanupListener();
+        }
+    }
+    views.clear();
 
     // Unregister events related to this inventory
     HandlerList.unregisterAll(this);
@@ -2198,7 +2553,7 @@ public void delete() {
     // Cancel the game and reset the board with all items and options
     private void cancelGame() {
         gameActive = false;
-    
+
         // Clear all player and game-related data
         clearPlayerBets(null); // Clear all bets
         clearAllLore(); // Clear all lore
@@ -2211,6 +2566,8 @@ public void delete() {
         playerIterator = null;
         currentPlayerId = null;
         selectedWagers.clear();
+        hiddenCardPlaceholderVisible = false;
+        betPresentation.clear();
     
         // Stop any ongoing scheduled tasks
         if (countdownTaskId != -1) {
@@ -2230,36 +2587,49 @@ public void delete() {
 
         @EventHandler
         public void handleInventoryClose(InventoryCloseEvent event) {
+            // Defensive fallback only: with per-player views wired up,
+            // nobody has this legacy inventory open directly anymore, but
+            // keep this reachable in case it ever is (matches the internal
+            // rendering target role documented on the `views` field).
             if (event.getInventory().getHolder() != this) return;
+            handlePlayerClose((Player) event.getPlayer());
+        }
 
-            Player player = (Player) event.getPlayer();
-            UUID playerId = player.getUniqueId();
+    /**
+     * Authoritative "this player's Blackjack inventory (view or legacy)
+     * just closed" path, reached from both the legacy handleInventoryClose
+     * above and BlackjackView's own close/quit handlers via onViewClosed.
+     * Extracted so a per-player view closing goes through the exact same
+     * disconnect/settlement resolution the shared inventory always has.
+     */
+    private void handlePlayerClose(Player player) {
+        UUID playerId = player.getUniqueId();
 
-            if (!playerSeats.containsKey(playerId)) {
+        if (!playerSeats.containsKey(playerId)) {
+            return;
+        }
+
+        // Route through the same idempotent path used for quit/kick,
+        // rather than resolving the wager directly here. It's unclear
+        // whether InventoryCloseEvent reliably fires on a real
+        // disconnect, so this must not race ahead of PlayerQuitEvent
+        // and get it wrong (e.g. refunding a kicked player) — whichever
+        // of this or the quit event fires first "wins" and the other
+        // becomes a safe no-op, and consumeQuitReason still correctly
+        // reports KICKED here even if this fires first, since the kick
+        // is marked as soon as PlayerKickEvent itself fires.
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!SessionRegistry.isRegistered(playerId, this)) {
                 return;
             }
-
-            // Route through the same idempotent path used for quit/kick,
-            // rather than resolving the wager directly here. It's unclear
-            // whether InventoryCloseEvent reliably fires on a real
-            // disconnect, so this must not race ahead of PlayerQuitEvent
-            // and get it wrong (e.g. refunding a kicked player) — whichever
-            // of this or the quit event fires first "wins" and the other
-            // becomes a safe no-op, and consumeQuitReason still correctly
-            // reports KICKED here even if this fires first, since the kick
-            // is marked as soon as PlayerKickEvent itself fires.
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                if (!SessionRegistry.isRegistered(playerId, this)) {
-                    return;
-                }
-                if (!player.isOnline()) {
-                    ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
-                    SessionRegistry.terminatePlayerSession(playerId, reason);
-                    return;
-                }
-                SessionRegistry.terminateSession(playerId, this, ExitReason.DISCONNECTED);
-            });
-        }
+            if (!player.isOnline()) {
+                ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
+                SessionRegistry.terminatePlayerSession(playerId, reason);
+                return;
+            }
+            SessionRegistry.terminateSession(playerId, this, ExitReason.DISCONNECTED);
+        });
+    }
 
     /**
      * Authoritative disconnect/kick resolution, reached via SessionRegistry

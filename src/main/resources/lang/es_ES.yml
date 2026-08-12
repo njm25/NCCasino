@@ -458,6 +458,7 @@ blackjack:
   dealer-turn-capitalized: "Turno del crupier"
   your-turn: "Tu turno."
   your-turn-message: "&aTu turno."
+  current-player-turn: "Turno de {player}"
   turn-over: "Tu turno ha terminado."
   hidden-card: "Carta oculta"
   result-blackjack: "&a&l¡Blackjack!"
