@@ -133,8 +133,9 @@ public final class RouletteWheelLayout {
         return EXTRA_SLOTS.get(quadrant);
     }
 
+    /** Returns a fresh copy each call; safe for a caller to treat as its own array. */
     public static int[] mainSlotsForQuadrant(int quadrant) {
-        return requireMainSlots(quadrant);
+        return requireMainSlots(quadrant).clone();
     }
 
     /**

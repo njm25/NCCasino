@@ -45,10 +45,7 @@ import org.nc.nccasino.session.TerminableSession;
 
 public class RouletteInventory extends DealerInventory implements TerminableSession {
     private final MultiChannelEngine mce;
-    private final List<Integer> wheelLayout = Arrays.asList(
-        0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5,
-        24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
-    );
+    private final List<Integer> wheelLayout = RouletteWheelLayout.WHEEL_NUMBERS;
     private final Set<UUID> switchingPlayers = new HashSet<>();
     private final Nccasino plugin;
     private final Map<UUID, Stack<Pair<String, Integer>>> Bets;
@@ -1380,13 +1377,7 @@ private void prepareNextRound() {
 
 
 private boolean isBlack(int result) {
-    int[] blackNumbers = {2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35};
-    for (int num : blackNumbers) {
-        if (num == result) {
-            return true;
-        }
-    }
-    return false;
+    return RouletteWheelLayout.isBlack(result);
 }
 
 private int getNumberForSlot(int mainSlot, int quadrant) {
@@ -1524,52 +1515,18 @@ private void switchStayToQuadrant(int quad){
 }
 
     private void updateQuadrantDisplay(int globalOffset) {
-        int[] quadrantSlots;
-        int startPosition;
-        Map<Integer, int[]> currentExtraSlotsMap;
+        int[] quadrantSlots = RouletteWheelLayout.mainSlotsForQuadrant(currentQuadrant);
+        Map<Integer, int[]> currentExtraSlotsMap = RouletteWheelLayout.extraSlotsForQuadrant(currentQuadrant);
+        Map<Integer, Integer> quadrantNumbers = RouletteWheelLayout.numbersForQuadrant(currentQuadrant, globalOffset);
         slotToNumber.clear();
-        // Define the correct slot ranges and starting positions for each quadrant
-        switch (currentQuadrant) {
-            case 1: // Top-Right Quadrant
-                quadrantSlots = new int[]{27, 28, 29, 30, 31, 32, 33, 43, 53};
-                startPosition = Math.floorMod(globalOffset + 27, wheelLayout.size());
-                currentExtraSlotsMap = extraSlotsMapTopRight;
-                break;
-            case 2: // Top-Left Quadrant
-                quadrantSlots = new int[]{45, 37, 29, 30, 31, 32, 33, 34, 35};
-                startPosition = Math.floorMod(globalOffset + 18, wheelLayout.size());
-                currentExtraSlotsMap = extraSlotsMapTopLeft;
-                break;
-            case 3: // Bottom-Left Quadrant
-                quadrantSlots = new int[]{0, 10, 20, 21, 22, 23, 24, 25, 26};
-                startPosition = Math.floorMod(globalOffset + 9, wheelLayout.size());
-                currentExtraSlotsMap = extraSlotsMapBottomLeft;
-                break;
-            case 4: // Bottom-Right Quadrant
-                quadrantSlots = new int[]{18, 19, 20, 21, 22, 23, 24, 16, 8};
-                startPosition = Math.floorMod(globalOffset, wheelLayout.size());
-                currentExtraSlotsMap = extraSlotsMapBottomRight;
-                break;
-            default:
-                throw new IllegalArgumentException("Invalid quadrant index");
-        }
         boolean newflag=false;
 
 
         if(finalpicked&&!foundfirstquadrant){
             for (int i = 0; i < quadrantSlots.length; i++) {
-             
-                int wheelPosition;
-                if (currentQuadrant == 1 || currentQuadrant == 2) {
-                    // For quadrants 1 and 2, add i to startPosition
-                    wheelPosition = Math.floorMod(startPosition + i, wheelLayout.size());
-                } else {
-                    // For quadrants 3 and 4, subtract i from startPosition
-                    wheelPosition = Math.floorMod(startPosition - i, wheelLayout.size());
-                }
-                int number = wheelLayout.get(wheelPosition);
+                int number = quadrantNumbers.get(quadrantSlots[i]);
                 if(number==winningNumber){newflag=true;}
-                
+
         }
         if(!newflag){
             int targetquad;
@@ -1582,21 +1539,12 @@ private void switchStayToQuadrant(int quad){
 
         // Loop through each slot in the quadrant and assign the correct number
         for (int i = 0; i < quadrantSlots.length; i++) {
-                
-            int wheelPosition;
-            if (currentQuadrant == 1 || currentQuadrant == 2) {
-                // For quadrants 1 and 2, add i to startPosition
-                wheelPosition = Math.floorMod(startPosition + i, wheelLayout.size());
-            } else {
-                // For quadrants 3 and 4, subtract i from startPosition
-                wheelPosition = Math.floorMod(startPosition - i, wheelLayout.size());
-            }
-            int number = wheelLayout.get(wheelPosition);
-            
+            int number = quadrantNumbers.get(quadrantSlots[i]);
+
             // Create the item with the correct number and place it in the quadrant slot
             ItemStack item = createCustomItem(getMaterialForNumber(number),  ""+number, (number == 0) ? 1 : number);
             inventory.setItem(quadrantSlots[i], item);
-    
+
             // Handle the extra slots associated with the main number slot
             if (currentExtraSlotsMap.containsKey(quadrantSlots[i])) {
                
@@ -1697,23 +1645,7 @@ private void switchStayToQuadrant(int quad){
     }
   
     private int findWinningNumberQuadrant(int winningNumber, int globalOffset) {
-        int winningIndex = wheelLayout.indexOf(winningNumber);
-    
-        // Adjust the winningIndex based on the current globalOffset (wheel rotation)
-        int adjustedWinningIndex = (winningIndex - globalOffset + wheelLayout.size()) % wheelLayout.size();
-    
-        // Each quadrant displays 9 numbers
-        int numbersPerQuadrant = 9;
-    
-        if (adjustedWinningIndex >= 0 && adjustedWinningIndex < numbersPerQuadrant) {
-            return 4; // Bottom-Right Quadrant
-        } else if (adjustedWinningIndex >= numbersPerQuadrant && adjustedWinningIndex < numbersPerQuadrant * 2) {
-            return 3; // Bottom-Left Quadrant
-        } else if (adjustedWinningIndex >= numbersPerQuadrant * 2 && adjustedWinningIndex < numbersPerQuadrant * 3) {
-            return 2; // Top-Left Quadrant
-        } else {
-            return 1; // Top-Right Quadrant
-        }
+        return RouletteWheelLayout.findWinningNumberQuadrant(winningNumber, globalOffset);
     }
     
     
@@ -1780,23 +1712,18 @@ private void fillDecorativeSlots(int[] slots, Material material) {
 }
 
     private Material getMaterialForNumber(int number) {
-        if (number == 0) {
-            return Material.LIME_STAINED_GLASS_PANE;
-        } else if (isRed(number)) {
-            return Material.RED_STAINED_GLASS_PANE;
-        } else {
-            return Material.BLACK_STAINED_GLASS_PANE;
+        switch (RouletteWheelLayout.colorOf(number)) {
+            case GREEN:
+                return Material.LIME_STAINED_GLASS_PANE;
+            case RED:
+                return Material.RED_STAINED_GLASS_PANE;
+            default:
+                return Material.BLACK_STAINED_GLASS_PANE;
         }
     }
 
     private boolean isRed(int number) {
-        int[] redNumbers = {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36};
-        for (int n : redNumbers) {
-            if (n == number) {
-                return true;
-            }
-        }
-        return false;
+        return RouletteWheelLayout.isRed(number);
     }
     public void updatePlayerBets(UUID playerId, Stack<Pair<String, Integer>> bets, Player player) {
         if (bets == null) {
