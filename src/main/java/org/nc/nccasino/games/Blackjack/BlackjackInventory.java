@@ -430,19 +430,45 @@ private void registerListener() {
         target.setItem(BlackjackSlotLayout.DOUBLE_DOWN_SLOT, createCustomItem(Material.PAPER, localize(viewer, "blackjack.double-down")));
         target.setItem(BlackjackSlotLayout.UNDO_ALL_SLOT, createCustomItem(Material.BARRIER, localize(viewer, "blackjack.undo-all"), 1));
         target.setItem(BlackjackSlotLayout.UNDO_LAST_SLOT, createCustomItem(Material.WIND_CHARGE, localize(viewer, "blackjack.undo-last"), 1));
-        for (Map.Entry<Integer, Double> entry : chipValues.entrySet()) {
-            double value = entry.getValue();
-            target.setItem(
-                entry.getKey(),
-                createCustomItem(
-                    plugin.getCurrency(internalName),
-                    plugin.getChipDisplayName(currencyMode, currencyName, value),
-                    (int) value
-                )
-            );
-        }
+        paintWagerControls(target, viewer);
         target.setItem(BlackjackSlotLayout.ALL_IN_SLOT, createCustomItem(Material.SNIFFER_EGG, localize(viewer, "blackjack.all-in"), 1));
         target.setItem(BlackjackSlotLayout.LEAVE_EXIT_SLOT, createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1));
+    }
+
+    /**
+     * Paints the five chip denomination slots, enchanting whichever one (if
+     * any) matches {@code viewer}'s own selectedWagers entry. Player-private
+     * by construction: a null viewer (the legacy inventory) never has a
+     * selection to look up, so it always renders every chip unenchanted and
+     * never leaks one player's pick into the shared/default render target.
+     */
+    private void paintWagerControls(Inventory target, Player viewer) {
+        Double selected = viewer != null ? selectedWagers.get(viewer.getUniqueId()) : null;
+        for (Map.Entry<Integer, Double> entry : chipValues.entrySet()) {
+            int slot = entry.getKey();
+            double value = entry.getValue();
+            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, value);
+            target.setItem(
+                slot,
+                BlackjackWagerSelection.isSelected(selected, value)
+                    ? createEnchantedItem(plugin.getCurrency(internalName), chipName, (int) value)
+                    : createCustomItem(plugin.getCurrency(internalName), chipName, (int) value)
+            );
+        }
+    }
+
+    /**
+     * Refreshes only {@code playerId}'s own open view's chip slots after
+     * their selectedWagers entry changes -- deliberately not a table-wide
+     * fan-out (unlike renderToAllViews and friends), since this state is
+     * private to the selecting player and must never appear in anyone
+     * else's view or the legacy inventory.
+     */
+    private void refreshWagerControlsForPlayer(UUID playerId) {
+        BlackjackView view = views.get(playerId);
+        if (view != null) {
+            paintWagerControls(view.getInventory(), Bukkit.getPlayer(playerId));
+        }
     }
 
     @SuppressWarnings("removal")
@@ -1428,7 +1454,7 @@ private void removePlayerData(UUID playerId) {
             }
         }
         selectedWagers.put(playerId, selectedWager);
-        
+        refreshWagerControlsForPlayer(playerId);
     }
     
     private void clearPlayerBetLore(UUID playerId) {
