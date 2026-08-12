@@ -378,6 +378,19 @@ public class RouletteInventory extends DealerInventory implements TerminableSess
         return view.getInventory();
     }
 
+    /**
+     * Writes a locale-independent item (wheel numbers, decorative panes --
+     * nothing with player-visible text) to the legacy shared inventory and
+     * to every currently open per-player view. Views map is empty until a
+     * later stage flips the open call sites, so this is a no-op today.
+     */
+    private void renderToAllInventories(int slot, ItemStack item) {
+        inventory.setItem(slot, item);
+        for (RouletteWheelView view : views.values()) {
+            view.getInventory().setItem(slot, item.clone());
+        }
+    }
+
     void handleViewClick(int slot, Player player) {
         handleGameMenuClick(slot, player);
     }
@@ -1605,7 +1618,7 @@ private void switchStayToQuadrant(int quad){
 
             // Create the item with the correct number and place it in the quadrant slot
             ItemStack item = createCustomItem(getMaterialForNumber(number),  ""+number, (number == 0) ? 1 : number);
-            inventory.setItem(quadrantSlots[i], item);
+            renderToAllInventories(quadrantSlots[i], item);
 
             // Handle the extra slots associated with the main number slot
             if (currentExtraSlotsMap.containsKey(quadrantSlots[i])) {
@@ -1700,7 +1713,7 @@ private void switchStayToQuadrant(int quad){
 
                    
                     }
-                    else{inventory.setItem(extraSlot, extraItem);}
+                    else{renderToAllInventories(extraSlot, extraItem);}
                 }
             }
         }
@@ -1769,7 +1782,7 @@ private void fillDecorativeSlots(int[] slots, Material material) {
             item.setItemMeta(meta);
         }
         item.setItemMeta(meta);
-        inventory.setItem(slot, item);
+        renderToAllInventories(slot, item);
     }
 }
 
