@@ -293,13 +293,31 @@ public class RouletteInventory extends DealerInventory implements TerminableSess
             bettingCountdownTaskId = -1;
         }
     
+        // Close and clean up every currently open per-player view. Views
+        // hold their own Bukkit inventory (a different InventoryHolder than
+        // this controller), so DealerInventory.updateInventory's generic
+        // holder-matching close loop can't find them by comparing against
+        // this instance -- do it here instead, using the map we actually
+        // control, so a replaced dealer never leaves a stale view open
+        // against a deleted controller.
+        for (RouletteWheelView view : new ArrayList<>(views.values())) {
+            Player player = Bukkit.getPlayer(view.getPlayerId());
+            if (player != null && player.isOnline()) {
+                player.closeInventory();
+            } else {
+                views.remove(view.getPlayerId());
+                view.cleanupListener();
+            }
+        }
+        views.clear();
+
         // Also clear any data references if you like
         Bets.clear();
         Tables.clear();
         playersWithBets.clear();
         newtry.clear();
         unregisterListener();
-        
+
     }
 
 
