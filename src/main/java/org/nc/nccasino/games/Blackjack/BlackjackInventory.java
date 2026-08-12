@@ -64,8 +64,8 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     private Iterator<UUID> playerIterator; // Iterator for player turns
     private final Map<UUID, Integer> playerCardCounts = new HashMap<>(); // Track number of cards each player has
     private final Map<UUID, Boolean> playerDone = new HashMap<>(); // Track whether the player is done (stood or busted)
-    private final Map<UUID, List<ItemStack>> playerHands = new HashMap<>();
-    private final List<ItemStack> dealerHand = new ArrayList<>();
+    private final Map<UUID, List<Card>> playerHands = new HashMap<>();
+    private final List<Card> dealerHand = new ArrayList<>();
     private final Map<UUID, Double> selectedWagers = new HashMap<>();
     private final Object turnLock = new Object(); // Lock object for turn actionsactions
     private final Map<UUID, Boolean> playerTurnActive = new HashMap<>();
@@ -676,7 +676,7 @@ private void handleHit(Player player) {
         int nextCardSlot = seatSlot + 2 + cardCount; // Calculate the next slot based on the number of cards
 
         Card newCard = deck.dealCard();
-        scheduleCardDealingWithDelay(nextCardSlot, newCard, 20L, playerId); // Deal the card with a delay
+        scheduleCardDealingWithDelay(nextCardSlot, newCard, BlackjackTiming.CARD_DEAL_DELAY_TICKS, playerId); // Deal the card with a delay
 
         cardCount++; // Increment the card count
         playerCardCounts.put(playerId, cardCount); // Update the card count
@@ -705,22 +705,22 @@ private void handleHit(Player player) {
                 }
             } 
             if (handValue == 21) {
-   
+
                 playerTurnActive.put(playerId, false); // Deactivate the player's turn
-                startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
+                startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS); // Start next player's turn with delay
             } else if (handValue > 21) {
 
 
                 playerDone.put(playerId, true); // Mark the player as done
                 playerTurnActive.put(playerId, false); // Deactivate the player's turn
-                startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
-           
+                startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS); // Start next player's turn with delay
+
             } else {
-                
+
                 playerTurnActive.put(playerId, true); // Allow more actions since the player hasn't busted
-               
+
             }
-        }, 40L); // The delay should be enough to ensure that the card has been added
+        }, BlackjackTiming.HIT_EVALUATION_DELAY_TICKS); // The delay should be enough to ensure that the card has been added
     }
 }
 
@@ -742,7 +742,7 @@ private void handleStand(Player player) {
                 break;
             }
         }
-        startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
+        startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS); // Start next player's turn with delay
     }
 }
 
@@ -750,6 +750,15 @@ private void startNextPlayerTurnWithDelay(long delay) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> startNextPlayerTurn(), delay);
 }
 
+/**
+ * Preserved quirk, not fixed here (see BlackjackTimingTest): the extra card
+ * comes from handleHit, whose evaluation callback fires after
+ * HIT_EVALUATION_DELAY_TICKS (40t), but this method advances the turn
+ * unconditionally after the shorter TURN_ADVANCE_DELAY_TICKS (20t). The
+ * stale callback can still mutate playerDone/playerTurnActive and
+ * re-advance the turn after it's no longer this player's. Address before
+ * or during splitting.
+ */
 private void handleDoubleDown(Player player) {
     synchronized (turnLock) {
         UUID playerId = player.getUniqueId();
@@ -802,7 +811,7 @@ private void handleDoubleDown(Player player) {
                 break;
             }
         }
-        startNextPlayerTurnWithDelay(20L); // Start next player's turn with delay
+        startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS); // Start next player's turn with delay
     }
 }
 
@@ -940,7 +949,7 @@ private void removePlayerData(UUID playerId) {
     // If the player has a valid seat slot
     if (seatSlot != -1) {
         // Clear the player's cards from the table
-        List<ItemStack> hand = playerHands.get(playerId);
+        List<Card> hand = playerHands.get(playerId);
         if (hand != null) {
             for (int i = 0; i < hand.size(); i++) {
                 inventory.setItem(seatSlot + 2 + i, new ItemStack(Material.AIR)); // Clear each card slot in the player's row
@@ -1426,26 +1435,25 @@ private void activateGame() {
 
 
 private void dealInitialCards() {
-    int delay = 0;
-
-    // First round of dealing (one card to each player)
-    for (int i = 0; i < 2; i++) { // Repeat for two rounds
-
-        for (UUID playerId : new ArrayList<>(playerSeats.keySet())) {
-                if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty()) {
-                    continue;
-                }
-                int seatSlot = playerSeats.get(playerId);
-                scheduleCardDealing(seatSlot + 2 + i, deck.dealCard(), delay, playerId); // First and second card
-                delay += 20; // 1-second delay between card deals
+    List<UUID> bettingPlayerOrder = new ArrayList<>();
+    for (UUID playerId : playerSeats.keySet()) {
+        if (playerBets.containsKey(playerId) && !playerBets.get(playerId).isEmpty()) {
+            bettingPlayerOrder.add(playerId);
         }
-            if (i == 0) {
-                scheduleCardDealing(2, deck.dealCard(), delay, null); // First card to dealer in slot 2
-            } else {
-                scheduleHiddenCardDealing(3, delay); // Second card to dealer remains hidden in slot 3
-            }
+    }
 
-            delay += 20;
+    BlackjackDealPlan.Plan plan = BlackjackDealPlan.initialDeal(
+        bettingPlayerOrder, playerSeats, 2, 3, (int) BlackjackTiming.CARD_DEAL_DELAY_TICKS
+    );
+
+    for (BlackjackDealPlan.Step step : plan.getSteps()) {
+        if (step.isHidden()) {
+            // Hidden placeholder: no Card is drawn from the shoe here, only
+            // revealed later in revealDealerCardWithDelay.
+            scheduleHiddenCardDealing(step.getSlot(), step.getDelayTicks());
+        } else {
+            scheduleCardDealing(step.getSlot(), deck.dealCard(), step.getDelayTicks(), step.getPlayerId());
+        }
     }
 
     // Check for initial blackjack right after dealing cards
@@ -1467,7 +1475,7 @@ private void dealInitialCards() {
             .iterator();
 
         startNextPlayerTurn();
-    }, delay + 20L); // Delay slightly longer to allow cards to be fully dealt
+    }, plan.initialBlackjackCheckDelayTicks()); // Delay slightly longer to allow cards to be fully dealt
 }
 
 private void startNextPlayerTurn() {
@@ -1674,7 +1682,7 @@ private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long
         Bukkit.getScheduler().runTaskLater(plugin, () -> dealDealerCardsUntilSeventeen(nextSlot + 1, mutableDealerCardSum[0], delay), delay);
     } else if (mutableDealerCardSum[0] == 17) {
         // Determine whether the dealer stops at 17 based on the percentage chance
-        if (Math.random() * 100 < standOn17Chance) {
+        if (!BlackjackRules.dealerShouldHit(17, standOn17Chance, Math.random() * 100)) {
             // Stop at 17
             Bukkit.getScheduler().runTaskLater(plugin, this::finishGame, delay);
         } else {
@@ -1716,111 +1724,127 @@ private void refundBet(Player player, Map<Integer, Double> bets) {
 }
 
 private void finishGame() {
-    int dealerCardSum = calculateHandValue(dealerHand);
-    boolean dealerBusted = dealerCardSum > 21;
     for (UUID playerId : playerSeats.keySet()) {
         if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty()) {
             continue; // Skip players without bets
         }
 
         Player player = Bukkit.getPlayer(playerId);
-        int playerCardSum = calculateHandValue(playerHands.get(playerId));
-
         Map<Integer, Double> bets = playerBets.get(playerId);
 
-        // Check if the player has a blackjack (Ace + 10-value card) and only has 2 cards
-        boolean isBlackjack = playerCardSum == 21 && playerHands.get(playerId).size() == 2
-                && hasAceAndTenValueCard(playerHands.get(playerId));
+        // Player-natural-blackjack takes precedence over everything else,
+        // including a dealer natural -- BlackjackRules.classify checks it
+        // first, same as the branch order this replaced. That precedence
+        // is preserved intentionally; see BlackjackRulesTest for the
+        // both-natural regression case.
+        BlackjackOutcome outcome = BlackjackRules.classify(playerHands.get(playerId), dealerHand);
 
-        if (isBlackjack) {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage(text(player, "blackjack.result-blackjack"));
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage(text(player, "blackjack.result-blackjack"));
-                    break;     
+        switch (outcome) {
+            case BLACKJACK: {
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage(text(player, "blackjack.result-blackjack"));
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage(text(player, "blackjack.result-blackjack"));
+                        break;
 
+                    }
+                        case NONE:{
+                        break;
+                    }
                 }
-                    case NONE:{
-                    break;
-                }
+                if (SoundHelper.getSoundSafely("ui.toast.challenge_complete", player) != null)player.playSound(player.getLocation(),Sound.UI_TOAST_CHALLENGE_COMPLETE,SoundCategory.MASTER, 1.0f,1.0f);
+                player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
+                payOut(player, bets, outcome.getMultiplier()); // Pay out 2.5x for a blackjack
+                break;
             }
-            if (SoundHelper.getSoundSafely("ui.toast.challenge_complete", player) != null)player.playSound(player.getLocation(),Sound.UI_TOAST_CHALLENGE_COMPLETE,SoundCategory.MASTER, 1.0f,1.0f);
-            player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
-            payOut(player, bets, 2.5); // Pay out 2.5x for a blackjack
-        } else if (playerCardSum > 21) {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage(text(player, "blackjack.result-busted"));
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage(text(player, "blackjack.result-busted"));
-                    break;     
+            case BUST: {
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage(text(player, "blackjack.result-busted"));
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage(text(player, "blackjack.result-busted"));
+                        break;
+                    }
+                        case NONE:{
+                        break;
+                    }
                 }
-                    case NONE:{
-                    break;
-                }
+                 if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
+                player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
+                break;
             }
-             if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
-            player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
-        } else if (dealerBusted || playerCardSum > dealerCardSum) {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage(text(player, "blackjack.result-won"));
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage(text(player, "blackjack.result-won"));
-                    break;     
+            case WIN: {
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage(text(player, "blackjack.result-won"));
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage(text(player, "blackjack.result-won"));
+                        break;
+
+                    }
+                        case NONE:{
+                        break;
+                    }
+                }
+                player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
+                Random random = new Random();
+                // We'll pick from a small array of fun pitches
+                float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
+                for (int i = 0; i < 3; i++) {
+                    float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
+                     if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER,1.0f,chosenPitch);
+                    // Schedule them slightly apart for a "ding-ding-ding" effect
 
                 }
-                    case NONE:{
-                    break;
-                }
-            }            
-            player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
-            Random random = new Random();
-            // We'll pick from a small array of fun pitches
-            float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
-            for (int i = 0; i < 3; i++) {
-                float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
-                 if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER,1.0f,chosenPitch);
-                // Schedule them slightly apart for a "ding-ding-ding" effect
-            
+                payOut(player, bets, outcome.getMultiplier()); // Regular win pays out 2x
+                break;
             }
-            payOut(player, bets, 2.0); // Regular win pays out 2x
-        } else if (playerCardSum < dealerCardSum) {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage(text(player, "blackjack.result-lost"));
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage(text(player, "blackjack.result-lost"));
-                    break;     
+            case LOSS: {
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage(text(player, "blackjack.result-lost"));
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage(text(player, "blackjack.result-lost"));
+                        break;
+                    }
+                        case NONE:{
+                        break;
+                    }
                 }
-                    case NONE:{
-                    break;
-                }
-            }    
-             if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
-        player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);  
-        } else {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage(text(player, "blackjack.result-push"));
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage(text(player, "blackjack.result-push-returned"));
-                    break;     
+                 if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
+            player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
+                break;
+            }
+            case PUSH: {
+                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage(text(player, "blackjack.result-push"));
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage(text(player, "blackjack.result-push-returned"));
+                        break;
 
+                    }
+                        case NONE:{
+                        break;
+                    }
                 }
-                    case NONE:{
-                    break;
-                }
-            }  
-            refundBet(player, bets);
-             if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(),Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
-            player.getWorld().spawnParticle(Particle.LARGE_SMOKE, player.getLocation(), 20);  
+                refundBet(player, bets);
+                 if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(),Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
+                player.getWorld().spawnParticle(Particle.LARGE_SMOKE, player.getLocation(), 20);
+                break;
+            }
+            default:
+                // Never silently fall back to a push/refund for an outcome
+                // this switch doesn't know about -- that's exactly the
+                // mistake that would hide a bug once insurance/splitting
+                // add new outcomes.
+                throw new IllegalStateException("Unhandled BlackjackOutcome: " + outcome);
         }
     }
 
@@ -1975,23 +1999,6 @@ private int applyProbabilisticRounding(double value) {
     return integerPart; // Otherwise, keep it rounded down
 }
 
-// Utility method to check if the hand has an Ace and a 10-value card
-private boolean hasAceAndTenValueCard(List<ItemStack> hand) {
-    boolean hasAce = false;
-    boolean hasTenValueCard = false;
-
-    for (ItemStack cardItem : hand) {
-        int cardValue = getCardValue(cardItem);
-        if (cardValue == 1) { // Ace
-            hasAce = true;
-        } else if (cardValue == 10) { // 10-value card (10, Jack, Queen, King)
-            hasTenValueCard = true;
-        }
-    }
-
-    return hasAce && hasTenValueCard;
-}
-
 private void resetGame() {
     gameActive = false;
     
@@ -2027,29 +2034,8 @@ private void resetGame() {
 
 }
 
-private int calculateHandValue(List<ItemStack> hand) {
-    int totalValue = 0;
-    int acesCount = 0;
-
-    if (hand == null || hand.isEmpty()) {
-        return 0;
-    }
-
-    for (ItemStack cardItem : hand) {
-        int cardValue = getCardValue(cardItem);
-        totalValue += cardValue;
-        if (cardValue == 1) { // Ace is worth 1
-            acesCount++;
-        }
-    }
-
-    // Adjust for Aces: Consider them as 11 if it doesn't bust the hand
-    while (acesCount > 0 && totalValue + 10 <= 21) {
-        totalValue += 10;
-        acesCount--;
-    }
-
-    return totalValue;
+private int calculateHandValue(List<Card> hand) {
+    return BlackjackRules.handValue(hand);
 }
 
 private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId) {
@@ -2078,7 +2064,7 @@ private void updatePlayerHead(UUID playerId) {
         return; // Skip updating if the player hasn't placed a bet
     }
     
-    List<ItemStack> hand = playerHands.get(playerId);
+    List<Card> hand = playerHands.get(playerId);
     String handValue = calculateHandValueWithSoftCheck(hand);
     
     int seatSlot = playerSeats.get(playerId);
@@ -2105,93 +2091,19 @@ private void updateHeadLore(int slot, String cardValue, String name) {
         }
     }
 }
-private String calculateHandValueWithSoftCheck(List<ItemStack> hand) {
-    int totalValue = 0;
-    int acesCount = 0;
-
+private String calculateHandValueWithSoftCheck(List<Card> hand) {
     if (hand == null || hand.isEmpty()) {
         return "0";
     }
 
-    // Calculate total value and count aces
-    for (ItemStack cardItem : hand) {
-        int cardValue = getCardValue(cardItem);
-        totalValue += cardValue;
-        if (cardValue == 1) { // Ace is worth 1
-            acesCount++;
-        }
-    }
-
-    // Calculate the soft value if there are aces
-    int softValue = totalValue;
-    if (acesCount > 0) {
-        while (acesCount > 0 && softValue + 10 <= 21) {
-            softValue += 10;
-            acesCount--;
-        }
-    }
+    BlackjackHandValue value = BlackjackRules.evaluate(hand);
 
     // Return soft/hard value if an ace is present; otherwise, just return the hard value
-    if (softValue != totalValue) {
-        return softValue + "/" + totalValue;
+    if (value.isSoft()) {
+        return value.getBestTotal() + "/" + value.getHardTotal();
     } else {
-        return String.valueOf(totalValue);
+        return String.valueOf(value.getHardTotal());
     }
-}
-
-private int getCardValue(ItemStack cardItem) {
-    if (cardItem == null || !cardItem.hasItemMeta()) return 0;
-    
-    ItemMeta meta = cardItem.getItemMeta();
-    String displayName = meta.getDisplayName();
-    if (displayName == null || displayName.isEmpty()) return 0;
-
-    String[] parts = displayName.split(" ");
-    if (parts.length < 2) return 0;
-
-    String rank = parts[0].toUpperCase(); // Get the first part of the display name, which should be the rank
-    int value;
-
-    switch (rank) {
-        case "ACE":
-            value = 1;
-            break;
-        case "TWO":
-            value = 2;
-            break;
-        case "THREE":
-            value = 3;
-            break;
-        case "FOUR":
-            value = 4;
-            break;
-        case "FIVE":
-            value = 5;
-            break;
-        case "SIX":
-            value = 6;
-            break;
-        case "SEVEN":
-            value = 7;
-            break;
-        case "EIGHT":
-            value = 8;
-            break;
-        case "NINE":
-            value = 9;
-            break;
-        case "TEN":
-        case "JACK":
-        case "QUEEN":
-        case "KING":
-            value = 10;
-            break;
-        default:
-            value = 0;
-            break;
-    }
-
-    return value;
 }
 
 private void scheduleHiddenCardDealing(int slot, int delay) {
@@ -2224,7 +2136,7 @@ private void dealCardToPlayer(int slot, Card card, UUID playerId) {
         return;
     }
     Material material = (card.getSuit() == Suit.HEARTS || card.getSuit() == Suit.DIAMONDS) ? Material.RED_STAINED_GLASS_PANE : Material.BLACK_STAINED_GLASS_PANE;
-    int stackSize = getCardValueStackSize(card);
+    int stackSize = BlackjackRules.cardStackSize(card);
     for (UUID uuid : playerSeats.keySet()) {
         Player player = Bukkit.getPlayer(uuid);
         if (player != null && player.isOnline()) {
@@ -2243,29 +2155,11 @@ private void dealCardToPlayer(int slot, Card card, UUID playerId) {
     inventory.setItem(slot, cardItem); // Place the card in the inventory slot
 
     if (playerId != null) { // If this card is dealt to a player
-        playerHands.computeIfAbsent(playerId, k -> new ArrayList<>()).add(cardItem);
+        playerHands.computeIfAbsent(playerId, k -> new ArrayList<>()).add(card);
         updatePlayerHead(playerId);
     } else { // If this card is dealt to the dealer
-        dealerHand.add(cardItem);
+        dealerHand.add(card);
         updateDealerHead();
-    }
-}
-
-
-
-private int getCardValueStackSize(Card card) {
-    switch (card.getRank()) {
-        case ACE:
-            return 1;
-        case JACK:
-        return 10;
-        case QUEEN:
-        return 10;
-        case KING:
-        return 10;
-           
-        default:
-            return card.getRank().ordinal() + 2; // +2 because ordinal starts from 0, and 2 is the lowest card rank
     }
 }
 
