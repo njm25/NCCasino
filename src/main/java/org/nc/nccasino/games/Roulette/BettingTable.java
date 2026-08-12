@@ -983,7 +983,7 @@ public class BettingTable extends DealerInventory {
                 rouletteInventory.getMCE().addPlayerToChannel("RouletteWheel", player);
                 rouletteInventory.getMCE().removePlayerFromChannel("BettingTable", player);
                 }
-                player.openInventory(((RouletteInventory) dealerInventory).getInventory());
+                player.openInventory(((RouletteInventory) dealerInventory).getOrCreateView(player));
                  if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f);
                  Bukkit.getScheduler().runTaskLater(plugin, () -> {
 
@@ -1388,7 +1388,7 @@ private boolean isValidSlotPage2(int slot) {
             rouletteInventory.getMCE().addPlayerToChannel("RouletteWheel", player);
             rouletteInventory.getMCE().removePlayerFromChannel("BettingTable", player);
             }
-            player.openInventory(((RouletteInventory) dealerInventory).getInventory());
+            player.openInventory(((RouletteInventory) dealerInventory).getOrCreateView(player));
              if (SoundHelper.getSoundSafely("item.chorus_fruit.teleport", player) != null)player.playSound(player.getLocation(), Sound.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.MASTER,1.0f, 1.0f);
             switchingPlayers.remove(player.getUniqueId());
         } else {

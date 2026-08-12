@@ -21,6 +21,7 @@ import org.nc.nccasino.components.AnimationMessage;
 import org.nc.nccasino.components.PlayerMenu;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.games.Roulette.RouletteInventory;
 import org.nc.nccasino.helpers.Preferences.MessageSetting;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -288,6 +289,19 @@ public class DealerInteractListener implements Listener {
         if (shouldPlayAnimation(player, dealerId)) {
             startAnimation(dealer, player, dealerInventory, dealerId);
         } else {
+            openDealerInventoryForPlayer(player, dealerInventory);
+        }
+    }
+
+    /**
+     * Opens a dealer's inventory for a player. Roulette gets a per-player
+     * localized wheel view instead of the shared inventory directly; every
+     * other game type is unaffected.
+     */
+    private void openDealerInventoryForPlayer(Player player, DealerInventory dealerInventory) {
+        if (dealerInventory instanceof RouletteInventory roulette) {
+            player.openInventory(roulette.getOrCreateView(player));
+        } else {
             player.openInventory(dealerInventory.getInventory());
         }
     }
@@ -314,7 +328,7 @@ public class DealerInteractListener implements Listener {
             if (player != null && player.isOnline()) {
                 activeAnimations.remove(player);
                 if (dealerInventory != null) {
-                    player.openInventory(dealerInventory.getInventory());
+                    openDealerInventoryForPlayer(player, dealerInventory);
                 } else {
                     Bukkit.getLogger().warning("Error: tried to open null dealerInventory");
                 }

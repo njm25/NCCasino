@@ -370,12 +370,82 @@ public class RouletteInventory extends DealerInventory implements TerminableSess
     // localization refactor); these exist so RouletteWheelView has a
     // stable seam to call into once it is actually wired up.
 
-    /** Returns this player's localized wheel view, creating it if needed. */
+    /**
+     * Returns this player's localized wheel view, creating and immediately
+     * painting it with the current round state if it doesn't exist yet --
+     * so a late or returning viewer never sees a blank wheel while
+     * waiting for the next scheduled render tick.
+     */
     Inventory getOrCreateView(Player player) {
-        RouletteWheelView view = views.computeIfAbsent(
-            player.getUniqueId(), id -> new RouletteWheelView(player, this, plugin)
-        );
+        UUID id = player.getUniqueId();
+        RouletteWheelView existing = views.get(id);
+        if (existing != null) {
+            return existing.getInventory();
+        }
+        RouletteWheelView view = new RouletteWheelView(player, this, plugin);
+        views.put(id, view);
+        bootstrapView(view);
         return view.getInventory();
+    }
+
+    /**
+     * Paints the current wheel state into exactly one freshly created
+     * view. Deliberately does not reuse updateQuadrantDisplay itself:
+     * once a round has resolved (finalpicked), that method's
+     * final-landing-highlight branch schedules new delayed quadrant-switch
+     * tasks on every call regardless of whether the wheel already found
+     * its landing spot, so calling it again here to backfill one view
+     * would duplicate those scheduled tasks. Everything painted below is
+     * instead computed directly from currently live state via the pure,
+     * side-effect-free RouletteWheelLayout (decorative panes are the one
+     * exception -- initializeDecorativeSlotsForQuadrant has no side
+     * effects of its own, so reusing it here is safe and also correctly
+     * repaints them into this new view via its existing fan-out).
+     */
+    private void bootstrapView(RouletteWheelView view) {
+        initializeDecorativeSlotsForQuadrant(currentQuadrant);
+
+        Inventory target = view.getInventory();
+        Player viewer = Bukkit.getPlayer(view.getPlayerId());
+
+        Map<Integer, Integer> numbers = RouletteWheelLayout.numbersForQuadrant(currentQuadrant, lastDisplayedOffset);
+        for (Map.Entry<Integer, Integer> entry : numbers.entrySet()) {
+            int number = entry.getValue();
+            target.setItem(entry.getKey(), createCustomItem(getMaterialForNumber(number), "" + number, number == 0 ? 1 : number));
+        }
+
+        int countdownSlot = getCountdownSlotForQuadrant(currentQuadrant);
+        if (betsClosed) {
+            String label = viewer != null ? text(viewer, "roulette.bets-closed") : text("roulette.bets-closed");
+            target.setItem(countdownSlot, createCustomItem(Material.CLOCK, label, 1));
+        } else {
+            String label = viewer != null
+                ? text(viewer, "roulette.bets-close-in", "seconds", globalCountdown)
+                : text("roulette.bets-close-in", "seconds", globalCountdown);
+            target.setItem(countdownSlot, createCustomItem(Material.CLOCK, label, Math.max(1, globalCountdown)));
+
+            int[] buttonSlots = menuButtonSlotsForQuadrant(currentQuadrant);
+            String openTableLabel = viewer != null ? text(viewer, "roulette.open-table") : text("roulette.open-table");
+            String exitLabel = viewer != null ? text(viewer, "roulette.refund-exit") : text("roulette.refund-exit");
+            target.setItem(buttonSlots[0], createCustomItem(Material.BOOK, openTableLabel, 1));
+            target.setItem(buttonSlots[1], createCustomItem(Material.SPRUCE_DOOR, exitLabel, 1));
+        }
+
+        if (ballPreviousSlot != -1) {
+            String ballLabel = viewer != null ? text(viewer, "roulette.ball") : text("roulette.ball");
+            target.setItem(ballPreviousSlot, createBallItem(ballLabel));
+        }
+    }
+
+    /** The {open-table, exit} button slot pair for a quadrant -- mirrors the slots hardcoded in startBettingTimer/updateMenuButtonsForQuadrant. */
+    private int[] menuButtonSlotsForQuadrant(int quadrant) {
+        switch (quadrant) {
+            case 1: return new int[]{46, 47};
+            case 2: return new int[]{52, 53};
+            case 3: return new int[]{7, 8};
+            case 4: return new int[]{1, 2};
+            default: throw new IllegalArgumentException("Invalid quadrant index: " + quadrant);
+        }
     }
 
     /**
@@ -388,6 +458,78 @@ public class RouletteInventory extends DealerInventory implements TerminableSess
         inventory.setItem(slot, item);
         for (RouletteWheelView view : views.values()) {
             view.getInventory().setItem(slot, item.clone());
+        }
+    }
+
+    /**
+     * Writes an item whose display name is player-visible text: the legacy
+     * shared inventory keeps resolving it against the server default
+     * (unchanged from before), while every currently open view resolves it
+     * against its own player's locale. Views map is empty until a later
+     * stage flips the open call sites, so this is behaviorally a no-op
+     * today beyond the (unchanged) legacy-inventory write.
+     */
+    private void renderLocalizedToAllInventories(int slot, Material material, int amount, String key, Object... placeholders) {
+        inventory.setItem(slot, createCustomItem(material, text(key, placeholders), amount));
+        for (RouletteWheelView view : views.values()) {
+            Player viewer = Bukkit.getPlayer(view.getPlayerId());
+            String label = viewer != null ? text(viewer, key, placeholders) : text(key, placeholders);
+            view.getInventory().setItem(slot, createCustomItem(material, label, amount));
+        }
+    }
+
+    private ItemStack createBallItem(String displayName) {
+        ItemStack ballItem = new ItemStack(Material.ENDER_PEARL);
+        ItemMeta meta = ballItem.getItemMeta();
+        meta.setDisplayName(displayName);
+        ballItem.setItemMeta(meta);
+        return ballItem;
+    }
+
+    /**
+     * Draws the ball in the legacy inventory and every view, each with its
+     * own localized name. Does not snapshot what was under it -- for the
+     * continuous ball-movement animation that needs a later restore, use
+     * {@link #placeBallInAllInventories}.
+     */
+    private void renderBallToAllInventories(int slot) {
+        inventory.setItem(slot, createBallItem(text("roulette.ball")));
+        for (RouletteWheelView view : views.values()) {
+            Player viewer = Bukkit.getPlayer(view.getPlayerId());
+            String label = viewer != null ? text(viewer, "roulette.ball") : text("roulette.ball");
+            view.getInventory().setItem(slot, createBallItem(label));
+        }
+    }
+
+    /**
+     * Snapshots whatever's currently under the ball (once, from the legacy
+     * inventory -- identical across every view since only non-localized
+     * content ever sits under the ball) before drawing it, exactly like
+     * the original single-inventory version. The snapshot is what
+     * {@link #restoreSlotInAllInventories} later restores.
+     */
+    private void placeBallInAllInventories(int slot) {
+        if (!originalSlotItems.containsKey(slot)) {
+            originalSlotItems.put(slot, inventory.getItem(slot));
+        }
+        renderBallToAllInventories(slot);
+    }
+
+    /**
+     * Restores whatever was snapshotted under the ball, in the legacy
+     * inventory and every view. No-op if this slot was never snapshotted
+     * (e.g. the final-landing highlight, which draws the ball without one
+     * -- matching the original, which never restores that placement
+     * either).
+     */
+    private void restoreSlotInAllInventories(int slot) {
+        if (slot == -1 || !originalSlotItems.containsKey(slot)) {
+            return;
+        }
+        ItemStack original = originalSlotItems.remove(slot);
+        inventory.setItem(slot, original);
+        for (RouletteWheelView view : views.values()) {
+            view.getInventory().setItem(slot, original.clone());
         }
     }
 
@@ -800,39 +942,34 @@ private void startBettingTimer() {
                 }
                 // Update the timer item in the appropriate slot based on the current quadrant
                 int countdownSlot = getCountdownSlotForQuadrant(currentQuadrant);
-                ItemStack countdownItem = createCustomItem(
-                    Material.CLOCK,
-                    text("roulette.bets-close-in", "seconds", countdown),
-                    countdown
-                );
-                inventory.setItem(countdownSlot, countdownItem);  // Update the item in the correct slot
-                
+                renderLocalizedToAllInventories(countdownSlot, Material.CLOCK, countdown, "roulette.bets-close-in", "seconds", countdown);
+
                 countdown--;
                 globalCountdown=countdown;
                    switch (currentQuadrant) {
         case 1: // Top-right quadrant
             //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 46);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 47);
-            addItem(createCustomItem(Material.BOOK, text("roulette.open-table"), 1), 46);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, text("roulette.refund-exit"), 1), 47);
+            renderLocalizedToAllInventories(46, Material.BOOK, 1, "roulette.open-table");
+            renderLocalizedToAllInventories(47, Material.SPRUCE_DOOR, 1, "roulette.refund-exit");
             break;
         case 2: // Top-left quadrant
             //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 50);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 51);
-            addItem(createCustomItem(Material.BOOK, text("roulette.open-table"), 1), 52);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, text("roulette.refund-exit"), 1), 53);
+            renderLocalizedToAllInventories(52, Material.BOOK, 1, "roulette.open-table");
+            renderLocalizedToAllInventories(53, Material.SPRUCE_DOOR, 1, "roulette.refund-exit");
             break;
         case 3: // Bottom-left quadrant
            // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 5);
            // addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 6);
-            addItem(createCustomItem(Material.BOOK, text("roulette.open-table"), 1), 7);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, text("roulette.refund-exit"), 1), 8);
+            renderLocalizedToAllInventories(7, Material.BOOK, 1, "roulette.open-table");
+            renderLocalizedToAllInventories(8, Material.SPRUCE_DOOR, 1, "roulette.refund-exit");
             break;
         case 4: // Bottom-right quadrant
            // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 1);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 2);
-            addItem(createCustomItem(Material.BOOK, text("roulette.open-table"), 1), 1);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, text("roulette.refund-exit"), 1), 2);
+            renderLocalizedToAllInventories(1, Material.BOOK, 1, "roulette.open-table");
+            renderLocalizedToAllInventories(2, Material.SPRUCE_DOOR, 1, "roulette.refund-exit");
             break;
     }
             } else if (countdown == 0) {
@@ -844,8 +981,7 @@ private void startBettingTimer() {
                 }
 
                 int countdownSlot = getCountdownSlotForQuadrant(currentQuadrant);
-                ItemStack countdownItem = createCustomItem(Material.CLOCK, text("roulette.bets-closed"), 1);
-                inventory.setItem(countdownSlot, countdownItem);
+                renderLocalizedToAllInventories(countdownSlot, Material.CLOCK, 1, "roulette.bets-closed");
 
                 clearMenuButtonsForQuadrant(currentQuadrant);
                 initializeDecorativeSlotsForQuadrant(currentQuadrant);
@@ -1048,9 +1184,7 @@ private void moveBall(int ballSpinDirection, long[] currentBallDelay, int[] slot
         // Schedule delay for ball to disappear, then switch quadrant view
         miscTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
             // Remove ball from current slot
-            if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
-                inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
-            }
+            restoreSlotInAllInventories(ballPreviousSlot);
             int nextquadnow=0;
             if (wheelSpinDirection == -1) { // Clockwise
                 nextquadnow = (currentQuadrant % 4) + 1; // Move to next quadrant in order
@@ -1191,9 +1325,7 @@ private void updateBallPosition(int ballSpinDirection) {
     }
     
     // Restore the item in the previous slot
-    if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
-        inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
-    }
+    restoreSlotInAllInventories(ballPreviousSlot);
 
     // Move the ball index according to the spin direction
     ballCurrentIndex = (ballCurrentIndex + ballSpinDirection + currentTrackSlots.size()) % currentTrackSlots.size();
@@ -1202,15 +1334,7 @@ private void updateBallPosition(int ballSpinDirection) {
     //System.out.println("New ball position: slot " + nextSlot +"ballprevi:"+ballPreviousSlot+"track: "+trackSequenceIndex);
 
     // Store the current item in the slot, then set the ball item
-    if (!originalSlotItems.containsKey(nextSlot)) {
-        originalSlotItems.put(nextSlot, inventory.getItem(nextSlot));
-    }
-
-    ItemStack ballItem = new ItemStack(Material.ENDER_PEARL);
-    ItemMeta meta = ballItem.getItemMeta();
-        meta.setDisplayName(text("roulette.ball"));
-    ballItem.setItemMeta(meta);
-    inventory.setItem(nextSlot, ballItem);
+    placeBallInAllInventories(nextSlot);
 
     // Update previous slot
     ballPreviousSlot = nextSlot;
@@ -1410,9 +1534,7 @@ private void prepareNextRound() {
     }
 
     // Remove the ball from the slot if present
-    if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
-        inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
-    }
+    restoreSlotInAllInventories(ballPreviousSlot);
 
     // Reset movement and state variables
     ballMovementStarted = false;
@@ -1529,26 +1651,26 @@ private void updateMenuButtonsForQuadrant(int quadrant) {
         case 1: // Top-right quadrant
             //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 46);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 47);
-            addItem(createCustomItem(Material.BOOK, text("roulette.open-table"), 1), 46);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, text("roulette.exit-refund"), 1), 47);
+            renderLocalizedToAllInventories(46, Material.BOOK, 1, "roulette.open-table");
+            renderLocalizedToAllInventories(47, Material.SPRUCE_DOOR, 1, "roulette.exit-refund");
             break;
         case 2: // Top-left quadrant
             //addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 50);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 51);
-            addItem(createCustomItem(Material.BOOK, text("roulette.open-table"), 1), 52);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, text("roulette.exit-refund"), 1), 53);
+            renderLocalizedToAllInventories(52, Material.BOOK, 1, "roulette.open-table");
+            renderLocalizedToAllInventories(53, Material.SPRUCE_DOOR, 1, "roulette.exit-refund");
             break;
         case 3: // Bottom-left quadrant
            // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 5);
            // addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 6);
-            addItem(createCustomItem(Material.BOOK, text("roulette.open-table"), 1), 7);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, text("roulette.exit-refund"), 1), 8);
+            renderLocalizedToAllInventories(7, Material.BOOK, 1, "roulette.open-table");
+            renderLocalizedToAllInventories(8, Material.SPRUCE_DOOR, 1, "roulette.exit-refund");
             break;
         case 4: // Bottom-right quadrant
            // addItem(createCustomItem(Material.CLOCK, "-1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 1);
             //addItem(createCustomItem(Material.CLOCK, "+1 Betting Timer (Will take effect next round)", bettingTimeSeconds), 2);
-            addItem(createCustomItem(Material.BOOK, text("roulette.open-table"), 1), 1);
-            addItem(createCustomItem(Material.SPRUCE_DOOR, text("roulette.exit-refund"), 1), 2);
+            renderLocalizedToAllInventories(1, Material.BOOK, 1, "roulette.open-table");
+            renderLocalizedToAllInventories(2, Material.SPRUCE_DOOR, 1, "roulette.exit-refund");
             break;
     }
 }
@@ -1635,16 +1757,10 @@ private void switchStayToQuadrant(int quad){
                         long[] tempBallDelay ={1L};
                         if(isQuadrantBBoundary(extraSlot)){
 
-                        ItemStack ballItem = new ItemStack(Material.ENDER_PEARL);
-                        ItemMeta meta = ballItem.getItemMeta();
-        meta.setDisplayName(text("roulette.ball"));
-                        ballItem.setItemMeta(meta);
-                        inventory.setItem(extraSlot, ballItem);
+                        renderBallToAllInventories(extraSlot);
                         regTaskId=Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
                                 // Remove ball from current slot
-                                if (ballPreviousSlot != -1 && originalSlotItems.containsKey(ballPreviousSlot)) {
-                                    inventory.setItem(ballPreviousSlot, originalSlotItems.remove(ballPreviousSlot));
-                                }
+                                restoreSlotInAllInventories(ballPreviousSlot);
                                 int nextquadnow=0;
                                 if (wheelSpinDirection == -1) { // Clockwise
                                     nextquadnow = (currentQuadrant % 4) + 1; // Move to next quadrant in order
@@ -1703,12 +1819,7 @@ private void switchStayToQuadrant(int quad){
                             }, 3L); // Delay before ball disappears 
                             }
                             else{
-                            ItemStack ballItem = new ItemStack(Material.ENDER_PEARL);
-                            ItemMeta meta = ballItem.getItemMeta();
-        meta.setDisplayName(text("roulette.ball"));
-                            ballItem.setItemMeta(meta);
-                            inventory.setItem(extraSlot, ballItem);
-                            
+                            renderBallToAllInventories(extraSlot);
                             }
 
                    
