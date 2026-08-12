@@ -24,6 +24,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -50,6 +51,11 @@ public class RouletteInventory extends DealerInventory implements TerminableSess
     private final Nccasino plugin;
     private final Map<UUID, Stack<Pair<String, Integer>>> Bets;
     public final Map<UUID, BettingTable> Tables;
+    // Per-player localized wheel views onto this shared round. Not yet
+    // populated by any open/switch call site or rendered into -- wired up
+    // in a later stage of the localization refactor. Purely additive and
+    // inert until then.
+    private final Map<UUID, RouletteWheelView> views = new HashMap<>();
     // Tracks a spin's already-computed winning payout for the ~1s window
     // between it being scheduled and the deposit task actually running.
     // Lets onSessionTerminated tell "a win is in flight, pay this exact
@@ -358,7 +364,63 @@ public class RouletteInventory extends DealerInventory implements TerminableSess
             mce.removePlayerFromAllChannels(player);
         }
     }
-    
+
+    // ---- Per-player RouletteWheelView plumbing -----------------------
+    // Not yet reachable from any open/switch call site (later stage of the
+    // localization refactor); these exist so RouletteWheelView has a
+    // stable seam to call into once it is actually wired up.
+
+    /** Returns this player's localized wheel view, creating it if needed. */
+    Inventory getOrCreateView(Player player) {
+        RouletteWheelView view = views.computeIfAbsent(
+            player.getUniqueId(), id -> new RouletteWheelView(player, this, plugin)
+        );
+        return view.getInventory();
+    }
+
+    void handleViewClick(int slot, Player player) {
+        handleGameMenuClick(slot, player);
+    }
+
+    void onViewOpened(Player player) {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (player != null && player.isOnline()) {
+                if (!BettingTable.switchingPlayers.contains(player.getUniqueId())) {
+                    switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                        case STANDARD: {
+                            break;
+                        }
+                        case VERBOSE: {
+                            player.sendMessage(text(player, "roulette.welcome"));
+                            break;
+                        }
+                        case NONE: {
+                            break;
+                        }
+                    }
+                }
+                if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
+                    mce.addPlayerToChannel("Master", player);
+                    mce.addPlayerToChannel("RouletteWheel", player);
+                }
+                if (firstFin) {
+                    this.bettingTimeSeconds = plugin.getTimer(internalName);
+                    firstFin = false;
+                    startBettingTimer();
+                }
+            }
+        }, 2L);
+    }
+
+    void onViewClosed(Player player, RouletteWheelView view) {
+        views.remove(player.getUniqueId(), view);
+        view.cleanupListener();
+        if (switchingPlayers.contains(player.getUniqueId())) {
+            return;
+        }
+        mce.removePlayerFromAllChannels(player);
+    }
+
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
         if (event.getInventory().getHolder() != this) return;
