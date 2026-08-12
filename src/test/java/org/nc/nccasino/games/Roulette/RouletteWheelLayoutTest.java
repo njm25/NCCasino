@@ -89,6 +89,91 @@ class RouletteWheelLayoutTest {
     }
 
     @Test
+    void directionOverrideMatchesLegacyInlineFormulaAcrossEveryQuadrantSwitch() {
+        // Characterization test against the pre-extraction inline formula
+        // (see commit d3f1770's diff of RouletteInventory#updateQuadrantDisplay
+        // before this class existed): quadrantSlots/extraSlotsMap/startPosition
+        // came from the quadrant in effect when the switch statement ran, but
+        // the render loop's "+i" vs "-i" choice re-read currentQuadrant at
+        // render time, after a same-tick switchStayToQuadrant call could have
+        // already changed it. numbersForQuadrant(slotQuadrant, offset,
+        // directionQuadrant) must reproduce that exact hybrid for every
+        // (slotQuadrant, directionQuadrant, offset) combination, not just the
+        // slotQuadrant == directionQuadrant case already covered above.
+        int[] quadrants = {
+            RouletteWheelLayout.TOP_RIGHT, RouletteWheelLayout.TOP_LEFT,
+            RouletteWheelLayout.BOTTOM_LEFT, RouletteWheelLayout.BOTTOM_RIGHT
+        };
+        for (int slotQuadrant : quadrants) {
+            for (int directionQuadrant : quadrants) {
+                for (int offset = 0; offset < RouletteWheelLayout.WHEEL_NUMBERS.size(); offset++) {
+                    Map<Integer, Integer> actual =
+                        RouletteWheelLayout.numbersForQuadrant(slotQuadrant, offset, directionQuadrant);
+                    Map<Integer, Integer> expected =
+                        legacyInlineFormula(slotQuadrant, offset, directionQuadrant);
+                    assertEquals(expected, actual,
+                        "slotQuadrant=" + slotQuadrant + " directionQuadrant=" + directionQuadrant + " offset=" + offset);
+                }
+            }
+        }
+    }
+
+    /**
+     * Verbatim re-derivation of the original inline per-quadrant switch
+     * statement plus wheelPosition formula from RouletteInventory before it
+     * was extracted into RouletteWheelLayout, deliberately independent of
+     * numbersForQuadrant's own implementation so this test can't just be
+     * checking the code against itself.
+     */
+    private static Map<Integer, Integer> legacyInlineFormula(int slotQuadrant, int globalOffset, int directionQuadrant) {
+        int[] quadrantSlots;
+        int startPosition;
+        Map<Integer, int[]> extraSlotsMap;
+        int size = RouletteWheelLayout.WHEEL_NUMBERS.size();
+        switch (slotQuadrant) {
+            case 1:
+                quadrantSlots = new int[]{27, 28, 29, 30, 31, 32, 33, 43, 53};
+                startPosition = Math.floorMod(globalOffset + 27, size);
+                break;
+            case 2:
+                quadrantSlots = new int[]{45, 37, 29, 30, 31, 32, 33, 34, 35};
+                startPosition = Math.floorMod(globalOffset + 18, size);
+                break;
+            case 3:
+                quadrantSlots = new int[]{0, 10, 20, 21, 22, 23, 24, 25, 26};
+                startPosition = Math.floorMod(globalOffset + 9, size);
+                break;
+            case 4:
+                quadrantSlots = new int[]{18, 19, 20, 21, 22, 23, 24, 16, 8};
+                startPosition = Math.floorMod(globalOffset, size);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid quadrant index");
+        }
+        extraSlotsMap = RouletteWheelLayout.extraSlotsForQuadrant(slotQuadrant);
+
+        Map<Integer, Integer> slotToNumber = new java.util.HashMap<>();
+        for (int i = 0; i < quadrantSlots.length; i++) {
+            int wheelPosition;
+            if (directionQuadrant == 1 || directionQuadrant == 2) {
+                wheelPosition = Math.floorMod(startPosition + i, size);
+            } else {
+                wheelPosition = Math.floorMod(startPosition - i, size);
+            }
+            int number = RouletteWheelLayout.WHEEL_NUMBERS.get(wheelPosition);
+            slotToNumber.put(quadrantSlots[i], number);
+
+            int[] extraSlots = extraSlotsMap.get(quadrantSlots[i]);
+            if (extraSlots != null) {
+                for (int extraSlot : extraSlots) {
+                    slotToNumber.put(extraSlot, number);
+                }
+            }
+        }
+        return slotToNumber;
+    }
+
+    @Test
     void colorClassificationMatchesStandardWheel() {
         assertEquals(RouletteWheelLayout.Color.GREEN, RouletteWheelLayout.colorOf(0));
         assertEquals(RouletteWheelLayout.Color.RED, RouletteWheelLayout.colorOf(1));

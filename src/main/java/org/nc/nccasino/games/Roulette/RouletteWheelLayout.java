@@ -106,14 +106,31 @@ public final class RouletteWheelLayout {
      * independent) maps.
      */
     public static Map<Integer, Integer> numbersForQuadrant(int quadrant, int globalOffset) {
-        int[] mainSlots = requireMainSlots(quadrant);
-        int startOffset = START_OFFSET.get(quadrant);
-        Map<Integer, int[]> extraSlotsMap = EXTRA_SLOTS.get(quadrant);
+        return numbersForQuadrant(quadrant, globalOffset, quadrant);
+    }
+
+    /**
+     * Same slot grid as {@link #numbersForQuadrant(int, int)}, but the
+     * ascend-vs-descend wheel-walk direction is taken from
+     * {@code directionQuadrant} instead of {@code slotQuadrant}. This
+     * preserves a legacy quirk in the original inline implementation: the
+     * caller can snapshot which slots to fill from the quadrant in effect
+     * before a same-tick quadrant switch, while the direction was (and
+     * still is here) read from whatever quadrant is in effect by the time
+     * the render loop actually runs. Pass the same value for both
+     * parameters for the ordinary case where no such switch happens
+     * in between.
+     */
+    public static Map<Integer, Integer> numbersForQuadrant(int slotQuadrant, int globalOffset, int directionQuadrant) {
+        int[] mainSlots = requireMainSlots(slotQuadrant);
+        int startOffset = START_OFFSET.get(slotQuadrant);
+        Map<Integer, int[]> extraSlotsMap = EXTRA_SLOTS.get(slotQuadrant);
         int startPosition = Math.floorMod(globalOffset + startOffset, WHEEL_NUMBERS.size());
+        boolean ascending = (directionQuadrant == TOP_RIGHT || directionQuadrant == TOP_LEFT);
 
         Map<Integer, Integer> slotToNumber = new HashMap<>();
         for (int i = 0; i < mainSlots.length; i++) {
-            int wheelPosition = (quadrant == TOP_RIGHT || quadrant == TOP_LEFT)
+            int wheelPosition = ascending
                 ? Math.floorMod(startPosition + i, WHEEL_NUMBERS.size())
                 : Math.floorMod(startPosition - i, WHEEL_NUMBERS.size());
             int number = WHEEL_NUMBERS.get(wheelPosition);

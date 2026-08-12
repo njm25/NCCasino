@@ -394,7 +394,7 @@ public class RouletteInventory extends DealerInventory implements TerminableSess
      * so a late or returning viewer never sees a blank wheel while
      * waiting for the next scheduled render tick.
      */
-    Inventory getOrCreateView(Player player) {
+    public Inventory getOrCreateView(Player player) {
         UUID id = player.getUniqueId();
         RouletteWheelView existing = views.get(id);
         if (existing != null) {
@@ -407,63 +407,72 @@ public class RouletteInventory extends DealerInventory implements TerminableSess
     }
 
     /**
-     * Paints the current wheel state into exactly one freshly created
-     * view. Deliberately does not reuse updateQuadrantDisplay itself:
-     * once a round has resolved (finalpicked), that method's
-     * final-landing-highlight branch schedules new delayed quadrant-switch
-     * tasks on every call regardless of whether the wheel already found
-     * its landing spot, so calling it again here to backfill one view
-     * would duplicate those scheduled tasks. Everything painted below is
-     * instead computed directly from currently live state via the pure,
-     * side-effect-free RouletteWheelLayout (decorative panes are the one
-     * exception -- initializeDecorativeSlotsForQuadrant has no side
-     * effects of its own, so reusing it here is safe and also correctly
-     * repaints them into this new view via its existing fan-out).
+     * Paints the current wheel state into exactly one freshly created view,
+     * by cloning the legacy inventory's contents slot-for-slot rather than
+     * reconstructing the frame from currentQuadrant/lastDisplayedOffset/
+     * ballPreviousSlot. Every fan-out renderer (renderToAllInventories,
+     * renderBallToAllInventories, ...) writes to the legacy inventory
+     * first, so it's the authoritative record of whatever every other open
+     * view is currently showing -- including transitional states (an
+     * in-flight quadrant switch, a ball mid-landing) that reconstructing
+     * from those fields alone could get stale or inconsistent with what's
+     * already on screen elsewhere. Deliberately does not call
+     * updateQuadrantDisplay itself: once a round has resolved
+     * (finalpicked), that method's final-landing-highlight branch schedules
+     * new delayed quadrant-switch tasks on every call regardless of
+     * whether the wheel already found its landing spot, so calling it
+     * again here to backfill one view would duplicate those scheduled
+     * tasks. Touches only the new view's own inventory -- no fan-out to
+     * any other already-open view.
      */
     private void bootstrapView(RouletteWheelView view) {
-        initializeDecorativeSlotsForQuadrant(currentQuadrant);
-
         Inventory target = view.getInventory();
         Player viewer = Bukkit.getPlayer(view.getPlayerId());
 
-        Map<Integer, Integer> numbers = RouletteWheelLayout.numbersForQuadrant(currentQuadrant, lastDisplayedOffset);
-        for (Map.Entry<Integer, Integer> entry : numbers.entrySet()) {
-            int number = entry.getValue();
-            target.setItem(entry.getKey(), createCustomItem(getMaterialForNumber(number), "" + number, number == 0 ? 1 : number));
+        for (int slot = 0; slot < inventory.getSize(); slot++) {
+            ItemStack source = inventory.getItem(slot);
+            target.setItem(slot, source == null ? null : source.clone());
         }
 
-        int countdownSlot = getCountdownSlotForQuadrant(currentQuadrant);
-        if (betsClosed) {
-            String label = viewer != null ? text(viewer, "roulette.bets-closed") : text("roulette.bets-closed");
-            target.setItem(countdownSlot, createCustomItem(Material.CLOCK, label, 1));
-        } else {
-            String label = viewer != null
-                ? text(viewer, "roulette.bets-close-in", "seconds", globalCountdown)
-                : text("roulette.bets-close-in", "seconds", globalCountdown);
-            target.setItem(countdownSlot, createCustomItem(Material.CLOCK, label, Math.max(1, globalCountdown)));
-
-            int[] buttonSlots = menuButtonSlotsForQuadrant(currentQuadrant);
-            String openTableLabel = viewer != null ? text(viewer, "roulette.open-table") : text("roulette.open-table");
-            String exitLabel = viewer != null ? text(viewer, "roulette.refund-exit") : text("roulette.refund-exit");
-            target.setItem(buttonSlots[0], createCustomItem(Material.BOOK, openTableLabel, 1));
-            target.setItem(buttonSlots[1], createCustomItem(Material.SPRUCE_DOOR, exitLabel, 1));
-        }
-
-        if (ballPreviousSlot != -1) {
-            String ballLabel = viewer != null ? text(viewer, "roulette.ball") : text("roulette.ball");
-            target.setItem(ballPreviousSlot, createBallItem(ballLabel));
+        // Re-localize the player-visible text on top of the clone,
+        // identified by role (material) rather than by slot bookkeeping
+        // that could be stale for the same reason the old reconstruction
+        // was. The "seconds" placeholder is read back from the cloned
+        // clock's own stack amount rather than globalCountdown: the
+        // countdown task renders the clock with the pre-decrement value
+        // and only stores the decremented value into globalCountdown
+        // afterward, so globalCountdown is transiently one second behind
+        // whatever's actually on screen.
+        for (int slot = 0; slot < target.getSize(); slot++) {
+            ItemStack item = target.getItem(slot);
+            if (item == null) {
+                continue;
+            }
+            switch (item.getType()) {
+                case CLOCK: {
+                    String label = betsClosed
+                        ? localize(viewer, "roulette.bets-closed")
+                        : localize(viewer, "roulette.bets-close-in", "seconds", item.getAmount());
+                    target.setItem(slot, createCustomItem(Material.CLOCK, label, item.getAmount()));
+                    break;
+                }
+                case BOOK:
+                    target.setItem(slot, createCustomItem(Material.BOOK, localize(viewer, "roulette.open-table"), item.getAmount()));
+                    break;
+                case SPRUCE_DOOR:
+                    target.setItem(slot, createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "roulette.refund-exit"), item.getAmount()));
+                    break;
+                case ENDER_PEARL:
+                    target.setItem(slot, createBallItem(localize(viewer, "roulette.ball")));
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
-    /** The {open-table, exit} button slot pair for a quadrant -- mirrors the slots hardcoded in startBettingTimer/updateMenuButtonsForQuadrant. */
-    private int[] menuButtonSlotsForQuadrant(int quadrant) {
-        switch (quadrant) {
-            case 1: return new int[]{46, 47};
-            case 2: return new int[]{52, 53};
-            case 3: return new int[]{7, 8};
-            case 4: return new int[]{1, 2};
-            default: throw new IllegalArgumentException("Invalid quadrant index: " + quadrant);
-        }
+    private String localize(Player viewer, String key, Object... placeholders) {
+        return viewer != null ? text(viewer, key, placeholders) : text(key, placeholders);
     }
 
     /**
@@ -859,7 +868,11 @@ private void exitGame(Player player) {
             if (player == null)
                 continue;
             InventoryView openInventory = player.getOpenInventory();
-            if (openInventory != null && openInventory.getTopInventory().getHolder() == this) {
+            if (openInventory == null) {
+                continue;
+            }
+            Object holder = openInventory.getTopInventory().getHolder();
+            if (holder == this || (holder instanceof RouletteWheelView view && views.get(player.getUniqueId()) == view)) {
                 activePlayers.add(player);
             }
         }
@@ -998,6 +1011,18 @@ private void startBettingTimer() {
                     bettingTable.updateCountdown(countdown, betsClosed);
                 }
 
+                // Clock drawn before decoratives repaint over it, not after:
+                // the countdown slot for every quadrant falls inside that
+                // quadrant's own decorative pane range, so this leaves the
+                // legacy inventory's actual final slot content as the
+                // decorative pane, clock invisible again -- which matters
+                // now that bootstrapView (see below) clones straight from
+                // this inventory instead of independently re-synthesizing a
+                // clock item of its own. Drawing the clock last would make
+                // it the legacy inventory's permanent slot content, visible
+                // and stuck for every viewer (not just one returning from
+                // the betting table) until an unrelated later quadrant
+                // switch happened to paint over the same slot.
                 int countdownSlot = getCountdownSlotForQuadrant(currentQuadrant);
                 renderLocalizedToAllInventories(countdownSlot, Material.CLOCK, 1, "roulette.bets-closed");
 
@@ -1730,9 +1755,13 @@ private void switchStayToQuadrant(int quad){
 }
 
     private void updateQuadrantDisplay(int globalOffset) {
-        int[] quadrantSlots = RouletteWheelLayout.mainSlotsForQuadrant(currentQuadrant);
-        Map<Integer, int[]> currentExtraSlotsMap = RouletteWheelLayout.extraSlotsForQuadrant(currentQuadrant);
-        Map<Integer, Integer> quadrantNumbers = RouletteWheelLayout.numbersForQuadrant(currentQuadrant, globalOffset);
+        // Snapshotted once, up front: this is the quadrant whose slot/extra
+        // layout the whole call renders into, matching the original inline
+        // implementation this was extracted from.
+        int slotQuadrant = currentQuadrant;
+        int[] quadrantSlots = RouletteWheelLayout.mainSlotsForQuadrant(slotQuadrant);
+        Map<Integer, int[]> currentExtraSlotsMap = RouletteWheelLayout.extraSlotsForQuadrant(slotQuadrant);
+        Map<Integer, Integer> quadrantNumbers = RouletteWheelLayout.numbersForQuadrant(slotQuadrant, globalOffset);
         slotToNumber.clear();
         boolean newflag=false;
 
@@ -1751,6 +1780,17 @@ private void switchStayToQuadrant(int quad){
             }
         }
 
+        // Legacy quirk, preserved intentionally: the render loop below still
+        // walks the slots/extras captured above for slotQuadrant, but the
+        // original code re-read the wheel-walk direction (ascending for
+        // quadrants 1/2, descending for 3/4) from currentQuadrant at render
+        // time -- which switchStayToQuadrant above may have just changed.
+        // Re-deriving quadrantNumbers with slotQuadrant for slots and the
+        // (possibly now different) currentQuadrant for direction reproduces
+        // that exactly, rather than "fixing" it into fully self-consistent
+        // numbers for one quadrant, which would change same-tick
+        // final-landing timing on the fragile deceleration animation.
+        quadrantNumbers = RouletteWheelLayout.numbersForQuadrant(slotQuadrant, globalOffset, currentQuadrant);
 
         // Loop through each slot in the quadrant and assign the correct number
         for (int i = 0; i < quadrantSlots.length; i++) {
