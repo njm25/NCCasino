@@ -484,6 +484,8 @@ blackjack:
   insurance-paid: "&aSeguro pago: {amount}!"
   insurance-lost: "&cSeguro perdido."
   dealer-peek: "&6O dealer espia... Blackjack!"
+  turn-timer-lore: "Tempo para decidir: {seconds}"
+  turn-timer-expired: "&cO tempo acabou! Você parou."
 
 dragon-settings:
   title: "Configurações de Descida do Dragão de {dealer}"

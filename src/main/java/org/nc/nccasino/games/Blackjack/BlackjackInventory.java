@@ -148,6 +148,27 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     private final Map<UUID, Double> insuranceStakes = new HashMap<>();
     private int insuranceTaskId = -1;
     private int insuranceSecondsRemaining;
+    /** {@code dealers.<name>.insurance.enabled}, loaded once at construction (default true). */
+    private final boolean insuranceEnabled;
+    /** {@code dealers.<name>.insurance.timeout-seconds}, clamped [1,60] (default {@link BlackjackTiming#INSURANCE_TIMEOUT_DEFAULT_SECONDS}). */
+    private final int insuranceTimeoutSeconds;
+
+    // ---- Player-turn timer (slot 46) -------------------------------------
+    // Table-owned canonical deadline, same shape as the insurance countdown
+    // above: a real scheduled resolution that keeps running regardless of
+    // any single viewer's inventory, guarded by roundGeneration + playerId +
+    // handToken so a stale tick can never auto-Stand a hand that has since
+    // moved on. Starts only once a decision is actually actionable (never
+    // during card-deal/split animations); resets on Hit (a new decision on
+    // the same hand bumps handToken, which invalidates the previous timer
+    // task on its own next tick, and startNextPlayerTurn/handleHit start a
+    // fresh one). When disabled, slot 46 simply never leaves its brown
+    // edge-glass idle state.
+    /** {@code dealers.<name>.turn-timer.enabled}, loaded once at construction (default true). */
+    private final boolean turnTimerEnabled;
+    /** {@code dealers.<name>.turn-timer.timeout-seconds}, clamped [1,60] (default 20). */
+    private final int turnTimerTimeoutSeconds;
+    private int turnTimerTaskId = -1;
     // Animation infrastructure (Phase 2) -- scaffolding only, nothing here
     // is triggered from real gameplay yet (that's a later phase). Private
     // (per-viewer) animation runs: chair guide, wager guide, bet-spot
@@ -272,8 +293,42 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
         this.deck = new Deck(numberOfDecks); // Initialize the deck
         loadChipValuesFromConfig(); // Load chip values from config
 
+        this.insuranceEnabled = loadBooleanConfig("insurance.enabled", true);
+        this.insuranceTimeoutSeconds = loadClampedIntConfig("insurance.timeout-seconds", BlackjackTiming.INSURANCE_TIMEOUT_DEFAULT_SECONDS, 1, 60);
+        this.turnTimerEnabled = loadBooleanConfig("turn-timer.enabled", true);
+        this.turnTimerTimeoutSeconds = loadClampedIntConfig("turn-timer.timeout-seconds", 20, 1, 60);
+
        registerListener();
        plugin.addInventory(dealerId, this);
+    }
+
+    /** Reads {@code dealers.<internalName>.<key>} as a boolean, writing {@code defaultValue} back if the key is unset. Mirrors this constructor's existing stand-on-17/number-of-decks lazily-defaulted pattern. */
+    private boolean loadBooleanConfig(String key, boolean defaultValue) {
+        String path = "dealers." + internalName + "." + key;
+        if (!plugin.getConfig().contains(path)) {
+            plugin.getConfig().set(path, defaultValue);
+            return defaultValue;
+        }
+        return plugin.getConfig().getBoolean(path, defaultValue);
+    }
+
+    /** Reads {@code dealers.<internalName>.<key>} as an int clamped to [{@code min}, {@code max}], writing back a corrected value (default if unset/unparsable, clamped if out of range) so the persisted config always matches what's in effect. */
+    private int loadClampedIntConfig(String key, int defaultValue, int min, int max) {
+        String path = "dealers." + internalName + "." + key;
+        if (!plugin.getConfig().contains(path)) {
+            plugin.getConfig().set(path, defaultValue);
+            return defaultValue;
+        }
+        int value = plugin.getConfig().getInt(path, defaultValue);
+        if (value < min) {
+            plugin.getConfig().set(path, min);
+            return min;
+        }
+        if (value > max) {
+            plugin.getConfig().set(path, max);
+            return max;
+        }
+        return value;
     }
 
 private void registerListener() {
@@ -1109,6 +1164,11 @@ private void registerListener() {
 
         if (active) {
             target.setItem(BlackjackSlotLayout.ACTIVE_EXIT_SLOT, createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1));
+            // Idle brown edge-glass fallback -- a late viewer bootstrapping
+            // mid-decision doesn't get the live countdown text (its exact
+            // seconds-remaining isn't part of BlackjackFrame), but never
+            // sees an empty/background slot 46 either.
+            target.setItem(BlackjackSlotLayout.TURN_TIMER_SLOT, buildBrownEdgeGlassItem());
         } else if (playerSeats.containsKey(view.getPlayerId())) {
             paintSeatedBottomBar(target, viewer, view.getPlayerId());
         } else {
@@ -1363,16 +1423,33 @@ private void registerListener() {
 
     /** Builds the dynamic action item for {@code action}, materials per the redesign spec. */
     private ItemStack buildActionItem(BlackjackAction action, Player viewer) {
+        return buildActionItem(action, viewer, false);
+    }
+
+    /** Like {@link #buildActionItem(BlackjackAction, Player)}, but optionally pre-glowing -- for the action-guidance cycle. */
+    private ItemStack buildActionItem(BlackjackAction action, Player viewer, boolean glowing) {
+        ItemStack item;
         switch (action) {
             case HIT:
-                return buildHitSwordItem(localize(viewer, "blackjack.hit"));
+                item = buildHitSwordItem(localize(viewer, "blackjack.hit"));
+                break;
             case STAND:
-                return createCustomItem(Material.SHIELD, localize(viewer, "blackjack.stand"));
+                item = createCustomItem(Material.SHIELD, localize(viewer, "blackjack.stand"));
+                break;
             case DOUBLE_DOWN:
-                return createCustomItem(Material.NETHERITE_SCRAP, localize(viewer, "blackjack.double-down"));
+                item = createCustomItem(Material.NETHERITE_SCRAP, localize(viewer, "blackjack.double-down"));
+                break;
             default:
                 throw new IllegalStateException("Unhandled BlackjackAction: " + action);
         }
+        if (glowing) {
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                applyGlow(meta);
+                item.setItemMeta(meta);
+            }
+        }
+        return item;
     }
 
     private ItemStack buildCardItem(Card card, Player viewer, boolean glowing) {
@@ -1599,9 +1676,75 @@ private void registerListener() {
             return;
         }
         Player viewer = Bukkit.getPlayer(currentPlayerId);
-        for (Map.Entry<BlackjackAction, Integer> entry : currentPlayerActionLayout().entrySet()) {
+        Map<BlackjackAction, Integer> layout = currentPlayerActionLayout();
+        for (Map.Entry<BlackjackAction, Integer> entry : layout.entrySet()) {
             view.getInventory().setItem(entry.getValue(), buildActionItem(entry.getKey(), viewer));
         }
+        if (layout.isEmpty()) {
+            // No actionable decision right now (dealing, an action mid-flight,
+            // not this viewer's turn) -- stop any lingering action-guidance
+            // cycle and the turn-timer deadline immediately, rather than
+            // waiting for either's next scheduled step/tick to notice and
+            // self-cancel.
+            cancelPrivateAnimation(currentPlayerId);
+            stopTurnTimerTask();
+        } else {
+            startActionGuidance(currentPlayerId);
+            startTurnTimer(currentPlayerId);
+        }
+    }
+
+    // ---- Action guidance (private, per current-turn viewer) -------------
+    // One-at-a-time glow cycle across the current player's own available
+    // action buttons, looping until they act (mirrors wager guidance's
+    // pattern). Restarted (via bumpAndGetViewerAnimationGeneration) on
+    // every renderActionsForCurrentPlayer call, so the available-action set
+    // is always re-derived fresh rather than baked into one long-running
+    // plan -- a Hit that removes Double Down from the layout is reflected
+    // immediately.
+
+    private void startActionGuidance(UUID playerId) {
+        int myGeneration = bumpAndGetViewerAnimationGeneration(playerId);
+        privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, roundGeneration, myGeneration, capturePhase()));
+        runActionGuidanceCycle(playerId, myGeneration);
+    }
+
+    private void runActionGuidanceCycle(UUID playerId, int myGeneration) {
+        if (isStaleViewerAnimation(playerId, myGeneration) || !playerId.equals(currentPlayerId) || !playerTurnActive.getOrDefault(playerId, false)) {
+            return;
+        }
+        Map<BlackjackAction, Integer> layout = currentPlayerActionLayout();
+        List<Integer> slots = new ArrayList<>(layout.values());
+        if (slots.isEmpty()) {
+            return;
+        }
+        List<BlackjackAnimationStep> steps = BlackjackActionGuidancePlan.build(slots, BlackjackTiming.ACTION_GUIDANCE_STEP_TICKS);
+        for (BlackjackAnimationStep step : steps) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (isStaleViewerAnimation(playerId, myGeneration) || !playerId.equals(currentPlayerId) || !playerTurnActive.getOrDefault(playerId, false)) {
+                    return;
+                }
+                applyActionGuidanceStep(playerId, step);
+            }, step.getDelayTicks());
+        }
+        long cycleTicks = BlackjackActionGuidancePlan.cycleDurationTicks(slots.size(), BlackjackTiming.ACTION_GUIDANCE_STEP_TICKS);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> runActionGuidanceCycle(playerId, myGeneration), Math.max(cycleTicks, 1L));
+    }
+
+    private void applyActionGuidanceStep(UUID playerId, BlackjackAnimationStep step) {
+        BlackjackAction action = null;
+        for (Map.Entry<BlackjackAction, Integer> entry : currentPlayerActionLayout().entrySet()) {
+            if (entry.getValue() == step.getSlot()) {
+                action = entry.getKey();
+                break;
+            }
+        }
+        if (action == null) {
+            return; // the layout moved on since this step was scheduled -- next full cycle will re-derive it
+        }
+        Player viewer = Bukkit.getPlayer(playerId);
+        boolean glowing = step.getKind() == BlackjackAnimationStep.Kind.GLOW_ON;
+        renderPrivateItem(playerId, step.getSlot(), buildActionItem(action, viewer, glowing));
     }
 
     // ---- Card-glow rendering --------------------------------------------
@@ -2876,6 +3019,7 @@ private void removePlayerData(UUID playerId) {
             }
         }
         renderLocalizedToAllViews(BlackjackSlotLayout.ACTIVE_EXIT_SLOT, Material.SPRUCE_DOOR, 1, "blackjack.leave-exit");
+        renderToAllViews(BlackjackSlotLayout.TURN_TIMER_SLOT, buildBrownEdgeGlassItem()); // idle until the first player's turn actually starts -- see startTurnTimer
         clearPregameCountdownFromAllViews();
         dealerHeadSlot = BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT;
         renderLocalizedToAllViews(dealerHeadSlot, Material.CREEPER_HEAD, 1, "blackjack.dealer");
@@ -2967,14 +3111,9 @@ private void dealInitialCards() {
     }, plan.initialBlackjackCheckDelayTicks()); // Delay slightly longer to allow cards to be fully dealt
 }
 
-/**
- * Whether insurance is offered at all this round. Always true for now --
- * {@code dealers.<name>.insurance.enabled} config wiring is a later phase
- * (per the table redesign plan's phased order); this method exists so that
- * wiring has one obvious place to land instead of a scattered literal.
- */
+/** Whether insurance is offered at all this round -- {@code dealers.<name>.insurance.enabled}, loaded once at construction. */
 private boolean insuranceEnabledForThisTable() {
-    return true;
+    return insuranceEnabled;
 }
 
 /**
@@ -3020,14 +3159,14 @@ private void beginInsurancePhase(long myGeneration) {
     insuranceEligiblePlayers.addAll(eligible);
     insuranceDecided.clear();
     insuranceStakes.clear();
-    insuranceSecondsRemaining = BlackjackTiming.INSURANCE_TIMEOUT_DEFAULT_SECONDS;
+    insuranceSecondsRemaining = insuranceTimeoutSeconds;
 
     for (UUID playerId : eligible) {
         renderInsurancePromptForPlayer(playerId);
     }
 
     insuranceTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
-        int secondsLeft = BlackjackTiming.INSURANCE_TIMEOUT_DEFAULT_SECONDS;
+        int secondsLeft = insuranceTimeoutSeconds;
 
         @Override
         public void run() {
@@ -3271,7 +3410,13 @@ private void clearInsurancePromptForPlayer(UUID playerId) {
     }
 }
 
-/** Table-wide teardown only (reset/cancel/delete): stops the canonical insurance countdown task and clears all bookkeeping. */
+/**
+ * Table-wide teardown only (reset/cancel/delete): stops the canonical
+ * insurance countdown task and the canonical turn-timer task (both
+ * table-owned deadlines, never stopped just because one viewer's inventory
+ * closes -- see the class docs on each), and clears all insurance
+ * bookkeeping.
+ */
 private void stopInsurancePhaseBookkeeping() {
     if (insuranceTaskId != -1) {
         Bukkit.getScheduler().cancelTask(insuranceTaskId);
@@ -3281,6 +3426,104 @@ private void stopInsurancePhaseBookkeeping() {
     insuranceEligiblePlayers.clear();
     insuranceDecided.clear();
     insuranceStakes.clear();
+    stopTurnTimerTask();
+}
+
+// ---- Player-turn timer (slot 46) --------------------------------------
+
+/**
+ * (Re)starts the canonical turn-timer deadline for {@code playerId}'s
+ * current hand -- called exclusively from renderActionsForCurrentPlayer's
+ * actionable branch, so it fires every time a fresh decision actually
+ * becomes available (initial turn start, after a Hit, or in a future
+ * split-hand activation) and is implicitly reset by that same call
+ * whenever the previous deadline is superseded. No-op (and immediately
+ * restores the idle brown-glass slot) when turn-timer.enabled is false.
+ */
+private void startTurnTimer(UUID playerId) {
+    stopTurnTimerTask();
+    if (!turnTimerEnabled) {
+        return;
+    }
+    long myGeneration = roundGeneration;
+    int myHandToken = currentHandToken(playerId);
+
+    turnTimerTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+        int secondsLeft = turnTimerTimeoutSeconds;
+
+        @Override
+        public void run() {
+            if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
+                // The hand this deadline belonged to has already moved on
+                // (Stand/Double/leave/reset/completion) -- stop silently,
+                // whatever superseded it owns slot 46 now.
+                if (turnTimerTaskId != -1) {
+                    Bukkit.getScheduler().cancelTask(turnTimerTaskId);
+                    turnTimerTaskId = -1;
+                }
+                return;
+            }
+            if (secondsLeft <= 0) {
+                Bukkit.getScheduler().cancelTask(turnTimerTaskId);
+                turnTimerTaskId = -1;
+                autoStandOnTurnTimeout(playerId, myGeneration, myHandToken);
+                return;
+            }
+            renderTurnTimerToAllViews(secondsLeft);
+            secondsLeft--;
+        }
+    }, 0L, 20L);
+}
+
+/** Cancels the turn-timer task, if any, and restores slot 46 to its idle brown-glass state for every view. */
+private void stopTurnTimerTask() {
+    if (turnTimerTaskId != -1) {
+        Bukkit.getScheduler().cancelTask(turnTimerTaskId);
+        turnTimerTaskId = -1;
+    }
+    if (gameActive) {
+        // Only during active play does slot 46 belong to the turn timer at
+        // all; outside it (transitionBottomBarToActive/resetGame/etc.) some
+        // other phase already owns the slot's rendering.
+        renderToAllViews(BlackjackSlotLayout.TURN_TIMER_SLOT, buildBrownEdgeGlassItem());
+    }
+}
+
+private void renderTurnTimerToAllViews(int secondsLeft) {
+    int amount = Math.max(secondsLeft, 1);
+    inventory.setItem(BlackjackSlotLayout.TURN_TIMER_SLOT, createCustomItem(Material.CLOCK, text("blackjack.turn-timer-lore", "seconds", secondsLeft), amount));
+    for (BlackjackView view : views.values()) {
+        Player viewer = Bukkit.getPlayer(view.getPlayerId());
+        view.getInventory().setItem(BlackjackSlotLayout.TURN_TIMER_SLOT, createCustomItem(Material.CLOCK, localize(viewer, "blackjack.turn-timer-lore", "seconds", secondsLeft), amount));
+    }
+}
+
+/**
+ * On timeout, auto-Stands exactly the hand whose deadline expired --
+ * guarded by roundGeneration + handToken + expected-actionable-state, the
+ * same validation model as every other scheduled per-hand callback, so a
+ * timeout can never fire against a hand that's already moved on.
+ */
+private void autoStandOnTurnTimeout(UUID playerId, long myGeneration, int myHandToken) {
+    synchronized (turnLock) {
+        if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
+            return;
+        }
+        playerDone.put(playerId, true);
+        playerTurnActive.put(playerId, false);
+        bumpHandToken(playerId);
+        renderActionsForCurrentPlayer();
+        Player player = Bukkit.getPlayer(playerId);
+        if (player != null) {
+            switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                case NONE:
+                    break;
+                default:
+                    player.sendMessage(text(player, "blackjack.turn-timer-expired"));
+            }
+        }
+        startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
+    }
 }
 
 private void startNextPlayerTurn() {

@@ -484,6 +484,8 @@ blackjack:
   insurance-paid: "&aInsurance paid: {amount}!"
   insurance-lost: "&cInsurance lost."
   dealer-peek: "&6The dealer peeks... Blackjack!"
+  turn-timer-lore: "Time to decide: {seconds}"
+  turn-timer-expired: "&cTime's up! You stood."
 
 dragon-settings:
   title: "{dealer}'s Dragon Descent Settings"

@@ -484,6 +484,8 @@ blackjack:
   insurance-paid: "&aVersicherung ausgezahlt: {amount}!"
   insurance-lost: "&cVersicherung verloren."
   dealer-peek: "&6Der Dealer schaut nach... Blackjack!"
+  turn-timer-lore: "Zeit zum Entscheiden: {seconds}"
+  turn-timer-expired: "&cZeit abgelaufen! Du hast gehalten."
 
 dragon-settings:
   title: "Dragon-Descent-Einstellungen von {dealer}"
