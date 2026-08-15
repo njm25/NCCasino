@@ -18,6 +18,13 @@ import java.util.UUID;
  * marked {@link Step#isHidden()} -- callers must not draw a Card for it,
  * only reveal one later at showdown, preserving the "hidden card isn't
  * drawn from the shoe until reveal" behavior.
+ *
+ * Player cards begin two slots after each seat's head (head+2, head+3),
+ * matching {@link BlackjackSlotLayout#playerCardSlot}; the dealer's cards
+ * land wherever the caller passes as {@code dealerFirstCardSlot}/{@code
+ * dealerHiddenCardSlot} (production passes
+ * {@link BlackjackSlotLayout#DEALER_UP_CARD_SLOT}/{@link
+ * BlackjackSlotLayout#DEALER_HOLE_CARD_SLOT}).
  */
 public final class BlackjackDealPlan {
 
@@ -107,7 +114,8 @@ public final class BlackjackDealPlan {
         for (int round = 0; round < 2; round++) {
             for (UUID playerId : bettingPlayerOrder) {
                 int seatSlot = seatSlots.get(playerId);
-                steps.add(new Step(playerId, seatSlot + 2 + round, delay, false));
+                steps.add(new Step(playerId, BlackjackSlotLayout.playerCardSlot(seatSlot, round), delay, false));
+                // (playerCardSlot bounds-checks round < SEAT_CARD_CAPACITY; the initial deal only ever uses round 0/1)
                 delay += stepDelayTicks;
             }
             if (round == 0) {

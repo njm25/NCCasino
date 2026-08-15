@@ -21,9 +21,15 @@ import org.nc.nccasino.objects.Suit;
 /**
  * Characterizes BlackjackFrame: an immutable, locale-free snapshot with no
  * Bukkit/Player/localized-string dependencies, and the pure functions
- * BlackjackInventory actually calls through to render every card and every
- * bet-slot presentation (see BlackjackInventory#localizedCardName,
- * #setBetPresentation, #bootstrapView).
+ * BlackjackInventory actually calls through to render every card (see
+ * BlackjackInventory#localizedCardName). Turn state is expressed solely via
+ * Seat#isCurrentTurn -- there is no bet-slip/book presentation model to
+ * reconstruct anymore; the current player's cards glow instead (see
+ * BlackjackInventory's card-glow rendering).
+ *
+ * A Seat now carries a hand queue (List<HandSnapshot> + activeHandIndex)
+ * instead of a single hand/wager/done triple, laying the state shape real
+ * splitting will use later -- this phase, every seat has exactly one hand.
  *
  * Card has no equals/hashCode (see CardTest) -- tests that need two equal
  * frames/hands reuse the same Card instances rather than relying on value
@@ -35,18 +41,27 @@ class BlackjackFrameTest {
     private static final Card KING_HEARTS = new Card(Suit.HEARTS, Rank.KING);
     private static final Card TEN_CLUBS = new Card(Suit.CLUBS, Rank.TEN);
 
+    private static BlackjackFrame.HandSnapshot handSnapshot(List<Card> hand, double wager, boolean done) {
+        return new BlackjackFrame.HandSnapshot(hand, wager, done, true);
+    }
+
     private static BlackjackFrame.Seat seat(
-        UUID player, int slot, double wager, List<Card> hand, boolean done, boolean currentTurn,
-        BlackjackFrame.BetPresentation presentation
+        UUID player, int slot, double wager, List<Card> hand, boolean done, boolean currentTurn
     ) {
-        return new BlackjackFrame.Seat(player, slot, wager, hand, done, currentTurn, presentation);
+        return new BlackjackFrame.Seat(player, slot, List.of(handSnapshot(hand, wager, done)), 0, currentTurn, currentTurn);
+    }
+
+    private static BlackjackFrame.Seat seat(
+        UUID player, int slot, double wager, List<Card> hand, boolean done, boolean currentTurn, boolean actionable
+    ) {
+        return new BlackjackFrame.Seat(player, slot, List.of(handSnapshot(hand, wager, done)), 0, currentTurn, actionable);
     }
 
     // --- no Bukkit types, no Player references, no localized strings ---
 
     @Test
     void frameAndSeatDeclareNoBukkitOrPlayerTypes() {
-        for (Class<?> type : new Class<?>[] {BlackjackFrame.class, BlackjackFrame.Seat.class}) {
+        for (Class<?> type : new Class<?>[] {BlackjackFrame.class, BlackjackFrame.Seat.class, BlackjackFrame.HandSnapshot.class}) {
             for (Field field : type.getDeclaredFields()) {
                 if (field.isSynthetic()) {
                     continue;
@@ -64,7 +79,7 @@ class BlackjackFrameTest {
     void seatHandIsDefensivelyCopiedAndImmutable() {
         List<Card> mutableHand = new java.util.ArrayList<>();
         mutableHand.add(ACE_SPADES);
-        BlackjackFrame.Seat seat = seat(UUID.randomUUID(), 9, 50, mutableHand, false, false, BlackjackFrame.BetPresentation.CLICK_BET);
+        BlackjackFrame.Seat seat = seat(UUID.randomUUID(), 9, 50, mutableHand, false, false);
 
         mutableHand.add(KING_HEARTS); // mutate the original list after construction
         assertEquals(1, seat.getHand().size(), "Seat's hand must not observe later mutation of the source list");
@@ -82,13 +97,45 @@ class BlackjackFrameTest {
             dealerHand, false, mutableSeats
         );
 
-        mutableSeats.add(seat(UUID.randomUUID(), 9, 10, List.of(), false, false, BlackjackFrame.BetPresentation.CLICK_BET));
+        mutableSeats.add(seat(UUID.randomUUID(), 9, 10, List.of(), false, false));
         dealerHand.add(KING_HEARTS);
 
         assertEquals(0, frame.seats().size(), "Frame's seat list must not observe later mutation of the source list");
         assertEquals(1, frame.dealerHand().size(), "Frame's dealer hand must not observe later mutation of the source list");
-        assertThrows(UnsupportedOperationException.class, () -> frame.seats().add(seat(UUID.randomUUID(), 18, 5, List.of(), false, false, BlackjackFrame.BetPresentation.CLICK_BET)));
+        assertThrows(UnsupportedOperationException.class, () -> frame.seats().add(seat(UUID.randomUUID(), 18, 5, List.of(), false, false)));
         assertThrows(UnsupportedOperationException.class, () -> frame.dealerHand().add(ACE_SPADES));
+    }
+
+    // --- a Seat requires at least one hand snapshot, and a valid active index ---
+
+    @Test
+    void seatRejectsAnEmptyHandList() {
+        assertThrows(IllegalArgumentException.class,
+            () -> new BlackjackFrame.Seat(UUID.randomUUID(), 9, List.of(), 0, false, false));
+    }
+
+    @Test
+    void seatRejectsAnOutOfRangeActiveHandIndex() {
+        List<BlackjackFrame.HandSnapshot> hands = List.of(handSnapshot(List.of(ACE_SPADES), 10, false));
+        assertThrows(IllegalArgumentException.class,
+            () -> new BlackjackFrame.Seat(UUID.randomUUID(), 9, hands, 1, false, false));
+        assertThrows(IllegalArgumentException.class,
+            () -> new BlackjackFrame.Seat(UUID.randomUUID(), 9, hands, -1, false, false));
+    }
+
+    // --- multi-hand seat: only the active hand is exposed via the convenience getters ---
+
+    @Test
+    void seatConvenienceGettersReflectOnlyTheActiveHand() {
+        BlackjackFrame.HandSnapshot first = new BlackjackFrame.HandSnapshot(List.of(ACE_SPADES, TEN_CLUBS), 10, true, false);
+        BlackjackFrame.HandSnapshot second = new BlackjackFrame.HandSnapshot(List.of(KING_HEARTS), 10, false, true);
+        BlackjackFrame.Seat seat = new BlackjackFrame.Seat(UUID.randomUUID(), 9, List.of(first, second), 1, true, true);
+
+        assertEquals(2, seat.getHands().size());
+        assertEquals(1, seat.getActiveHandIndex());
+        assertEquals(second.getCards(), seat.getHand());
+        assertEquals(second.getWager(), seat.getWager());
+        assertFalse(seat.isDone());
     }
 
     // --- equal frames producing equal render-relevant state ---
@@ -105,12 +152,12 @@ class BlackjackFrameTest {
         BlackjackFrame a = new BlackjackFrame(
             BlackjackFrame.Phase.ACTIVE, 0, "blackjack.current-player-turn", List.of("player", "Steve"),
             dealerHand, true,
-            List.of(seat(player, 9, 20, playerHand, false, true, BlackjackFrame.BetPresentation.YOUR_TURN))
+            List.of(seat(player, 9, 20, playerHand, false, true))
         );
         BlackjackFrame b = new BlackjackFrame(
             BlackjackFrame.Phase.ACTIVE, 0, "blackjack.current-player-turn", List.of("player", "Steve"),
             dealerHand, true,
-            List.of(seat(player, 9, 20, playerHand, false, true, BlackjackFrame.BetPresentation.YOUR_TURN))
+            List.of(seat(player, 9, 20, playerHand, false, true))
         );
 
         assertEquals(a, b);
@@ -152,88 +199,144 @@ class BlackjackFrameTest {
         assertNotEquals(beforePlaceholderRendered, afterPlaceholderRendered);
     }
 
-    // --- explicit YOUR_TURN/TURN_OVER/CLICK_BET reconstruction ---
+    // --- dealer-head-slot is canonical, phase-independent state (position-as-state) ---
 
     @Test
-    void betSlotRenderForMapsEachPresentationToItsProductionRendering() {
-        BlackjackFrame.BetSlotRender yourTurn = BlackjackFrame.betSlotRenderFor(BlackjackFrame.BetPresentation.YOUR_TURN);
-        assertTrue(yourTurn.isEnchanted());
-        assertEquals("blackjack.your-turn", yourTurn.getKey());
-
-        BlackjackFrame.BetSlotRender turnOver = BlackjackFrame.betSlotRenderFor(BlackjackFrame.BetPresentation.TURN_OVER);
-        assertFalse(turnOver.isEnchanted());
-        assertEquals("blackjack.turn-over", turnOver.getKey());
-
-        BlackjackFrame.BetSlotRender clickBet = BlackjackFrame.betSlotRenderFor(BlackjackFrame.BetPresentation.CLICK_BET);
-        assertFalse(clickBet.isEnchanted());
-        assertEquals("blackjack.click-bet", clickBet.getKey());
-    }
-
-    @Test
-    void seatPresentationIsExplicitAndNotDerivedFromDoneOrCurrentTurn() {
-        // Preserved quirk: after a hit lands on exactly 21, the player is
-        // marked done and their turn deactivated, but the bet slot stays
-        // rendered as YOUR_TURN (an enchanted book) until the *next*
-        // startNextPlayerTurn call explicitly relabels it TURN_OVER. A
-        // presentation inferred from done/currentTurn could never represent
-        // this "done, not current, but still showing YOUR_TURN" state --
-        // the explicit field can, and must.
-        BlackjackFrame.Seat frozenAtTwentyOne = seat(
-            UUID.randomUUID(), 9, 50, List.of(ACE_SPADES, TEN_CLUBS), true, false,
-            BlackjackFrame.BetPresentation.YOUR_TURN
+    void dealerHeadSlotDefaultsToTheLobbyPositionWhenNotSpecified() {
+        BlackjackFrame frame = new BlackjackFrame(
+            BlackjackFrame.Phase.LOBBY, 0, "blackjack.game-info", BlackjackFrame.noPlaceholders(), List.of(), true, List.of()
         );
-
-        assertTrue(frozenAtTwentyOne.isDone());
-        assertFalse(frozenAtTwentyOne.isCurrentTurn());
-        assertEquals(BlackjackFrame.BetPresentation.YOUR_TURN, frozenAtTwentyOne.getPresentation());
+        assertEquals(BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT, frame.dealerHeadSlot());
     }
 
-    // --- complete chair/bet layout for a fresh/late view ---
+    @Test
+    void dealerHeadSlotCanBeSetToTheInPlayPositionForALateViewer() {
+        BlackjackFrame frame = new BlackjackFrame(
+            BlackjackFrame.Phase.ACTIVE, 0, "blackjack.game-info", BlackjackFrame.noPlaceholders(),
+            List.of(), true, BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT, List.of()
+        );
+        assertEquals(BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT, frame.dealerHeadSlot());
+    }
 
     @Test
-    void seatAtReturnsTheOccupyingSeatOrNullForAnEmptyChair() {
+    void framesDifferingOnlyInDealerHeadSlotAreNotEqual() {
+        BlackjackFrame lobby = new BlackjackFrame(
+            BlackjackFrame.Phase.START_TRANSITION, 0, "k", BlackjackFrame.noPlaceholders(),
+            List.of(), true, BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT, List.of()
+        );
+        BlackjackFrame inPlay = new BlackjackFrame(
+            BlackjackFrame.Phase.START_TRANSITION, 0, "k", BlackjackFrame.noPlaceholders(),
+            List.of(), true, BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT, List.of()
+        );
+        assertNotEquals(lobby, inPlay);
+    }
+
+    // --- new phases exist for the start-transition/insurance flow ---
+
+    @Test
+    void phaseEnumIncludesStartTransitionAndInsurance() {
+        assertEquals(
+            List.of("LOBBY", "COUNTDOWN", "START_TRANSITION", "ACTIVE", "INSURANCE"),
+            List.of(BlackjackFrame.Phase.values()).stream().map(Enum::name).toList()
+        );
+    }
+
+    // --- current-turn is the sole, explicit source of glow/action eligibility ---
+
+    @Test
+    void currentTurnIsExplicitAndIndependentOfDone() {
+        // A hand that hit to exactly 21 is marked done, but the turn only
+        // moves to the next seat once startNextPlayerTurn runs -- until
+        // then, currentTurn can still legitimately be true even though the
+        // hand is finished. Nothing derives one field from the other.
+        BlackjackFrame.Seat doneButStillCurrent = seat(UUID.randomUUID(), 9, 50, List.of(ACE_SPADES, TEN_CLUBS), true, true);
+
+        assertTrue(doneButStillCurrent.isDone());
+        assertTrue(doneButStillCurrent.isCurrentTurn());
+        assertFalse(doneButStillCurrent.isAwaitingTurn());
+    }
+
+    @Test
+    void cardGlowStaysOnWhileAnActionIsProcessingEvenThoughButtonsHide() {
+        // While a hit/double-down is mid-flight (the card has been dealt
+        // but its evaluation hasn't landed yet), the seat is still the
+        // table's current turn -- glow must not flicker off -- but its
+        // action buttons must not render, since a duplicate click must be
+        // blocked until the pending action resolves.
+        BlackjackFrame.Seat processing = seat(UUID.randomUUID(), 9, 50, List.of(ACE_SPADES, TEN_CLUBS), false, true, false);
+
+        assertTrue(processing.isCurrentTurn(), "cards must keep glowing while an action is processing");
+        assertFalse(processing.isActionable(), "buttons must hide while an action is processing");
+    }
+
+    @Test
+    void actionableIsNeverTrueForASeatThatIsNotTheCurrentTurn() {
+        BlackjackFrame.Seat notCurrent = seat(UUID.randomUUID(), 9, 50, List.of(), false, false, false);
+        assertFalse(notCurrent.isCurrentTurn());
+        assertFalse(notCurrent.isActionable());
+    }
+
+    @Test
+    void awaitingTurnIsNeitherDoneNorCurrent() {
+        BlackjackFrame.Seat waiting = seat(UUID.randomUUID(), 18, 20, List.of(), false, false);
+        assertTrue(waiting.isAwaitingTurn());
+
+        BlackjackFrame.Seat current = seat(UUID.randomUUID(), 18, 20, List.of(), false, true);
+        assertFalse(current.isAwaitingTurn());
+
+        BlackjackFrame.Seat finished = seat(UUID.randomUUID(), 18, 20, List.of(), true, false);
+        assertFalse(finished.isAwaitingTurn());
+    }
+
+    // --- complete five-seat layout for a fresh/late view ---
+
+    @Test
+    void seatAtReturnsTheOccupyingSeatOrNullForAnEmptySeat() {
         UUID player = UUID.randomUUID();
-        int occupiedChair = BlackjackSlotLayout.CHAIR_SLOTS[0];
-        int emptyChair = BlackjackSlotLayout.CHAIR_SLOTS[1];
+        int occupiedSeat = BlackjackSlotLayout.SEAT_SLOTS[0];
+        int emptySeat = BlackjackSlotLayout.SEAT_SLOTS[1];
 
         BlackjackFrame frame = new BlackjackFrame(
             BlackjackFrame.Phase.LOBBY, 0, "blackjack.game-info", BlackjackFrame.noPlaceholders(),
             List.of(), true,
-            List.of(seat(player, occupiedChair, 0, List.of(), false, false, BlackjackFrame.BetPresentation.CLICK_BET))
+            List.of(seat(player, occupiedSeat, 0, List.of(), false, false))
         );
 
-        assertEquals(player, frame.seatAt(occupiedChair).getPlayerId());
-        assertNull(frame.seatAt(emptyChair));
-        assertNull(frame.seatAt(BlackjackSlotLayout.CHAIR_SLOTS[2]));
+        assertEquals(player, frame.seatAt(occupiedSeat).getPlayerId());
+        assertNull(frame.seatAt(emptySeat));
+        assertNull(frame.seatAt(BlackjackSlotLayout.SEAT_SLOTS[2]));
+        assertNull(frame.seatAt(BlackjackSlotLayout.SEAT_SLOTS[3]));
+        assertNull(frame.seatAt(BlackjackSlotLayout.SEAT_SLOTS[4]));
     }
 
     @Test
-    void everyChairSlotIsResolvableRegardlessOfHowManySeatsAreOccupied() {
-        // Empty-table lobby: seatAt must return null for all three chairs,
+    void allFiveSeatSlotsAreResolvableRegardlessOfHowManySeatsAreOccupied() {
+        // Empty-table lobby: seatAt must return null for all five seats,
         // not throw or skip any -- this is exactly what lets bootstrapView
-        // paint all three chair/bet-paper pairs unconditionally.
+        // paint all five head/bet-spot pairs unconditionally.
         BlackjackFrame emptyLobby = new BlackjackFrame(
             BlackjackFrame.Phase.LOBBY, 0, "blackjack.game-info", BlackjackFrame.noPlaceholders(),
             List.of(), true, List.of()
         );
-        for (int chair : BlackjackSlotLayout.CHAIR_SLOTS) {
-            assertNull(emptyLobby.seatAt(chair));
+        for (int seat : BlackjackSlotLayout.SEAT_SLOTS) {
+            assertNull(emptyLobby.seatAt(seat));
         }
 
-        // Fully seated table.
+        // Fully seated table (all five).
         Map<Integer, UUID> occupants = new java.util.LinkedHashMap<>();
         List<BlackjackFrame.Seat> seats = new java.util.ArrayList<>();
-        for (int chair : BlackjackSlotLayout.CHAIR_SLOTS) {
+        for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
             UUID player = UUID.randomUUID();
-            occupants.put(chair, player);
-            seats.add(seat(player, chair, 10, List.of(), false, false, BlackjackFrame.BetPresentation.CLICK_BET));
+            occupants.put(seatSlot, player);
+            seats.add(seat(player, seatSlot, 10, List.of(), false, false));
         }
         BlackjackFrame fullTable = new BlackjackFrame(
             BlackjackFrame.Phase.LOBBY, 0, "blackjack.game-info", BlackjackFrame.noPlaceholders(),
             List.of(), true, seats
         );
-        for (int chair : BlackjackSlotLayout.CHAIR_SLOTS) {
-            assertEquals(occupants.get(chair), fullTable.seatAt(chair).getPlayerId());
+        assertEquals(5, fullTable.seats().size());
+        for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
+            assertEquals(occupants.get(seatSlot), fullTable.seatAt(seatSlot).getPlayerId());
         }
     }
 
@@ -251,7 +354,7 @@ class BlackjackFrameTest {
         BlackjackFrame midRound = new BlackjackFrame(
             BlackjackFrame.Phase.ACTIVE, 0, "blackjack.current-player-turn", List.of("player", "Alex"),
             dealerHand, false,
-            List.of(seat(player, 18, 40, List.of(ten, seven), false, true, BlackjackFrame.BetPresentation.YOUR_TURN))
+            List.of(seat(player, 18, 40, List.of(ten, seven), false, true))
         );
 
         // Simulate two different viewers opening a late view onto the same
@@ -274,13 +377,11 @@ class BlackjackFrameTest {
         assertEquals(List.of("As of Treboles", "Nueve of Diamantes"), spanishDealerCards);
 
         // Same underlying frame, so the same number of cards and the same
-        // seat/wager/turn/presentation structure regardless of which locale
-        // rendered it.
+        // seat/wager/turn structure regardless of which locale rendered it.
         assertEquals(midRound.dealerHand().size(), englishDealerCards.size());
         assertEquals(midRound.dealerHand().size(), spanishDealerCards.size());
         assertEquals(1, midRound.seats().size());
         assertTrue(midRound.seats().get(0).isCurrentTurn());
-        assertEquals(BlackjackFrame.BetPresentation.YOUR_TURN, midRound.seats().get(0).getPresentation());
         assertEquals(40, midRound.seats().get(0).getWager());
     }
 

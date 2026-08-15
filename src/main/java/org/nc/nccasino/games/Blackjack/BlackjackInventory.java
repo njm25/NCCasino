@@ -2,10 +2,12 @@ package org.nc.nccasino.games.Blackjack;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
@@ -40,6 +42,7 @@ import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.AttributeHelper;
 import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Deck;
+import org.nc.nccasino.objects.Rank;
 import org.nc.nccasino.objects.Suit;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.payout.PayoutMessages;
@@ -65,10 +68,27 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     private Iterator<UUID> playerIterator; // Iterator for player turns
     private final Map<UUID, Integer> playerCardCounts = new HashMap<>(); // Track number of cards each player has
     private final Map<UUID, Boolean> playerDone = new HashMap<>(); // Track whether the player is done (stood or busted)
-    private final Map<UUID, List<Card>> playerHands = new HashMap<>();
+    // Per-player hand queue -- exactly one BlackjackHand per player in this
+    // phase (index 0), but shaped as a list from the start so real
+    // splitting (a later phase) doesn't have to retrofit this state shape.
+    // activeHandIndex is a live pointer (looked up, not captured across
+    // ticks) -- see ensureActiveHand/activeHand.
+    private final Map<UUID, List<BlackjackHand>> playerHands = new HashMap<>();
+    private final Map<UUID, Integer> activeHandIndex = new HashMap<>();
     private final List<Card> dealerHand = new ArrayList<>();
-    private final Map<UUID, Double> selectedWagers = new HashMap<>();
-    private final Object turnLock = new Object(); // Lock object for turn actionsactions
+    // Wager selection vs. commitment (see the table redesign plan): a
+    // chip/all-in click only sets a pending selected amount here, moving no
+    // funds and touching no ledger -- only a bet-spot click commits. Full
+    // commit-side wiring (bet-spot click pushing onto
+    // pregameWagerIncrements, Undo Last/Undo All reading from it) is a
+    // later phase; today's Undo Last/Undo All still operate on the
+    // pre-existing playerBets/lastBetAmounts maps below.
+    private final Map<UUID, Double> selectedWager = new HashMap<>();
+    // Committed wager-increment ledger, per player -- laid down now so a
+    // later phase doesn't have to retrofit this state shape. Unused until
+    // bet-spot-click commit wiring lands.
+    private final Map<UUID, java.util.Deque<Double>> pregameWagerIncrements = new HashMap<>();
+    private final Object turnLock = new Object(); // Lock object for turn actions
     private final Map<UUID, Boolean> playerTurnActive = new HashMap<>();
     private Deck deck; // Declare the deck as a class variable
     private Boolean firstFin=true;
@@ -79,31 +99,105 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     // target and every mutation fans out from it to each of these -- see
     // getOrCreateView/BlackjackView. Never a source of canonical state.
     private final Map<UUID, BlackjackView> views = new HashMap<>();
-    // Canonical record of what the lever (slot 1) is currently telling the
-    // player, kept in sync everywhere the lever is set so a freshly opened
-    // view can reproduce it exactly instead of guessing from an item's
-    // current material/amount. Null until the lever is set for the first
-    // time (matches slot 1 being genuinely empty before that).
+    // Canonical record of what the table's current status is, kept in sync
+    // everywhere it's set so a freshly opened view can reproduce it exactly.
+    // Null until set for the first time. The 5-seat layout has no single
+    // dedicated "status clock" slot in the active phase (see the table
+    // redesign plan's slot map) -- the pregame/countdown text still renders,
+    // per seated player, at BlackjackSlotLayout.pregameCountdownSlot; the
+    // active-phase "whose turn" text is conveyed by card glow (see
+    // refreshCardGlow) plus the existing chat messages, not an item anymore.
     private String leverKey;
     private Object[] leverPlaceholders = new Object[0];
     // Last value the countdown clock was rendered with, read by
     // captureFrame for late-view bootstrap. The running task only has this
     // as a Runnable-local variable otherwise.
     private int countdownSecondsRemaining;
+    // Canonical dealer-head position -- BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT
+    // (8) until the start-transition U-path animation (see
+    // startDealerInspection) delivers the dealer to
+    // BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT (53), one slot at a time.
+    // Tracked as its own field (dealer-position-as-state, per the table
+    // redesign plan) rather than derived from phase, and mirrored onto
+    // BlackjackFrame so a late viewer bootstraps the dealer where it
+    // actually is, mid-animation or not.
+    private int dealerHeadSlot = BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT;
+    // True from the moment the pregame countdown hits zero until the
+    // readiness gate opens and activateGame() actually deals -- see
+    // beginStartTransition/isReadyToDeal. Drives BlackjackFrame.Phase.START_TRANSITION.
+    private boolean startTransitionActive = false;
+    // Seated players whose private door-conceal animation has finished
+    // (the final step, door arrived at slot 45) during the current
+    // start-transition attempt. Cleared at the start of every
+    // beginStartTransition call; read by isReadyToDeal's polling gate.
+    private final Set<UUID> startTransitionDoorConcealComplete = new HashSet<>();
+
+    // ---- Insurance (Phase 5) --------------------------------------------
+    // Its own explicit phase, never mixed into turn state -- see
+    // beginInsurancePhase/performDealerPeekThenProceed. Table-owned
+    // canonical deadline (like the plan describes for turn deadlines too):
+    // a real generation-guarded scheduled resolution, never the private
+    // per-viewer BlackjackAnimationRun category used for cosmetic lobby
+    // guidance loops.
+    private boolean insurancePhaseActive = false;
+    /** Seated players with a committed wager when the insurance offer opened -- every one of them is eligible, including natural-blackjack holders. */
+    private final Set<UUID> insuranceEligiblePlayers = new HashSet<>();
+    /** Eligible players who have answered (Yes, No, or defaulted via timeout) this round. */
+    private final Set<UUID> insuranceDecided = new HashSet<>();
+    /** Players who took insurance, and how much they staked (already debited) -- paid out 2:1+stake only if the dealer's peek finds blackjack. */
+    private final Map<UUID, Double> insuranceStakes = new HashMap<>();
+    private int insuranceTaskId = -1;
+    private int insuranceSecondsRemaining;
+    // Animation infrastructure (Phase 2) -- scaffolding only, nothing here
+    // is triggered from real gameplay yet (that's a later phase). Private
+    // (per-viewer) animation runs: chair guide, wager guide, bet-spot
+    // blink, door reveal/conceal, action guide. At most one per viewer;
+    // cancelled on that viewer's own close/quit/seat-change -- see
+    // cancelPrivateAnimation.
+    private final Map<UUID, BlackjackAnimationRun> privateAnimationRuns = new HashMap<>();
+    // Per-viewer generation counter, bumped every time that viewer's
+    // private animation must be invalidated (close/quit/seat-change, or a
+    // fresh guidance cycle superseding an older one). A run captures the
+    // value in effect when it was scheduled; a step whose captured value no
+    // longer matches the live counter is stale and must no-op.
+    private final Map<UUID, Integer> viewerAnimationGeneration = new HashMap<>();
+    // The single shared/table-owned animation run (dealer U-path
+    // inspection, split slide/park/reactivate), if one is currently active.
+    // Never cancelled just because one viewer closes their inventory --
+    // only by a genuinely table-wide event (reset/cancel/delete, dealer
+    // replacement, plugin shutdown) or its own natural completion. See
+    // cancelSharedAnimation.
+    private BlackjackAnimationRun sharedAnimationRun;
     // Canonical, locale-neutral record of whether the dealer's hidden-card
     // placeholder has actually been rendered yet -- set only inside the
     // scheduled hidden-card render callback and cleared on reveal and on
     // every reset/cancel/delete path, so a view bootstrapped before that
     // callback has run never shows the placeholder early.
     private boolean hiddenCardPlaceholderVisible;
-    // Canonical, locale-neutral record of what each seated player's bet
-    // slot is currently presenting, updated at the exact same production
-    // transitions that fan the rendered item out to every view -- never
-    // inferred from playerDone/currentPlayerId, so bootstrap reproduces
-    // exactly what existing viewers see (including the hit-to-21 and
-    // double-down quirks where the slot stays YOUR_TURN until the next
-    // turn's transition explicitly overwrites it).
-    private final Map<UUID, BlackjackFrame.BetPresentation> betPresentation = new HashMap<>();
+    // Round-generation counter, bumped every time a brand-new round starts
+    // (activateGame) or the table is reset/cancelled/deleted. Captured by
+    // every scheduled per-hand callback (hit evaluation, double-down
+    // completion) alongside handToken below, so a callback left over from a
+    // stale round for a still-seated player can never mutate the new round.
+    private long roundGeneration = 0;
+    // Per-player token bumped every time that seat's turn is resolved
+    // (stand, bust, hit-to-21, double-down completion, leave-during-turn).
+    // A scheduled callback captures the token in effect when it was
+    // scheduled; if the token has since moved on, the hand it was meant for
+    // is already resolved and the callback must no-op rather than mutate
+    // playerDone/playerTurnActive or advance the turn again. This is what
+    // makes handleDoubleDown atomic (see its doc comment).
+    private final Map<UUID, Integer> handToken = new HashMap<>();
+    // Bumped every time a turn-advance is initiated -- either the delayed
+    // one scheduled by startNextPlayerTurnWithDelay, or an immediate one
+    // forced by a player leaving/disconnecting mid-turn (advanceTurnNow).
+    // A delayed advance captures the sequence in effect when it was
+    // scheduled; if something else has already advanced the turn by the
+    // time it fires, its captured value is stale and it must no-op instead
+    // of advancing a second time and skipping whoever the immediate
+    // advance already moved to.
+    private long turnSequence = 0;
+
     public BlackjackInventory(UUID dealerId, Nccasino plugin, String internalName) {
         super(
             dealerId,
@@ -131,7 +225,7 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
             // Retrieve the current value
             String value = plugin.getConfig().getString("dealers." + internalName + ".stand-on-17", "100").trim();
             int standOn17Chance;
-            
+
             try {
                 standOn17Chance = Integer.parseInt(value);
             } catch (NumberFormatException e) {
@@ -139,7 +233,7 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
                 plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
                 plugin.saveConfig();
             }
-        
+
             // Check if the value is greater than 100 or less than 0
             if (standOn17Chance > 100 ) {
                 // Reset the value to 100
@@ -159,7 +253,7 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
         } else {
             // Retrieve the current value
             int currentDecks = plugin.getConfig().getInt("dealers." + internalName + ".number-of-decks");
-        
+
             // Check if the value is less than 1
             if (currentDecks <= 0) {
                 numberOfDecks = 6;
@@ -174,10 +268,10 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
             }
         }
 
-        
+
         this.deck = new Deck(numberOfDecks); // Initialize the deck
         loadChipValuesFromConfig(); // Load chip values from config
-        
+
        registerListener();
        plugin.addInventory(dealerId, this);
     }
@@ -198,9 +292,9 @@ private void registerListener() {
                 onViewOpened(player);
             }
         }
-      
-    }
- 
+
+      }
+
     // Load chip values from the plugin config
     private void loadChipValuesFromConfig() {
         List<Double> configuredValues = new ArrayList<>();
@@ -231,6 +325,719 @@ private void registerListener() {
         return mat != null && stack.getType() == mat;
     }
 
+    // ---- Seat-order helpers -------------------------------------------
+
+    /** The player currently occupying {@code seatSlot}, or null if empty. */
+    private UUID seatOwnerAt(int seatSlot) {
+        for (Map.Entry<UUID, Integer> entry : playerSeats.entrySet()) {
+            if (entry.getValue() == seatSlot) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Seated players in table order (9, 18, 27, 36), never HashMap
+     * iteration order -- used everywhere dealing/turn sequencing must be
+     * deterministic (initial deal, turn order, late-view bootstrap).
+     */
+    private List<UUID> orderedSeatedPlayers() {
+        List<UUID> ordered = new ArrayList<>();
+        for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
+            UUID owner = seatOwnerAt(seatSlot);
+            if (owner != null) {
+                ordered.add(owner);
+            }
+        }
+        return ordered;
+    }
+
+    private double totalBet(UUID playerId) {
+        Map<Integer, Double> bets = playerBets.get(playerId);
+        return bets == null ? 0.0 : bets.values().stream().mapToDouble(Double::doubleValue).sum();
+    }
+
+    // ---- Per-player hand-queue helpers (Phase 1: exactly one hand, index 0) ----
+
+    /** The active {@link BlackjackHand} for {@code playerId}, or null if they have no hands yet (pregame). */
+    private BlackjackHand activeHand(UUID playerId) {
+        List<BlackjackHand> hands = playerHands.get(playerId);
+        if (hands == null || hands.isEmpty()) {
+            return null;
+        }
+        int idx = activeHandIndex.getOrDefault(playerId, 0);
+        if (idx < 0 || idx >= hands.size()) {
+            idx = 0;
+        }
+        return hands.get(idx);
+    }
+
+    /** The active hand's cards, or an empty (never null) list before any hand has been created. */
+    private List<Card> activeHandCards(UUID playerId) {
+        BlackjackHand hand = activeHand(playerId);
+        return hand == null ? List.of() : hand.getCards();
+    }
+
+    /**
+     * The active {@link BlackjackHand} for {@code playerId}, creating one
+     * (seeded with their currently committed wager) on first use -- so
+     * dealing the very first card lazily establishes the hand rather than
+     * requiring every seat to be pre-populated with an empty hand.
+     */
+    private BlackjackHand ensureActiveHand(UUID playerId) {
+        List<BlackjackHand> hands = playerHands.computeIfAbsent(playerId, k -> new ArrayList<>());
+        if (hands.isEmpty()) {
+            hands.add(new BlackjackHand(totalBet(playerId)));
+            activeHandIndex.put(playerId, 0);
+        }
+        int idx = activeHandIndex.getOrDefault(playerId, 0);
+        if (idx < 0 || idx >= hands.size()) {
+            idx = 0;
+            activeHandIndex.put(playerId, 0);
+        }
+        return hands.get(idx);
+    }
+
+    // ---- Animation-run scaffolding (Phase 2) ---------------------------
+    // Nothing below actually schedules a chair-guide/wager-guide/etc.
+    // animation yet -- that wiring is a later phase. This is only the
+    // bookkeeping + cancellation-scope machinery so that later phase
+    // doesn't have to retrofit it.
+
+    private int currentViewerAnimationGeneration(UUID playerId) {
+        return viewerAnimationGeneration.getOrDefault(playerId, 0);
+    }
+
+    /** Invalidates any in-flight step scheduled under {@code playerId}'s current private animation generation. */
+    private void bumpViewerAnimationGeneration(UUID playerId) {
+        viewerAnimationGeneration.merge(playerId, 1, Integer::sum);
+    }
+
+    /**
+     * Cancels {@code playerId}'s currently-running private animation (chair
+     * guide, wager guide, bet-spot blink, door reveal/conceal, action
+     * guide), if any, and bumps their animation generation so any in-flight
+     * step from it no-ops. Never touches the shared/table-owned run --
+     * that's the entire point of the private/shared split (see
+     * BlackjackAnimationRun's class doc). Called on that viewer's own
+     * close/quit/seat-change; safe to call even when no private animation
+     * is currently running (e.g. every phase-2 call site today, since
+     * nothing schedules one yet).
+     */
+    private void cancelPrivateAnimation(UUID playerId) {
+        BlackjackAnimationRun run = privateAnimationRuns.remove(playerId);
+        if (run != null) {
+            run.cancel();
+        }
+        bumpViewerAnimationGeneration(playerId);
+    }
+
+    /**
+     * Cancels the shared/table-owned animation run (dealer U-path
+     * inspection, split slide/park/reactivate), if one is active. Only for
+     * genuinely table-wide events (reset/cancel/delete, dealer
+     * replacement, plugin shutdown) -- never call this just because one
+     * viewer's inventory closed.
+     */
+    private void cancelSharedAnimation() {
+        if (sharedAnimationRun != null) {
+            sharedAnimationRun.cancel();
+            sharedAnimationRun = null;
+        }
+    }
+
+    /** Cancels every currently-tracked animation (private and shared) -- for table-wide teardown only (reset/cancel/delete). */
+    private void cancelAllAnimations() {
+        for (BlackjackAnimationRun run : privateAnimationRuns.values()) {
+            run.cancel();
+        }
+        privateAnimationRuns.clear();
+        viewerAnimationGeneration.clear();
+        cancelSharedAnimation();
+    }
+
+    /** Derives the table-global phase the same way captureFrame does, for BlackjackAnimationRun bookkeeping. */
+    private BlackjackFrame.Phase capturePhase() {
+        if (gameActive) {
+            return BlackjackFrame.Phase.ACTIVE;
+        }
+        if (startTransitionActive) {
+            return BlackjackFrame.Phase.START_TRANSITION;
+        }
+        if (countdownTaskId != -1) {
+            return BlackjackFrame.Phase.COUNTDOWN;
+        }
+        return BlackjackFrame.Phase.LOBBY;
+    }
+
+    /** Bumps {@code playerId}'s private-animation generation and returns the new value, for a freshly-started run to capture. */
+    private int bumpAndGetViewerAnimationGeneration(UUID playerId) {
+        bumpViewerAnimationGeneration(playerId);
+        return currentViewerAnimationGeneration(playerId);
+    }
+
+    /**
+     * Whether a step captured under {@code capturedGeneration} for {@code playerId} is stale. Deliberately does not
+     * also compare phase (unlike {@link BlackjackAnimationRun#isStale}) -- the lobby/wager guidance animations in
+     * this phase must survive a LOBBY-to-COUNTDOWN transition (guidance keeps looping for a still-unseated/still-
+     * selecting viewer even after some other player's bet has started the table's countdown), so their own
+     * seated/gameActive checks are the more precise guard; a later phase's phase-scoped animations (e.g. the
+     * start-transition dealer U-path) can lean on BlackjackAnimationRun.isStale's phase comparison instead, since
+     * those really are only ever valid for one fixed phase.
+     */
+    private boolean isStaleViewerAnimation(UUID playerId, int capturedGeneration) {
+        return currentViewerAnimationGeneration(playerId) != capturedGeneration;
+    }
+
+    /** Writes {@code item} into only {@code playerId}'s own open view, if they have one -- never the legacy inventory or any other viewer. */
+    private void renderPrivateItem(UUID playerId, int slot, ItemStack item) {
+        BlackjackView view = views.get(playerId);
+        if (view != null) {
+            view.getInventory().setItem(slot, item);
+        }
+    }
+
+    /** Like {@link #createCustomItem(Material, String, int)}, but pre-glowing. */
+    private ItemStack createGlowingCustomItem(Material material, String name, int amount) {
+        ItemStack item = createCustomItem(material, name, amount);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            applyGlow(meta);
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    /** The decorative brown edge-glass shown at {@link BlackjackSlotLayout#UNSEATED_EDGE_GLASS_SLOT} for an unseated viewer. */
+    private ItemStack buildBrownEdgeGlassItem() {
+        ItemStack item = new ItemStack(Material.BROWN_STAINED_GLASS_PANE);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName("§r");
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    // ---- Pregame bottom bar: unseated vs. seated, per-viewer -----------
+    // The bottom row (45-53) shows a genuinely different layout depending
+    // on whether THIS viewer has sat down yet -- not just on the table's
+    // global phase -- per the table redesign plan's slot map. An unseated
+    // viewer sees door@45 + brown edge glass@46 and nothing else, even if
+    // other players are already seated and betting; only once they sit
+    // does their own view reveal Undo All/Undo Last/chips/All In/door.
+
+    /** Unseated pregame/countdown bottom bar: door@45, brown edge glass@46, everything else background. */
+    private void paintUnseatedBottomBar(Inventory target, Player viewer) {
+        target.setItem(BlackjackSlotLayout.UNSEATED_EXIT_SLOT, createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1));
+        target.setItem(BlackjackSlotLayout.UNSEATED_EDGE_GLASS_SLOT, buildBrownEdgeGlassItem());
+        for (int slot = BlackjackSlotLayout.UNDO_ALL_SLOT + 2; slot <= BlackjackSlotLayout.PREGAME_EXIT_SLOT; slot++) {
+            target.setItem(slot, buildBackgroundPaneItem());
+        }
+    }
+
+    /** Seated pregame/countdown bottom bar: Undo All@45, Undo Last@46, 5 chips@47-51, All In@52, door@53. */
+    private void paintSeatedBottomBar(Inventory target, Player viewer, UUID playerId) {
+        for (int slot = BlackjackSlotLayout.UNDO_ALL_SLOT; slot <= BlackjackSlotLayout.PREGAME_EXIT_SLOT; slot++) {
+            target.setItem(slot, buildSeatedBottomBarSlotItem(slot, playerId, viewer));
+        }
+    }
+
+    /** Builds whichever seated-bottom-bar item belongs at {@code slot} -- the single source of truth reused by the full paint, the door-reveal animation, and per-chip refreshes. */
+    private ItemStack buildSeatedBottomBarSlotItem(int slot, UUID playerId, Player viewer) {
+        if (slot == BlackjackSlotLayout.UNDO_ALL_SLOT) {
+            return createCustomItem(Material.BARRIER, localize(viewer, "blackjack.undo-all"), 1);
+        }
+        if (slot == BlackjackSlotLayout.UNDO_LAST_SLOT) {
+            return createCustomItem(Material.WIND_CHARGE, localize(viewer, "blackjack.undo-last"), 1);
+        }
+        if (ChipSlots.isChipSlot(slot)) {
+            Double value = chipValues.get(slot);
+            if (value == null) {
+                return buildBackgroundPaneItem();
+            }
+            Double selected = selectedWager.get(playerId);
+            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, value);
+            return BlackjackWagerSelection.isSelected(selected, value)
+                ? createEnchantedItem(plugin.getCurrency(internalName), chipName, (int) (double) value)
+                : createCustomItem(plugin.getCurrency(internalName), chipName, (int) (double) value);
+        }
+        if (slot == BlackjackSlotLayout.ALL_IN_SLOT) {
+            return createCustomItem(Material.SNIFFER_EGG, localize(viewer, "blackjack.all-in"), 1);
+        }
+        if (slot == BlackjackSlotLayout.PREGAME_EXIT_SLOT) {
+            return createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1);
+        }
+        return buildBackgroundPaneItem();
+    }
+
+    // ---- Chair guidance (private, per unseated viewer) ------------------
+
+    /** Schedules the first chair-guidance cycle to begin CHAIR_GUIDANCE_START_DELAY_TICKS from now, per the table redesign plan. */
+    private void scheduleChairGuidanceStart(UUID playerId) {
+        int myGeneration = bumpAndGetViewerAnimationGeneration(playerId);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> startChairGuidance(playerId, myGeneration), BlackjackTiming.CHAIR_GUIDANCE_START_DELAY_TICKS);
+    }
+
+    private void startChairGuidance(UUID playerId, int myGeneration) {
+        if (isStaleViewerAnimation(playerId, myGeneration) || playerSeats.containsKey(playerId) || gameActive || !views.containsKey(playerId)) {
+            return;
+        }
+        privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, roundGeneration, myGeneration, capturePhase()));
+        runChairGuidanceCycle(playerId, myGeneration);
+    }
+
+    /**
+     * Schedules one full pass of BlackjackChairGuidancePlan, then reschedules itself once that pass completes --
+     * re-deriving which seats are filled each time (never baking a stale seat list into one long-running plan),
+     * so a seat filling mid-loop is reflected in the very next pass.
+     */
+    private void runChairGuidanceCycle(UUID playerId, int myGeneration) {
+        if (isStaleViewerAnimation(playerId, myGeneration) || playerSeats.containsKey(playerId) || gameActive || !views.containsKey(playerId)) {
+            return;
+        }
+        Set<Integer> filledSeats = new HashSet<>(playerSeats.values());
+        List<BlackjackAnimationStep> steps = BlackjackChairGuidancePlan.build(filledSeats, BlackjackTiming.CHAIR_GUIDANCE_STEP_TICKS);
+        if (steps.isEmpty()) {
+            return; // every seat is filled -- nothing left to guide
+        }
+        for (BlackjackAnimationStep step : steps) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (isStaleViewerAnimation(playerId, myGeneration) || playerSeats.containsKey(playerId) || gameActive) {
+                    return;
+                }
+                applyChairGuidanceStep(playerId, step);
+            }, step.getDelayTicks());
+        }
+        long cycleTicks = BlackjackChairGuidancePlan.cycleDurationTicks(filledSeats, BlackjackTiming.CHAIR_GUIDANCE_STEP_TICKS);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> runChairGuidanceCycle(playerId, myGeneration), Math.max(cycleTicks, 1L));
+    }
+
+    private void applyChairGuidanceStep(UUID playerId, BlackjackAnimationStep step) {
+        Player viewer = Bukkit.getPlayer(playerId);
+        boolean glowing = step.getKind() == BlackjackAnimationStep.Kind.GLOW_ON;
+        ItemStack item = glowing
+            ? createGlowingCustomItem(Material.OAK_STAIRS, localize(viewer, "blackjack.chair-guidance-hint"), 1)
+            : createCustomItem(Material.OAK_STAIRS, localize(viewer, "blackjack.click-sit"), 1);
+        renderPrivateItem(playerId, step.getSlot(), item);
+    }
+
+    // ---- Door reveal on sit + wager guidance (private, per seated-but-not-yet-selecting viewer) ----
+
+    /** Slides the bottom bar from door+glass to the full seated wager bar for the viewer who just sat, then hands off to wager guidance. */
+    private void startWagerBarReveal(UUID playerId) {
+        int myGeneration = bumpAndGetViewerAnimationGeneration(playerId);
+        privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, roundGeneration, myGeneration, capturePhase()));
+
+        List<BlackjackAnimationStep> steps = BlackjackWagerRevealPlan.reveal(BlackjackTiming.WAGER_REVEAL_STEP_TICKS);
+        for (BlackjackAnimationStep step : steps) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (isStaleViewerAnimation(playerId, myGeneration)) {
+                    return;
+                }
+                applyWagerRevealStep(playerId, step);
+            }, step.getDelayTicks());
+        }
+        long totalTicks = steps.isEmpty() ? 0 : steps.get(steps.size() - 1).getDelayTicks() + BlackjackTiming.WAGER_REVEAL_STEP_TICKS;
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (isStaleViewerAnimation(playerId, myGeneration)) {
+                return;
+            }
+            startWagerGuidance(playerId);
+        }, totalTicks);
+    }
+
+    private void applyWagerRevealStep(UUID playerId, BlackjackAnimationStep step) {
+        Player viewer = Bukkit.getPlayer(playerId);
+        renderPrivateItem(playerId, step.getSlot(), buildSeatedBottomBarSlotItem(step.getSlot(), playerId, viewer));
+    }
+
+    /** Cycles glow left-to-right over the 5 chip slots until the viewer selects a denomination (or All In). */
+    private void startWagerGuidance(UUID playerId) {
+        if (!playerSeats.containsKey(playerId) || gameActive) {
+            return;
+        }
+        int myGeneration = bumpAndGetViewerAnimationGeneration(playerId);
+        privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, roundGeneration, myGeneration, capturePhase()));
+        runWagerGuidanceCycle(playerId, myGeneration);
+    }
+
+    private void runWagerGuidanceCycle(UUID playerId, int myGeneration) {
+        if (isStaleViewerAnimation(playerId, myGeneration) || !playerSeats.containsKey(playerId) || gameActive) {
+            return;
+        }
+        Double selected = selectedWager.get(playerId);
+        if (selected != null && selected > 0) {
+            return; // a selection is pending -- the bet-spot blink owns the UI now, not wager guidance
+        }
+        List<BlackjackAnimationStep> steps = BlackjackWagerGuidancePlan.build(BlackjackTiming.WAGER_GUIDANCE_STEP_TICKS);
+        for (BlackjackAnimationStep step : steps) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (isStaleViewerAnimation(playerId, myGeneration)) {
+                    return;
+                }
+                applyWagerGuidanceStep(playerId, step);
+            }, step.getDelayTicks());
+        }
+        long cycleTicks = BlackjackWagerGuidancePlan.cycleDurationTicks(BlackjackTiming.WAGER_GUIDANCE_STEP_TICKS);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> runWagerGuidanceCycle(playerId, myGeneration), Math.max(cycleTicks, 1L));
+    }
+
+    private void applyWagerGuidanceStep(UUID playerId, BlackjackAnimationStep step) {
+        Double value = chipValues.get(step.getSlot());
+        if (value == null) {
+            return;
+        }
+        Player viewer = Bukkit.getPlayer(playerId);
+        boolean glowing = step.getKind() == BlackjackAnimationStep.Kind.GLOW_ON;
+        String chipName = plugin.getChipDisplayName(currencyMode, currencyName, value);
+        ItemStack item = createCustomItem(plugin.getCurrency(internalName), chipName, (int) (double) value);
+        if (glowing) {
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                List<String> lore = new ArrayList<>();
+                lore.add(localize(viewer, "blackjack.wager-guidance-hint"));
+                meta.setLore(lore);
+                applyGlow(meta);
+                item.setItemMeta(meta);
+            }
+        }
+        renderPrivateItem(playerId, step.getSlot(), item);
+    }
+
+    // ---- Bet-spot blink (private, per viewer with a pending selection) --
+
+    /** Blinks glow on the viewer's own bet spot, showing "Click to add {amount}", until they commit or select something else. */
+    private void startBetSpotBlink(UUID playerId) {
+        if (!playerSeats.containsKey(playerId)) {
+            return;
+        }
+        int betSpotSlot = BlackjackSlotLayout.betSlipSlot(playerSeats.get(playerId));
+        int myGeneration = bumpAndGetViewerAnimationGeneration(playerId);
+        privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, roundGeneration, myGeneration, capturePhase()));
+        runBetSpotBlinkCycle(playerId, betSpotSlot, myGeneration);
+    }
+
+    private void runBetSpotBlinkCycle(UUID playerId, int betSpotSlot, int myGeneration) {
+        if (isStaleViewerAnimation(playerId, myGeneration) || !playerSeats.containsKey(playerId) || gameActive) {
+            return;
+        }
+        Double selected = selectedWager.get(playerId);
+        if (selected == null || selected <= 0) {
+            return; // selection was cleared/consumed elsewhere -- nothing to blink about anymore
+        }
+        List<BlackjackAnimationStep> steps = BlackjackBetSpotBlinkPlan.build(betSpotSlot, BlackjackTiming.BET_SPOT_BLINK_STEP_TICKS);
+        for (BlackjackAnimationStep step : steps) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (isStaleViewerAnimation(playerId, myGeneration)) {
+                    return;
+                }
+                applyBetSpotBlinkStep(playerId, betSpotSlot, step);
+            }, step.getDelayTicks());
+        }
+        long cycleTicks = BlackjackBetSpotBlinkPlan.cycleDurationTicks(BlackjackTiming.BET_SPOT_BLINK_STEP_TICKS);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> runBetSpotBlinkCycle(playerId, betSpotSlot, myGeneration), Math.max(cycleTicks, 1L));
+    }
+
+    private void applyBetSpotBlinkStep(UUID playerId, int betSpotSlot, BlackjackAnimationStep step) {
+        Player viewer = Bukkit.getPlayer(playerId);
+        boolean glowing = step.getKind() == BlackjackAnimationStep.Kind.GLOW_ON;
+        double selected = selectedWager.getOrDefault(playerId, 0.0);
+        ItemStack item = createCustomItem(
+            Material.BROWN_STAINED_GLASS_PANE,
+            localize(viewer, "blackjack.click-to-add-wager", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, selected)),
+            1
+        );
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            double committed = BlackjackWagerLedger.total(pregameWagerIncrements.computeIfAbsent(playerId, k -> new java.util.ArrayDeque<>()));
+            List<String> lore = new ArrayList<>();
+            if (committed > 0) {
+                lore.add(localize(viewer, "blackjack.hand-wager-lore", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, committed)));
+            }
+            meta.setLore(lore);
+            if (glowing) {
+                applyGlow(meta);
+            }
+            item.setItemMeta(meta);
+        }
+        renderPrivateItem(playerId, betSpotSlot, item);
+    }
+
+    // ---- Start transition (door-conceal + dealer U-path) ----------------
+    // Runs once the pregame countdown hits zero, replacing the old
+    // immediate countdown-to-activateGame jump. Two animations run
+    // concurrently: a private door-conceal per seated viewer, and the
+    // shared/table-owned dealer U-path inspection -- see the table
+    // redesign plan's "Start-transition sequencing" paragraph for why the
+    // dealer's bottom-row leg (47-53) is gated behind every conceal
+    // finishing (both animations want that same slot range) while the
+    // top/left leg runs freely alongside door-conceal.
+
+    /**
+     * Entry point, called instead of activateGame() the moment the
+     * countdown reaches zero. Cancels the countdown clock for good, force-
+     * cancels any still-in-progress lobby animation for every seated
+     * player (a player who hadn't committed a wager yet just doesn't get a
+     * hand this round), then kicks off door-conceal + dealer inspection
+     * concurrently and starts polling the readiness gate.
+     */
+    private void beginStartTransition() {
+        if (countdownTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(countdownTaskId);
+            countdownTaskId = -1;
+        }
+        clearPregameCountdownFromAllViews();
+
+        roundGeneration++;
+        long myRoundGeneration = roundGeneration;
+        startTransitionActive = true;
+        startTransitionDoorConcealComplete.clear();
+
+        List<UUID> seatedPlayers = new ArrayList<>(playerSeats.keySet());
+        for (UUID playerId : seatedPlayers) {
+            // Stops wager guidance / bet-spot blink for anyone still
+            // mid-selection -- only players with a committed wager get
+            // cards/turns, per the table redesign plan.
+            cancelPrivateAnimation(playerId);
+        }
+        selectedWager.clear();
+
+        for (UUID playerId : seatedPlayers) {
+            startDoorConceal(playerId, myRoundGeneration);
+        }
+        startDealerInspection(myRoundGeneration);
+
+        scheduleDealReadinessCheck(myRoundGeneration);
+    }
+
+    // ---- Per-viewer door-conceal ----------------------------------------
+
+    private void startDoorConceal(UUID playerId, long myRoundGeneration) {
+        int myAnimGeneration = bumpAndGetViewerAnimationGeneration(playerId);
+        privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, myRoundGeneration, myAnimGeneration, BlackjackFrame.Phase.START_TRANSITION));
+
+        List<BlackjackAnimationStep> steps = BlackjackWagerRevealPlan.conceal(BlackjackTiming.WAGER_REVEAL_STEP_TICKS);
+        for (BlackjackAnimationStep step : steps) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (roundGeneration != myRoundGeneration || isStaleViewerAnimation(playerId, myAnimGeneration)) {
+                    return;
+                }
+                applyDoorConcealStep(playerId, step);
+                if (step.getSlot() == BlackjackSlotLayout.UNSEATED_EXIT_SLOT) {
+                    // Final step: the door has arrived back at 45.
+                    startTransitionDoorConcealComplete.add(playerId);
+                }
+            }, step.getDelayTicks());
+        }
+    }
+
+    private void applyDoorConcealStep(UUID playerId, BlackjackAnimationStep step) {
+        Player viewer = Bukkit.getPlayer(playerId);
+        int slot = step.getSlot();
+        ItemStack item;
+        if (slot == BlackjackSlotLayout.UNSEATED_EXIT_SLOT) {
+            item = createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1);
+        } else if (slot == BlackjackSlotLayout.UNSEATED_EDGE_GLASS_SLOT) {
+            item = buildBrownEdgeGlassItem();
+        } else {
+            item = buildBackgroundPaneItem();
+        }
+        renderPrivateItem(playerId, slot, item);
+    }
+
+    // ---- Shared dealer U-path inspection ---------------------------------
+
+    /**
+     * Runs the dealer's U-path as a shared/table-owned animation (viewer =
+     * null) -- per phase 2's cancellation-scope design, this must survive
+     * any single viewer closing their inventory. The bottom-row leg
+     * (47-53) is gated behind every seated viewer's door-conceal finishing
+     * (a fixed worst-case delay, not an event wait) since both animations
+     * want that same slot range; the top/left leg (8 down to 38) runs
+     * concurrently with door-conceal, since it never touches 47-53.
+     */
+    private void startDealerInspection(long myRoundGeneration) {
+        Set<Integer> wageredSeats = new HashSet<>();
+        for (UUID playerId : playerSeats.keySet()) {
+            double committed = BlackjackWagerLedger.total(pregameWagerIncrements.getOrDefault(playerId, new java.util.ArrayDeque<>()));
+            if (committed > 0) {
+                wageredSeats.add(playerSeats.get(playerId));
+            }
+        }
+
+        List<BlackjackAnimationStep> path = BlackjackDealerInspectionPlan.build(
+            wageredSeats, BlackjackTiming.DEALER_INSPECTION_STEP_TICKS, BlackjackTiming.DEALER_INSPECTION_SLOWDOWN_EXTRA_TICKS
+        );
+
+        BlackjackAnimationRun run = new BlackjackAnimationRun(null, myRoundGeneration, 0, BlackjackFrame.Phase.START_TRANSITION);
+        sharedAnimationRun = run;
+
+        long bottomRowGateTicks = BlackjackWagerRevealPlan.concealDurationTicks(BlackjackTiming.WAGER_REVEAL_STEP_TICKS);
+
+        for (BlackjackAnimationStep step : path) {
+            boolean isBottomRowLeg = step.getSlot() >= BlackjackSlotLayout.DEALER_CARD_ROW_FIRST_SLOT;
+            long gateDelay = isBottomRowLeg ? bottomRowGateTicks : 0L;
+            long scheduledDelay = step.getDelayTicks() + gateDelay;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (roundGeneration != myRoundGeneration || run.isCancelled()) {
+                    return;
+                }
+                applyDealerInspectionStep(step);
+            }, scheduledDelay);
+        }
+
+        long lastStepDelay = path.isEmpty() ? 0L : path.get(path.size() - 1).getDelayTicks() + bottomRowGateTicks;
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (roundGeneration != myRoundGeneration || run.isCancelled()) {
+                return;
+            }
+            // Natural completion -- a valid end for a shared run per phase 2's design (not a viewer-close).
+            dealerHeadSlot = BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT; // safety net in case the last MOVE step wasn't exactly 53
+            cancelSharedAnimation();
+        }, lastStepDelay + BlackjackTiming.DEALER_INSPECTION_STEP_TICKS);
+    }
+
+    /** Moves the canonical dealerHeadSlot to {@code step}'s slot and re-renders the dealer head there for every view, clearing the vacated cell back to the felt. */
+    private void applyDealerInspectionStep(BlackjackAnimationStep step) {
+        int previousSlot = dealerHeadSlot;
+        int newSlot = step.getSlot();
+        dealerHeadSlot = newSlot;
+
+        if (previousSlot != newSlot) {
+            renderBackgroundToAllViews(previousSlot);
+        }
+        renderLocalizedToAllViews(newSlot, Material.CREEPER_HEAD, 1, "blackjack.dealer");
+    }
+
+    // ---- Readiness gate before dealing -----------------------------------
+
+    /**
+     * Polls (runTaskLater retry loop bounded by roundGeneration, not a
+     * busy-loop) until every start-transition condition is satisfied, then
+     * flips out of START_TRANSITION and calls the existing, unchanged
+     * activateGame() entry point. A stale roundGeneration (table
+     * reset/cancelled, or a brand-new round already begun) simply stops
+     * the polling loop instead of ever opening the gate.
+     */
+    private void scheduleDealReadinessCheck(long myRoundGeneration) {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (roundGeneration != myRoundGeneration) {
+                return;
+            }
+            if (isReadyToDeal()) {
+                startTransitionActive = false;
+                activateGame();
+            } else {
+                scheduleDealReadinessCheck(myRoundGeneration);
+            }
+        }, BlackjackTiming.START_TRANSITION_READINESS_POLL_TICKS);
+    }
+
+    /**
+     * True once: the dealer has actually arrived at its in-play head slot,
+     * the pregame countdown clock is gone for good, and every seated
+     * viewer's door-conceal has finished (which also implies none of them
+     * are still in a door-revealed/wager-guide/bet-spot-blink lobby state,
+     * since beginStartTransition force-cancelled all of those before
+     * conceal ever started).
+     */
+    private boolean isReadyToDeal() {
+        if (dealerHeadSlot != BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT) {
+            return false;
+        }
+        if (countdownTaskId != -1) {
+            return false;
+        }
+        for (UUID playerId : playerSeats.keySet()) {
+            if (!startTransitionDoorConcealComplete.contains(playerId)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // ---- Wager selection vs. commitment ---------------------------------
+
+    /**
+     * Sets {@code playerId}'s pending selected wager amount -- moves no funds, pushes nothing to the ledger. Shared
+     * by chip clicks and All In (the plan treats them identically: both only select, never commit).
+     */
+    private void selectWager(Player player, UUID playerId, double amount) {
+        if (SoundHelper.getSoundSafely("item.flintandsteel.use", player) != null) {
+            player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER, 1.0f, 1.0f);
+        }
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case STANDARD: {
+                break;
+            }
+            case VERBOSE: {
+                player.sendMessage(text(player, "blackjack.wager-selected", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, amount)));
+                break;
+            }
+            case NONE: {
+                break;
+            }
+        }
+        selectedWager.put(playerId, amount);
+        cancelPrivateAnimation(playerId); // stop wager guidance -- the blink takes over
+        refreshWagerControlsForPlayer(playerId);
+        startBetSpotBlink(playerId);
+    }
+
+    /**
+     * Commits {@code amount} for {@code playerId}: debits their balance, pushes the increment onto the ledger, and
+     * keeps the legacy playerBets/lastBetAmounts maps (still relied on by finishGame/refund/deal-order logic) in
+     * sync with the ledger's new total, so this phase doesn't have to also migrate every downstream reader of
+     * those maps. See BlackjackWagerLedger for the pure math.
+     */
+    private void commitWager(Player player, UUID playerId, int betSpotSlot, double amount) {
+        removeWagerFromInventory(player, amount);
+        java.util.Deque<Double> increments = pregameWagerIncrements.computeIfAbsent(playerId, k -> new java.util.ArrayDeque<>());
+        BlackjackWagerLedger.commit(increments, amount);
+        syncPlayerBetsFromLedger(playerId, betSpotSlot);
+        lastBetAmounts.computeIfAbsent(playerId, k -> new ArrayList<>()).add(amount);
+        updateItemLore(betSpotSlot, BlackjackWagerLedger.total(increments));
+    }
+
+    /** Recomputes playerBets' single entry for {@code playerId} from the ledger's current total. */
+    private void syncPlayerBetsFromLedger(UUID playerId, int betSpotSlot) {
+        double total = BlackjackWagerLedger.total(pregameWagerIncrements.getOrDefault(playerId, new java.util.ArrayDeque<>()));
+        if (total > 0) {
+            Map<Integer, Double> bets = playerBets.computeIfAbsent(playerId, k -> new HashMap<>());
+            bets.clear();
+            bets.put(betSpotSlot, total);
+        } else {
+            playerBets.remove(playerId);
+        }
+    }
+
+    // ---- Turn-resolution guard (round generation + per-hand token) ----
+
+    private int currentHandToken(UUID playerId) {
+        return handToken.getOrDefault(playerId, 0);
+    }
+
+    /** Marks {@code playerId}'s current hand as resolved, invalidating any in-flight callback for it. */
+    private void bumpHandToken(UUID playerId) {
+        handToken.merge(playerId, 1, Integer::sum);
+    }
+
+    /**
+     * True if a delayed per-hand callback captured at
+     * {@code (capturedGeneration, capturedHandToken)} is no longer valid --
+     * a new round has started, the round ended, the player left, or that
+     * hand has since been resolved by something else. Every scheduled hit
+     * or double-down evaluation must check this before mutating turn state.
+     */
+    private boolean isStaleHandCallback(UUID playerId, long capturedGeneration, int capturedHandToken) {
+        return roundGeneration != capturedGeneration
+            || !gameActive
+            || !playerSeats.containsKey(playerId)
+            || currentHandToken(playerId) != capturedHandToken;
+    }
+
     // ---- Per-player BlackjackView plumbing --------------------------
 
     /**
@@ -254,70 +1061,92 @@ private void registerListener() {
     /**
      * Paints a freshly created view with the exact current table state,
      * captured as a {@link BlackjackFrame} so the same reconstruction logic
-     * is unit-testable without Bukkit. The static controls (buttons, chip
-     * denominations) never depend on round state, so they're painted the
-     * same way initializeGameMenu paints them for the legacy inventory.
+     * is unit-testable without Bukkit. Phase-dependent: pregame/countdown
+     * paints the wager row and every seat's betting slip; active play
+     * paints the exit+status-clock bottom bar, every dealt card (glowing
+     * for the current player), and dynamic actions for the viewer only if
+     * they are themselves the current, actionable player.
      */
     private void bootstrapView(BlackjackView view) {
         Inventory target = view.getInventory();
         Player viewer = Bukkit.getPlayer(view.getPlayerId());
 
-        paintStaticControls(target, viewer);
-
         BlackjackFrame frame = captureFrame();
+        boolean active = frame.phase() == BlackjackFrame.Phase.ACTIVE;
 
-        if (leverKey != null) {
-            target.setItem(BlackjackSlotLayout.LEVER_SLOT, buildLeverItem(frame, viewer));
+        // Felt the whole board green first -- everything painted below
+        // overlays it; anything left untouched (unused card-row slots,
+        // unused action slots, etc.) stays this background.
+        paintBackground(target);
+
+        if (active) {
+            target.setItem(BlackjackSlotLayout.ACTIVE_EXIT_SLOT, createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1));
+        } else if (playerSeats.containsKey(view.getPlayerId())) {
+            paintSeatedBottomBar(target, viewer, view.getPlayerId());
+        } else {
+            paintUnseatedBottomBar(target, viewer);
         }
 
-        target.setItem(BlackjackSlotLayout.DEALER_HEAD_SLOT, createCustomItem(Material.CREEPER_HEAD, localize(viewer, "blackjack.dealer")));
+        target.setItem(frame.dealerHeadSlot(), createCustomItem(Material.CREEPER_HEAD, localize(viewer, "blackjack.dealer")));
         if (!frame.dealerHand().isEmpty()) {
-            applyHeadLore(target, BlackjackSlotLayout.DEALER_HEAD_SLOT, calculateHandValueWithSoftCheck(frame.dealerHand()), null, "blackjack.dealer", viewer);
+            applyHeadLore(target, frame.dealerHeadSlot(), calculateHandValueWithSoftCheck(frame.dealerHand()), null, "blackjack.dealer", viewer);
         }
-        for (int i = 0; i < frame.dealerHand().size(); i++) {
-            target.setItem(BlackjackSlotLayout.dealerCardSlot(i), buildCardItem(frame.dealerHand().get(i), viewer));
-        }
-        if (frame.dealerHoleCardHidden()) {
-            target.setItem(BlackjackSlotLayout.DEALER_HIDDEN_CARD_SLOT, buildHiddenCardItem(viewer));
+        if (active) {
+            for (int i = 0; i < frame.dealerHand().size() && i < BlackjackSlotLayout.DEALER_CARD_CAPACITY; i++) {
+                target.setItem(BlackjackSlotLayout.dealerCardSlot(i), buildCardItem(frame.dealerHand().get(i), viewer, false));
+            }
+            if (frame.dealerHoleCardHidden()) {
+                target.setItem(BlackjackSlotLayout.DEALER_HOLE_CARD_SLOT, buildHiddenCardItem(viewer));
+            }
         }
 
-        // Every chair/bet-slot pair is painted unconditionally -- empty
-        // seats get the default click-sit/click-bet items, occupied ones
-        // are overlaid with the seated player's head, hand, and bet-slot
-        // presentation. This must hold in every phase (lobby, countdown,
-        // active, and again after a reset), not just while a round is active.
-        for (int chairSlot : BlackjackSlotLayout.CHAIR_SLOTS) {
-            int betSlot = BlackjackSlotLayout.betSlot(chairSlot);
-            BlackjackFrame.Seat seat = frame.seatAt(chairSlot);
+        // Every seat is painted unconditionally -- empty seats get the
+        // default click-sit/click-bet items, occupied ones are overlaid
+        // with the seated player's head and hand. This must hold in every
+        // phase (lobby, countdown, active, and again after a reset).
+        for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
+            BlackjackFrame.Seat seat = frame.seatAt(seatSlot);
 
             if (seat == null) {
-                target.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, localize(viewer, "blackjack.click-sit"), 1));
-                target.setItem(betSlot, createCustomItem(Material.PAPER, localize(viewer, "blackjack.click-bet"), 1));
+                target.setItem(seatSlot, createCustomItem(Material.OAK_STAIRS, localize(viewer, "blackjack.click-sit"), 1));
+                if (!active) {
+                    target.setItem(BlackjackSlotLayout.betSlipSlot(seatSlot), createCustomItem(Material.BROWN_STAINED_GLASS_PANE, localize(viewer, "blackjack.click-bet"), 1));
+                }
                 continue;
             }
 
             Player seatOwnerPlayer = Bukkit.getPlayer(seat.getPlayerId());
             if (seatOwnerPlayer != null) {
-                target.setItem(chairSlot, createPlayerHeadItem(seatOwnerPlayer, 1));
+                target.setItem(seatSlot, createPlayerHeadItem(seatOwnerPlayer, 1));
                 if (!seat.getHand().isEmpty()) {
-                    applyHeadLore(target, chairSlot, calculateHandValueWithSoftCheck(seat.getHand()), seatOwnerPlayer.getName(), null, viewer);
+                    applyHeadLore(target, seatSlot, calculateHandValueWithSoftCheck(seat.getHand()), seatOwnerPlayer.getName(), null, viewer);
                 }
             } else {
                 // Seat tracked but the player can't be resolved (e.g. just
-                // disconnected) -- fall back to the empty-chair item rather
+                // disconnected) -- fall back to the empty-seat item rather
                 // than leave the slot blank.
-                target.setItem(chairSlot, createCustomItem(Material.OAK_STAIRS, localize(viewer, "blackjack.click-sit"), 1));
+                target.setItem(seatSlot, createCustomItem(Material.OAK_STAIRS, localize(viewer, "blackjack.click-sit"), 1));
             }
 
-            for (int i = 0; i < seat.getHand().size(); i++) {
-                target.setItem(BlackjackSlotLayout.seatCardSlot(chairSlot, i), buildCardItem(seat.getHand().get(i), viewer));
+            if (active) {
+                for (int i = 0; i < seat.getHand().size() && i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+                    target.setItem(BlackjackSlotLayout.playerCardSlot(seatSlot, i), buildCardItem(seat.getHand().get(i), viewer, seat.isCurrentTurn()));
+                }
+            } else {
+                target.setItem(BlackjackSlotLayout.betSlipSlot(seatSlot), withWagerLore(createCustomItem(Material.BROWN_STAINED_GLASS_PANE, localize(viewer, "blackjack.click-bet"), 1), seat.getWager(), viewer));
+                if (frame.phase() == BlackjackFrame.Phase.COUNTDOWN) {
+                    target.setItem(
+                        BlackjackSlotLayout.pregameCountdownSlot(seatSlot),
+                        createCustomItem(Material.CLOCK, localize(viewer, "blackjack.starts-in", "seconds", frame.countdownSeconds()), Math.max(frame.countdownSeconds(), 1))
+                    );
+                }
             }
+        }
 
-            BlackjackFrame.BetSlotRender render = BlackjackFrame.betSlotRenderFor(seat.getPresentation());
-            ItemStack betItem = render.isEnchanted()
-                ? createEnchantedItem(Material.BOOK, localize(viewer, render.getKey()), 1)
-                : createCustomItem(Material.PAPER, localize(viewer, render.getKey()), 1);
-            target.setItem(betSlot, withWagerLore(betItem, seat.getWager(), viewer));
+        if (active && view.getPlayerId().equals(currentPlayerId)) {
+            for (Map.Entry<BlackjackAction, Integer> entry : currentPlayerActionLayout().entrySet()) {
+                target.setItem(entry.getValue(), buildActionItem(entry.getKey(), viewer));
+            }
         }
     }
 
@@ -328,7 +1157,7 @@ private void registerListener() {
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             List<String> lore = new ArrayList<>();
-            lore.add(localize(viewer, "blackjack.wager-lore", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, wager)));
+            lore.add(localize(viewer, "blackjack.hand-wager-lore", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, wager)));
             meta.setLore(lore);
             item.setItemMeta(meta);
         }
@@ -342,27 +1171,38 @@ private void registerListener() {
      * it directly.
      */
     private BlackjackFrame captureFrame() {
-        BlackjackFrame.Phase phase;
-        if (gameActive) {
-            phase = BlackjackFrame.Phase.ACTIVE;
-        } else if (countdownTaskId != -1) {
-            phase = BlackjackFrame.Phase.COUNTDOWN;
-        } else {
-            phase = BlackjackFrame.Phase.LOBBY;
-        }
+        BlackjackFrame.Phase phase = capturePhase();
 
         List<BlackjackFrame.Seat> seats = new ArrayList<>();
-        for (Map.Entry<UUID, Integer> entry : playerSeats.entrySet()) {
-            UUID playerId = entry.getKey();
-            int seatSlot = entry.getValue();
-            double wager = playerBets.containsKey(playerId)
-                ? playerBets.get(playerId).values().stream().mapToDouble(Double::doubleValue).sum()
-                : 0.0;
-            List<Card> hand = playerHands.getOrDefault(playerId, List.of());
+        for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
+            UUID playerId = seatOwnerAt(seatSlot);
+            if (playerId == null) {
+                continue;
+            }
             boolean done = playerDone.getOrDefault(playerId, false);
-            boolean currentTurn = playerId.equals(currentPlayerId) && playerTurnActive.getOrDefault(playerId, false);
-            BlackjackFrame.BetPresentation presentation = betPresentation.getOrDefault(playerId, BlackjackFrame.BetPresentation.CLICK_BET);
-            seats.add(new BlackjackFrame.Seat(playerId, seatSlot, wager, hand, done, currentTurn, presentation));
+            boolean currentTurn = playerId.equals(currentPlayerId);
+            boolean actionable = currentTurn && !done && playerTurnActive.getOrDefault(playerId, false);
+
+            List<BlackjackHand> hands = playerHands.get(playerId);
+            List<BlackjackFrame.HandSnapshot> snapshots = new ArrayList<>();
+            int activeIdx = 0;
+            if (hands != null && !hands.isEmpty()) {
+                activeIdx = activeHandIndex.getOrDefault(playerId, 0);
+                if (activeIdx < 0 || activeIdx >= hands.size()) {
+                    activeIdx = 0;
+                }
+                for (int i = 0; i < hands.size(); i++) {
+                    BlackjackHand hand = hands.get(i);
+                    snapshots.add(new BlackjackFrame.HandSnapshot(hand.getCards(), hand.getWager(), hand.isDone(), i == activeIdx));
+                }
+            } else {
+                // Pregame: no BlackjackHand created yet, but Seat requires
+                // at least one snapshot -- synthesize one from the
+                // committed wager so a late viewer still sees it.
+                snapshots.add(new BlackjackFrame.HandSnapshot(List.of(), totalBet(playerId), false, true));
+            }
+
+            seats.add(new BlackjackFrame.Seat(playerId, seatSlot, snapshots, activeIdx, currentTurn, actionable));
         }
 
         return new BlackjackFrame(
@@ -372,6 +1212,7 @@ private void registerListener() {
             List.of(leverPlaceholders),
             dealerHand,
             hiddenCardPlaceholderVisible,
+            dealerHeadSlot,
             seats
         );
     }
@@ -387,6 +1228,13 @@ private void registerListener() {
     void onViewClosed(Player player, BlackjackView view) {
         views.remove(player.getUniqueId(), view);
         view.cleanupListener();
+        // Private animations (chair guide, wager guide, bet-spot blink,
+        // door reveal/conceal, action guide) belong to this one viewer --
+        // stop unconditionally on their own close, regardless of why they
+        // closed. The shared/table-owned run (dealer U-path, split
+        // sequence) is deliberately untouched here -- see
+        // cancelPrivateAnimation's doc and BlackjackAnimationRun's class doc.
+        cancelPrivateAnimation(player.getUniqueId());
         handlePlayerClose(player);
     }
 
@@ -416,58 +1264,32 @@ private void registerListener() {
                 }
             }
         }, 2L);
+
+        // Chair guidance begins CHAIR_GUIDANCE_START_DELAY_TICKS after the
+        // table opens, per the table redesign plan -- startChairGuidance
+        // itself no-ops if the viewer has already sat (or the game is
+        // active) by the time it fires.
+        scheduleChairGuidanceStart(player.getUniqueId());
     }
 
     /**
-     * Paints every state-independent control (buttons, undo options, chip
-     * denominations) into {@code target} for {@code viewer}'s locale. Used
-     * both by initializeGameMenu (legacy inventory, viewer null) and
-     * bootstrapView (a freshly opened view).
-     */
-    private void paintStaticControls(Inventory target, Player viewer) {
-        target.setItem(BlackjackSlotLayout.HIT_SLOT, buildHitSwordItem(localize(viewer, "blackjack.hit")));
-        target.setItem(BlackjackSlotLayout.STAND_SLOT, createCustomItem(Material.SHIELD, localize(viewer, "blackjack.stand")));
-        target.setItem(BlackjackSlotLayout.DOUBLE_DOWN_SLOT, createCustomItem(Material.PAPER, localize(viewer, "blackjack.double-down")));
-        target.setItem(BlackjackSlotLayout.UNDO_ALL_SLOT, createCustomItem(Material.BARRIER, localize(viewer, "blackjack.undo-all"), 1));
-        target.setItem(BlackjackSlotLayout.UNDO_LAST_SLOT, createCustomItem(Material.WIND_CHARGE, localize(viewer, "blackjack.undo-last"), 1));
-        paintWagerControls(target, viewer);
-        target.setItem(BlackjackSlotLayout.ALL_IN_SLOT, createCustomItem(Material.SNIFFER_EGG, localize(viewer, "blackjack.all-in"), 1));
-        target.setItem(BlackjackSlotLayout.LEAVE_EXIT_SLOT, createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1));
-    }
-
-    /**
-     * Paints the five chip denomination slots, enchanting whichever one (if
-     * any) matches {@code viewer}'s own selectedWagers entry. Player-private
-     * by construction: a null viewer (the legacy inventory) never has a
-     * selection to look up, so it always renders every chip unenchanted and
-     * never leaks one player's pick into the shared/default render target.
-     */
-    private void paintWagerControls(Inventory target, Player viewer) {
-        Double selected = viewer != null ? selectedWagers.get(viewer.getUniqueId()) : null;
-        for (Map.Entry<Integer, Double> entry : chipValues.entrySet()) {
-            int slot = entry.getKey();
-            double value = entry.getValue();
-            String chipName = plugin.getChipDisplayName(currencyMode, currencyName, value);
-            target.setItem(
-                slot,
-                BlackjackWagerSelection.isSelected(selected, value)
-                    ? createEnchantedItem(plugin.getCurrency(internalName), chipName, (int) value)
-                    : createCustomItem(plugin.getCurrency(internalName), chipName, (int) value)
-            );
-        }
-    }
-
-    /**
-     * Refreshes only {@code playerId}'s own open view's chip slots after
-     * their selectedWagers entry changes -- deliberately not a table-wide
-     * fan-out (unlike renderToAllViews and friends), since this state is
-     * private to the selecting player and must never appear in anyone
-     * else's view or the legacy inventory.
+     * Refreshes only {@code playerId}'s own open view's chip slots (enchant
+     * glint on whichever one currently matches their selectedWager entry)
+     * after that entry changes -- deliberately not a table-wide fan-out
+     * (unlike renderToAllViews and friends), since this state is private to
+     * the selecting player and must never appear in anyone else's view or
+     * the legacy inventory. Uses buildSeatedBottomBarSlotItem, the same
+     * single source of truth the full seated-bar paint and the door-reveal
+     * animation use.
      */
     private void refreshWagerControlsForPlayer(UUID playerId) {
         BlackjackView view = views.get(playerId);
-        if (view != null) {
-            paintWagerControls(view.getInventory(), Bukkit.getPlayer(playerId));
+        if (view == null) {
+            return;
+        }
+        Player viewer = Bukkit.getPlayer(playerId);
+        for (int slot = ChipSlots.FIRST_SLOT; slot <= ChipSlots.LAST_SLOT; slot++) {
+            view.getInventory().setItem(slot, buildSeatedBottomBarSlotItem(slot, playerId, viewer));
         }
     }
 
@@ -487,12 +1309,21 @@ private void registerListener() {
         return item;
     }
 
-    private ItemStack buildLeverItem(BlackjackFrame frame, Player viewer) {
-        int amount = frame.phase() == BlackjackFrame.Phase.COUNTDOWN ? Math.max(frame.countdownSeconds(), 1) : 1;
-        return createCustomItem(Material.CLOCK, localize(viewer, frame.leverKey(), frame.leverPlaceholders().toArray()), amount);
+    /** Builds the dynamic action item for {@code action}, materials per the redesign spec. */
+    private ItemStack buildActionItem(BlackjackAction action, Player viewer) {
+        switch (action) {
+            case HIT:
+                return buildHitSwordItem(localize(viewer, "blackjack.hit"));
+            case STAND:
+                return createCustomItem(Material.SHIELD, localize(viewer, "blackjack.stand"));
+            case DOUBLE_DOWN:
+                return createCustomItem(Material.NETHERITE_SCRAP, localize(viewer, "blackjack.double-down"));
+            default:
+                throw new IllegalStateException("Unhandled BlackjackAction: " + action);
+        }
     }
 
-    private ItemStack buildCardItem(Card card, Player viewer) {
+    private ItemStack buildCardItem(Card card, Player viewer, boolean glowing) {
         Material material = (card.getSuit() == Suit.HEARTS || card.getSuit() == Suit.DIAMONDS)
             ? Material.RED_STAINED_GLASS_PANE : Material.BLACK_STAINED_GLASS_PANE;
         ItemStack cardItem = new ItemStack(material, BlackjackRules.cardStackSize(card));
@@ -500,9 +1331,26 @@ private void registerListener() {
         if (meta != null) {
             meta.setDisplayName(localizedCardName(viewer, card));
             meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+            if (glowing) {
+                applyGlow(meta);
+            }
             cardItem.setItemMeta(meta);
         }
         return cardItem;
+    }
+
+    /**
+     * Marks an item's meta as glowing -- prefers Spigot 1.21.11's item-meta
+     * glint override, falling back to a harmless hidden enchantment if that
+     * API is ever unavailable at runtime.
+     */
+    private void applyGlow(ItemMeta meta) {
+        try {
+            meta.setEnchantmentGlintOverride(Boolean.TRUE);
+        } catch (Throwable unsupported) {
+            meta.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
+            meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+        }
     }
 
     /** Localizes a card's display name via BlackjackFrame's pure "{rank} of {suit}" resolution. */
@@ -512,6 +1360,35 @@ private void registerListener() {
             (key, args) -> localize(viewer, key, args),
             key -> localize(viewer, key)
         );
+    }
+
+    /**
+     * A blank green-felt background pane -- matches RouletteInventory's
+     * decorative-slot convention (GREEN_STAINED_GLASS_PANE, blank "§r"
+     * name, no lore). Used to fill every slot that has no functional item
+     * at the moment, instead of leaving it empty/null.
+     */
+    private ItemStack buildBackgroundPaneItem() {
+        ItemStack item = new ItemStack(Material.GREEN_STAINED_GLASS_PANE);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName("§r");
+            meta.setLore(null);
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    /** Fills every slot of {@code target} with the background pane; functional items are painted over it afterward. */
+    private void paintBackground(Inventory target) {
+        for (int slot = 0; slot < target.getSize(); slot++) {
+            target.setItem(slot, buildBackgroundPaneItem());
+        }
+    }
+
+    /** Clears {@code slot} back to the background pane (never to a bare null) in the legacy inventory and every open view. */
+    private void renderBackgroundToAllViews(int slot) {
+        renderToAllViews(slot, buildBackgroundPaneItem());
     }
 
     private ItemStack buildHiddenCardItem(Player viewer) {
@@ -575,11 +1452,11 @@ private void registerListener() {
     }
 
     /** Deals one Card into the legacy inventory and every open view, each rendered in its own locale. */
-    private void renderCardToAllViews(int slot, Card card) {
-        inventory.setItem(slot, buildCardItem(card, null));
+    private void renderCardToAllViews(int slot, Card card, boolean glowing) {
+        inventory.setItem(slot, buildCardItem(card, null, glowing));
         for (BlackjackView view : views.values()) {
             Player viewer = Bukkit.getPlayer(view.getPlayerId());
-            view.getInventory().setItem(slot, buildCardItem(card, viewer));
+            view.getInventory().setItem(slot, buildCardItem(card, viewer, glowing));
         }
     }
 
@@ -593,97 +1470,128 @@ private void registerListener() {
     }
 
     /**
-     * Records the lever's canonical (key, placeholders) state and paints a
-     * brand-new CLOCK item with an explicit stack amount into the legacy
-     * inventory and every open view. Used for the countdown ticks and the
-     * "game-info" idle resets, which have always replaced the lever item
-     * outright rather than relabeling it in place.
+     * Renders the pregame countdown into every seated player's own
+     * {@link BlackjackSlotLayout#pregameCountdownSlot} -- the new 5-seat
+     * layout has no single global clock slot (see the table redesign
+     * plan's slot map); the countdown overlays each seat's first card cell
+     * instead, safe by the same mutual-exclusion pattern used elsewhere
+     * (no cards are dealt into that cell until well after the countdown
+     * clears).
      */
-    private void renderLeverToAllViews(int amount, String key, Object... placeholders) {
-        leverKey = key;
-        leverPlaceholders = placeholders;
-        inventory.setItem(BlackjackSlotLayout.LEVER_SLOT, createCustomItem(Material.CLOCK, text(key, placeholders), amount));
-        for (BlackjackView view : views.values()) {
-            Player viewer = Bukkit.getPlayer(view.getPlayerId());
-            view.getInventory().setItem(BlackjackSlotLayout.LEVER_SLOT, createCustomItem(Material.CLOCK, localize(viewer, key, placeholders), amount));
-        }
-    }
-
-    /**
-     * Records the lever's canonical (key, placeholders) state and relabels
-     * whatever CLOCK item is already at the lever slot, preserving its
-     * existing stack amount -- matching the original's mutate-in-place
-     * updateLeverDisplayName, which never touched the amount.
-     */
-    private void relabelLeverToAllViews(String key, Object... placeholders) {
-        leverKey = key;
-        leverPlaceholders = placeholders;
-        applyLeverDisplayName(inventory, key, placeholders, null);
-        for (BlackjackView view : views.values()) {
-            Player viewer = Bukkit.getPlayer(view.getPlayerId());
-            applyLeverDisplayName(view.getInventory(), key, placeholders, viewer);
-        }
-    }
-
-    private void applyLeverDisplayName(Inventory target, String key, Object[] placeholders, Player viewer) {
-        ItemStack lever = target.getItem(BlackjackSlotLayout.LEVER_SLOT);
-        if (lever != null && lever.getType() == Material.CLOCK) {
-            ItemMeta leverMeta = lever.getItemMeta();
-            if (leverMeta != null) {
-                leverMeta.setDisplayName(localize(viewer, key, placeholders));
-                lever.setItemMeta(leverMeta);
-                target.setItem(BlackjackSlotLayout.LEVER_SLOT, lever);
+    private void renderPregameCountdownToAllViews(int seconds) {
+        leverKey = "blackjack.starts-in";
+        leverPlaceholders = new Object[] {"seconds", seconds};
+        countdownSecondsRemaining = seconds;
+        int amount = Math.max(seconds, 1);
+        for (int seatSlot : playerSeats.values()) {
+            int slot = BlackjackSlotLayout.pregameCountdownSlot(seatSlot);
+            inventory.setItem(slot, createCustomItem(Material.CLOCK, text("blackjack.starts-in", "seconds", seconds), amount));
+            for (BlackjackView view : views.values()) {
+                Player viewer = Bukkit.getPlayer(view.getPlayerId());
+                view.getInventory().setItem(slot, createCustomItem(Material.CLOCK, localize(viewer, "blackjack.starts-in", "seconds", seconds), amount));
             }
         }
     }
 
-    /**
-     * Replaces a bet-slot's item (turn-over paper or the enchanted
-     * "your-turn" book), carrying over whatever lore was already on that
-     * slot in each target -- matching the original's per-target lore
-     * transfer exactly, just repeated once per open view instead of only
-     * the legacy inventory.
-     */
-    private void relabelBetSlotToAllViews(int betSlot, Material material, boolean enchanted, String key) {
-        applyBetSlotRelabel(inventory, betSlot, material, enchanted, key, null);
-        for (BlackjackView view : views.values()) {
-            Player viewer = Bukkit.getPlayer(view.getPlayerId());
-            applyBetSlotRelabel(view.getInventory(), betSlot, material, enchanted, key, viewer);
+    /** Clears every seated player's pregame countdown slot back to the felt and resets the idle status key. */
+    private void clearPregameCountdownFromAllViews() {
+        leverKey = null;
+        leverPlaceholders = new Object[0];
+        for (int seatSlot : playerSeats.values()) {
+            renderBackgroundToAllViews(BlackjackSlotLayout.pregameCountdownSlot(seatSlot));
         }
     }
 
+    // ---- Dynamic action-row rendering ----------------------------------
+
     /**
-     * Records {@code playerId}'s canonical bet-slot presentation (used to
-     * reconstruct a late view exactly) and fans the corresponding item out
-     * to the legacy inventory and every open view via
-     * {@link BlackjackFrame#betSlotRenderFor}, the same pure mapping
-     * BlackjackFrameTest exercises directly -- so the tracked state and the
-     * rendered item can never drift apart.
+     * Computes the current player's available actions and their slots from
+     * live canonical state (funds included) -- shared by
+     * renderActionsForCurrentPlayer (fan-out) and bootstrapView (late-view
+     * catch-up) so both always agree. Empty unless there is a current
+     * player whose turn is actionable and unresolved.
      */
-    private void setBetPresentation(UUID playerId, int betSlot, BlackjackFrame.BetPresentation presentation) {
-        betPresentation.put(playerId, presentation);
-        BlackjackFrame.BetSlotRender render = BlackjackFrame.betSlotRenderFor(presentation);
-        relabelBetSlotToAllViews(betSlot, render.isEnchanted() ? Material.BOOK : Material.PAPER, render.isEnchanted(), render.getKey());
+    private Map<BlackjackAction, Integer> currentPlayerActionLayout() {
+        if (currentPlayerId == null || playerDone.getOrDefault(currentPlayerId, false)
+            || !playerTurnActive.getOrDefault(currentPlayerId, false)) {
+            return Map.of();
+        }
+        Player currentPlayer = Bukkit.getPlayer(currentPlayerId);
+        if (currentPlayer == null) {
+            return Map.of();
+        }
+        List<Card> hand = activeHandCards(currentPlayerId);
+        int handValue = calculateHandValue(hand);
+        boolean initialTwoCardDecision = hand.size() == 2;
+        boolean canAffordDoubleDown = initialTwoCardDecision && hasEnoughWager(currentPlayer, totalBet(currentPlayerId));
+        List<BlackjackAction> actions = BlackjackActionLayout.availableActions(handValue, initialTwoCardDecision, canAffordDoubleDown);
+        return BlackjackActionLayout.layout(actions);
     }
 
-    private void applyBetSlotRelabel(Inventory target, int betSlot, Material material, boolean enchanted, String key, Player viewer) {
-        ItemStack prevItem = target.getItem(betSlot);
-        ItemStack replacement = enchanted
-            ? createEnchantedItem(material, localize(viewer, key), 1)
-            : createCustomItem(material, localize(viewer, key), 1);
-        if (prevItem != null && prevItem.hasItemMeta()) {
-            ItemMeta prevMeta = prevItem.getItemMeta();
-            if (prevMeta.hasLore()) {
-                ItemMeta replacementMeta = replacement.getItemMeta();
-                replacementMeta.setLore(prevMeta.getLore());
-                replacement.setItemMeta(replacementMeta);
-            }
+    /**
+     * Clears the action row for everyone, then repaints it only into the
+     * current player's own view if their turn is currently actionable.
+     * Other viewers (and the current player themselves while an action is
+     * processing) see an empty action row, leaving only the exit door and
+     * status clock either side of it.
+     */
+    private void renderActionsForCurrentPlayer() {
+        for (int slot = BlackjackSlotLayout.ACTION_ROW_FIRST_SLOT; slot <= BlackjackSlotLayout.ACTION_ROW_LAST_SLOT; slot++) {
+            renderBackgroundToAllViews(slot);
         }
-        target.setItem(betSlot, replacement);
+        if (currentPlayerId == null) {
+            return;
+        }
+        BlackjackView view = views.get(currentPlayerId);
+        if (view == null) {
+            return;
+        }
+        Player viewer = Bukkit.getPlayer(currentPlayerId);
+        for (Map.Entry<BlackjackAction, Integer> entry : currentPlayerActionLayout().entrySet()) {
+            view.getInventory().setItem(entry.getValue(), buildActionItem(entry.getKey(), viewer));
+        }
+    }
+
+    // ---- Card-glow rendering --------------------------------------------
+
+    /** Re-renders a seated player's already-dealt, visible cards with the given glow state. */
+    private void reRenderHand(UUID playerId, boolean glowing) {
+        if (playerId == null) {
+            return;
+        }
+        Integer seatSlot = playerSeats.get(playerId);
+        if (seatSlot == null) {
+            return;
+        }
+        List<Card> hand = activeHandCards(playerId);
+        for (int i = 0; i < hand.size() && i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+            renderCardToAllViews(BlackjackSlotLayout.playerCardSlot(seatSlot, i), hand.get(i), glowing);
+        }
+    }
+
+    /** Turns glow off for the previous current player (if any) and on for the new one (if any). */
+    private void refreshCardGlow(UUID previousPlayerId, UUID newCurrentPlayerId) {
+        if (previousPlayerId != null && !previousPlayerId.equals(newCurrentPlayerId)) {
+            reRenderHand(previousPlayerId, false);
+        }
+        if (newCurrentPlayerId != null) {
+            reRenderHand(newCurrentPlayerId, true);
+        }
+    }
+
+    /** Whether {@code slot} is still within the row the card was dealt to -- see BlackjackSlotLayout's bounded row. */
+    private boolean isRenderableCardSlot(UUID playerId, int slot) {
+        if (playerId == null) {
+            return slot >= BlackjackSlotLayout.DEALER_CARD_ROW_FIRST_SLOT && slot <= BlackjackSlotLayout.DEALER_UP_CARD_SLOT;
+        }
+        Integer seatSlot = playerSeats.get(playerId);
+        if (seatSlot == null) {
+            return false;
+        }
+        return slot <= BlackjackSlotLayout.playerCardSlot(seatSlot, BlackjackSlotLayout.SEAT_CARD_CAPACITY - 1);
     }
 
     // Initialize Blackjack-specific game menu
-    @SuppressWarnings("removal")
     private void initializeGameMenu() {
 
         inventory.clear(); // Clear the inventory before setting up the page
@@ -691,31 +1599,50 @@ private void registerListener() {
             view.getInventory().clear();
         }
 
-        for (UUID playerId : playerSeats.keySet()) {
-            int seatSlot = playerSeats.get(playerId);
-            Player seated = Bukkit.getPlayer(playerId);
-            renderToAllViews(seatSlot, createPlayerHeadItem(seated, 1));
+        // Felt the whole table green first -- every slot that isn't
+        // overwritten by a functional item below (unused dealer/seat card
+        // rows, unused action slots, etc.) stays this background instead of
+        // going blank.
+        paintBackground(inventory);
+        for (BlackjackView view : views.values()) {
+            paintBackground(view.getInventory());
+        }
+
+        for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
+            UUID playerId = seatOwnerAt(seatSlot);
+            if (playerId != null) {
+                renderToAllViews(seatSlot, createPlayerHeadItem(Bukkit.getPlayer(playerId), 1));
+            }
         }
         // Add the necessary items for the game menu
-        renderLocalizedToAllViews(BlackjackSlotLayout.DEALER_HEAD_SLOT, Material.CREEPER_HEAD, 1, "blackjack.dealer"); // Dealer
-        // The Game Info lever stack will be added when the timer starts.
+        renderLocalizedToAllViews(dealerHeadSlot, Material.CREEPER_HEAD, 1, "blackjack.dealer"); // Dealer
+        // The status clock is added when the timer starts.
 
-        // Add chairs
-        for (int chairSlot : BlackjackSlotLayout.CHAIR_SLOTS) {
-            renderLocalizedToAllViews(chairSlot, Material.OAK_STAIRS, 1, "blackjack.click-sit");
+        // Add empty seats
+        for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
+            if (seatOwnerAt(seatSlot) == null) {
+                renderLocalizedToAllViews(seatSlot, Material.OAK_STAIRS, 1, "blackjack.click-sit");
+            }
         }
         sittable=true;
 
-        // Add betting papers
-        for (int chairSlot : BlackjackSlotLayout.CHAIR_SLOTS) {
-            renderLocalizedToAllViews(BlackjackSlotLayout.betSlot(chairSlot), Material.PAPER, 1, "blackjack.click-bet");
+        // Add bet spots (permanent brown glass -- the only betting UI element)
+        for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
+            renderLocalizedToAllViews(BlackjackSlotLayout.betSlipSlot(seatSlot), Material.BROWN_STAINED_GLASS_PANE, 1, "blackjack.click-bet");
         }
 
-        // Add game action buttons and the rest of the state-independent controls
-        paintStaticControls(inventory, null);
+        // Add the pregame bottom bar -- per-viewer: seated viewers get the
+        // full Undo/chips/All In/door bar, unseated viewers get door+glass
+        // only, regardless of whether other players are already seated and
+        // betting (no permanent Hit/Stand/Double-Down anymore either way).
+        paintUnseatedBottomBar(inventory, null);
         for (BlackjackView view : views.values()) {
             Player viewer = Bukkit.getPlayer(view.getPlayerId());
-            paintStaticControls(view.getInventory(), viewer);
+            if (playerSeats.containsKey(view.getPlayerId())) {
+                paintSeatedBottomBar(view.getInventory(), viewer, view.getPlayerId());
+            } else {
+                paintUnseatedBottomBar(view.getInventory(), viewer);
+            }
         }
         //addItem(createCustomItem(Material.SHEARS, "Split"), 39); // Split
         //addItem(createCustomItem(Material.TOTEM_OF_UNDYING, "Insurance"), 40); // Insurance
@@ -751,6 +1678,25 @@ private void registerListener() {
         }
     }
 
+    private void handleDealerHeadEasterEgg(Player player) {
+        // 1 in 1000 chance
+        if (Math.random() < 0.001) {
+            Firework firework = (Firework) player.getLocation().getWorld().spawnEntity(player.getLocation(), EntityType.FIREWORK_ROCKET);
+            FireworkMeta fireworkMeta = firework.getFireworkMeta();
+            FireworkEffect effect = FireworkEffect.builder()
+                    .with(FireworkEffect.Type.CREEPER)
+                    .withColor(Color.GREEN)
+                    .withFade(Color.BLACK)
+                    .flicker(true)
+                    .trail(true)
+                    .build();
+            fireworkMeta.addEffect(effect);
+            fireworkMeta.setPower(2);
+            firework.setFireworkMeta(fireworkMeta);
+        }
+        if (SoundHelper.getSoundSafely("entity.creeper.hurt", player) != null) player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f);
+    }
+
 @Override
 public void handleClick(int slot, Player player, InventoryClickEvent event) {
     if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
@@ -759,54 +1705,24 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
     UUID playerId = player.getUniqueId();
 
     if (gameActive) { // Game is active, handle player actions
-        if (playerId.equals(currentPlayerId)) {
+        if (insurancePhaseActive && insuranceEligiblePlayers.contains(playerId) && !insuranceDecided.contains(playerId)
+            && (slot == BlackjackSlotLayout.INSURANCE_YES_SLOT || slot == BlackjackSlotLayout.INSURANCE_NO_SLOT)) {
+            // Insurance is its own explicit phase, decided before any
+            // player turn begins -- currentPlayerId is still null here, so
+            // this must be checked first, not folded into the turn dispatch below.
+            handleInsuranceDecision(player, slot == BlackjackSlotLayout.INSURANCE_YES_SLOT);
+        } else if (playerId.equals(currentPlayerId)) {
             handlePlayerAction(player, slot);
-        } else if (slot == 53) { // Handle leave chair
+        } else if (slot == BlackjackSlotLayout.ACTIVE_EXIT_SLOT) { // Handle leave chair
             handleLeaveChairDuringGame(player);
             player.closeInventory();}
         else if (isPlayerHeadSlot(slot, player)) { // Handle clicking own player head
                 handleLeaveChair(player); // Leave chair but stay in inventory
         }
-        else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots
-        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-            case STANDARD:{
-                player.sendMessage(text(player, "blackjack.invalid-action"));
-                break;}
-            case VERBOSE:{
-                player.sendMessage(text(player, "blackjack.betting-closed"));
-                break;}
-            case NONE:{
-                break;
-            }
+        else if (slot == dealerHeadSlot){
+            handleDealerHeadEasterEgg(player);
         }
-                if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
-        }
-        else if (slot == 0){
-                            // 1 in 1000 chance
-            if (Math.random() < 0.001) { 
-                                // Spawn the firework at the player's location
-                Firework firework = (Firework) player.getLocation().getWorld().spawnEntity(player.getLocation(), EntityType.FIREWORK_ROCKET);
-
-                // Customize the firework
-                FireworkMeta fireworkMeta = firework.getFireworkMeta();
-
-                FireworkEffect effect = FireworkEffect.builder()
-                        .with(FireworkEffect.Type.CREEPER) // Explosion shape: Creeper head
-                        .withColor(Color.GREEN)           // Primary color
-                        .withFade(Color.BLACK)            // Fade color
-                        .flicker(true)                    // Flicker effect
-                        .trail(true)                      // Trail effect
-                        .build();
-            
-                fireworkMeta.addEffect(effect);
-                fireworkMeta.setPower(2); // Flight duration
-                firework.setFireworkMeta(fireworkMeta);
-            
-                // Do NOT call firework.detonate(), let the firework fly naturally
-            }
-            
-                if (SoundHelper.getSoundSafely("entity.creeper.hurt", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
-        }
+        // Betting slips don't exist during active play -- nothing else to route.
     }
         else { // Handle clicks in the game menu before the game starts
         if (isPlayerHeadSlot(slot, player)) { // Handle clicking own player head
@@ -815,8 +1731,8 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
                     break;}
                 case VERBOSE:{
                     player.sendMessage(text(player, "blackjack.left-chair"));
-                    break;     
-    
+                    break;
+
                 }
                     case NONE:{
                     break;
@@ -824,15 +1740,15 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
             }
             handleLeaveChair(player); // Leave chair but stay in inventory
         }
-        else if (slot >= 9 && slot <= 27 && slot % 9 == 0) { // Chair slots (9, 18, 27)
+        else if (BlackjackSlotLayout.isSeatSlot(slot)) { // Seat slots (9, 18, 27, 36)
             handleChairClick(slot, player);
-        } else if (slot == 53) { // Leave chair
+        } else if (slot == BlackjackSlotLayout.PREGAME_EXIT_SLOT) { // Leave chair
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
                     player.sendMessage(text(player, "blackjack.left-game"));
-                    break;     
+                    break;
                 }
                     case NONE:{
                     break;
@@ -840,49 +1756,39 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
             }
             handleLeaveChair(player);
             player.closeInventory();
-        } else if (slot >= 10 && slot <= 28 && slot % 9 == 1) { // Bet slots (10, 19, 28)
+        } else if (BlackjackSlotLayout.isBetSlipSlot(slot)) { // Betting slips (10, 19, 28, 37)
             handleBetClick(slot, player, event);
         } else if (ChipSlots.isChipSlot(slot)) { // Chip selection
             handleChipSelection(player, slot);
-        } 
-        else if (slot == 0){
-
-            // 1 in 1000 chance
-            if (Math.random() < 0.001) { 
-                                // Spawn the firework at the player's location
-                Firework firework = (Firework) player.getLocation().getWorld().spawnEntity(player.getLocation(), EntityType.FIREWORK_ROCKET);
-
-                // Customize the firework
-                FireworkMeta fireworkMeta = firework.getFireworkMeta();
-
-                FireworkEffect effect = FireworkEffect.builder()
-                        .with(FireworkEffect.Type.CREEPER) // Explosion shape: Creeper head
-                        .withColor(Color.GREEN)           // Primary color
-                        .withFade(Color.BLACK)            // Fade color
-                        .flicker(true)                    // Flicker effect
-                        .trail(true)                      // Trail effect
-                        .build();
-            
-                fireworkMeta.addEffect(effect);
-                fireworkMeta.setPower(2); // Flight duration
-                firework.setFireworkMeta(fireworkMeta);
-            
-                // Do NOT call firework.detonate(), let the firework fly naturally
-            }
-            
-                if (SoundHelper.getSoundSafely("entity.creeper.hurt", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
+        }
+        else if (slot == dealerHeadSlot){
+            handleDealerHeadEasterEgg(player);
         } else {
+            // Slots 45/46 mean something different depending on whether
+            // THIS viewer is seated yet -- seated: Undo All/Undo Last;
+            // unseated: door/decorative brown edge glass (see
+            // paintUnseatedBottomBar/paintSeatedBottomBar). Every other
+            // slot here (All In=52) is only ever rendered/meaningful once
+            // seated, so its own handler's existing "must be seated"
+            // feedback already covers the unseated case correctly.
             switch (slot) {
-                case 45:
-
-
-                    handleUndoAllBets(player);
+                case BlackjackSlotLayout.UNDO_ALL_SLOT: // == UNSEATED_EXIT_SLOT (45)
+                    if (playerSeats.containsKey(playerId)) {
+                        handleUndoAllBets(player);
+                    } else {
+                        // Unseated: this is the door -- nothing to leave, just close.
+                        player.closeInventory();
+                    }
                     break;
-                case 46:
-                    handleUndoLastBet(player);
+                case BlackjackSlotLayout.UNDO_LAST_SLOT: // == UNSEATED_EDGE_GLASS_SLOT (46)
+                    if (playerSeats.containsKey(playerId)) {
+                        handleUndoLastBet(player);
+                    }
+                    // Unseated: decorative brown edge glass, no-op.
                     break;
-                case 52:
+                case BlackjackSlotLayout.ALL_IN_SLOT:
                     handleAllIn(player);
+                    break;
                 default:
                     // Handle other slots if needed
                     break;
@@ -892,7 +1798,7 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
 }
 
 private boolean isPlayerHeadSlot(int slot, Player player) {
-    if (slot < 0 || slot >= inventory.getSize()) { 
+    if (slot < 0 || slot >= inventory.getSize()) {
         return false; // Prevent invalid slot access
     }
 
@@ -907,7 +1813,14 @@ private boolean isPlayerHeadSlot(int slot, Player player) {
 
 private void handleAllIn(Player player) {
     UUID playerId = player.getUniqueId();
-    
+
+    // Once the countdown hits zero and the start-transition begins, no new
+    // selection/commit is possible -- a player who hadn't committed by
+    // then just doesn't get a hand this round (see beginStartTransition).
+    if (startTransitionActive) {
+        return;
+    }
+
     // Ensure the player is seated before allowing all-in
     if (!playerSeats.containsKey(playerId)) {
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -927,7 +1840,7 @@ private void handleAllIn(Player player) {
 
     // Calculate total player balance in inventory
     double totalBalance = getPlayerTotalBalance(player);
-    
+
     if (totalBalance <= 0) {
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
@@ -953,44 +1866,12 @@ private void handleAllIn(Player player) {
         return;
     }
 
-    int seatSlot = playerSeats.get(playerId);
-    int betSlot = seatSlot + 1; // The slot where bets are placed
-
-    // Remove the full balance from the player's inventory
-    removeWagerFromInventory(player, totalBalance);
-
-    // Store the bet amount
-    Map<Integer, Double> bets = playerBets.computeIfAbsent(playerId, k -> new HashMap<>());
-    double newTotal = bets.merge(betSlot, totalBalance, (existing, newValue) -> (existing != null ? existing : 0.0) + (newValue != null ? newValue : 0.0));
-
-    // Update the displayed bet amount with the new total
-    updateItemLore(betSlot, newTotal);
-
-    lastBetAmounts.computeIfAbsent(playerId, k -> new ArrayList<>()).add(totalBalance); // Store last bet amount
-
-    // Play sound effect to confirm All In
+    // All In only *selects* the player's full balance as the pending
+    // wager amount -- per the table redesign plan, it never debits or
+    // commits by itself, exactly like a chip click. Only a subsequent
+    // bet-spot click actually commits (see selectWager/commitWager).
      if (SoundHelper.getSoundSafely("entity.lightning_bolt.thunder", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER, 1.5f, 0.8f);
-     switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-        case STANDARD:{
-            break;}
-        case VERBOSE:{
-            player.sendMessage(text(
-                player,
-                "blackjack.all-in-with",
-                "amount",
-                plugin.formatWagerDisplay(currencyMode, currencyName, newTotal)
-            ));
-                        break;}
-        case NONE:{
-            break;
-        }
-    }
-    //
-
-    // Start countdown if not already running
-    if (countdownTaskId == -1) {
-        startCountdownTimer();
-    }
+    selectWager(player, playerId, totalBalance);
 }
 
 private double getPlayerTotalBalance(Player player) {
@@ -1014,14 +1895,28 @@ private double getPlayerTotalBalance(Player player) {
     return totalAmount;
 }
 
+/**
+ * Resolves a click during the current player's own actionable turn.
+ * Never trusts the clicked slot alone: it recomputes the live available
+ * actions/layout and only dispatches if the slot still resolves to one of
+ * them, so a stale or race-y client render can never trigger an action
+ * that's no longer valid.
+ */
 private void handlePlayerAction(Player player, int slot) {
     synchronized (turnLock) {
         UUID playerId = player.getUniqueId();
 
-        // Allow the player to leave during their turn
-        if (slot == 53) {
+        // Allow the player to leave during their turn -- close their
+        // inventory too, matching the non-current-player exit path, so
+        // "Leave/Exit" behaves the same regardless of whose turn it is.
+        if (slot == BlackjackSlotLayout.ACTIVE_EXIT_SLOT) {
             handleLeaveChairDuringGame(player);
+            player.closeInventory();
             return;
+        }
+
+        if (slot == dealerHeadSlot) {
+            handleDealerHeadEasterEgg(player);
         }
 
         // Check if the player's turn is still active
@@ -1032,73 +1927,61 @@ private void handlePlayerAction(Player player, int slot) {
                     break;}
                 case VERBOSE:{
                     player.sendMessage(text(player, "blackjack.not-your-turn"));
-                    break;     
+                    break;
                 }
                 case NONE:{
                     break;
                 }
             }
-             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
 
-        // Disable further actions until the current one is processed
-        playerTurnActive.put(playerId, false);
+        List<Card> hand = activeHandCards(playerId);
+        int handValue = calculateHandValue(hand);
+        boolean initialTwoCardDecision = hand.size() == 2;
+        boolean canAffordDoubleDown = initialTwoCardDecision && hasEnoughWager(player, totalBet(playerId));
+        List<BlackjackAction> actions = BlackjackActionLayout.availableActions(handValue, initialTwoCardDecision, canAffordDoubleDown);
+        BlackjackAction action = BlackjackActionLayout.actionAt(actions, slot);
 
-        switch (slot) {
-            case 36: // Hit
-                handleHit(player);
-                 if (SoundHelper.getSoundSafely("entity.creeper.hurt", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT, SoundCategory.MASTER, 1.0f, 1.0f);
-                break;
-            case 37: // Stand
-                handleStand(player);
-                break;
-            case 38: // Double Down
-                handleDoubleDown(player);
-                break;
-            //case 40: // Insurance
-              //  handleInsurance(player);
-                //break;
-            case 0:
-                                // 1 in 1000 chance
-                if (Math.random() < 0.001) { 
-                                    // Spawn the firework at the player's location
-                    Firework firework = (Firework) player.getLocation().getWorld().spawnEntity(player.getLocation(), EntityType.FIREWORK_ROCKET);
-
-                    // Customize the firework
-                    FireworkMeta fireworkMeta = firework.getFireworkMeta();
-
-                    FireworkEffect effect = FireworkEffect.builder()
-                            .with(FireworkEffect.Type.CREEPER) // Explosion shape: Creeper head
-                            .withColor(Color.GREEN)           // Primary color
-                            .withFade(Color.BLACK)            // Fade color
-                            .flicker(true)                    // Flicker effect
-                            .trail(true)                      // Trail effect
-                            .build();
-                
-                    fireworkMeta.addEffect(effect);
-                    fireworkMeta.setPower(2); // Flight duration
-                    firework.setFireworkMeta(fireworkMeta);
-                
-                    // Do NOT call firework.detonate(), let the firework fly naturally
-                }
-                
-                 if (SoundHelper.getSoundSafely("entity.creeper.hurt", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT,SoundCategory.MASTER, 1.0f, 1.0f); 
-            default:
+        if (action == null) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
                     player.sendMessage(text(player, "blackjack.invalid-action-spaced"));
                     break;}
                 case VERBOSE:{
                     player.sendMessage(text(player, "blackjack.invalid-action-spaced"));
-                    break;     
+                    break;
                 }
                     case NONE:{
                     break;
                 }
             }
-                 if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
-                playerTurnActive.put(playerId, true); // Re-enable actions if the action was invalid
+             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f);
+            // The clicked slot no longer matches the live layout (e.g.
+            // funds dropped and Double Down disappeared mid-turn) --
+            // repaint the correct, current layout rather than leaving a
+            // stale one displayed.
+            renderActionsForCurrentPlayer();
+            return;
+        }
+
+        // Disable further actions until the current one is processed, and
+        // hide the buttons immediately -- a duplicate click must not land.
+        playerTurnActive.put(playerId, false);
+        renderActionsForCurrentPlayer();
+
+        switch (action) {
+            case HIT:
+                handleHit(player);
+                 if (SoundHelper.getSoundSafely("entity.creeper.hurt", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_CREEPER_HURT, SoundCategory.MASTER, 1.0f, 1.0f);
+                break;
+            case STAND:
+                handleStand(player);
+                break;
+            case DOUBLE_DOWN:
+                handleDoubleDown(player);
+                break;
         }
     }
 }
@@ -1112,51 +1995,60 @@ private void handleHit(Player player) {
         }
         int seatSlot = playerSeats.get(playerId);
         int cardCount = playerCardCounts.getOrDefault(playerId, 2); // Default to 2 because of the initial 2 cards dealt
-        int nextCardSlot = seatSlot + 2 + cardCount; // Calculate the next slot based on the number of cards
+        int nextCardSlot = seatSlot + 2 + cardCount; // Plain arithmetic (not playerCardSlot) -- cardCount can exceed the visible row; dealCardToPlayer bounds the render, never the canonical hand.
+
+        long myGeneration = roundGeneration;
+        int myHandToken = currentHandToken(playerId);
 
         Card newCard = deck.dealCard();
-        scheduleCardDealingWithDelay(nextCardSlot, newCard, BlackjackTiming.CARD_DEAL_DELAY_TICKS, playerId); // Deal the card with a delay
+        scheduleCardDealingWithDelay(nextCardSlot, newCard, BlackjackTiming.CARD_DEAL_DELAY_TICKS, playerId, myGeneration, myHandToken); // Deal the card with a delay
 
         cardCount++; // Increment the card count
         playerCardCounts.put(playerId, cardCount); // Update the card count
 
         // Delay the hand value calculation to ensure the card is fully added to the player's hand
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (!playerSeats.containsKey(playerId)) {
+            if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
                 return;
             }
-            int handValue = calculateHandValue(playerHands.get(playerId));
+            int handValue = calculateHandValue(activeHandCards(playerId));
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                 
+
                     player.sendMessage(text(
                         player,
                         "blackjack.drew-card",
                         "rank",
                         localize(player, "cards.ranks." + newCard.getRank().name().toLowerCase(java.util.Locale.ROOT))
                     ));
-                    break;     
+                    break;
                 }
                     case NONE:{
                     break;
                 }
-            } 
+            }
             if (handValue == 21) {
 
+                playerDone.put(playerId, true); // Mark the player as done
                 playerTurnActive.put(playerId, false); // Deactivate the player's turn
+                bumpHandToken(playerId);
+                renderActionsForCurrentPlayer();
                 startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS); // Start next player's turn with delay
             } else if (handValue > 21) {
 
 
                 playerDone.put(playerId, true); // Mark the player as done
                 playerTurnActive.put(playerId, false); // Deactivate the player's turn
+                bumpHandToken(playerId);
+                renderActionsForCurrentPlayer();
                 startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS); // Start next player's turn with delay
 
             } else {
 
                 playerTurnActive.put(playerId, true); // Allow more actions since the player hasn't busted
+                renderActionsForCurrentPlayer(); // Reshow actions (Double Down is now gone -- no longer the initial decision)
 
             }
         }, BlackjackTiming.HIT_EVALUATION_DELAY_TICKS); // The delay should be enough to ensure that the card has been added
@@ -1168,6 +2060,7 @@ private void handleStand(Player player) {
         UUID playerId = player.getUniqueId();
         playerDone.put(playerId, true); // Mark the player as done
         playerTurnActive.put(playerId, false); // Deactivate the player's turn
+        bumpHandToken(playerId);
          if (SoundHelper.getSoundSafely("item.shield.block", player) != null)player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BLOCK, SoundCategory.MASTER,1.0f, 1.0f);
          switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
@@ -1175,7 +2068,7 @@ private void handleStand(Player player) {
                 break;}
             case VERBOSE:{
                 player.sendMessage(text(player, "blackjack.stood"));
-                break;     
+                break;
             }
                 case NONE:{
                 break;
@@ -1186,24 +2079,45 @@ private void handleStand(Player player) {
 }
 
 private void startNextPlayerTurnWithDelay(long delay) {
-    Bukkit.getScheduler().runTaskLater(plugin, () -> startNextPlayerTurn(), delay);
+    long mySequence = ++turnSequence;
+    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        if (turnSequence != mySequence) {
+            // Something else (a forced advance from a mid-turn
+            // leave/disconnect, or another scheduled advance) already
+            // moved the turn on -- advancing again here would skip
+            // whoever it's now the turn of.
+            return;
+        }
+        startNextPlayerTurn();
+    }, delay);
+}
+
+/** Forces an immediate turn advance (e.g. a mid-turn leave/disconnect), invalidating any pending delayed advance. */
+private void advanceTurnNow() {
+    turnSequence++;
+    startNextPlayerTurn();
 }
 
 /**
- * Preserved quirk, not fixed here (see BlackjackTimingTest): the extra card
- * comes from handleHit, whose evaluation callback fires after
- * HIT_EVALUATION_DELAY_TICKS (40t), but this method advances the turn
- * unconditionally after the shorter TURN_ADVANCE_DELAY_TICKS (20t). The
- * stale callback can still mutate playerDone/playerTurnActive and
- * re-advance the turn after it's no longer this player's. Address before
- * or during splitting.
+ * Atomic double down: validates eligibility/funds, removes the matching
+ * wager, deals exactly one additional card, evaluates it exactly once,
+ * finishes the hand regardless of its value, and advances the turn
+ * exactly once. Deliberately does not call handleHit -- that would
+ * schedule a second, independently-timed evaluation racing this method's
+ * own resolution (the race previously characterized in
+ * BlackjackTimingTest, now fixed by construction: there is only ever one
+ * scheduled callback for a double down). That callback is additionally
+ * guarded by the round-generation/hand-token pair captured up front (see
+ * isStaleHandCallback), so a leave-chair or reset mid-flight still can't
+ * let it mutate a hand that is no longer current.
  */
 private void handleDoubleDown(Player player) {
     synchronized (turnLock) {
         UUID playerId = player.getUniqueId();
-        double currentBet = playerBets.get(playerId).values().stream().mapToDouble(Double::doubleValue).sum();
+        Map<Integer, Double> bets = playerBets.get(playerId);
+        double currentBet = bets == null ? 0.0 : bets.values().stream().mapToDouble(Double::doubleValue).sum();
 
-        if (!hasEnoughWager(player, currentBet)) {
+        if (bets == null || !hasEnoughWager(player, currentBet)) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
                     player.sendMessage(text(player, "blackjack.insufficient-funds"));
@@ -1215,6 +2129,7 @@ private void handleDoubleDown(Player player) {
                 }
             }
             playerTurnActive.put(playerId, true); // Allow more actions since the double down failed
+            renderActionsForCurrentPlayer();
             return;
         }
 
@@ -1222,60 +2137,54 @@ private void handleDoubleDown(Player player) {
         removeWagerFromInventory(player, currentBet);
 
         // Double the bet amount in the player's bets
-        playerBets.get(playerId).replaceAll((k, v) -> v * 2);
+        bets.replaceAll((k, v) -> v * 2);
 
         // Update the lore to reflect the doubled bet
-        for (Map.Entry<Integer, Double> entry : playerBets.get(playerId).entrySet()) {
-            int slot = entry.getKey();
-            double updatedBet = entry.getValue();
-            updateItemLore(slot, updatedBet);
+        for (Map.Entry<Integer, Double> entry : bets.entrySet()) {
+            updateItemLore(entry.getKey(), entry.getValue());
         }
 
-        // After doubling down, the player gets exactly one more card
-        handleHit(player);
-        
-        playerDone.put(playerId, true); // Mark the player as done
-        playerTurnActive.put(playerId, false); // Deactivate the player's turn after doubling down
-         if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
+        int seatSlot = playerSeats.get(playerId);
+        int cardCount = playerCardCounts.getOrDefault(playerId, 2);
+        int cardSlot = seatSlot + 2 + cardCount;
+        long myGeneration = roundGeneration;
+        int myHandToken = currentHandToken(playerId);
+
+        // Exactly one more card.
+        Card newCard = deck.dealCard();
+        scheduleCardDealingWithDelay(cardSlot, newCard, BlackjackTiming.CARD_DEAL_DELAY_TICKS, playerId, myGeneration, myHandToken);
+        playerCardCounts.put(playerId, cardCount + 1);
+
+         if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f);
          switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
                 player.sendMessage(text(player, "blackjack.doubled-down"));
                 break;}
             case VERBOSE:{
                 player.sendMessage(text(player, "blackjack.doubled-down"));
-                break;     
+                break;
 
             }
                 case NONE:{
                 break;
             }
         }
-        startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS); // Start next player's turn with delay
+
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
+                return;
+            }
+            // Finish the hand regardless of its value -- never re-enable
+            // Hit/Stand/Double afterward.
+            playerDone.put(playerId, true);
+            playerTurnActive.put(playerId, false);
+            bumpHandToken(playerId);
+            renderActionsForCurrentPlayer();
+            startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
+        }, BlackjackTiming.HIT_EVALUATION_DELAY_TICKS);
     }
 }
 
-/*
-private void handleInsurance(Player player) {
-    synchronized (turnLock) {
-        UUID playerId = player.getUniqueId();
-        double currentBet = playerBets.get(playerId).values().stream().mapToDouble(Double::doubleValue).sum();
-        double insuranceBet = currentBet / 2;
-
-        if (!hasEnoughWager(player, insuranceBet)) {
-            player.sendMessage("§cNot enough funds.");
-            allowPlayerActions(player); // Continue player's turn
-            return;
-        }
-
-        if (inventory.getItem(2) != null && inventory.getItem(2).getItemMeta().getDisplayName().contains("ACE")) {
-            removeWagerFromInventory(player, insuranceBet);
-            player.sendMessage("§6Insurance taken. ");
-        }
-
-        allowPlayerActions(player); // Continue player's turn
-    }
-}
- */
     // Handle chair click
     private void handleChairClick(int slot, Player player) {
         UUID playerId = player.getUniqueId();
@@ -1283,14 +2192,14 @@ private void handleInsurance(Player player) {
 
         // Check if the player is already sitting in a chair
         if (playerSeats.containsKey(playerId)||clickedItem == null || !clickedItem.getType().name().endsWith("_STAIRS")||!sittable) {
-            if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f); 
+            if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f);
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                case STANDARD:{
                 player.sendMessage(text(player, "blackjack.already-seated"));
                 break;}
                case VERBOSE:{
                 player.sendMessage(text(player, "blackjack.cannot-switch"));
-                break;     
+                break;
 
             }
                    case NONE:{
@@ -1309,7 +2218,7 @@ private void handleInsurance(Player player) {
                 break;}
             case VERBOSE:{
                 player.sendMessage(text(player, "blackjack.sat-down"));
-                break;     
+                break;
 
             }
                 case NONE:{
@@ -1319,8 +2228,15 @@ private void handleInsurance(Player player) {
         // Track the player's seat
         playerSeats.put(playerId, slot);
         SessionRegistry.register(playerId, this);
+
+        // Chair guidance no longer applies now that they've sat -- the
+        // door-reveal animation (private, this viewer only) takes over,
+        // sliding their own bottom bar from door+glass to the full seated
+        // wager bar, then handing off to wager guidance once it completes.
+        cancelPrivateAnimation(playerId);
+        startWagerBarReveal(playerId);
     }
-    
+
 
 // Handle leave chair during the countdown or active game
 private void handleLeaveChair(Player player) {
@@ -1330,24 +2246,37 @@ private void handleLeaveChair(Player player) {
         return;
     }
 
-    int chairSlot = playerSeats.remove(playerId);
+     if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
 
-     if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
-    // Reset the chair to its original state
-    renderLocalizedToAllViews(chairSlot, Material.OAK_STAIRS, 1, "blackjack.click-sit");
-
-    // If the timer is still running, undo all bets
-    if (countdownTaskId != -1 && !gameActive) {
+    // Before the deal actually starts (pregame, countdown, or the
+    // start-transition window after the countdown clock is already gone
+    // but the round hasn't gone active yet), refund the player's committed
+    // wager first -- handleUndoAllBets no-ops safely once gameActive
+    // (and once there's nothing left to refund), so this is safe to call
+    // unconditionally here; running it before removePlayerData's own (now
+    // redundant, harmless) bet cleanup doesn't double-refund.
+    if (!gameActive) {
         handleUndoAllBets(player);
-    } else {
-        removePlayerData(playerId);
     }
 
-    // Check if all players have left the game
-    if (playerSeats.isEmpty()) {
-        sittable=false;
-        cancelGame();
-    }
+    // Remove all the player's associated data. Must run while the player
+    // is still in playerSeats -- removing the seat first (as this used to)
+    // leaves removePlayerData unable to find anything to clean up, so
+    // SessionRegistry never unregisters and, worse, an active-game leave
+    // (a non-current player clicking their own head) never clears their
+    // cards or drops them from the pending turn iterator, leaving a
+    // phantom turn for a seat that's already empty. removePlayerData also
+    // already re-renders the seat and calls cancelGame() itself once the
+    // last seat empties.
+    removePlayerData(playerId);
+
+    // This path never closes the viewer's inventory (unlike the door/exit
+    // click) -- they're back to being an unseated viewer of the same open
+    // table, so chair guidance should resume for them exactly as if they'd
+    // just opened it. startChairGuidance's own guards make this a safe
+    // no-op if anything's changed by the time it fires (re-seated, game
+    // started, closed).
+    scheduleChairGuidanceStart(playerId);
 }
 
 // Handle leave chair during an active game
@@ -1357,42 +2286,43 @@ private void handleLeaveChairDuringGame(Player player) {
     if (!playerSeats.containsKey(playerId)) {
         return;
     }
-    
+
     // If it's the player's turn, end their turn immediately
     if (playerId.equals(currentPlayerId)) {
         playerDone.put(playerId, true); // Mark the player as done
-        startNextPlayerTurn(); // Start next player's turn with delay
+        playerTurnActive.put(playerId, false);
+        bumpHandToken(playerId);
+        advanceTurnNow(); // Invalidates any turn-advance already scheduled for this hand's resolution
     }
 
-    int chairSlot = playerSeats.remove(playerId);
-
-    // Remove all the player's associated data
+    // Remove all the player's associated data. This must run while the
+    // player is still in playerSeats -- removePlayerData looks itself up
+    // there to find the seat slot, clear the player's cards, and restore
+    // the empty-seat item; removing from playerSeats first (as this used
+    // to) leaves removePlayerData unable to find anything to clean up,
+    // silently skipping the hand/bet/session cleanup entirely. It also
+    // already calls cancelGame() itself once the last seat empties, so
+    // there's no need to repeat that check here.
     removePlayerData(playerId);
 
-     if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
-    // Reset the chair to its original state
-    renderLocalizedToAllViews(chairSlot, Material.OAK_STAIRS, 1, "blackjack.click-sit");
-  
-    
-    // Check if all players have left the game
-    if (playerSeats.isEmpty()) {
-        sittable=false;
-        cancelGame();
-    }
+     if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
 }
 
 private void removePlayerData(UUID playerId) {
+    // Leaving a seat invalidates whatever private animation was guiding
+    // this player (chair guide while unseated, wager guide/bet-spot blink
+    // while seated) -- never the shared/table-owned run.
+    cancelPrivateAnimation(playerId);
+
     // Retrieve the player's seat slot
     int seatSlot = playerSeats.getOrDefault(playerId, -1);
 
     // If the player has a valid seat slot
     if (seatSlot != -1) {
         // Clear the player's cards from the table
-        List<Card> hand = playerHands.get(playerId);
-        if (hand != null) {
-            for (int i = 0; i < hand.size(); i++) {
-                renderToAllViews(seatSlot + 2 + i, new ItemStack(Material.AIR)); // Clear each card slot in the player's row
-            }
+        List<Card> hand = activeHandCards(playerId);
+        for (int i = 0; i < hand.size() && i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+            renderBackgroundToAllViews(BlackjackSlotLayout.playerCardSlot(seatSlot, i)); // Clear each card slot in the player's row back to the felt
         }
 
         // Remove the player's head from the seat
@@ -1400,10 +2330,11 @@ private void removePlayerData(UUID playerId) {
 
         // Remove player's data from tracking maps
         playerHands.remove(playerId);
+        activeHandIndex.remove(playerId);
         playerCardCounts.remove(playerId);
         playerTurnActive.remove(playerId);
         playerDone.remove(playerId);
-        betPresentation.remove(playerId);
+        handToken.remove(playerId);
 
         // Remove player's bets and related lore
         clearPlayerBetLore(playerId);
@@ -1420,6 +2351,20 @@ private void removePlayerData(UUID playerId) {
             remainingPlayers.remove(playerId);
             playerIterator = remainingPlayers.iterator();
         }
+
+        // An active-game leave forfeits everything, including an already-
+        // debited insurance stake (consistent with the main wager's own
+        // forfeit-on-active-game-leave policy) -- never paid out even if
+        // the dealer's peek later finds blackjack. checkInsuranceAllDecided
+        // re-reads playerSeats live, so removing them here (already done
+        // above) is what lets a pending insurance decision resolve without
+        // waiting forever on a player who just left.
+        insuranceEligiblePlayers.remove(playerId);
+        insuranceDecided.remove(playerId);
+        insuranceStakes.remove(playerId);
+        if (insurancePhaseActive) {
+            checkInsuranceAllDecided();
+        }
     }
 
     // Check if all players have left the game
@@ -1428,35 +2373,23 @@ private void removePlayerData(UUID playerId) {
     }
 }
 
-    // Handle chip selection
+    // Handle chip selection -- only sets the pending selected wager amount,
+    // moves no funds, pushes nothing to the ledger (see selectWager).
     private void handleChipSelection(Player player, int slot) {
-        double selectedWager = chipValues.getOrDefault(slot, 0.0);
-        if (selectedWager <= 0) {
+        if (startTransitionActive) {
+            return; // countdown already hit zero -- no new selection is possible this round
+        }
+        double amount = chipValues.getOrDefault(slot, 0.0);
+        if (amount <= 0) {
             return;
         }
-    
         UUID playerId = player.getUniqueId();
-         if (SoundHelper.getSoundSafely("item.flintandsteel.use", player) != null)player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER,1.0f, 1.0f);  
-         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-            case STANDARD:{
-                break;}
-            case VERBOSE:{
-                player.sendMessage(text(
-                    player,
-                    "blackjack.wager-selected",
-                    "amount",
-                    plugin.formatWagerDisplay(currencyMode, currencyName, selectedWager)
-                ));
-                break;     
-            }
-                case NONE:{
-                break;
-            }
+        if (!playerSeats.containsKey(playerId)) {
+            return; // chip slots aren't even rendered for an unseated viewer -- defensive no-op
         }
-        selectedWagers.put(playerId, selectedWager);
-        refreshWagerControlsForPlayer(playerId);
+        selectWager(player, playerId, amount);
     }
-    
+
     private void clearPlayerBetLore(UUID playerId) {
         Map<Integer, Double> bets = playerBets.get(playerId);
         if (bets != null) {
@@ -1465,11 +2398,17 @@ private void removePlayerData(UUID playerId) {
             }
         }
     }
-    
+
     private void handleBetClick(int slot, Player player, InventoryClickEvent event) {
         UUID playerId = player.getUniqueId();
-        double selectedWager = getSelectedWager(playerId);
-        
+
+        // Once the countdown hits zero and the start-transition begins, no
+        // new commit is possible -- a player who hadn't committed by then
+        // just doesn't get a hand this round (see beginStartTransition).
+        if (startTransitionActive) {
+            return;
+        }
+
         // Ensure the player is sitting before placing a bet
         if (!playerSeats.containsKey(playerId)) {
             switch (plugin.getPreferences(playerId).getMessageSetting()) {
@@ -1486,15 +2425,15 @@ private void removePlayerData(UUID playerId) {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
-    
-        // Ensure the player can only bet on their own paper
+
+        // Ensure the player can only bet on their own spot
         int chairSlot = playerSeats.get(playerId);
-        int betSlot = chairSlot + 1; // Paper is always right next to the chair
-        
-        if (slot != betSlot) {
+        int betSpotSlot = BlackjackSlotLayout.betSlipSlot(chairSlot);
+
+        if (slot != betSpotSlot) {
             switch (plugin.getPreferences(playerId).getMessageSetting()) {
                 case STANDARD:
-                    player.sendMessage(text(player, "blackjack.not-your-bet"));
+                    player.sendMessage(text(player, "blackjack.invalid-bet-spot"));
                     break;
                 case VERBOSE:
                     player.sendMessage(text(player, "blackjack.cannot-bet-other"));
@@ -1506,41 +2445,36 @@ private void removePlayerData(UUID playerId) {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
-    
-        // Check if the player is holding the currency item
+
+        // Only clicking the bet spot itself ever commits (see commitWager)
+        // -- either directly dragging real currency onto it, or committing
+        // whatever amount was previously selected via a chip/All In click.
         ItemStack heldItem = event.getCursor();
-        boolean isCurrencyItem = isCurrencyItem(heldItem);
-        if (isCurrencyItem && heldItem != null) {
-            int amount = heldItem.getAmount();
-            double totalWager = amount;
-    
-            if (totalWager > 0) {
-                player.setItemOnCursor(null); // Remove the stack from the cursor
-                Map<Integer, Double> bets = playerBets.computeIfAbsent(playerId, k -> new HashMap<>());
-                double currentBet = bets.getOrDefault(betSlot, 0.0);
-                bets.put(betSlot, currentBet + totalWager);
-                updateItemLore(betSlot, bets.get(betSlot));
-                lastBetAmounts.computeIfAbsent(playerId, k -> new ArrayList<>()).add(totalWager);
-    
-                if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
-                    player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
-    
-                if (countdownTaskId == -1) {
-                    startCountdownTimer();
-                }
-                return;
-            }
-        } else if (selectedWager > 0 && hasEnoughWager(player, selectedWager)) {
-            removeWagerFromInventory(player, selectedWager);
-            Map<Integer, Double> bets = playerBets.computeIfAbsent(playerId, k -> new HashMap<>());
-            double currentBet = bets.getOrDefault(betSlot, 0.0);
-            bets.put(betSlot, currentBet + selectedWager);
-            updateItemLore(betSlot, bets.get(betSlot));
-            lastBetAmounts.computeIfAbsent(playerId, k -> new ArrayList<>()).add(selectedWager);
-    
+        if (isCurrencyItem(heldItem) && heldItem != null && heldItem.getAmount() > 0) {
+            double amount = heldItem.getAmount();
+            player.setItemOnCursor(null); // Remove the stack from the cursor
+            commitWager(player, playerId, betSpotSlot, amount);
+
             if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
                 player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
-    
+
+            if (countdownTaskId == -1) {
+                startCountdownTimer();
+            }
+            return;
+        }
+
+        double selected = getSelectedWager(playerId);
+        if (selected > 0 && hasEnoughWager(player, selected)) {
+            commitWager(player, playerId, betSpotSlot, selected);
+            selectedWager.remove(playerId); // the selection is consumed by this commit
+            cancelPrivateAnimation(playerId); // stop the bet-spot blink
+            refreshWagerControlsForPlayer(playerId); // un-enchant the now-consumed chip
+            startWagerGuidance(playerId); // resume guidance so the player can add another increment if they want
+
+            if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
+                player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
+
             if (countdownTaskId == -1) {
                 startCountdownTimer();
             }
@@ -1559,7 +2493,7 @@ private void removePlayerData(UUID playerId) {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         }
     }
-    
+
     private void handleUndoAllBets(Player player) {
         if (gameActive) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -1568,39 +2502,40 @@ private void removePlayerData(UUID playerId) {
                     break;}
                 case VERBOSE:{
                     player.sendMessage(text(player, "blackjack.cannot-undo-all"));
-                    break;     
+                    break;
 
                 }
                     case NONE:{
                     break;
                 }
             }
-             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
-    
+
         UUID playerId = player.getUniqueId();
-        Map<Integer, Double> bets = playerBets.get(playerId);
-    
-        if (bets != null && !bets.isEmpty()) {
+        java.util.Deque<Double> increments = pregameWagerIncrements.get(playerId);
+
+        if (increments != null && !increments.isEmpty()) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                 
+
                     player.sendMessage(text(player, "blackjack.all-bets-undone"));
-                    break;     
+                    break;
                 }
                     case NONE:{
                     break;
                 }
             }
-            double totalRefund = bets.values().stream().mapToDouble(Double::doubleValue).sum();
+            double totalRefund = BlackjackWagerLedger.undoAll(increments);
             addWagerToInventory(player, totalRefund);
             clearPlayerBetLore(playerId);  // Clear lore for items related to this player
+            pregameWagerIncrements.remove(playerId);
             playerBets.remove(playerId);
             lastBetAmounts.remove(playerId);
-    
+
              if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER,1.0f, 1.0f);
             // Check if there are no bets left for any player
             if (playerBets.isEmpty()) {
@@ -1608,17 +2543,17 @@ private void removePlayerData(UUID playerId) {
             }
         }
     }
-    
+
     private double getSelectedWager(UUID playerId) {
-        return selectedWagers.getOrDefault(playerId, 0.0);
+        return selectedWager.getOrDefault(playerId, 0.0);
     }
 
     private void stopCountdownTimer() {
         if (countdownTaskId != -1) {
             Bukkit.getScheduler().cancelTask(countdownTaskId);
             countdownTaskId = -1;
-            // Clear the Game Info lever stack to reset the display
-            renderLeverToAllViews(1, "blackjack.game-info");
+            // Clear every seated player's countdown clock back to the felt.
+            clearPregameCountdownFromAllViews();
         }
     }
 
@@ -1631,65 +2566,58 @@ private void removePlayerData(UUID playerId) {
                     break;}
                 case VERBOSE:{
                     player.sendMessage(text(player, "blackjack.cannot-undo"));
-                    break;     
+                    break;
 
                 }
                     case NONE:{
                     break;
                 }
             }
-             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f); 
+             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO,SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
-    
+
         UUID playerId = player.getUniqueId();
-        Map<Integer, Double> bets = playerBets.get(playerId);
-        List<Double> lastBets = lastBetAmounts.get(playerId);
-    
-        if (bets != null && lastBets != null && !lastBets.isEmpty()) {
+        java.util.Deque<Double> increments = pregameWagerIncrements.get(playerId);
+
+        if (increments != null && !increments.isEmpty()) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                 
+
                     player.sendMessage(text(player, "blackjack.last-bet-undone"));
-                    break;     
+                    break;
                 }
                     case NONE:{
                     break;
                 }
-            } 
-            double lastBet = lastBets.remove(lastBets.size() - 1); // Get the last bet amount
-    
+            }
+            // Pops and refunds exactly the most recently *committed*
+            // increment -- never a pending, uncommitted selection.
+            double lastBet = BlackjackWagerLedger.undoLast(increments);
+
              if (SoundHelper.getSoundSafely("ui.toast.in", player) != null)player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
              if (SoundHelper.getSoundSafely("ui.toast.out", player) != null)player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
-            // Find the slot with the last bet and reduce it
-            for (Map.Entry<Integer, Double> entry : bets.entrySet()) {
-                int slot = entry.getKey();
-                double currentBet = entry.getValue();
-    
-                if (currentBet >= lastBet) {
-                    double newBet = currentBet - lastBet;
-                    if (newBet > 0) {
-                        bets.put(slot, newBet);
-                        updateItemLore(slot, newBet);
-                    } else {
-                        bets.remove(slot);
-                        updateItemLore(slot, 0);  // Clear the lore if the bet is removed
-                    }
-    
-                    addWagerToInventory(player, lastBet);
-    
-                    // Check if there are no bets left for any player
-                    if (bets.isEmpty()) {
-                        stopCountdownTimer(); // Stop the timer if no bets are left for any player
-                    }
-                    return;
-                }
+
+            if (playerSeats.containsKey(playerId)) {
+                int betSpotSlot = BlackjackSlotLayout.betSlipSlot(playerSeats.get(playerId));
+                syncPlayerBetsFromLedger(playerId, betSpotSlot);
+                updateItemLore(betSpotSlot, BlackjackWagerLedger.total(increments));
+            }
+
+            addWagerToInventory(player, lastBet);
+
+            // Check if there are no bets left for ANY player at the table
+            // (matches handleUndoAllBets' scope -- one player emptying
+            // their own ledger must not stop the table's shared countdown
+            // while others still have bets in).
+            if (playerBets.isEmpty()) {
+                stopCountdownTimer();
             }
         }
     }
-    
+
     private void updateItemLore(int slot, double wager) {
         applyWagerLore(inventory, slot, wager, null);
         for (BlackjackView view : views.values()) {
@@ -1705,7 +2633,7 @@ private void removePlayerData(UUID playerId) {
             if (meta != null) {
                 if (wager > 0) {
                     List<String> lore = new ArrayList<>();
-                    lore.add(localize(viewer, "blackjack.wager-lore", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, wager)));
+                    lore.add(localize(viewer, "blackjack.hand-wager-lore", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, wager)));
                     meta.setLore(lore);
                 } else {
                     meta.setLore(new ArrayList<>()); // Clear lore if no wager
@@ -1715,7 +2643,7 @@ private void removePlayerData(UUID playerId) {
             }
         }
     }
-    
+
     private boolean hasEnoughWager(Player player, double amount) {
         int requiredAmount = MoneyHelper.toWagerUnits(amount);
         if (requiredAmount <= 0) return false;
@@ -1795,9 +2723,13 @@ private void removePlayerData(UUID playerId) {
         if (playerId == null) {
             playerBets.clear();
             lastBetAmounts.clear();
+            pregameWagerIncrements.clear();
+            selectedWager.clear();
         } else {
             playerBets.remove(playerId);
             lastBetAmounts.remove(playerId);
+            pregameWagerIncrements.remove(playerId);
+            selectedWager.remove(playerId);
         }
     }
 
@@ -1814,16 +2746,16 @@ private void removePlayerData(UUID playerId) {
         }
     }
 
-    // Start the countdown timer and display it with a stack of levers
+    // Start the countdown timer and display it with a stack of clocks
     private void startCountdownTimer() {
         countdownTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
-            
+
             int countdown =  plugin.getTimer(internalName);
             @Override
             public void run() {
                 if (countdown > 0) {
                     countdownSecondsRemaining = countdown;
-                    renderLeverToAllViews(countdown, "blackjack.starts-in", "seconds", countdown);
+                    renderPregameCountdownToAllViews(countdown);
                     if (countdown <=3 ){
                         for (UUID uuid : playerSeats.keySet()) {
                             Player player = Bukkit.getPlayer(uuid);
@@ -1835,33 +2767,48 @@ private void removePlayerData(UUID playerId) {
                     countdown--;
                 } else {
                     Bukkit.getScheduler().cancelTask(countdownTaskId);
-                    activateGame();
+                    beginStartTransition();
                 }
             }
         }, 0L, 20L); // Run every second
     }
 
+    /**
+     * Commits the round: clears the wager row and every betting slip, moves
+     * the exit door to slot 45, and clears every seated player's pregame
+     * countdown slot. Dealer-position-as-state has already delivered
+     * dealerHeadSlot to its in-play value (53) by the time this runs --
+     * see beginStartTransition/startDealerInspection -- the reassignment
+     * below is just a safety net, not the primary mechanism anymore.
+     */
+    private void transitionBottomBarToActive() {
+        for (int slot = BlackjackSlotLayout.UNDO_ALL_SLOT; slot <= BlackjackSlotLayout.PREGAME_EXIT_SLOT; slot++) {
+            renderBackgroundToAllViews(slot);
+        }
+        for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
+            renderBackgroundToAllViews(BlackjackSlotLayout.betSlipSlot(seatSlot));
+        }
+        renderLocalizedToAllViews(BlackjackSlotLayout.ACTIVE_EXIT_SLOT, Material.SPRUCE_DOOR, 1, "blackjack.leave-exit");
+        clearPregameCountdownFromAllViews();
+        dealerHeadSlot = BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT;
+    }
+
     // Activate the game and set the dealer's turn
 private void activateGame() {
     gameActive = true; // Mark the game as active
+    roundGeneration++;
+    handToken.clear();
 
-    // Initialize hands for players and dealer
+    // Initialize hands for players and dealer -- BlackjackHand instances
+    // are created lazily (see ensureActiveHand) the moment each player's
+    // first card actually lands, seeded with their committed wager then.
     for (UUID playerId : playerSeats.keySet()) {
         playerHands.put(playerId, new ArrayList<>());
+        activeHandIndex.put(playerId, 0);
     }
     dealerHand.clear(); // Ensure the dealer's hand is empty
 
-    // Find the dealer head item and make it glow
-    ItemStack dealerHead = inventory.getItem(0);
-    if (dealerHead != null && dealerHead.getType() == Material.CREEPER_HEAD) {
-        ItemMeta meta = dealerHead.getItemMeta();
-        if (meta != null) {
-            dealerHead.setItemMeta(meta); // Update the item meta to apply the changes
-        }
-    }
-
-    // Update the display name of the lever to say "Dealer's turn"
-    relabelLeverToAllViews("blackjack.dealer-turn");
+    transitionBottomBarToActive();
 
     // Ensure player heads are updated correctly
     for (UUID playerId : playerSeats.keySet()) {
@@ -1875,32 +2822,42 @@ private void activateGame() {
 
 private void dealInitialCards() {
     List<UUID> bettingPlayerOrder = new ArrayList<>();
-    for (UUID playerId : playerSeats.keySet()) {
+    for (UUID playerId : orderedSeatedPlayers()) {
         if (playerBets.containsKey(playerId) && !playerBets.get(playerId).isEmpty()) {
             bettingPlayerOrder.add(playerId);
         }
     }
 
+    long myGeneration = roundGeneration;
+
     BlackjackDealPlan.Plan plan = BlackjackDealPlan.initialDeal(
-        bettingPlayerOrder, playerSeats, 2, 3, (int) BlackjackTiming.CARD_DEAL_DELAY_TICKS
+        bettingPlayerOrder, playerSeats,
+        BlackjackSlotLayout.DEALER_UP_CARD_SLOT, BlackjackSlotLayout.DEALER_HOLE_CARD_SLOT,
+        (int) BlackjackTiming.CARD_DEAL_DELAY_TICKS
     );
 
     for (BlackjackDealPlan.Step step : plan.getSteps()) {
         if (step.isHidden()) {
-            // Hidden placeholder: no Card is drawn from the shoe here, only
-            // revealed later in revealDealerCardWithDelay.
-            scheduleHiddenCardDealing(step.getSlot(), step.getDelayTicks());
+            // Hidden placeholder: the Card IS drawn from the shoe now (so
+            // its rank is known for the dealer peek below), just rendered
+            // as a hidden placeholder until revealDealerHoleCardNow/
+            // revealDealerCardWithDelay later paints it face-up.
+            Card holeCard = deck.dealCard();
+            scheduleHiddenCardDealing(step.getSlot(), holeCard, step.getDelayTicks(), myGeneration);
         } else {
-            scheduleCardDealing(step.getSlot(), deck.dealCard(), step.getDelayTicks(), step.getPlayerId());
+            scheduleCardDealing(step.getSlot(), deck.dealCard(), step.getDelayTicks(), step.getPlayerId(), myGeneration);
         }
     }
 
-    // Check for initial blackjack right after dealing cards
+    // Check for initial blackjack, then insurance/dealer-peek, right after dealing cards.
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        for (UUID playerId : playerSeats.keySet()) {
+        if (roundGeneration != myGeneration || !gameActive) {
+            return;
+        }
+        for (UUID playerId : orderedSeatedPlayers()) {
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
-                int handValue = calculateHandValue(playerHands.get(playerId));
+                int handValue = calculateHandValue(activeHandCards(playerId));
                 if (handValue == 21) {
                     playerDone.put(playerId, true); // Mark the player as done
                     playerTurnActive.put(playerId, false); // Deactivate the player's turn
@@ -1908,13 +2865,334 @@ private void dealInitialCards() {
             }
         }
 
-        // Initialize playerIterator to start turns after dealing cards
-        playerIterator = playerSeats.keySet().stream()
-            .filter(playerId -> playerBets.containsKey(playerId) && !playerBets.get(playerId).isEmpty() && !playerDone.getOrDefault(playerId, false))
-            .iterator();
-
-        startNextPlayerTurn();
+        // Insurance / dealer peek -- its own explicit phase, decided
+        // before any player turn begins, per the table redesign plan's
+        // "Insurance -- rules" section. Offered only when the dealer's
+        // up-card is an Ace; a ten-value (or any other) up-card just peeks
+        // immediately with no insurance UI at all.
+        boolean upCardIsAce = !dealerHand.isEmpty() && dealerHand.get(0).getRank() == Rank.ACE;
+        if (upCardIsAce && insuranceEnabledForThisTable()) {
+            beginInsurancePhase(myGeneration);
+        } else {
+            performDealerPeekThenProceed(myGeneration);
+        }
     }, plan.initialBlackjackCheckDelayTicks()); // Delay slightly longer to allow cards to be fully dealt
+}
+
+/**
+ * Whether insurance is offered at all this round. Always true for now --
+ * {@code dealers.<name>.insurance.enabled} config wiring is a later phase
+ * (per the table redesign plan's phased order); this method exists so that
+ * wiring has one obvious place to land instead of a scattered literal.
+ */
+private boolean insuranceEnabledForThisTable() {
+    return true;
+}
+
+/**
+ * Initializes playerIterator (seated, wagered, not-already-done players in
+ * table order) and starts the normal turn-based play. Reached once the
+ * dealer's peek confirms no blackjack, whether or not insurance was ever
+ * offered this round.
+ */
+private void beginPlayerTurns(long myGeneration) {
+    if (roundGeneration != myGeneration || !gameActive) {
+        return;
+    }
+    playerIterator = orderedSeatedPlayers().stream()
+        .filter(playerId -> playerBets.containsKey(playerId) && !playerBets.get(playerId).isEmpty() && !playerDone.getOrDefault(playerId, false))
+        .iterator();
+    startNextPlayerTurn();
+}
+
+// ---- Insurance phase --------------------------------------------------
+
+/**
+ * Offers insurance to every seated player with a committed wager --
+ * including natural-blackjack holders (the even-money decision), per the
+ * plan's explicit correction. Renders the private Yes/No/countdown UI to
+ * each eligible player and starts the table-owned canonical countdown;
+ * resolves early (see checkInsuranceAllDecided) once everyone still seated
+ * has answered, or at the timeout otherwise.
+ */
+private void beginInsurancePhase(long myGeneration) {
+    List<UUID> eligible = new ArrayList<>();
+    for (UUID playerId : orderedSeatedPlayers()) {
+        if (BlackjackInsuranceRules.isEligible(totalBet(playerId))) {
+            eligible.add(playerId);
+        }
+    }
+    if (eligible.isEmpty()) {
+        performDealerPeekThenProceed(myGeneration);
+        return;
+    }
+
+    insurancePhaseActive = true;
+    insuranceEligiblePlayers.clear();
+    insuranceEligiblePlayers.addAll(eligible);
+    insuranceDecided.clear();
+    insuranceStakes.clear();
+    insuranceSecondsRemaining = BlackjackTiming.INSURANCE_TIMEOUT_DEFAULT_SECONDS;
+
+    for (UUID playerId : eligible) {
+        renderInsurancePromptForPlayer(playerId);
+    }
+
+    insuranceTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+        int secondsLeft = BlackjackTiming.INSURANCE_TIMEOUT_DEFAULT_SECONDS;
+
+        @Override
+        public void run() {
+            if (roundGeneration != myGeneration || !insurancePhaseActive) {
+                if (insuranceTaskId != -1) {
+                    Bukkit.getScheduler().cancelTask(insuranceTaskId);
+                    insuranceTaskId = -1;
+                }
+                return;
+            }
+            if (secondsLeft <= 0) {
+                Bukkit.getScheduler().cancelTask(insuranceTaskId);
+                insuranceTaskId = -1;
+                resolveInsuranceTimeouts(myGeneration);
+                return;
+            }
+            insuranceSecondsRemaining = secondsLeft;
+            for (UUID playerId : insuranceEligiblePlayers) {
+                if (playerSeats.containsKey(playerId) && !insuranceDecided.contains(playerId)) {
+                    renderInsuranceCountdownForPlayer(playerId, secondsLeft);
+                }
+            }
+            secondsLeft--;
+        }
+    }, 0L, 20L);
+}
+
+/** Records {@code playerId}'s Yes/No insurance decision, or does nothing (stays clickable) if Yes was chosen but they can't afford it. */
+private void handleInsuranceDecision(Player player, boolean takeInsurance) {
+    UUID playerId = player.getUniqueId();
+    if (!insurancePhaseActive || !insuranceEligiblePlayers.contains(playerId) || insuranceDecided.contains(playerId)) {
+        return;
+    }
+
+    if (takeInsurance) {
+        BlackjackHand hand = activeHand(playerId);
+        double cost = hand != null ? BlackjackInsuranceRules.cost(hand.getOriginalPreSplitWager()) : 0.0;
+        if (cost <= 0 || !hasEnoughWager(player, cost)) {
+            // Insufficient funds -- still clickable (per the plan), just
+            // localized feedback; their decision is NOT consumed, so they
+            // can click No (or try Yes again) afterward.
+            switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                case NONE:
+                    break;
+                default:
+                    player.sendMessage(text(player, "blackjack.insurance-insufficient-funds"));
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            return;
+        }
+        removeWagerFromInventory(player, cost);
+        insuranceStakes.put(playerId, cost);
+        switch (plugin.getPreferences(playerId).getMessageSetting()) {
+            case NONE:
+                break;
+            default:
+                player.sendMessage(text(player, "blackjack.insurance-taken", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, cost)));
+        }
+        if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null) {
+            player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
+        }
+    } else {
+        switch (plugin.getPreferences(playerId).getMessageSetting()) {
+            case NONE:
+                break;
+            default:
+                player.sendMessage(text(player, "blackjack.insurance-declined"));
+        }
+        if (SoundHelper.getSoundSafely("item.shield.block", player) != null) {
+            player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BLOCK, SoundCategory.MASTER, 1.0f, 1.0f);
+        }
+    }
+
+    insuranceDecided.add(playerId);
+    clearInsurancePromptForPlayer(playerId);
+    checkInsuranceAllDecided();
+}
+
+/** Resolves early once every still-seated eligible player has answered, instead of waiting out the full timeout. */
+private void checkInsuranceAllDecided() {
+    for (UUID playerId : insuranceEligiblePlayers) {
+        if (playerSeats.containsKey(playerId) && !insuranceDecided.contains(playerId)) {
+            return; // still waiting on someone
+        }
+    }
+    if (insuranceTaskId != -1) {
+        Bukkit.getScheduler().cancelTask(insuranceTaskId);
+        insuranceTaskId = -1;
+    }
+    finishInsurancePhase(roundGeneration);
+}
+
+/** Defaults every still-undecided, still-seated eligible player to No, then resolves. */
+private void resolveInsuranceTimeouts(long myGeneration) {
+    if (roundGeneration != myGeneration || !insurancePhaseActive) {
+        return;
+    }
+    for (UUID playerId : new ArrayList<>(insuranceEligiblePlayers)) {
+        if (playerSeats.containsKey(playerId) && !insuranceDecided.contains(playerId)) {
+            insuranceDecided.add(playerId);
+            clearInsurancePromptForPlayer(playerId);
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null) {
+                switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                    case NONE:
+                        break;
+                    default:
+                        player.sendMessage(text(player, "blackjack.insurance-declined"));
+                }
+            }
+        }
+    }
+    finishInsurancePhase(myGeneration);
+}
+
+private void finishInsurancePhase(long myGeneration) {
+    if (roundGeneration != myGeneration || !insurancePhaseActive) {
+        return;
+    }
+    insurancePhaseActive = false;
+    for (UUID playerId : insuranceEligiblePlayers) {
+        clearInsurancePromptForPlayer(playerId); // idempotent safety net
+    }
+    performDealerPeekThenProceed(myGeneration);
+}
+
+/**
+ * The dealer peeks: with an Ace or ten-value up-card, this determines
+ * whether the dealer has a natural blackjack. Blackjack found -> pay
+ * insurance winners, reveal the hole card, and settle the round
+ * immediately (skipping player turns entirely); no blackjack -> forfeit
+ * any insurance stakes (already debited) and proceed into normal
+ * turn-based play. In every case, no player turn begins before this
+ * resolves -- reached only after the applicable insurance phase (if any).
+ */
+private void performDealerPeekThenProceed(long myGeneration) {
+    if (roundGeneration != myGeneration || !gameActive) {
+        return;
+    }
+    if (BlackjackRules.isNaturalBlackjack(dealerHand)) {
+        payInsuranceWinners();
+        insuranceStakes.clear();
+        revealDealerHoleCardNow();
+        for (UUID playerId : playerSeats.keySet()) {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null) {
+                switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                    case NONE:
+                        break;
+                    default:
+                        player.sendMessage(text(player, "blackjack.dealer-peek"));
+                }
+            }
+        }
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (roundGeneration != myGeneration || !gameActive) {
+                return;
+            }
+            finishGame();
+        }, BlackjackTiming.CARD_DEAL_DELAY_TICKS);
+    } else {
+        forfeitInsuranceStakes();
+        insuranceStakes.clear();
+        beginPlayerTurns(myGeneration);
+    }
+}
+
+/** Pays 2:1 + stake to every player who took insurance -- only ever called once the dealer's peek confirms blackjack. */
+private void payInsuranceWinners() {
+    for (Map.Entry<UUID, Double> entry : insuranceStakes.entrySet()) {
+        UUID playerId = entry.getKey();
+        double stake = entry.getValue();
+        Player player = Bukkit.getPlayer(playerId);
+        if (player == null) {
+            continue;
+        }
+        double payout = BlackjackInsuranceRules.payoutTotal(stake);
+        addWagerToInventory(player, payout);
+        switch (plugin.getPreferences(playerId).getMessageSetting()) {
+            case NONE:
+                break;
+            default:
+                player.sendMessage(text(player, "blackjack.insurance-paid", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, payout)));
+        }
+        if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null) {
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.2f);
+        }
+    }
+}
+
+/** Messaging only -- the stake was already debited when insurance was taken, so "forfeiting" it just means not paying it back. */
+private void forfeitInsuranceStakes() {
+    for (UUID playerId : insuranceStakes.keySet()) {
+        Player player = Bukkit.getPlayer(playerId);
+        if (player == null) {
+            continue;
+        }
+        switch (plugin.getPreferences(playerId).getMessageSetting()) {
+            case NONE:
+                break;
+            default:
+                player.sendMessage(text(player, "blackjack.insurance-lost"));
+        }
+    }
+}
+
+/** Private Yes(Totem)/No(Barrier) + countdown, rendered only into {@code playerId}'s own open view. */
+private void renderInsurancePromptForPlayer(UUID playerId) {
+    Player viewer = Bukkit.getPlayer(playerId);
+    renderPrivateItem(playerId, BlackjackSlotLayout.INSURANCE_YES_SLOT, createCustomItem(Material.TOTEM_OF_UNDYING, localize(viewer, "blackjack.insurance-yes"), 1));
+    renderPrivateItem(playerId, BlackjackSlotLayout.INSURANCE_NO_SLOT, createCustomItem(Material.BARRIER, localize(viewer, "blackjack.insurance-no"), 1));
+    renderInsuranceCountdownForPlayer(playerId, insuranceSecondsRemaining);
+    if (viewer != null) {
+        switch (plugin.getPreferences(playerId).getMessageSetting()) {
+            case NONE:
+                break;
+            default:
+                viewer.sendMessage(text(viewer, "blackjack.insurance-prompt"));
+        }
+    }
+}
+
+private void renderInsuranceCountdownForPlayer(UUID playerId, int secondsLeft) {
+    Player viewer = Bukkit.getPlayer(playerId);
+    Integer seatSlot = playerSeats.get(playerId);
+    if (seatSlot == null) {
+        return;
+    }
+    int slot = BlackjackSlotLayout.insuranceTimerSlot(seatSlot);
+    renderPrivateItem(playerId, slot, createCustomItem(Material.CLOCK, localize(viewer, "blackjack.insurance-timer-lore", "seconds", secondsLeft), Math.max(secondsLeft, 1)));
+}
+
+private void clearInsurancePromptForPlayer(UUID playerId) {
+    renderPrivateItem(playerId, BlackjackSlotLayout.INSURANCE_YES_SLOT, buildBackgroundPaneItem());
+    renderPrivateItem(playerId, BlackjackSlotLayout.INSURANCE_NO_SLOT, buildBackgroundPaneItem());
+    Integer seatSlot = playerSeats.get(playerId);
+    if (seatSlot != null) {
+        renderPrivateItem(playerId, BlackjackSlotLayout.insuranceTimerSlot(seatSlot), buildBackgroundPaneItem());
+    }
+}
+
+/** Table-wide teardown only (reset/cancel/delete): stops the canonical insurance countdown task and clears all bookkeeping. */
+private void stopInsurancePhaseBookkeeping() {
+    if (insuranceTaskId != -1) {
+        Bukkit.getScheduler().cancelTask(insuranceTaskId);
+        insuranceTaskId = -1;
+    }
+    insurancePhaseActive = false;
+    insuranceEligiblePlayers.clear();
+    insuranceDecided.clear();
+    insuranceStakes.clear();
 }
 
 private void startNextPlayerTurn() {
@@ -1924,8 +3202,8 @@ private void startNextPlayerTurn() {
     }
     // Initialize playerIterator if it's null or the previous iteration has ended
     if (playerIterator == null || !playerIterator.hasNext()) {
-        // Create a new iterator with players who have active bets and are not done
-        playerIterator = playerSeats.keySet().stream()
+        // Create a new iterator, in table order, with players who have active bets and are not done
+        playerIterator = orderedSeatedPlayers().stream()
             .filter(playerId -> playerBets.containsKey(playerId) && !playerBets.get(playerId).isEmpty() && !playerDone.getOrDefault(playerId, false))
             .iterator();
     }
@@ -1934,11 +3212,8 @@ private void startNextPlayerTurn() {
     while (playerIterator.hasNext()) {
 
         UUID previousPlayerId = currentPlayerId;
-        if (previousPlayerId != null) {
-            setBetPresentation(previousPlayerId, playerSeats.get(previousPlayerId) + 1, BlackjackFrame.BetPresentation.TURN_OVER);
-        }
-
         currentPlayerId = playerIterator.next();
+
         if (!playerDone.getOrDefault(currentPlayerId, false)) { // Skip players who are done
             Player currentPlayer = Bukkit.getPlayer(currentPlayerId);
 
@@ -1954,31 +3229,33 @@ private void startNextPlayerTurn() {
                     break;
                 }
             }
-            setBetPresentation(currentPlayerId, playerSeats.get(currentPlayerId) + 1, BlackjackFrame.BetPresentation.YOUR_TURN);
              if (SoundHelper.getSoundSafely("block.enchantment_table.use", currentPlayer) != null)currentPlayer.playSound(currentPlayer.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f);
 
+            refreshCardGlow(previousPlayerId, currentPlayerId);
+
             // Check if the player's hand value is 21
-            int handValue = calculateHandValue(playerHands.get(currentPlayerId));
+            int handValue = calculateHandValue(activeHandCards(currentPlayerId));
             if (handValue == 21) {
                 playerDone.put(currentPlayerId, true); // Mark the player as done
                 playerTurnActive.put(currentPlayerId, false); // Deactivate the player's turn
+                bumpHandToken(currentPlayerId);
+                renderActionsForCurrentPlayer();
                 startNextPlayerTurnWithDelay(20L); // Start the next player's turn with delay
                 return; // Skip to the next player
             }
 
-            // Update lever to show current player's turn
-            relabelLeverToAllViews("blackjack.current-player-turn", "player", currentPlayer.getName());
-
             // Set player's turn as active
             playerTurnActive.put(currentPlayerId, true);
+            renderActionsForCurrentPlayer();
 
             return;
         }
     }
 
-    if (playerSeats.get(currentPlayerId) != null) {
-        setBetPresentation(currentPlayerId, playerSeats.get(currentPlayerId) + 1, BlackjackFrame.BetPresentation.TURN_OVER);
-    }
+    UUID lastPlayerId = currentPlayerId;
+    currentPlayerId = null;
+    refreshCardGlow(lastPlayerId, null);
+    renderActionsForCurrentPlayer();
 
     // No more players left, proceed to the dealer's turn
     startDealerTurn();
@@ -1989,7 +3266,7 @@ private void startDealerTurn() {
     // Check if all players have busted
     boolean allPlayersBusted = true;
     for (UUID playerId : playerSeats.keySet()) {
-        int playerCardSum = calculateHandValue(playerHands.get(playerId));
+        int playerCardSum = calculateHandValue(activeHandCards(playerId));
         if (playerCardSum <= 21) {  // If any player has not busted
             allPlayersBusted = false;
             break;
@@ -2000,26 +3277,39 @@ private void startDealerTurn() {
         finishGame(); // Directly finish the game if all players are busted
         return;
     }
-    relabelLeverToAllViews("blackjack.dealer-turn-capitalized");
 
     // Reveal the dealer's hidden card with delay
     revealDealerCardWithDelay(20L);
 
-    // Dealer must hit until reaching at least 17
-    Bukkit.getScheduler().runTaskLater(plugin, () -> dealDealerCardsUntilSeventeen(4, calculateHandValue(dealerHand), 20L), 40L); // Start dealer's turn after revealing with delay
+    // Dealer must hit until reaching at least 17. Cards continue leftward
+    // from the hole card (51) toward 47 -- descending, not ascending; see
+    // the table redesign plan's "Open item to verify" note and
+    // BlackjackSlotLayout#dealerCardSlot.
+    Bukkit.getScheduler().runTaskLater(plugin, () -> dealDealerCardsUntilSeventeen(BlackjackSlotLayout.DEALER_HOLE_CARD_SLOT - 1, calculateHandValue(dealerHand), 20L), 40L); // Start dealer's turn after revealing with delay
 }
 
 private void revealDealerCardWithDelay(long delay) {
+    Bukkit.getScheduler().runTaskLater(plugin, this::revealDealerHoleCardNow, delay);
+}
 
-    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        ItemStack hiddenCard = inventory.getItem(3);
-        if (hiddenCard != null && hiddenCard.getType() == Material.WHITE_STAINED_GLASS_PANE) {
-            hiddenCardPlaceholderVisible = false;
-            Card revealedCard = deck.dealCard(); // Reveal the actual card
-            dealCardToPlayer(3, revealedCard, null); // Replace the hidden card with the revealed card
-            updateDealerHead(); // Update dealer's head with new card value
-        }
-    }, delay);
+/**
+ * Paints the dealer's hole card face-up. The Card itself was already
+ * drawn from the shoe back at deal time (see dealInitialCards --
+ * scheduleHiddenCardDealing), specifically so the dealer peek can know
+ * its rank before this visual reveal ever happens; this method only
+ * renders it, it never adds a new card to dealerHand. Reached either from
+ * the normal dealer's-turn reveal (revealDealerCardWithDelay) or
+ * immediately from performDealerPeekThenProceed when the peek finds a
+ * natural blackjack.
+ */
+private void revealDealerHoleCardNow() {
+    ItemStack hiddenCard = inventory.getItem(BlackjackSlotLayout.DEALER_HOLE_CARD_SLOT);
+    if (hiddenCard != null && hiddenCard.getType() == Material.WHITE_STAINED_GLASS_PANE && dealerHand.size() > 1) {
+        hiddenCardPlaceholderVisible = false;
+        Card holeCard = dealerHand.get(1);
+        renderCardToAllViews(BlackjackSlotLayout.DEALER_HOLE_CARD_SLOT, holeCard, false);
+        updateDealerHead(); // Update dealer's head with new card value
+    }
 }
 
 private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long delay) {
@@ -2040,7 +3330,7 @@ private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long
     } else {
         // Retrieve the current value
         String value = plugin.getConfig().getString("dealers." + internalName + ".stand-on-17", "100").trim();
-        
+
         try {
             standOn17Chance = Integer.parseInt(value);
         } catch (NumberFormatException e) {
@@ -2048,7 +3338,7 @@ private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long
             plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
             plugin.saveConfig();
         }
-    
+
         // Check if the value is greater than 100 or less than 0
         if (standOn17Chance > 100 ) {
             // Reset the value to 100
@@ -2069,7 +3359,7 @@ private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long
         updateDealerHead();
 
         // Schedule the next card if needed
-        Bukkit.getScheduler().runTaskLater(plugin, () -> dealDealerCardsUntilSeventeen(nextSlot + 1, mutableDealerCardSum[0], delay), delay);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> dealDealerCardsUntilSeventeen(nextSlot - 1, mutableDealerCardSum[0], delay), delay);
     } else if (mutableDealerCardSum[0] == 17) {
         // Determine whether the dealer stops at 17 based on the percentage chance
         if (!BlackjackRules.dealerShouldHit(17, standOn17Chance, Math.random() * 100)) {
@@ -2082,9 +3372,9 @@ private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long
                 dealCardToPlayer(nextSlot, newCard, null);
                 mutableDealerCardSum[0] = calculateHandValue(dealerHand);
                 updateDealerHead();
-                
-                Bukkit.getScheduler().runTaskLater(plugin, () -> 
-                    dealDealerCardsUntilSeventeen(nextSlot + 1, mutableDealerCardSum[0], delay), delay);
+
+                Bukkit.getScheduler().runTaskLater(plugin, () ->
+                    dealDealerCardsUntilSeventeen(nextSlot - 1, mutableDealerCardSum[0], delay), delay);
             }
         }
     } else {
@@ -2094,14 +3384,20 @@ private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long
 }
 
 
-private void scheduleCardDealingWithDelay(int slot, Card card, long delay, UUID playerId) {
+/**
+ * Deals a hit/double-down card after a delay, guarded by the same
+ * round-generation/hand-token pair as its later evaluation (see
+ * isStaleHandCallback) -- not just the "player still seated" check inside
+ * dealCardToPlayer. That check alone can't tell a still-seated player's
+ * stale card (left over from a resolved or superseded hand) from a live
+ * one; the token/generation pair can.
+ */
+private void scheduleCardDealingWithDelay(int slot, Card card, long delay, UUID playerId, long myGeneration, int myHandToken) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        dealCardToPlayer(slot, card, playerId);
-        if (playerId != null) {
-            updatePlayerHead(playerId); // Update player's head lore
-        } else {
-            updateDealerHead(); // Update dealer's head lore
+        if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
+            return;
         }
+        dealCardToPlayer(slot, card, playerId);
     }, delay);
 }
 
@@ -2127,7 +3423,7 @@ private void finishGame() {
         // first, same as the branch order this replaced. That precedence
         // is preserved intentionally; see BlackjackRulesTest for the
         // both-natural regression case.
-        BlackjackOutcome outcome = BlackjackRules.classify(playerHands.get(playerId), dealerHand);
+        BlackjackOutcome outcome = BlackjackRules.classify(activeHandCards(playerId), dealerHand);
 
         switch (outcome) {
             case BLACKJACK: {
@@ -2275,7 +3571,7 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
                         "profit",
                         plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue())
                     ));
-					break;     
+					break;
 				}
 					case NONE:{
 					break;
@@ -2341,14 +3637,13 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
                     "profit",
                     (int) Math.abs(totalAmount - totalBet)
                 ));
-                break;     
+                break;
             }
                 case NONE:{
                 break;
             }
-        } 
+        }
 
-        //player.sendMessage("§a§l" + (int)payout + " " + plugin.getCurrencyName(internalName).toLowerCase()+ (Math.abs(payout) == 1 ? "" : "s") + "\n");
         // Print total dropped if any items couldn't fit in inventory
         if (totalDropped > 0) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -2367,15 +3662,13 @@ private void payOut(Player player, Map<Integer, Double> bets, double multiplier)
                         "amount",
                         plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped)
                     ));
-                    break;     
+                    break;
                 }
                     case NONE:{
                     break;
                 }
-            } 
-         } else {
-
-        }
+            }
+         }
     }
 }
 
@@ -2391,17 +3684,28 @@ private int applyProbabilisticRounding(double value) {
 
 private void resetGame() {
     gameActive = false;
+    roundGeneration++;
+    handToken.clear();
+    // Table-wide event: any shared animation (dealer U-path, split
+    // sequence) and every private one both end here -- the whole round is
+    // over, not just one viewer's inventory closing.
+    cancelAllAnimations();
 
     playerBets.clear();
     lastBetAmounts.clear();
     playerCardCounts.clear(); // Clear the card count map
     playerDone.clear(); // Clear the player status map
     playerHands.clear(); // Clear player hands
+    activeHandIndex.clear();
     dealerHand.clear(); // Clear dealer's hand
     playerIterator = null;
     currentPlayerId = null;
     hiddenCardPlaceholderVisible = false;
-    betPresentation.clear();
+    dealerHeadSlot = BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT;
+    startTransitionActive = false;
+    startTransitionDoorConcealComplete.clear();
+    stopInsurancePhaseBookkeeping();
+    playerTurnActive.clear();
 
     // Cancel any ongoing countdown
     if (countdownTaskId != -1) {
@@ -2415,11 +3719,15 @@ private void resetGame() {
         view.getInventory().clear();
     }
 
-    // Set up the Game Info lever in the second slot
-    renderLeverToAllViews(1, "blackjack.game-info");
-
-    // Reinitialize the game menu but do not clear player seats
+    // Reinitialize the game menu but do not clear player seats.
+    // initializeGameMenu() clears every inventory itself -- the status
+    // clock must be painted after it, not before, or this clock item
+    // would immediately be wiped out again for every already-open view.
     initializeGameMenu();
+
+    // Idle status -- no countdown running yet for the next lobby/countdown.
+    leverKey = null;
+    leverPlaceholders = new Object[0];
 
     // Re-populate the player heads in the seats
     for (UUID playerId : playerSeats.keySet()) {
@@ -2433,9 +3741,9 @@ private int calculateHandValue(List<Card> hand) {
     return BlackjackRules.handValue(hand);
 }
 
-private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId) {
+private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId, long myGeneration) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        if (!gameActive || playerSeats.isEmpty()) {
+        if (roundGeneration != myGeneration || !gameActive || playerSeats.isEmpty()) {
             return;
         }
         for (UUID uuid : playerSeats.keySet()) {
@@ -2444,13 +3752,8 @@ private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId) 
                  if (SoundHelper.getSoundSafely("block.soul_soil.step", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
             }
         }
-        
+
         dealCardToPlayer(slot, card, playerId);
-        if (playerId != null) {
-            updatePlayerHead(playerId); // Update player's head lore
-        } else {
-            updateDealerHead(); // Update dealer's head lore
-        }
     }, delay);
 }
 
@@ -2459,7 +3762,7 @@ private void updatePlayerHead(UUID playerId) {
         return; // Skip updating if the player hasn't placed a bet
     }
 
-    List<Card> hand = playerHands.get(playerId);
+    List<Card> hand = activeHandCards(playerId);
     String handValue = calculateHandValueWithSoftCheck(hand);
 
     int seatSlot = playerSeats.get(playerId);
@@ -2468,7 +3771,7 @@ private void updatePlayerHead(UUID playerId) {
 
 private void updateDealerHead() {
     String handValue = calculateHandValueWithSoftCheck(dealerHand);
-    renderHeadLoreToAllViews(BlackjackSlotLayout.DEALER_HEAD_SLOT, handValue, null, "blackjack.dealer");
+    renderHeadLoreToAllViews(dealerHeadSlot, handValue, null, "blackjack.dealer");
 }
 private String calculateHandValueWithSoftCheck(List<Card> hand) {
     if (hand == null || hand.isEmpty()) {
@@ -2485,9 +3788,17 @@ private String calculateHandValueWithSoftCheck(List<Card> hand) {
     }
 }
 
-private void scheduleHiddenCardDealing(int slot, int delay) {
+/**
+ * Schedules the dealer's hole card to appear as a hidden placeholder --
+ * but {@code holeCard} is already drawn from the shoe by the caller
+ * (dealInitialCards) at plan-build time, not lazily here, so its rank is
+ * known immediately for the dealer peek. Only the visual placeholder is
+ * delayed; the canonical dealerHand gets the real card the moment this
+ * callback fires.
+ */
+private void scheduleHiddenCardDealing(int slot, Card holeCard, long delay, long myGeneration) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        if (!gameActive || playerSeats.isEmpty()) {
+        if (roundGeneration != myGeneration || !gameActive || playerSeats.isEmpty()) {
             return;
         }
         for (UUID uuid : playerSeats.keySet()) {
@@ -2496,15 +3807,22 @@ private void scheduleHiddenCardDealing(int slot, int delay) {
                  if (SoundHelper.getSoundSafely("block.soul_soil.step", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_SOUL_SOIL_STEP, SoundCategory.MASTER, 1.0f, 1.0f);
             }
         }
+        dealerHand.add(holeCard);
         hiddenCardPlaceholderVisible = true;
         renderHiddenCardToAllViews(slot);
     }, delay);
 }
 
+/**
+ * Deals one Card either to a seated player (playerId non-null) or the
+ * dealer (playerId null), always updating canonical hand state; only
+ * skips the visual render (via isRenderableCardSlot) if slot has escaped
+ * that owner's eight-slot row -- canonical state never drops a card just
+ * because it can't currently be shown (see BlackjackSlotLayout's bounded
+ * row).
+ */
 private void dealCardToPlayer(int slot, Card card, UUID playerId) {
-    // No changes needed here; the deck will reshuffle automatically if it's empty.
-
-    if (!playerSeats.containsKey(playerId) && slot > 9) {
+    if (playerId != null && !playerSeats.containsKey(playerId)) {
         return;
     }
     for (UUID uuid : playerSeats.keySet()) {
@@ -2514,13 +3832,17 @@ private void dealCardToPlayer(int slot, Card card, UUID playerId) {
         }
     }
 
-    renderCardToAllViews(slot, card); // Place the card in the inventory slot
-
     if (playerId != null) { // If this card is dealt to a player
-        playerHands.computeIfAbsent(playerId, k -> new ArrayList<>()).add(card);
+        ensureActiveHand(playerId).addCard(card);
+        if (isRenderableCardSlot(playerId, slot)) {
+            renderCardToAllViews(slot, card, playerId.equals(currentPlayerId));
+        }
         updatePlayerHead(playerId);
     } else { // If this card is dealt to the dealer
         dealerHand.add(card);
+        if (isRenderableCardSlot(null, slot)) {
+            renderCardToAllViews(slot, card, false);
+        }
         updateDealerHead();
     }
 }
@@ -2534,13 +3856,20 @@ public void delete() {
     clearPlayerBets(null);
     playerSeats.clear();
     playerHands.clear();
+    activeHandIndex.clear();
     playerCardCounts.clear();
     playerTurnActive.clear();
     playerDone.clear();
-    selectedWagers.clear();
+    selectedWager.clear();
+    pregameWagerIncrements.clear();
     lastBetAmounts.clear();
     hiddenCardPlaceholderVisible = false;
-    betPresentation.clear();
+    dealerHeadSlot = BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT;
+    startTransitionActive = false;
+    startTransitionDoorConcealComplete.clear();
+    stopInsurancePhaseBookkeeping();
+    roundGeneration++;
+    handToken.clear();
 
     // Remove any scheduled tasks related to this game
     if (countdownTaskId != -1) {
@@ -2579,6 +3908,10 @@ public void delete() {
     // Cancel the game and reset the board with all items and options
     private void cancelGame() {
         gameActive = false;
+        roundGeneration++;
+        handToken.clear();
+        // Table-wide event -- ends every animation, shared and private alike.
+        cancelAllAnimations();
 
         // Clear all player and game-related data
         clearPlayerBets(null); // Clear all bets
@@ -2588,28 +3921,33 @@ public void delete() {
         playerCardCounts.clear();
         playerDone.clear();
         playerHands.clear();
+        activeHandIndex.clear();
         dealerHand.clear();
         playerIterator = null;
         currentPlayerId = null;
-        selectedWagers.clear();
+        selectedWager.clear();
         hiddenCardPlaceholderVisible = false;
-        betPresentation.clear();
-    
+        dealerHeadSlot = BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT;
+        startTransitionActive = false;
+        startTransitionDoorConcealComplete.clear();
+        stopInsurancePhaseBookkeeping();
+        playerTurnActive.clear();
+
         // Stop any ongoing scheduled tasks
         if (countdownTaskId != -1) {
             Bukkit.getScheduler().cancelTask(countdownTaskId);
             countdownTaskId = -1;
         }
-    
+
         // Clear and reset the inventory
         inventory.clear();
         initializeGameMenu(); // Reset the game menu
-    
+
         // Reset player seats
         playerSeats.clear();
-        
+
     }
-    
+
 
         @EventHandler
         public void handleInventoryClose(InventoryCloseEvent event) {
@@ -2680,7 +4018,9 @@ public void delete() {
             // safely first if it was theirs.
             if (playerId.equals(currentPlayerId)) {
                 playerDone.put(playerId, true);
-                startNextPlayerTurn();
+                playerTurnActive.put(playerId, false);
+                bumpHandToken(playerId);
+                advanceTurnNow();
             }
             removePlayerData(playerId);
         } else if (action == org.nc.nccasino.session.TerminationAction.REFUND) {

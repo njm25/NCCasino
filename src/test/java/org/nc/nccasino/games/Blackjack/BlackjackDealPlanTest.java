@@ -21,7 +21,7 @@ class BlackjackDealPlanTest {
     @Test
     void singlePlayerDealOrderAndDelaysMatchOriginalLoop() {
         UUID player = UUID.randomUUID();
-        Map<UUID, Integer> seatSlots = Map.of(player, 9); // seat slot 9 -> bet slot 10, cards at 11/12
+        Map<UUID, Integer> seatSlots = Map.of(player, 9); // seat slot 9 -> bet spot 10, cards at 11/12
 
         BlackjackDealPlan.Plan plan = BlackjackDealPlan.initialDeal(List.of(player), seatSlots, 2, 3, STEP_DELAY);
         List<BlackjackDealPlan.Step> steps = plan.getSteps();
@@ -133,5 +133,35 @@ class BlackjackDealPlanTest {
         BlackjackDealPlan.Plan plan = BlackjackDealPlan.initialDeal(List.of(player), seatSlots, 2, 3, oddStepDelay);
 
         assertEquals(5L * oddStepDelay, plan.initialBlackjackCheckDelayTicks());
+    }
+
+    @Test
+    void playerCardSlotsMatchBlackjackSlotLayoutForEverySeat() {
+        for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
+            UUID player = UUID.randomUUID();
+            Map<UUID, Integer> seatSlots = Map.of(player, seatSlot);
+            BlackjackDealPlan.Plan plan = BlackjackDealPlan.initialDeal(
+                List.of(player), seatSlots,
+                BlackjackSlotLayout.DEALER_UP_CARD_SLOT, BlackjackSlotLayout.DEALER_HOLE_CARD_SLOT,
+                STEP_DELAY
+            );
+            List<BlackjackDealPlan.Step> playerSteps = plan.getSteps().stream().filter(s -> !s.isDealer()).toList();
+            assertEquals(BlackjackSlotLayout.playerCardSlot(seatSlot, 0), playerSteps.get(0).getSlot());
+            assertEquals(BlackjackSlotLayout.playerCardSlot(seatSlot, 1), playerSteps.get(1).getSlot());
+        }
+    }
+
+    @Test
+    void dealerCardsUseTheDealerRowSlotsFromBlackjackSlotLayout() {
+        UUID player = UUID.randomUUID();
+        Map<UUID, Integer> seatSlots = Map.of(player, 9);
+        BlackjackDealPlan.Plan plan = BlackjackDealPlan.initialDeal(
+            List.of(player), seatSlots,
+            BlackjackSlotLayout.DEALER_UP_CARD_SLOT, BlackjackSlotLayout.DEALER_HOLE_CARD_SLOT,
+            STEP_DELAY
+        );
+        List<BlackjackDealPlan.Step> dealerSteps = plan.getSteps().stream().filter(BlackjackDealPlan.Step::isDealer).toList();
+        assertEquals(BlackjackSlotLayout.dealerCardSlot(0), dealerSteps.get(0).getSlot());
+        assertEquals(BlackjackSlotLayout.dealerCardSlot(1), dealerSteps.get(1).getSlot());
     }
 }
