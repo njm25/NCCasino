@@ -261,6 +261,21 @@ public final class BlackjackFrame {
     }
 
     /**
+     * The portion of {@link #dealerHand()} that presentation is ever allowed to compute or display from. While the
+     * hole card is hidden, only the up-card (index 0) is public -- the canonical list may already carry the hole
+     * card (index 1, needed for peek logic) and nothing beyond it yet, since further dealer cards are never dealt
+     * before the hole card is revealed. Once revealed ({@link #dealerHoleCardHidden()} false), the full canonical
+     * hand is public. Every dealer-head lore/status/placeholder computation must read this, never {@link #dealerHand()}
+     * directly, to avoid leaking a value derived from the hidden card.
+     */
+    public List<Card> publiclyVisibleDealerHand() {
+        if (!dealerHoleCardHidden) {
+            return dealerHand;
+        }
+        return dealerHand.isEmpty() ? dealerHand : dealerHand.subList(0, 1);
+    }
+
+    /**
      * The dealer's current canonical head slot -- {@link BlackjackSlotLayout#DEALER_LOBBY_HEAD_SLOT}
      * (8) before the start-transition animation delivers it to
      * {@link BlackjackSlotLayout#DEALER_INPLAY_HEAD_SLOT} (53). Carried here

@@ -457,8 +457,16 @@ private void registerListener() {
         cancelSharedAnimation();
     }
 
-    /** Derives the table-global phase the same way captureFrame does, for BlackjackAnimationRun bookkeeping. */
+    /**
+     * Derives the table-global phase the same way captureFrame does, for BlackjackAnimationRun bookkeeping.
+     * INSURANCE must be checked before ACTIVE: gameActive flips true at the very start of activateGame(), well
+     * before the insurance decision window opens, so a late viewer bootstrapping (or any animation-scope check)
+     * during insurance previously saw ACTIVE and never restored the private insurance Yes/No UI or countdown.
+     */
     private BlackjackFrame.Phase capturePhase() {
+        if (insurancePhaseActive) {
+            return BlackjackFrame.Phase.INSURANCE;
+        }
         if (gameActive) {
             return BlackjackFrame.Phase.ACTIVE;
         }
@@ -987,13 +995,26 @@ private void registerListener() {
     }
 
     /**
-     * Commits {@code amount} for {@code playerId}: debits their balance, pushes the increment onto the ledger, and
-     * keeps the legacy playerBets/lastBetAmounts maps (still relied on by finishGame/refund/deal-order logic) in
-     * sync with the ledger's new total, so this phase doesn't have to also migrate every downstream reader of
-     * those maps. See BlackjackWagerLedger for the pure math.
+     * Commits {@code amount} for {@code playerId}: debits their balance, then applies the ledger-side effects (see
+     * {@link #commitWagerFundsAlreadyRemoved}). Used by the chip-selection commit path, where nothing has removed
+     * any funds yet. NOT used for the cursor-drag-onto-bet-spot path -- there, {@code player.setItemOnCursor(null)}
+     * already destroys the dragged physical stack, so calling this too would debit the same amount a second time
+     * (previously a real bug: the cursor stack was deleted AND removeWagerFromInventory ran again, over-charging
+     * the player). See handleBetClick's cursor-drag branch, which calls commitWagerFundsAlreadyRemoved instead.
      */
     private void commitWager(Player player, UUID playerId, int betSpotSlot, double amount) {
         removeWagerFromInventory(player, amount);
+        commitWagerFundsAlreadyRemoved(playerId, betSpotSlot, amount);
+    }
+
+    /**
+     * The funds-movement-free half of {@link #commitWager}: pushes {@code amount} onto the committed-increment
+     * ledger and keeps the legacy playerBets/lastBetAmounts maps (still relied on by finishGame/refund/deal-order
+     * logic) in sync with the ledger's new total. Callers are responsible for having already removed {@code amount}
+     * from the player's balance through whichever mechanism applies (or, for a cursor-drag commit, having already
+     * had it removed by the client destroying the dragged stack).
+     */
+    private void commitWagerFundsAlreadyRemoved(UUID playerId, int betSpotSlot, double amount) {
         java.util.Deque<Double> increments = pregameWagerIncrements.computeIfAbsent(playerId, k -> new java.util.ArrayDeque<>());
         BlackjackWagerLedger.commit(increments, amount);
         syncPlayerBetsFromLedger(playerId, betSpotSlot);
@@ -1072,7 +1093,14 @@ private void registerListener() {
         Player viewer = Bukkit.getPlayer(view.getPlayerId());
 
         BlackjackFrame frame = captureFrame();
-        boolean active = frame.phase() == BlackjackFrame.Phase.ACTIVE;
+        // INSURANCE is an in-play, already-dealt table phase -- cards are
+        // down, the active-phase bottom bar/bet spots apply, and the
+        // insurance-specific private UI is layered on afterward below. Only
+        // ACTIVE and INSURANCE ever reach here with dealt cards; treating
+        // INSURANCE as pregame here previously repainted a late viewer with
+        // the wager-selection board mid-round and dropped their unanswered
+        // insurance Yes/No prompt and countdown entirely.
+        boolean active = frame.phase() == BlackjackFrame.Phase.ACTIVE || frame.phase() == BlackjackFrame.Phase.INSURANCE;
 
         // Felt the whole board green first -- everything painted below
         // overlays it; anything left untouched (unused card-row slots,
@@ -1088,8 +1116,15 @@ private void registerListener() {
         }
 
         target.setItem(frame.dealerHeadSlot(), createCustomItem(Material.CREEPER_HEAD, localize(viewer, "blackjack.dealer")));
-        if (!frame.dealerHand().isEmpty()) {
-            applyHeadLore(target, frame.dealerHeadSlot(), calculateHandValueWithSoftCheck(frame.dealerHand()), null, "blackjack.dealer", viewer);
+        // While the hole card is hidden, presentation must never calculate
+        // or expose a value derived from it -- only the publicly visible
+        // portion of the canonical hand (the up-card) may feed the head
+        // lore. frame.dealerHand() itself stays the full canonical hand
+        // (peek logic elsewhere legitimately needs it); only rendering is
+        // restricted. See BlackjackFrame#publiclyVisibleDealerHand.
+        List<Card> visibleDealerHand = frame.publiclyVisibleDealerHand();
+        if (!visibleDealerHand.isEmpty()) {
+            applyHeadLore(target, frame.dealerHeadSlot(), calculateHandValueWithSoftCheck(visibleDealerHand), null, "blackjack.dealer", viewer);
         }
         if (active) {
             for (int i = 0; i < frame.dealerHand().size() && i < BlackjackSlotLayout.DEALER_CARD_CAPACITY; i++) {
@@ -1129,6 +1164,11 @@ private void registerListener() {
             }
 
             if (active) {
+                // Permanent bet spot stays visible throughout active play
+                // (never cleared to background -- see
+                // transitionBottomBarToActive), glowing solidly while it's
+                // this seat's turn, matching refreshCardGlow's live fan-out.
+                target.setItem(BlackjackSlotLayout.betSlipSlot(seatSlot), withWagerLore(buildActiveBetSpotItem(seat.isCurrentTurn()), seat.getWager(), viewer));
                 for (int i = 0; i < seat.getHand().size() && i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
                     target.setItem(BlackjackSlotLayout.playerCardSlot(seatSlot, i), buildCardItem(seat.getHand().get(i), viewer, seat.isCurrentTurn()));
                 }
@@ -1147,6 +1187,18 @@ private void registerListener() {
             for (Map.Entry<BlackjackAction, Integer> entry : currentPlayerActionLayout().entrySet()) {
                 target.setItem(entry.getValue(), buildActionItem(entry.getKey(), viewer));
             }
+        }
+
+        if (frame.phase() == BlackjackFrame.Phase.INSURANCE
+            && insuranceEligiblePlayers.contains(view.getPlayerId())
+            && !insuranceDecided.contains(view.getPlayerId())) {
+            // A late viewer (or one reopening) during the insurance window
+            // must see their still-unanswered private Yes/No prompt and the
+            // live countdown, not a blank/active-phase board -- the
+            // deadline itself is table-owned canonical state (see
+            // beginInsurancePhase) and keeps running regardless; this only
+            // restores this one viewer's own rendering of it.
+            renderInsurancePromptForPlayer(view.getPlayerId());
         }
     }
 
@@ -1569,13 +1621,38 @@ private void registerListener() {
         }
     }
 
-    /** Turns glow off for the previous current player (if any) and on for the new one (if any). */
+    /** Turns glow off for the previous current player (if any) and on for the new one (if any) -- both their visible cards and their permanent bet spot. */
     private void refreshCardGlow(UUID previousPlayerId, UUID newCurrentPlayerId) {
         if (previousPlayerId != null && !previousPlayerId.equals(newCurrentPlayerId)) {
             reRenderHand(previousPlayerId, false);
+            reRenderBetSpot(previousPlayerId, false);
         }
         if (newCurrentPlayerId != null) {
             reRenderHand(newCurrentPlayerId, true);
+            reRenderBetSpot(newCurrentPlayerId, true);
+        }
+    }
+
+    /** The permanent brown bet-spot item shown throughout active play -- glowing solidly while it's this seat's turn, plain otherwise. Never cleared to background while a player occupies the seat (see transitionBottomBarToActive). */
+    private ItemStack buildActiveBetSpotItem(boolean glowing) {
+        return glowing ? createGlowingCustomItem(Material.BROWN_STAINED_GLASS_PANE, "§r", 1) : buildBrownEdgeGlassItem();
+    }
+
+    /** Re-renders a seated player's permanent bet spot with the given glow state, preserving its wager lore. No-op if the player isn't seated. */
+    private void reRenderBetSpot(UUID playerId, boolean glowing) {
+        if (playerId == null) {
+            return;
+        }
+        Integer seatSlot = playerSeats.get(playerId);
+        if (seatSlot == null) {
+            return;
+        }
+        int betSpotSlot = BlackjackSlotLayout.betSlipSlot(seatSlot);
+        double wager = totalBet(playerId);
+        inventory.setItem(betSpotSlot, withWagerLore(buildActiveBetSpotItem(glowing), wager, null));
+        for (BlackjackView view : views.values()) {
+            Player viewer = Bukkit.getPlayer(view.getPlayerId());
+            view.getInventory().setItem(betSpotSlot, withWagerLore(buildActiveBetSpotItem(glowing), wager, viewer));
         }
     }
 
@@ -2452,8 +2529,8 @@ private void removePlayerData(UUID playerId) {
         ItemStack heldItem = event.getCursor();
         if (isCurrencyItem(heldItem) && heldItem != null && heldItem.getAmount() > 0) {
             double amount = heldItem.getAmount();
-            player.setItemOnCursor(null); // Remove the stack from the cursor
-            commitWager(player, playerId, betSpotSlot, amount);
+            player.setItemOnCursor(null); // Removes the stack from the cursor -- this IS the debit for a cursor-drag commit
+            commitWagerFundsAlreadyRemoved(playerId, betSpotSlot, amount); // must NOT also call removeWagerFromInventory -- see commitWager's doc
 
             if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
                 player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
@@ -2774,23 +2851,34 @@ private void removePlayerData(UUID playerId) {
     }
 
     /**
-     * Commits the round: clears the wager row and every betting slip, moves
-     * the exit door to slot 45, and clears every seated player's pregame
-     * countdown slot. Dealer-position-as-state has already delivered
-     * dealerHeadSlot to its in-play value (53) by the time this runs --
-     * see beginStartTransition/startDealerInspection -- the reassignment
-     * below is just a safety net, not the primary mechanism anymore.
+     * Commits the round: clears the wager row (stopping short of slot 53,
+     * the dealer's in-play head slot -- see below), re-paints every seated
+     * player's permanent bet spot (kept visible, not cleared, throughout
+     * active play), moves the exit door to slot 45, and clears every seated
+     * player's pregame countdown slot. Dealer-position-as-state has already
+     * delivered dealerHeadSlot to its in-play value (53) by the time this
+     * runs -- see beginStartTransition/startDealerInspection -- but slot 53
+     * was still inside the old clear-everything-45-53 loop, wiping the
+     * dealer head the inspection animation had just placed there with
+     * nothing ever recreating it; the loop now stops at ALL_IN_SLOT (52)
+     * and the dealer head is explicitly (re)rendered afterward instead.
      */
     private void transitionBottomBarToActive() {
-        for (int slot = BlackjackSlotLayout.UNDO_ALL_SLOT; slot <= BlackjackSlotLayout.PREGAME_EXIT_SLOT; slot++) {
+        for (int slot = BlackjackSlotLayout.UNDO_ALL_SLOT; slot <= BlackjackSlotLayout.ALL_IN_SLOT; slot++) {
             renderBackgroundToAllViews(slot);
         }
         for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
-            renderBackgroundToAllViews(BlackjackSlotLayout.betSlipSlot(seatSlot));
+            UUID occupant = seatOwnerAt(seatSlot);
+            if (occupant != null) {
+                reRenderBetSpot(occupant, false);
+            } else {
+                renderBackgroundToAllViews(BlackjackSlotLayout.betSlipSlot(seatSlot));
+            }
         }
         renderLocalizedToAllViews(BlackjackSlotLayout.ACTIVE_EXIT_SLOT, Material.SPRUCE_DOOR, 1, "blackjack.leave-exit");
         clearPregameCountdownFromAllViews();
         dealerHeadSlot = BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT;
+        renderLocalizedToAllViews(dealerHeadSlot, Material.CREEPER_HEAD, 1, "blackjack.dealer");
     }
 
     // Activate the game and set the dealer's turn
@@ -3418,11 +3506,10 @@ private void finishGame() {
         Player player = Bukkit.getPlayer(playerId);
         Map<Integer, Double> bets = playerBets.get(playerId);
 
-        // Player-natural-blackjack takes precedence over everything else,
-        // including a dealer natural -- BlackjackRules.classify checks it
-        // first, same as the branch order this replaced. That precedence
-        // is preserved intentionally; see BlackjackRulesTest for the
-        // both-natural regression case.
+        // A player natural blackjack pays 3:2 unless the dealer also has a
+        // natural, in which case the main wager pushes -- see
+        // BlackjackRules.classify and BlackjackRulesTest's both-natural
+        // case.
         BlackjackOutcome outcome = BlackjackRules.classify(activeHandCards(playerId), dealerHand);
 
         switch (outcome) {

@@ -97,16 +97,19 @@ class BlackjackInsuranceRulesTest {
     }
 
     @Test
-    void naturalBlackjackHolderGetsBothTheMainHandBlackjackPayoutAndTheirInsurancePayout() {
+    void naturalBlackjackHolderGetsAPushedMainHandPlusTheirInsurancePayout() {
         // The even-money case: this player has their own natural, took
-        // insurance, and the dealer also has blackjack -- both payouts are
-        // independent side pots and must both land.
+        // insurance, and the dealer also has blackjack. Standard rules: a
+        // natural vs. a natural pushes the main hand (neither beats the
+        // other) -- the insurance payout is the independent side pot that
+        // makes this "even money" overall, not a double payout on the main
+        // hand too.
         List<Card> dealerBlackjack = List.of(ACE_SPADES, KING_HEARTS);
         List<Card> playerNaturalBlackjack = List.of(new Card(Suit.CLUBS, Rank.ACE), new Card(Suit.DIAMONDS, Rank.QUEEN));
 
         BlackjackInsuranceRules.Settlement settlement = BlackjackInsuranceRules.settle(playerNaturalBlackjack, dealerBlackjack, 25.0);
 
-        assertEquals(BlackjackOutcome.BLACKJACK, settlement.getMainHandOutcome());
+        assertEquals(BlackjackOutcome.PUSH, settlement.getMainHandOutcome());
         assertEquals(75.0, settlement.getInsurancePayout());
     }
 
@@ -130,7 +133,10 @@ class BlackjackInsuranceRulesTest {
         assertEquals(BlackjackOutcome.LOSS, b.getMainHandOutcome());
         assertEquals(0.0, b.getInsurancePayout());
 
-        assertEquals(BlackjackOutcome.BLACKJACK, c.getMainHandOutcome());
+        // The insured natural pushes its main hand against the dealer's
+        // own natural (see naturalBlackjackHolderGetsAPushedMainHandPlusTheirInsurancePayout) -- its
+        // insurance payout still lands independently.
+        assertEquals(BlackjackOutcome.PUSH, c.getMainHandOutcome());
         assertEquals(45.0, c.getInsurancePayout());
     }
 

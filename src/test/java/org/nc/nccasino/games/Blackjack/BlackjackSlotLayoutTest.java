@@ -176,6 +176,18 @@ class BlackjackSlotLayoutTest {
         }
     }
 
+    // --- Regression: the active-phase bottom-bar clear must stop short of
+    // the dealer's in-play head slot (53 == PREGAME_EXIT_SLOT), which is
+    // exactly why transitionBottomBarToActive previously wiped the dealer
+    // head immediately after the start-transition animation placed it
+    // there, with nothing ever recreating it. ---
+
+    @Test
+    void allInSlotIsOneShortOfTheDealerInPlayHeadSlot() {
+        assertEquals(BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT - 1, BlackjackSlotLayout.ALL_IN_SLOT,
+            "a bottom-bar clear loop bounded at ALL_IN_SLOT (inclusive) must never touch the dealer's in-play head slot");
+    }
+
     // --- Dealer U-path ---
 
     @Test

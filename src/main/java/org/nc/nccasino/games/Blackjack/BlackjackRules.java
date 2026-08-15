@@ -129,13 +129,27 @@ public final class BlackjackRules {
     }
 
     /**
-     * Classifies a finished player hand against the dealer's, matching the
-     * exact branch order of BlackjackInventory#finishGame: natural blackjack
-     * first, then player bust, then dealer-bust-or-player-higher as a win,
-     * then player-lower as a loss, else push.
+     * Classifies a finished player hand against the dealer's: a player
+     * natural blackjack pays 3:2 unless the dealer also has a natural
+     * blackjack, in which case the main wager pushes (standard blackjack
+     * rules -- neither hand beats the other). Then player bust, then
+     * dealer-bust-or-player-higher as a win, then player-lower as a loss,
+     * else push.
+     *
+     * <p>This replaces the table's previous nonstandard behavior, where a
+     * player natural always paid 3:2 even against a dealer natural. That
+     * old behavior also made insurance/even-money settlement incoherent (the
+     * whole point of even-money is that it substitutes for a push you'd
+     * otherwise get on the main wager) -- fixing this is required for
+     * insurance to be correct, not an independent rules change.
      */
     public static BlackjackOutcome classify(List<Card> playerHand, List<Card> dealerHand) {
-        if (isNaturalBlackjack(playerHand)) {
+        boolean playerNatural = isNaturalBlackjack(playerHand);
+        boolean dealerNatural = isNaturalBlackjack(dealerHand);
+        if (playerNatural && dealerNatural) {
+            return BlackjackOutcome.PUSH;
+        }
+        if (playerNatural) {
             return BlackjackOutcome.BLACKJACK;
         }
 

@@ -81,13 +81,16 @@ public final class BlackjackInsuranceRules {
 
     /**
      * Settles one player's hand against the dealer's -- their main-hand
-     * outcome via {@link BlackjackRules#classify(List, List)} (independent
-     * of insurance: a natural-blackjack holder still gets BLACKJACK on
-     * their main hand per this codebase's existing precedence, matching
-     * {@code BlackjackRulesTest}'s preserved both-natural regression case)
-     * plus their insurance payout, if any -- insurance only ever pays out
-     * when the dealer actually has a natural blackjack, regardless of the
-     * player's own hand.
+     * outcome via {@link BlackjackRules#classify(List, List)} (a
+     * natural-blackjack holder gets BLACKJACK on their main hand, unless the
+     * dealer also has a natural, in which case the main hand pushes -- see
+     * {@code BlackjackRulesTest}'s both-natural case) plus their insurance
+     * payout, if any -- insurance only ever pays out when the dealer
+     * actually has a natural blackjack, regardless of the player's own hand.
+     * This is exactly what makes even-money coherent: a player who takes
+     * insurance on their own natural against a dealer Ace up-card gets a
+     * pushed main hand plus the insurance payout, together equivalent to
+     * "even money" on the original wager.
      *
      * @param insuranceStakeOrZero the amount this player staked on insurance, or 0 if they didn't take it
      */

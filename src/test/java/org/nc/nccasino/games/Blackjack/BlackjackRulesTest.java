@@ -210,16 +210,25 @@ class BlackjackRulesTest {
     }
 
     @Test
-    void playerNaturalBeatsDealerNaturalUndefeatedPushIsNotAwarded() {
-        // Regression for finishGame's branch order: isNaturalBlackjack is
-        // checked for the player only, before any dealer-side comparison,
-        // so a player natural still pays 2.5x even when the dealer also
-        // has a natural. This is preserved, pre-existing behavior -- not
-        // "correct" push-on-both-naturals blackjack rules -- and must not
-        // be silently fixed during the localization/insurance work.
+    void bothPlayerAndDealerNaturalBlackjackPushes() {
+        // Standard blackjack rules: when both the player and dealer have a
+        // natural blackjack, neither beats the other -- the main wager
+        // pushes (refunded, not paid 3:2). This is also what makes
+        // insurance/even-money settlement coherent: even-money is a
+        // substitute for the push you'd otherwise get here.
         BlackjackOutcome outcome = BlackjackRules.classify(
             List.of(card(Rank.ACE), card(Rank.KING)), // player natural
             List.of(card(Rank.ACE), card(Rank.QUEEN)) // dealer also natural
+        );
+        assertEquals(BlackjackOutcome.PUSH, outcome);
+        assertEquals(1.0, outcome.getMultiplier());
+    }
+
+    @Test
+    void playerNaturalBeatsNonNaturalDealerHandStillPaysBlackjack() {
+        BlackjackOutcome outcome = BlackjackRules.classify(
+            List.of(card(Rank.ACE), card(Rank.KING)), // player natural
+            List.of(card(Rank.TEN), card(Rank.NINE)) // dealer 19, not natural
         );
         assertEquals(BlackjackOutcome.BLACKJACK, outcome);
         assertEquals(2.5, outcome.getMultiplier());

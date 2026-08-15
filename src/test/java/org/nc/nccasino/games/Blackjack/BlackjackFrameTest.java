@@ -199,6 +199,52 @@ class BlackjackFrameTest {
         assertNotEquals(beforePlaceholderRendered, afterPlaceholderRendered);
     }
 
+    // --- hidden-hole-card information leak: presentation must never read
+    // beyond the publicly visible portion of the dealer's canonical hand ---
+
+    @Test
+    void publiclyVisibleDealerHandIsFullHandOnceRevealed() {
+        List<Card> dealerHand = List.of(KING_HEARTS, ACE_SPADES);
+        BlackjackFrame revealed = new BlackjackFrame(
+            BlackjackFrame.Phase.ACTIVE, 0, "k", BlackjackFrame.noPlaceholders(), dealerHand, false, List.of()
+        );
+        assertEquals(dealerHand, revealed.publiclyVisibleDealerHand());
+    }
+
+    @Test
+    void publiclyVisibleDealerHandIsOnlyTheUpCardWhileHoleCardHidden() {
+        // Canonical dealerHand may already carry the hole card (index 1,
+        // needed for peek logic) -- presentation must see only the up-card.
+        List<Card> dealerHand = List.of(KING_HEARTS, ACE_SPADES);
+        BlackjackFrame hidden = new BlackjackFrame(
+            BlackjackFrame.Phase.ACTIVE, 0, "k", BlackjackFrame.noPlaceholders(), dealerHand, true, List.of()
+        );
+        assertEquals(List.of(KING_HEARTS), hidden.publiclyVisibleDealerHand());
+    }
+
+    @Test
+    void publiclyVisibleDealerHandIsEmptyBeforeAnyCardIsDealt() {
+        BlackjackFrame beforeDeal = new BlackjackFrame(
+            BlackjackFrame.Phase.START_TRANSITION, 0, "k", BlackjackFrame.noPlaceholders(), List.of(), true, List.of()
+        );
+        assertTrue(beforeDeal.publiclyVisibleDealerHand().isEmpty());
+    }
+
+    @Test
+    void publiclyVisibleDealerHandNeverExposesTotalDerivedFromTheHiddenCard() {
+        // A dealer blackjack (Ace up-card + ten-value hole card) must never
+        // be computable from the publicly visible portion while hidden --
+        // this is the exact "dealer-blackjack peek before visual reveal"
+        // scenario: canonical state knows it, presentation must not.
+        List<Card> dealerHasBlackjack = List.of(ACE_SPADES, KING_HEARTS);
+        BlackjackFrame hidden = new BlackjackFrame(
+            BlackjackFrame.Phase.ACTIVE, 0, "k", BlackjackFrame.noPlaceholders(), dealerHasBlackjack, true, List.of()
+        );
+        assertFalse(BlackjackRules.isNaturalBlackjack(hidden.publiclyVisibleDealerHand()),
+            "the visible-only hand (just the Ace up-card) must never itself read as a natural blackjack");
+        assertEquals(11, BlackjackRules.handValue(hidden.publiclyVisibleDealerHand()), "a lone Ace optimizes to 11, but must never reflect the hole card's contribution");
+    }
+
     // --- dealer-head-slot is canonical, phase-independent state (position-as-state) ---
 
     @Test
