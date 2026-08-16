@@ -173,6 +173,19 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     /** {@code dealers.<name>.turn-timer.timeout-seconds}, clamped [1,60] (default 20). */
     private final int turnTimerTimeoutSeconds;
     private int turnTimerTaskId = -1;
+    // Canonical turn-timer deadline state, deliberately separate from
+    // turnTimerTaskId's rendering/countdown task -- stopTurnTimerTask only
+    // ever cancels the task, never these fields, so a paused deadline (an
+    // action being validated/processed) can be resumed with its exact
+    // remaining time by resumeTurnTimerAfterFailedAction rather than either
+    // being lost or replaced with a fresh full window. null/-1 means no
+    // deadline is currently canonical (disabled, or no decision started).
+    private UUID turnTimerPlayerId;
+    private long turnTimerRoundGeneration;
+    private int turnTimerHandToken;
+    private long turnTimerHandId;
+    private int turnTimerExpectedHandGeneration;
+    private int turnTimerSecondsRemaining = -1;
 
     // ---- Real splitting -----------------------------------------------------
     // Config loaded once at construction (see loadBooleanConfig et al.);
@@ -1313,14 +1326,18 @@ private void registerListener() {
      * table has moved into insurance/lobby/etc. around) must still resolve
      * to null.
      *
-     * @param requireActionable true for the turn timer (which only ever
-     *        runs while a decision is genuinely actionable); false for
-     *        Hit/Double's own render/evaluation callbacks, which
+     * @param expectedState {@link BlackjackHandCallbackGuard.ExpectedHandState#ACTIONABLE}
+     *        for the turn timer (which only ever runs while a decision is
+     *        genuinely actionable, and must be rejected while processing);
+     *        {@link BlackjackHandCallbackGuard.ExpectedHandState#PROCESSING}
+     *        for Hit/Double's own render/evaluation callbacks, which
      *        legitimately fire while the action is still "processing"
-     *        ({@code playerTurnActive} deliberately false)
+     *        ({@code playerTurnActive} deliberately false) but must
+     *        equally be rejected once the decision has become actionable
+     *        again
      * @return the live hand if every check passes, or null if the callback must no-op (round moved on, player left, reseated, no longer current, phase changed, or this exact hand -- by id, generation, and active-hand identity -- is no longer the one it was scheduled for)
      */
-    private BlackjackHand resolveExpectedHand(UUID playerId, long expectedRoundGeneration, long expectedHandId, int expectedHandGeneration, boolean requireActionable) {
+    private BlackjackHand resolveExpectedHand(UUID playerId, long expectedRoundGeneration, long expectedHandId, int expectedHandGeneration, BlackjackHandCallbackGuard.ExpectedHandState expectedState) {
         if (roundGeneration != expectedRoundGeneration || !gameActive) {
             return null;
         }
@@ -1337,7 +1354,7 @@ private void registerListener() {
         boolean isActivePhase = capturePhase() == BlackjackFrame.Phase.ACTIVE;
         boolean turnActive = playerTurnActive.getOrDefault(playerId, false);
         boolean expected = BlackjackHandCallbackGuard.isExpectedActiveHand(
-            candidate, expectedHandId, expectedHandGeneration, isSeated, isCurrentPlayer, isActivePhase, turnActive, requireActionable
+            candidate, expectedHandId, expectedHandGeneration, isSeated, isCurrentPlayer, isActivePhase, turnActive, expectedState
         );
         return expected ? candidate : null;
     }
@@ -2556,7 +2573,7 @@ private void handleHit(Player player) {
             if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
                 return;
             }
-            BlackjackHand liveHand = resolveExpectedHand(playerId, myGeneration, handId, generationBeforeCard + 1, false);
+            BlackjackHand liveHand = resolveExpectedHand(playerId, myGeneration, handId, generationBeforeCard + 1, BlackjackHandCallbackGuard.ExpectedHandState.PROCESSING);
             if (liveHand == null) {
                 return;
             }
@@ -2682,8 +2699,10 @@ private void handleDoubleDown(Player player) {
             }
             playerTurnActive.put(playerId, true); // Allow more actions since the double down failed
             // A failed double-down is not a new decision -- repaint only,
-            // never extend the deadline for it.
+            // resuming the same deadline's exact remaining time rather than
+            // granting a fresh one or leaving none at all.
             repaintActionsForCurrentPlayer();
+            resumeTurnTimerAfterFailedAction(playerId);
             return;
         }
 
@@ -2722,7 +2741,8 @@ private void handleDoubleDown(Player player) {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             }
             playerTurnActive.put(playerId, true); // Restore the same actionable decision -- nothing about the hand changed
-            repaintActionsForCurrentPlayer(); // never extend the deadline for a failed action
+            repaintActionsForCurrentPlayer(); // never grant a fresh window for a failed action
+            resumeTurnTimerAfterFailedAction(playerId); // ...but never lose the remaining time either
             return;
         }
         hand.setWager(hand.getWager() * 2);
@@ -2768,7 +2788,7 @@ private void handleDoubleDown(Player player) {
             if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
                 return;
             }
-            BlackjackHand doubledHand = resolveExpectedHand(playerId, myGeneration, handId, generationBeforeCard + 1, false);
+            BlackjackHand doubledHand = resolveExpectedHand(playerId, myGeneration, handId, generationBeforeCard + 1, BlackjackHandCallbackGuard.ExpectedHandState.PROCESSING);
             if (doubledHand == null) {
                 return;
             }
@@ -2880,6 +2900,7 @@ private void handleDoubleDown(Player player) {
             if (seatSlotBoxed == null || hands == null || hands.isEmpty()) {
                 playerTurnActive.put(playerId, true);
                 repaintActionsForCurrentPlayer();
+                resumeTurnTimerAfterFailedAction(playerId);
                 return;
             }
             int seatSlot = seatSlotBoxed;
@@ -2899,8 +2920,10 @@ private void handleDoubleDown(Player player) {
                     player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
                 }
                 playerTurnActive.put(playerId, true);
-                // A denied split is not a new decision -- repaint only.
+                // A denied split is not a new decision -- repaint only,
+                // resuming the same deadline's remaining time.
                 repaintActionsForCurrentPlayer();
+                resumeTurnTimerAfterFailedAction(playerId);
                 return;
             }
 
@@ -2923,7 +2946,8 @@ private void handleDoubleDown(Player player) {
                     player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
                 }
                 playerTurnActive.put(playerId, true); // Restore the same actionable decision -- nothing about the hand changed
-                repaintActionsForCurrentPlayer(); // never extend the deadline for a failed action
+                repaintActionsForCurrentPlayer(); // never grant a fresh window for a failed action
+                resumeTurnTimerAfterFailedAction(playerId); // ...but never lose the remaining time either
                 return;
             }
 
@@ -4422,9 +4446,19 @@ private void stopInsurancePhaseBookkeeping() {
  * previous deadline is superseded. Never invoked for a plain repaint (an
  * invalid click, a failed action, reopening a view). No-op (and immediately
  * restores the idle brown-glass slot) when turn-timer.enabled is false.
+ *
+ * <p>The canonical deadline (identity + remaining seconds) lives in
+ * {@code turnTimer*} fields, independent of the rendering task itself --
+ * {@link #stopTurnTimerTask()} only ever cancels/pauses the *task* that
+ * counts it down and re-renders it; it deliberately never clears this
+ * canonical state. That's what lets {@link #resumeTurnTimerAfterFailedAction}
+ * pick the exact same deadline back up (remaining time, not a fresh
+ * window) after a failed Double/Split -- see its own doc.
  */
 private void startTurnTimer(UUID playerId) {
     stopTurnTimerTask();
+    turnTimerPlayerId = null;
+    turnTimerSecondsRemaining = -1;
     if (!turnTimerEnabled) {
         return;
     }
@@ -4432,23 +4466,45 @@ private void startTurnTimer(UUID playerId) {
     if (hand == null) {
         return;
     }
-    long myGeneration = roundGeneration;
-    int myHandToken = currentHandToken(playerId);
-    long handId = hand.getHandId();
+    turnTimerPlayerId = playerId;
+    turnTimerRoundGeneration = roundGeneration;
+    turnTimerHandToken = currentHandToken(playerId);
+    turnTimerHandId = hand.getHandId();
     // The hand's generation at the exact instant this fresh decision began
     // -- nothing may have mutated it since (see beginActionableDecision's
     // own contract), so this is the deadline's whole-lifetime expected
-    // generation; any tick or the timeout itself seeing a different live
-    // generation means a superseding action already claimed this hand.
-    int expectedHandGeneration = hand.getHandGeneration();
+    // generation; any tick, resume, or the timeout itself seeing a
+    // different live generation means a superseding action already
+    // claimed this hand.
+    turnTimerExpectedHandGeneration = hand.getHandGeneration();
+    turnTimerSecondsRemaining = turnTimerTimeoutSeconds;
+
+    runTurnTimerTask();
+}
+
+/**
+ * Starts (or resumes) the repeating render/countdown task for whatever
+ * deadline is currently canonical in the {@code turnTimer*} fields --
+ * decrementing {@link #turnTimerSecondsRemaining} itself each tick
+ * (rather than a value local to the task) so the remaining time survives
+ * the task being cancelled and later resumed.
+ */
+private void runTurnTimerTask() {
+    if (turnTimerTaskId != -1) {
+        Bukkit.getScheduler().cancelTask(turnTimerTaskId);
+        turnTimerTaskId = -1;
+    }
+    final UUID playerId = turnTimerPlayerId;
+    final long myGeneration = turnTimerRoundGeneration;
+    final int myHandToken = turnTimerHandToken;
+    final long handId = turnTimerHandId;
+    final int expectedHandGeneration = turnTimerExpectedHandGeneration;
 
     turnTimerTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
-        int secondsLeft = turnTimerTimeoutSeconds;
-
         @Override
         public void run() {
             if (isStaleHandCallback(playerId, myGeneration, myHandToken)
-                || resolveExpectedHand(playerId, myGeneration, handId, expectedHandGeneration, true) == null) {
+                || resolveExpectedHand(playerId, myGeneration, handId, expectedHandGeneration, BlackjackHandCallbackGuard.ExpectedHandState.ACTIONABLE) == null) {
                 // The hand this deadline belonged to has already moved on
                 // (Stand/Double/leave/reset/completion) -- stop silently,
                 // whatever superseded it owns slot 46 now.
@@ -4458,19 +4514,31 @@ private void startTurnTimer(UUID playerId) {
                 }
                 return;
             }
-            if (secondsLeft <= 0) {
+            if (turnTimerSecondsRemaining <= 0) {
                 Bukkit.getScheduler().cancelTask(turnTimerTaskId);
                 turnTimerTaskId = -1;
                 autoStandOnTurnTimeout(playerId, myGeneration, myHandToken, handId, expectedHandGeneration);
                 return;
             }
-            renderTurnTimerToAllViews(secondsLeft);
-            secondsLeft--;
+            renderTurnTimerToAllViews(turnTimerSecondsRemaining);
+            turnTimerSecondsRemaining--;
         }
     }, 0L, 20L);
 }
 
-/** Cancels the turn-timer task, if any, and restores slot 46 to its idle brown-glass state for every view. */
+/**
+ * Pauses the turn-timer's rendering/countdown task (e.g. while an action
+ * is being validated/processed) and restores slot 46 to its idle
+ * brown-glass state, WITHOUT touching the canonical deadline state
+ * ({@code turnTimerSecondsRemaining} and identity) -- that's exactly
+ * what lets a failed action resume the same deadline afterward instead
+ * of either losing it or granting a fresh one. Genuine end-of-decision
+ * points (Stand/Double succeeding, leave, reset, round completion) don't
+ * need a separate "invalidate": the next {@link #startTurnTimer} simply
+ * overwrites the canonical fields, and any stale resume attempt against
+ * superseded state fails {@link #resolveExpectedHand}'s own identity
+ * check on its own.
+ */
 private void stopTurnTimerTask() {
     if (turnTimerTaskId != -1) {
         Bukkit.getScheduler().cancelTask(turnTimerTaskId);
@@ -4482,6 +4550,38 @@ private void stopTurnTimerTask() {
         // other phase already owns the slot's rendering.
         renderToAllViews(BlackjackSlotLayout.TURN_TIMER_SLOT, buildBrownEdgeGlassItem());
     }
+}
+
+/**
+ * Resumes the canonical turn-timer deadline after a failed Double/Split
+ * left the very same decision back in place -- continues counting down
+ * from whatever time canonically remained (see {@link #stopTurnTimerTask}'s
+ * doc on why that survives the pause) rather than granting a fresh full
+ * window or leaving the player with no deadline at all. Validates the
+ * paused deadline still genuinely belongs to {@code playerId}'s current
+ * actionable hand first (same identity contract as the timer's own
+ * ticks), so a deadline superseded while paused is correctly never
+ * resumed. If the deadline had already reached zero while the failed
+ * transaction was being attempted, resolves it as a timeout (auto-Stand)
+ * immediately instead of resuming a countdown from zero -- never grants
+ * extra time.
+ */
+private void resumeTurnTimerAfterFailedAction(UUID playerId) {
+    if (!turnTimerEnabled || turnTimerPlayerId == null || !turnTimerPlayerId.equals(playerId)) {
+        return;
+    }
+    if (isStaleHandCallback(playerId, turnTimerRoundGeneration, turnTimerHandToken)
+        || resolveExpectedHand(playerId, turnTimerRoundGeneration, turnTimerHandId, turnTimerExpectedHandGeneration, BlackjackHandCallbackGuard.ExpectedHandState.ACTIONABLE) == null) {
+        // Superseded since the deadline was paused -- nothing to resume;
+        // whatever now owns slot 46 (or nothing) is already correct.
+        return;
+    }
+    if (turnTimerSecondsRemaining <= 0) {
+        autoStandOnTurnTimeout(playerId, turnTimerRoundGeneration, turnTimerHandToken, turnTimerHandId, turnTimerExpectedHandGeneration);
+        return;
+    }
+    renderTurnTimerToAllViews(turnTimerSecondsRemaining);
+    runTurnTimerTask();
 }
 
 private void renderTurnTimerToAllViews(int secondsLeft) {
@@ -4510,7 +4610,7 @@ private void autoStandOnTurnTimeout(UUID playerId, long myGeneration, int myHand
         if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
             return;
         }
-        BlackjackHand hand = resolveExpectedHand(playerId, myGeneration, handId, expectedHandGeneration, true);
+        BlackjackHand hand = resolveExpectedHand(playerId, myGeneration, handId, expectedHandGeneration, BlackjackHandCallbackGuard.ExpectedHandState.ACTIONABLE);
         if (hand == null) {
             return;
         }
@@ -4807,7 +4907,7 @@ private void scheduleCardDealingWithDelay(int slot, Card card, long delay, UUID 
         if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
             return;
         }
-        if (resolveExpectedHand(playerId, myGeneration, handId, expectedHandGeneration, false) == null) {
+        if (resolveExpectedHand(playerId, myGeneration, handId, expectedHandGeneration, BlackjackHandCallbackGuard.ExpectedHandState.PROCESSING) == null) {
             return;
         }
         dealCardToPlayer(slot, card, playerId);

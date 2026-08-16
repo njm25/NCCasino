@@ -24,6 +24,20 @@ public final class BlackjackHandCallbackGuard {
     }
 
     /**
+     * The exact expected-state a delayed callback was scheduled for --
+     * replaces an earlier ambiguous {@code requireActionable} boolean whose
+     * {@code false} value wrongly accepted both states. {@code ACTIONABLE}
+     * (the turn timer's ticks/timeout) must be rejected while processing;
+     * {@code PROCESSING} (Hit/Double's own render/evaluation callbacks) must
+     * equally be rejected once the decision has already become actionable
+     * again (e.g. a stale render step from an earlier, now-superseded Hit).
+     */
+    public enum ExpectedHandState {
+        ACTIONABLE,
+        PROCESSING
+    }
+
+    /**
      * @param hand                    the live hand resolved by id, or null if it no longer exists
      * @param expectedHandId          the handId captured when the callback was scheduled
      * @param expectedHandGeneration  the handGeneration captured at that same moment (or produced by this callback's own prior step)
@@ -44,12 +58,15 @@ public final class BlackjackHandCallbackGuard {
      * player-turn phase, and (when {@code requireActionable} is true) the
      * decision must still genuinely be actionable, not mid-processing.
      *
-     * <p>{@code requireActionable} distinguishes two legitimate callback
-     * shapes: Hit/Double's own render/evaluation callbacks fire while
+     * <p>{@code expectedState} distinguishes two legitimate callback shapes,
+     * and requires an exact match rather than merely tolerating one of
+     * them: Hit/Double's own render/evaluation callbacks fire while
      * {@code playerTurnActive} is deliberately false (the action is
-     * "processing" -- pass {@code false} here), while the turn timer's
-     * ticks/timeout only ever run while a decision is genuinely actionable
-     * (pass {@code true}).
+     * "processing" -- pass {@link ExpectedHandState#PROCESSING}, which is
+     * rejected if the decision has since become actionable again), while
+     * the turn timer's ticks/timeout only ever run while a decision is
+     * genuinely actionable (pass {@link ExpectedHandState#ACTIONABLE},
+     * which is rejected while processing).
      *
      * <p>{@code candidateActiveHand} must already be resolved as
      * {@code activeHandIndex}'s own hand, never merely a hand present
@@ -65,12 +82,16 @@ public final class BlackjackHandCallbackGuard {
         boolean isCurrentPlayer,
         boolean isActivePhase,
         boolean playerTurnActive,
-        boolean requireActionable
+        ExpectedHandState expectedState
     ) {
         if (!isSeated || !isCurrentPlayer || !isActivePhase) {
             return false;
         }
-        if (requireActionable && !playerTurnActive) {
+        boolean stateMatches = switch (expectedState) {
+            case ACTIONABLE -> playerTurnActive;
+            case PROCESSING -> !playerTurnActive;
+        };
+        if (!stateMatches) {
             return false;
         }
         return matches(candidateActiveHand, expectedHandId, expectedHandGeneration);

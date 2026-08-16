@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.nc.nccasino.games.Blackjack.BlackjackHandCallbackGuard.ExpectedHandState;
 import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Rank;
 import org.nc.nccasino.objects.Suit;
@@ -85,10 +86,10 @@ class BlackjackHandCallbackGuardTest {
     // --- isExpectedActiveHand: the complete expected-state contract ---
 
     @Test
-    void expectedActiveHandValidWhenEverythingMatches() {
+    void expectedActiveHandValidWhenEverythingMatchesActionable() {
         BlackjackHand hand = hand();
         assertTrue(BlackjackHandCallbackGuard.isExpectedActiveHand(
-            hand, hand.getHandId(), hand.getHandGeneration(), true, true, true, true, false
+            hand, hand.getHandId(), hand.getHandGeneration(), true, true, true, true, ExpectedHandState.ACTIONABLE
         ));
     }
 
@@ -103,7 +104,7 @@ class BlackjackHandCallbackGuardTest {
         // when its own activeHandIndex lookup didn't land on this handId.
         BlackjackHand hand = hand();
         assertFalse(BlackjackHandCallbackGuard.isExpectedActiveHand(
-            null, hand.getHandId(), hand.getHandGeneration(), true, true, true, true, false
+            null, hand.getHandId(), hand.getHandGeneration(), true, true, true, true, ExpectedHandState.ACTIONABLE
         ));
     }
 
@@ -111,7 +112,7 @@ class BlackjackHandCallbackGuardTest {
     void seatedButNoLongerCurrentPlayerIsRejected() {
         BlackjackHand hand = hand();
         assertFalse(BlackjackHandCallbackGuard.isExpectedActiveHand(
-            hand, hand.getHandId(), hand.getHandGeneration(), true, false, true, true, false
+            hand, hand.getHandId(), hand.getHandGeneration(), true, false, true, true, ExpectedHandState.ACTIONABLE
         ));
     }
 
@@ -119,7 +120,7 @@ class BlackjackHandCallbackGuardTest {
     void noLongerSeatedIsRejected() {
         BlackjackHand hand = hand();
         assertFalse(BlackjackHandCallbackGuard.isExpectedActiveHand(
-            hand, hand.getHandId(), hand.getHandGeneration(), false, true, true, true, false
+            hand, hand.getHandId(), hand.getHandGeneration(), false, true, true, true, ExpectedHandState.ACTIONABLE
         ));
     }
 
@@ -130,28 +131,45 @@ class BlackjackHandCallbackGuardTest {
         // must never fire outside the actionable player-turn phase.
         BlackjackHand hand = hand();
         assertFalse(BlackjackHandCallbackGuard.isExpectedActiveHand(
-            hand, hand.getHandId(), hand.getHandGeneration(), true, true, false, true, false
+            hand, hand.getHandId(), hand.getHandGeneration(), true, true, false, true, ExpectedHandState.ACTIONABLE
         ));
     }
 
     @Test
     void timerCallbackAgainstProcessingRatherThanActionableStateIsRejected() {
-        // requireActionable=true (the turn timer) must reject a hand that's
-        // mid-processing (playerTurnActive=false) even if everything else matches.
+        // ExpectedHandState.ACTIONABLE (the turn timer) must reject a hand
+        // that's mid-processing (playerTurnActive=false) even if everything
+        // else matches.
         BlackjackHand hand = hand();
         assertFalse(BlackjackHandCallbackGuard.isExpectedActiveHand(
-            hand, hand.getHandId(), hand.getHandGeneration(), true, true, true, false, true
+            hand, hand.getHandId(), hand.getHandGeneration(), true, true, true, false, ExpectedHandState.ACTIONABLE
         ));
     }
 
     @Test
-    void hitRenderCallbackDuringProcessingIsStillValidWhenActionableNotRequired() {
+    void processingCallbackAgainstActionableRatherThanProcessingStateIsRejected() {
+        // The other direction of the same bug this enum replaced a bare
+        // boolean to fix: a Hit/Double render/eval callback scheduled while
+        // the decision was "processing" must be rejected if, by the time it
+        // fires, the decision has already become genuinely actionable again
+        // (e.g. a stale render step racing a fresh decision) -- it must not
+        // be treated as still-valid "processing" just because
+        // ExpectedHandState.PROCESSING doesn't literally require
+        // playerTurnActive to be true.
+        BlackjackHand hand = hand();
+        assertFalse(BlackjackHandCallbackGuard.isExpectedActiveHand(
+            hand, hand.getHandId(), hand.getHandGeneration(), true, true, true, true, ExpectedHandState.PROCESSING
+        ));
+    }
+
+    @Test
+    void hitRenderCallbackDuringProcessingIsStillValidWhenProcessingExpected() {
         // Hit/Double's own render/eval callbacks legitimately fire while
-        // playerTurnActive is false (requireActionable=false) -- processing
-        // is the expected state for them, not a staleness signal.
+        // playerTurnActive is false (ExpectedHandState.PROCESSING) --
+        // processing is the expected state for them, not a staleness signal.
         BlackjackHand hand = hand();
         assertTrue(BlackjackHandCallbackGuard.isExpectedActiveHand(
-            hand, hand.getHandId(), hand.getHandGeneration(), true, true, true, false, false
+            hand, hand.getHandId(), hand.getHandGeneration(), true, true, true, false, ExpectedHandState.PROCESSING
         ));
     }
 
@@ -159,7 +177,7 @@ class BlackjackHandCallbackGuardTest {
     void timerCallbackAgainstGenuinelyActionableStateIsValid() {
         BlackjackHand hand = hand();
         assertTrue(BlackjackHandCallbackGuard.isExpectedActiveHand(
-            hand, hand.getHandId(), hand.getHandGeneration(), true, true, true, true, true
+            hand, hand.getHandId(), hand.getHandGeneration(), true, true, true, true, ExpectedHandState.ACTIONABLE
         ));
     }
 }
