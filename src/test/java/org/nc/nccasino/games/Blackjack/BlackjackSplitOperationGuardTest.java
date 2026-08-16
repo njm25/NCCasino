@@ -1,21 +1,28 @@
 package org.nc.nccasino.games.Blackjack;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.nc.nccasino.objects.Card;
+import org.nc.nccasino.objects.Rank;
+import org.nc.nccasino.objects.Suit;
 
 /**
  * Every scheduled split-animation step must prove it still belongs to the
  * exact same split operation before mutating or rendering anything -- round
  * generation, phase, the acting player's own seat, and both hands still
- * present by stable handId, never a captured list index or object
- * reference. Distinguishes the two departure scenarios the plan calls out:
- * a random <em>other</em> viewer closing their inventory must never
- * invalidate this guard, but the <em>acting</em> player themselves leaving
- * their seat must.
+ * present by stable handId <em>with the exact handGeneration this specific
+ * step expects</em> (never a captured list index or object reference, and
+ * never one generation value shared across every step -- the split's own
+ * animation legitimately mutates each hand once, so each step needs its own
+ * expected generation via {@link BlackjackSplitOperationGuard#withExpectedGenerations}).
+ * Distinguishes the two departure scenarios the plan calls out: a random
+ * <em>other</em> viewer closing their inventory must never invalidate this
+ * guard, but the <em>acting</em> player themselves leaving their seat must.
  */
 class BlackjackSplitOperationGuardTest {
 
@@ -29,7 +36,8 @@ class BlackjackSplitOperationGuardTest {
     private static BlackjackSplitOperationGuard guardFor(int seatSlot, long roundGeneration, BlackjackHand original, BlackjackHand sibling) {
         return new BlackjackSplitOperationGuard(
             ACTING_PLAYER, seatSlot, roundGeneration, BlackjackFrame.Phase.ACTIVE,
-            original.getHandId(), sibling.getHandId()
+            original.getHandId(), sibling.getHandId(),
+            original.getHandGeneration(), sibling.getHandGeneration()
         );
     }
 
@@ -117,6 +125,77 @@ class BlackjackSplitOperationGuardTest {
         assertFalse(guard.isValid(5L, BlackjackFrame.Phase.ACTIVE, 9, impostor, sibling));
     }
 
+    // --- Per-step expected generation: the guard's whole point ---
+
+    @Test
+    void invalidWhenOriginalHandGenerationHasAdvancedPastWhatThisStepExpects() {
+        // A resplit-before-auto-complete or any other legitimate mutation
+        // that lands between when this step was scheduled and when it
+        // fires must invalidate it -- exactly the "stale hand generation"
+        // scenario.
+        BlackjackHand original = hand();
+        BlackjackHand sibling = hand();
+        BlackjackSplitOperationGuard guard = guardFor(9, 5L, original, sibling);
+
+        original.addCard(new Card(Suit.SPADES, Rank.KING)); // advances original's generation past what the guard captured
+        assertFalse(guard.isValid(5L, BlackjackFrame.Phase.ACTIVE, 9, original, sibling));
+    }
+
+    @Test
+    void invalidWhenSiblingHandGenerationHasAdvancedPastWhatThisStepExpects() {
+        BlackjackHand original = hand();
+        BlackjackHand sibling = hand();
+        BlackjackSplitOperationGuard guard = guardFor(9, 5L, original, sibling);
+
+        sibling.addCard(new Card(Suit.SPADES, Rank.KING));
+        assertFalse(guard.isValid(5L, BlackjackFrame.Phase.ACTIVE, 9, original, sibling));
+    }
+
+    @Test
+    void withExpectedGenerationsProducesAGuardValidAgainstTheAdvancedState() {
+        // Mirrors runSplitAnimation's own step 2 -> step 3 handoff: after
+        // the original hand's replacement card lands (legitimately bumping
+        // its generation), the *next* step's guard must expect that new
+        // generation, not the pre-deal one, while keeping the exact same
+        // identity (player/seat/round/phase/both handIds).
+        BlackjackHand original = hand();
+        BlackjackHand sibling = hand();
+        BlackjackSplitOperationGuard beforeDeal = guardFor(9, 5L, original, sibling);
+
+        original.addCard(new Card(Suit.SPADES, Rank.KING)); // the legitimate step-2 mutation
+        assertFalse(beforeDeal.isValid(5L, BlackjackFrame.Phase.ACTIVE, 9, original, sibling), "the old guard must now be stale");
+
+        BlackjackSplitOperationGuard afterDeal = beforeDeal.withExpectedGenerations(original.getHandGeneration(), sibling.getHandGeneration());
+        assertTrue(afterDeal.isValid(5L, BlackjackFrame.Phase.ACTIVE, 9, original, sibling), "the derived guard must be valid against the exact post-mutation state");
+
+        // Identity must carry forward unchanged.
+        assertEquals(ACTING_PLAYER, afterDeal.getPlayerId());
+        assertEquals(9, afterDeal.getSeatSlot());
+        assertEquals(original.getHandId(), afterDeal.getOriginalHandId());
+        assertEquals(sibling.getHandId(), afterDeal.getSiblingHandId());
+    }
+
+    @Test
+    void chainedWithExpectedGenerationsMirrorsTheFullThreeStepSplitSequence() {
+        // Step 1/2 guard (before either replacement card lands) -> step 3
+        // guard (after the original's lands) -> step 4 guard (after the
+        // sibling's too) -- each derived guard must only ever validate
+        // against its own step's exact expected state.
+        BlackjackHand original = hand();
+        BlackjackHand sibling = hand();
+        BlackjackSplitOperationGuard guardBeforeAnyDeal = guardFor(9, 5L, original, sibling);
+
+        original.addCard(new Card(Suit.SPADES, Rank.KING));
+        BlackjackSplitOperationGuard guardAfterOriginalDeal = guardBeforeAnyDeal.withExpectedGenerations(original.getHandGeneration(), sibling.getHandGeneration());
+        assertFalse(guardBeforeAnyDeal.isValid(5L, BlackjackFrame.Phase.ACTIVE, 9, original, sibling));
+        assertTrue(guardAfterOriginalDeal.isValid(5L, BlackjackFrame.Phase.ACTIVE, 9, original, sibling));
+
+        sibling.addCard(new Card(Suit.SPADES, Rank.QUEEN));
+        BlackjackSplitOperationGuard guardAfterBothDealt = guardAfterOriginalDeal.withExpectedGenerations(original.getHandGeneration(), sibling.getHandGeneration());
+        assertFalse(guardAfterOriginalDeal.isValid(5L, BlackjackFrame.Phase.ACTIVE, 9, original, sibling), "stale once the sibling's own deal advances past it");
+        assertTrue(guardAfterBothDealt.isValid(5L, BlackjackFrame.Phase.ACTIVE, 9, original, sibling));
+    }
+
     // --- Unrelated viewer departure: guard is completely unaffected ---
 
     @Test
@@ -142,9 +221,11 @@ class BlackjackSplitOperationGuardTest {
         BlackjackHand sibling = hand();
         BlackjackSplitOperationGuard guard = guardFor(9, 5L, original, sibling);
 
-        org.junit.jupiter.api.Assertions.assertEquals(ACTING_PLAYER, guard.getPlayerId());
-        org.junit.jupiter.api.Assertions.assertEquals(9, guard.getSeatSlot());
-        org.junit.jupiter.api.Assertions.assertEquals(original.getHandId(), guard.getOriginalHandId());
-        org.junit.jupiter.api.Assertions.assertEquals(sibling.getHandId(), guard.getSiblingHandId());
+        assertEquals(ACTING_PLAYER, guard.getPlayerId());
+        assertEquals(9, guard.getSeatSlot());
+        assertEquals(original.getHandId(), guard.getOriginalHandId());
+        assertEquals(sibling.getHandId(), guard.getSiblingHandId());
+        assertEquals(original.getHandGeneration(), guard.getExpectedOriginalHandGeneration());
+        assertEquals(sibling.getHandGeneration(), guard.getExpectedSiblingHandGeneration());
     }
 }
