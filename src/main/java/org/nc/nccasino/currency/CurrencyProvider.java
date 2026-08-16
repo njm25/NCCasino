@@ -12,7 +12,12 @@ public interface CurrencyProvider {
 
 	int withdraw(Player player, String internalName, int amount);
 
-	void deposit(Player player, String internalName, int amount);
+	/**
+	 * @return whether the credit was actually confirmed delivered -- callers that owe this
+	 *         amount unconditionally (e.g. a payout) must not treat a {@code false} return as
+	 *         success and must queue/retry the exact amount instead of silently dropping it.
+	 */
+	boolean deposit(Player player, String internalName, int amount);
 
 	boolean isCurrencyItem(ItemStack stack, String internalName);
 

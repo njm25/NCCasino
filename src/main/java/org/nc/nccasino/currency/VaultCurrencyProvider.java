@@ -82,36 +82,44 @@ public class VaultCurrencyProvider implements CurrencyProvider {
 	}
 
 	@Override
-	public void deposit(Player player, String internalName, int amount) {
+	public boolean deposit(Player player, String internalName, int amount) {
 		if (player == null || amount <= 0) {
-			return;
+			return true;
 		}
 
-		deposit(player, internalName, MoneyHelper.bd((long) amount));
+		return deposit(player, internalName, MoneyHelper.bd((long) amount));
 	}
 
-	public void deposit(Player player, String internalName, BigDecimal amount) {
+	/**
+	 * @return whether the deposit was actually confirmed by Vault -- callers that owe this
+	 *         amount unconditionally (payouts/refunds) must treat {@code false} as "not
+	 *         delivered" and durably queue the exact amount rather than assuming it landed.
+	 */
+	public boolean deposit(Player player, String internalName, BigDecimal amount) {
 		if (player == null || amount == null) {
-			return;
+			return false;
 		}
 
 		BigDecimal safeAmount = MoneyHelper.clampNonNegative(amount);
 		if (safeAmount.compareTo(BigDecimal.ZERO) <= 0) {
-			return;
+			// Nothing was actually owed -- trivially "delivered", same
+			// convention PendingPayout itself uses for amount() <= 0.
+			return true;
 		}
 
 		Economy economy = getEconomyOrWarn(internalName);
 		if (economy == null) {
-			return;
+			return false;
 		}
 
 		double depositValue = MoneyHelper.toVaultDouble(safeAmount);
 		EconomyResponse resp = economy.depositPlayer(player, depositValue);
 		if (resp != null && resp.transactionSuccess()) {
-			return;
+			return true;
 		}
 
 		warnOnce(internalName, "Vault deposit failed for dealer '" + internalName + "': " + (resp != null ? resp.errorMessage : "unknown error"));
+		return false;
 	}
 
 	/**

@@ -1229,7 +1229,12 @@ private void registerListener() {
             // Funds for `amount` were already removed by the caller (either
             // debited directly, or destroyed by a cursor-drag) -- refund
             // rather than leave an insurance-incompatible odd total in place.
-            addWagerToInventory(player, amount);
+            // A failed live credit here (offline is not possible mid-click,
+            // but a Vault deposit can still fail) must queue rather than
+            // silently drop this rollback.
+            if (!addWagerToInventory(player, amount)) {
+                queuePendingRefund(playerId, amount);
+            }
             switch (plugin.getPreferences(playerId).getMessageSetting()) {
                 case NONE:
                     break;
@@ -3149,19 +3154,20 @@ private void handleDoubleDown(Player player) {
     }
 
     /**
-     * Refunds {@code amount} to {@code playerId} directly if they're online,
-     * otherwise queues it as a {@link PendingPayout} so an offline player's
-     * funds are never silently dropped -- the same safety net
-     * {@code PLUGIN_DISABLE} refunds already rely on unconditionally (see
-     * {@link #refundPendingBets}).
+     * Refunds {@code amount} to {@code playerId} directly if they're online
+     * AND the live credit actually confirms delivered; otherwise queues it
+     * as a {@link PendingPayout} so an offline player's funds -- or a
+     * failed live Vault deposit -- are never silently dropped. Never queues
+     * after a confirmed successful live delivery (see {@link #refundPendingBets}
+     * for the unconditional {@code PLUGIN_DISABLE} case, which never even
+     * attempts a live deposit).
      */
     private void refundRoundDebit(UUID playerId, double amount, String messageKey) {
         if (amount <= 0) {
             return;
         }
         Player player = Bukkit.getPlayer(playerId);
-        if (player != null && player.isOnline()) {
-            addWagerToInventory(player, amount);
+        if (player != null && player.isOnline() && addWagerToInventory(player, amount)) {
             if (messageKey != null) {
                 switch (plugin.getPreferences(playerId).getMessageSetting()) {
                     case NONE:
@@ -3175,8 +3181,25 @@ private void handleDoubleDown(Player player) {
         queuePendingRefund(playerId, amount);
     }
 
-    /** Queues {@code amount} as a {@link PendingPayout}, claimable regardless of the player's online state. */
+    /** Queues {@code amount} as a refund {@link PendingPayout}, claimable regardless of the player's online state. */
     private void queuePendingRefund(UUID playerId, double amount) {
+        queueBlackjackPendingPayout(playerId, amount, PayoutMessages.serverRestartRefundContext("Blackjack"));
+    }
+
+    /**
+     * Durably queues {@code amount} owed to {@code playerId} for this dealer
+     * -- the single choke point every Blackjack credit path (payout, push,
+     * insurance, refund, undo) falls back to whenever a live delivery either
+     * can't be attempted (offline recipient) or was attempted and failed
+     * (Vault reported a failed deposit). If the pending record itself can't
+     * be persisted, logs a high-severity warning identifying the player,
+     * this table, the exact amount, and the reason, since at that point the
+     * money is genuinely at risk of being lost rather than merely delayed.
+     */
+    private void queueBlackjackPendingPayout(UUID playerId, double amount, String context) {
+        if (amount <= 0) {
+            return;
+        }
         Material currencyMaterial = plugin.getCurrency(internalName);
         PendingPayout payout = PendingPayout.create(
             playerId,
@@ -3186,10 +3209,12 @@ private void handleDoubleDown(Player player) {
             currencyMaterial != null ? currencyMaterial.name() : null,
             currencyName,
             amount,
-            PayoutMessages.serverRestartRefundContext("Blackjack")
+            context
         );
         if (!plugin.getPendingPayoutStore().addPendingPayout(payout)) {
-            plugin.getLogger().warning("[NCCasino] Blackjack round-debit refund failed to persist for " + playerId + ".");
+            plugin.getLogger().severe("[NCCasino] FAILED TO PERSIST a Blackjack pending payout -- player="
+                + playerId + ", table=" + internalName + ", amount=" + amount + ", reason=" + context
+                + ". This amount may be permanently lost and requires manual reconciliation.");
         }
     }
 
@@ -3585,7 +3610,9 @@ private void removePlayerData(UUID playerId) {
                 }
             }
             double totalRefund = BlackjackWagerLedger.undoAll(increments);
-            addWagerToInventory(player, totalRefund);
+            if (!addWagerToInventory(player, totalRefund)) {
+                queuePendingRefund(playerId, totalRefund);
+            }
             clearPlayerBetLore(playerId);  // Clear lore for items related to this player
             pregameWagerIncrements.remove(playerId);
             playerBets.remove(playerId);
@@ -3661,7 +3688,9 @@ private void removePlayerData(UUID playerId) {
                 updateItemLore(betSpotSlot, BlackjackWagerLedger.total(increments));
             }
 
-            addWagerToInventory(player, lastBet);
+            if (!addWagerToInventory(player, lastBet)) {
+                queuePendingRefund(playerId, lastBet);
+            }
 
             // Check if there are no bets left for ANY player at the table
             // (matches handleUndoAllBets' scope -- one player emptying
@@ -3780,14 +3809,23 @@ private void removePlayerData(UUID playerId) {
         return false;
     }
 
-    private void addWagerToInventory(Player player, double amount) {
+    /**
+     * Delivers {@code amount} to {@code player} right now via whichever
+     * {@link CurrencyProvider} this dealer uses. Item currencies always
+     * succeed (worst case, overflow drops on the ground below). Vault can
+     * genuinely fail (economy hook error, race, provider outage) -- the
+     * return value is authoritative and callers that owe this money
+     * unconditionally must queue a {@link PendingPayout} for the exact
+     * amount when this returns {@code false}, never assume delivery.
+     */
+    private boolean addWagerToInventory(Player player, double amount) {
         CurrencyProvider provider = getCurrencyProvider();
         if (provider != null && provider.getMode() == CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider vaultProvider) {
             java.math.BigDecimal refund = MoneyHelper.clampNonNegative(MoneyHelper.bd(amount));
             if (refund.compareTo(java.math.BigDecimal.ZERO) > 0) {
-                vaultProvider.deposit(player, internalName, refund);
+                return vaultProvider.deposit(player, internalName, refund);
             }
-            return;
+            return true;
         }
         int totalAmount = (int) Math.floor(amount);
         int fullStacks = totalAmount / 64;
@@ -3821,6 +3859,7 @@ private void removePlayerData(UUID playerId) {
                 }
             }
         }
+        return true;
     }
 
     private void clearPlayerBets(UUID playerId) {
@@ -4269,17 +4308,27 @@ private void performDealerPeekThenProceed(long myGeneration) {
     }
 }
 
-/** Pays 2:1 + stake to every player who took insurance -- only ever called once the dealer's peek confirms blackjack. */
+/**
+ * Pays 2:1 + stake to every player who took insurance -- only ever called
+ * once the dealer's peek confirms blackjack. An offline recipient (or a
+ * live Vault deposit that fails) must still receive this money, so it's
+ * never simply skipped -- it's queued as a durable {@link PendingPayout}
+ * instead.
+ */
 private void payInsuranceWinners() {
     for (Map.Entry<UUID, Double> entry : insuranceStakes.entrySet()) {
         UUID playerId = entry.getKey();
         double stake = entry.getValue();
+        double payout = BlackjackInsuranceRules.payoutTotal(stake);
         Player player = Bukkit.getPlayer(playerId);
-        if (player == null) {
+        boolean online = player != null && player.isOnline();
+        boolean delivered = online && addWagerToInventory(player, payout);
+        if (!delivered) {
+            queueBlackjackPendingPayout(playerId, payout, online
+                ? PayoutMessages.committedResultContext("Blackjack")
+                : PayoutMessages.disconnectedMidGameContext("Blackjack"));
             continue;
         }
-        double payout = BlackjackInsuranceRules.payoutTotal(stake);
-        addWagerToInventory(player, payout);
         switch (plugin.getPreferences(playerId).getMessageSetting()) {
             case NONE:
                 break;
@@ -4780,11 +4829,12 @@ private void finishGame() {
             continue; // Skip players who never got dealt in
         }
 
-        Player player = Bukkit.getPlayer(playerId);
-        if (player == null) {
-            continue;
-        }
-
+        // Deliberately does NOT skip an offline player here -- their hands
+        // still owe real money (a win/blackjack/push payout), which must be
+        // queued as a PendingPayout, not silently dropped just because
+        // Bukkit.getPlayer returns null while they're disconnected. See
+        // settleHandOutcome/payOut, which resolve online state per hand and
+        // fall back to queuing instead of assuming a live Player exists.
         for (BlackjackHand hand : hands) {
             if (hand.getWager() <= 0) {
                 continue;
@@ -4796,7 +4846,7 @@ private void finishGame() {
             // to exactly a two-card post-split 21 -- see BlackjackHand's doc.
             boolean eligibleForNatural = hand.eligibleForNaturalBlackjack(split21IsBlackjack);
             BlackjackOutcome outcome = BlackjackRules.classify(hand.getCards(), dealerHand, eligibleForNatural);
-            settleHandOutcome(player, hand, outcome);
+            settleHandOutcome(playerId, hand, outcome);
         }
     }
 
@@ -4804,106 +4854,132 @@ private void finishGame() {
     resetGame();
 }
 
-/** Settles one hand's outcome: messaging/sounds/particles exactly as before, now driven by that hand's own wager rather than the player's whole bet-slip total. */
-private void settleHandOutcome(Player player, BlackjackHand hand, BlackjackOutcome outcome) {
+/**
+ * Settles one hand's outcome: messaging/sounds/particles exactly as
+ * before when the player is online, now driven by that hand's own wager
+ * rather than the player's whole bet-slip total. Any currency owed
+ * (BLACKJACK/WIN/PUSH) is always delivered live when possible or queued
+ * as a durable {@link PendingPayout} otherwise -- an offline recipient
+ * (no {@code Player} to message/animate for) still gets paid, just
+ * without the online-only presentation.
+ */
+private void settleHandOutcome(UUID playerId, BlackjackHand hand, BlackjackOutcome outcome) {
+    Player player = Bukkit.getPlayer(playerId);
+    boolean online = player != null && player.isOnline();
     switch (outcome) {
         case BLACKJACK: {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage(text(player, "blackjack.result-blackjack"));
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage(text(player, "blackjack.result-blackjack"));
-                    break;
+            if (online) {
+                switch(plugin.getPreferences(playerId).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage(text(player, "blackjack.result-blackjack"));
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage(text(player, "blackjack.result-blackjack"));
+                        break;
 
+                    }
+                        case NONE:{
+                        break;
+                    }
                 }
-                    case NONE:{
-                    break;
-                }
+                if (SoundHelper.getSoundSafely("ui.toast.challenge_complete", player) != null)player.playSound(player.getLocation(),Sound.UI_TOAST_CHALLENGE_COMPLETE,SoundCategory.MASTER, 1.0f,1.0f);
+                player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
             }
-            if (SoundHelper.getSoundSafely("ui.toast.challenge_complete", player) != null)player.playSound(player.getLocation(),Sound.UI_TOAST_CHALLENGE_COMPLETE,SoundCategory.MASTER, 1.0f,1.0f);
-            player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
-            payOut(player, hand.getWager(), outcome.getMultiplier()); // Pay out 2.5x for a blackjack
+            payOut(playerId, hand.getWager(), outcome.getMultiplier()); // Pay out 2.5x for a blackjack
             break;
         }
         case BUST: {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage(text(player, "blackjack.result-busted"));
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage(text(player, "blackjack.result-busted"));
-                    break;
+            if (online) {
+                switch(plugin.getPreferences(playerId).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage(text(player, "blackjack.result-busted"));
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage(text(player, "blackjack.result-busted"));
+                        break;
+                    }
+                        case NONE:{
+                        break;
+                    }
                 }
-                    case NONE:{
-                    break;
-                }
+                if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
+                player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
             }
-             if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
-            player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
             break;
         }
         case WIN: {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage(text(player, "blackjack.result-won"));
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage(text(player, "blackjack.result-won"));
-                    break;
+            if (online) {
+                switch(plugin.getPreferences(playerId).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage(text(player, "blackjack.result-won"));
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage(text(player, "blackjack.result-won"));
+                        break;
+
+                    }
+                        case NONE:{
+                        break;
+                    }
+                }
+                player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
+                Random random = new Random();
+                // We'll pick from a small array of fun pitches
+                float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
+                for (int i = 0; i < 3; i++) {
+                    float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
+                     if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER,1.0f,chosenPitch);
+                    // Schedule them slightly apart for a "ding-ding-ding" effect
 
                 }
-                    case NONE:{
-                    break;
-                }
             }
-            player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
-            Random random = new Random();
-            // We'll pick from a small array of fun pitches
-            float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
-            for (int i = 0; i < 3; i++) {
-                float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
-                 if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER,1.0f,chosenPitch);
-                // Schedule them slightly apart for a "ding-ding-ding" effect
-
-            }
-            payOut(player, hand.getWager(), outcome.getMultiplier()); // Regular win pays out 2x
+            payOut(playerId, hand.getWager(), outcome.getMultiplier()); // Regular win pays out 2x
             break;
         }
         case LOSS: {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage(text(player, "blackjack.result-lost"));
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage(text(player, "blackjack.result-lost"));
-                    break;
+            if (online) {
+                switch(plugin.getPreferences(playerId).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage(text(player, "blackjack.result-lost"));
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage(text(player, "blackjack.result-lost"));
+                        break;
+                    }
+                        case NONE:{
+                        break;
+                    }
                 }
-                    case NONE:{
-                    break;
-                }
+                if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
+                player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
             }
-             if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
-        player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
             break;
         }
         case PUSH: {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage(text(player, "blackjack.result-push"));
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage(text(player, "blackjack.result-push-returned"));
-                    break;
+            if (online) {
+                switch(plugin.getPreferences(playerId).getMessageSetting()){
+                    case STANDARD:{
+                        player.sendMessage(text(player, "blackjack.result-push"));
+                        break;}
+                    case VERBOSE:{
+                        player.sendMessage(text(player, "blackjack.result-push-returned"));
+                        break;
 
-                }
-                    case NONE:{
-                    break;
+                    }
+                        case NONE:{
+                        break;
+                    }
                 }
             }
-            addWagerToInventory(player, hand.getWager());
-             if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(),Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
-            player.getWorld().spawnParticle(Particle.LARGE_SMOKE, player.getLocation(), 20);
+            boolean delivered = online && addWagerToInventory(player, hand.getWager());
+            if (!delivered) {
+                queueBlackjackPendingPayout(playerId, hand.getWager(), online
+                    ? PayoutMessages.committedResultContext("Blackjack")
+                    : PayoutMessages.disconnectedMidGameContext("Blackjack"));
+            } else {
+                if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(),Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
+                player.getWorld().spawnParticle(Particle.LARGE_SMOKE, player.getLocation(), 20);
+            }
             break;
         }
         default:
@@ -4915,94 +4991,49 @@ private void settleHandOutcome(Player player, BlackjackHand hand, BlackjackOutco
     }
 }
 
-/** Pays out {@code multiplier}x a specific hand's own wager -- required by per-hand payout so each of a player's simultaneously-resolved split hands pays independently. */
-private void payOut(Player player, double totalBet, double multiplier) {
-    {
-		CurrencyProvider provider = getCurrencyProvider();
+/**
+ * Pays out {@code multiplier}x a specific hand's own wager -- required by
+ * per-hand payout so each of a player's simultaneously-resolved split
+ * hands pays independently. Resolves the recipient by id rather than
+ * requiring a live {@code Player}: an offline recipient, or a live Vault
+ * deposit that Vault itself reports as failed, is durably queued as a
+ * {@link PendingPayout} for the exact amount instead of ever being
+ * dropped -- see {@link #queueBlackjackPendingPayout}. Vault math stays
+ * in exact {@link java.math.BigDecimal} the whole way through, on both
+ * the live-delivery and the queued-fallback path, so a queued 12.5/37.5
+ * payout is never rounded away.
+ */
+private void payOut(UUID playerId, double totalBet, double multiplier) {
+    Player player = Bukkit.getPlayer(playerId);
+    boolean online = player != null && player.isOnline();
+    CurrencyProvider provider = getCurrencyProvider();
 
-		if (provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider vaultProvider) {
-			java.math.BigDecimal betAmount = MoneyHelper.clampNonNegative(MoneyHelper.bd(totalBet));
-			java.math.BigDecimal payout = betAmount.multiply(MoneyHelper.bd(multiplier));
-			java.math.BigDecimal displayPayout = MoneyHelper.roundDisplay(payout);
-			java.math.BigDecimal displayProfit = MoneyHelper.roundDisplay(payout.subtract(betAmount));
+    if (provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider vaultProvider) {
+        java.math.BigDecimal betAmount = MoneyHelper.clampNonNegative(MoneyHelper.bd(totalBet));
+        java.math.BigDecimal payout = betAmount.multiply(MoneyHelper.bd(multiplier));
+        java.math.BigDecimal displayPayout = MoneyHelper.roundDisplay(payout);
+        java.math.BigDecimal displayProfit = MoneyHelper.roundDisplay(payout.subtract(betAmount));
 
-			if (payout.compareTo(java.math.BigDecimal.ZERO) > 0) {
-				vaultProvider.deposit(player, internalName, payout);
-			}
+        boolean owesMoney = payout.compareTo(java.math.BigDecimal.ZERO) > 0;
+        boolean delivered = !owesMoney || (online && vaultProvider.deposit(player, internalName, payout));
 
-			switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-				case STANDARD:{
-					player.sendMessage(text(
-                        player,
-                        "payout.paid",
-                        "amount",
-                        plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue())
-                    ));
-					break;}
-				case VERBOSE:{
-					player.sendMessage(text(
-                        player,
-                        "payout.paid-with-profit",
-                        "amount",
-                        plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()),
-                        "profit",
-                        plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue())
-                    ));
-					break;
-				}
-					case NONE:{
-					break;
-				}
-			}
-			return;
-		}
-
-        double payout = totalBet * multiplier;
-        int totalAmount = applyProbabilisticRounding(payout);
-
-        int fullStacks = totalAmount / 64;
-        int remainder = totalAmount % 64;
-        Material currencyMaterial = plugin.getCurrency(internalName);
-        int totalDropped = 0; // Track how many items were dropped
-
-        for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = null;
-            if (provider != null) {
-                stack = provider.createCurrencyStack(internalName, 64);
-            } else {
-                stack = new ItemStack(currencyMaterial, 64);
-            }
-            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
-            if (!leftover.isEmpty()) {
-                for (ItemStack item : leftover.values()) {
-                    player.getWorld().dropItemNaturally(player.getLocation(), item);
-                    totalDropped += item.getAmount();
-                }
-            }
+        if (owesMoney && !delivered) {
+            queueBlackjackPendingPayout(playerId, payout.doubleValue(), online
+                ? PayoutMessages.committedResultContext("Blackjack")
+                : PayoutMessages.disconnectedMidGameContext("Blackjack"));
+            return;
+        }
+        if (!online) {
+            return;
         }
 
-        if (remainder > 0) {
-            ItemStack stack = null;
-            if (provider != null) {
-                stack = provider.createCurrencyStack(internalName, remainder);
-            } else {
-                stack = new ItemStack(currencyMaterial, remainder);
-            }
-            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
-            if (!leftover.isEmpty()) {
-                for (ItemStack item : leftover.values()) {
-                    player.getWorld().dropItemNaturally(player.getLocation(), item);
-                    totalDropped += item.getAmount();
-                }
-            }
-        }
-        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+        switch(plugin.getPreferences(playerId).getMessageSetting()){
             case STANDARD:{
                 player.sendMessage(text(
                     player,
                     "payout.paid",
                     "amount",
-                    plugin.formatWagerDisplay(currencyMode, currencyName, totalAmount)
+                    plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue())
                 ));
                 break;}
             case VERBOSE:{
@@ -5010,9 +5041,9 @@ private void payOut(Player player, double totalBet, double multiplier) {
                     player,
                     "payout.paid-with-profit",
                     "amount",
-                    plugin.formatWagerDisplay(currencyMode, currencyName, totalAmount),
+                    plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()),
                     "profit",
-                    (int) Math.abs(totalAmount - totalBet)
+                    plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue())
                 ));
                 break;
             }
@@ -5020,32 +5051,104 @@ private void payOut(Player player, double totalBet, double multiplier) {
                 break;
             }
         }
+        return;
+    }
 
-        // Print total dropped if any items couldn't fit in inventory
-        if (totalDropped > 0) {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage(text(
-                        player,
-                        "blackjack.inventory-full",
-                        "amount",
-                        plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped)
-                    ));
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage(text(
-                        player,
-                        "blackjack.inventory-full",
-                        "amount",
-                        plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped)
-                    ));
-                    break;
-                }
-                    case NONE:{
-                    break;
-                }
+    double payout = totalBet * multiplier;
+    int totalAmount = applyProbabilisticRounding(payout);
+
+    if (!online) {
+        if (totalAmount > 0) {
+            queueBlackjackPendingPayout(playerId, totalAmount, PayoutMessages.disconnectedMidGameContext("Blackjack"));
+        }
+        return;
+    }
+
+    int fullStacks = totalAmount / 64;
+    int remainder = totalAmount % 64;
+    Material currencyMaterial = plugin.getCurrency(internalName);
+    int totalDropped = 0; // Track how many items were dropped
+
+    for (int i = 0; i < fullStacks; i++) {
+        ItemStack stack = null;
+        if (provider != null) {
+            stack = provider.createCurrencyStack(internalName, 64);
+        } else {
+            stack = new ItemStack(currencyMaterial, 64);
+        }
+        HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
+        if (!leftover.isEmpty()) {
+            for (ItemStack item : leftover.values()) {
+                player.getWorld().dropItemNaturally(player.getLocation(), item);
+                totalDropped += item.getAmount();
             }
-         }
+        }
+    }
+
+    if (remainder > 0) {
+        ItemStack stack = null;
+        if (provider != null) {
+            stack = provider.createCurrencyStack(internalName, remainder);
+        } else {
+            stack = new ItemStack(currencyMaterial, remainder);
+        }
+        HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
+        if (!leftover.isEmpty()) {
+            for (ItemStack item : leftover.values()) {
+                player.getWorld().dropItemNaturally(player.getLocation(), item);
+                totalDropped += item.getAmount();
+            }
+        }
+    }
+    switch(plugin.getPreferences(playerId).getMessageSetting()){
+        case STANDARD:{
+            player.sendMessage(text(
+                player,
+                "payout.paid",
+                "amount",
+                plugin.formatWagerDisplay(currencyMode, currencyName, totalAmount)
+            ));
+            break;}
+        case VERBOSE:{
+            player.sendMessage(text(
+                player,
+                "payout.paid-with-profit",
+                "amount",
+                plugin.formatWagerDisplay(currencyMode, currencyName, totalAmount),
+                "profit",
+                (int) Math.abs(totalAmount - totalBet)
+            ));
+            break;
+        }
+            case NONE:{
+            break;
+        }
+    }
+
+    // Print total dropped if any items couldn't fit in inventory
+    if (totalDropped > 0) {
+        switch(plugin.getPreferences(playerId).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage(text(
+                    player,
+                    "blackjack.inventory-full",
+                    "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped)
+                ));
+                break;}
+            case VERBOSE:{
+                player.sendMessage(text(
+                    player,
+                    "blackjack.inventory-full",
+                    "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, totalDropped)
+                ));
+                break;
+            }
+                case NONE:{
+                break;
+            }
+        }
     }
 }
 

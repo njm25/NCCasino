@@ -84,17 +84,18 @@ public class StandardItemCurrencyProvider implements CurrencyProvider {
 	}
 
 	@Override
-	public void deposit(Player player, String internalName, int amount) {
+	public boolean deposit(Player player, String internalName, int amount) {
 		if (player == null || internalName == null || amount <= 0) {
-			return;
+			return true;
 		}
 
 		Material mat = plugin.getCurrency(internalName);
 		if (mat == null) {
-			return;
+			return false;
 		}
 
 		player.getInventory().addItem(new ItemStack(mat, amount));
+		return true;
 	}
 
 	@Override

@@ -71,9 +71,10 @@ class BlackjackWagerTransactionTest {
         }
 
         @Override
-        public void deposit(Player player, String internalName, int amount) {
+        public boolean deposit(Player player, String internalName, int amount) {
             balance += amount;
             depositedTotal += amount;
+            return true;
         }
 
         @Override
