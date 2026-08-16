@@ -79,6 +79,7 @@ public final class PayoutMessages {
             case "Coin Flip" -> "game-options.coin-flip";
             case "Rock Paper Scissors" -> "game-options.rock-paper-scissors";
             case "Dragon Descent" -> "game-options.dragon-descent";
+            case "Slots" -> "game-options.slots";
             case "Test Game" -> "game-options.test-game";
             default -> null;
         };

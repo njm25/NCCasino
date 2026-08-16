@@ -59,7 +59,8 @@ public abstract class Menu extends DealerInventory {
         COIN_FLIP,
         ROCK_PAPER_SCISSORS,
         DRAGON_DESCENT,
-        
+        SLOTS,
+
         // Default game settings
         EDIT_TIMER,
 

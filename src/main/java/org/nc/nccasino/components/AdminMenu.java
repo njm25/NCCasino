@@ -225,6 +225,10 @@ public class AdminMenu extends Menu {
                 addItemAndLore(Material.DRAGON_HEAD, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
                 break;
             }
+            case "Slots":{
+                addItemAndLore(Material.REDSTONE_BLOCK, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
+                break;
+            }
             default:
             break;
         }
@@ -343,6 +347,9 @@ public class AdminMenu extends Menu {
                 lore.add(text("admin.default-columns-lore", "value", defaultColumns));
                 lore.add(text("admin.default-vines-lore", "value", defaultVines));
                 lore.add(text("admin.default-floors-lore", "value", defaultFloors));
+                break;
+            case "Slots":
+                lore.add(text("admin.slots-rtp-lore"));
                 break;
             default:
                 lore.add(text("admin.no-settings"));
@@ -786,12 +793,32 @@ public class AdminMenu extends Menu {
                 player.openInventory(dragonAdminInventory.getInventory());
                 break;
             }
+            case "Slots":{
+                SlotsMenu slotsAdminInventory = new SlotsMenu(
+                    dealerId,
+                    player,
+                    text("slots-settings.title", "dealer", Dealer.getInternalName(dealer)),
+                    (uuid) -> {
+                        // Cancel action: re-open the AdminInventory
+                        if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
+                            player.openInventory(adminInventory.getInventory());
+                        } else {
+                            AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
+                            player.openInventory(adminInventory.getInventory());
+                        }
+                    },
+                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer))
+                );
+                player.openInventory(slotsAdminInventory.getInventory());
+                break;
+            }
             default:{
                 break;}
             }
 
         }
-    
+
     /** Load dealer's currency mode from config so the menu displays the current selection (VAULT/VANILLA/CUSTOM). */
     private CurrencyMode loadCurrencyModeFromConfig() {
         if (dealer == null) return CurrencyMode.VANILLA;
@@ -1921,6 +1948,7 @@ public class AdminMenu extends Menu {
             case "Coin Flip" -> text("game-options.coin-flip");
             case "Rock Paper Scissors" -> text("game-options.rock-paper-scissors");
             case "Dragon Descent" -> text("game-options.dragon-descent");
+            case "Slots" -> text("game-options.slots");
             case "Test Game" -> text("game-options.test-game");
             default -> gameName;
         };

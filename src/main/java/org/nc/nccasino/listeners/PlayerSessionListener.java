@@ -17,6 +17,7 @@ import org.nc.nccasino.components.DragonDescentMenu;
 import org.nc.nccasino.components.MinesMenu;
 import org.nc.nccasino.components.RockPaperScissorsMenu;
 import org.nc.nccasino.components.RouletteMenu;
+import org.nc.nccasino.components.SlotsMenu;
 import org.nc.nccasino.payout.DeliveryResult;
 import org.nc.nccasino.payout.PayoutMessages;
 import org.nc.nccasino.payout.PendingPayout;
@@ -107,6 +108,7 @@ public class PlayerSessionListener implements Listener {
         CoinFlipMenu.clearPlayerState(playerId);
         DragonDescentMenu.clearPlayerState(playerId);
         RockPaperScissorsMenu.clearPlayerState(playerId);
+        SlotsMenu.clearPlayerState(playerId);
         DealerInteractListener.clearActiveAnimation(player);
     }
 

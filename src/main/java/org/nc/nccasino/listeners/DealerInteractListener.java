@@ -195,6 +195,7 @@ public class DealerInteractListener implements Listener {
             case "Coin Flip" -> plugin.getLocalization().text(player, "game-options.coin-flip");
             case "Rock Paper Scissors" -> plugin.getLocalization().text(player, "game-options.rock-paper-scissors");
             case "Dragon Descent" -> plugin.getLocalization().text(player, "game-options.dragon-descent");
+            case "Slots" -> plugin.getLocalization().text(player, "game-options.slots");
             case "Test Game" -> plugin.getLocalization().text(player, "game-options.test-game");
             default -> gameType;
         };
@@ -431,6 +432,7 @@ public class DealerInteractListener implements Listener {
             case "coin flip" : return "nccasino.games.coinflip";
             case "rock paper scissors" : return "nccasino.games.rockpaperscissors";
             case "dragon descent" : return "nccasino.games.dragon";
+            case "slots" : return "nccasino.games.slots";
             default: return null;
         }
     }

@@ -46,17 +46,18 @@ public class GameOptionsMenu extends Menu {
         slotMapping.put(SlotOption.COIN_FLIP, 4);
         slotMapping.put(SlotOption.ROCK_PAPER_SCISSORS, 5);
         slotMapping.put(SlotOption.DRAGON_DESCENT, 6);
+        slotMapping.put(SlotOption.SLOTS, 7);
         slotMapping.put(SlotOption.EXIT, 8);
         initializeMenu();
     }
 
     public GameOptionsMenu(UUID dealerId, Player player, Nccasino plugin, Mob dealer, Consumer<Player> ret) {
         super(
-            player, 
-            plugin, 
-            dealerId, 
+            player,
+            plugin,
+            dealerId,
             plugin.getLocalization().text(player, "game-options.edit-title"),
-            9, 
+            18,
             plugin.getLocalization().text(
                 player,
                 "game-options.return-admin",
@@ -70,7 +71,6 @@ public class GameOptionsMenu extends Menu {
         this.editing = true;
         this.dealer = dealer;
 
-        slotMapping.put(SlotOption.EXIT, 8);
         slotMapping.put(SlotOption.RETURN, 0);
         slotMapping.put(SlotOption.BLACKJACK, 1);
         slotMapping.put(SlotOption.ROULETTE, 2);
@@ -79,8 +79,8 @@ public class GameOptionsMenu extends Menu {
         slotMapping.put(SlotOption.COIN_FLIP, 5);
         slotMapping.put(SlotOption.ROCK_PAPER_SCISSORS, 6);
         slotMapping.put(SlotOption.DRAGON_DESCENT, 7);
-
-
+        slotMapping.put(SlotOption.SLOTS, 8);
+        slotMapping.put(SlotOption.EXIT, 9);
 
        initializeMenu();
     }
@@ -90,7 +90,6 @@ public class GameOptionsMenu extends Menu {
 
         if (editing){
             addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, text("game-options.return-admin", "dealer", internalName), slotMapping.get(SlotOption.RETURN));
-            addItemAndLore(Material.SPRUCE_DOOR, 1, text("game-options.exit"), slotMapping.get(SlotOption.EXIT));
             addItemAndLore(Material.CREEPER_HEAD, 1, text("game-options.blackjack"), slotMapping.get(SlotOption.BLACKJACK));
             addItemAndLore(Material.ENDER_PEARL, 1, text("game-options.roulette"), slotMapping.get(SlotOption.ROULETTE));
             addItemAndLore(Material.SKELETON_SKULL, 1, text("game-options.baccarat"), slotMapping.get(SlotOption.BACCARAT));
@@ -98,6 +97,8 @@ public class GameOptionsMenu extends Menu {
             addItemAndLore(Material.PAPER, 1, text("game-options.rock-paper-scissors"), slotMapping.get(SlotOption.ROCK_PAPER_SCISSORS));
             addItemAndLore(Material.TNT, 1, text("game-options.mines"), slotMapping.get(SlotOption.MINES));
             addItemAndLore(Material.DRAGON_HEAD, 1, text("game-options.dragon-descent"), slotMapping.get(SlotOption.DRAGON_DESCENT));
+            addItemAndLore(Material.REDSTONE_BLOCK, 1, text("game-options.slots"), slotMapping.get(SlotOption.SLOTS));
+            addItemAndLore(Material.SPRUCE_DOOR, 1, text("game-options.exit"), slotMapping.get(SlotOption.EXIT));
 
         }
         else{
@@ -108,6 +109,7 @@ public class GameOptionsMenu extends Menu {
             addItemAndLore(Material.SKELETON_SKULL, 1, text("game-options.baccarat"), slotMapping.get(SlotOption.BACCARAT));
             addItemAndLore(Material.TNT, 1, text("game-options.mines"), slotMapping.get(SlotOption.MINES));
             addItemAndLore(Material.DRAGON_HEAD, 1, text("game-options.dragon-descent"), slotMapping.get(SlotOption.DRAGON_DESCENT));
+            addItemAndLore(Material.REDSTONE_BLOCK, 1, text("game-options.slots"), slotMapping.get(SlotOption.SLOTS));
             addItemAndLore(Material.SPRUCE_DOOR, 1, text("game-options.exit"), slotMapping.get(SlotOption.EXIT));
         }
     }
@@ -148,6 +150,10 @@ public class GameOptionsMenu extends Menu {
             case DRAGON_DESCENT:
                 playDefaultSound(player);
                 gameType = "Dragon Descent";
+                break;
+            case SLOTS:
+                playDefaultSound(player);
+                gameType = "Slots";
                 break;
             default:
                 return;
@@ -355,6 +361,7 @@ public class GameOptionsMenu extends Menu {
             case "Coin Flip" -> text("game-options.coin-flip");
             case "Rock Paper Scissors" -> text("game-options.rock-paper-scissors");
             case "Dragon Descent" -> text("game-options.dragon-descent");
+            case "Slots" -> text("game-options.slots");
             case "Test Game" -> text("game-options.test-game");
             default -> gameType;
         };
