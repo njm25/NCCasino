@@ -181,6 +181,56 @@ class BlackjackHandTest {
         assertFalse(hand.isDone());
         assertFalse(hand.isDoubled());
         assertFalse(hand.isSplitFromAce());
+        assertFalse(hand.isFromSplit());
         assertTrue(hand.getCards().isEmpty());
+    }
+
+    // --- isFromSplit / eligibleForNaturalBlackjack (split-21-is-blackjack scoping) ---
+
+    @Test
+    void setFromSplitAdvancesGeneration() {
+        BlackjackHand hand = new BlackjackHand(10);
+        hand.setFromSplit(true);
+        assertEquals(1, hand.getHandGeneration());
+        assertTrue(hand.isFromSplit());
+    }
+
+    @Test
+    void unsplitHandIsAlwaysEligibleForNaturalBlackjackRegardlessOfConfig() {
+        BlackjackHand hand = new BlackjackHand(10);
+        assertTrue(hand.eligibleForNaturalBlackjack(false));
+        assertTrue(hand.eligibleForNaturalBlackjack(true));
+    }
+
+    @Test
+    void splitHandTwoCard21IsEligibleOnlyWhenConfigEnabled() {
+        BlackjackHand hand = new BlackjackHand(10);
+        hand.setFromSplit(true);
+        hand.addCard(ACE_SPADES);
+        hand.addCard(TEN_CLUBS);
+        assertFalse(hand.eligibleForNaturalBlackjack(false), "default config: every post-split 21 is an ordinary WIN");
+        assertTrue(hand.eligibleForNaturalBlackjack(true));
+    }
+
+    @Test
+    void splitHandThreeCard21IsNeverEligibleRegardlessOfConfig() {
+        BlackjackHand hand = new BlackjackHand(10);
+        hand.setFromSplit(true);
+        hand.addCard(new Card(Suit.SPADES, Rank.SEVEN));
+        hand.addCard(new Card(Suit.CLUBS, Rank.FOUR));
+        hand.addCard(TEN_CLUBS); // 21 reached via a later Hit, three cards
+        assertFalse(hand.eligibleForNaturalBlackjack(true), "a 21 reached via a later Hit never qualifies, even with split-21-is-blackjack enabled");
+    }
+
+    // --- per-hand doubling: setWager doubles independently of sibling hands ---
+
+    @Test
+    void doublingSetsDoubledFlagAndNewWagerIndependentlyOfOriginalPreSplitWager() {
+        BlackjackHand hand = new BlackjackHand(10);
+        hand.setWager(hand.getWager() * 2);
+        hand.setDoubled(true);
+        assertEquals(20, hand.getWager());
+        assertEquals(10, hand.getOriginalPreSplitWager());
+        assertTrue(hand.isDoubled());
     }
 }

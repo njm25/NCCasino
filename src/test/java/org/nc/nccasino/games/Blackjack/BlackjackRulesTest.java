@@ -276,4 +276,62 @@ class BlackjackRulesTest {
         assertEquals(BlackjackRules.handValue(hearts), BlackjackRules.handValue(spades));
         assertEquals(BlackjackRules.isNaturalBlackjack(hearts), BlackjackRules.isNaturalBlackjack(spades));
     }
+
+    // --- 3-arg classify: split-21-is-blackjack scoping (eligibleForNaturalBlackjack) ---
+
+    @Test
+    void twoArgClassifyIsAThinWrapperAlwaysEligible() {
+        List<Card> playerNatural = List.of(card(Rank.ACE), card(Rank.KING));
+        List<Card> dealerHand = List.of(card(Rank.TEN), card(Rank.NINE));
+        assertEquals(BlackjackRules.classify(playerNatural, dealerHand), BlackjackRules.classify(playerNatural, dealerHand, true));
+    }
+
+    @Test
+    void ineligibleTwoCard21PaysOrdinaryWinNotBlackjack() {
+        // A split hand's two-card 21 with split-21-is-blackjack disabled
+        // (eligibleForNaturalBlackjack=false) must never pay 3:2.
+        BlackjackOutcome outcome = BlackjackRules.classify(
+            List.of(card(Rank.ACE), card(Rank.KING)),
+            List.of(card(Rank.TEN), card(Rank.NINE)), // dealer 19, not natural
+            false
+        );
+        assertEquals(BlackjackOutcome.WIN, outcome);
+    }
+
+    @Test
+    void eligibleTwoCard21PaysBlackjack() {
+        BlackjackOutcome outcome = BlackjackRules.classify(
+            List.of(card(Rank.ACE), card(Rank.KING)),
+            List.of(card(Rank.TEN), card(Rank.NINE)),
+            true
+        );
+        assertEquals(BlackjackOutcome.BLACKJACK, outcome);
+    }
+
+    @Test
+    void threeCard21NeverPaysBlackjackEvenWhenEligible() {
+        // isNaturalBlackjack itself requires exactly two cards -- classify's
+        // eligibleForNaturalBlackjack flag can never make a 3+-card 21 pay
+        // BLACKJACK, since it never even qualifies as a natural in the
+        // first place.
+        BlackjackOutcome outcome = BlackjackRules.classify(
+            List.of(card(Rank.SEVEN), card(Rank.FOUR), card(Rank.TEN)), // 21 via a Hit
+            List.of(card(Rank.TEN), card(Rank.NINE)),
+            true
+        );
+        assertEquals(BlackjackOutcome.WIN, outcome);
+    }
+
+    @Test
+    void ineligibleNaturalAgainstDealerNaturalStillPushes() {
+        // Even when the player's own 21 isn't eligible for BLACKJACK, a
+        // dealer natural blackjack still pushes against theirs by ordinary
+        // 21-vs-21 comparison (WIN branch's tie -> PUSH), not a loss.
+        BlackjackOutcome outcome = BlackjackRules.classify(
+            List.of(card(Rank.ACE), card(Rank.KING)),
+            List.of(card(Rank.ACE), card(Rank.QUEEN)),
+            false
+        );
+        assertEquals(BlackjackOutcome.PUSH, outcome);
+    }
 }
