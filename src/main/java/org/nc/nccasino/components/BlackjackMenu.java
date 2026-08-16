@@ -3,6 +3,7 @@ package org.nc.nccasino.components;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -21,6 +22,7 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.games.Blackjack.BlackjackMaxHandsInputParser;
 import org.nc.nccasino.games.Blackjack.BlackjackSplitMatching;
 import org.nc.nccasino.helpers.SoundHelper;
 
@@ -496,121 +498,166 @@ public class BlackjackMenu extends Menu {
         }
     }
 
-    /** Accepts case-insensitive "unbounded", or an integer >= 2 -- an invalid message never overwrites the existing valid stored value. */
+    /**
+     * Accepts case-insensitive "unbounded", or an integer >= 2 -- parsing
+     * itself never throws (see {@link BlackjackMaxHandsInputParser}, which
+     * safely rejects an overflowing digit string instead of letting
+     * {@code Long.parseLong} propagate an uncaught exception out of this
+     * async chat handler), and an invalid message never overwrites the
+     * existing valid stored value. Every terminal outcome -- success,
+     * invalid input, or a missing dealer -- clears both blackjackFieldEditMode
+     * edit-mode maps and tears the menu session down the same way, so one
+     * bad input can never leave the player stuck occupied or holding a
+     * stale listener/menu reference; dispatched onto the main thread since
+     * config/sound/messaging and the static edit-mode maps are not safe to
+     * touch from AsyncPlayerChatEvent's own thread.
+     */
     private void handleMaxHandsInput(Player player, String input) {
-        String trimmed = input.trim();
-        String toStore;
-        if ("unbounded".equalsIgnoreCase(trimmed)) {
-            toStore = "UNBOUNDED";
-        } else if (trimmed.matches("\\d+") && Long.parseLong(trimmed) >= 2) {
-            toStore = String.valueOf(Long.parseLong(trimmed));
-        } else {
-            denyAction(player, text("blackjack-settings.invalid-max-hands"));
-            return;
-        }
+        Optional<String> parsed = BlackjackMaxHandsInputParser.parse(input);
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (parsed.isEmpty()) {
+                denyAction(player, text("blackjack-settings.invalid-max-hands"));
+                endEditSession(player);
+                return;
+            }
+            String toStore = parsed.get();
 
-        if (dealer != null) {
-            String internalName = Dealer.getInternalName(dealer);
-            plugin.getConfig().set("dealers." + internalName + ".splitting.max-hands", toStore);
-            plugin.saveConfig();
-            plugin.reloadDealer(dealer);
+            if (dealer != null) {
+                String internalName = Dealer.getInternalName(dealer);
+                plugin.getConfig().set("dealers." + internalName + ".splitting.max-hands", toStore);
+                plugin.saveConfig();
+                plugin.reloadDealer(dealer);
 
-            if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null) {
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER, 1.0f, 1.0f);
+                if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null) {
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER, 1.0f, 1.0f);
+                }
+
+                String display = "UNBOUNDED".equals(toStore) ? text("blackjack-settings.max-hands-unbounded") : toStore;
+                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                    case NONE:
+                        break;
+                    default:
+                        player.sendMessage(text("blackjack-settings.max-hands-updated", "value", display));
+                }
+
+                AdminMenu.localMob.remove(player.getUniqueId());
+            } else {
+                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                    case STANDARD:
+                        player.sendMessage(text("admin.dealer-not-found"));
+                        break;
+                    case VERBOSE:
+                        player.sendMessage(text("blackjack-settings.dealer-not-found"));
+                        break;
+                    case NONE:
+                        break;
+                }
             }
 
-            String display = "UNBOUNDED".equals(toStore) ? text("blackjack-settings.max-hands-unbounded") : toStore;
-            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case NONE:
-                    break;
-                default:
-                    player.sendMessage(text("blackjack-settings.max-hands-updated", "value", display));
-            }
+            endEditSession(player);
+        });
+    }
 
-            AdminMenu.localMob.remove(player.getUniqueId());
-        } else {
-            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case STANDARD:
-                    player.sendMessage(text("admin.dealer-not-found"));
-                    break;
-                case VERBOSE:
-                    player.sendMessage(text("blackjack-settings.dealer-not-found"));
-                    break;
-                case NONE:
-                    break;
-            }
-        }
-
-        AdminMenu.blackjackFieldEditMode.remove(player.getUniqueId());
-        AdminMenu.blackjackFieldEditTarget.remove(player.getUniqueId());
+    /**
+     * Tears the menu session down -- {@link #cleanup()} already clears
+     * every one of the five edit-mode maps (timer/standOn17/decks/
+     * blackjackFieldEditMode/blackjackFieldEditTarget) unconditionally for
+     * this owner, so this is the single common terminal step every chat
+     * edit flow (timer, stand-on-17, deck count, insurance timeout, turn
+     * timer timeout, max hands) must reach exactly once on success,
+     * invalid input, <em>and</em> a missing dealer alike -- never leaving
+     * the player stuck occupied or holding a stale listener/menu reference
+     * just because one input was rejected. Must run on the main thread.
+     */
+    private void endEditSession(Player player) {
         plugin.deleteAssociatedInventories(dealer);
         cleanup();
     }
 
+    /**
+     * Parses once inside a single try/catch (an overflowing digit string
+     * must produce localized invalid-input feedback, never an uncaught
+     * exception out of this async chat handler) and, on every terminal
+     * outcome -- success, invalid input, or a missing dealer -- ends the
+     * edit session exactly once (see {@link #endEditSession}). Dispatched
+     * onto the main thread since config/sound/messaging and the static
+     * edit-mode maps are not safe to touch from AsyncPlayerChatEvent's own
+     * thread.
+     */
     private void handleNumericInput(Player player, String input, String configPath, long min, long max, String messageKey) {
         if (input.isEmpty() || !input.matches("\\d+")) {
-            denyAction(player, text("blackjack-settings.valid-positive-integer"));
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                denyAction(player, text("blackjack-settings.valid-positive-integer"));
+                endEditSession(player);
+            });
             return;
         }
 
-        long value;
+        Long value;
         try {
             value = Long.parseLong(input);
-        } catch (NumberFormatException e) {
-            denyAction(player, text("blackjack-settings.invalid-number-format"));
-            return;
+        } catch (NumberFormatException overflow) {
+            value = null;
         }
+        Long parsedValue = value;
 
-        if (value < min || value > max) {
-            denyAction(player, text("blackjack-settings.number-range", "min", min, "max", max));
-            return;
-        }
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (parsedValue == null) {
+                denyAction(player, text("blackjack-settings.invalid-number-format"));
+                endEditSession(player);
+                return;
+            }
+            long numericValue = parsedValue;
 
-        if (dealer != null) {
-            String internalName = Dealer.getInternalName(dealer);
-            plugin.getConfig().set("dealers." + internalName + "." + configPath, value);
-            plugin.saveConfig();
-            plugin.reloadDealer(dealer);
-
-            if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null) {
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER, 1.0f, 1.0f);
+            if (numericValue < min || numericValue > max) {
+                denyAction(player, text("blackjack-settings.number-range", "min", min, "max", max));
+                endEditSession(player);
+                return;
             }
 
-            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case STANDARD:
-                    player.sendMessage(text(messageKey));
-                    break;
-                case VERBOSE:
-                    player.sendMessage(text(
-                        "blackjack-settings.updated-detailed",
-                        "setting",
-                        text(messageKey),
-                        "value",
-                        value
-                    ));
-                    break;
-                case NONE:
-                    break;
+            if (dealer != null) {
+                String internalName = Dealer.getInternalName(dealer);
+                plugin.getConfig().set("dealers." + internalName + "." + configPath, numericValue);
+                plugin.saveConfig();
+                plugin.reloadDealer(dealer);
+
+                if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null) {
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER, 1.0f, 1.0f);
+                }
+
+                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                    case STANDARD:
+                        player.sendMessage(text(messageKey));
+                        break;
+                    case VERBOSE:
+                        player.sendMessage(text(
+                            "blackjack-settings.updated-detailed",
+                            "setting",
+                            text(messageKey),
+                            "value",
+                            numericValue
+                        ));
+                        break;
+                    case NONE:
+                        break;
+                }
+
+                AdminMenu.localMob.remove(player.getUniqueId());
+            } else {
+                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                    case STANDARD:
+                        player.sendMessage(text("admin.dealer-not-found"));
+                        break;
+                    case VERBOSE:
+                        player.sendMessage(text("blackjack-settings.dealer-not-found"));
+                        break;
+                    case NONE:
+                        break;
+                }
             }
 
-            AdminMenu.localMob.remove(player.getUniqueId());
-        } else {
-            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
-                case STANDARD:
-                    player.sendMessage(text("admin.dealer-not-found"));
-                    break;
-                case VERBOSE:
-                    player.sendMessage(text("blackjack-settings.dealer-not-found"));
-                    break;
-                case NONE:
-                    break;
-            }
-        }
-
-        AdminMenu.blackjackFieldEditMode.remove(player.getUniqueId());
-        AdminMenu.blackjackFieldEditTarget.remove(player.getUniqueId());
-        plugin.deleteAssociatedInventories(dealer);
-        cleanup();
+            endEditSession(player);
+        });
     }
 
     private String text(String key, Object... placeholders) {
