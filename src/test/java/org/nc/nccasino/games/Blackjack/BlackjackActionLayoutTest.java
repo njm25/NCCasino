@@ -206,4 +206,67 @@ class BlackjackActionLayoutTest {
         Map<BlackjackAction, Integer> layout = BlackjackActionLayout.layout(List.of(BlackjackAction.SPLIT));
         assertEquals(50, layout.get(BlackjackAction.SPLIT));
     }
+
+    // --- Affordability must never silently auto-complete a configured decision ---
+    // (regression for the audited defect: hit=false, double=true(configured),
+    // no resplit, but the player currently can't afford Double must still
+    // offer Stand -- never collapse into auto-completion.)
+
+    @Test
+    void configuredDoubleWithSufficientBankrollNeverAutoCompletesAndOffersStandAndDouble() {
+        boolean acesHitAllowed = false;
+        boolean acesDoubleConfigured = true; // aces.double=true && double-after-split=true
+        boolean resplitEligible = false;
+        boolean sufficientBankroll = true;
+
+        assertFalse(BlackjackActionLayout.splitAceHandAutoCompletes(acesHitAllowed, acesDoubleConfigured, resplitEligible));
+
+        boolean acesDoubleVisible = acesDoubleConfigured && sufficientBankroll;
+        assertEquals(List.of(BlackjackAction.STAND, BlackjackAction.DOUBLE_DOWN), BlackjackActionLayout.splitAceActions(acesHitAllowed, acesDoubleVisible, resplitEligible));
+    }
+
+    @Test
+    void configuredDoubleWithInsufficientBankrollStillNeverAutoCompletesAndStillOffersStand() {
+        boolean acesHitAllowed = false;
+        boolean acesDoubleConfigured = true; // still configured/permitted by the dealer's rules
+        boolean resplitEligible = false;
+        boolean insufficientBankroll = false;
+
+        // The auto-complete decision is purely configuration-driven -- an
+        // unaffordable Double must never make it look as if Double was
+        // never permitted at all.
+        assertFalse(BlackjackActionLayout.splitAceHandAutoCompletes(acesHitAllowed, acesDoubleConfigured, resplitEligible));
+
+        // But the rendered action set hides Double (unaffordable) while
+        // still offering Stand -- never an empty list, never auto-complete.
+        boolean acesDoubleVisible = acesDoubleConfigured && insufficientBankroll;
+        List<BlackjackAction> actions = BlackjackActionLayout.splitAceActions(acesHitAllowed, acesDoubleVisible, resplitEligible);
+        assertEquals(List.of(BlackjackAction.STAND), actions);
+        assertTrue(actions.contains(BlackjackAction.STAND), "Stand must still be offered so timeout has something to default to");
+    }
+
+    @Test
+    void unconfiguredDoubleWithSufficientBankrollStillAutoCompletesWhenNothingElsePermitted() {
+        // Bankroll never grants a decision the dealer's own config forbids
+        // outright -- double-after-split=false (or aces.double=false) with
+        // hit=false and no resplit still auto-completes regardless of funds.
+        boolean acesHitAllowed = false;
+        boolean acesDoubleConfigured = false; // e.g. double-after-split=false
+        boolean resplitEligible = false;
+
+        assertTrue(BlackjackActionLayout.splitAceHandAutoCompletes(acesHitAllowed, acesDoubleConfigured, resplitEligible));
+    }
+
+    @Test
+    void hitTrueWithUnaffordableDoubleStillOffersHitAndStandNeverAutoCompletes() {
+        boolean acesHitAllowed = true;
+        boolean acesDoubleConfigured = true;
+        boolean resplitEligible = false;
+        boolean insufficientBankroll = false;
+
+        assertFalse(BlackjackActionLayout.splitAceHandAutoCompletes(acesHitAllowed, acesDoubleConfigured, resplitEligible));
+
+        boolean acesDoubleVisible = acesDoubleConfigured && insufficientBankroll;
+        assertEquals(List.of(BlackjackAction.HIT, BlackjackAction.STAND), BlackjackActionLayout.splitAceActions(acesHitAllowed, acesDoubleVisible, resplitEligible));
+    }
 }
