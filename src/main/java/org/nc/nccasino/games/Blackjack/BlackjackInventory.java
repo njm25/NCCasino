@@ -77,15 +77,20 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     private final List<Card> dealerHand = new ArrayList<>();
     // Wager selection vs. commitment (see the table redesign plan): a
     // chip/all-in click only sets a pending selected amount here, moving no
-    // funds and touching no ledger -- only a bet-spot click commits. Full
-    // commit-side wiring (bet-spot click pushing onto
-    // pregameWagerIncrements, Undo Last/Undo All reading from it) is a
-    // later phase; today's Undo Last/Undo All still operate on the
-    // pre-existing playerBets/lastBetAmounts maps below.
+    // funds and touching no ledger -- only a bet-spot click actually
+    // commits it (see commitWager/commitWagerFundsAlreadyRemoved), pushing
+    // onto pregameWagerIncrements below. Cleared (along with
+    // pregameWagerIncrements) once a round's payout/refund is fully
+    // delivered -- see clearConsumedRoundWagerLedger -- so a stale
+    // selected-but-never-committed amount can never silently carry into a
+    // later round's bet-spot click.
     private final Map<UUID, Double> selectedWager = new HashMap<>();
-    // Committed wager-increment ledger, per player -- laid down now so a
-    // later phase doesn't have to retrofit this state shape. Unused until
-    // bet-spot-click commit wiring lands.
+    // Committed wager-increment ledger, per player -- the actual source of
+    // truth for a seated player's pregame wager once they've committed at
+    // least one increment (see commitWagerFundsAlreadyRemoved,
+    // syncPlayerBetsFromLedger, handleUndoLastBet/handleUndoAllBets). The
+    // legacy playerBets/lastBetAmounts maps below are kept in sync from
+    // this ledger's own total, not the other way around.
     private final Map<UUID, java.util.Deque<Double>> pregameWagerIncrements = new HashMap<>();
     private final Object turnLock = new Object(); // Lock object for turn actions
     private final Map<UUID, Boolean> playerTurnActive = new HashMap<>();
@@ -1252,7 +1257,7 @@ private void registerListener() {
             return null;
         }
         BlackjackHand hand = BlackjackSplitQueue.findById(playerHands.get(playerId), expectedHandId);
-        if (hand == null || hand.getHandGeneration() != expectedHandGeneration) {
+        if (!BlackjackHandCallbackGuard.matches(hand, expectedHandId, expectedHandGeneration)) {
             return null;
         }
         return hand;
@@ -4409,7 +4414,7 @@ private void startDealerTurn() {
  * before mutating or rendering anything.
  */
 private boolean isStaleDealerSequenceCallback(long capturedGeneration) {
-    return roundGeneration != capturedGeneration || !gameActive;
+    return BlackjackDealerSequenceGuard.isStale(capturedGeneration, roundGeneration, gameActive);
 }
 
 private void revealDealerCardWithDelay(long myGeneration, long delay) {

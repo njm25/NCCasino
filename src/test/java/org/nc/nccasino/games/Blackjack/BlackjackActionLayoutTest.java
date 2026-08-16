@@ -11,10 +11,9 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * Slots are a fixed identity mapping now (Hit=47/Stand=48/Double=49,
- * Split=50 reserved for a later phase) -- never dynamically centered.
- * Unavailable actions simply leave their slot empty rather than
- * re-centering the remaining ones.
+ * Slots are a fixed identity mapping (Hit=47/Stand=48/Double=49/Split=50)
+ * -- never dynamically centered. Unavailable actions simply leave their
+ * slot empty rather than re-centering the remaining ones.
  */
 class BlackjackActionLayoutTest {
 
