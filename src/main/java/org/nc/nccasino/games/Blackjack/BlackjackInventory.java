@@ -585,6 +585,7 @@ private void registerListener() {
             sharedAnimationRun.cancel();
             sharedAnimationRun = null;
         }
+        splitAnimationInFlight = false;
     }
 
     /** Cancels every currently-tracked animation (private and shared) -- for table-wide teardown only (reset/cancel/delete). */
@@ -1524,6 +1525,9 @@ private void registerListener() {
             case DOUBLE_DOWN:
                 item = createCustomItem(Material.NETHERITE_SCRAP, localize(viewer, "blackjack.double-down"));
                 break;
+            case SPLIT:
+                item = createCustomItem(Material.SHEARS, localize(viewer, "blackjack.split"));
+                break;
             default:
                 throw new IllegalStateException("Unhandled BlackjackAction: " + action);
         }
@@ -1734,12 +1738,49 @@ private void registerListener() {
         if (currentPlayer == null) {
             return Map.of();
         }
-        List<Card> hand = activeHandCards(currentPlayerId);
-        int handValue = calculateHandValue(hand);
-        boolean initialTwoCardDecision = hand.size() == 2;
-        boolean canAffordDoubleDown = initialTwoCardDecision && hasEnoughWager(currentPlayer, totalBet(currentPlayerId));
-        List<BlackjackAction> actions = BlackjackActionLayout.availableActions(handValue, initialTwoCardDecision, canAffordDoubleDown);
-        return BlackjackActionLayout.layout(actions);
+        BlackjackHand hand = activeHand(currentPlayerId);
+        if (hand == null) {
+            return Map.of();
+        }
+        return BlackjackActionLayout.layout(availableActionsForHand(currentPlayer, hand));
+    }
+
+    /**
+     * The live available-action set for one hand, config- and funds-aware --
+     * shared by currentPlayerActionLayout (rendering/click-validation) and
+     * the split-ace auto-complete check (resolveHandAfterSplitAnimation), so
+     * both agree on exactly what "actionable" means for a split-ace hand.
+     * Split-ace hands (still on their 2-card first decision) use the ace
+     * matrix from {@link BlackjackActionLayout#splitAceActions}; every other
+     * hand (including non-ace split hands, and a split-ace hand after it has
+     * itself been hit) uses the ordinary {@link BlackjackActionLayout#availableActions}.
+     */
+    private List<BlackjackAction> availableActionsForHand(Player player, BlackjackHand hand) {
+        List<Card> cards = hand.getCards();
+        int handValue = calculateHandValue(cards);
+        if (handValue >= 21) {
+            return List.of();
+        }
+        boolean initialTwoCardDecision = cards.size() == 2;
+        List<BlackjackHand> hands = playerHands.getOrDefault(player.getUniqueId(), List.of());
+        if (hand.isSplitFromAce() && initialTwoCardDecision) {
+            boolean acesDoubleEffective = acesDoubleAllowed && doubleAfterSplit && hasEnoughWager(player, hand.getWager());
+            boolean resplitEligible = acesResplitAllowed && splitEligibleForHand(player, hand, hands);
+            return BlackjackActionLayout.splitAceActions(acesHitAllowed, acesDoubleEffective, resplitEligible);
+        }
+        boolean canAffordDoubleDown = initialTwoCardDecision
+            && (!hand.isFromSplit() || doubleAfterSplit)
+            && hasEnoughWager(player, hand.getWager());
+        boolean splitEligible = initialTwoCardDecision && splitEligibleForHand(player, hand, hands);
+        return BlackjackActionLayout.availableActions(handValue, initialTwoCardDecision, canAffordDoubleDown, splitEligible);
+    }
+
+    /** Full split-eligibility check for {@code hand}, using this dealer's configured splitting rules. */
+    private boolean splitEligibleForHand(Player player, BlackjackHand hand, List<BlackjackHand> hands) {
+        return BlackjackSplitEligibility.isEligible(
+            hand.getCards(), splitMatching, splittingEnabled,
+            hasEnoughWager(player, hand.getWager()), hands.size(), maxHands, deck.remainingCards()
+        );
     }
 
     /**
@@ -2269,11 +2310,12 @@ private void handlePlayerAction(Player player, int slot) {
             return;
         }
 
-        List<Card> hand = activeHandCards(playerId);
-        int handValue = calculateHandValue(hand);
-        boolean initialTwoCardDecision = hand.size() == 2;
-        boolean canAffordDoubleDown = initialTwoCardDecision && hasEnoughWager(player, totalBet(playerId));
-        List<BlackjackAction> actions = BlackjackActionLayout.availableActions(handValue, initialTwoCardDecision, canAffordDoubleDown);
+        BlackjackHand activeHand = activeHand(playerId);
+        if (activeHand == null) {
+            repaintActionsForCurrentPlayer();
+            return;
+        }
+        List<BlackjackAction> actions = availableActionsForHand(player, activeHand);
         BlackjackAction action = BlackjackActionLayout.actionAt(actions, slot);
 
         if (action == null) {
@@ -2316,6 +2358,9 @@ private void handlePlayerAction(Player player, int slot) {
             case DOUBLE_DOWN:
                 handleDoubleDown(player);
                 break;
+            case SPLIT:
+                handleSplit(player);
+                break;
         }
     }
 }
@@ -2328,7 +2373,7 @@ private void handleHit(Player player) {
             return;
         }
         int seatSlot = playerSeats.get(playerId);
-        int cardCount = playerCardCounts.getOrDefault(playerId, 2); // Default to 2 because of the initial 2 cards dealt
+        int cardCount = activeHandCards(playerId).size(); // Cards already in the active hand -- derived, not a separate lifetime counter, so it's automatically correct for whichever hand (post-split or not) is active.
         int nextCardSlot = seatSlot + 2 + cardCount; // Plain arithmetic (not playerCardSlot) -- cardCount can exceed the visible row; dealCardToPlayer bounds the render, never the canonical hand.
 
         long myGeneration = roundGeneration;
@@ -2336,9 +2381,6 @@ private void handleHit(Player player) {
 
         Card newCard = deck.dealCard();
         scheduleCardDealingWithDelay(nextCardSlot, newCard, BlackjackTiming.CARD_DEAL_DELAY_TICKS, playerId, myGeneration, myHandToken); // Deal the card with a delay
-
-        cardCount++; // Increment the card count
-        playerCardCounts.put(playerId, cardCount); // Update the card count
 
         // Delay the hand value calculation to ensure the card is fully added to the player's hand
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -2365,19 +2407,21 @@ private void handleHit(Player player) {
             }
             if (handValue == 21) {
 
-                playerDone.put(playerId, true); // Mark the player as done
-                playerTurnActive.put(playerId, false); // Deactivate the player's turn
-                bumpHandToken(playerId);
-                repaintActionsForCurrentPlayer();
-                startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS); // Start next player's turn with delay
+                BlackjackHand hand21 = activeHand(playerId);
+                if (hand21 != null) {
+                    hand21.setDone(true);
+                }
+                // Depth-first: if this player has another pending split
+                // hand, its turn begins next; only once the whole queue is
+                // exhausted does the table move on to the next player.
+                advanceAfterHandResolved(playerId, BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
             } else if (handValue > 21) {
 
-
-                playerDone.put(playerId, true); // Mark the player as done
-                playerTurnActive.put(playerId, false); // Deactivate the player's turn
-                bumpHandToken(playerId);
-                repaintActionsForCurrentPlayer();
-                startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS); // Start next player's turn with delay
+                BlackjackHand bustHand = activeHand(playerId);
+                if (bustHand != null) {
+                    bustHand.setDone(true);
+                }
+                advanceAfterHandResolved(playerId, BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
 
             } else {
 
@@ -2394,9 +2438,10 @@ private void handleHit(Player player) {
 private void handleStand(Player player) {
     synchronized (turnLock) {
         UUID playerId = player.getUniqueId();
-        playerDone.put(playerId, true); // Mark the player as done
-        playerTurnActive.put(playerId, false); // Deactivate the player's turn
-        bumpHandToken(playerId);
+        BlackjackHand hand = activeHand(playerId);
+        if (hand != null) {
+            hand.setDone(true);
+        }
          if (SoundHelper.getSoundSafely("item.shield.block", player) != null)player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BLOCK, SoundCategory.MASTER,1.0f, 1.0f);
          switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
@@ -2410,7 +2455,10 @@ private void handleStand(Player player) {
                 break;
             }
         }
-        startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS); // Start next player's turn with delay
+        // Depth-first: a pending split hand (if any) begins next; only once
+        // every hand in this player's queue is resolved does the table
+        // advance to the next player.
+        advanceAfterHandResolved(playerId, BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
     }
 }
 
@@ -2450,10 +2498,11 @@ private void advanceTurnNow() {
 private void handleDoubleDown(Player player) {
     synchronized (turnLock) {
         UUID playerId = player.getUniqueId();
-        Map<Integer, Double> bets = playerBets.get(playerId);
-        double currentBet = bets == null ? 0.0 : bets.values().stream().mapToDouble(Double::doubleValue).sum();
+        BlackjackHand hand = activeHand(playerId);
+        double currentBet = hand == null ? 0.0 : hand.getWager();
+        boolean doubleAllowedForThisHand = hand != null && (!hand.isFromSplit() || doubleAfterSplit);
 
-        if (bets == null || !hasEnoughWager(player, currentBet)) {
+        if (hand == null || !doubleAllowedForThisHand || !hasEnoughWager(player, currentBet)) {
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
                     player.sendMessage(text(player, "blackjack.insufficient-funds"));
@@ -2471,19 +2520,20 @@ private void handleDoubleDown(Player player) {
             return;
         }
 
-        // Remove the additional wager from the player's inventory
+        // Remove exactly one additional wager (this hand's own, not the
+        // player's whole playerBets ledger -- per-hand doubling must debit
+        // exactly one more wager for that specific hand only, independent
+        // of any sibling hands).
         removeWagerFromInventory(player, currentBet);
+        hand.setWager(hand.getWager() * 2);
+        hand.setDoubled(true);
 
-        // Double the bet amount in the player's bets
-        bets.replaceAll((k, v) -> v * 2);
-
-        // Update the lore to reflect the doubled bet
-        for (Map.Entry<Integer, Double> entry : bets.entrySet()) {
-            updateItemLore(entry.getKey(), entry.getValue());
-        }
-
+        // The seat's single bet-spot slot always reflects the active
+        // hand's own live wager during active play.
         int seatSlot = playerSeats.get(playerId);
-        int cardCount = playerCardCounts.getOrDefault(playerId, 2);
+        updateItemLore(BlackjackSlotLayout.betSlipSlot(seatSlot), hand.getWager());
+
+        int cardCount = activeHandCards(playerId).size();
         int cardSlot = seatSlot + 2 + cardCount;
         long myGeneration = roundGeneration;
         int myHandToken = currentHandToken(playerId);
@@ -2491,7 +2541,6 @@ private void handleDoubleDown(Player player) {
         // Exactly one more card.
         Card newCard = deck.dealCard();
         scheduleCardDealingWithDelay(cardSlot, newCard, BlackjackTiming.CARD_DEAL_DELAY_TICKS, playerId, myGeneration, myHandToken);
-        playerCardCounts.put(playerId, cardCount + 1);
 
          if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f);
          switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -2514,14 +2563,310 @@ private void handleDoubleDown(Player player) {
             }
             // Finish the hand regardless of its value -- never re-enable
             // Hit/Stand/Double afterward.
-            playerDone.put(playerId, true);
-            playerTurnActive.put(playerId, false);
-            bumpHandToken(playerId);
-            repaintActionsForCurrentPlayer();
-            startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
+            BlackjackHand doubledHand = activeHand(playerId);
+            if (doubledHand != null) {
+                doubledHand.setDone(true);
+            }
+            advanceAfterHandResolved(playerId, BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
         }, BlackjackTiming.HIT_EVALUATION_DELAY_TICKS);
     }
 }
+
+    // ---- Real splitting -------------------------------------------------
+
+    /**
+     * Depth-first hand-queue advance: called whenever the current player's
+     * active hand has just become fully resolved (bust, reached 21, Stand,
+     * Double resolved, or a split-ace auto-complete). If this player has
+     * another pending hand in their own queue (see
+     * {@link BlackjackSplitQueue#nextActionableIndex}), it activates next;
+     * only once every one of their hands is resolved does the player's
+     * overall turn actually advance to the next player. Always bumps the
+     * hand token first, so any stale callback tied to the just-finished
+     * hand's decision can never fire against whatever comes next.
+     */
+    private void advanceAfterHandResolved(UUID playerId, long delay) {
+        bumpHandToken(playerId);
+        List<BlackjackHand> hands = playerHands.get(playerId);
+        int currentIndex = activeHandIndex.getOrDefault(playerId, 0);
+        int nextIndex = hands == null ? -1 : BlackjackSplitQueue.nextActionableIndex(hands, currentIndex);
+        if (hands != null && nextIndex >= 0) {
+            activeHandIndex.put(playerId, nextIndex);
+            playerDone.put(playerId, false);
+            activateSplitHand(playerId, hands.get(nextIndex));
+            return;
+        }
+        playerDone.put(playerId, true);
+        playerTurnActive.put(playerId, false);
+        repaintActionsForCurrentPlayer();
+        startNextPlayerTurnWithDelay(delay);
+    }
+
+    /**
+     * Activates a pending split hand that has just become the seat's
+     * current hand: renders its full card set into the seat's row from
+     * scratch (it had no visible slot while pending -- see the table
+     * redesign plan's "Split rendering" section), then either auto-completes
+     * it immediately (split-ace hand with no hit/double/resplit permitted)
+     * or begins a fresh actionable decision for it.
+     */
+    private void activateSplitHand(UUID playerId, BlackjackHand hand) {
+        Integer seatSlotBoxed = playerSeats.get(playerId);
+        if (seatSlotBoxed == null) {
+            return;
+        }
+        int seatSlot = seatSlotBoxed;
+        Player player = Bukkit.getPlayer(playerId);
+        List<Card> cards = hand.getCards();
+        for (int i = 0; i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+            int slot = BlackjackSlotLayout.playerCardSlot(seatSlot, i);
+            if (i < cards.size()) {
+                renderCardToAllViews(slot, cards.get(i), true);
+            } else {
+                renderBackgroundToAllViews(slot);
+            }
+        }
+        updatePlayerHead(playerId);
+        updateItemLore(BlackjackSlotLayout.betSlipSlot(seatSlot), hand.getWager());
+
+        if (player != null && hand.isSplitFromAce() && cards.size() == 2) {
+            List<BlackjackHand> hands = playerHands.getOrDefault(playerId, List.of());
+            boolean acesDoubleEffective = acesDoubleAllowed && doubleAfterSplit && hasEnoughWager(player, hand.getWager());
+            boolean resplitEligible = acesResplitAllowed && splitEligibleForHand(player, hand, hands);
+            if (BlackjackActionLayout.splitAceHandAutoCompletes(acesHitAllowed, acesDoubleEffective, resplitEligible)) {
+                hand.setDone(true);
+                advanceAfterHandResolved(playerId, BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
+                return;
+            }
+        }
+        int handValue = calculateHandValue(cards);
+        if (handValue == 21) {
+            hand.setDone(true);
+            advanceAfterHandResolved(playerId, BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
+            return;
+        }
+        playerTurnActive.put(playerId, true);
+        beginActionableDecision();
+    }
+
+    /**
+     * Splits the current player's active hand: revalidates eligibility live
+     * (never trusts the click alone -- same discipline as
+     * {@link #handlePlayerAction}), debits exactly one additional matching
+     * wager, moves the second card into a new sibling hand inserted
+     * immediately after the current one (depth-first -- see
+     * {@link BlackjackSplitQueue}), and runs the shared/table-owned split
+     * animation before either hand becomes actionable again.
+     */
+    private void handleSplit(Player player) {
+        synchronized (turnLock) {
+            UUID playerId = player.getUniqueId();
+            Integer seatSlotBoxed = playerSeats.get(playerId);
+            List<BlackjackHand> hands = playerHands.get(playerId);
+            if (seatSlotBoxed == null || hands == null || hands.isEmpty()) {
+                playerTurnActive.put(playerId, true);
+                repaintActionsForCurrentPlayer();
+                return;
+            }
+            int seatSlot = seatSlotBoxed;
+            int currentIndex = activeHandIndex.getOrDefault(playerId, 0);
+            BlackjackHand hand = hands.get(currentIndex);
+
+            boolean eligible = splitEligibleForHand(player, hand, hands);
+            if (!eligible) {
+                boolean insufficientFunds = !hasEnoughWager(player, hand.getWager());
+                switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                    case NONE:
+                        break;
+                    default:
+                        player.sendMessage(text(player, insufficientFunds ? "blackjack.split-insufficient-funds" : "blackjack.split-ineligible"));
+                }
+                if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+                }
+                playerTurnActive.put(playerId, true);
+                // A denied split is not a new decision -- repaint only.
+                repaintActionsForCurrentPlayer();
+                return;
+            }
+
+            boolean wasResplit = hand.isFromSplit();
+
+            // Exactly one additional matching wager, debited once.
+            removeWagerFromInventory(player, hand.getWager());
+
+            boolean wasAcePair = hand.getCards().get(0).getRank() == Rank.ACE;
+            BlackjackHand sibling = new BlackjackHand(hand.getWager());
+            sibling.setOriginalPreSplitWager(hand.getOriginalPreSplitWager());
+            Card movedCard = hand.getCards().remove(1);
+            hand.bumpGeneration();
+            sibling.getCards().add(movedCard);
+            sibling.bumpGeneration();
+            if (wasAcePair) {
+                hand.setSplitFromAce(true);
+                sibling.setSplitFromAce(true);
+            }
+            hand.setFromSplit(true);
+            sibling.setFromSplit(true);
+
+            BlackjackSplitQueue.insertSiblingAfterCurrent(hands, currentIndex, sibling);
+
+            switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                case NONE:
+                    break;
+                default:
+                    player.sendMessage(text(player, wasResplit ? "blackjack.resplit-offer" : "blackjack.split-success"));
+            }
+            if (SoundHelper.getSoundSafely("block.anvil.land", player) != null) {
+                player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+
+            // Hidden during the shared animation -- neither hand is a
+            // legitimate decision again until it completes.
+            playerTurnActive.put(playerId, false);
+            bumpHandToken(playerId);
+            repaintActionsForCurrentPlayer();
+
+            // Both replacement cards are drawn up front (eligibility already
+            // confirmed the shoe can immediately supply both -- a split
+            // never reshuffles mid-round) so the animation only ever
+            // schedules rendering, never a possibly-empty deck draw.
+            Card originalReplacement = deck.dealCard();
+            Card siblingReplacement = deck.dealCard();
+
+            runSplitAnimation(playerId, seatSlot, hand, sibling, originalReplacement, siblingReplacement);
+        }
+    }
+
+    /**
+     * The shared/table-owned split animation: slides the second card out of
+     * view, deals the original (still-active) hand's replacement card
+     * visibly, deals the sibling's replacement card canonically only (it
+     * has no visible slot while pending), then resolves whatever comes
+     * next. Owned by the table, not the acting viewer -- see
+     * {@link #cancelSharedAnimation()}'s doc -- so one viewer closing their
+     * inventory never interrupts it; only a genuinely table-wide event
+     * (round reset/cancel, generation change) does.
+     */
+    private void runSplitAnimation(UUID playerId, int seatSlot, BlackjackHand originalHand, BlackjackHand siblingHand, Card originalReplacement, Card siblingReplacement) {
+        long myGeneration = roundGeneration;
+        BlackjackFrame.Phase myPhase = capturePhase();
+        cancelSharedAnimation();
+        BlackjackAnimationRun run = new BlackjackAnimationRun(null, myGeneration, 0, myPhase);
+        sharedAnimationRun = run;
+        splitAnimationInFlight = true;
+        long stepTicks = BlackjackTiming.SPLIT_ANIMATION_STEP_TICKS;
+
+        int splitCardFromSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, 1);
+
+        // Step 1: the split-off card slides out of view immediately -- it
+        // now belongs to the pending sibling hand, which has no visible slot.
+        renderBackgroundToAllViews(splitCardFromSlot);
+
+        // Step 2: the original hand's replacement card deals in visibly.
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (run.isStale(roundGeneration, 0, capturePhase()) || sharedAnimationRun != run) {
+                return;
+            }
+            originalHand.addCard(originalReplacement);
+            if (isRenderableCardSlot(playerId, splitCardFromSlot)) {
+                renderCardToAllViews(splitCardFromSlot, originalReplacement, playerId.equals(currentPlayerId));
+            }
+            updatePlayerHead(playerId);
+        }, stepTicks);
+
+        // Step 3: the sibling's replacement card deals canonically only.
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (run.isStale(roundGeneration, 0, capturePhase()) || sharedAnimationRun != run) {
+                return;
+            }
+            siblingHand.addCard(siblingReplacement);
+        }, stepTicks * 2);
+
+        // Step 4: animation complete -- the original hand (still active)
+        // either auto-completes (split-ace, nothing permitted) or becomes
+        // actionable again.
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (run.isStale(roundGeneration, 0, capturePhase()) || sharedAnimationRun != run) {
+                return;
+            }
+            sharedAnimationRun = null;
+            splitAnimationInFlight = false;
+            resolveHandAfterSplitAnimation(playerId);
+        }, stepTicks * 3);
+    }
+
+    /** Resolves whatever the currently-active hand needs once the split animation finishes -- reuses the exact same activation logic a freshly-reached split hand uses. */
+    private void resolveHandAfterSplitAnimation(UUID playerId) {
+        List<BlackjackHand> hands = playerHands.get(playerId);
+        if (hands == null || hands.isEmpty()) {
+            return;
+        }
+        int idx = activeHandIndex.getOrDefault(playerId, 0);
+        if (idx < 0 || idx >= hands.size()) {
+            idx = 0;
+        }
+        BlackjackHand hand = hands.get(idx);
+        if (hand.isDone()) {
+            advanceAfterHandResolved(playerId, BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
+            return;
+        }
+        Player player = Bukkit.getPlayer(playerId);
+        List<Card> cards = hand.getCards();
+        if (player != null && hand.isSplitFromAce() && cards.size() == 2) {
+            boolean acesDoubleEffective = acesDoubleAllowed && doubleAfterSplit && hasEnoughWager(player, hand.getWager());
+            boolean resplitEligible = acesResplitAllowed && splitEligibleForHand(player, hand, hands);
+            if (BlackjackActionLayout.splitAceHandAutoCompletes(acesHitAllowed, acesDoubleEffective, resplitEligible)) {
+                hand.setDone(true);
+                advanceAfterHandResolved(playerId, BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
+                return;
+            }
+        }
+        int handValue = calculateHandValue(cards);
+        if (handValue == 21) {
+            hand.setDone(true);
+            advanceAfterHandResolved(playerId, BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
+            return;
+        }
+        playerTurnActive.put(playerId, true);
+        beginActionableDecision();
+    }
+
+    /**
+     * Aborts the entire round because the shoe cannot immediately continue
+     * supplying it, refunding every debit of that round (original wagers,
+     * split wagers, double wagers, insurance stakes -- see
+     * {@link BlackjackRoundAbortRefund}) to every seated player, then resets
+     * for the next round. Never pays out or settles hands -- the round
+     * simply never happened.
+     */
+    private void abortRoundForShoeExhaustion() {
+        for (UUID playerId : new ArrayList<>(playerSeats.keySet())) {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player == null) {
+                continue;
+            }
+            List<BlackjackHand> hands = playerHands.get(playerId);
+            // Before the first card lands, no BlackjackHand exists yet and
+            // the committed pregame wager still lives only in playerBets --
+            // fall back to that so an abort triggered by the initial deal
+            // itself still refunds what was already debited at bet-commit.
+            double refund = (hands != null && !hands.isEmpty())
+                ? BlackjackRoundAbortRefund.totalRefundForPlayer(hands, insuranceStakes.getOrDefault(playerId, 0.0))
+                : totalBet(playerId) + insuranceStakes.getOrDefault(playerId, 0.0);
+            if (refund > 0) {
+                addWagerToInventory(player, refund);
+                switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                    case NONE:
+                        break;
+                    default:
+                        player.sendMessage(text(player, "blackjack.shoe-exhausted-refunded", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, refund)));
+                }
+            }
+        }
+        insuranceStakes.clear();
+        resetGame();
+    }
 
     // Handle chair click
     private void handleChairClick(int slot, Player player) {
@@ -3176,6 +3521,16 @@ private void dealInitialCards() {
         if (playerBets.containsKey(playerId) && !playerBets.get(playerId).isEmpty()) {
             bettingPlayerOrder.add(playerId);
         }
+    }
+
+    // Every seated bettor needs 2 cards, the dealer needs 2 -- if the shoe
+    // can't immediately supply the whole initial deal, abort the round and
+    // refund every already-committed wager rather than let Deck silently
+    // reshuffle mid-round.
+    int cardsNeeded = bettingPlayerOrder.size() * 2 + 2;
+    if (deck.remainingCards() < cardsNeeded) {
+        abortRoundForShoeExhaustion();
+        return;
     }
 
     long myGeneration = roundGeneration;
@@ -3853,134 +4208,37 @@ private void scheduleCardDealingWithDelay(int slot, Card card, long delay, UUID 
 }
 
 
-private void refundBet(Player player, Map<Integer, Double> bets) {
-    if (bets != null) {
-        double totalBet = bets.values().stream().mapToDouble(Double::doubleValue).sum();
-        addWagerToInventory(player, totalBet);
-    }
-}
-
+/**
+ * Settles every {@link BlackjackHand} across every seated player
+ * independently, using each hand's own {@code handId}-stable wager --
+ * required for splitting, where one player can hold several
+ * simultaneously-resolved hands with different outcomes (bust one,
+ * blackjack-value-win another) from the very same round.
+ */
 private void finishGame() {
     for (UUID playerId : playerSeats.keySet()) {
-        if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty()) {
-            continue; // Skip players without bets
+        List<BlackjackHand> hands = playerHands.get(playerId);
+        if (hands == null || hands.isEmpty()) {
+            continue; // Skip players who never got dealt in
         }
 
         Player player = Bukkit.getPlayer(playerId);
-        Map<Integer, Double> bets = playerBets.get(playerId);
+        if (player == null) {
+            continue;
+        }
 
-        // A player natural blackjack pays 3:2 unless the dealer also has a
-        // natural, in which case the main wager pushes -- see
-        // BlackjackRules.classify and BlackjackRulesTest's both-natural
-        // case.
-        BlackjackOutcome outcome = BlackjackRules.classify(activeHandCards(playerId), dealerHand);
-
-        switch (outcome) {
-            case BLACKJACK: {
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage(text(player, "blackjack.result-blackjack"));
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage(text(player, "blackjack.result-blackjack"));
-                        break;
-
-                    }
-                        case NONE:{
-                        break;
-                    }
-                }
-                if (SoundHelper.getSoundSafely("ui.toast.challenge_complete", player) != null)player.playSound(player.getLocation(),Sound.UI_TOAST_CHALLENGE_COMPLETE,SoundCategory.MASTER, 1.0f,1.0f);
-                player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
-                payOut(player, bets, outcome.getMultiplier()); // Pay out 2.5x for a blackjack
-                break;
+        for (BlackjackHand hand : hands) {
+            if (hand.getWager() <= 0) {
+                continue;
             }
-            case BUST: {
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage(text(player, "blackjack.result-busted"));
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage(text(player, "blackjack.result-busted"));
-                        break;
-                    }
-                        case NONE:{
-                        break;
-                    }
-                }
-                 if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
-                player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
-                break;
-            }
-            case WIN: {
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage(text(player, "blackjack.result-won"));
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage(text(player, "blackjack.result-won"));
-                        break;
-
-                    }
-                        case NONE:{
-                        break;
-                    }
-                }
-                player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
-                Random random = new Random();
-                // We'll pick from a small array of fun pitches
-                float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
-                for (int i = 0; i < 3; i++) {
-                    float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
-                     if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER,1.0f,chosenPitch);
-                    // Schedule them slightly apart for a "ding-ding-ding" effect
-
-                }
-                payOut(player, bets, outcome.getMultiplier()); // Regular win pays out 2x
-                break;
-            }
-            case LOSS: {
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage(text(player, "blackjack.result-lost"));
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage(text(player, "blackjack.result-lost"));
-                        break;
-                    }
-                        case NONE:{
-                        break;
-                    }
-                }
-                 if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
-            player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
-                break;
-            }
-            case PUSH: {
-                switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage(text(player, "blackjack.result-push"));
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage(text(player, "blackjack.result-push-returned"));
-                        break;
-
-                    }
-                        case NONE:{
-                        break;
-                    }
-                }
-                refundBet(player, bets);
-                 if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(),Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
-                player.getWorld().spawnParticle(Particle.LARGE_SMOKE, player.getLocation(), 20);
-                break;
-            }
-            default:
-                // Never silently fall back to a push/refund for an outcome
-                // this switch doesn't know about -- that's exactly the
-                // mistake that would hide a bug once insurance/splitting
-                // add new outcomes.
-                throw new IllegalStateException("Unhandled BlackjackOutcome: " + outcome);
+            // A player natural blackjack pays 3:2 unless the dealer also
+            // has a natural, in which case the main wager pushes -- see
+            // BlackjackRules.classify and BlackjackRulesTest's both-natural
+            // case. eligibleForNaturalBlackjack scopes split-21-is-blackjack
+            // to exactly a two-card post-split 21 -- see BlackjackHand's doc.
+            boolean eligibleForNatural = hand.eligibleForNaturalBlackjack(split21IsBlackjack);
+            BlackjackOutcome outcome = BlackjackRules.classify(hand.getCards(), dealerHand, eligibleForNatural);
+            settleHandOutcome(player, hand, outcome);
         }
     }
 
@@ -3988,9 +4246,120 @@ private void finishGame() {
     resetGame();
 }
 
-private void payOut(Player player, Map<Integer, Double> bets, double multiplier) {
-    if (bets != null) {
-        double totalBet = bets.values().stream().mapToDouble(Double::doubleValue).sum();
+/** Settles one hand's outcome: messaging/sounds/particles exactly as before, now driven by that hand's own wager rather than the player's whole bet-slip total. */
+private void settleHandOutcome(Player player, BlackjackHand hand, BlackjackOutcome outcome) {
+    switch (outcome) {
+        case BLACKJACK: {
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage(text(player, "blackjack.result-blackjack"));
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage(text(player, "blackjack.result-blackjack"));
+                    break;
+
+                }
+                    case NONE:{
+                    break;
+                }
+            }
+            if (SoundHelper.getSoundSafely("ui.toast.challenge_complete", player) != null)player.playSound(player.getLocation(),Sound.UI_TOAST_CHALLENGE_COMPLETE,SoundCategory.MASTER, 1.0f,1.0f);
+            player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
+            payOut(player, hand.getWager(), outcome.getMultiplier()); // Pay out 2.5x for a blackjack
+            break;
+        }
+        case BUST: {
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage(text(player, "blackjack.result-busted"));
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage(text(player, "blackjack.result-busted"));
+                    break;
+                }
+                    case NONE:{
+                    break;
+                }
+            }
+             if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
+            player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
+            break;
+        }
+        case WIN: {
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage(text(player, "blackjack.result-won"));
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage(text(player, "blackjack.result-won"));
+                    break;
+
+                }
+                    case NONE:{
+                    break;
+                }
+            }
+            player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
+            Random random = new Random();
+            // We'll pick from a small array of fun pitches
+            float[] possiblePitches = {0.5f, 0.8f, 1.2f, 1.5f, 1.8f,0.7f, 0.9f, 1.1f, 1.4f, 1.9f};
+            for (int i = 0; i < 3; i++) {
+                float chosenPitch = possiblePitches[random.nextInt(possiblePitches.length)];
+                 if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_PLAYER_LEVELUP,SoundCategory.MASTER,1.0f,chosenPitch);
+                // Schedule them slightly apart for a "ding-ding-ding" effect
+
+            }
+            payOut(player, hand.getWager(), outcome.getMultiplier()); // Regular win pays out 2x
+            break;
+        }
+        case LOSS: {
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage(text(player, "blackjack.result-lost"));
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage(text(player, "blackjack.result-lost"));
+                    break;
+                }
+                    case NONE:{
+                    break;
+                }
+            }
+             if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
+        player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
+            break;
+        }
+        case PUSH: {
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage(text(player, "blackjack.result-push"));
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage(text(player, "blackjack.result-push-returned"));
+                    break;
+
+                }
+                    case NONE:{
+                    break;
+                }
+            }
+            addWagerToInventory(player, hand.getWager());
+             if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(),Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
+            player.getWorld().spawnParticle(Particle.LARGE_SMOKE, player.getLocation(), 20);
+            break;
+        }
+        default:
+            // Never silently fall back to a push/refund for an outcome
+            // this switch doesn't know about -- that's exactly the
+            // mistake that would hide a bug once insurance/splitting
+            // add new outcomes.
+            throw new IllegalStateException("Unhandled BlackjackOutcome: " + outcome);
+    }
+}
+
+/** Pays out {@code multiplier}x a specific hand's own wager -- required by per-hand payout so each of a player's simultaneously-resolved split hands pays independently. */
+private void payOut(Player player, double totalBet, double multiplier) {
+    {
 		CurrencyProvider provider = getCurrencyProvider();
 
 		if (provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider vaultProvider) {

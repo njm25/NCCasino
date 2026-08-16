@@ -36,6 +36,7 @@ public final class BlackjackHand {
     private boolean done;
     private boolean doubled;
     private boolean splitFromAce;
+    private boolean fromSplit;
     private double originalPreSplitWager;
     private int handGeneration;
 
@@ -96,6 +97,24 @@ public final class BlackjackHand {
         bumpGeneration();
     }
 
+    /**
+     * True for both hands produced by a split (the hand that kept its
+     * original card plus a new one, and its sibling), regardless of rank --
+     * distinct from {@link #isSplitFromAce()}, which specifically drives the
+     * split-ace action matrix. Used to scope {@code split-21-is-blackjack}:
+     * only a split hand's two-card 21 is ever eligible for that payout, an
+     * unsplit hand's natural is always eligible regardless of this flag. See
+     * {@link BlackjackRules#classify(java.util.List, java.util.List, boolean)}.
+     */
+    public boolean isFromSplit() {
+        return fromSplit;
+    }
+
+    public void setFromSplit(boolean fromSplit) {
+        this.fromSplit = fromSplit;
+        bumpGeneration();
+    }
+
     /** The wager this hand had before any split occurred -- insurance is priced off this, never the post-split wager. */
     public double getOriginalPreSplitWager() {
         return originalPreSplitWager;
@@ -118,5 +137,21 @@ public final class BlackjackHand {
     /** Explicit advance hook for callers whose action doesn't itself go through addCard/setDone/etc. */
     public void bumpGeneration() {
         handGeneration++;
+    }
+
+    /**
+     * Whether this hand's own 21 (if it has one) is eligible for the
+     * {@code BLACKJACK} 3:2 payout rather than an ordinary 1:1 {@code WIN}
+     * -- see {@link BlackjackRules#classify(java.util.List, java.util.List, boolean)}.
+     * An unsplit hand is always eligible. A split hand is eligible only when
+     * {@code split21IsBlackjackConfig} is enabled AND its 21 was reached on
+     * exactly two cards (the replacement card itself made 21) -- never a 21
+     * reached via a later Hit.
+     */
+    public boolean eligibleForNaturalBlackjack(boolean split21IsBlackjackConfig) {
+        if (!fromSplit) {
+            return true;
+        }
+        return split21IsBlackjackConfig && cards.size() == 2;
     }
 }

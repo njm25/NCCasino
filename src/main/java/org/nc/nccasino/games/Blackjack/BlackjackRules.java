@@ -144,7 +144,23 @@ public final class BlackjackRules {
      * insurance to be correct, not an independent rules change.
      */
     public static BlackjackOutcome classify(List<Card> playerHand, List<Card> dealerHand) {
-        boolean playerNatural = isNaturalBlackjack(playerHand);
+        return classify(playerHand, dealerHand, true);
+    }
+
+    /**
+     * Classifies a finished player hand against the dealer's, exactly like
+     * {@link #classify(List, List)}, except a player's own two-card 21 only
+     * pays the {@code BLACKJACK} 3:2 rate when {@code eligibleForNaturalBlackjack}
+     * is true. This exists for {@code split-21-is-blackjack}: an unsplit
+     * hand is always eligible (the 2-arg overload always passes {@code true});
+     * a split hand is eligible only when that config is enabled AND its 21
+     * was reached on exactly two cards (the replacement card itself made
+     * 21) -- never a 21 reached via a later Hit, regardless of the config.
+     * With the config disabled (or the hand ineligible for any other
+     * reason), every such 21 is an ordinary 1:1 {@code WIN} instead.
+     */
+    public static BlackjackOutcome classify(List<Card> playerHand, List<Card> dealerHand, boolean eligibleForNaturalBlackjack) {
+        boolean playerNatural = eligibleForNaturalBlackjack && isNaturalBlackjack(playerHand);
         boolean dealerNatural = isNaturalBlackjack(dealerHand);
         if (playerNatural && dealerNatural) {
             return BlackjackOutcome.PUSH;
