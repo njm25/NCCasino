@@ -4,20 +4,31 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The slide-out/park/reactivate sequence for a split: the acting card slides
- * out into its own hand, a replacement card deals into each of the two
- * hands, the pending sibling hand parks (no visible slot -- see the table
- * redesign plan's "Split rendering" section), and the next pending hand (if
- * any) reactivates into the seat's visible row.
+ * The slide-out/deal/deal/park/reactivate step <em>shape</em> for a split:
+ * the acting card slides out into its own hand, a replacement card deals
+ * into each of the two hands, the pending sibling hand parks (no visible
+ * slot -- see the table redesign plan's "Split rendering" section), and the
+ * next pending hand (if any) reactivates into the seat's visible row.
  *
- * <p>This is a <b>shared/table-owned</b> animation per the plan -- every
- * viewer at the table sees the same canonical timeline, not just the
- * acting player -- but that scoping is a {@link BlackjackAnimationRun}
- * concern at schedule time, not something this pure plan class needs to
- * know about. Real split-eligibility/hand-queue mechanics (matching rules,
- * max-hands, ace-resplit) are a later phase; this class only captures the
- * animation step shape/ordering/timing so the runtime has something to
- * schedule against once that logic exists.
+ * <p>Real split mechanics (matching rules, max-hands, ace-resplit,
+ * depth-first hand-queue ordering, per-hand wagers/payout) are implemented
+ * in {@link BlackjackSplitEligibility}, {@link BlackjackSplitQueue}, and
+ * {@link BlackjackHand}, wired into gameplay by
+ * {@code BlackjackInventory#handleSplit}. That runtime uses this class's
+ * first three steps' shape (SLIDE_OUT/DEAL/DEAL, each on a fixed delay,
+ * scheduled as a shared/table-owned {@link BlackjackAnimationRun} per the
+ * plan -- every viewer sees the same canonical timeline) but deliberately
+ * does <b>not</b> call {@link #build} to get PARK/REACTIVATE too: a parked
+ * hand needs no actual step (it's simply never rendered, since pending
+ * hands have no visible slot at all -- see the "Split rendering" section),
+ * and reactivation cannot live on this plan's fixed timeline at all -- it
+ * must fire whenever the currently-active hand naturally finishes (which
+ * may be many further Hits, or another split, later), never a fixed delay
+ * after the original split. The runtime's own
+ * {@code BlackjackInventory#activateSplitHand}/{@code resolveHandAfterSplitAnimation}
+ * implement that data-driven reactivation instead, reusing PARK/REACTIVATE's
+ * exact semantics (full card-row repaint from scratch, since a pending
+ * hand's cards were never rendered) without a fixed step delay.
  */
 public final class BlackjackSplitAnimationPlan {
 

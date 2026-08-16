@@ -39,4 +39,23 @@ public final class BlackjackSplitQueue {
         }
         return -1;
     }
+
+    /**
+     * Resolves a hand by its stable {@code handId} rather than a captured
+     * list index -- required for any scheduled callback that spans ticks,
+     * since indexes shift as sibling hands are inserted mid-round.
+     *
+     * @return the matching hand, or null if {@code hands} is null or no hand with that id is present (e.g. the owning player has since left)
+     */
+    public static BlackjackHand findById(List<BlackjackHand> hands, long handId) {
+        if (hands == null) {
+            return null;
+        }
+        for (BlackjackHand hand : hands) {
+            if (hand.getHandId() == handId) {
+                return hand;
+            }
+        }
+        return null;
+    }
 }

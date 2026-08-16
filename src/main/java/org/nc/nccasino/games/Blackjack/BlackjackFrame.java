@@ -27,7 +27,7 @@ public final class BlackjackFrame {
      * One hand's render-relevant snapshot -- a seat carries a list of these
      * (its hand queue) plus which index is currently active, so a late
      * viewer bootstraps correctly mid-round even with pending (post-split)
-     * hands that aren't rendered. Phase 1: every seat has exactly one.
+     * hands that aren't rendered. An unsplit seat still carries exactly one.
      */
     public static final class HandSnapshot {
         private final List<Card> cards;

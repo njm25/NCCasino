@@ -159,7 +159,7 @@ public final class BlackjackSlotLayout {
      * the dealer/seat-0 row, down the left edge past every seat head, then
      * along the bottom row into the in-play head slot (53). Pure slot
      * sequence only -- timing/weighting is BlackjackDealerInspectionPlan's
-     * job (a later phase).
+     * job.
      */
     public static List<Integer> dealerUPath() {
         return List.of(8, 7, 6, 5, 4, 3, 2, 11, 20, 29, 38, 47, 48, 49, 50, 51, 52, 53);

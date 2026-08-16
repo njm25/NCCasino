@@ -68,11 +68,10 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     private Iterator<UUID> playerIterator; // Iterator for player turns
     private final Map<UUID, Integer> playerCardCounts = new HashMap<>(); // Track number of cards each player has
     private final Map<UUID, Boolean> playerDone = new HashMap<>(); // Track whether the player is done (stood or busted)
-    // Per-player hand queue -- exactly one BlackjackHand per player in this
-    // phase (index 0), but shaped as a list from the start so real
-    // splitting (a later phase) doesn't have to retrofit this state shape.
-    // activeHandIndex is a live pointer (looked up, not captured across
-    // ticks) -- see ensureActiveHand/activeHand.
+    // Per-player hand queue -- a single BlackjackHand until a split
+    // inserts a sibling (see handleSplit/BlackjackSplitQueue), at which
+    // point this list grows depth-first. activeHandIndex is a live pointer
+    // (looked up, not captured across ticks) -- see ensureActiveHand/activeHand.
     private final Map<UUID, List<BlackjackHand>> playerHands = new HashMap<>();
     private final Map<UUID, Integer> activeHandIndex = new HashMap<>();
     private final List<Card> dealerHand = new ArrayList<>();
@@ -170,7 +169,7 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     private final int turnTimerTimeoutSeconds;
     private int turnTimerTaskId = -1;
 
-    // ---- Real splitting (Phase 6) -----------------------------------------
+    // ---- Real splitting -----------------------------------------------------
     // Config loaded once at construction (see loadBooleanConfig et al.);
     // playerHands/activeHandIndex above already carry the actual per-player
     // hand queue. See BlackjackSplitEligibility/BlackjackSplitMatching/
@@ -199,12 +198,18 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     // closing their inventory can never cancel it (see cancelSharedAnimation
     // vs cancelPrivateAnimation).
     private boolean splitAnimationInFlight = false;
-    // Animation infrastructure (Phase 2) -- scaffolding only, nothing here
-    // is triggered from real gameplay yet (that's a later phase). Private
-    // (per-viewer) animation runs: chair guide, wager guide, bet-spot
-    // blink, door reveal/conceal, action guide. At most one per viewer;
-    // cancelled on that viewer's own close/quit/seat-change -- see
-    // cancelPrivateAnimation.
+    // Which player's split operation splitAnimationInFlight refers to --
+    // lets removePlayerData recognize when the *acting* player of an
+    // in-flight split is the one leaving (as opposed to some unrelated
+    // viewer closing their own inventory, which must never touch this) and
+    // proactively tear it down instead of leaving a lingering
+    // in-flight/cancelled-task-free state around until the animation's own
+    // (now-guarded-off) steps eventually no-op.
+    private UUID splitAnimationPlayerId;
+    // Animation infrastructure -- private (per-viewer) animation runs:
+    // chair guide, wager guide, bet-spot blink, door reveal/conceal, action
+    // guide. At most one per viewer; cancelled on that viewer's own
+    // close/quit/seat-change -- see cancelPrivateAnimation.
     private final Map<UUID, BlackjackAnimationRun> privateAnimationRuns = new HashMap<>();
     // Per-viewer generation counter, bumped every time that viewer's
     // private animation must be invalidated (close/quit/seat-change, or a
@@ -498,7 +503,7 @@ private void registerListener() {
         return bets == null ? 0.0 : bets.values().stream().mapToDouble(Double::doubleValue).sum();
     }
 
-    // ---- Per-player hand-queue helpers (Phase 1: exactly one hand, index 0) ----
+    // ---- Per-player hand-queue helpers ----------------------------------
 
     /** The active {@link BlackjackHand} for {@code playerId}, or null if they have no hands yet (pregame). */
     private BlackjackHand activeHand(UUID playerId) {
@@ -539,11 +544,10 @@ private void registerListener() {
         return hands.get(idx);
     }
 
-    // ---- Animation-run scaffolding (Phase 2) ---------------------------
-    // Nothing below actually schedules a chair-guide/wager-guide/etc.
-    // animation yet -- that wiring is a later phase. This is only the
-    // bookkeeping + cancellation-scope machinery so that later phase
-    // doesn't have to retrofit it.
+    // ---- Animation-run bookkeeping ---------------------------------------
+    // Shared cancellation-scope machinery used by every animation category
+    // (chair/wager guide, bet-spot blink, door reveal/conceal, action
+    // guide, dealer U-path inspection, split sequence).
 
     private int currentViewerAnimationGeneration(UUID playerId) {
         return viewerAnimationGeneration.getOrDefault(playerId, 0);
@@ -586,6 +590,7 @@ private void registerListener() {
             sharedAnimationRun = null;
         }
         splitAnimationInFlight = false;
+        splitAnimationPlayerId = null;
     }
 
     /** Cancels every currently-tracked animation (private and shared) -- for table-wide teardown only (reset/cancel/delete). */
@@ -631,9 +636,9 @@ private void registerListener() {
      * also compare phase (unlike {@link BlackjackAnimationRun#isStale}) -- the lobby/wager guidance animations in
      * this phase must survive a LOBBY-to-COUNTDOWN transition (guidance keeps looping for a still-unseated/still-
      * selecting viewer even after some other player's bet has started the table's countdown), so their own
-     * seated/gameActive checks are the more precise guard; a later phase's phase-scoped animations (e.g. the
-     * start-transition dealer U-path) can lean on BlackjackAnimationRun.isStale's phase comparison instead, since
-     * those really are only ever valid for one fixed phase.
+     * seated/gameActive checks are the more precise guard; phase-scoped animations (e.g. the start-transition
+     * dealer U-path, or the split sequence) lean on BlackjackAnimationRun.isStale's phase comparison instead,
+     * since those really are only ever valid for one fixed phase.
      */
     private boolean isStaleViewerAnimation(UUID playerId, int capturedGeneration) {
         return currentViewerAnimationGeneration(playerId) != capturedGeneration;
@@ -1747,13 +1752,17 @@ private void registerListener() {
 
     /**
      * The live available-action set for one hand, config- and funds-aware --
-     * shared by currentPlayerActionLayout (rendering/click-validation) and
-     * the split-ace auto-complete check (resolveHandAfterSplitAnimation), so
-     * both agree on exactly what "actionable" means for a split-ace hand.
+     * used by currentPlayerActionLayout for rendering/click-validation.
      * Split-ace hands (still on their 2-card first decision) use the ace
      * matrix from {@link BlackjackActionLayout#splitAceActions}; every other
      * hand (including non-ace split hands, and a split-ace hand after it has
      * itself been hit) uses the ordinary {@link BlackjackActionLayout#availableActions}.
+     * Deliberately distinct from the split-ace <em>auto-complete</em> check
+     * in activateSplitHand/resolveHandAfterSplitAnimation: that decision is
+     * purely configuration-driven (never balance-dependent), whereas
+     * whether Double is actually visible here does fold in affordability --
+     * an unaffordable-but-configured Double must still leave Stand offered
+     * rather than collapse the whole decision into auto-completion.
      */
     private List<BlackjackAction> availableActionsForHand(Player player, BlackjackHand hand) {
         List<Card> cards = hand.getCards();
@@ -1764,9 +1773,9 @@ private void registerListener() {
         boolean initialTwoCardDecision = cards.size() == 2;
         List<BlackjackHand> hands = playerHands.getOrDefault(player.getUniqueId(), List.of());
         if (hand.isSplitFromAce() && initialTwoCardDecision) {
-            boolean acesDoubleEffective = acesDoubleAllowed && doubleAfterSplit && hasEnoughWager(player, hand.getWager());
+            boolean acesDoubleVisible = acesDoubleAllowed && doubleAfterSplit && hasEnoughWager(player, hand.getWager());
             boolean resplitEligible = acesResplitAllowed && splitEligibleForHand(player, hand, hands);
-            return BlackjackActionLayout.splitAceActions(acesHitAllowed, acesDoubleEffective, resplitEligible);
+            return BlackjackActionLayout.splitAceActions(acesHitAllowed, acesDoubleVisible, resplitEligible);
         }
         boolean canAffordDoubleDown = initialTwoCardDecision
             && (!hand.isFromSplit() || doubleAfterSplit)
@@ -2372,6 +2381,15 @@ private void handleHit(Player player) {
         if (playerSeats.get(playerId) == null || !playerSeats.containsKey(playerId)){
             return;
         }
+        // Never call Deck#dealCard while it's empty during an active round --
+        // that would silently trigger Deck's own auto-reshuffle, which the
+        // table redesign plan explicitly forbids mid-round. Check first and
+        // abort the whole round (full refund) instead.
+        if (!deck.hasCards()) {
+            abortRoundForShoeExhaustion();
+            return;
+        }
+
         int seatSlot = playerSeats.get(playerId);
         int cardCount = activeHandCards(playerId).size(); // Cards already in the active hand -- derived, not a separate lifetime counter, so it's automatically correct for whichever hand (post-split or not) is active.
         int nextCardSlot = seatSlot + 2 + cardCount; // Plain arithmetic (not playerCardSlot) -- cardCount can exceed the visible row; dealCardToPlayer bounds the render, never the canonical hand.
@@ -2520,6 +2538,18 @@ private void handleDoubleDown(Player player) {
             return;
         }
 
+        // Precheck the shoe before debiting anything -- never call
+        // Deck#dealCard while it's empty during an active round (that would
+        // silently trigger Deck's own auto-reshuffle, forbidden mid-round),
+        // and never leave a temporary debit behind if the round has to
+        // abort instead.
+        if (!deck.hasCards()) {
+            playerTurnActive.put(playerId, true);
+            repaintActionsForCurrentPlayer();
+            abortRoundForShoeExhaustion();
+            return;
+        }
+
         // Remove exactly one additional wager (this hand's own, not the
         // player's whole playerBets ledger -- per-hand doubling must debit
         // exactly one more wager for that specific hand only, independent
@@ -2631,9 +2661,15 @@ private void handleDoubleDown(Player player) {
 
         if (player != null && hand.isSplitFromAce() && cards.size() == 2) {
             List<BlackjackHand> hands = playerHands.getOrDefault(playerId, List.of());
-            boolean acesDoubleEffective = acesDoubleAllowed && doubleAfterSplit && hasEnoughWager(player, hand.getWager());
+            // Auto-complete is a purely configuration-driven decision --
+            // never balance-dependent. A configured Double that's merely
+            // unaffordable right now must still leave Stand offered, not
+            // silently finish the hand as if Double had never been
+            // permitted at all (see BlackjackActionLayoutTest's affordability
+            // matrix cases).
+            boolean acesDoubleConfigured = acesDoubleAllowed && doubleAfterSplit;
             boolean resplitEligible = acesResplitAllowed && splitEligibleForHand(player, hand, hands);
-            if (BlackjackActionLayout.splitAceHandAutoCompletes(acesHitAllowed, acesDoubleEffective, resplitEligible)) {
+            if (BlackjackActionLayout.splitAceHandAutoCompletes(acesHitAllowed, acesDoubleConfigured, resplitEligible)) {
                 hand.setDone(true);
                 advanceAfterHandResolved(playerId, BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
                 return;
@@ -2744,9 +2780,16 @@ private void handleDoubleDown(Player player) {
      * visibly, deals the sibling's replacement card canonically only (it
      * has no visible slot while pending), then resolves whatever comes
      * next. Owned by the table, not the acting viewer -- see
-     * {@link #cancelSharedAnimation()}'s doc -- so one viewer closing their
-     * inventory never interrupts it; only a genuinely table-wide event
-     * (round reset/cancel, generation change) does.
+     * {@link #cancelSharedAnimation()}'s doc -- so a random <em>other</em>
+     * viewer closing their inventory never interrupts it; only a genuinely
+     * table-wide event (round reset/cancel, generation change) or the
+     * <em>acting</em> player themselves leaving their seat does -- the
+     * latter is exactly what {@link BlackjackSplitOperationGuard} detects
+     * (see {@link #isSplitOperationValid}), so every step here proves it
+     * still belongs to this exact split (round + phase + the acting
+     * player's own seat + both hands still present by stable handId) before
+     * touching anything, never trusting a captured list index or object
+     * reference alone.
      */
     private void runSplitAnimation(UUID playerId, int seatSlot, BlackjackHand originalHand, BlackjackHand siblingHand, Card originalReplacement, Card siblingReplacement) {
         long myGeneration = roundGeneration;
@@ -2755,6 +2798,10 @@ private void handleDoubleDown(Player player) {
         BlackjackAnimationRun run = new BlackjackAnimationRun(null, myGeneration, 0, myPhase);
         sharedAnimationRun = run;
         splitAnimationInFlight = true;
+        splitAnimationPlayerId = playerId;
+        BlackjackSplitOperationGuard guard = new BlackjackSplitOperationGuard(
+            playerId, seatSlot, myGeneration, myPhase, originalHand.getHandId(), siblingHand.getHandId()
+        );
         long stepTicks = BlackjackTiming.SPLIT_ANIMATION_STEP_TICKS;
 
         int splitCardFromSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, 1);
@@ -2765,7 +2812,7 @@ private void handleDoubleDown(Player player) {
 
         // Step 2: the original hand's replacement card deals in visibly.
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (run.isStale(roundGeneration, 0, capturePhase()) || sharedAnimationRun != run) {
+            if (run != sharedAnimationRun || !isSplitOperationValid(run, guard)) {
                 return;
             }
             originalHand.addCard(originalReplacement);
@@ -2777,7 +2824,7 @@ private void handleDoubleDown(Player player) {
 
         // Step 3: the sibling's replacement card deals canonically only.
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (run.isStale(roundGeneration, 0, capturePhase()) || sharedAnimationRun != run) {
+            if (run != sharedAnimationRun || !isSplitOperationValid(run, guard)) {
                 return;
             }
             siblingHand.addCard(siblingReplacement);
@@ -2787,13 +2834,35 @@ private void handleDoubleDown(Player player) {
         // either auto-completes (split-ace, nothing permitted) or becomes
         // actionable again.
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (run.isStale(roundGeneration, 0, capturePhase()) || sharedAnimationRun != run) {
+            if (run != sharedAnimationRun || !isSplitOperationValid(run, guard)) {
                 return;
             }
             sharedAnimationRun = null;
             splitAnimationInFlight = false;
+            splitAnimationPlayerId = null;
             resolveHandAfterSplitAnimation(playerId);
         }, stepTicks * 3);
+    }
+
+    /**
+     * True only if {@code run} is still the live shared animation run (not
+     * superseded/cancelled) AND {@code guard}'s captured split identity
+     * still resolves against live state -- the acting player is still
+     * seated where expected, and both hands the split produced are still
+     * present under their own stable handId. Looks the hands up by id every
+     * time rather than trusting any object reference or index captured at
+     * schedule time, per the table redesign plan's stale-callback
+     * discipline.
+     */
+    private boolean isSplitOperationValid(BlackjackAnimationRun run, BlackjackSplitOperationGuard guard) {
+        if (run.isStale(roundGeneration, 0, capturePhase())) {
+            return false;
+        }
+        Integer currentSeatSlot = playerSeats.get(guard.getPlayerId());
+        List<BlackjackHand> hands = playerHands.get(guard.getPlayerId());
+        BlackjackHand currentOriginal = BlackjackSplitQueue.findById(hands, guard.getOriginalHandId());
+        BlackjackHand currentSibling = BlackjackSplitQueue.findById(hands, guard.getSiblingHandId());
+        return guard.isValid(roundGeneration, capturePhase(), currentSeatSlot, currentOriginal, currentSibling);
     }
 
     /** Resolves whatever the currently-active hand needs once the split animation finishes -- reuses the exact same activation logic a freshly-reached split hand uses. */
@@ -2814,9 +2883,10 @@ private void handleDoubleDown(Player player) {
         Player player = Bukkit.getPlayer(playerId);
         List<Card> cards = hand.getCards();
         if (player != null && hand.isSplitFromAce() && cards.size() == 2) {
-            boolean acesDoubleEffective = acesDoubleAllowed && doubleAfterSplit && hasEnoughWager(player, hand.getWager());
+            // Configuration-driven only -- see activateSplitHand's identical doc.
+            boolean acesDoubleConfigured = acesDoubleAllowed && doubleAfterSplit;
             boolean resplitEligible = acesResplitAllowed && splitEligibleForHand(player, hand, hands);
-            if (BlackjackActionLayout.splitAceHandAutoCompletes(acesHitAllowed, acesDoubleEffective, resplitEligible)) {
+            if (BlackjackActionLayout.splitAceHandAutoCompletes(acesHitAllowed, acesDoubleConfigured, resplitEligible)) {
                 hand.setDone(true);
                 advanceAfterHandResolved(playerId, BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
                 return;
@@ -2833,36 +2903,86 @@ private void handleDoubleDown(Player player) {
     }
 
     /**
-     * Aborts the entire round because the shoe cannot immediately continue
-     * supplying it, refunding every debit of that round (original wagers,
-     * split wagers, double wagers, insurance stakes -- see
-     * {@link BlackjackRoundAbortRefund}) to every seated player, then resets
-     * for the next round. Never pays out or settles hands -- the round
-     * simply never happened.
+     * The complete refund owed to {@code playerId} for the round currently
+     * in progress -- the single authoritative calculation shared by a
+     * shoe-exhaustion round abort and a {@code PLUGIN_DISABLE} refund, so
+     * neither duplicates or drifts from the other's accounting. Before the
+     * first card lands, no {@link BlackjackHand} exists yet and the
+     * committed pregame wager still lives only in {@code playerBets}; once
+     * hands exist, {@code playerBets} is no longer touched by doubles/splits
+     * so the live sum of every hand's own current wager (see
+     * {@link BlackjackRoundAbortRefund}) is the only correct source --
+     * summing both would double-count the original wager. Any insurance
+     * stake still in {@link #insuranceStakes} is, by construction, still
+     * undetermined (paid/forfeited stakes are removed from that map the
+     * instant the dealer's peek resolves them), so including it here can
+     * never double-count an already-settled insurance outcome either.
      */
-    private void abortRoundForShoeExhaustion() {
-        for (UUID playerId : new ArrayList<>(playerSeats.keySet())) {
-            Player player = Bukkit.getPlayer(playerId);
-            if (player == null) {
-                continue;
-            }
-            List<BlackjackHand> hands = playerHands.get(playerId);
-            // Before the first card lands, no BlackjackHand exists yet and
-            // the committed pregame wager still lives only in playerBets --
-            // fall back to that so an abort triggered by the initial deal
-            // itself still refunds what was already debited at bet-commit.
-            double refund = (hands != null && !hands.isEmpty())
-                ? BlackjackRoundAbortRefund.totalRefundForPlayer(hands, insuranceStakes.getOrDefault(playerId, 0.0))
-                : totalBet(playerId) + insuranceStakes.getOrDefault(playerId, 0.0);
-            if (refund > 0) {
-                addWagerToInventory(player, refund);
+    private double totalRoundRefundForPlayer(UUID playerId) {
+        List<BlackjackHand> hands = playerHands.get(playerId);
+        double insuranceStake = insuranceStakes.getOrDefault(playerId, 0.0);
+        if (hands != null && !hands.isEmpty()) {
+            return BlackjackRoundAbortRefund.totalRefundForPlayer(hands, insuranceStake);
+        }
+        return totalBet(playerId) + insuranceStake;
+    }
+
+    /**
+     * Refunds {@code amount} to {@code playerId} directly if they're online,
+     * otherwise queues it as a {@link PendingPayout} so an offline player's
+     * funds are never silently dropped -- the same safety net
+     * {@code PLUGIN_DISABLE} refunds already rely on unconditionally (see
+     * {@link #refundPendingBets}).
+     */
+    private void refundRoundDebit(UUID playerId, double amount, String messageKey) {
+        if (amount <= 0) {
+            return;
+        }
+        Player player = Bukkit.getPlayer(playerId);
+        if (player != null && player.isOnline()) {
+            addWagerToInventory(player, amount);
+            if (messageKey != null) {
                 switch (plugin.getPreferences(playerId).getMessageSetting()) {
                     case NONE:
                         break;
                     default:
-                        player.sendMessage(text(player, "blackjack.shoe-exhausted-refunded", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, refund)));
+                        player.sendMessage(text(player, messageKey, "amount", plugin.formatWagerDisplay(currencyMode, currencyName, amount)));
                 }
             }
+            return;
+        }
+        queuePendingRefund(playerId, amount);
+    }
+
+    /** Queues {@code amount} as a {@link PendingPayout}, claimable regardless of the player's online state. */
+    private void queuePendingRefund(UUID playerId, double amount) {
+        Material currencyMaterial = plugin.getCurrency(internalName);
+        PendingPayout payout = PendingPayout.create(
+            playerId,
+            "Blackjack",
+            internalName,
+            currencyMode,
+            currencyMaterial != null ? currencyMaterial.name() : null,
+            currencyName,
+            amount,
+            PayoutMessages.serverRestartRefundContext("Blackjack")
+        );
+        if (!plugin.getPendingPayoutStore().addPendingPayout(payout)) {
+            plugin.getLogger().warning("[NCCasino] Blackjack round-debit refund failed to persist for " + playerId + ".");
+        }
+    }
+
+    /**
+     * Aborts the entire round because the shoe cannot immediately continue
+     * supplying it, refunding every debit of that round (original wagers,
+     * split wagers, double wagers, insurance stakes -- see
+     * {@link #totalRoundRefundForPlayer}) to every seated player, then
+     * resets for the next round. Never pays out or settles hands -- the
+     * round simply never happened.
+     */
+    private void abortRoundForShoeExhaustion() {
+        for (UUID playerId : new ArrayList<>(playerSeats.keySet())) {
+            refundRoundDebit(playerId, totalRoundRefundForPlayer(playerId), "blackjack.shoe-exhausted-refunded");
         }
         insuranceStakes.clear();
         resetGame();
@@ -2996,6 +3116,16 @@ private void removePlayerData(UUID playerId) {
     // this player (chair guide while unseated, wager guide/bet-spot blink
     // while seated) -- never the shared/table-owned run.
     cancelPrivateAnimation(playerId);
+
+    // A random *other* viewer leaving must never touch the shared split
+    // animation -- but if the *acting* player of an in-flight split is the
+    // one leaving, there's nothing left worth animating for anyone (the
+    // whole operation belonged to their now-vacated seat), so proactively
+    // tear it down here instead of leaving a stale in-flight flag around
+    // until its now-guarded-off steps eventually no-op on their own.
+    if (playerId.equals(splitAnimationPlayerId)) {
+        cancelSharedAnimation();
+    }
 
     // Retrieve the player's seat slot
     int seatSlot = playerSeats.getOrDefault(playerId, -1);
@@ -3976,17 +4106,22 @@ private void renderTurnTimerToAllViews(int secondsLeft) {
  * On timeout, auto-Stands exactly the hand whose deadline expired --
  * guarded by roundGeneration + handToken + expected-actionable-state, the
  * same validation model as every other scheduled per-hand callback, so a
- * timeout can never fire against a hand that's already moved on.
+ * timeout can never fire against a hand that's already moved on. Depth-first,
+ * same as an ordinary Stand: only the active hand is finished here -- if the
+ * player has another pending split hand, its turn begins next via
+ * advanceAfterHandResolved, and the table only advances to the next player
+ * once every one of this player's hands is resolved.
  */
 private void autoStandOnTurnTimeout(UUID playerId, long myGeneration, int myHandToken) {
     synchronized (turnLock) {
         if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
             return;
         }
-        playerDone.put(playerId, true);
         playerTurnActive.put(playerId, false);
-        bumpHandToken(playerId);
-        repaintActionsForCurrentPlayer();
+        BlackjackHand hand = activeHand(playerId);
+        if (hand != null) {
+            hand.setDone(true);
+        }
         Player player = Bukkit.getPlayer(playerId);
         if (player != null) {
             switch (plugin.getPreferences(playerId).getMessageSetting()) {
@@ -3996,7 +4131,7 @@ private void autoStandOnTurnTimeout(UUID playerId, long myGeneration, int myHand
                     player.sendMessage(text(player, "blackjack.turn-timer-expired"));
             }
         }
-        startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
+        advanceAfterHandResolved(playerId, BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
     }
 }
 
@@ -4069,15 +4204,14 @@ private void startNextPlayerTurn() {
 
 private void startDealerTurn() {
 
-    // Check if all players have busted
-    boolean allPlayersBusted = true;
-    for (UUID playerId : playerSeats.keySet()) {
-        int playerCardSum = calculateHandValue(activeHandCards(playerId));
-        if (playerCardSum <= 21) {  // If any player has not busted
-            allPlayersBusted = false;
-            break;
-        }
-    }
+    // Skip the dealer's own turn only when every wagered hand at the table
+    // (across every player's own hand queue, not just each player's single
+    // currently-active hand) is busted -- a player who stood on an earlier
+    // split hand and busted on a later one must still have that earlier
+    // hand settled against the dealer's play.
+    boolean allPlayersBusted = BlackjackTableBustCheck.allHandsBusted(
+        playerSeats.keySet().stream().map(playerHands::get).collect(java.util.stream.Collectors.toList())
+    );
     if (allPlayersBusted) {
 
         finishGame(); // Directly finish the game if all players are busted
@@ -4156,7 +4290,15 @@ private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long
         }
     }
 
-    if (mutableDealerCardSum[0] < 17 && deck.hasCards()) {
+    if (mutableDealerCardSum[0] < 17) {
+        // The dealer's own rule requires another card here -- never settle
+        // an incomplete (<17) dealer hand just because the shoe ran out;
+        // abort the whole round with a full refund instead (see the table
+        // redesign plan's shoe-exhaustion requirement).
+        if (!deck.hasCards()) {
+            abortRoundForShoeExhaustion();
+            return;
+        }
         Card newCard = deck.dealCard();
         dealCardToPlayer(nextSlot, newCard, null); // Deal the card to the dealer
         mutableDealerCardSum[0] = calculateHandValue(dealerHand); // Recalculate after adding each card
@@ -4172,16 +4314,21 @@ private void dealDealerCardsUntilSeventeen(int nextSlot, int dealerCardSum, long
             // Stop at 17
             Bukkit.getScheduler().runTaskLater(plugin, this::finishGame, delay);
         } else {
-            // Continue if the dealer does not stop at 17
-            if (deck.hasCards()) {
-                Card newCard = deck.dealCard();
-                dealCardToPlayer(nextSlot, newCard, null);
-                mutableDealerCardSum[0] = calculateHandValue(dealerHand);
-                updateDealerHead();
-
-                Bukkit.getScheduler().runTaskLater(plugin, () ->
-                    dealDealerCardsUntilSeventeen(nextSlot - 1, mutableDealerCardSum[0], delay), delay);
+            // Continue if the dealer does not stop at 17 -- same
+            // shoe-exhaustion guard as above; previously this branch simply
+            // did nothing at all when the shoe was empty, silently hanging
+            // the round forever instead of resolving it either way.
+            if (!deck.hasCards()) {
+                abortRoundForShoeExhaustion();
+                return;
             }
+            Card newCard = deck.dealCard();
+            dealCardToPlayer(nextSlot, newCard, null);
+            mutableDealerCardSum[0] = calculateHandValue(dealerHand);
+            updateDealerHead();
+
+            Bukkit.getScheduler().runTaskLater(plugin, () ->
+                dealDealerCardsUntilSeventeen(nextSlot - 1, mutableDealerCardSum[0], delay), delay);
         }
     } else {
         // Proceed to finish the game after the dealer's turn
@@ -4854,41 +5001,28 @@ public void delete() {
     }
 
     /**
-     * Refunds whatever {@code playerId} currently has wagered. Called
-     * before removePlayerData, which clears the underlying bet records
-     * without moving any currency itself.
+     * Refunds everything {@code playerId} currently has at stake this round
+     * -- the original wager, plus (once cards are down) every split and
+     * double-down debit, plus any still-undetermined insurance stake, via
+     * {@link #totalRoundRefundForPlayer}. Called before removePlayerData,
+     * which clears the underlying bet/hand records without moving any
+     * currency itself. Only reached for {@link org.nc.nccasino.session.TerminationAction#REFUND}
+     * (never for a kick or an active-game voluntary leave, both of which
+     * forfeit unconditionally and never call this at all -- see
+     * onSessionTerminated).
      */
     private void refundPendingBets(UUID playerId, ExitReason reason) {
-        Map<Integer, Double> bets = playerBets.get(playerId);
-        if (bets == null || bets.isEmpty()) {
-            return;
-        }
-
-        double total = bets.values().stream().mapToDouble(Double::doubleValue).sum();
+        double total = totalRoundRefundForPlayer(playerId);
         if (total <= 0) {
             return;
         }
 
         if (reason == ExitReason.PLUGIN_DISABLE) {
-            Material currencyMaterial = plugin.getCurrency(internalName);
-            PendingPayout payout = PendingPayout.create(
-                playerId,
-                "Blackjack",
-                internalName,
-                currencyMode,
-                currencyMaterial != null ? currencyMaterial.name() : null,
-                currencyName,
-                total,
-                PayoutMessages.serverRestartRefundContext("Blackjack")
-            );
-            if (!plugin.getPendingPayoutStore().addPendingPayout(payout)) {
-                plugin.getLogger().warning("[NCCasino] Blackjack shutdown refund failed to persist for " + playerId + ".");
-            }
+            // The server is shutting down -- never hand items/deposit
+            // directly here regardless of online state, always queue.
+            queuePendingRefund(playerId, total);
         } else {
-            Player player = Bukkit.getPlayer(playerId);
-            if (player != null) {
-                addWagerToInventory(player, total);
-            }
+            refundRoundDebit(playerId, total, null);
         }
     }
 

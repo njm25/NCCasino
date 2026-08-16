@@ -28,12 +28,11 @@ public final class BlackjackTiming {
     /** Delay before advancing to the next player's turn after a stand or a double-down. */
     public static final long TURN_ADVANCE_DELAY_TICKS = 20L;
 
-    // ---- Animation infrastructure (Phase 2) ------------------------------
+    // ---- Animation infrastructure -----------------------------------------
     // Per-animation step delays for the pure Blackjack*Plan classes. These
     // are new (not preserved-inline) values -- unlike the constants above,
-    // there is no legacy inline literal they need to match; picked as
-    // reasonable defaults for a first pass and free to retune once the
-    // animations are actually wired into gameplay (a later phase).
+    // there is no legacy inline literal they need to match; free to retune
+    // for feel once these animations get real playtesting.
 
     /** Chair guidance begins exactly 2 seconds after a viewer opens the table, per the table redesign plan. */
     public static final long CHAIR_GUIDANCE_START_DELAY_TICKS = 40L;

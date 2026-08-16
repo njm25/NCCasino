@@ -13,9 +13,9 @@ import org.nc.nccasino.objects.Card;
  *
  * <p>Insurance cost is always based on a hand's <b>original pre-split
  * wager</b> ({@link BlackjackHand#getOriginalPreSplitWager()}), never
- * whatever the wager happens to be later -- real splitting doesn't exist
- * yet (a later phase), but the field already exists precisely so insurance
- * doesn't have to be retrofitted once it does.
+ * whatever the wager happens to be later -- correct by construction even
+ * with real splitting, since insurance is always decided before any
+ * player's turn (and therefore any split) can occur.
  */
 public final class BlackjackInsuranceRules {
 

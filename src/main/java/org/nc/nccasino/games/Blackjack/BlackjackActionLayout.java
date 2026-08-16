@@ -78,6 +78,16 @@ public final class BlackjackActionLayout {
      * </ul>
      * Stand is always present (timeout always behaves as Stand).
      *
+     * <p>Callers render this method's result (which action buttons actually
+     * show) using an <em>affordability-gated</em> {@code acesDoubleAllowed}
+     * -- Double disappears from the list when currently unaffordable, same
+     * as an ordinary Double Down. That is deliberately different from
+     * {@link #splitAceHandAutoCompletes}, whose own {@code acesDoubleAllowed}
+     * argument must be configuration-only (never balance-dependent): an
+     * unaffordable-but-configured Double must still leave this method
+     * returning at least {@code [STAND]}, never let the caller skip calling
+     * it entirely as if auto-complete applied.
+     *
      * @param acesDoubleAllowed already accounts for {@code double-after-split} -- pass false if that's disabled even when {@code aces.double=true}
      */
     public static List<BlackjackAction> splitAceActions(boolean acesHitAllowed, boolean acesDoubleAllowed, boolean resplitEligible) {
@@ -97,8 +107,17 @@ public final class BlackjackActionLayout {
 
     /**
      * Whether a split-ace hand's first decision should auto-complete with no
-     * action prompt at all: neither hitting nor doubling is permitted, and
-     * there's no eligible resplit to offer either.
+     * action prompt at all: neither hitting nor doubling is <em>configured</em>
+     * as permitted, and there's no eligible resplit to offer either.
+     *
+     * <p>{@code acesDoubleAllowed} here must be the raw configuration
+     * permission ({@code aces.double && double-after-split}), never folded
+     * together with current affordability -- this is a purely
+     * rules-driven decision, not a balance-driven one. A configured-but-
+     * currently-unaffordable Double must never auto-complete the hand; it
+     * must still leave at least Stand offered via {@link #splitAceActions}
+     * (whose own {@code acesDoubleAllowed} argument is the one callers
+     * should gate on affordability).
      */
     public static boolean splitAceHandAutoCompletes(boolean acesHitAllowed, boolean acesDoubleAllowed, boolean resplitEligible) {
         return !acesHitAllowed && !acesDoubleAllowed && !resplitEligible;
