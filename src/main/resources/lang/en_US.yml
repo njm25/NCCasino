@@ -484,6 +484,7 @@ blackjack:
   insurance-paid: "&aInsurance paid: {amount}!"
   insurance-lost: "&cInsurance lost."
   wager-not-insurance-compatible: "&cThat wager can't be split evenly for insurance -- try an even amount."
+  wager-transaction-failed: "&cTransaction failed -- nothing was charged. Please try again."
   dealer-peek: "&6The dealer peeks... Blackjack!"
   turn-timer-lore: "Time to decide: {seconds}"
   turn-timer-expired: "&cTime's up! You stood."

@@ -1153,9 +1153,48 @@ private void registerListener() {
      * (previously a real bug: the cursor stack was deleted AND removeWagerFromInventory ran again, over-charging
      * the player). See handleBetClick's cursor-drag branch, which calls commitWagerFundsAlreadyRemoved instead.
      */
-    private boolean commitWager(Player player, UUID playerId, int betSpotSlot, double amount) {
-        removeWagerFromInventory(player, amount);
-        return commitWagerFundsAlreadyRemoved(player, playerId, betSpotSlot, amount);
+    /**
+     * Distinguishes why a wager commit didn't go through -- callers need
+     * this because the correct recovery differs: a transaction failure
+     * means the amount itself was fine and the player may simply retry
+     * (their selection is restored), while an insurance-incompatible
+     * rejection means that exact amount will never work and retrying it
+     * is pointless (the selection is cleared instead).
+     */
+    private enum WagerCommitResult { COMMITTED, TRANSACTION_FAILED, INSURANCE_INCOMPATIBLE }
+
+    /**
+     * Commits {@code amount} for {@code playerId}: debits their balance,
+     * then applies the ledger-side effects -- but only if the debit itself
+     * actually succeeded. The transaction result from {@link #tryRemoveWager}
+     * is authoritative, never inferred from a preceding {@code hasEnoughWager}
+     * check (a Vault economy call can still fail after reporting a
+     * sufficient balance). Used by the chip-selection commit path, where
+     * nothing has removed any funds yet. NOT used for the
+     * cursor-drag-onto-bet-spot path -- there, {@code player.setItemOnCursor(null)}
+     * already destroys the dragged physical stack (a debit that cannot
+     * itself "fail" the way a programmatic withdrawal can), so calling this
+     * too would debit the same amount a second time. See handleBetClick's
+     * cursor-drag branch, which calls commitWagerFundsAlreadyRemoved directly.
+     */
+    private WagerCommitResult commitWager(Player player, UUID playerId, int betSpotSlot, double amount) {
+        if (!tryRemoveWager(player, amount)) {
+            // Nothing was debited -- never touch the ledger, playerBets,
+            // lastBetAmounts, or start the countdown as though a wager was
+            // committed.
+            switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                case NONE:
+                    break;
+                default:
+                    player.sendMessage(text(player, "blackjack.wager-transaction-failed"));
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            return WagerCommitResult.TRANSACTION_FAILED;
+        }
+        boolean committed = commitWagerFundsAlreadyRemoved(player, playerId, betSpotSlot, amount);
+        return committed ? WagerCommitResult.COMMITTED : WagerCommitResult.INSURANCE_INCOMPATIBLE;
     }
 
     /**
@@ -2623,8 +2662,29 @@ private void handleDoubleDown(Player player) {
         // Remove exactly one additional wager (this hand's own, not the
         // player's whole playerBets ledger -- per-hand doubling must debit
         // exactly one more wager for that specific hand only, independent
-        // of any sibling hands).
-        removeWagerFromInventory(player, currentBet);
+        // of any sibling hands). The transaction itself is authoritative --
+        // hasEnoughWager above was only a pre-filter; a Vault economy call
+        // (or any other provider) can still fail here. Nothing about the
+        // hand may change unless this actually succeeds.
+        if (!tryRemoveWager(player, currentBet)) {
+            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage(text(player, "blackjack.wager-transaction-failed"));
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage(text(player, "blackjack.wager-transaction-failed"));
+                    break;}
+                case NONE:{
+                    break;
+                }
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            playerTurnActive.put(playerId, true); // Restore the same actionable decision -- nothing about the hand changed
+            repaintActionsForCurrentPlayer(); // never extend the deadline for a failed action
+            return;
+        }
         hand.setWager(hand.getWager() * 2);
         hand.setDoubled(true);
 
@@ -2806,8 +2866,26 @@ private void handleDoubleDown(Player player) {
 
             boolean wasResplit = hand.isFromSplit();
 
-            // Exactly one additional matching wager, debited once.
-            removeWagerFromInventory(player, hand.getWager());
+            // Exactly one additional matching wager, debited once. The
+            // transaction itself is authoritative -- splitEligibleForHand's
+            // own affordability check above was only a pre-filter; a Vault
+            // economy call can still fail here. Nothing about the hand
+            // queue, cards, shoe, or animation may change unless this
+            // actually succeeds.
+            if (!tryRemoveWager(player, hand.getWager())) {
+                switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                    case NONE:
+                        break;
+                    default:
+                        player.sendMessage(text(player, "blackjack.wager-transaction-failed"));
+                }
+                if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+                }
+                playerTurnActive.put(playerId, true); // Restore the same actionable decision -- nothing about the hand changed
+                repaintActionsForCurrentPlayer(); // never extend the deadline for a failed action
+                return;
+            }
 
             boolean wasAcePair = hand.getCards().get(0).getRank() == Rank.ACE;
             BlackjackHand sibling = new BlackjackHand(hand.getWager());
@@ -3378,12 +3456,23 @@ private void removePlayerData(UUID playerId) {
 
         double selected = getSelectedWager(playerId);
         if (selected > 0 && hasEnoughWager(player, selected)) {
-            boolean committed = commitWager(player, playerId, betSpotSlot, selected);
-            selectedWager.remove(playerId); // the selection is consumed either way -- a rejected amount must not linger as still-selected
+            WagerCommitResult result = commitWager(player, playerId, betSpotSlot, selected);
+            if (result == WagerCommitResult.TRANSACTION_FAILED) {
+                // Nothing was debited and the amount itself was fine --
+                // restore the selection so the player can simply retry
+                // (e.g. click the bet spot again) instead of re-picking a chip.
+                selectedWager.put(playerId, selected);
+            } else {
+                // Committed, or rejected for being insurance-incompatible --
+                // either way this exact amount is done being "selected";
+                // retrying the same amount after an incompatibility
+                // rejection would just fail again.
+                selectedWager.remove(playerId);
+            }
             cancelPrivateAnimation(playerId); // stop the bet-spot blink
             refreshWagerControlsForPlayer(playerId); // un-enchant the now-consumed chip
 
-            if (committed) {
+            if (result == WagerCommitResult.COMMITTED) {
                 startWagerGuidance(playerId); // resume guidance so the player can add another increment if they want
 
                 if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
@@ -3392,6 +3481,9 @@ private void removePlayerData(UUID playerId) {
                 if (countdownTaskId == -1) {
                     startCountdownTimer();
                 }
+            } else if (result == WagerCommitResult.TRANSACTION_FAILED) {
+                // Still selected -- resume guidance/blink so the retry path stays visible.
+                startBetSpotBlink(playerId);
             }
         } else {
             switch (plugin.getPreferences(playerId).getMessageSetting()) {
@@ -3567,6 +3659,13 @@ private void removePlayerData(UUID playerId) {
      * an odd wager from ever being committed while insurance is enabled
      * (see commitWagerFundsAlreadyRemoved's validation), so their own
      * insurance cost is always exactly representable as a whole item.
+     *
+     * <p>This is only ever a pre-filter to avoid attempting a debit that's
+     * obviously going to fail -- it must never be treated as proof a
+     * subsequent {@link #tryRemoveWager} will succeed. A Vault economy
+     * transaction (or any other provider call) can still fail after this
+     * reports a sufficient balance; only the transaction itself is
+     * authoritative.
      */
     private boolean hasEnoughWager(Player player, double amount) {
         if (amount <= 0.0) {
@@ -3591,26 +3690,46 @@ private void removePlayerData(UUID playerId) {
         return player.getInventory().containsAtLeast(new ItemStack(currencyMaterial), requiredAmount);
     }
 
-    /** Decimal-aware for Vault (see {@link #hasEnoughWager}'s doc); whole-unit for every other mode. */
-    private void removeWagerFromInventory(Player player, double amount) {
+    /**
+     * Attempts to debit exactly {@code amount} from {@code player}'s
+     * balance, returning whether the debit actually succeeded -- the
+     * transaction itself, never a preceding {@link #hasEnoughWager} check.
+     * Every caller must only mutate wager/hand/insurance state after this
+     * returns true, and must treat a false return as "nothing was
+     * debited" -- if a provider partially withdraws before reporting
+     * failure (e.g. {@code StandardItemCurrencyProvider} can pull whatever
+     * it finds even when short), whatever it did take is refunded here so
+     * a failed debit can never leave the player short.
+     */
+    private boolean tryRemoveWager(Player player, double amount) {
+        if (amount <= 0.0) {
+            return false;
+        }
         CurrencyProvider provider = getCurrencyProvider();
-        if (provider != null && provider.getMode() == CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider vaultProvider) {
-            vaultProvider.withdrawDecimal(player, internalName, MoneyHelper.clampNonNegative(MoneyHelper.bd(amount)));
-            return;
+        if (provider != null) {
+            return BlackjackWagerTransaction.tryWithdraw(provider, player, internalName, amount);
         }
 
         int requiredAmount = MoneyHelper.toWagerUnits(amount);
-        if (requiredAmount <= 0) return;
-
-        if (provider != null) {
-            provider.withdraw(player, internalName, requiredAmount);
-            return;
-        }
+        if (requiredAmount <= 0) return false;
 
         Material currencyMaterial = plugin.getCurrency(internalName);
-        if (currencyMaterial != null && requiredAmount > 0) {
-            player.getInventory().removeItem(new ItemStack(currencyMaterial, requiredAmount));
+        if (currencyMaterial == null) {
+            return false;
         }
+        Map<Integer, ItemStack> leftover = player.getInventory().removeItem(new ItemStack(currencyMaterial, requiredAmount));
+        if (leftover.isEmpty()) {
+            return true;
+        }
+        // Same rollback principle for the no-provider raw-material fallback:
+        // removeItem() takes whatever it finds and only reports the
+        // shortfall, so give back whatever it actually took.
+        int shortfall = leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
+        int actuallyRemoved = requiredAmount - shortfall;
+        if (actuallyRemoved > 0) {
+            player.getInventory().addItem(new ItemStack(currencyMaterial, actuallyRemoved));
+        }
+        return false;
     }
 
     private void addWagerToInventory(Player player, double amount) {
@@ -3968,7 +4087,23 @@ private void handleInsuranceDecision(Player player, boolean takeInsurance) {
             }
             return;
         }
-        removeWagerFromInventory(player, cost);
+        // The transaction itself is authoritative -- hasEnoughWager above
+        // was only a pre-filter; a Vault economy call can still fail here.
+        // Distinguish this from insufficient funds where practical: the
+        // decision must stay undecided either way (still clickable, so the
+        // player can retry or decline), but the feedback differs.
+        if (!tryRemoveWager(player, cost)) {
+            switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                case NONE:
+                    break;
+                default:
+                    player.sendMessage(text(player, "blackjack.wager-transaction-failed"));
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            return;
+        }
         insuranceStakes.put(playerId, cost);
         switch (plugin.getPreferences(playerId).getMessageSetting()) {
             case NONE:

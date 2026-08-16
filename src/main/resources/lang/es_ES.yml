@@ -484,6 +484,7 @@ blackjack:
   insurance-paid: "&a¡Seguro pagado: {amount}!"
   insurance-lost: "&cSeguro perdido."
   wager-not-insurance-compatible: "&cEsa apuesta no se puede dividir en partes iguales para el seguro -- prueba con una cantidad par."
+  wager-transaction-failed: "&cLa transacción falló -- no se cobró nada. Inténtalo de nuevo."
   dealer-peek: "&6El dealer mira... ¡Blackjack!"
   turn-timer-lore: "Tiempo para decidir: {seconds}"
   turn-timer-expired: "&c¡Se acabó el tiempo! Te plantaste."
