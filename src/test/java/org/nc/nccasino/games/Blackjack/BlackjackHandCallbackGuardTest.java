@@ -81,4 +81,85 @@ class BlackjackHandCallbackGuardTest {
         assertTrue(BlackjackHandCallbackGuard.matches(resolvedByOriginalId, original.getHandId(), original.getHandGeneration()));
         assertFalse(BlackjackHandCallbackGuard.matches(resolvedByOriginalId, sibling.getHandId(), sibling.getHandGeneration()));
     }
+
+    // --- isExpectedActiveHand: the complete expected-state contract ---
+
+    @Test
+    void expectedActiveHandValidWhenEverythingMatches() {
+        BlackjackHand hand = hand();
+        assertTrue(BlackjackHandCallbackGuard.isExpectedActiveHand(
+            hand, hand.getHandId(), hand.getHandGeneration(), true, true, true, true, false
+        ));
+    }
+
+    @Test
+    void matchingIdAndGenerationButNoLongerTheActiveHandIsRejected() {
+        // The caller is responsible for resolving "candidate" as
+        // activeHandIndex's own hand -- if a hand with the right id and
+        // generation exists elsewhere in the queue but isn't the one
+        // passed in as the active candidate (e.g. it became a completed,
+        // no-longer-active sibling), this must reject it. Simulated here by
+        // passing null as the candidate, exactly what the controller passes
+        // when its own activeHandIndex lookup didn't land on this handId.
+        BlackjackHand hand = hand();
+        assertFalse(BlackjackHandCallbackGuard.isExpectedActiveHand(
+            null, hand.getHandId(), hand.getHandGeneration(), true, true, true, true, false
+        ));
+    }
+
+    @Test
+    void seatedButNoLongerCurrentPlayerIsRejected() {
+        BlackjackHand hand = hand();
+        assertFalse(BlackjackHandCallbackGuard.isExpectedActiveHand(
+            hand, hand.getHandId(), hand.getHandGeneration(), true, false, true, true, false
+        ));
+    }
+
+    @Test
+    void noLongerSeatedIsRejected() {
+        BlackjackHand hand = hand();
+        assertFalse(BlackjackHandCallbackGuard.isExpectedActiveHand(
+            hand, hand.getHandId(), hand.getHandGeneration(), false, true, true, true, false
+        ));
+    }
+
+    @Test
+    void matchingHandButPhaseIsInsuranceOrDealerRatherThanActivePlayerTurnIsRejected() {
+        // The table moved into insurance or the dealer's own turn around a
+        // still-technically-matching hand -- Hit/Double/timeout callbacks
+        // must never fire outside the actionable player-turn phase.
+        BlackjackHand hand = hand();
+        assertFalse(BlackjackHandCallbackGuard.isExpectedActiveHand(
+            hand, hand.getHandId(), hand.getHandGeneration(), true, true, false, true, false
+        ));
+    }
+
+    @Test
+    void timerCallbackAgainstProcessingRatherThanActionableStateIsRejected() {
+        // requireActionable=true (the turn timer) must reject a hand that's
+        // mid-processing (playerTurnActive=false) even if everything else matches.
+        BlackjackHand hand = hand();
+        assertFalse(BlackjackHandCallbackGuard.isExpectedActiveHand(
+            hand, hand.getHandId(), hand.getHandGeneration(), true, true, true, false, true
+        ));
+    }
+
+    @Test
+    void hitRenderCallbackDuringProcessingIsStillValidWhenActionableNotRequired() {
+        // Hit/Double's own render/eval callbacks legitimately fire while
+        // playerTurnActive is false (requireActionable=false) -- processing
+        // is the expected state for them, not a staleness signal.
+        BlackjackHand hand = hand();
+        assertTrue(BlackjackHandCallbackGuard.isExpectedActiveHand(
+            hand, hand.getHandId(), hand.getHandGeneration(), true, true, true, false, false
+        ));
+    }
+
+    @Test
+    void timerCallbackAgainstGenuinelyActionableStateIsValid() {
+        BlackjackHand hand = hand();
+        assertTrue(BlackjackHandCallbackGuard.isExpectedActiveHand(
+            hand, hand.getHandId(), hand.getHandGeneration(), true, true, true, true, true
+        ));
+    }
 }

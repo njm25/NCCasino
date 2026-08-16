@@ -241,6 +241,14 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     // completion) alongside handToken below, so a callback left over from a
     // stale round for a still-seated player can never mutate the new round.
     private long roundGeneration = 0;
+    // Dealer-sequence token, bumped every time a dealer sequence begins
+    // (startDealerTurn) -- distinguishes two dealer sequences that could in
+    // principle be initiated within the very same roundGeneration, and is
+    // also explicitly bumped on reset/cancel/delete (on top of
+    // roundGeneration's own bump there) for clarity. Every reveal/draw/
+    // shoe-abort/finish callback in the dealer sequence validates this
+    // alongside roundGeneration -- see isStaleDealerSequenceCallback.
+    private int dealerSequenceToken = 0;
     // Per-player token bumped every time that seat's turn is resolved
     // (stand, bust, hit-to-21, double-down completion, leave-during-turn).
     // A scheduled callback captures the token in effect when it was
@@ -950,6 +958,7 @@ private void registerListener() {
         clearPregameCountdownFromAllViews();
 
         roundGeneration++;
+        dealerSequenceToken++;
         long myRoundGeneration = roundGeneration;
         startTransitionActive = true;
         startTransitionDoorConcealComplete.clear();
@@ -1289,17 +1298,43 @@ private void registerListener() {
      * captured list index or object reference, since indexes shift as
      * sibling hands are inserted mid-round.
      *
-     * @return the live hand if every check passes, or null if the callback must no-op (round moved on, player left, or this exact hand -- by id and generation -- is no longer the one it was scheduled for)
+     * Also enforces the rest of the authoritative expected-state contract:
+     * the hand must genuinely be {@code activeHandIndex}'s own hand (never
+     * merely present somewhere else in the queue), the table's phase must
+     * still be {@link BlackjackFrame.Phase#ACTIVE}, and {@code playerId}
+     * must still be the table's own {@code currentPlayerId} -- a hand that
+     * matches by id+generation but has been superseded as "the" active
+     * hand (or whose owner is no longer the current player, or whom the
+     * table has moved into insurance/lobby/etc. around) must still resolve
+     * to null.
+     *
+     * @param requireActionable true for the turn timer (which only ever
+     *        runs while a decision is genuinely actionable); false for
+     *        Hit/Double's own render/evaluation callbacks, which
+     *        legitimately fire while the action is still "processing"
+     *        ({@code playerTurnActive} deliberately false)
+     * @return the live hand if every check passes, or null if the callback must no-op (round moved on, player left, reseated, no longer current, phase changed, or this exact hand -- by id, generation, and active-hand identity -- is no longer the one it was scheduled for)
      */
-    private BlackjackHand resolveExpectedHand(UUID playerId, long expectedRoundGeneration, long expectedHandId, int expectedHandGeneration) {
-        if (roundGeneration != expectedRoundGeneration || !gameActive || !playerSeats.containsKey(playerId)) {
+    private BlackjackHand resolveExpectedHand(UUID playerId, long expectedRoundGeneration, long expectedHandId, int expectedHandGeneration, boolean requireActionable) {
+        if (roundGeneration != expectedRoundGeneration || !gameActive) {
             return null;
         }
-        BlackjackHand hand = BlackjackSplitQueue.findById(playerHands.get(playerId), expectedHandId);
-        if (!BlackjackHandCallbackGuard.matches(hand, expectedHandId, expectedHandGeneration)) {
-            return null;
+        List<BlackjackHand> hands = playerHands.get(playerId);
+        BlackjackHand candidate = null;
+        if (hands != null) {
+            int activeIdx = activeHandIndex.getOrDefault(playerId, -1);
+            if (activeIdx >= 0 && activeIdx < hands.size()) {
+                candidate = hands.get(activeIdx);
+            }
         }
-        return hand;
+        boolean isSeated = playerSeats.containsKey(playerId);
+        boolean isCurrentPlayer = playerId.equals(currentPlayerId);
+        boolean isActivePhase = capturePhase() == BlackjackFrame.Phase.ACTIVE;
+        boolean turnActive = playerTurnActive.getOrDefault(playerId, false);
+        boolean expected = BlackjackHandCallbackGuard.isExpectedActiveHand(
+            candidate, expectedHandId, expectedHandGeneration, isSeated, isCurrentPlayer, isActivePhase, turnActive, requireActionable
+        );
+        return expected ? candidate : null;
     }
 
     // ---- Per-player BlackjackView plumbing --------------------------
@@ -2516,7 +2551,7 @@ private void handleHit(Player player) {
             if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
                 return;
             }
-            BlackjackHand liveHand = resolveExpectedHand(playerId, myGeneration, handId, generationBeforeCard + 1);
+            BlackjackHand liveHand = resolveExpectedHand(playerId, myGeneration, handId, generationBeforeCard + 1, false);
             if (liveHand == null) {
                 return;
             }
@@ -2728,7 +2763,7 @@ private void handleDoubleDown(Player player) {
             if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
                 return;
             }
-            BlackjackHand doubledHand = resolveExpectedHand(playerId, myGeneration, handId, generationBeforeCard + 1);
+            BlackjackHand doubledHand = resolveExpectedHand(playerId, myGeneration, handId, generationBeforeCard + 1, false);
             if (doubledHand == null) {
                 return;
             }
@@ -3031,9 +3066,22 @@ private void handleDoubleDown(Player player) {
         if (run.isStale(roundGeneration, 0, capturePhase())) {
             return false;
         }
-        Integer currentSeatSlot = playerSeats.get(guard.getPlayerId());
-        List<BlackjackHand> hands = playerHands.get(guard.getPlayerId());
+        UUID playerId = guard.getPlayerId();
+        Integer currentSeatSlot = playerSeats.get(playerId);
+        List<BlackjackHand> hands = playerHands.get(playerId);
         BlackjackHand currentOriginal = BlackjackSplitQueue.findById(hands, guard.getOriginalHandId());
+        // The original hand must genuinely still be *the* active hand
+        // (activeHandIndex's own pointer), not merely present somewhere
+        // else in the queue -- a resplit or the queue advancing on to a
+        // sibling must invalidate a step still expecting the original hand
+        // to be current.
+        if (currentOriginal != null && hands != null) {
+            int activeIdx = activeHandIndex.getOrDefault(playerId, -1);
+            boolean isActiveHand = activeIdx >= 0 && activeIdx < hands.size() && hands.get(activeIdx) == currentOriginal;
+            if (!isActiveHand) {
+                currentOriginal = null;
+            }
+        }
         BlackjackHand currentSibling = BlackjackSplitQueue.findById(hands, guard.getSiblingHandId());
         return guard.isValid(roundGeneration, capturePhase(), currentSeatSlot, currentOriginal, currentSibling);
     }
@@ -3887,6 +3935,7 @@ private void removePlayerData(UUID playerId) {
 private void activateGame() {
     gameActive = true; // Mark the game as active
     roundGeneration++;
+    dealerSequenceToken++;
     handToken.clear();
 
     // Initialize hands for players and dealer -- BlackjackHand instances
@@ -4350,7 +4399,7 @@ private void startTurnTimer(UUID playerId) {
         @Override
         public void run() {
             if (isStaleHandCallback(playerId, myGeneration, myHandToken)
-                || resolveExpectedHand(playerId, myGeneration, handId, expectedHandGeneration) == null) {
+                || resolveExpectedHand(playerId, myGeneration, handId, expectedHandGeneration, true) == null) {
                 // The hand this deadline belonged to has already moved on
                 // (Stand/Double/leave/reset/completion) -- stop silently,
                 // whatever superseded it owns slot 46 now.
@@ -4412,7 +4461,7 @@ private void autoStandOnTurnTimeout(UUID playerId, long myGeneration, int myHand
         if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
             return;
         }
-        BlackjackHand hand = resolveExpectedHand(playerId, myGeneration, handId, expectedHandGeneration);
+        BlackjackHand hand = resolveExpectedHand(playerId, myGeneration, handId, expectedHandGeneration, true);
         if (hand == null) {
             return;
         }
@@ -4511,6 +4560,8 @@ private void startNextPlayerTurn() {
  */
 private void startDealerTurn() {
     long myGeneration = roundGeneration;
+    dealerSequenceToken++; // a new dealer sequence begins -- invalidates any prior one still pending
+    int myDealerSequenceToken = dealerSequenceToken;
 
     // Skip the dealer's own turn only when every wagered hand at the table
     // (across every player's own hand queue, not just each player's single
@@ -4527,17 +4578,17 @@ private void startDealerTurn() {
     }
 
     // Reveal the dealer's hidden card with delay
-    revealDealerCardWithDelay(myGeneration, 20L);
+    revealDealerCardWithDelay(myGeneration, myDealerSequenceToken, 20L);
 
     // Dealer must hit until reaching at least 17. Cards continue leftward
     // from the hole card (51) toward 47 -- descending, not ascending; see
     // the table redesign plan's "Open item to verify" note and
     // BlackjackSlotLayout#dealerCardSlot.
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        if (isStaleDealerSequenceCallback(myGeneration)) {
+        if (isStaleDealerSequenceCallback(myGeneration, myDealerSequenceToken)) {
             return;
         }
-        dealDealerCardsUntilSeventeen(myGeneration, BlackjackSlotLayout.DEALER_HOLE_CARD_SLOT - 1, calculateHandValue(dealerHand), 20L);
+        dealDealerCardsUntilSeventeen(myGeneration, myDealerSequenceToken, BlackjackSlotLayout.DEALER_HOLE_CARD_SLOT - 1, calculateHandValue(dealerHand), 20L);
     }, 40L); // Start dealer's turn after revealing with delay
 }
 
@@ -4548,13 +4599,13 @@ private void startDealerTurn() {
  * finish callback in {@link #startDealerTurn}'s sequence must check this
  * before mutating or rendering anything.
  */
-private boolean isStaleDealerSequenceCallback(long capturedGeneration) {
-    return BlackjackDealerSequenceGuard.isStale(capturedGeneration, roundGeneration, gameActive);
+private boolean isStaleDealerSequenceCallback(long capturedGeneration, int capturedDealerSequenceToken) {
+    return BlackjackDealerSequenceGuard.isStale(capturedGeneration, roundGeneration, capturedDealerSequenceToken, dealerSequenceToken, gameActive);
 }
 
-private void revealDealerCardWithDelay(long myGeneration, long delay) {
+private void revealDealerCardWithDelay(long myGeneration, int myDealerSequenceToken, long delay) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        if (isStaleDealerSequenceCallback(myGeneration)) {
+        if (isStaleDealerSequenceCallback(myGeneration, myDealerSequenceToken)) {
             return;
         }
         revealDealerHoleCardNow();
@@ -4589,8 +4640,8 @@ private void revealDealerHoleCardNow() {
  * over from a reset/cancelled round can never touch the new round's shoe,
  * dealer hand, or settlement.
  */
-private void dealDealerCardsUntilSeventeen(long myGeneration, int nextSlot, int dealerCardSum, long delay) {
-    if (isStaleDealerSequenceCallback(myGeneration) || playerSeats.isEmpty()) {
+private void dealDealerCardsUntilSeventeen(long myGeneration, int myDealerSequenceToken, int nextSlot, int dealerCardSum, long delay) {
+    if (isStaleDealerSequenceCallback(myGeneration, myDealerSequenceToken) || playerSeats.isEmpty()) {
     // If the round has moved on, or all players have left, stop immediately
         return;
     }
@@ -4645,17 +4696,17 @@ private void dealDealerCardsUntilSeventeen(long myGeneration, int nextSlot, int 
 
         // Schedule the next card if needed
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (isStaleDealerSequenceCallback(myGeneration)) {
+            if (isStaleDealerSequenceCallback(myGeneration, myDealerSequenceToken)) {
                 return;
             }
-            dealDealerCardsUntilSeventeen(myGeneration, nextSlot - 1, mutableDealerCardSum[0], delay);
+            dealDealerCardsUntilSeventeen(myGeneration, myDealerSequenceToken, nextSlot - 1, mutableDealerCardSum[0], delay);
         }, delay);
     } else if (mutableDealerCardSum[0] == 17) {
         // Determine whether the dealer stops at 17 based on the percentage chance
         if (!BlackjackRules.dealerShouldHit(17, standOn17Chance, Math.random() * 100)) {
             // Stop at 17
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (isStaleDealerSequenceCallback(myGeneration)) {
+                if (isStaleDealerSequenceCallback(myGeneration, myDealerSequenceToken)) {
                     return;
                 }
                 finishGame();
@@ -4675,16 +4726,16 @@ private void dealDealerCardsUntilSeventeen(long myGeneration, int nextSlot, int 
             updateDealerHead();
 
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (isStaleDealerSequenceCallback(myGeneration)) {
+                if (isStaleDealerSequenceCallback(myGeneration, myDealerSequenceToken)) {
                     return;
                 }
-                dealDealerCardsUntilSeventeen(myGeneration, nextSlot - 1, mutableDealerCardSum[0], delay);
+                dealDealerCardsUntilSeventeen(myGeneration, myDealerSequenceToken, nextSlot - 1, mutableDealerCardSum[0], delay);
             }, delay);
         }
     } else {
         // Proceed to finish the game after the dealer's turn
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (isStaleDealerSequenceCallback(myGeneration)) {
+            if (isStaleDealerSequenceCallback(myGeneration, myDealerSequenceToken)) {
                 return;
             }
             finishGame();
@@ -4707,7 +4758,7 @@ private void scheduleCardDealingWithDelay(int slot, Card card, long delay, UUID 
         if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
             return;
         }
-        if (resolveExpectedHand(playerId, myGeneration, handId, expectedHandGeneration) == null) {
+        if (resolveExpectedHand(playerId, myGeneration, handId, expectedHandGeneration, false) == null) {
             return;
         }
         dealCardToPlayer(slot, card, playerId);
@@ -5011,6 +5062,7 @@ private int applyProbabilisticRounding(double value) {
 private void resetGame() {
     gameActive = false;
     roundGeneration++;
+    dealerSequenceToken++;
     handToken.clear();
     // Table-wide event: any shared animation (dealer U-path, split
     // sequence) and every private one both end here -- the whole round is
@@ -5207,6 +5259,7 @@ public void delete() {
     startTransitionDoorConcealComplete.clear();
     stopInsurancePhaseBookkeeping();
     roundGeneration++;
+    dealerSequenceToken++;
     handToken.clear();
 
     // Remove any scheduled tasks related to this game
@@ -5247,6 +5300,7 @@ public void delete() {
     private void cancelGame() {
         gameActive = false;
         roundGeneration++;
+        dealerSequenceToken++;
         handToken.clear();
         // Table-wide event -- ends every animation, shared and private alike.
         cancelAllAnimations();
