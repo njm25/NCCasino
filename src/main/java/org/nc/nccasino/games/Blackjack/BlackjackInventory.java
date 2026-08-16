@@ -169,6 +169,36 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     /** {@code dealers.<name>.turn-timer.timeout-seconds}, clamped [1,60] (default 20). */
     private final int turnTimerTimeoutSeconds;
     private int turnTimerTaskId = -1;
+
+    // ---- Real splitting (Phase 6) -----------------------------------------
+    // Config loaded once at construction (see loadBooleanConfig et al.);
+    // playerHands/activeHandIndex above already carry the actual per-player
+    // hand queue. See BlackjackSplitEligibility/BlackjackSplitMatching/
+    // BlackjackMaxHands for the pure eligibility/matching mechanics this
+    // config feeds.
+    /** {@code dealers.<name>.splitting.enabled}, default true. */
+    private final boolean splittingEnabled;
+    /** {@code dealers.<name>.splitting.matching}, default SAME_RANK. */
+    private final BlackjackSplitMatching splitMatching;
+    /** {@code dealers.<name>.splitting.max-hands}, default UNBOUNDED. Applies per player, never table-wide. */
+    private final BlackjackMaxHands maxHands;
+    /** {@code dealers.<name>.splitting.double-after-split}, default true. */
+    private final boolean doubleAfterSplit;
+    /** {@code dealers.<name>.splitting.aces.resplit}, default true. */
+    private final boolean acesResplitAllowed;
+    /** {@code dealers.<name>.splitting.aces.hit}, default false. */
+    private final boolean acesHitAllowed;
+    /** {@code dealers.<name>.splitting.aces.double}, default false. */
+    private final boolean acesDoubleAllowed;
+    /** {@code dealers.<name>.splitting.split-21-is-blackjack}, default false -- see BlackjackRules#classify's 3-arg overload. */
+    private final boolean split21IsBlackjack;
+    // Shared/table-owned split animation lifecycle (slide-out / deal / deal
+    // / park / reactivate) -- lives in sharedAnimationRun above (viewerId
+    // null); this flag/queue tracks which hand-activation is waiting on that
+    // animation to finish before its actions become live, so one viewer
+    // closing their inventory can never cancel it (see cancelSharedAnimation
+    // vs cancelPrivateAnimation).
+    private boolean splitAnimationInFlight = false;
     // Animation infrastructure (Phase 2) -- scaffolding only, nothing here
     // is triggered from real gameplay yet (that's a later phase). Private
     // (per-viewer) animation runs: chair guide, wager guide, bet-spot
@@ -236,59 +266,10 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
         this.lastBetAmounts = new HashMap<>(); // Initialize last bet amounts storage
         this.countdownTaskId = -1; // Initialize countdown task ID
         // Initialize the start menu
-        Nccasino nccasino = plugin;
         this.dealerId = dealerId;
-        // Check if the configuration key exists
-        if (!nccasino.getConfig().contains("dealers." + internalName + ".stand-on-17")) {
-            // If the key doesn't exist, set it to 100
-            nccasino.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
-        } else {
-            // Retrieve the current value
-            String value = plugin.getConfig().getString("dealers." + internalName + ".stand-on-17", "100").trim();
-            int standOn17Chance;
 
-            try {
-                standOn17Chance = Integer.parseInt(value);
-            } catch (NumberFormatException e) {
-                standOn17Chance = 100; // Default
-                plugin.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
-                plugin.saveConfig();
-            }
-
-            // Check if the value is greater than 100 or less than 0
-            if (standOn17Chance > 100 ) {
-                // Reset the value to 100
-                nccasino.getConfig().set("dealers." + internalName + ".stand-on-17", 100);
-            }
-            else if(standOn17Chance < 0){
-                nccasino.getConfig().set("dealers." + internalName + ".stand-on-17", 0);
-
-            }
-        }
-
-        int numberOfDecks;
-
-        if (!plugin.getConfig().contains("dealers." + internalName + ".number-of-decks")) {
-            numberOfDecks = 6;
-            plugin.getConfig().set("dealers." + internalName + ".number-of-decks", numberOfDecks);
-        } else {
-            // Retrieve the current value
-            int currentDecks = plugin.getConfig().getInt("dealers." + internalName + ".number-of-decks");
-
-            // Check if the value is less than 1
-            if (currentDecks <= 0) {
-                numberOfDecks = 6;
-                plugin.getConfig().set("dealers." + internalName + ".number-of-decks", 6);
-            }
-            else if (currentDecks>10000){
-                numberOfDecks = 10000;
-                plugin.getConfig().set("dealers." + internalName + ".number-of-decks", 10000);
-            }
-            else{
-                numberOfDecks=currentDecks;
-            }
-        }
-
+        int standOn17Chance = loadClampedIntConfig("stand-on-17", 100, 0, 100);
+        int numberOfDecks = loadClampedIntConfig("number-of-decks", 6, 1, 10000);
 
         this.deck = new Deck(numberOfDecks); // Initialize the deck
         loadChipValuesFromConfig(); // Load chip values from config
@@ -297,38 +278,142 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
         this.insuranceTimeoutSeconds = loadClampedIntConfig("insurance.timeout-seconds", BlackjackTiming.INSURANCE_TIMEOUT_DEFAULT_SECONDS, 1, 60);
         this.turnTimerEnabled = loadBooleanConfig("turn-timer.enabled", true);
         this.turnTimerTimeoutSeconds = loadClampedIntConfig("turn-timer.timeout-seconds", 20, 1, 60);
+        this.splittingEnabled = loadBooleanConfig("splitting.enabled", true);
+        this.splitMatching = loadSplitMatchingConfig("splitting.matching", BlackjackSplitMatching.SAME_RANK);
+        this.maxHands = loadMaxHandsConfig("splitting.max-hands", BlackjackMaxHands.unbounded());
+        this.doubleAfterSplit = loadBooleanConfig("splitting.double-after-split", true);
+        this.acesResplitAllowed = loadBooleanConfig("splitting.aces.resplit", true);
+        this.acesHitAllowed = loadBooleanConfig("splitting.aces.hit", false);
+        this.acesDoubleAllowed = loadBooleanConfig("splitting.aces.double", false);
+        this.split21IsBlackjack = loadBooleanConfig("splitting.split-21-is-blackjack", false);
+
+        // Every load*Config helper above only stages corrections/defaults
+        // via config.set -- a single controlled save here (rather than one
+        // saveConfig() call per field) is what actually persists them, so
+        // an admin who never touched this dealer's settings still gets a
+        // config.yml populated with the effective values on first load.
+        if (configDirty) {
+            plugin.saveConfig();
+            configDirty = false;
+        }
 
        registerListener();
        plugin.addInventory(dealerId, this);
     }
 
-    /** Reads {@code dealers.<internalName>.<key>} as a boolean, writing {@code defaultValue} back if the key is unset. Mirrors this constructor's existing stand-on-17/number-of-decks lazily-defaulted pattern. */
+    /**
+     * Staged by every {@code load*Config} helper below whenever it corrects
+     * or defaults a value via {@code config.set} -- the constructor issues
+     * exactly one {@code saveConfig()} after every field has been loaded,
+     * instead of one per field.
+     */
+    private boolean configDirty = false;
+
+    /** Reads {@code dealers.<internalName>.<key>} as a boolean, writing (and warning about) a corrected/defaulted value back if the key is unset or not actually a boolean. */
     private boolean loadBooleanConfig(String key, boolean defaultValue) {
         String path = "dealers." + internalName + "." + key;
         if (!plugin.getConfig().contains(path)) {
             plugin.getConfig().set(path, defaultValue);
+            configDirty = true;
             return defaultValue;
         }
-        return plugin.getConfig().getBoolean(path, defaultValue);
+        Object raw = plugin.getConfig().get(path);
+        if (raw instanceof Boolean) {
+            return (Boolean) raw;
+        }
+        plugin.getLogger().warning("Invalid boolean for " + path + ": '" + raw + "' -- resetting to default " + defaultValue + ".");
+        plugin.getConfig().set(path, defaultValue);
+        configDirty = true;
+        return defaultValue;
     }
 
-    /** Reads {@code dealers.<internalName>.<key>} as an int clamped to [{@code min}, {@code max}], writing back a corrected value (default if unset/unparsable, clamped if out of range) so the persisted config always matches what's in effect. */
+    /** Reads {@code dealers.<internalName>.<key>} as an int clamped to [{@code min}, {@code max}], writing back (and warning about) a corrected value -- default if unset/unparsable, clamped if out of range -- so the persisted config always matches what's in effect. */
     private int loadClampedIntConfig(String key, int defaultValue, int min, int max) {
         String path = "dealers." + internalName + "." + key;
         if (!plugin.getConfig().contains(path)) {
             plugin.getConfig().set(path, defaultValue);
+            configDirty = true;
             return defaultValue;
         }
-        int value = plugin.getConfig().getInt(path, defaultValue);
-        if (value < min) {
+        Integer parsed = parseConfiguredInt(plugin.getConfig().get(path));
+        if (parsed == null) {
+            plugin.getLogger().warning("Invalid integer for " + path + ": '" + plugin.getConfig().get(path) + "' -- resetting to default " + defaultValue + ".");
+            plugin.getConfig().set(path, defaultValue);
+            configDirty = true;
+            return defaultValue;
+        }
+        if (parsed < min) {
+            plugin.getLogger().warning("Value for " + path + " (" + parsed + ") is below the minimum " + min + " -- clamping.");
             plugin.getConfig().set(path, min);
+            configDirty = true;
             return min;
         }
-        if (value > max) {
+        if (parsed > max) {
+            plugin.getLogger().warning("Value for " + path + " (" + parsed + ") is above the maximum " + max + " -- clamping.");
             plugin.getConfig().set(path, max);
+            configDirty = true;
             return max;
         }
-        return value;
+        return parsed;
+    }
+
+    /** Reads {@code dealers.<internalName>.<key>} as a {@link BlackjackSplitMatching}, case-insensitively, warning and defaulting on anything else. */
+    private BlackjackSplitMatching loadSplitMatchingConfig(String key, BlackjackSplitMatching defaultValue) {
+        String path = "dealers." + internalName + "." + key;
+        if (!plugin.getConfig().contains(path)) {
+            plugin.getConfig().set(path, defaultValue.name());
+            configDirty = true;
+            return defaultValue;
+        }
+        Object raw = plugin.getConfig().get(path);
+        if (raw instanceof String) {
+            try {
+                return BlackjackSplitMatching.valueOf(((String) raw).trim().toUpperCase(java.util.Locale.ROOT));
+            } catch (IllegalArgumentException ignored) {
+                // fall through to the warning/reset below
+            }
+        }
+        plugin.getLogger().warning("Invalid splitting.matching for " + path + ": '" + raw + "' -- resetting to default " + defaultValue + ".");
+        plugin.getConfig().set(path, defaultValue.name());
+        configDirty = true;
+        return defaultValue;
+    }
+
+    /** Reads {@code dealers.<internalName>.<key>} as a {@link BlackjackMaxHands} -- {@code "UNBOUNDED"} (case-insensitive) or an integer &gt;= 2 -- warning and defaulting on anything else. */
+    private BlackjackMaxHands loadMaxHandsConfig(String key, BlackjackMaxHands defaultValue) {
+        String path = "dealers." + internalName + "." + key;
+        if (!plugin.getConfig().contains(path)) {
+            plugin.getConfig().set(path, defaultValue.configValue());
+            configDirty = true;
+            return defaultValue;
+        }
+        Object raw = plugin.getConfig().get(path);
+        if (raw instanceof String && "UNBOUNDED".equalsIgnoreCase(((String) raw).trim())) {
+            return BlackjackMaxHands.unbounded();
+        }
+        Integer parsed = parseConfiguredInt(raw);
+        if (parsed != null && parsed >= 2) {
+            return BlackjackMaxHands.limited(parsed);
+        }
+        plugin.getLogger().warning("Invalid splitting.max-hands for " + path + ": '" + raw + "' -- must be 'UNBOUNDED' or an integer >= 2, resetting to default " + defaultValue.configValue() + ".");
+        plugin.getConfig().set(path, defaultValue.configValue());
+        configDirty = true;
+        return defaultValue;
+    }
+
+    /** Best-effort int parse of a raw config value that may already be a {@link Number} or a numeric {@link String}; null if neither. */
+    private static Integer parseConfiguredInt(Object raw) {
+        if (raw instanceof Number) {
+            return ((Number) raw).intValue();
+        }
+        if (raw instanceof String) {
+            try {
+                return Integer.parseInt(((String) raw).trim());
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
     }
 
 private void registerListener() {
@@ -1636,7 +1721,7 @@ private void registerListener() {
     /**
      * Computes the current player's available actions and their slots from
      * live canonical state (funds included) -- shared by
-     * renderActionsForCurrentPlayer (fan-out) and bootstrapView (late-view
+     * repaintActionsForCurrentPlayer (fan-out) and bootstrapView (late-view
      * catch-up) so both always agree. Empty unless there is a current
      * player whose turn is actionable and unresolved.
      */
@@ -1663,8 +1748,19 @@ private void registerListener() {
      * Other viewers (and the current player themselves while an action is
      * processing) see an empty action row, leaving only the exit door and
      * status clock either side of it.
+     *
+     * <p>Deliberately never (re)starts action guidance or the turn-timer
+     * deadline -- this is a pure repaint, safe to call for any reason
+     * (invalid/stale click, a failed action, reopening a view) without
+     * granting the current player extra decision time. When the live
+     * layout is empty (turn ended/processing), guidance and the timer are
+     * still torn down immediately here, since there is no decision left for
+     * them to cover. Callers that are actually beginning a fresh actionable
+     * decision (initial hand activation, a Hit that leaves the hand
+     * actionable, a new split hand becoming active) must call
+     * {@link #beginActionableDecision()} instead.
      */
-    private void renderActionsForCurrentPlayer() {
+    private void repaintActionsForCurrentPlayer() {
         for (int slot = BlackjackSlotLayout.ACTION_ROW_FIRST_SLOT; slot <= BlackjackSlotLayout.ACTION_ROW_LAST_SLOT; slot++) {
             renderBackgroundToAllViews(slot);
         }
@@ -1688,7 +1784,23 @@ private void registerListener() {
             // self-cancel.
             cancelPrivateAnimation(currentPlayerId);
             stopTurnTimerTask();
-        } else {
+        }
+    }
+
+    /**
+     * Begins a genuinely new actionable decision for the current player:
+     * repaints the action row (see {@link #repaintActionsForCurrentPlayer()})
+     * and, only when that repaint left a non-empty layout, (re)starts action
+     * guidance and the canonical turn-timer deadline. This is the only path
+     * that may extend the player's decision deadline -- reserved for
+     * initial hand activation, a Hit that leaves the hand actionable, and a
+     * newly-activated split hand. Never call this to repaint after an
+     * invalid click or a failed action; use
+     * {@link #repaintActionsForCurrentPlayer()} for that.
+     */
+    private void beginActionableDecision() {
+        repaintActionsForCurrentPlayer();
+        if (!currentPlayerActionLayout().isEmpty()) {
             startActionGuidance(currentPlayerId);
             startTurnTimer(currentPlayerId);
         }
@@ -1698,7 +1810,7 @@ private void registerListener() {
     // One-at-a-time glow cycle across the current player's own available
     // action buttons, looping until they act (mirrors wager guidance's
     // pattern). Restarted (via bumpAndGetViewerAnimationGeneration) on
-    // every renderActionsForCurrentPlayer call, so the available-action set
+    // every beginActionableDecision call, so the available-action set
     // is always re-derived fresh rather than baked into one long-running
     // plan -- a Hit that removes Double Down from the layout is reflected
     // immediately.
@@ -2181,15 +2293,17 @@ private void handlePlayerAction(Player player, int slot) {
             // The clicked slot no longer matches the live layout (e.g.
             // funds dropped and Double Down disappeared mid-turn) --
             // repaint the correct, current layout rather than leaving a
-            // stale one displayed.
-            renderActionsForCurrentPlayer();
+            // stale one displayed. This must never restart the turn-timer
+            // deadline (see repaintActionsForCurrentPlayer's doc) -- an
+            // invalid/stale click is not a new decision.
+            repaintActionsForCurrentPlayer();
             return;
         }
 
         // Disable further actions until the current one is processed, and
         // hide the buttons immediately -- a duplicate click must not land.
         playerTurnActive.put(playerId, false);
-        renderActionsForCurrentPlayer();
+        repaintActionsForCurrentPlayer();
 
         switch (action) {
             case HIT:
@@ -2254,7 +2368,7 @@ private void handleHit(Player player) {
                 playerDone.put(playerId, true); // Mark the player as done
                 playerTurnActive.put(playerId, false); // Deactivate the player's turn
                 bumpHandToken(playerId);
-                renderActionsForCurrentPlayer();
+                repaintActionsForCurrentPlayer();
                 startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS); // Start next player's turn with delay
             } else if (handValue > 21) {
 
@@ -2262,13 +2376,15 @@ private void handleHit(Player player) {
                 playerDone.put(playerId, true); // Mark the player as done
                 playerTurnActive.put(playerId, false); // Deactivate the player's turn
                 bumpHandToken(playerId);
-                renderActionsForCurrentPlayer();
+                repaintActionsForCurrentPlayer();
                 startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS); // Start next player's turn with delay
 
             } else {
 
                 playerTurnActive.put(playerId, true); // Allow more actions since the player hasn't busted
-                renderActionsForCurrentPlayer(); // Reshow actions (Double Down is now gone -- no longer the initial decision)
+                // A completed Hit that leaves the hand actionable is a
+                // genuinely new decision -- restart guidance/the timer.
+                beginActionableDecision();
 
             }
         }, BlackjackTiming.HIT_EVALUATION_DELAY_TICKS); // The delay should be enough to ensure that the card has been added
@@ -2349,7 +2465,9 @@ private void handleDoubleDown(Player player) {
                 }
             }
             playerTurnActive.put(playerId, true); // Allow more actions since the double down failed
-            renderActionsForCurrentPlayer();
+            // A failed double-down is not a new decision -- repaint only,
+            // never extend the deadline for it.
+            repaintActionsForCurrentPlayer();
             return;
         }
 
@@ -2399,7 +2517,7 @@ private void handleDoubleDown(Player player) {
             playerDone.put(playerId, true);
             playerTurnActive.put(playerId, false);
             bumpHandToken(playerId);
-            renderActionsForCurrentPlayer();
+            repaintActionsForCurrentPlayer();
             startNextPlayerTurnWithDelay(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
         }, BlackjackTiming.HIT_EVALUATION_DELAY_TICKS);
     }
@@ -3433,11 +3551,12 @@ private void stopInsurancePhaseBookkeeping() {
 
 /**
  * (Re)starts the canonical turn-timer deadline for {@code playerId}'s
- * current hand -- called exclusively from renderActionsForCurrentPlayer's
- * actionable branch, so it fires every time a fresh decision actually
- * becomes available (initial turn start, after a Hit, or in a future
- * split-hand activation) and is implicitly reset by that same call
- * whenever the previous deadline is superseded. No-op (and immediately
+ * current hand -- called exclusively from beginActionableDecision's
+ * non-empty-layout branch, so it fires only when a fresh decision actually
+ * becomes available (initial turn start, after a Hit, or a split-hand
+ * activation) and is implicitly reset by that same call whenever the
+ * previous deadline is superseded. Never invoked for a plain repaint (an
+ * invalid click, a failed action, reopening a view). No-op (and immediately
  * restores the idle brown-glass slot) when turn-timer.enabled is false.
  */
 private void startTurnTimer(UUID playerId) {
@@ -3512,7 +3631,7 @@ private void autoStandOnTurnTimeout(UUID playerId, long myGeneration, int myHand
         playerDone.put(playerId, true);
         playerTurnActive.put(playerId, false);
         bumpHandToken(playerId);
-        renderActionsForCurrentPlayer();
+        repaintActionsForCurrentPlayer();
         Player player = Bukkit.getPlayer(playerId);
         if (player != null) {
             switch (plugin.getPreferences(playerId).getMessageSetting()) {
@@ -3570,14 +3689,15 @@ private void startNextPlayerTurn() {
                 playerDone.put(currentPlayerId, true); // Mark the player as done
                 playerTurnActive.put(currentPlayerId, false); // Deactivate the player's turn
                 bumpHandToken(currentPlayerId);
-                renderActionsForCurrentPlayer();
+                repaintActionsForCurrentPlayer();
                 startNextPlayerTurnWithDelay(20L); // Start the next player's turn with delay
                 return; // Skip to the next player
             }
 
-            // Set player's turn as active
+            // Set player's turn as active -- initial activation of this
+            // hand's decision is a legitimate fresh deadline.
             playerTurnActive.put(currentPlayerId, true);
-            renderActionsForCurrentPlayer();
+            beginActionableDecision();
 
             return;
         }
@@ -3586,7 +3706,7 @@ private void startNextPlayerTurn() {
     UUID lastPlayerId = currentPlayerId;
     currentPlayerId = null;
     refreshCardGlow(lastPlayerId, null);
-    renderActionsForCurrentPlayer();
+    repaintActionsForCurrentPlayer();
 
     // No more players left, proceed to the dealer's turn
     startDealerTurn();
