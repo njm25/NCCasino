@@ -23,6 +23,7 @@ import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.games.Blackjack.BlackjackMaxHandsInputParser;
+import org.nc.nccasino.games.Blackjack.BlackjackMenuChatRouting;
 import org.nc.nccasino.games.Blackjack.BlackjackSplitMatching;
 import org.nc.nccasino.helpers.SoundHelper;
 
@@ -463,31 +464,48 @@ public class BlackjackMenu extends Menu {
         }
     }
 
+    /**
+     * This listener is registered per-instance (see the {@code Menu}
+     * constructor), so it receives <em>every</em> player's chat on the
+     * server, not just this menu's own owner -- two administrators editing
+     * different dealers simultaneously each have their own BlackjackMenu
+     * instance, and each instance's own {@code onPlayerChat} fires for the
+     * other's chat too. An unrelated player's message (including another
+     * administrator's own edit input, from this instance's point of view)
+     * must have zero effect here: no cancellation, no cleanup, no read of
+     * any static edit-mode state beyond this identity check.
+     */
     @EventHandler
     public void onPlayerChat(AsyncPlayerChatEvent event) {
-        Player player = event.getPlayer();
-        UUID playerId = player.getUniqueId();
-        String message = event.getMessage().trim();
-
-        if (BAInventories.get(playerId) == null) {
-            cleanup();
+        UUID chattingPlayerId = event.getPlayer().getUniqueId();
+        if (!BlackjackMenuChatRouting.isEligible(chattingPlayerId, ownerId)) {
             return;
         }
-         if (AdminMenu.timerEditMode.get(playerId) != null) {
+        // Also confirm this exact instance is still the live, registered
+        // menu for its owner -- a stale instance (already superseded by a
+        // menu replacement) must not act even on its own owner's chat.
+        if (!isLiveMenuForOwner()) {
+            return;
+        }
+
+        Player player = event.getPlayer();
+        String message = event.getMessage().trim();
+
+         if (AdminMenu.timerEditMode.get(ownerId) != null) {
             event.setCancelled(true);
             handleNumericInput(player, message, "timer", 1, 10000, "blackjack-settings.timer-updated");
         }
-        else if (AdminMenu.standOn17Mode.get(playerId) != null) {
+        else if (AdminMenu.standOn17Mode.get(ownerId) != null) {
             event.setCancelled(true);
             handleNumericInput(player, message, "stand-on-17", 0, 100, "blackjack-settings.stand-17-updated");
         }
-        else if (AdminMenu.decksEditMode.get(playerId) != null) {
+        else if (AdminMenu.decksEditMode.get(ownerId) != null) {
             event.setCancelled(true);
             handleNumericInput(player, message, "number-of-decks", 1, 10000, "blackjack-settings.decks-updated");
         }
-        else if (AdminMenu.blackjackFieldEditMode.get(playerId) != null) {
+        else if (AdminMenu.blackjackFieldEditMode.get(ownerId) != null) {
             event.setCancelled(true);
-            AdminMenu.BlackjackEditField field = AdminMenu.blackjackFieldEditTarget.get(playerId);
+            AdminMenu.BlackjackEditField field = AdminMenu.blackjackFieldEditTarget.get(ownerId);
             if (field == AdminMenu.BlackjackEditField.MAX_HANDS) {
                 handleMaxHandsInput(player, message);
             } else if (field == AdminMenu.BlackjackEditField.INSURANCE_TIMEOUT) {
@@ -496,6 +514,27 @@ public class BlackjackMenu extends Menu {
                 handleNumericInput(player, message, "turn-timer.timeout-seconds", 1, 60, "blackjack-settings.turn-timer-timeout-updated");
             }
         }
+    }
+
+    /**
+     * True only if this exact instance is still the live, registered menu
+     * for its owner. Checked once on the async thread before dispatch in
+     * {@link #onPlayerChat}, and must be checked again inside every
+     * scheduled main-thread callback (see {@link #handleNumericInput},
+     * {@link #handleMaxHandsInput}) -- time passes between scheduling and
+     * execution, during which the menu can be replaced, the edit session
+     * cancelled, the dealer removed, or the owner can disconnect.
+     */
+    private boolean isLiveMenuForOwner() {
+        return BlackjackMenuChatRouting.isLiveMenu(BAInventories, ownerId, this);
+    }
+
+    /** Whether any of the five edit-mode maps still has an active session for this owner -- a scheduled callback whose session was cancelled/completed by something else in the meantime (disconnect, a duplicate submission) must see this as false and no-op. */
+    private boolean hasAnyActiveEditSession() {
+        return AdminMenu.timerEditMode.containsKey(ownerId)
+            || AdminMenu.standOn17Mode.containsKey(ownerId)
+            || AdminMenu.decksEditMode.containsKey(ownerId)
+            || AdminMenu.blackjackFieldEditMode.containsKey(ownerId);
     }
 
     /**
@@ -515,6 +554,16 @@ public class BlackjackMenu extends Menu {
     private void handleMaxHandsInput(Player player, String input) {
         Optional<String> parsed = BlackjackMaxHandsInputParser.parse(input);
         Bukkit.getScheduler().runTask(plugin, () -> {
+            // Re-validate on the main thread -- time passed since this was
+            // scheduled from the async chat event, during which the menu
+            // could have been replaced, the edit session cancelled, or the
+            // owner could have disconnected. A stale callback must be a
+            // complete no-op: never call endEditSession/cleanup here, since
+            // that could tear down a *new* menu instance now registered
+            // for this same owner.
+            if (!isLiveMenuForOwner() || !AdminMenu.blackjackFieldEditMode.containsKey(ownerId)) {
+                return;
+            }
             if (parsed.isEmpty()) {
                 denyAction(player, text("blackjack-settings.invalid-max-hands"));
                 endEditSession(player);
@@ -522,7 +571,7 @@ public class BlackjackMenu extends Menu {
             }
             String toStore = parsed.get();
 
-            if (dealer != null) {
+            if (dealer != null && dealer.isValid()) {
                 String internalName = Dealer.getInternalName(dealer);
                 plugin.getConfig().set("dealers." + internalName + ".splitting.max-hands", toStore);
                 plugin.saveConfig();
@@ -587,6 +636,9 @@ public class BlackjackMenu extends Menu {
     private void handleNumericInput(Player player, String input, String configPath, long min, long max, String messageKey) {
         if (input.isEmpty() || !input.matches("\\d+")) {
             Bukkit.getScheduler().runTask(plugin, () -> {
+                if (!isLiveMenuForOwner() || !hasAnyActiveEditSession()) {
+                    return;
+                }
                 denyAction(player, text("blackjack-settings.valid-positive-integer"));
                 endEditSession(player);
             });
@@ -602,6 +654,12 @@ public class BlackjackMenu extends Menu {
         Long parsedValue = value;
 
         Bukkit.getScheduler().runTask(plugin, () -> {
+            // Re-validate on the main thread -- see handleMaxHandsInput's
+            // identical reasoning. A stale callback must be a complete
+            // no-op, never tearing down whatever menu/session is now live.
+            if (!isLiveMenuForOwner() || !hasAnyActiveEditSession()) {
+                return;
+            }
             if (parsedValue == null) {
                 denyAction(player, text("blackjack-settings.invalid-number-format"));
                 endEditSession(player);
@@ -615,7 +673,7 @@ public class BlackjackMenu extends Menu {
                 return;
             }
 
-            if (dealer != null) {
+            if (dealer != null && dealer.isValid()) {
                 String internalName = Dealer.getInternalName(dealer);
                 plugin.getConfig().set("dealers." + internalName + "." + configPath, numericValue);
                 plugin.saveConfig();
