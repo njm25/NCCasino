@@ -1148,9 +1148,9 @@ private void registerListener() {
      * (previously a real bug: the cursor stack was deleted AND removeWagerFromInventory ran again, over-charging
      * the player). See handleBetClick's cursor-drag branch, which calls commitWagerFundsAlreadyRemoved instead.
      */
-    private void commitWager(Player player, UUID playerId, int betSpotSlot, double amount) {
+    private boolean commitWager(Player player, UUID playerId, int betSpotSlot, double amount) {
         removeWagerFromInventory(player, amount);
-        commitWagerFundsAlreadyRemoved(playerId, betSpotSlot, amount);
+        return commitWagerFundsAlreadyRemoved(player, playerId, betSpotSlot, amount);
     }
 
     /**
@@ -1159,13 +1159,40 @@ private void registerListener() {
      * logic) in sync with the ledger's new total. Callers are responsible for having already removed {@code amount}
      * from the player's balance through whichever mechanism applies (or, for a cursor-drag commit, having already
      * had it removed by the client destroying the dragged stack).
+     *
+     * <p>Also the single choke point both the selected-wager and
+     * cursor-drag commit paths funnel through, so it's where
+     * {@link BlackjackInsuranceWagerPolicy} is enforced: while insurance is
+     * enabled and this isn't Vault (which supports exact fractional
+     * balances), a commit that would leave an odd whole-item total is
+     * refunded and rejected instead of silently going through with a
+     * half-wager insurance stake that could never be exactly debited later.
      */
-    private void commitWagerFundsAlreadyRemoved(UUID playerId, int betSpotSlot, double amount) {
+    private boolean commitWagerFundsAlreadyRemoved(Player player, UUID playerId, int betSpotSlot, double amount) {
         java.util.Deque<Double> increments = pregameWagerIncrements.computeIfAbsent(playerId, k -> new java.util.ArrayDeque<>());
+        double prospectiveTotal = BlackjackWagerLedger.total(increments) + amount;
+        boolean vaultMode = currencyMode == CurrencyMode.VAULT;
+        if (!BlackjackInsuranceWagerPolicy.isRepresentable(prospectiveTotal, insuranceEnabled, vaultMode)) {
+            // Funds for `amount` were already removed by the caller (either
+            // debited directly, or destroyed by a cursor-drag) -- refund
+            // rather than leave an insurance-incompatible odd total in place.
+            addWagerToInventory(player, amount);
+            switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                case NONE:
+                    break;
+                default:
+                    player.sendMessage(text(player, "blackjack.wager-not-insurance-compatible"));
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            return false;
+        }
         BlackjackWagerLedger.commit(increments, amount);
         syncPlayerBetsFromLedger(playerId, betSpotSlot);
         lastBetAmounts.computeIfAbsent(playerId, k -> new ArrayList<>()).add(amount);
         updateItemLore(betSpotSlot, BlackjackWagerLedger.total(increments));
+        return true;
     }
 
     /** Recomputes playerBets' single entry for {@code playerId} from the ledger's current total. */
@@ -3329,30 +3356,37 @@ private void removePlayerData(UUID playerId) {
         if (isCurrencyItem(heldItem) && heldItem != null && heldItem.getAmount() > 0) {
             double amount = heldItem.getAmount();
             player.setItemOnCursor(null); // Removes the stack from the cursor -- this IS the debit for a cursor-drag commit
-            commitWagerFundsAlreadyRemoved(playerId, betSpotSlot, amount); // must NOT also call removeWagerFromInventory -- see commitWager's doc
+            // must NOT also call removeWagerFromInventory -- see commitWager's doc. May reject and refund (see
+            // BlackjackInsuranceWagerPolicy) -- only play the success sound/start the countdown if it actually committed.
+            boolean committed = commitWagerFundsAlreadyRemoved(player, playerId, betSpotSlot, amount);
 
-            if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
-                player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
+            if (committed) {
+                if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
+                    player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
 
-            if (countdownTaskId == -1) {
-                startCountdownTimer();
+                if (countdownTaskId == -1) {
+                    startCountdownTimer();
+                }
             }
             return;
         }
 
         double selected = getSelectedWager(playerId);
         if (selected > 0 && hasEnoughWager(player, selected)) {
-            commitWager(player, playerId, betSpotSlot, selected);
-            selectedWager.remove(playerId); // the selection is consumed by this commit
+            boolean committed = commitWager(player, playerId, betSpotSlot, selected);
+            selectedWager.remove(playerId); // the selection is consumed either way -- a rejected amount must not linger as still-selected
             cancelPrivateAnimation(playerId); // stop the bet-spot blink
             refreshWagerControlsForPlayer(playerId); // un-enchant the now-consumed chip
-            startWagerGuidance(playerId); // resume guidance so the player can add another increment if they want
 
-            if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
-                player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
+            if (committed) {
+                startWagerGuidance(playerId); // resume guidance so the player can add another increment if they want
 
-            if (countdownTaskId == -1) {
-                startCountdownTimer();
+                if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
+                    player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
+
+                if (countdownTaskId == -1) {
+                    startCountdownTimer();
+                }
             }
         } else {
             switch (plugin.getPreferences(playerId).getMessageSetting()) {
@@ -3520,11 +3554,27 @@ private void removePlayerData(UUID playerId) {
         }
     }
 
+    /**
+     * Vault economies support exact fractional balances -- most relevantly,
+     * a 12.5 insurance stake off an odd wager. Every other currency mode
+     * (plain material items, custom item currency) is whole-unit only, so
+     * this only ever applies to Vault; physical-item modes instead prevent
+     * an odd wager from ever being committed while insurance is enabled
+     * (see commitWagerFundsAlreadyRemoved's validation), so their own
+     * insurance cost is always exactly representable as a whole item.
+     */
     private boolean hasEnoughWager(Player player, double amount) {
+        if (amount <= 0.0) {
+            return false;
+        }
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null && provider.getMode() == CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider vaultProvider) {
+            return vaultProvider.hasAtLeastDecimal(player, internalName, MoneyHelper.clampNonNegative(MoneyHelper.bd(amount)));
+        }
+
         int requiredAmount = MoneyHelper.toWagerUnits(amount);
         if (requiredAmount <= 0) return false;
 
-        CurrencyProvider provider = getCurrencyProvider();
         if (provider != null) {
             return provider.has(player, internalName, requiredAmount);
         }
@@ -3536,11 +3586,17 @@ private void removePlayerData(UUID playerId) {
         return player.getInventory().containsAtLeast(new ItemStack(currencyMaterial), requiredAmount);
     }
 
+    /** Decimal-aware for Vault (see {@link #hasEnoughWager}'s doc); whole-unit for every other mode. */
     private void removeWagerFromInventory(Player player, double amount) {
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null && provider.getMode() == CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider vaultProvider) {
+            vaultProvider.withdrawDecimal(player, internalName, MoneyHelper.clampNonNegative(MoneyHelper.bd(amount)));
+            return;
+        }
+
         int requiredAmount = MoneyHelper.toWagerUnits(amount);
         if (requiredAmount <= 0) return;
 
-        CurrencyProvider provider = getCurrencyProvider();
         if (provider != null) {
             provider.withdraw(player, internalName, requiredAmount);
             return;

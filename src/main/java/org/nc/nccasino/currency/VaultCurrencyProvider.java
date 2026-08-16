@@ -114,6 +114,51 @@ public class VaultCurrencyProvider implements CurrencyProvider {
 		warnOnce(internalName, "Vault deposit failed for dealer '" + internalName + "': " + (resp != null ? resp.errorMessage : "unknown error"));
 	}
 
+	/**
+	 * Decimal-aware balance check, bypassing the {@link CurrencyProvider}
+	 * interface's whole-unit-only {@link #has(Player, String, int)} --
+	 * Vault economies support exact fractional balances (e.g. checking a
+	 * 12.5 insurance stake off an odd wager), and flooring that down to an
+	 * int first would wrongly report insufficient funds for a player who
+	 * can actually afford it.
+	 */
+	public boolean hasAtLeastDecimal(Player player, String internalName, BigDecimal amount) {
+		if (player == null || amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+			return false;
+		}
+		Economy economy = getEconomyOrWarn(internalName);
+		if (economy == null) {
+			return false;
+		}
+		BigDecimal bal = MoneyHelper.clampNonNegative(MoneyHelper.bd(economy.getBalance(player)));
+		return bal.compareTo(amount) >= 0;
+	}
+
+	/**
+	 * Decimal-aware withdrawal, the debit-side counterpart to
+	 * {@link #hasAtLeastDecimal}. Returns whether the withdrawal actually
+	 * happened.
+	 */
+	public boolean withdrawDecimal(Player player, String internalName, BigDecimal amount) {
+		if (player == null || amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+			return false;
+		}
+		Economy economy = getEconomyOrWarn(internalName);
+		if (economy == null) {
+			return false;
+		}
+		BigDecimal bal = MoneyHelper.clampNonNegative(MoneyHelper.bd(economy.getBalance(player)));
+		if (bal.compareTo(amount) < 0) {
+			return false;
+		}
+		EconomyResponse resp = economy.withdrawPlayer(player, amount.doubleValue());
+		if (resp != null && resp.transactionSuccess()) {
+			return true;
+		}
+		warnOnce(internalName, "Vault withdraw failed for dealer '" + internalName + "': " + (resp != null ? resp.errorMessage : "unknown error"));
+		return false;
+	}
+
 	@Override
 	public boolean isCurrencyItem(ItemStack stack, String internalName) {
 		return false;

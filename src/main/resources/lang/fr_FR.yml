@@ -483,6 +483,7 @@ blackjack:
   insurance-insufficient-funds: "&cFonds insuffisants pour l'assurance."
   insurance-paid: "&aAssurance payée : {amount} !"
   insurance-lost: "&cAssurance perdue."
+  wager-not-insurance-compatible: "&cCette mise ne peut pas être divisée également pour l'assurance -- essayez un montant pair."
   dealer-peek: "&6Le croupier regarde... Blackjack !"
   turn-timer-lore: "Temps pour décider : {seconds}"
   turn-timer-expired: "&cTemps écoulé ! Vous êtes resté."
