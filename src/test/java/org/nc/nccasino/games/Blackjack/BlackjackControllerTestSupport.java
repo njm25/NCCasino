@@ -285,6 +285,25 @@ final class BlackjackControllerTestSupport {
         when(plugin.getCurrency(anyString())).thenReturn(org.bukkit.Material.EMERALD);
         when(plugin.formatWagerDisplay(any(CurrencyMode.class), anyString(), org.mockito.ArgumentMatchers.anyDouble()))
             .thenAnswer(inv -> "$" + inv.getArgument(2));
+        // Fixed chip denominations 1/5/10/25/100 -- ChipSlots.assign sorts
+        // ascending, so these land at slots 47-51 in that order. Stubbed
+        // here (construction time) rather than left at the mock's default
+        // 0.0, since BlackjackInventory's constructor loads and caches
+        // chipValues immediately via loadChipValuesFromConfig -- a test
+        // stubbing this afterward on an already-built Harness would have no
+        // effect.
+        when(plugin.getChipValue(anyString(), anyInt())).thenAnswer(inv -> {
+            int index = inv.getArgument(1);
+            return switch (index) {
+                case 1 -> 1.0;
+                case 2 -> 5.0;
+                case 3 -> 10.0;
+                case 4 -> 25.0;
+                default -> 100.0;
+            };
+        });
+        when(plugin.getChipDisplayName(any(CurrencyMode.class), anyString(), org.mockito.ArgumentMatchers.anyDouble()))
+            .thenAnswer(inv -> "$" + inv.getArgument(2));
 
         LocalizationService localization = mock(LocalizationService.class);
         when(localization.getServerDefault()).thenReturn("en_US");
@@ -478,6 +497,19 @@ final class BlackjackControllerTestSupport {
 
         void setNextWithdrawSucceeds(boolean succeeds) {
             this.nextWithdrawSucceeds = succeeds;
+        }
+
+        /**
+         * The real {@link VaultCurrencyProvider#getBalance} routes through
+         * {@code plugin.getVaultHook().getEconomy()}, which is null in this
+         * harness (constructed with {@code super(null)}) -- without this
+         * override it would always report 0, silently blocking every All In
+         * test (getPlayerTotalBalance reads exactly this method) regardless
+         * of the fake balance actually set via {@link #setBalance}.
+         */
+        @Override
+        public int getBalance(Player player, String internalName) {
+            return balance.compareTo(BigDecimal.ZERO) <= 0 ? 0 : balance.intValue();
         }
 
         @Override

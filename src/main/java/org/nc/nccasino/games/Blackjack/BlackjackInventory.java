@@ -76,15 +76,29 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     private final Map<UUID, Integer> activeHandIndex = new HashMap<>();
     private final List<Card> dealerHand = new ArrayList<>();
     // Wager selection vs. commitment (see the table redesign plan): a
-    // chip/all-in click only sets a pending selected amount here, moving no
-    // funds and touching no ledger -- only a bet-spot click actually
+    // chip/all-in click only sets a persistent selection tool here, moving
+    // no funds and touching no ledger -- only a bet-spot click actually
     // commits it (see commitWager/commitWagerFundsAlreadyRemoved), pushing
-    // onto pregameWagerIncrements below. Cleared (along with
-    // pregameWagerIncrements) once a round's payout/refund is fully
-    // delivered -- see clearConsumedRoundWagerLedger -- so a stale
-    // selected-but-never-committed amount can never silently carry into a
-    // later round's bet-spot click.
-    private final Map<UUID, Double> selectedWager = new HashMap<>();
+    // onto pregameWagerIncrements below. Deliberately NOT cleared by a
+    // normal round reset (see clearConsumedRoundWagerLedger, which only
+    // touches pregameWagerIncrements) -- a seated player's selection
+    // persists across rounds exactly like their seat does. Only cleared by
+    // leaving the chair (clearPlayerBets(playerId), from removePlayerData)
+    // or picking a different selection (selectWager overwrites the entry).
+    // See BlackjackWagerSelection for the FIXED-vs-ALL_IN typed model.
+    private final Map<UUID, BlackjackWagerSelection> selectedWager = new HashMap<>();
+    // Round-scoped "has this player already been guided" completion flags
+    // (see the table redesign plan's chair/wager guidance-completion
+    // requirement) -- separate from selectedWager/playerSeats themselves so
+    // a same-round leave+reseat (which clears the selection, per above, and
+    // removes the seat) does NOT re-trigger guidance that already did its
+    // job earlier in this round. Only cleared by resetGame's own genuine
+    // round boundary -- deliberately NOT by cancelGame (also reached from
+    // an ordinary single-player pregame leave, which must never un-complete
+    // that very player's own guidance) or delete (the controller is being
+    // discarded entirely; nothing left to guide).
+    private final Set<UUID> chairGuidanceCompleted = new HashSet<>();
+    private final Set<UUID> wagerGuidanceCompleted = new HashSet<>();
     // Committed wager-increment ledger, per player -- the actual source of
     // truth for a seated player's pregame wager once they've committed at
     // least one increment (see commitWagerFundsAlreadyRemoved,
@@ -825,14 +839,17 @@ private void registerListener() {
             if (value == null) {
                 return buildBackgroundPaneItem();
             }
-            Double selected = selectedWager.get(playerId);
+            BlackjackWagerSelection selected = selectedWager.get(playerId);
             String chipName = plugin.getChipDisplayName(currencyMode, currencyName, value);
             return BlackjackWagerSelection.isSelected(selected, value)
                 ? createEnchantedItem(plugin.getCurrency(internalName), chipName, (int) (double) value)
                 : createCustomItem(plugin.getCurrency(internalName), chipName, (int) (double) value);
         }
         if (slot == BlackjackSlotLayout.ALL_IN_SLOT) {
-            return createCustomItem(Material.SNIFFER_EGG, localize(viewer, "blackjack.all-in"), 1);
+            boolean allInSelected = BlackjackWagerSelection.isAllInSelected(selectedWager.get(playerId));
+            return allInSelected
+                ? createEnchantedItem(Material.SNIFFER_EGG, localize(viewer, "blackjack.all-in"), 1)
+                : createCustomItem(Material.SNIFFER_EGG, localize(viewer, "blackjack.all-in"), 1);
         }
         if (slot == BlackjackSlotLayout.PREGAME_EXIT_SLOT) {
             return createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1);
@@ -849,7 +866,8 @@ private void registerListener() {
     }
 
     private void startChairGuidance(UUID playerId, int myGeneration) {
-        if (isStaleViewerAnimation(playerId, myGeneration) || playerSeats.containsKey(playerId) || gameActive || !views.containsKey(playerId)) {
+        if (isStaleViewerAnimation(playerId, myGeneration) || playerSeats.containsKey(playerId) || gameActive
+            || !views.containsKey(playerId) || chairGuidanceCompleted.contains(playerId)) {
             return;
         }
         privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, roundGeneration, myGeneration, capturePhase()));
@@ -862,7 +880,8 @@ private void registerListener() {
      * so a seat filling mid-loop is reflected in the very next pass.
      */
     private void runChairGuidanceCycle(UUID playerId, int myGeneration) {
-        if (isStaleViewerAnimation(playerId, myGeneration) || playerSeats.containsKey(playerId) || gameActive || !views.containsKey(playerId)) {
+        if (isStaleViewerAnimation(playerId, myGeneration) || playerSeats.containsKey(playerId) || gameActive
+            || !views.containsKey(playerId) || chairGuidanceCompleted.contains(playerId)) {
             return;
         }
         Set<Integer> filledSeats = new HashSet<>(playerSeats.values());
@@ -921,9 +940,17 @@ private void registerListener() {
         renderPrivateItem(playerId, step.getSlot(), buildSeatedBottomBarSlotItem(step.getSlot(), playerId, viewer));
     }
 
-    /** Cycles glow left-to-right over the 5 chip slots until the viewer selects a denomination (or All In). */
+    /**
+     * Cycles glow left-to-right over the 5 chip slots until the viewer
+     * selects a denomination (or All In) -- a help prompt, not something
+     * that restarts after every bet. Gated on wagerGuidanceCompleted, not
+     * merely "no selection currently exists": a player who selected, then
+     * left and reseated (clearing their selection but not the completion
+     * flag -- see removePlayerData/clearPlayerBets), must never see this
+     * flash again in the same round.
+     */
     private void startWagerGuidance(UUID playerId) {
-        if (!playerSeats.containsKey(playerId) || gameActive) {
+        if (!playerSeats.containsKey(playerId) || gameActive || wagerGuidanceCompleted.contains(playerId)) {
             return;
         }
         int myGeneration = bumpAndGetViewerAnimationGeneration(playerId);
@@ -932,11 +959,11 @@ private void registerListener() {
     }
 
     private void runWagerGuidanceCycle(UUID playerId, int myGeneration) {
-        if (isStaleViewerAnimation(playerId, myGeneration) || !playerSeats.containsKey(playerId) || gameActive) {
+        if (isStaleViewerAnimation(playerId, myGeneration) || !playerSeats.containsKey(playerId) || gameActive
+            || wagerGuidanceCompleted.contains(playerId)) {
             return;
         }
-        Double selected = selectedWager.get(playerId);
-        if (selected != null && selected > 0) {
+        if (selectedWager.containsKey(playerId)) {
             return; // a selection is pending -- the bet-spot blink owns the UI now, not wager guidance
         }
         List<BlackjackAnimationStep> steps = BlackjackWagerGuidancePlan.build(BlackjackTiming.WAGER_GUIDANCE_STEP_TICKS);
@@ -991,8 +1018,7 @@ private void registerListener() {
         if (isStaleViewerAnimation(playerId, myGeneration) || !playerSeats.containsKey(playerId) || gameActive) {
             return;
         }
-        Double selected = selectedWager.get(playerId);
-        if (selected == null || selected <= 0) {
+        if (!selectedWager.containsKey(playerId)) {
             return; // selection was cleared/consumed elsewhere -- nothing to blink about anymore
         }
         List<BlackjackAnimationStep> steps = BlackjackBetSpotBlinkPlan.build(betSpotSlot, BlackjackTiming.BET_SPOT_BLINK_STEP_TICKS);
@@ -1011,7 +1037,11 @@ private void registerListener() {
     private void applyBetSpotBlinkStep(UUID playerId, int betSpotSlot, BlackjackAnimationStep step) {
         Player viewer = Bukkit.getPlayer(playerId);
         boolean glowing = step.getKind() == BlackjackAnimationStep.Kind.GLOW_ON;
-        double selected = selectedWager.getOrDefault(playerId, 0.0);
+        BlackjackWagerSelection selection = selectedWager.get(playerId);
+        // Purely cosmetic display amount -- for All In this re-resolves the
+        // live balance every render, exactly like a bet-spot click itself
+        // would, so the blink text never shows a stale snapshot.
+        double selected = selection == null ? 0.0 : (viewer != null ? resolveSelectionAmount(viewer, selection) : (selection.isFixed() ? selection.getFixedAmount() : 0.0));
         ItemStack item = createCustomItem(
             Material.BROWN_STAINED_GLASS_PANE,
             localize(viewer, "blackjack.click-to-add-wager", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, selected)),
@@ -1070,10 +1100,12 @@ private void registerListener() {
         for (UUID playerId : seatedPlayers) {
             // Stops wager guidance / bet-spot blink for anyone still
             // mid-selection -- only players with a committed wager get
-            // cards/turns, per the table redesign plan.
+            // cards/turns, per the table redesign plan. The selection tool
+            // itself (selectedWager) is deliberately left untouched: it's a
+            // persistent per-seat selection that must survive into next
+            // round's bet-spot clicks, not a one-shot pending amount.
             cancelPrivateAnimation(playerId);
         }
-        selectedWager.clear();
 
         for (UUID playerId : seatedPlayers) {
             startDoorConceal(playerId, myRoundGeneration);
@@ -1273,10 +1305,22 @@ private void registerListener() {
     // ---- Wager selection vs. commitment ---------------------------------
 
     /**
-     * Sets {@code playerId}'s pending selected wager amount -- moves no funds, pushes nothing to the ledger. Shared
-     * by chip clicks and All In (the plan treats them identically: both only select, never commit).
+     * Sets {@code playerId}'s persistent wager-selection tool -- moves no
+     * funds, pushes nothing to the ledger. Shared by chip clicks (FIXED)
+     * and All In (ALL_IN): the plan treats them identically at selection
+     * time (both only select, never commit), differing only in how a later
+     * bet-spot click resolves the amount to commit (see
+     * {@link #resolveSelectionAmount}). Also marks wager guidance complete
+     * for this player for the round -- a help prompt that has done its job
+     * the moment a selection exists, never restarted by anything short of
+     * the next genuine round boundary (see wagerGuidanceCompleted's own doc).
+     *
+     * @param displayAmount the amount shown in the (optional) verbose
+     *        selection-confirmation message only -- for All In this is the
+     *        player's live balance at the moment of selection, purely
+     *        cosmetic and never itself stored or reused at commit time.
      */
-    private void selectWager(Player player, UUID playerId, double amount) {
+    private void selectWager(Player player, UUID playerId, BlackjackWagerSelection selection, double displayAmount) {
         if (SoundHelper.getSoundSafely("item.flintandsteel.use", player) != null) {
             player.playSound(player.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, SoundCategory.MASTER, 1.0f, 1.0f);
         }
@@ -1285,17 +1329,32 @@ private void registerListener() {
                 break;
             }
             case VERBOSE: {
-                player.sendMessage(text(player, "blackjack.wager-selected", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, amount)));
+                player.sendMessage(text(player, "blackjack.wager-selected", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, displayAmount)));
                 break;
             }
             case NONE: {
                 break;
             }
         }
-        selectedWager.put(playerId, amount);
+        selectedWager.put(playerId, selection);
+        wagerGuidanceCompleted.add(playerId);
         cancelPrivateAnimation(playerId); // stop wager guidance -- the blink takes over
         refreshWagerControlsForPlayer(playerId);
         startBetSpotBlink(playerId);
+    }
+
+    /**
+     * Resolves the live amount {@code selection} would commit right now --
+     * a FIXED selection's captured amount is reused unchanged, but an
+     * ALL_IN selection is re-derived from {@code player}'s current
+     * available balance every single time, never a snapshot taken when All
+     * In was originally selected (see BlackjackWagerSelection's own doc).
+     */
+    private double resolveSelectionAmount(Player player, BlackjackWagerSelection selection) {
+        if (selection.isAllIn()) {
+            return getPlayerTotalBalance(player);
+        }
+        return selection.getFixedAmount();
     }
 
     /**
@@ -1787,6 +1846,10 @@ private void registerListener() {
         for (int slot = ChipSlots.FIRST_SLOT; slot <= ChipSlots.LAST_SLOT; slot++) {
             view.getInventory().setItem(slot, buildSeatedBottomBarSlotItem(slot, playerId, viewer));
         }
+        // All In (52) sits outside the chip-slot range but carries its own
+        // glint, matching whichever selection (fixed chip or All In) is
+        // currently selected -- see buildSeatedBottomBarSlotItem.
+        view.getInventory().setItem(BlackjackSlotLayout.ALL_IN_SLOT, buildSeatedBottomBarSlotItem(BlackjackSlotLayout.ALL_IN_SLOT, playerId, viewer));
     }
 
     @SuppressWarnings("removal")
@@ -2541,12 +2604,14 @@ private void handleAllIn(Player player) {
         return;
     }
 
-    // All In only *selects* the player's full balance as the pending
-    // wager amount -- per the table redesign plan, it never debits or
-    // commits by itself, exactly like a chip click. Only a subsequent
-    // bet-spot click actually commits (see selectWager/commitWager).
+    // All In selects a persistent dynamic mode, never a captured balance --
+    // per the table redesign plan, it never debits or commits by itself,
+    // exactly like a chip click, and every later bet-spot click re-resolves
+    // the player's live balance at that moment (see
+    // selectWager/resolveSelectionAmount/commitWager) rather than reusing
+    // totalBalance as it stood right now.
      if (SoundHelper.getSoundSafely("entity.lightning_bolt.thunder", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER, 1.5f, 0.8f);
-    selectWager(player, playerId, totalBalance);
+    selectWager(player, playerId, BlackjackWagerSelection.allIn(), totalBalance);
 }
 
 private double getPlayerTotalBalance(Player player) {
@@ -3477,6 +3542,12 @@ private void handleDoubleDown(Player player) {
         playerSeats.put(playerId, slot);
         SessionRegistry.register(playerId, this);
 
+        // Sitting completes chair guidance for this player for the round --
+        // never restarted by a later leave/reseat/repaint this same round
+        // (see chairGuidanceCompleted's own doc); only the next genuine
+        // round boundary clears it.
+        chairGuidanceCompleted.add(playerId);
+
         // Chair guidance no longer applies now that they've sat -- the
         // door-reveal animation (private, this viewer only) takes over,
         // sliding their own bottom bar from door+glass to the full seated
@@ -3631,8 +3702,8 @@ private void removePlayerData(UUID playerId) {
     }
 }
 
-    // Handle chip selection -- only sets the pending selected wager amount,
-    // moves no funds, pushes nothing to the ledger (see selectWager).
+    // Handle chip selection -- only sets the persistent selected wager
+    // tool, moves no funds, pushes nothing to the ledger (see selectWager).
     private void handleChipSelection(Player player, int slot) {
         if (startTransitionActive) {
             return; // countdown already hit zero -- no new selection is possible this round
@@ -3645,7 +3716,7 @@ private void removePlayerData(UUID playerId) {
         if (!playerSeats.containsKey(playerId)) {
             return; // chip slots aren't even rendered for an unseated viewer -- defensive no-op
         }
-        selectWager(player, playerId, amount);
+        selectWager(player, playerId, BlackjackWagerSelection.fixed(amount), amount);
     }
 
     private void clearPlayerBetLore(UUID playerId) {
@@ -3726,37 +3797,36 @@ private void removePlayerData(UUID playerId) {
             return;
         }
 
-        double selected = getSelectedWager(playerId);
-        if (selected > 0 && hasEnoughWager(player, selected)) {
-            WagerCommitResult result = commitWager(player, playerId, betSpotSlot, selected);
-            if (result == WagerCommitResult.TRANSACTION_FAILED) {
-                // Nothing was debited and the amount itself was fine --
-                // restore the selection so the player can simply retry
-                // (e.g. click the bet spot again) instead of re-picking a chip.
-                selectedWager.put(playerId, selected);
-            } else {
-                // Committed, or rejected for being insurance-incompatible --
-                // either way this exact amount is done being "selected";
-                // retrying the same amount after an incompatibility
-                // rejection would just fail again.
-                selectedWager.remove(playerId);
-            }
-            cancelPrivateAnimation(playerId); // stop the bet-spot blink
-            refreshWagerControlsForPlayer(playerId); // un-enchant the now-consumed chip
+        BlackjackWagerSelection selection = selectedWager.get(playerId);
+        // Resolved fresh right now -- for a FIXED selection this is just
+        // its captured amount, but for ALL_IN it re-derives the player's
+        // live balance at this exact commit attempt, never a balance
+        // snapshotted back when All In was originally selected (see
+        // resolveSelectionAmount/BlackjackWagerSelection's own doc).
+        double resolvedAmount = selection == null ? 0.0 : resolveSelectionAmount(player, selection);
+        if (selection != null && resolvedAmount > 0 && hasEnoughWager(player, resolvedAmount)) {
+            WagerCommitResult result = commitWager(player, playerId, betSpotSlot, resolvedAmount);
+            // The selection itself is a persistent tool, per the table
+            // redesign plan: neither a successful commit, a transaction
+            // failure, nor an insurance-incompatible rejection ever
+            // unselects it here -- only picking a different denomination
+            // (selectWager overwrites the entry) or leaving the chair
+            // (clearPlayerBets) does.
+            cancelPrivateAnimation(playerId); // stop the bet-spot blink -- restarted immediately below
+            refreshWagerControlsForPlayer(playerId);
 
             if (result == WagerCommitResult.COMMITTED) {
-                startWagerGuidance(playerId); // resume guidance so the player can add another increment if they want
-
                 if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)
                     player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
 
                 if (countdownTaskId == -1) {
                     startCountdownTimer();
                 }
-            } else if (result == WagerCommitResult.TRANSACTION_FAILED) {
-                // Still selected -- resume guidance/blink so the retry path stays visible.
-                startBetSpotBlink(playerId);
             }
+            // Selection persists regardless of the result -- resume the
+            // blink so a repeated bet-spot click keeps reusing it without
+            // forcing the player to re-select.
+            startBetSpotBlink(playerId);
         } else {
             switch (plugin.getPreferences(playerId).getMessageSetting()) {
                 case STANDARD:
@@ -3823,10 +3893,6 @@ private void removePlayerData(UUID playerId) {
                 stopCountdownTimer(); // Stop the timer if no bets are left for any player
             }
         }
-    }
-
-    private double getSelectedWager(UUID playerId) {
-        return selectedWager.getOrDefault(playerId, 0.0);
     }
 
     private void stopCountdownTimer() {
@@ -4076,13 +4142,13 @@ private void removePlayerData(UUID playerId) {
 
     /**
      * Clears every player's committed pregame wager-increment ledger
-     * ({@link #pregameWagerIncrements}) and any pending, never-committed
-     * selection ({@link #selectedWager}) -- the two pieces of state that
-     * {@link #resetGame} previously left behind, letting a stale committed
-     * increment be refunded a second time via Undo All/Undo Last once
-     * wagering reopened for the next round, or letting a stale selected
-     * amount silently carry into a bet-spot click that round never
-     * actually made.
+     * ({@link #pregameWagerIncrements}) -- state {@link #resetGame}
+     * previously left behind, letting a stale committed increment be
+     * refunded a second time via Undo All/Undo Last once wagering reopened
+     * for the next round. Deliberately leaves {@link #selectedWager} alone:
+     * a seated player's persistent wager selection survives a normal round
+     * reset (see selectedWager's own doc) -- only leaving the chair or
+     * picking a different selection clears it.
      *
      * <p><b>Ordering invariant:</b> every caller must have already fully
      * calculated and delivered (or queued) whatever payout/refund this
@@ -4094,7 +4160,7 @@ private void removePlayerData(UUID playerId) {
      * destroy the very state those calculations read.
      */
     private void clearConsumedRoundWagerLedger() {
-        BlackjackRoundWagerLedger.clearConsumed(pregameWagerIncrements, selectedWager);
+        BlackjackRoundWagerLedger.clearConsumed(pregameWagerIncrements);
     }
 
     private void clearAllLore() {
@@ -5479,12 +5545,18 @@ private void resetGame() {
     // abortRoundForShoeExhaustion's refund, both run strictly before this
     // call) -- clearing it now is what stops Undo All/Undo Last from
     // refunding an already-settled round's wager a second time once
-    // wagering reopens for the next round. Any pending (selected-but-never-
-    // committed) amount is stale by definition once the round ends, so it
-    // must never silently carry into the next round's bet-spot click
-    // either. See clearConsumedRoundWagerLedger's own doc for the
-    // ordering invariant this depends on.
+    // wagering reopens for the next round. Deliberately leaves selectedWager
+    // alone -- a seated player's persistent wager selection (fixed
+    // denomination or All In) survives into the next round exactly like
+    // their seat does; see clearConsumedRoundWagerLedger's own doc.
     clearConsumedRoundWagerLedger();
+    // This IS the "next genuine round boundary" the chair/wager guidance
+    // completion flags are scoped to -- a player who stays seated keeps
+    // their selection (above) so guidance stays naturally dormant for them
+    // anyway, but one who left and reseated with no selection is now
+    // eligible for guidance again this new round.
+    chairGuidanceCompleted.clear();
+    wagerGuidanceCompleted.clear();
     playerCardCounts.clear(); // Clear the card count map
     playerDone.clear(); // Clear the player status map
     playerHands.clear(); // Clear player hands
@@ -5755,6 +5827,12 @@ public void delete() {
         playerIterator = null;
         currentPlayerId = null;
         selectedWager.clear();
+        // Deliberately NOT chairGuidanceCompleted/wagerGuidanceCompleted --
+        // cancelGame() also runs from an ordinary single-player pregame
+        // leave (removePlayerData, once playerSeats empties), which must
+        // never un-complete that very player's own guidance for the round
+        // they're still (from their perspective) part of. Only a genuine
+        // round reset (resetGame) clears those.
         hiddenCardPlaceholderVisible = false;
         dealerHeadSlot = BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT;
         startTransitionActive = false;
@@ -5975,6 +6053,18 @@ public void delete() {
     }
 
     /**
+     * Drives the exact genuine-round-boundary reset production code reaches
+     * from finishGame/abortRoundForShoeExhaustion, without needing to play
+     * an entire round of card-dealing/turns/dealer-play through the
+     * scheduler just to exercise round-reset lifecycle behavior (e.g.
+     * whether a persistent wager selection or a guidance-completion flag
+     * survives it). Test setup only.
+     */
+    void resetGameForTest() {
+        resetGame();
+    }
+
+    /**
      * Simulates the exact "unexpected seat mutation" isReadyToDeal's
      * snapshot-based defense is meant to survive: a seat that entered
      * {@code startTransitionSeatedSnapshot}/{@code playerSeats} without
@@ -5992,6 +6082,23 @@ public void delete() {
 
     double insuranceStakeForTest(UUID playerId) {
         return insuranceStakes.getOrDefault(playerId, 0.0);
+    }
+
+    /** @return the player's current wager-selection tool, or null if they haven't selected one. */
+    BlackjackWagerSelection selectedWagerForTest(UUID playerId) {
+        return selectedWager.get(playerId);
+    }
+
+    boolean isChairGuidanceCompletedForTest(UUID playerId) {
+        return chairGuidanceCompleted.contains(playerId);
+    }
+
+    boolean isWagerGuidanceCompletedForTest(UUID playerId) {
+        return wagerGuidanceCompleted.contains(playerId);
+    }
+
+    boolean hasPrivateAnimationForTest(UUID playerId) {
+        return privateAnimationRuns.containsKey(playerId);
     }
 
 }
