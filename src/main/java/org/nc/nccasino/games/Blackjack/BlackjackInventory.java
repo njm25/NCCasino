@@ -842,19 +842,41 @@ private void registerListener() {
             BlackjackWagerSelection selected = selectedWager.get(playerId);
             String chipName = plugin.getChipDisplayName(currencyMode, currencyName, value);
             return BlackjackWagerSelection.isSelected(selected, value)
-                ? createEnchantedItem(plugin.getCurrency(internalName), chipName, (int) (double) value)
+                ? applySelectedWagerLore(createEnchantedItem(plugin.getCurrency(internalName), chipName, (int) (double) value), viewer)
                 : createCustomItem(plugin.getCurrency(internalName), chipName, (int) (double) value);
         }
         if (slot == BlackjackSlotLayout.ALL_IN_SLOT) {
             boolean allInSelected = BlackjackWagerSelection.isAllInSelected(selectedWager.get(playerId));
             return allInSelected
-                ? createEnchantedItem(Material.SNIFFER_EGG, localize(viewer, "blackjack.all-in"), 1)
+                ? applySelectedWagerLore(createEnchantedItem(Material.SNIFFER_EGG, localize(viewer, "blackjack.all-in"), 1), viewer)
                 : createCustomItem(Material.SNIFFER_EGG, localize(viewer, "blackjack.all-in"), 1);
         }
         if (slot == BlackjackSlotLayout.PREGAME_EXIT_SLOT) {
             return createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1);
         }
         return buildBackgroundPaneItem();
+    }
+
+    /**
+     * Appends the localized "Currently Selected" subtitle to {@code item}'s
+     * lore, preserving whatever lore it already carries rather than
+     * replacing it, and never appending a duplicate if it's already there.
+     * Applied only to the one wager control (a fixed chip or All In) that
+     * currently carries the canonical selected glint.
+     */
+    private ItemStack applySelectedWagerLore(ItemStack item, Player viewer) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            List<String> existing = meta.getLore();
+            List<String> lore = existing != null ? new ArrayList<>(existing) : new ArrayList<>();
+            String selectedLine = localize(viewer, "blackjack.currently-selected");
+            if (!lore.contains(selectedLine)) {
+                lore.add(selectedLine);
+            }
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+        }
+        return item;
     }
 
     // ---- Chair guidance (private, per unseated viewer) ------------------
@@ -6100,6 +6122,11 @@ public void delete() {
 
     boolean hasPrivateAnimationForTest(UUID playerId) {
         return privateAnimationRuns.containsKey(playerId);
+    }
+
+    /** @return this player's live {@link BlackjackView}, so a test can force a genuine close/reopen (see {@link #onViewClosed}/{@link #getOrCreateView}) instead of only exercising the incremental refresh path. */
+    BlackjackView viewForTest(UUID playerId) {
+        return views.get(playerId);
     }
 
 }

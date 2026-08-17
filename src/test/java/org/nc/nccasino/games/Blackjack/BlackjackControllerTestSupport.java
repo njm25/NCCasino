@@ -444,53 +444,62 @@ final class BlackjackControllerTestSupport {
     }
 
     private static SkullMeta newFakeSkullMeta(OfflinePlayer initialOwner, String initialDisplayName) {
-        return newFakeSkullMeta(initialOwner, initialDisplayName, null, false);
+        return newFakeSkullMeta(initialOwner, initialDisplayName, null, false, null);
     }
 
-    private static SkullMeta newFakeSkullMeta(OfflinePlayer initialOwner, String initialDisplayName, Boolean initialGlint, boolean initialEnchanted) {
+    private static SkullMeta newFakeSkullMeta(OfflinePlayer initialOwner, String initialDisplayName, Boolean initialGlint, boolean initialEnchanted, List<String> initialLore) {
         SkullMeta meta = mock(SkullMeta.class);
         Object[] owner = {initialOwner};
         Object[] displayName = {initialDisplayName};
         Object[] glint = {initialGlint};
         Object[] enchanted = {initialEnchanted};
+        Object[] lore = {initialLore};
         doAnswer(inv -> {
             owner[0] = inv.getArgument(0);
             return null;
         }).when(meta).setOwningPlayer(any());
         when(meta.getOwningPlayer()).thenAnswer(inv -> owner[0]);
         when(meta.hasOwner()).thenAnswer(inv -> owner[0] != null);
-        wireCommonMeta(meta, displayName, glint, enchanted);
+        wireCommonMeta(meta, displayName, glint, enchanted, lore);
         when(meta.clone()).thenAnswer(inv ->
-            newFakeSkullMeta((OfflinePlayer) owner[0], (String) displayName[0], (Boolean) glint[0], (boolean) enchanted[0]));
+            newFakeSkullMeta((OfflinePlayer) owner[0], (String) displayName[0], (Boolean) glint[0], (boolean) enchanted[0], copyLore(lore[0])));
         return meta;
     }
 
     private static ItemMeta newFakeItemMeta(String initialDisplayName) {
-        return newFakeItemMeta(initialDisplayName, null, false);
+        return newFakeItemMeta(initialDisplayName, null, false, null);
     }
 
-    private static ItemMeta newFakeItemMeta(String initialDisplayName, Boolean initialGlint, boolean initialEnchanted) {
+    private static ItemMeta newFakeItemMeta(String initialDisplayName, Boolean initialGlint, boolean initialEnchanted, List<String> initialLore) {
         ItemMeta meta = mock(ItemMeta.class);
         Object[] displayName = {initialDisplayName};
         Object[] glint = {initialGlint};
         Object[] enchanted = {initialEnchanted};
-        wireCommonMeta(meta, displayName, glint, enchanted);
-        when(meta.clone()).thenAnswer(inv -> newFakeItemMeta((String) displayName[0], (Boolean) glint[0], (boolean) enchanted[0]));
+        Object[] lore = {initialLore};
+        wireCommonMeta(meta, displayName, glint, enchanted, lore);
+        when(meta.clone()).thenAnswer(inv -> newFakeItemMeta((String) displayName[0], (Boolean) glint[0], (boolean) enchanted[0], copyLore(lore[0])));
         return meta;
     }
 
+    @SuppressWarnings("unchecked")
+    private static List<String> copyLore(Object lore) {
+        return lore == null ? null : new ArrayList<>((List<String>) lore);
+    }
+
     /**
-     * Wires display name, enchant-glint-override, and "has any enchant"
-     * state that survives {@code clone()} -- a real ItemStack#getItemMeta()
-     * clones whatever setItemMeta() last stored, so any test that wants to
-     * observe glow must read it back through this, not through Mockito's
-     * invocation history on the pre-clone meta. Two independent glow
-     * mechanisms exist in production: {@code applyGlow}'s
+     * Wires display name, enchant-glint-override, "has any enchant", and
+     * lore state that survives {@code clone()} -- a real
+     * ItemStack#getItemMeta() clones whatever setItemMeta() last stored, so
+     * any test that wants to observe glow or lore must read it back through
+     * this, not through Mockito's invocation history on the pre-clone meta.
+     * Two independent glow mechanisms exist in production: {@code applyGlow}'s
      * setEnchantmentGlintOverride (chair/wager/action guidance's own
      * flashing) and {@code createEnchantedItem}'s addEnchant (canonical
-     * "selected" glints, e.g. a chosen chip/All In) -- both are tracked here.
+     * "selected" glints, e.g. a chosen chip/All In) -- both are tracked here,
+     * alongside lore (used by the "Currently Selected" subtitle).
      */
-    private static void wireCommonMeta(ItemMeta meta, Object[] displayName, Object[] glint, Object[] enchanted) {
+    @SuppressWarnings("unchecked")
+    private static void wireCommonMeta(ItemMeta meta, Object[] displayName, Object[] glint, Object[] enchanted, Object[] lore) {
         doAnswer(inv -> {
             displayName[0] = inv.getArgument(0);
             return null;
@@ -508,6 +517,12 @@ final class BlackjackControllerTestSupport {
         }).when(meta).addEnchant(any(), anyInt(), org.mockito.ArgumentMatchers.anyBoolean());
         when(meta.hasEnchants()).thenAnswer(inv -> enchanted[0]);
         when(meta.hasEnchant(any())).thenAnswer(inv -> enchanted[0]);
+        doAnswer(inv -> {
+            List<String> value = inv.getArgument(0);
+            lore[0] = copyLore(value);
+            return null;
+        }).when(meta).setLore(any());
+        when(meta.getLore()).thenAnswer(inv -> copyLore(lore[0]));
         // addItemFlags(ItemFlag...) is void -- Mockito's default no-op is already correct, nothing to stub.
     }
 

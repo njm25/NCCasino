@@ -473,6 +473,7 @@ blackjack:
   wager-guidance-hint: "&e&oWähle einen Einsatz"
   click-to-add-wager: "&aKlicke, um {amount} hinzuzufügen"
   hand-wager-lore: "Aktueller Einsatz: {amount}"
+  currently-selected: "&aDerzeit ausgewählt"
   invalid-bet-spot: "&cDas ist nicht dein Einsatzfeld."
   insurance-prompt: "&eDer Dealer zeigt ein Ass. Versicherung?"
   insurance-yes: "&aVersicherung: Ja"

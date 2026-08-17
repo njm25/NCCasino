@@ -57,6 +57,17 @@ class LocalizationResourcesTest {
     }
 
     @Test
+    void currentlySelectedWagerLabelIsPresentInEveryLocale() {
+        for (String locale : LOCALES) {
+            YamlConfiguration translation = load(locale);
+            assertTrue(
+                translation.isString("blackjack.currently-selected"),
+                () -> locale + " is missing blackjack.currently-selected"
+            );
+        }
+    }
+
+    @Test
     void confirmationLabelsRemainAddressableByTheirLocalizationPaths() {
         for (String locale : LOCALES) {
             YamlConfiguration translation = load(locale);
