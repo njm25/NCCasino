@@ -6,28 +6,22 @@ import java.util.List;
 import org.nc.nccasino.currency.ChipSlots;
 
 /**
- * One cycle of wager-guidance glow: a single on/off pulse at each chip
- * denomination slot, left to right. Mirrors {@link BlackjackChairGuidancePlan}'s
- * shape -- the runtime loops this repeatedly until the viewer selects a
- * chip/all-in or closes their inventory.
+ * The wager-guidance glow set for one phase: every chip-denomination slot,
+ * left to right. Mirrors {@link BlackjackChairGuidancePlan}'s shape -- the
+ * runtime alternates rendering this whole set GLOW then PLAIN,
+ * {@link BlackjackTiming#WAGER_GUIDANCE_STEP_TICKS} apart, until the viewer
+ * selects a chip/all-in or closes their inventory.
  */
 public final class BlackjackWagerGuidancePlan {
 
     private BlackjackWagerGuidancePlan() {
     }
 
-    public static List<BlackjackAnimationStep> build(long onDurationTicks) {
-        List<BlackjackAnimationStep> steps = new ArrayList<>();
-        long delay = 0;
+    public static List<Integer> applicableSlots() {
+        List<Integer> slots = new ArrayList<>();
         for (int slot = ChipSlots.FIRST_SLOT; slot <= ChipSlots.LAST_SLOT; slot++) {
-            steps.add(new BlackjackAnimationStep(slot, delay, BlackjackAnimationStep.Kind.GLOW_ON));
-            delay += onDurationTicks;
-            steps.add(new BlackjackAnimationStep(slot, delay, BlackjackAnimationStep.Kind.GLOW_OFF));
+            slots.add(slot);
         }
-        return steps;
-    }
-
-    public static long cycleDurationTicks(long onDurationTicks) {
-        return (long) (ChipSlots.LAST_SLOT - ChipSlots.FIRST_SLOT + 1) * onDurationTicks;
+        return slots;
     }
 }

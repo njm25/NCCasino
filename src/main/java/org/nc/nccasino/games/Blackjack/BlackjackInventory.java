@@ -871,43 +871,54 @@ private void registerListener() {
             return;
         }
         privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, roundGeneration, myGeneration, capturePhase()));
-        runChairGuidanceCycle(playerId, myGeneration);
+        runChairGuidancePhase(playerId, myGeneration, true);
     }
 
     /**
-     * Schedules one full pass of BlackjackChairGuidancePlan, then reschedules itself once that pass completes --
-     * re-deriving which seats are filled each time (never baking a stale seat list into one long-running plan),
-     * so a seat filling mid-loop is reflected in the very next pass.
+     * Renders one whole-set glow/plain phase of BlackjackChairGuidancePlan, then reschedules the opposite phase
+     * CHAIR_GUIDANCE_STEP_TICKS later -- re-deriving which seats are filled fresh at every phase (never baking a
+     * stale seat list into a long-running plan), so a seat filling mid-loop drops out of the very next phase.
+     * Every currently-empty seat glows (or goes plain) together in the same tick -- never one seat at a time.
      */
-    private void runChairGuidanceCycle(UUID playerId, int myGeneration) {
+    private void runChairGuidancePhase(UUID playerId, int myGeneration, boolean glowPhase) {
         if (isStaleViewerAnimation(playerId, myGeneration) || playerSeats.containsKey(playerId) || gameActive
             || !views.containsKey(playerId) || chairGuidanceCompleted.contains(playerId)) {
             return;
         }
         Set<Integer> filledSeats = new HashSet<>(playerSeats.values());
-        List<BlackjackAnimationStep> steps = BlackjackChairGuidancePlan.build(filledSeats, BlackjackTiming.CHAIR_GUIDANCE_STEP_TICKS);
-        if (steps.isEmpty()) {
+        List<Integer> slots = BlackjackChairGuidancePlan.applicableSlots(filledSeats);
+        if (slots.isEmpty()) {
             return; // every seat is filled -- nothing left to guide
         }
-        for (BlackjackAnimationStep step : steps) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (isStaleViewerAnimation(playerId, myGeneration) || playerSeats.containsKey(playerId) || gameActive) {
-                    return;
-                }
-                applyChairGuidanceStep(playerId, step);
-            }, step.getDelayTicks());
+        for (int slot : slots) {
+            applyChairGuidanceStep(playerId, slot, glowPhase);
         }
-        long cycleTicks = BlackjackChairGuidancePlan.cycleDurationTicks(filledSeats, BlackjackTiming.CHAIR_GUIDANCE_STEP_TICKS);
-        Bukkit.getScheduler().runTaskLater(plugin, () -> runChairGuidanceCycle(playerId, myGeneration), Math.max(cycleTicks, 1L));
+        Bukkit.getScheduler().runTaskLater(plugin, () -> runChairGuidancePhase(playerId, myGeneration, !glowPhase), BlackjackTiming.CHAIR_GUIDANCE_STEP_TICKS);
     }
 
-    private void applyChairGuidanceStep(UUID playerId, BlackjackAnimationStep step) {
+    private void applyChairGuidanceStep(UUID playerId, int slot, boolean glowing) {
         Player viewer = Bukkit.getPlayer(playerId);
-        boolean glowing = step.getKind() == BlackjackAnimationStep.Kind.GLOW_ON;
         ItemStack item = glowing
             ? createGlowingCustomItem(Material.OAK_STAIRS, localize(viewer, "blackjack.chair-guidance-hint"), 1)
             : createCustomItem(Material.OAK_STAIRS, localize(viewer, "blackjack.click-sit"), 1);
-        renderPrivateItem(playerId, step.getSlot(), item);
+        renderPrivateItem(playerId, slot, item);
+    }
+
+    /**
+     * Repaints every still-empty seat back to its canonical plain "click to
+     * sit" state, private to {@code playerId} -- called the moment chair
+     * guidance is cancelled by that viewer sitting, so a glow frame caught
+     * mid-flash by the sit doesn't freeze there for the rest of the round
+     * (nothing else repaints the seat row for an already-seated viewer).
+     */
+    private void repaintEmptySeatsPlainForViewer(UUID playerId) {
+        Player viewer = Bukkit.getPlayer(playerId);
+        Set<Integer> filledSeats = new HashSet<>(playerSeats.values());
+        for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
+            if (!filledSeats.contains(seatSlot)) {
+                renderPrivateItem(playerId, seatSlot, createCustomItem(Material.OAK_STAIRS, localize(viewer, "blackjack.click-sit"), 1));
+            }
+        }
     }
 
     // ---- Door reveal on sit + wager guidance (private, per seated-but-not-yet-selecting viewer) ----
@@ -955,10 +966,15 @@ private void registerListener() {
         }
         int myGeneration = bumpAndGetViewerAnimationGeneration(playerId);
         privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, roundGeneration, myGeneration, capturePhase()));
-        runWagerGuidanceCycle(playerId, myGeneration);
+        runWagerGuidancePhase(playerId, myGeneration, true);
     }
 
-    private void runWagerGuidanceCycle(UUID playerId, int myGeneration) {
+    /**
+     * Renders one whole-set glow/plain phase of BlackjackWagerGuidancePlan, then reschedules the opposite phase
+     * WAGER_GUIDANCE_STEP_TICKS later. Every applicable chip slot glows (or goes plain) together in the same tick
+     * -- never one chip at a time.
+     */
+    private void runWagerGuidancePhase(UUID playerId, int myGeneration, boolean glowPhase) {
         if (isStaleViewerAnimation(playerId, myGeneration) || !playerSeats.containsKey(playerId) || gameActive
             || wagerGuidanceCompleted.contains(playerId)) {
             return;
@@ -966,26 +982,19 @@ private void registerListener() {
         if (selectedWager.containsKey(playerId)) {
             return; // a selection is pending -- the bet-spot blink owns the UI now, not wager guidance
         }
-        List<BlackjackAnimationStep> steps = BlackjackWagerGuidancePlan.build(BlackjackTiming.WAGER_GUIDANCE_STEP_TICKS);
-        for (BlackjackAnimationStep step : steps) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (isStaleViewerAnimation(playerId, myGeneration)) {
-                    return;
-                }
-                applyWagerGuidanceStep(playerId, step);
-            }, step.getDelayTicks());
+        List<Integer> slots = BlackjackWagerGuidancePlan.applicableSlots();
+        for (int slot : slots) {
+            applyWagerGuidanceStep(playerId, slot, glowPhase);
         }
-        long cycleTicks = BlackjackWagerGuidancePlan.cycleDurationTicks(BlackjackTiming.WAGER_GUIDANCE_STEP_TICKS);
-        Bukkit.getScheduler().runTaskLater(plugin, () -> runWagerGuidanceCycle(playerId, myGeneration), Math.max(cycleTicks, 1L));
+        Bukkit.getScheduler().runTaskLater(plugin, () -> runWagerGuidancePhase(playerId, myGeneration, !glowPhase), BlackjackTiming.WAGER_GUIDANCE_STEP_TICKS);
     }
 
-    private void applyWagerGuidanceStep(UUID playerId, BlackjackAnimationStep step) {
-        Double value = chipValues.get(step.getSlot());
+    private void applyWagerGuidanceStep(UUID playerId, int slot, boolean glowing) {
+        Double value = chipValues.get(slot);
         if (value == null) {
             return;
         }
         Player viewer = Bukkit.getPlayer(playerId);
-        boolean glowing = step.getKind() == BlackjackAnimationStep.Kind.GLOW_ON;
         String chipName = plugin.getChipDisplayName(currencyMode, currencyName, value);
         ItemStack item = createCustomItem(plugin.getCurrency(internalName), chipName, (int) (double) value);
         if (glowing) {
@@ -998,7 +1007,7 @@ private void registerListener() {
                 item.setItemMeta(meta);
             }
         }
-        renderPrivateItem(playerId, step.getSlot(), item);
+        renderPrivateItem(playerId, slot, item);
     }
 
     // ---- Bet-spot blink (private, per viewer with a pending selection) --
@@ -2224,45 +2233,32 @@ private void registerListener() {
     private void startActionGuidance(UUID playerId) {
         int myGeneration = bumpAndGetViewerAnimationGeneration(playerId);
         privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, roundGeneration, myGeneration, capturePhase()));
-        runActionGuidanceCycle(playerId, myGeneration);
+        runActionGuidancePhase(playerId, myGeneration, true);
     }
 
-    private void runActionGuidanceCycle(UUID playerId, int myGeneration) {
+    /**
+     * Renders one whole-set glow/plain phase of BlackjackActionGuidancePlan, then reschedules the opposite phase
+     * ACTION_GUIDANCE_STEP_TICKS later -- re-deriving the current player's available action layout fresh at every
+     * phase, so a layout change (e.g. Double Down dropping out after a Hit) is reflected in the very next phase.
+     * Every currently-available action glows (or goes plain) together in the same tick -- never one action at a time.
+     */
+    private void runActionGuidancePhase(UUID playerId, int myGeneration, boolean glowPhase) {
         if (isStaleViewerAnimation(playerId, myGeneration) || !playerId.equals(currentPlayerId) || !playerTurnActive.getOrDefault(playerId, false)) {
             return;
         }
         Map<BlackjackAction, Integer> layout = currentPlayerActionLayout();
-        List<Integer> slots = new ArrayList<>(layout.values());
-        if (slots.isEmpty()) {
+        if (layout.isEmpty()) {
             return;
         }
-        List<BlackjackAnimationStep> steps = BlackjackActionGuidancePlan.build(slots, BlackjackTiming.ACTION_GUIDANCE_STEP_TICKS);
-        for (BlackjackAnimationStep step : steps) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (isStaleViewerAnimation(playerId, myGeneration) || !playerId.equals(currentPlayerId) || !playerTurnActive.getOrDefault(playerId, false)) {
-                    return;
-                }
-                applyActionGuidanceStep(playerId, step);
-            }, step.getDelayTicks());
+        for (Map.Entry<BlackjackAction, Integer> entry : layout.entrySet()) {
+            applyActionGuidanceStep(playerId, entry.getKey(), entry.getValue(), glowPhase);
         }
-        long cycleTicks = BlackjackActionGuidancePlan.cycleDurationTicks(slots.size(), BlackjackTiming.ACTION_GUIDANCE_STEP_TICKS);
-        Bukkit.getScheduler().runTaskLater(plugin, () -> runActionGuidanceCycle(playerId, myGeneration), Math.max(cycleTicks, 1L));
+        Bukkit.getScheduler().runTaskLater(plugin, () -> runActionGuidancePhase(playerId, myGeneration, !glowPhase), BlackjackTiming.ACTION_GUIDANCE_STEP_TICKS);
     }
 
-    private void applyActionGuidanceStep(UUID playerId, BlackjackAnimationStep step) {
-        BlackjackAction action = null;
-        for (Map.Entry<BlackjackAction, Integer> entry : currentPlayerActionLayout().entrySet()) {
-            if (entry.getValue() == step.getSlot()) {
-                action = entry.getKey();
-                break;
-            }
-        }
-        if (action == null) {
-            return; // the layout moved on since this step was scheduled -- next full cycle will re-derive it
-        }
+    private void applyActionGuidanceStep(UUID playerId, BlackjackAction action, int slot, boolean glowing) {
         Player viewer = Bukkit.getPlayer(playerId);
-        boolean glowing = step.getKind() == BlackjackAnimationStep.Kind.GLOW_ON;
-        renderPrivateItem(playerId, step.getSlot(), buildActionItem(action, viewer, glowing));
+        renderPrivateItem(playerId, slot, buildActionItem(action, viewer, glowing));
     }
 
     // ---- Card-glow rendering --------------------------------------------
@@ -3553,6 +3549,11 @@ private void handleDoubleDown(Player player) {
         // sliding their own bottom bar from door+glass to the full seated
         // wager bar, then handing off to wager guidance once it completes.
         cancelPrivateAnimation(playerId);
+        // Sitting mid-glow-frame would otherwise freeze any still-empty
+        // seats in this viewer's own view glowing forever (nothing else
+        // repaints the seat row for an already-seated viewer) -- put them
+        // back in their canonical plain state right now.
+        repaintEmptySeatsPlainForViewer(playerId);
         startWagerBarReveal(playerId);
     }
 
