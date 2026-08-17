@@ -3853,6 +3853,16 @@ private void handleLeaveChair(Player player, boolean animateConceal) {
     // conceal/repaint decision below reflects what was actually on screen.
     boolean hadWagerBar = !gameActive;
 
+    // Captured before removePlayerData can empty playerSeats and, if this
+    // is the table's last occupied seat, trigger cancelGame() -- which does
+    // its own synchronous, unconditional initializeGameMenu() repaint of
+    // every view (this one included) straight to the canonical closed bar.
+    // Without restoring this afterward, a solo player's leave-conceal would
+    // find its own starting position already snapped to CLOSED and idempotently
+    // no-op instead of animating, i.e. the bar would just vanish instead of
+    // sliding shut -- see the restore right before startWagerBarConceal below.
+    int positionBeforeLeaving = currentWagerBarPosition(playerId);
+
     // Before the deal actually starts (pregame, countdown, or the
     // start-transition window after the countdown clock is already gone
     // but the round hasn't gone active yet), refund the player's committed
@@ -3879,6 +3889,17 @@ private void handleLeaveChair(Player player, boolean animateConceal) {
     removePlayerData(playerId);
 
     if (hadWagerBar && animateConceal) {
+        // If removePlayerData above just triggered cancelGame() (last seat
+        // emptied), its own hard repaint already snapped this viewer's bar
+        // to CLOSED this same tick -- restore both the tracked position and
+        // the actually-rendered frame to where it genuinely was before that
+        // happened, so the conceal requested below has real distance to
+        // animate instead of finding itself already "there" and no-oping.
+        // A harmless no-op when cancelGame() didn't fire (other seats still
+        // occupied): position is simply restored to the value it already had.
+        wagerBarPosition.put(playerId, positionBeforeLeaving);
+        wagerBarTarget.put(playerId, positionBeforeLeaving);
+        renderWagerBarFrame(playerId, positionBeforeLeaving);
         // Mirrors the reveal that ran on sit; chains into
         // scheduleChairGuidanceStart itself once fully concealed (see that
         // method's doc for why chair guidance can't be kicked off here

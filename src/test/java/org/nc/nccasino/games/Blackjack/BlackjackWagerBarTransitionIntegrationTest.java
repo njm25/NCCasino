@@ -109,6 +109,49 @@ class BlackjackWagerBarTransitionIntegrationTest {
         }
     }
 
+    /**
+     * Regression: the sole seated player leaving empties {@code playerSeats},
+     * which makes {@code removePlayerData} trigger {@code cancelGame()} --
+     * a synchronous, table-wide {@code initializeGameMenu()} repaint that
+     * used to snap this very viewer's bar straight to the canonical closed
+     * frame *before* {@code startWagerBarConceal} ever ran, so the
+     * already-there conceal request silently no-op'd instead of animating:
+     * the bar would vanish instantly rather than sliding shut. Unlike
+     * {@link #leavingThroughTheGuiOpenChairPathRemovesEveryStaleSeatedControl},
+     * which only checks the final state (true either way), this asserts an
+     * intermediate tick genuinely shows a partial slide frame.
+     */
+    @Test
+    void soloPlayerLeavingStillAnimatesTheFullConcealDespiteCancelGame() {
+        try (BlackjackControllerTestSupport.Harness h = newTable()) {
+            UUID id = UUID.randomUUID();
+            int seatSlot = BlackjackSlotLayout.SEAT_SLOTS[0];
+            Player alice = openUnseated(h, id, "Alice");
+            h.click(alice, seatSlot);
+            h.scheduler.advance(FULL_TRANSITION_TICKS); // fully revealed, sole occupant
+
+            h.click(alice, seatSlot); // own head -- leave; empties playerSeats, triggers cancelGame()
+            h.scheduler.advance(BlackjackTiming.WAGER_REVEAL_STEP_TICKS); // one frame into the conceal
+
+            Inventory inv = viewInv(h, alice);
+            // One tick after a full-open (position 8) conceal request, the
+            // door must have moved one slot left to position 7's slot
+            // (PREGAME_EXIT_SLOT - 1), not already vanished from
+            // PREGAME_EXIT_SLOT nor snapped all the way back to 45.
+            assertEquals(Material.SPRUCE_DOOR, inv.getItem(BlackjackSlotLayout.PREGAME_EXIT_SLOT - 1).getType(),
+                "one tick in, the door must be mid-slide at the position-7 slot");
+            assertFalse(Material.SPRUCE_DOOR == inv.getItem(BlackjackSlotLayout.PREGAME_EXIT_SLOT).getType(),
+                "the door must have already left its fully-open resting slot");
+            assertFalse(Material.BROWN_STAINED_GLASS_PANE
+                    == inv.getItem(BlackjackSlotLayout.UNSEATED_EDGE_GLASS_SLOT).getType(),
+                "the resting edge glass must not already be showing -- the strip hasn't finished retracting yet");
+
+            h.scheduler.advance(FULL_TRANSITION_TICKS);
+            assertFalse(h.inventory.isSeatedForTest(id));
+            assertCanonicalUnseatedBar(inv);
+        }
+    }
+
     @Test
     void leavingClearsSelectedFixedAndAllInStateAndTheBarStillEndsCanonical() {
         try (BlackjackControllerTestSupport.Harness h = newTable()) {
