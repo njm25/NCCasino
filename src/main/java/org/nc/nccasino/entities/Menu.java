@@ -24,7 +24,7 @@ import java.util.function.Consumer;
  */
 public abstract class Menu extends DealerInventory {
 
-    protected enum SlotOption {
+    public enum SlotOption {
 
         // Default options
         EXIT,
@@ -84,6 +84,10 @@ public abstract class Menu extends DealerInventory {
         TOGGLE_SPLITTING_ENABLED,
         TOGGLE_SPLIT_MATCHING,
         EDIT_MAX_HANDS,
+        TOGGLE_DOUBLE_AFTER_SPLIT,
+        TOGGLE_ACES_HIT,
+        TOGGLE_ACES_DOUBLE,
+        TOGGLE_ACES_RESPLIT,
         TOGGLE_TURN_TIMER_ENABLED,
         EDIT_TURN_TIMER_TIMEOUT,
         

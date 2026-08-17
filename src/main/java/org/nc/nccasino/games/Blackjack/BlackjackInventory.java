@@ -281,14 +281,30 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     private BlackjackSplitMatching splitMatching;
     /** {@code dealers.<name>.splitting.max-hands}, default UNBOUNDED. Applies per player, never table-wide. */
     private final BlackjackMaxHands maxHands;
-    /** {@code dealers.<name>.splitting.double-after-split}, default true. */
-    private final boolean doubleAfterSplit;
-    /** {@code dealers.<name>.splitting.aces.resplit}, default true. */
-    private final boolean acesResplitAllowed;
-    /** {@code dealers.<name>.splitting.aces.hit}, default false. */
-    private final boolean acesHitAllowed;
-    /** {@code dealers.<name>.splitting.aces.double}, default false. */
-    private final boolean acesDoubleAllowed;
+    /**
+     * {@code dealers.<name>.splitting.double-after-split}, default true, then
+     * live-patchable by {@link #setDoubleAfterSplitLive} -- see that method's
+     * doc for exactly when a live change takes effect.
+     */
+    private boolean doubleAfterSplit;
+    /**
+     * {@code dealers.<name>.splitting.aces.resplit}, default true, then
+     * live-patchable by {@link #setAcesResplitAllowedLive} -- see that
+     * method's doc for exactly when a live change takes effect.
+     */
+    private boolean acesResplitAllowed;
+    /**
+     * {@code dealers.<name>.splitting.aces.hit}, default false, then
+     * live-patchable by {@link #setAcesHitAllowedLive} -- see that method's
+     * doc for exactly when a live change takes effect.
+     */
+    private boolean acesHitAllowed;
+    /**
+     * {@code dealers.<name>.splitting.aces.double}, default false, then
+     * live-patchable by {@link #setAcesDoubleAllowedLive} -- see that
+     * method's doc for exactly when a live change takes effect.
+     */
+    private boolean acesDoubleAllowed;
     /** {@code dealers.<name>.splitting.split-21-is-blackjack}, default false -- see BlackjackRules#classify's 3-arg overload. */
     private final boolean split21IsBlackjack;
     // Shared/table-owned split animation lifecycle (slide-out / deal / deal
@@ -590,6 +606,26 @@ private void registerListener() {
         if (matching != null) {
             this.splitMatching = matching;
         }
+    }
+
+    /** Live-patches {@code splitting.double-after-split} for this already-running table -- see the class-level "Live-patchable settings" note for exact timing. */
+    public void setDoubleAfterSplitLive(boolean allowed) {
+        this.doubleAfterSplit = allowed;
+    }
+
+    /** Live-patches {@code splitting.aces.resplit} for this already-running table -- see the class-level "Live-patchable settings" note for exact timing. */
+    public void setAcesResplitAllowedLive(boolean allowed) {
+        this.acesResplitAllowed = allowed;
+    }
+
+    /** Live-patches {@code splitting.aces.hit} for this already-running table -- see the class-level "Live-patchable settings" note for exact timing. */
+    public void setAcesHitAllowedLive(boolean allowed) {
+        this.acesHitAllowed = allowed;
+    }
+
+    /** Live-patches {@code splitting.aces.double} for this already-running table -- see the class-level "Live-patchable settings" note for exact timing. */
+    public void setAcesDoubleAllowedLive(boolean allowed) {
+        this.acesDoubleAllowed = allowed;
     }
 
 

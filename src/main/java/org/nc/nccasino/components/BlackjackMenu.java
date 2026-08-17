@@ -1,6 +1,7 @@
 package org.nc.nccasino.components;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -30,6 +31,9 @@ import org.nc.nccasino.games.Blackjack.BlackjackSplitMatching;
 import org.nc.nccasino.helpers.SoundHelper;
 
 public class BlackjackMenu extends Menu {
+    /** 2-row chest menu. Slot assignment is fully dynamic -- see {@link #layoutMenu()}. */
+    private static final int MENU_SIZE = 18;
+
     private UUID dealerId;
     private Nccasino plugin;
     private String returnName;
@@ -37,31 +41,19 @@ public class BlackjackMenu extends Menu {
     public static final Map<UUID, BlackjackMenu> BAInventories = new HashMap<>();
 
     public BlackjackMenu(UUID dealerId,Player player, String title, Consumer<Player> ret, Nccasino plugin,String returnName) {
-        super(player, plugin, dealerId, title, 18, returnName, ret);
+        super(player, plugin, dealerId, title, MENU_SIZE, returnName, ret);
         this.dealerId = dealerId;
         this.plugin = plugin;
         this.returnName=returnName;
         this.dealer = Dealer.findDealer(dealerId, player.getLocation());
 
-        // Top row: existing chat-prompt settings, then insurance.
-        slotMapping.put(SlotOption.RETURN, 0);
-        slotMapping.put(SlotOption.EDIT_TIMER, 1);
-        slotMapping.put(SlotOption.STAND_17, 2);
-        slotMapping.put(SlotOption.NUMBER_OF_DECKS, 3);
-        // Slot 4 intentionally empty.
-        slotMapping.put(SlotOption.TOGGLE_INSURANCE_ENABLED, 5);
-        slotMapping.put(SlotOption.EDIT_INSURANCE_TIMEOUT, 6);
-        // Slots 7-8 intentionally empty.
-
-        // Bottom row: splitting, then the turn timer, then exit at the
-        // actual bottom-right slot of an 18-slot (2-row) inventory.
-        slotMapping.put(SlotOption.TOGGLE_SPLITTING_ENABLED, 9);
-        slotMapping.put(SlotOption.TOGGLE_SPLIT_MATCHING, 10);
-        slotMapping.put(SlotOption.EDIT_MAX_HANDS, 11);
-        slotMapping.put(SlotOption.TOGGLE_TURN_TIMER_ENABLED, 12);
-        slotMapping.put(SlotOption.EDIT_TURN_TIMER_TIMEOUT, 13);
-        // Slots 14-16 intentionally empty.
-        slotMapping.put(SlotOption.EXIT, 17);
+        // Slot assignment happens in layoutMenu(), called from
+        // initializeMenu() below -- see that method's doc. Settings that
+        // only matter while another setting is enabled (e.g. Split Matching
+        // while Splitting is off) disappear and the remaining buttons
+        // compact toward slot 0 when their parent is disabled, reappearing
+        // in place when it's re-enabled. Exit is always pinned at the last
+        // slot (MENU_SIZE - 1) regardless of how many settings are visible.
 
         BAInventories.put(this.ownerId, this);
         initializeMenu();
@@ -98,30 +90,147 @@ public class BlackjackMenu extends Menu {
 
     @Override
     protected void initializeMenu(){
-        String internalName = Dealer.getInternalName(dealer);
-        FileConfiguration config = plugin.getConfig();
-        int currentTimer = config.contains("dealers." + internalName + ".timer")? config.getInt("dealers." + internalName + ".timer"): 10;
-        int standOn17Chance = config.getInt("dealers." + internalName + ".stand-on-17", 100);
-        int numberOfDecks = config.getInt("dealers." + internalName + ".number-of-decks", 6);
-        addItemAndLore(Material.CLOCK, currentTimer, text("blackjack-settings.edit-timer"), slotMapping.get(SlotOption.EDIT_TIMER), text("common.current", "value", currentTimer));
-        addItemAndLore(Material.SHIELD, standOn17Chance, text("blackjack-settings.edit-stand-17"), slotMapping.get(SlotOption.STAND_17), text("blackjack-settings.current-percent", "value", standOn17Chance));
-        addItemAndLore(Material.RED_STAINED_GLASS_PANE, numberOfDecks, text("blackjack-settings.edit-decks"), slotMapping.get(SlotOption.NUMBER_OF_DECKS), text("common.current", "value", numberOfDecks));
-
-        renderInsuranceToggle();
-        renderInsuranceTimeout();
-        renderSplittingToggle();
-        renderSplitMatchingToggle();
-        renderMaxHands();
-        renderTurnTimerToggle();
-        renderTurnTimerTimeout();
-
-        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, text("common.return-to", "menu", returnName), slotMapping.get(SlotOption.RETURN));
-        addItemAndLore(Material.SPRUCE_DOOR, 1, text("common.exit"), slotMapping.get(SlotOption.EXIT));
-
+        layoutMenu();
     }
 
     private String internalName() {
         return Dealer.getInternalName(dealer);
+    }
+
+    private void renderReturn() {
+        addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, text("common.return-to", "menu", returnName), slotMapping.get(SlotOption.RETURN));
+    }
+
+    private void renderExit() {
+        addItemAndLore(Material.SPRUCE_DOOR, 1, text("common.exit"), slotMapping.get(SlotOption.EXIT));
+    }
+
+    private void renderEditTimer() {
+        String internalName = Dealer.getInternalName(dealer);
+        FileConfiguration config = plugin.getConfig();
+        int currentTimer = config.contains("dealers." + internalName + ".timer") ? config.getInt("dealers." + internalName + ".timer") : 10;
+        addItemAndLore(Material.CLOCK, currentTimer, text("blackjack-settings.edit-timer"), slotMapping.get(SlotOption.EDIT_TIMER), text("common.current", "value", currentTimer));
+    }
+
+    private void renderStandOn17() {
+        int standOn17Chance = configInt("stand-on-17", 100);
+        addItemAndLore(Material.SHIELD, standOn17Chance, text("blackjack-settings.edit-stand-17"), slotMapping.get(SlotOption.STAND_17), text("blackjack-settings.current-percent", "value", standOn17Chance));
+    }
+
+    private void renderNumberOfDecks() {
+        int numberOfDecks = configInt("number-of-decks", 6);
+        addItemAndLore(Material.RED_STAINED_GLASS_PANE, numberOfDecks, text("blackjack-settings.edit-decks"), slotMapping.get(SlotOption.NUMBER_OF_DECKS), text("common.current", "value", numberOfDecks));
+    }
+
+    /** One dynamically-positioned setting: a slot identity, whether it currently applies, and how to paint it once positioned. */
+    private static final class MenuEntry {
+        final SlotOption option;
+        final java.util.function.BooleanSupplier visible;
+        final Runnable render;
+
+        MenuEntry(SlotOption option, java.util.function.BooleanSupplier visible, Runnable render) {
+            this.option = option;
+            this.visible = visible;
+            this.render = render;
+        }
+    }
+
+    /**
+     * The full settings list in display order, each paired with whether it
+     * currently applies. A setting that only matters while another setting
+     * is enabled (e.g. Split Matching while Splitting is off) is listed
+     * immediately after its parent, so disabling the parent closes the gap
+     * right where it opens, and re-enabling it reinserts the dependent
+     * setting in the same place. Rebuilt fresh on every {@link #layoutMenu()}
+     * call (cheap -- a handful of lambdas) so every {@code visible}
+     * predicate always reads live config, never a stale snapshot.
+     */
+    private List<MenuEntry> menuEntries() {
+        return List.of(
+            new MenuEntry(SlotOption.RETURN, () -> true, this::renderReturn),
+            new MenuEntry(SlotOption.EDIT_TIMER, () -> true, this::renderEditTimer),
+            new MenuEntry(SlotOption.STAND_17, () -> true, this::renderStandOn17),
+            new MenuEntry(SlotOption.NUMBER_OF_DECKS, () -> true, this::renderNumberOfDecks),
+            new MenuEntry(SlotOption.TOGGLE_INSURANCE_ENABLED, () -> true, this::renderInsuranceToggle),
+            new MenuEntry(SlotOption.EDIT_INSURANCE_TIMEOUT, () -> configBoolean("insurance.enabled", true), this::renderInsuranceTimeout),
+            new MenuEntry(SlotOption.TOGGLE_SPLITTING_ENABLED, () -> true, this::renderSplittingToggle),
+            new MenuEntry(SlotOption.TOGGLE_SPLIT_MATCHING, () -> configBoolean("splitting.enabled", true), this::renderSplitMatchingToggle),
+            new MenuEntry(SlotOption.EDIT_MAX_HANDS, () -> configBoolean("splitting.enabled", true), this::renderMaxHands),
+            new MenuEntry(SlotOption.TOGGLE_DOUBLE_AFTER_SPLIT, () -> configBoolean("splitting.enabled", true), this::renderDoubleAfterSplitToggle),
+            new MenuEntry(SlotOption.TOGGLE_ACES_HIT, () -> configBoolean("splitting.enabled", true), this::renderAcesHitToggle),
+            new MenuEntry(SlotOption.TOGGLE_ACES_DOUBLE, () -> configBoolean("splitting.enabled", true), this::renderAcesDoubleToggle),
+            new MenuEntry(SlotOption.TOGGLE_ACES_RESPLIT, () -> configBoolean("splitting.enabled", true), this::renderAcesResplitToggle),
+            new MenuEntry(SlotOption.TOGGLE_TURN_TIMER_ENABLED, () -> true, this::renderTurnTimerToggle),
+            new MenuEntry(SlotOption.EDIT_TURN_TIMER_TIMEOUT, () -> configBoolean("turn-timer.enabled", true), this::renderTurnTimerTimeout)
+        );
+    }
+
+    /**
+     * Pure compaction: given content options in declaration order and which
+     * are currently visible, returns the resulting slot for each -- packed
+     * from 0 in declaration order, skipping anything not visible -- plus
+     * {@code EXIT} always pinned at {@code menuSize - 1}. Package-private,
+     * static, and takes no Bukkit types at all, so this is exactly the
+     * algorithm {@link #layoutMenu()} uses, independently unit-testable
+     * without constructing a live menu.
+     */
+    public static Map<SlotOption, Integer> computeLayout(List<SlotOption> orderedContentOptions, java.util.Set<SlotOption> visibleOptions, int menuSize) {
+        Map<SlotOption, Integer> result = new java.util.LinkedHashMap<>();
+        int slot = 0;
+        for (SlotOption option : orderedContentOptions) {
+            if (visibleOptions.contains(option)) {
+                result.put(option, slot);
+                slot++;
+            }
+        }
+        result.put(SlotOption.EXIT, menuSize - 1);
+        return result;
+    }
+
+    /**
+     * Repaints the entire settings list from scratch using {@link #computeLayout}:
+     * every slot no longer used by any entry is blanked back to empty; Exit
+     * is always pinned at {@code MENU_SIZE - 1}, last, regardless of how
+     * many settings are currently visible. Called once from
+     * {@link #initializeMenu()} for the first paint, and again any time a
+     * "parent" toggle (Insurance/Splitting/Turn Timer enabled) changes --
+     * that's the only kind of edit that can add, remove, or shift any other
+     * entry's slot, so it's the only case that needs a full relayout rather
+     * than a single-slot repaint (see the parent-vs-leaf split in
+     * {@link #handleCustomClick}).
+     */
+    private void layoutMenu() {
+        List<MenuEntry> entries = menuEntries();
+        List<SlotOption> orderedOptions = new java.util.ArrayList<>();
+        java.util.Set<SlotOption> visibleOptions = new java.util.LinkedHashSet<>();
+        for (MenuEntry entry : entries) {
+            orderedOptions.add(entry.option);
+            if (entry.visible.getAsBoolean()) {
+                visibleOptions.add(entry.option);
+            }
+        }
+        Map<SlotOption, Integer> computed = computeLayout(orderedOptions, visibleOptions, MENU_SIZE);
+
+        int highestUsedSlot = -1;
+        for (MenuEntry entry : entries) {
+            Integer slot = computed.get(entry.option);
+            if (slot == null) {
+                // Not currently applicable -- remove any stale mapping from
+                // a previous layout so handleClick's reverse slot lookup
+                // can never resolve this option to a slot that's now
+                // occupied by something else entirely.
+                slotMapping.remove(entry.option);
+                continue;
+            }
+            slotMapping.put(entry.option, slot);
+            entry.render.run();
+            highestUsedSlot = Math.max(highestUsedSlot, slot);
+        }
+        for (int emptySlot = highestUsedSlot + 1; emptySlot < MENU_SIZE - 1; emptySlot++) {
+            addItem(null, emptySlot);
+        }
+        slotMapping.put(SlotOption.EXIT, MENU_SIZE - 1);
+        renderExit();
     }
 
     private boolean configBoolean(String key, boolean defaultValue) {
@@ -161,6 +270,42 @@ public class BlackjackMenu extends Menu {
         addItemAndLore(
             enabled ? Material.CLOCK : Material.BARRIER, 1,
             text("blackjack-settings.toggle-turn-timer"), slotMapping.get(SlotOption.TOGGLE_TURN_TIMER_ENABLED),
+            stateLabel(enabled), text("common.click-toggle")
+        );
+    }
+
+    private void renderDoubleAfterSplitToggle() {
+        boolean enabled = configBoolean("splitting.double-after-split", true);
+        addItemAndLore(
+            enabled ? Material.NETHERITE_SCRAP : Material.BARRIER, 1,
+            text("blackjack-settings.toggle-double-after-split"), slotMapping.get(SlotOption.TOGGLE_DOUBLE_AFTER_SPLIT),
+            stateLabel(enabled), text("common.click-toggle")
+        );
+    }
+
+    private void renderAcesHitToggle() {
+        boolean enabled = configBoolean("splitting.aces.hit", false);
+        addItemAndLore(
+            enabled ? Material.IRON_SWORD : Material.BARRIER, 1,
+            text("blackjack-settings.toggle-aces-hit"), slotMapping.get(SlotOption.TOGGLE_ACES_HIT),
+            stateLabel(enabled), text("common.click-toggle")
+        );
+    }
+
+    private void renderAcesDoubleToggle() {
+        boolean enabled = configBoolean("splitting.aces.double", false);
+        addItemAndLore(
+            enabled ? Material.GOLD_INGOT : Material.BARRIER, 1,
+            text("blackjack-settings.toggle-aces-double"), slotMapping.get(SlotOption.TOGGLE_ACES_DOUBLE),
+            stateLabel(enabled), text("common.click-toggle")
+        );
+    }
+
+    private void renderAcesResplitToggle() {
+        boolean enabled = configBoolean("splitting.aces.resplit", true);
+        addItemAndLore(
+            enabled ? Material.WEEPING_VINES : Material.BARRIER, 1,
+            text("blackjack-settings.toggle-aces-resplit"), slotMapping.get(SlotOption.TOGGLE_ACES_RESPLIT),
             stateLabel(enabled), text("common.click-toggle")
         );
     }
@@ -280,7 +425,11 @@ public class BlackjackMenu extends Menu {
                 playDefaultSound(player);
                 break;
             case TOGGLE_INSURANCE_ENABLED:
-                handleToggleBoolean("insurance.enabled", true, this::renderInsuranceToggle, "blackjack-settings.insurance-updated", BlackjackInventory::setInsuranceEnabledLive);
+                // Insurance is a "parent" setting -- Edit Insurance Timeout
+                // only ever shows while it's enabled, so toggling it can
+                // add/remove/shift that slot and needs a full relayout,
+                // not just its own single-slot repaint (see layoutMenu()).
+                handleToggleBoolean("insurance.enabled", true, this::layoutMenu, "blackjack-settings.insurance-updated", BlackjackInventory::setInsuranceEnabledLive);
                 playDefaultSound(player);
                 break;
             case EDIT_INSURANCE_TIMEOUT:
@@ -288,7 +437,10 @@ public class BlackjackMenu extends Menu {
                 playDefaultSound(player);
                 break;
             case TOGGLE_SPLITTING_ENABLED:
-                handleToggleBoolean("splitting.enabled", true, this::renderSplittingToggle, "blackjack-settings.splitting-updated", BlackjackInventory::setSplittingEnabledLive);
+                // Splitting is a "parent" setting -- Split Matching, Max
+                // Hands, and the four split-ace toggles below all only show
+                // while it's enabled, so this needs a full relayout too.
+                handleToggleBoolean("splitting.enabled", true, this::layoutMenu, "blackjack-settings.splitting-updated", BlackjackInventory::setSplittingEnabledLive);
                 playDefaultSound(player);
                 break;
             case TOGGLE_SPLIT_MATCHING:
@@ -299,8 +451,27 @@ public class BlackjackMenu extends Menu {
                 handleEditMaxHands(player);
                 playDefaultSound(player);
                 break;
+            case TOGGLE_DOUBLE_AFTER_SPLIT:
+                handleToggleBoolean("splitting.double-after-split", true, this::renderDoubleAfterSplitToggle, "blackjack-settings.double-after-split-updated", BlackjackInventory::setDoubleAfterSplitLive);
+                playDefaultSound(player);
+                break;
+            case TOGGLE_ACES_HIT:
+                handleToggleBoolean("splitting.aces.hit", false, this::renderAcesHitToggle, "blackjack-settings.aces-hit-updated", BlackjackInventory::setAcesHitAllowedLive);
+                playDefaultSound(player);
+                break;
+            case TOGGLE_ACES_DOUBLE:
+                handleToggleBoolean("splitting.aces.double", false, this::renderAcesDoubleToggle, "blackjack-settings.aces-double-updated", BlackjackInventory::setAcesDoubleAllowedLive);
+                playDefaultSound(player);
+                break;
+            case TOGGLE_ACES_RESPLIT:
+                handleToggleBoolean("splitting.aces.resplit", true, this::renderAcesResplitToggle, "blackjack-settings.aces-resplit-updated", BlackjackInventory::setAcesResplitAllowedLive);
+                playDefaultSound(player);
+                break;
             case TOGGLE_TURN_TIMER_ENABLED:
-                handleToggleBoolean("turn-timer.enabled", true, this::renderTurnTimerToggle, "blackjack-settings.turn-timer-updated", BlackjackInventory::setTurnTimerEnabledLive);
+                // Turn Timer is a "parent" setting -- Edit Turn Timer
+                // Timeout only shows while it's enabled, so this needs a
+                // full relayout too.
+                handleToggleBoolean("turn-timer.enabled", true, this::layoutMenu, "blackjack-settings.turn-timer-updated", BlackjackInventory::setTurnTimerEnabledLive);
                 playDefaultSound(player);
                 break;
             case EDIT_TURN_TIMER_TIMEOUT:
