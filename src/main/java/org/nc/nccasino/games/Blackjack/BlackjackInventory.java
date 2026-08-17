@@ -1983,7 +1983,7 @@ private void registerListener() {
                 item = createCustomItem(Material.NETHERITE_SCRAP, localize(viewer, "blackjack.double-down"));
                 break;
             case SPLIT:
-                item = createCustomItem(Material.SHEARS, localize(viewer, "blackjack.split"));
+                item = createCustomItem(Material.WEEPING_VINES, localize(viewer, "blackjack.split"));
                 break;
             default:
                 throw new IllegalStateException("Unhandled BlackjackAction: " + action);
