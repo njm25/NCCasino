@@ -1630,15 +1630,16 @@ private void registerListener() {
 
         if (active) {
             target.setItem(BlackjackSlotLayout.ACTIVE_EXIT_SLOT, createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1));
-            // Table-wide, like the insurance countdown just below: if the
-            // canonical turn-timer deadline is genuinely live right now,
-            // every viewer bootstrapping (spectator or seated) must see the
-            // exact remaining time immediately, not the idle fallback until
-            // the next scheduled tick corrects it up to ~1s later. Never
-            // starts or extends anything -- purely reads existing canonical
-            // state (see isTurnTimerCanonicallyActive) the same way the
-            // running task's own ticks already validate it.
-            if (isTurnTimerCanonicallyActive()) {
+            // Private, like the action row: only the acting player's own
+            // freshly-bootstrapped view may show the exact remaining time
+            // immediately, not the idle fallback until the next scheduled
+            // tick corrects it up to ~1s later. Every other viewer (another
+            // seated player, a spectator) must never see another player's
+            // countdown, so they get the canonical brown glass instead.
+            // Never starts or extends anything -- purely reads existing
+            // canonical state (see isTurnTimerCanonicallyActive) the same
+            // way the running task's own ticks already validate it.
+            if (isTurnTimerCanonicallyActive() && view.getPlayerId().equals(turnTimerPlayerId)) {
                 target.setItem(BlackjackSlotLayout.TURN_TIMER_SLOT, buildTurnTimerItem(viewer, turnTimerSecondsRemaining));
             } else {
                 target.setItem(BlackjackSlotLayout.TURN_TIMER_SLOT, buildBrownEdgeGlassItem());
@@ -4874,10 +4875,11 @@ private ItemStack buildTurnTimerItem(Player viewer, int secondsLeft) {
 }
 
 private void renderTurnTimerToAllViews(int secondsLeft) {
-    inventory.setItem(BlackjackSlotLayout.TURN_TIMER_SLOT, buildTurnTimerItem(null, secondsLeft));
-    for (BlackjackView view : views.values()) {
-        Player viewer = Bukkit.getPlayer(view.getPlayerId());
-        view.getInventory().setItem(BlackjackSlotLayout.TURN_TIMER_SLOT, buildTurnTimerItem(viewer, secondsLeft));
+    renderToAllViews(BlackjackSlotLayout.TURN_TIMER_SLOT, buildBrownEdgeGlassItem());
+    BlackjackView actingView = turnTimerPlayerId == null ? null : views.get(turnTimerPlayerId);
+    if (actingView != null) {
+        Player viewer = Bukkit.getPlayer(turnTimerPlayerId);
+        actingView.getInventory().setItem(BlackjackSlotLayout.TURN_TIMER_SLOT, buildTurnTimerItem(viewer, secondsLeft));
     }
 }
 
@@ -6038,6 +6040,10 @@ public void delete() {
 
     int turnTimerSecondsRemainingForTest() {
         return turnTimerSecondsRemaining;
+    }
+
+    UUID turnTimerPlayerIdForTest() {
+        return turnTimerPlayerId;
     }
 
     int turnTimerTaskIdForTest() {
