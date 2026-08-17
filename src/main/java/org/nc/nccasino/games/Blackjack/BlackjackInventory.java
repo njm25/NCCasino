@@ -1265,9 +1265,14 @@ private void registerListener() {
      * null) -- per phase 2's cancellation-scope design, this must survive
      * any single viewer closing their inventory. The bottom-row leg
      * (47-53) is gated behind every seated viewer's door-conceal finishing
-     * (a fixed worst-case delay, not an event wait) since both animations
-     * want that same slot range; the top/left leg (8 down to 38) runs
-     * concurrently with door-conceal, since it never touches 47-53.
+     * (a fixed worst-case delay, not an event wait, since both animations
+     * want that same slot range) -- but only ever by the <em>minimum</em>
+     * amount actually needed (see {@link BlackjackDealerInspectionPlan#withBottomRowCoordination}):
+     * committed-player checkpoint pauses on the top/left leg (8 down to 38,
+     * which runs concurrently with door-conceal and never touches 47-53)
+     * routinely push the dealer's natural bottom-row arrival past the
+     * conceal's own completion already, in which case no extra delay is
+     * added at all.
      */
     private void startDealerInspection(long myRoundGeneration) {
         Set<Integer> wageredSeats = new HashSet<>();
@@ -1281,25 +1286,31 @@ private void registerListener() {
         List<BlackjackAnimationStep> path = BlackjackDealerInspectionPlan.build(
             wageredSeats, BlackjackTiming.DEALER_INSPECTION_STEP_TICKS, BlackjackTiming.DEALER_INSPECTION_SLOWDOWN_EXTRA_TICKS
         );
+        long bottomRowGateTicks = BlackjackWagerRevealPlan.concealDurationTicks(BlackjackTiming.WAGER_REVEAL_STEP_TICKS);
+        // Applies only the minimum shift actually needed -- if committed-player
+        // pauses already push the dealer's natural bottom-row arrival past the
+        // conceal's own worst-case completion, no shift is added at all (see
+        // withBottomRowCoordination's own doc for why unconditionally adding
+        // the full gate here would be an unintended extra delay).
+        path = BlackjackDealerInspectionPlan.withBottomRowCoordination(path, bottomRowGateTicks);
 
         BlackjackAnimationRun run = new BlackjackAnimationRun(null, myRoundGeneration, 0, BlackjackFrame.Phase.START_TRANSITION);
         sharedAnimationRun = run;
 
-        long bottomRowGateTicks = BlackjackWagerRevealPlan.concealDurationTicks(BlackjackTiming.WAGER_REVEAL_STEP_TICKS);
-
         for (BlackjackAnimationStep step : path) {
-            boolean isBottomRowLeg = step.getSlot() >= BlackjackSlotLayout.DEALER_CARD_ROW_FIRST_SLOT;
-            long gateDelay = isBottomRowLeg ? bottomRowGateTicks : 0L;
-            long scheduledDelay = step.getDelayTicks() + gateDelay;
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (roundGeneration != myRoundGeneration || run.isCancelled()) {
                     return;
                 }
                 applyDealerInspectionStep(step);
-            }, scheduledDelay);
+            }, step.getDelayTicks());
         }
 
-        long lastStepDelay = path.isEmpty() ? 0L : path.get(path.size() - 1).getDelayTicks() + bottomRowGateTicks;
+        // The real, coordinated completion time -- derived from the actual
+        // final scheduled step (including any committed-player pauses and
+        // any bottom-row coordination shift), never a separately-added
+        // constant that could drift from what was actually scheduled above.
+        long lastStepDelay = BlackjackDealerInspectionPlan.totalDurationTicks(path);
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (roundGeneration != myRoundGeneration || run.isCancelled()) {
                 return;
@@ -6177,6 +6188,21 @@ public void delete() {
 
     boolean isStartTransitionActiveForTest() {
         return startTransitionActive;
+    }
+
+    /** @return the dealer's current canonical slot -- {@link BlackjackSlotLayout#DEALER_LOBBY_HEAD_SLOT} until the start-transition inspection delivers it to {@link BlackjackSlotLayout#DEALER_INPLAY_HEAD_SLOT}. */
+    int dealerHeadSlotForTest() {
+        return dealerHeadSlot;
+    }
+
+    /** @return whether a shared/table-owned animation (the dealer inspection, or the split sequence) is currently running. */
+    boolean hasSharedAnimationForTest() {
+        return sharedAnimationRun != null;
+    }
+
+    /** @return this player's active hand's card count -- 0 if they have no hand at all (e.g. never committed a wager this round). */
+    int activeHandCardCountForTest(UUID playerId) {
+        return activeHandCards(playerId).size();
     }
 
     int turnTimerSecondsRemainingForTest() {
