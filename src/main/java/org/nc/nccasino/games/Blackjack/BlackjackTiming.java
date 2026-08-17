@@ -42,8 +42,15 @@ public final class BlackjackTiming {
     public static final long WAGER_GUIDANCE_STEP_TICKS = 5L;
     /** How long a bet spot's "click to add" blink stays on per pulse. */
     public static final long BET_SPOT_BLINK_STEP_TICKS = 20L;
-    /** Delay between successive slots as the wager bar reveals/conceals. */
-    public static final long WAGER_REVEAL_STEP_TICKS = 4L;
+    /**
+     * Ticks per frame of the wager bar's solid slide (reveal on sit, conceal
+     * on unsit) -- one frame per tick, so the full 8-frame endpoint-to-
+     * endpoint slide (see BlackjackWagerRevealPlan#CLOSED/OPEN) takes about
+     * 8 ticks. Deliberately fast/solid rather than the old one-slot-per-
+     * WAGER_REVEAL_STEP_TICKS reveal this replaced (previously 4 ticks/slot,
+     * 36 ticks total).
+     */
+    public static final long WAGER_REVEAL_STEP_TICKS = 1L;
     /** Normal per-slot travel time along the dealer's start-transition U-path. */
     public static final long DEALER_INSPECTION_STEP_TICKS = 5L;
     /** Extra time added on top of the base step when the dealer inspects a seat with a committed wager. */

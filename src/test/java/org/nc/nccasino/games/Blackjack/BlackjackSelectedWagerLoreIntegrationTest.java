@@ -35,6 +35,12 @@ class BlackjackSelectedWagerLoreIntegrationTest {
     private static Player seatAndOpen(BlackjackControllerTestSupport.Harness h, UUID id, String name, int seatSlot) {
         Player player = h.seatOnlinePlayer(id, name);
         h.click(player, seatSlot);
+        // The wager bar's solid slide is now fast (one frame/tick) but not
+        // instant -- a wager-control click is only live once the bar
+        // actually reaches OPEN (see BlackjackInventory's intermediate-frame
+        // input gating), so every caller here waits for that before
+        // clicking a chip/All In/Undo control.
+        h.scheduler.advance(BlackjackWagerRevealPlan.revealDurationTicks(BlackjackTiming.WAGER_REVEAL_STEP_TICKS));
         return player;
     }
 
@@ -257,6 +263,14 @@ class BlackjackSelectedWagerLoreIntegrationTest {
             UUID bobId = UUID.randomUUID();
             Player alice = seatAndOpen(h, aliceId, "Alice", BlackjackSlotLayout.SEAT_SLOTS[0]);
             Player bob = seatAndOpen(h, bobId, "Bob", BlackjackSlotLayout.SEAT_SLOTS[1]);
+            // Bob picks a *different* denomination first, completing his own
+            // wager guidance -- otherwise, now that the bar opens fast, his
+            // still-unselected chips would legitimately be mid wager-guidance
+            // glow at this point (unrelated to alice's own selection), which
+            // would make isGlowing a false positive for what this test
+            // actually checks: that alice's selection itself never leaks into
+            // bob's own copy of that same numeric slot.
+            h.click(bob, ChipSlots.FIRST_SLOT);
 
             h.click(alice, ChipSlots.FIRST_SLOT + 2); // Alice selects 10.0
 

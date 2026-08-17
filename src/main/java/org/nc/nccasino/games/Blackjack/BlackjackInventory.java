@@ -99,6 +99,20 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     // discarded entirely; nothing left to guide).
     private final Set<UUID> chairGuidanceCompleted = new HashSet<>();
     private final Set<UUID> wagerGuidanceCompleted = new HashSet<>();
+    // The wager bar's live solid-slide position/target per viewer -- see
+    // BlackjackWagerRevealPlan#CLOSED (0, fully unseated) / #OPEN (8, fully
+    // seated) and requestWagerBarPosition. wagerBarPosition is the frame
+    // actually last rendered (independent of whatever scheduled callback is
+    // in flight -- read fresh every frame so a reversal mid-slide continues
+    // from exactly where the strip visually is, never jumping to an
+    // endpoint first); wagerBarTarget is which endpoint the current/most
+    // recent request is heading toward, used to make repeated requests for
+    // the same target idempotent. Deliberately NOT touched by
+    // cancelPrivateAnimation -- that only cancels/replaces the scheduled
+    // callback chain (see its own doc); only a genuine view-close or
+    // table-wide teardown (cancelAllAnimations) discards these two maps.
+    private final Map<UUID, Integer> wagerBarPosition = new HashMap<>();
+    private final Map<UUID, Integer> wagerBarTarget = new HashMap<>();
     // Committed wager-increment ledger, per player -- the actual source of
     // truth for a seated player's pregame wager once they've committed at
     // least one increment (see commitWagerFundsAlreadyRemoved,
@@ -753,6 +767,13 @@ private void registerListener() {
         }
         privateAnimationRuns.clear();
         viewerAnimationGeneration.clear();
+        // Table-wide teardown discards the wager bar's own slide position
+        // state too -- a genuine reset/cancel/delete, unlike a private
+        // cancellation mid-reversal (see the fields' own doc). Every open
+        // view gets repainted canonical right after this (initializeGameMenu
+        // or bootstrapView), which also resyncs these maps fresh.
+        wagerBarPosition.clear();
+        wagerBarTarget.clear();
         cancelSharedAnimation();
     }
 
@@ -976,87 +997,157 @@ private void registerListener() {
     }
 
     /**
-     * Repaints every still-empty seat back to its canonical plain "click to
-     * sit" state, private to {@code playerId} -- called the moment chair
-     * guidance is cancelled by that viewer sitting, so a glow frame caught
-     * mid-flash by the sit doesn't freeze there for the rest of the round
-     * (nothing else repaints the seat row for an already-seated viewer).
+     * Repaints every still-empty seat back to its canonical plain state,
+     * private to {@code playerId} -- called the moment chair guidance is
+     * cancelled by that viewer sitting, so a glow frame caught mid-flash by
+     * the sit doesn't freeze there for the rest of the round (nothing else
+     * repaints the seat row for an already-seated viewer). {@code playerId}
+     * is seated by the time this runs, so {@link #buildEmptySeatChairItem}
+     * correctly shows the "leave your own chair" redirect rather than
+     * "click to sit" for every other empty seat.
      */
     private void repaintEmptySeatsPlainForViewer(UUID playerId) {
         Player viewer = Bukkit.getPlayer(playerId);
         Set<Integer> filledSeats = new HashSet<>(playerSeats.values());
         for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
             if (!filledSeats.contains(seatSlot)) {
-                renderPrivateItem(playerId, seatSlot, createCustomItem(Material.OAK_STAIRS, localize(viewer, "blackjack.click-sit"), 1));
+                renderPrivateItem(playerId, seatSlot, buildEmptySeatChairItem(playerId, viewer));
             }
         }
     }
 
-    // ---- Door reveal on sit + wager guidance (private, per seated-but-not-yet-selecting viewer) ----
+    // ---- Wager bar solid slide (private, per viewer) + wager guidance handoff ----
+    // The bottom bar (45-53) is one solid nine-item strip -- see
+    // BlackjackWagerRevealPlan -- that slides between CLOSED (0, door+glass)
+    // and OPEN (8, the full seated bar) one frame per tick. Every request
+    // (sit, unsit, start-transition door-conceal) funnels through
+    // requestWagerBarPosition, which always continues from wherever the
+    // strip visually is right now (wagerBarPosition), never jumping to an
+    // endpoint first -- this is what makes a rapid sit/unsit reversal smooth
+    // instead of restarting from scratch.
 
-    /** Slides the bottom bar from door+glass to the full seated wager bar for the viewer who just sat, then hands off to wager guidance. */
-    private void startWagerBarReveal(UUID playerId) {
+    /** This viewer's live slide position, defaulting to their canonical resting frame (OPEN if seated, CLOSED otherwise) if nothing has been tracked yet -- e.g. a freshly bootstrapped view. */
+    private int currentWagerBarPosition(UUID playerId) {
+        return wagerBarPosition.getOrDefault(playerId, playerSeats.containsKey(playerId) ? BlackjackWagerRevealPlan.OPEN : BlackjackWagerRevealPlan.CLOSED);
+    }
+
+    /** Sets this viewer's slide position/target to their canonical resting frame -- called on bootstrap/full repaint, never mid-slide. */
+    private void syncWagerBarPositionToCanonicalResting(UUID playerId) {
+        int resting = playerSeats.containsKey(playerId) ? BlackjackWagerRevealPlan.OPEN : BlackjackWagerRevealPlan.CLOSED;
+        wagerBarPosition.put(playerId, resting);
+        wagerBarTarget.put(playerId, resting);
+    }
+
+    /**
+     * Requests the wager bar move toward {@code targetPosition} ({@link BlackjackWagerRevealPlan#CLOSED}
+     * or {@link BlackjackWagerRevealPlan#OPEN}) for {@code playerId}, continuing from wherever the strip
+     * currently is -- reversing smoothly, never jumping to an endpoint first, and never launching a second
+     * competing chain (repeating the same target while already there or already heading there is a no-op).
+     * {@code onReachTarget} runs (synchronously, if already there; otherwise once the final frame actually
+     * renders) only if the request that scheduled it is still current by then.
+     *
+     * @param myRoundGeneration the round generation this request belongs to -- every scheduled frame step
+     *        also verifies {@code roundGeneration} is still this value, on top of the per-viewer animation
+     *        generation, so a start-transition door-conceal can never survive into a later round
+     */
+    private void requestWagerBarPosition(UUID playerId, int targetPosition, long myRoundGeneration, Runnable onReachTarget) {
+        int currentPosition = currentWagerBarPosition(playerId);
+        Integer existingTarget = wagerBarTarget.get(playerId);
+        if (existingTarget != null && existingTarget == targetPosition
+            && (currentPosition == targetPosition || privateAnimationRuns.containsKey(playerId))) {
+            return; // idempotent: already there, or already sliding toward the same target
+        }
+        wagerBarTarget.put(playerId, targetPosition);
+        if (currentPosition == targetPosition) {
+            wagerBarPosition.put(playerId, targetPosition);
+            renderWagerBarFrame(playerId, targetPosition);
+            if (onReachTarget != null) {
+                onReachTarget.run();
+            }
+            return;
+        }
         int myGeneration = bumpAndGetViewerAnimationGeneration(playerId);
-        privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, roundGeneration, myGeneration, capturePhase()));
-
-        List<BlackjackAnimationStep> steps = BlackjackWagerRevealPlan.reveal(BlackjackTiming.WAGER_REVEAL_STEP_TICKS);
-        for (BlackjackAnimationStep step : steps) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (isStaleViewerAnimation(playerId, myGeneration)) {
-                    return;
-                }
-                applyWagerRevealStep(playerId, step);
-            }, step.getDelayTicks());
-        }
-        long totalTicks = steps.isEmpty() ? 0 : steps.get(steps.size() - 1).getDelayTicks() + BlackjackTiming.WAGER_REVEAL_STEP_TICKS;
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (isStaleViewerAnimation(playerId, myGeneration)) {
-                return;
-            }
-            startWagerGuidance(playerId);
-        }, totalTicks);
+        privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, myRoundGeneration, myGeneration, capturePhase()));
+        scheduleWagerBarFrameStep(playerId, myGeneration, myRoundGeneration, targetPosition, onReachTarget);
     }
 
-    private void applyWagerRevealStep(UUID playerId, BlackjackAnimationStep step) {
+    private void scheduleWagerBarFrameStep(UUID playerId, int myGeneration, long myRoundGeneration, int targetPosition, Runnable onReachTarget) {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (roundGeneration != myRoundGeneration || isStaleViewerAnimation(playerId, myGeneration)) {
+                return; // a stale callback must never repaint the row or trigger guidance/completion
+            }
+            Integer liveTarget = wagerBarTarget.get(playerId);
+            if (liveTarget == null || liveTarget != targetPosition) {
+                return; // superseded by a newer request (defensive -- that request would already have bumped the generation above)
+            }
+            int current = currentWagerBarPosition(playerId);
+            int next = current + Integer.signum(targetPosition - current);
+            wagerBarPosition.put(playerId, next);
+            renderWagerBarFrame(playerId, next);
+            if (next == targetPosition) {
+                privateAnimationRuns.remove(playerId);
+                if (onReachTarget != null) {
+                    onReachTarget.run();
+                }
+            } else {
+                scheduleWagerBarFrameStep(playerId, myGeneration, myRoundGeneration, targetPosition, onReachTarget);
+            }
+        }, BlackjackTiming.WAGER_REVEAL_STEP_TICKS);
+    }
+
+    /** Atomically repaints all nine bottom-bar slots (45-53) from {@link BlackjackWagerRevealPlan#frame}'s snapshot at {@code position} -- one complete frame, never a single-slot mutation. */
+    private void renderWagerBarFrame(UUID playerId, int position) {
         Player viewer = Bukkit.getPlayer(playerId);
-        renderPrivateItem(playerId, step.getSlot(), buildSeatedBottomBarSlotItem(step.getSlot(), playerId, viewer));
+        BlackjackWagerRevealPlan.Control[] frame = BlackjackWagerRevealPlan.frame(position);
+        for (int i = 0; i < frame.length; i++) {
+            renderPrivateItem(playerId, BlackjackWagerRevealPlan.slotForFrameIndex(i), buildWagerBarControlItem(frame[i], playerId, viewer));
+        }
+    }
+
+    /** Resolves one {@link BlackjackWagerRevealPlan.Control} to the real item -- chip/control identities go through {@link #buildSeatedBottomBarSlotItem} keyed by their own canonical slot, so selected-wager glow/lore always attaches to the correct logical chip regardless of which physical slot it's currently sliding through. */
+    private ItemStack buildWagerBarControlItem(BlackjackWagerRevealPlan.Control control, UUID playerId, Player viewer) {
+        switch (control) {
+            case DOOR:
+                return createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1);
+            case EDGE_GLASS:
+                return buildBrownEdgeGlassItem();
+            case UNDO_ALL:
+                return buildSeatedBottomBarSlotItem(BlackjackSlotLayout.UNDO_ALL_SLOT, playerId, viewer);
+            case UNDO_LAST:
+                return buildSeatedBottomBarSlotItem(BlackjackSlotLayout.UNDO_LAST_SLOT, playerId, viewer);
+            case CHIP_1:
+                return buildSeatedBottomBarSlotItem(ChipSlots.FIRST_SLOT, playerId, viewer);
+            case CHIP_2:
+                return buildSeatedBottomBarSlotItem(ChipSlots.FIRST_SLOT + 1, playerId, viewer);
+            case CHIP_3:
+                return buildSeatedBottomBarSlotItem(ChipSlots.FIRST_SLOT + 2, playerId, viewer);
+            case CHIP_4:
+                return buildSeatedBottomBarSlotItem(ChipSlots.FIRST_SLOT + 3, playerId, viewer);
+            case CHIP_5:
+                return buildSeatedBottomBarSlotItem(ChipSlots.FIRST_SLOT + 4, playerId, viewer);
+            case ALL_IN:
+                return buildSeatedBottomBarSlotItem(BlackjackSlotLayout.ALL_IN_SLOT, playerId, viewer);
+            case BACKGROUND:
+            default:
+                return buildBackgroundPaneItem();
+        }
+    }
+
+    /** Slides the bottom bar from door+glass to the full seated wager bar for the viewer who just sat, then hands off to wager guidance once fully open. */
+    private void startWagerBarReveal(UUID playerId) {
+        requestWagerBarPosition(playerId, BlackjackWagerRevealPlan.OPEN, roundGeneration, () -> startWagerGuidance(playerId));
     }
 
     /**
      * Slides the bottom bar from the full seated wager bar back to door+glass
      * for a player who voluntarily left their chair while their GUI stays
-     * open -- the exact reverse of {@link #startWagerBarReveal}, using
-     * {@link BlackjackWagerRevealPlan#conceal} (structurally the same slot
-     * walk as {@code reveal}, reversed) and the same per-step
-     * {@link #applyDoorConcealStep} the start-transition door-conceal
-     * already uses, so there is only one interpretation of "what the
-     * unseated bar looks like" anywhere in this class. Chains into
-     * {@link #scheduleChairGuidanceStart} only once concealed, mirroring
+     * open -- the exact reverse of {@link #startWagerBarReveal}. Chains into
+     * {@link #scheduleChairGuidanceStart} only once fully closed, mirroring
      * how {@code startWagerBarReveal} only hands off to wager guidance once
-     * revealed -- calling it any earlier would bump this viewer's animation
-     * generation again immediately and invalidate the very steps just
-     * scheduled here.
+     * fully open.
      */
     private void startWagerBarConceal(UUID playerId) {
-        int myGeneration = bumpAndGetViewerAnimationGeneration(playerId);
-        privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, roundGeneration, myGeneration, capturePhase()));
-
-        List<BlackjackAnimationStep> steps = BlackjackWagerRevealPlan.conceal(BlackjackTiming.WAGER_REVEAL_STEP_TICKS);
-        for (BlackjackAnimationStep step : steps) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (isStaleViewerAnimation(playerId, myGeneration)) {
-                    return;
-                }
-                applyDoorConcealStep(playerId, step);
-            }, step.getDelayTicks());
-        }
-        long totalTicks = steps.isEmpty() ? 0 : steps.get(steps.size() - 1).getDelayTicks() + BlackjackTiming.WAGER_REVEAL_STEP_TICKS;
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (isStaleViewerAnimation(playerId, myGeneration)) {
-                return;
-            }
-            scheduleChairGuidanceStart(playerId);
-        }, totalTicks);
+        requestWagerBarPosition(playerId, BlackjackWagerRevealPlan.CLOSED, roundGeneration, () -> scheduleChairGuidanceStart(playerId));
     }
 
     /**
@@ -1234,28 +1325,16 @@ private void registerListener() {
 
     // ---- Per-viewer door-conceal ----------------------------------------
 
+    /**
+     * Slides {@code playerId}'s bar to CLOSED for the start-transition, using the same solid-slide engine as
+     * an ordinary unsit -- continuing from wherever their reveal actually left off (never jumping to OPEN
+     * first) if the countdown hit zero mid-reveal. Door-conceal completion for the readiness gate
+     * ({@link #startTransitionDoorConcealComplete}) is recorded only once this viewer's position genuinely
+     * reaches {@link BlackjackWagerRevealPlan#CLOSED}, not merely once requested.
+     */
     private void startDoorConceal(UUID playerId, long myRoundGeneration) {
-        int myAnimGeneration = bumpAndGetViewerAnimationGeneration(playerId);
-        privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, myRoundGeneration, myAnimGeneration, BlackjackFrame.Phase.START_TRANSITION));
-
-        List<BlackjackAnimationStep> steps = BlackjackWagerRevealPlan.conceal(BlackjackTiming.WAGER_REVEAL_STEP_TICKS);
-        for (BlackjackAnimationStep step : steps) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (roundGeneration != myRoundGeneration || isStaleViewerAnimation(playerId, myAnimGeneration)) {
-                    return;
-                }
-                applyDoorConcealStep(playerId, step);
-                if (step.getSlot() == BlackjackSlotLayout.UNSEATED_EXIT_SLOT) {
-                    // Final step: the door has arrived back at 45.
-                    startTransitionDoorConcealComplete.add(playerId);
-                }
-            }, step.getDelayTicks());
-        }
-    }
-
-    private void applyDoorConcealStep(UUID playerId, BlackjackAnimationStep step) {
-        Player viewer = Bukkit.getPlayer(playerId);
-        renderPrivateItem(playerId, step.getSlot(), buildUnseatedBottomBarSlotItem(step.getSlot(), viewer));
+        requestWagerBarPosition(playerId, BlackjackWagerRevealPlan.CLOSED, myRoundGeneration,
+            () -> startTransitionDoorConcealComplete.add(playerId));
     }
 
     // ---- Shared dealer U-path inspection ---------------------------------
@@ -1710,8 +1789,10 @@ private void registerListener() {
             }
         } else if (playerSeats.containsKey(view.getPlayerId())) {
             paintSeatedBottomBar(target, viewer, view.getPlayerId());
+            syncWagerBarPositionToCanonicalResting(view.getPlayerId());
         } else {
             paintUnseatedBottomBar(target, viewer);
+            syncWagerBarPositionToCanonicalResting(view.getPlayerId());
         }
 
         target.setItem(frame.dealerHeadSlot(), createCustomItem(Material.CREEPER_HEAD, localize(viewer, "blackjack.dealer")));
@@ -1740,12 +1821,14 @@ private void registerListener() {
         // phase (lobby, countdown, active, and again after a reset).
         for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
             BlackjackFrame.Seat seat = frame.seatAt(seatSlot);
+            int betSlipSlot = BlackjackSlotLayout.betSlipSlot(seatSlot);
 
             if (seat == null) {
-                target.setItem(seatSlot, createCustomItem(Material.OAK_STAIRS, localize(viewer, "blackjack.click-sit"), 1));
-                if (!active) {
-                    target.setItem(BlackjackSlotLayout.betSlipSlot(seatSlot), createCustomItem(Material.BROWN_STAINED_GLASS_PANE, localize(viewer, "blackjack.click-bet"), 1));
-                }
+                target.setItem(seatSlot, buildEmptySeatChairItem(view.getPlayerId(), viewer));
+                // Brown is a permanent part of the table's edge -- painted
+                // for an empty seat in every phase, never left as (or
+                // cleared to) the green background. See buildBetSpotItemForViewer.
+                target.setItem(betSlipSlot, buildBrownEdgeGlassItem());
                 continue;
             }
 
@@ -1759,26 +1842,23 @@ private void registerListener() {
                 // Seat tracked but the player can't be resolved (e.g. just
                 // disconnected) -- fall back to the empty-seat item rather
                 // than leave the slot blank.
-                target.setItem(seatSlot, createCustomItem(Material.OAK_STAIRS, localize(viewer, "blackjack.click-sit"), 1));
+                target.setItem(seatSlot, buildEmptySeatChairItem(view.getPlayerId(), viewer));
             }
 
+            // Permanent bet spot: the seat owner's own click-to-bet/active
+            // item, or "{name}'s betting circle" for every other viewer --
+            // see buildBetSpotItemForViewer for the full per-viewer rule.
+            target.setItem(betSlipSlot, buildBetSpotItemForViewer(seatSlot, view.getPlayerId(), viewer));
+
             if (active) {
-                // Permanent bet spot stays visible throughout active play
-                // (never cleared to background -- see
-                // transitionBottomBarToActive), glowing solidly while it's
-                // this seat's turn, matching refreshCardGlow's live fan-out.
-                target.setItem(BlackjackSlotLayout.betSlipSlot(seatSlot), withWagerLore(buildActiveBetSpotItem(seat.isCurrentTurn()), seat.getWager(), viewer));
                 for (int i = 0; i < seat.getHand().size() && i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
                     target.setItem(BlackjackSlotLayout.playerCardSlot(seatSlot, i), buildCardItem(seat.getHand().get(i), viewer, seat.isCurrentTurn()));
                 }
-            } else {
-                target.setItem(BlackjackSlotLayout.betSlipSlot(seatSlot), withWagerLore(createCustomItem(Material.BROWN_STAINED_GLASS_PANE, localize(viewer, "blackjack.click-bet"), 1), seat.getWager(), viewer));
-                if (frame.phase() == BlackjackFrame.Phase.COUNTDOWN) {
-                    target.setItem(
-                        BlackjackSlotLayout.pregameCountdownSlot(seatSlot),
-                        createCustomItem(Material.CLOCK, localize(viewer, "blackjack.starts-in", "seconds", frame.countdownSeconds()), Math.max(frame.countdownSeconds(), 1))
-                    );
-                }
+            } else if (frame.phase() == BlackjackFrame.Phase.COUNTDOWN) {
+                target.setItem(
+                    BlackjackSlotLayout.pregameCountdownSlot(seatSlot),
+                    createCustomItem(Material.CLOCK, localize(viewer, "blackjack.starts-in", "seconds", frame.countdownSeconds()), Math.max(frame.countdownSeconds(), 1))
+                );
             }
         }
 
@@ -1813,6 +1893,80 @@ private void registerListener() {
             item.setItemMeta(meta);
         }
         return item;
+    }
+
+    /**
+     * The empty-seat "click to sit" item as {@code viewerId} should see it --
+     * the normal invite when they aren't seated anywhere yet, or a redirect
+     * to their own chair once they are (an already-seated viewer can never
+     * displace another empty seat by clicking it -- see handleChairClick's
+     * own already-seated guard -- so the label makes that explicit instead
+     * of just silently refusing the click).
+     */
+    private ItemStack buildEmptySeatChairItem(UUID viewerId, Player viewer) {
+        boolean viewerSeatedElsewhere = viewerId != null && playerSeats.containsKey(viewerId);
+        String key = viewerSeatedElsewhere ? "blackjack.seat-taken-elsewhere" : "blackjack.click-sit";
+        return createCustomItem(Material.OAK_STAIRS, localize(viewer, key), 1);
+    }
+
+    /**
+     * The canonical bet-spot item at {@code seatSlot} as {@code viewerId}
+     * should see it right now -- the single source of truth every bet-spot
+     * repaint (sitting, leaving, committing/undoing/doubling/splitting a
+     * wager, a turn change, the active-phase transition, and bootstrap) all
+     * funnel through:
+     * <ul>
+     *   <li>An empty seat is always blank brown edge glass, for every
+     *       viewer, in every phase -- a permanent part of the table's edge,
+     *       never cleared to the green background.</li>
+     *   <li>The seat's own occupant keeps the existing click-to-bet
+     *       (pregame) / permanent glowing-on-turn (active) item, carrying
+     *       their own wager lore once it's nonzero.</li>
+     *   <li>Any other viewer sees "{name}'s betting circle" instead --
+     *       carrying the same wager lore once nonzero, and glowing while
+     *       it's that seat's turn, so the shared "whose turn is it" cue
+     *       survives becoming per-viewer.</li>
+     * </ul>
+     */
+    private ItemStack buildBetSpotItemForViewer(int seatSlot, UUID viewerId, Player viewer) {
+        UUID occupant = seatOwnerAt(seatSlot);
+        if (occupant == null) {
+            return buildBrownEdgeGlassItem();
+        }
+        BlackjackHand hand = activeHand(occupant);
+        double wager = hand != null ? hand.getWager() : totalBet(occupant);
+        boolean glowing = gameActive && occupant.equals(currentPlayerId);
+        if (occupant.equals(viewerId)) {
+            ItemStack item = gameActive
+                ? buildActiveBetSpotItem(glowing)
+                : createCustomItem(Material.BROWN_STAINED_GLASS_PANE, localize(viewer, "blackjack.click-bet"), 1);
+            return withWagerLore(item, wager, viewer);
+        }
+        Player owner = Bukkit.getPlayer(occupant);
+        String displayName = localize(viewer, "blackjack.other-betting-circle", "name", owner != null ? owner.getName() : "?");
+        ItemStack item = glowing
+            ? createGlowingCustomItem(Material.BROWN_STAINED_GLASS_PANE, displayName, 1)
+            : createCustomItem(Material.BROWN_STAINED_GLASS_PANE, displayName, 1);
+        return withWagerLore(item, wager, viewer);
+    }
+
+    /** Repaints {@code seatSlot}'s bet spot for the legacy inventory and every open view via {@link #buildBetSpotItemForViewer} -- the single fan-out every bet-spot-affecting event calls. */
+    private void renderBetSpotToAllViews(int seatSlot) {
+        int betSpotSlot = BlackjackSlotLayout.betSlipSlot(seatSlot);
+        inventory.setItem(betSpotSlot, buildBetSpotItemForViewer(seatSlot, null, null));
+        for (BlackjackView view : views.values()) {
+            Player viewer = Bukkit.getPlayer(view.getPlayerId());
+            view.getInventory().setItem(betSpotSlot, buildBetSpotItemForViewer(seatSlot, view.getPlayerId(), viewer));
+        }
+    }
+
+    /** Repaints {@code seatSlot}'s chair icon (now empty) for the legacy inventory and every open view via {@link #buildEmptySeatChairItem}. */
+    private void renderEmptySeatChairToAllViews(int seatSlot) {
+        inventory.setItem(seatSlot, buildEmptySeatChairItem(null, null));
+        for (BlackjackView view : views.values()) {
+            Player viewer = Bukkit.getPlayer(view.getPlayerId());
+            view.getInventory().setItem(seatSlot, buildEmptySeatChairItem(view.getPlayerId(), viewer));
+        }
     }
 
     /**
@@ -1886,6 +2040,12 @@ private void registerListener() {
         // sequence) is deliberately untouched here -- see
         // cancelPrivateAnimation's doc and BlackjackAnimationRun's class doc.
         cancelPrivateAnimation(player.getUniqueId());
+        // Closing this viewer also discards their wager bar's own slide
+        // position state -- a reopen bootstraps position 8/0 fresh from
+        // canonical seated status (see bootstrapView), never resuming a
+        // stale mid-slide value from before the close.
+        wagerBarPosition.remove(player.getUniqueId());
+        wagerBarTarget.remove(player.getUniqueId());
         handlePlayerClose(player);
     }
 
@@ -2369,11 +2529,11 @@ private void registerListener() {
     private void refreshCardGlow(UUID previousPlayerId, UUID newCurrentPlayerId) {
         if (previousPlayerId != null && !previousPlayerId.equals(newCurrentPlayerId)) {
             reRenderHand(previousPlayerId, false);
-            reRenderBetSpot(previousPlayerId, false);
+            reRenderBetSpot(previousPlayerId);
         }
         if (newCurrentPlayerId != null) {
             reRenderHand(newCurrentPlayerId, true);
-            reRenderBetSpot(newCurrentPlayerId, true);
+            reRenderBetSpot(newCurrentPlayerId);
         }
     }
 
@@ -2382,8 +2542,8 @@ private void registerListener() {
         return glowing ? createGlowingCustomItem(Material.BROWN_STAINED_GLASS_PANE, "§r", 1) : buildBrownEdgeGlassItem();
     }
 
-    /** Re-renders a seated player's permanent bet spot with the given glow state, preserving its wager lore. No-op if the player isn't seated. */
-    private void reRenderBetSpot(UUID playerId, boolean glowing) {
+    /** Re-renders a seated player's permanent bet spot via {@link #renderBetSpotToAllViews} -- the glow state is derived live from {@code currentPlayerId} (already updated by the caller before this runs), so it self-corrects without needing to be passed in. No-op if the player isn't seated. */
+    private void reRenderBetSpot(UUID playerId) {
         if (playerId == null) {
             return;
         }
@@ -2391,13 +2551,7 @@ private void registerListener() {
         if (seatSlot == null) {
             return;
         }
-        int betSpotSlot = BlackjackSlotLayout.betSlipSlot(seatSlot);
-        double wager = totalBet(playerId);
-        inventory.setItem(betSpotSlot, withWagerLore(buildActiveBetSpotItem(glowing), wager, null));
-        for (BlackjackView view : views.values()) {
-            Player viewer = Bukkit.getPlayer(view.getPlayerId());
-            view.getInventory().setItem(betSpotSlot, withWagerLore(buildActiveBetSpotItem(glowing), wager, viewer));
-        }
+        renderBetSpotToAllViews(seatSlot);
     }
 
     /** Whether {@code slot} is still within the row the card was dealt to -- see BlackjackSlotLayout's bounded row. */
@@ -2433,23 +2587,23 @@ private void registerListener() {
             UUID playerId = seatOwnerAt(seatSlot);
             if (playerId != null) {
                 renderToAllViews(seatSlot, createPlayerHeadItem(Bukkit.getPlayer(playerId), 1));
+            } else {
+                // Personalized per viewer: "click to sit" normally, or a
+                // redirect to their own chair for a viewer already seated
+                // elsewhere -- see buildEmptySeatChairItem.
+                renderEmptySeatChairToAllViews(seatSlot);
             }
         }
         // Add the necessary items for the game menu
         renderLocalizedToAllViews(dealerHeadSlot, Material.CREEPER_HEAD, 1, "blackjack.dealer"); // Dealer
         // The status clock is added when the timer starts.
 
-        // Add empty seats
-        for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
-            if (seatOwnerAt(seatSlot) == null) {
-                renderLocalizedToAllViews(seatSlot, Material.OAK_STAIRS, 1, "blackjack.click-sit");
-            }
-        }
         sittable=true;
 
-        // Add bet spots (permanent brown glass -- the only betting UI element)
+        // Add bet spots (permanent brown glass -- the only betting UI
+        // element, personalized per viewer -- see buildBetSpotItemForViewer).
         for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
-            renderLocalizedToAllViews(BlackjackSlotLayout.betSlipSlot(seatSlot), Material.BROWN_STAINED_GLASS_PANE, 1, "blackjack.click-bet");
+            renderBetSpotToAllViews(seatSlot);
         }
 
         // Add the pregame bottom bar -- per-viewer: seated viewers get the
@@ -2464,6 +2618,10 @@ private void registerListener() {
             } else {
                 paintUnseatedBottomBar(view.getInventory(), viewer);
             }
+            // Canonical repaint -- resync the wager bar's slide position to
+            // match (never leaves a stale mid-slide value from before a
+            // reset/cancel wiped it, see cancelAllAnimations).
+            syncWagerBarPositionToCanonicalResting(view.getPlayerId());
         }
         //addItem(createCustomItem(Material.SHEARS, "Split"), 39); // Split
         //addItem(createCustomItem(Material.TOTEM_OF_UNDYING, "Insurance"), 40); // Insurance
@@ -2546,6 +2704,18 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
         // Betting slips don't exist during active play -- nothing else to route.
     }
         else { // Handle clicks in the game menu before the game starts
+        // The wager bar's controls (45-53) visually shift slots while the
+        // solid strip is mid-slide -- a click there would otherwise route
+        // through whichever *final* control normally owns that slot number,
+        // triggering the wrong Undo/chip/All-In/door action. Only gate this
+        // narrow range: seat/head clicks fall outside it and must stay live
+        // so a rapid sit/unsit can keep reversing the animation.
+        if (slot >= BlackjackSlotLayout.UNDO_ALL_SLOT && slot <= BlackjackSlotLayout.PREGAME_EXIT_SLOT) {
+            int position = currentWagerBarPosition(playerId);
+            if (position != BlackjackWagerRevealPlan.CLOSED && position != BlackjackWagerRevealPlan.OPEN) {
+                return;
+            }
+        }
         if (isPlayerHeadSlot(slot, player)) { // Handle clicking own player head
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
@@ -3630,6 +3800,11 @@ private void handleDoubleDown(Player player) {
         playerSeats.put(playerId, slot);
         SessionRegistry.register(playerId, this);
 
+        // Now that this seat is occupied, every other viewer's bet spot for
+        // it must switch from blank brown to "{name}'s betting circle" --
+        // see buildBetSpotItemForViewer.
+        renderBetSpotToAllViews(slot);
+
         // Sitting completes chair guidance for this player for the round --
         // never restarted by a later leave/reseat/repaint this same round
         // (see chairGuidanceCompleted's own doc); only the next genuine
@@ -3716,7 +3891,12 @@ private void handleLeaveChair(Player player, boolean animateConceal) {
         // GUI is closing right behind this call (or some other caller
         // opted out of the animation) -- an animated conceal would just
         // schedule invisible steps, so normalize to the canonical unseated
-        // bar immediately instead.
+        // bar immediately instead. removePlayerData above already cancelled
+        // any prior moving-bar callback chain (cancelPrivateAnimation); this
+        // discards its position/target state too rather than leaving a
+        // stale mid-slide value behind for whatever repaints this viewer next.
+        wagerBarPosition.put(playerId, BlackjackWagerRevealPlan.CLOSED);
+        wagerBarTarget.put(playerId, BlackjackWagerRevealPlan.CLOSED);
         paintUnseatedBottomBarForViewer(playerId);
     }
 
@@ -3785,9 +3965,6 @@ private void removePlayerData(UUID playerId) {
             renderBackgroundToAllViews(BlackjackSlotLayout.playerCardSlot(seatSlot, i)); // Clear each card slot in the player's row back to the felt
         }
 
-        // Remove the player's head from the seat
-        renderLocalizedToAllViews(seatSlot, Material.OAK_STAIRS, 1, "blackjack.click-sit");
-
         // Remove player's data from tracking maps
         playerHands.remove(playerId);
         activeHandIndex.remove(playerId);
@@ -3803,6 +3980,14 @@ private void removePlayerData(UUID playerId) {
         // Remove player from seat map
         playerSeats.remove(playerId);
         SessionRegistry.unregister(playerId, this);
+
+        // Repaint the now-empty seat and its bet spot for every viewer,
+        // personalized per viewer -- must run after playerSeats.remove
+        // above, so seatOwnerAt/buildEmptySeatChairItem both see the seat
+        // as genuinely empty (and, for the other viewers' own seated
+        // status, correctly still reflect their own chair, not this one).
+        renderEmptySeatChairToAllViews(seatSlot);
+        renderBetSpotToAllViews(seatSlot);
 
         // Ensure player is removed from active turns
         if (playerIterator != null) {
@@ -4353,12 +4538,10 @@ private void removePlayerData(UUID playerId) {
             renderBackgroundToAllViews(slot);
         }
         for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
-            UUID occupant = seatOwnerAt(seatSlot);
-            if (occupant != null) {
-                reRenderBetSpot(occupant, false);
-            } else {
-                renderBackgroundToAllViews(BlackjackSlotLayout.betSlipSlot(seatSlot));
-            }
+            // Brown is a permanent part of the table's edge -- an empty
+            // seat's bet spot must never be cleared to the green
+            // background, here or anywhere else. See buildBetSpotItemForViewer.
+            renderBetSpotToAllViews(seatSlot);
         }
         renderLocalizedToAllViews(BlackjackSlotLayout.ACTIVE_EXIT_SLOT, Material.SPRUCE_DOOR, 1, "blackjack.leave-exit");
         renderToAllViews(BlackjackSlotLayout.TURN_TIMER_SLOT, buildBrownEdgeGlassItem()); // idle until the first player's turn actually starts -- see startTurnTimer
@@ -6325,6 +6508,16 @@ public void delete() {
     /** @return this player's live {@link BlackjackView}, so a test can force a genuine close/reopen (see {@link #onViewClosed}/{@link #getOrCreateView}) instead of only exercising the incremental refresh path. */
     BlackjackView viewForTest(UUID playerId) {
         return views.get(playerId);
+    }
+
+    /** @return this player's live wager bar slide position (0-8, see {@link BlackjackWagerRevealPlan#CLOSED}/{@link BlackjackWagerRevealPlan#OPEN}), defaulting to their canonical resting frame if nothing is tracked yet. */
+    int wagerBarPositionForTest(UUID playerId) {
+        return currentWagerBarPosition(playerId);
+    }
+
+    /** @return this player's current wager bar slide target, or null if none has ever been requested. */
+    Integer wagerBarTargetForTest(UUID playerId) {
+        return wagerBarTarget.get(playerId);
     }
 
 }

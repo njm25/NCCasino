@@ -34,8 +34,8 @@ import static org.mockito.Mockito.verify;
  */
 class BlackjackWagerBarTransitionIntegrationTest {
 
-    /** Full reveal or conceal pass: 9 steps * WAGER_REVEAL_STEP_TICKS(4), plus slack for the chained follow-up call. */
-    private static final long FULL_TRANSITION_TICKS = 9 * BlackjackTiming.WAGER_REVEAL_STEP_TICKS + 4;
+    /** Full reveal or conceal pass: 8 frame transitions (CLOSED to OPEN, one tick per frame), plus slack for the chained follow-up call. */
+    private static final long FULL_TRANSITION_TICKS = (BlackjackWagerRevealPlan.OPEN - BlackjackWagerRevealPlan.CLOSED) * BlackjackTiming.WAGER_REVEAL_STEP_TICKS + 2;
 
     private static BlackjackControllerTestSupport.Harness newTable() {
         return BlackjackControllerTestSupport.newHarness();
@@ -354,6 +354,13 @@ class BlackjackWagerBarTransitionIntegrationTest {
             int seatSlot = BlackjackSlotLayout.SEAT_SLOTS[0];
             Player alice = openUnseated(h, id, "Alice");
             h.click(alice, seatSlot);
+            // A second player stays seated so alice leaving isn't the
+            // table's last seat -- otherwise removePlayerData's own
+            // cancelGame() (last-seat teardown) would already resync her
+            // bar to canonical CLOSED synchronously, leaving nothing
+            // in-flight for this test to actually exercise.
+            Player bob = openUnseated(h, UUID.randomUUID(), "Bob");
+            h.click(bob, BlackjackSlotLayout.SEAT_SLOTS[1]);
             h.scheduler.advance(FULL_TRANSITION_TICKS);
             h.click(alice, seatSlot); // leave -- starts conceal
             assertTrue(h.inventory.hasPrivateAnimationForTest(id));
@@ -396,6 +403,9 @@ class BlackjackWagerBarTransitionIntegrationTest {
             int seatSlot = BlackjackSlotLayout.SEAT_SLOTS[0];
             Player alice = openUnseated(h, id, "Alice");
             h.click(alice, seatSlot);
+            // Keep a second seat filled -- see closingTheViewCancelsPendingPrivateConcealSteps's own comment.
+            Player bob = openUnseated(h, UUID.randomUUID(), "Bob");
+            h.click(bob, BlackjackSlotLayout.SEAT_SLOTS[1]);
             h.scheduler.advance(FULL_TRANSITION_TICKS);
             h.click(alice, seatSlot); // leave -- starts conceal
             assertTrue(h.inventory.hasPrivateAnimationForTest(id));
@@ -413,6 +423,9 @@ class BlackjackWagerBarTransitionIntegrationTest {
             int seatSlot = BlackjackSlotLayout.SEAT_SLOTS[0];
             Player alice = openUnseated(h, id, "Alice");
             h.click(alice, seatSlot);
+            // Keep a second seat filled -- see closingTheViewCancelsPendingPrivateConcealSteps's own comment.
+            Player bob = openUnseated(h, UUID.randomUUID(), "Bob");
+            h.click(bob, BlackjackSlotLayout.SEAT_SLOTS[1]);
             h.scheduler.advance(FULL_TRANSITION_TICKS);
             h.click(alice, seatSlot); // leave -- starts conceal
             assertTrue(h.inventory.hasPrivateAnimationForTest(id));
