@@ -225,6 +225,19 @@ final class BlackjackControllerTestSupport {
 
     /** @param dealerConfig pre-seeded {@code dealers.<name>.<key>} entries (dotted key -> value), applied before construction. */
     static Harness newHarness(Map<String, Object> dealerConfig) {
+        return newHarness(dealerConfig, CurrencyMode.VAULT);
+    }
+
+    /**
+     * @param dealerConfig pre-seeded {@code dealers.<name>.<key>} entries (dotted key -> value), applied before construction.
+     * @param currencyMode the {@code BlackjackInventory}-internal currency mode ({@code plugin.getCurrencyMode(internalName)}) --
+     *     independent of the actual funds-movement provider below, which always behaves like an exact-decimal Vault
+     *     regardless of this value (see {@code FakeVaultCurrencyProvider}). This is enough to exercise every
+     *     currency-mode-*decision* branch (insurance offer rounding, eligibility, display formatting) without needing
+     *     a genuine physical-item inventory simulation -- a debit of any whole-unit amount this mode's rounding
+     *     produces still succeeds exactly, the same way it would need to for a real physical currency.
+     */
+    static Harness newHarness(Map<String, Object> dealerConfig, CurrencyMode currencyMode) {
         UUID dealerId = UUID.randomUUID();
         String internalName = "test-table";
 
@@ -280,7 +293,7 @@ final class BlackjackControllerTestSupport {
         Nccasino plugin = mock(Nccasino.class);
         when(plugin.getConfig()).thenReturn(config);
         when(plugin.getLogger()).thenReturn(java.util.logging.Logger.getLogger("BlackjackControllerTest"));
-        when(plugin.getCurrencyMode(anyString())).thenReturn(CurrencyMode.VAULT);
+        when(plugin.getCurrencyMode(anyString())).thenReturn(currencyMode);
         when(plugin.getCurrencyName(anyString())).thenReturn("Dollar");
         when(plugin.getCurrency(anyString())).thenReturn(org.bukkit.Material.EMERALD);
         when(plugin.formatWagerDisplay(any(CurrencyMode.class), anyString(), org.mockito.ArgumentMatchers.anyDouble()))

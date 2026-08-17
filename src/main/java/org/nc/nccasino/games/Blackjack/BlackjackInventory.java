@@ -177,6 +177,31 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     private final Set<UUID> insuranceDecided = new HashSet<>();
     /** Players who took insurance, and how much they staked (already debited) -- paid out 2:1+stake only if the dealer's peek finds blackjack. */
     private final Map<UUID, Double> insuranceStakes = new HashMap<>();
+    /**
+     * Every eligible player's exact offered insurance cost, computed and
+     * stored exactly once per player when the offer is created (see
+     * {@link #beginInsurancePhase}) -- never recomputed at display,
+     * acceptance, debit, payout, timeout, abort, or teardown time. Distinct
+     * from {@link #insuranceStakes}: an entry here exists for every eligible
+     * player the instant the offer opens, regardless of whether they ever
+     * accept it, while a {@code insuranceStakes} entry exists only once
+     * money has actually been debited. For Vault, the offer is the exact
+     * fractional half of the wager; for physical (whole-unit) currency, it's
+     * the whole-unit cost {@link #insuranceRoundingCoinFlip} resolved to,
+     * exactly once, when the wager is odd.
+     */
+    private final Map<UUID, Double> insuranceOfferedCost = new HashMap<>();
+    /**
+     * The single 50/50 decision seam an odd physical wager's insurance
+     * offer resolves through -- {@code true} rounds the half-unit cost up,
+     * {@code false} rounds it down. Defaults to a real coin flip; tests
+     * substitute a deterministic supplier via
+     * {@link #setInsuranceRoundingCoinFlipForTest} to force either
+     * direction without any statistical/flaky assertion. Never consulted
+     * for Vault (exact fractional cost) or an even physical wager (already
+     * a whole unit) -- see {@link #computeAndStoreInsuranceOffer}.
+     */
+    private java.util.function.BooleanSupplier insuranceRoundingCoinFlip = () -> java.util.concurrent.ThreadLocalRandom.current().nextBoolean();
     private int insuranceTaskId = -1;
     private int insuranceSecondsRemaining;
     /**
@@ -1500,38 +1525,14 @@ private void registerListener() {
      * had it removed by the client destroying the dragged stack).
      *
      * <p>Also the single choke point both the selected-wager and
-     * cursor-drag commit paths funnel through, so it's where
-     * {@link BlackjackInsuranceWagerPolicy} is enforced: while insurance is
-     * enabled and this isn't Vault (which supports exact fractional
-     * balances), a commit that would leave an odd whole-item total is
-     * refunded and rejected instead of silently going through with a
-     * half-wager insurance stake that could never be exactly debited later.
+     * cursor-drag commit paths funnel through. Odd whole-item wagers are
+     * fully eligible for insurance (see {@link BlackjackInsuranceRules#physicalCost}
+     * and {@code BlackjackInventory#computeAndStoreInsuranceOffer}), so
+     * nothing here rejects a commit based on parity -- this always
+     * succeeds once the funds have genuinely been removed.
      */
     private boolean commitWagerFundsAlreadyRemoved(Player player, UUID playerId, int betSpotSlot, double amount) {
         java.util.Deque<Double> increments = pregameWagerIncrements.computeIfAbsent(playerId, k -> new java.util.ArrayDeque<>());
-        double prospectiveTotal = BlackjackWagerLedger.total(increments) + amount;
-        boolean vaultMode = currencyMode == CurrencyMode.VAULT;
-        if (!BlackjackInsuranceWagerPolicy.isRepresentable(prospectiveTotal, insuranceEnabled, vaultMode)) {
-            // Funds for `amount` were already removed by the caller (either
-            // debited directly, or destroyed by a cursor-drag) -- refund
-            // rather than leave an insurance-incompatible odd total in place.
-            // A failed live credit here (offline is not possible mid-click,
-            // but a Vault deposit can still fail) must queue rather than
-            // silently drop this rollback.
-            if (!addWagerToInventory(player, amount)) {
-                queuePendingRefund(playerId, amount);
-            }
-            switch (plugin.getPreferences(playerId).getMessageSetting()) {
-                case NONE:
-                    break;
-                default:
-                    player.sendMessage(text(player, "blackjack.wager-not-insurance-compatible"));
-            }
-            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
-            }
-            return false;
-        }
         BlackjackWagerLedger.commit(increments, amount);
         syncPlayerBetsFromLedger(playerId, betSpotSlot);
         lastBetAmounts.computeIfAbsent(playerId, k -> new ArrayList<>()).add(amount);
@@ -3554,6 +3555,7 @@ private void handleDoubleDown(Player player) {
             refundRoundDebit(playerId, totalRoundRefundForPlayer(playerId), messageKey);
         }
         insuranceStakes.clear();
+        insuranceOfferedCost.clear();
         resetGame();
     }
 
@@ -3809,6 +3811,7 @@ private void removePlayerData(UUID playerId) {
         insuranceEligiblePlayers.remove(playerId);
         insuranceDecided.remove(playerId);
         insuranceStakes.remove(playerId);
+        insuranceOfferedCost.remove(playerId);
         if (insurancePhaseActive) {
             checkInsuranceAllDecided();
         }
@@ -4498,9 +4501,18 @@ private void beginInsurancePhase(long myGeneration) {
     insuranceEligiblePlayers.addAll(eligible);
     insuranceDecided.clear();
     insuranceStakes.clear();
+    insuranceOfferedCost.clear();
     insuranceSecondsRemaining = insuranceTimeoutSeconds;
 
     for (UUID playerId : eligible) {
+        // The offer is generated and stored right here, exactly once --
+        // every later read (display, acceptance/debit, payout, timeout,
+        // abort, teardown) looks this value up rather than ever
+        // recomputing it. See computeAndStoreInsuranceOffer's own doc for
+        // why that matters: recomputing a physical-currency offer would
+        // risk a second, different coin flip.
+        BlackjackHand hand = activeHand(playerId);
+        computeAndStoreInsuranceOffer(playerId, hand != null ? hand.getOriginalPreSplitWager() : 0.0);
         renderInsurancePromptForPlayer(playerId);
     }
 
@@ -4533,6 +4545,35 @@ private void beginInsurancePhase(long myGeneration) {
     }, 0L, 20L);
 }
 
+/**
+ * Computes {@code playerId}'s exact insurance offer for this round and
+ * stores it in {@link #insuranceOfferedCost} -- the single point where
+ * this cost is ever calculated. Vault preserves the exact fractional
+ * half (12.5 off a 25 wager stays 12.5); every other currency mode is
+ * whole-unit-only, so an odd wager's exact half lands precisely on a
+ * half-unit, and {@link #insuranceRoundingCoinFlip} is consulted exactly
+ * once, right here, to pick the whole-unit direction. An even physical
+ * wager's half is already a whole unit, so the coin flip is never
+ * consulted at all in that case -- there is nothing to decide.
+ */
+private double computeAndStoreInsuranceOffer(UUID playerId, double originalPreSplitWager) {
+    double offer;
+    if (currencyMode == CurrencyMode.VAULT) {
+        offer = BlackjackInsuranceRules.cost(originalPreSplitWager);
+    } else {
+        long wholeWager = Math.round(originalPreSplitWager);
+        boolean roundUp = wholeWager % 2 != 0 && insuranceRoundingCoinFlip.getAsBoolean();
+        offer = BlackjackInsuranceRules.physicalCost(originalPreSplitWager, roundUp);
+    }
+    insuranceOfferedCost.put(playerId, offer);
+    return offer;
+}
+
+/** Substitutes a deterministic decider for {@link #insuranceRoundingCoinFlip} so a test can force either physical-rounding direction without any statistical/flaky assertion. */
+void setInsuranceRoundingCoinFlipForTest(java.util.function.BooleanSupplier decider) {
+    this.insuranceRoundingCoinFlip = decider;
+}
+
 /** Records {@code playerId}'s Yes/No insurance decision, or does nothing (stays clickable) if Yes was chosen but they can't afford it. */
 private void handleInsuranceDecision(Player player, boolean takeInsurance) {
     UUID playerId = player.getUniqueId();
@@ -4541,8 +4582,11 @@ private void handleInsuranceDecision(Player player, boolean takeInsurance) {
     }
 
     if (takeInsurance) {
-        BlackjackHand hand = activeHand(playerId);
-        double cost = hand != null ? BlackjackInsuranceRules.cost(hand.getOriginalPreSplitWager()) : 0.0;
+        // The exact offer stored when this phase began -- never
+        // recomputed here. Recomputing would, for a physical-currency odd
+        // wager, risk a second coin flip landing on a different whole
+        // unit than what was ever displayed/offered.
+        double cost = insuranceOfferedCost.getOrDefault(playerId, 0.0);
         if (cost <= 0 || !hasEnoughWager(player, cost)) {
             // Insufficient funds -- still clickable (per the plan), just
             // localized feedback; their decision is NOT consumed, so they
@@ -4666,6 +4710,7 @@ private void performDealerPeekThenProceed(long myGeneration) {
     if (BlackjackRules.isNaturalBlackjack(dealerHand)) {
         payInsuranceWinners();
         insuranceStakes.clear();
+        insuranceOfferedCost.clear();
         revealDealerHoleCardNow();
         for (UUID playerId : playerSeats.keySet()) {
             Player player = Bukkit.getPlayer(playerId);
@@ -4687,6 +4732,7 @@ private void performDealerPeekThenProceed(long myGeneration) {
     } else {
         forfeitInsuranceStakes();
         insuranceStakes.clear();
+        insuranceOfferedCost.clear();
         beginPlayerTurns(myGeneration);
     }
 }
@@ -4791,6 +4837,7 @@ private void stopInsurancePhaseBookkeeping() {
     insuranceEligiblePlayers.clear();
     insuranceDecided.clear();
     insuranceStakes.clear();
+    insuranceOfferedCost.clear();
     stopTurnTimerTask();
 }
 
@@ -6176,6 +6223,21 @@ public void delete() {
     }
 
     /**
+     * Forces the exact same shoe-exhaustion/readiness-gate abort-and-refund
+     * path production reaches from {@code abortRoundForShoeExhaustion}/the
+     * start-transition readiness gate, at any point a test needs it --
+     * including mid-insurance-decision, which neither of those two real
+     * triggers can naturally reach (shoe exhaustion only occurs during
+     * turn-based play, well after insurance has already resolved and
+     * cleared its own stakes; the readiness gate only fires before any card
+     * is even dealt). Test setup only -- see {@code abortRoundAndRefund}'s
+     * own doc for what this actually refunds.
+     */
+    void abortRoundAndRefundForTest(String messageKey) {
+        abortRoundAndRefund(messageKey);
+    }
+
+    /**
      * Drives the exact genuine-round-boundary reset production code reaches
      * from finishGame/abortRoundForShoeExhaustion, without needing to play
      * an entire round of card-dealing/turns/dealer-play through the
@@ -6205,6 +6267,16 @@ public void delete() {
 
     double insuranceStakeForTest(UUID playerId) {
         return insuranceStakes.getOrDefault(playerId, 0.0);
+    }
+
+    /** @return the player's exact stored insurance offer, or null if none is currently open for them. */
+    Double insuranceOfferedCostForTest(UUID playerId) {
+        return insuranceOfferedCost.get(playerId);
+    }
+
+    /** @return this table's configured insurance decision duration in seconds -- {@code insurance.timeout-seconds}, defaulting to {@link BlackjackTiming#INSURANCE_TIMEOUT_DEFAULT_SECONDS}. */
+    int insuranceTimeoutSecondsForTest() {
+        return insuranceTimeoutSeconds;
     }
 
     /** @return the player's current wager-selection tool, or null if they haven't selected one. */

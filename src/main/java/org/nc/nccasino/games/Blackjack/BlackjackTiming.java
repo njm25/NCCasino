@@ -54,7 +54,7 @@ public final class BlackjackTiming {
     public static final long SPLIT_ANIMATION_STEP_TICKS = 10L;
 
     /** Default insurance decision timeout, in seconds, before it auto-resolves to No. */
-    public static final int INSURANCE_TIMEOUT_DEFAULT_SECONDS = 10;
+    public static final int INSURANCE_TIMEOUT_DEFAULT_SECONDS = 25;
 
     // ---- Start transition (Phase 4) ---------------------------------------
 

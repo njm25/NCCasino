@@ -22,9 +22,35 @@ public final class BlackjackInsuranceRules {
     private BlackjackInsuranceRules() {
     }
 
-    /** Insurance costs exactly half the hand's original pre-split wager. */
+    /** Insurance costs exactly half the hand's original pre-split wager -- exact, including any fractional half (e.g. 25.0 -> 12.5). Only ever correct for a currency that supports fractional balances (Vault); see {@link #physicalCost} for whole-unit currencies. */
     public static double cost(double originalPreSplitWager) {
         return originalPreSplitWager / 2.0;
+    }
+
+    /**
+     * Insurance cost for a whole-unit (physical item) currency: half the
+     * wager, rounded to the nearest whole unit. An even wager's half is
+     * already a whole unit and {@code roundUpOnHalfUnit} is ignored; an odd
+     * wager's exact half lands precisely on a half-unit, so
+     * {@code roundUpOnHalfUnit} decides which whole unit it becomes.
+     *
+     * <p>This is a pure function of its inputs -- it makes no random
+     * decision of its own. The caller is responsible for deciding
+     * {@code roundUpOnHalfUnit} via a single 50/50 coin flip performed
+     * exactly once, at offer creation, and reusing the resulting boolean
+     * (or the offer this produces) for every later read -- see
+     * {@code BlackjackInventory#computeAndStoreInsuranceOffer}.
+     *
+     * @param originalPreSplitWager the hand's original pre-split wager, always a whole number of items by construction
+     * @param roundUpOnHalfUnit     true rounds an odd wager's half-unit cost up, false rounds it down; ignored for an even wager
+     */
+    public static double physicalCost(double originalPreSplitWager, boolean roundUpOnHalfUnit) {
+        long wholeWager = Math.round(originalPreSplitWager);
+        long half = wholeWager / 2;
+        if (wholeWager % 2 == 0) {
+            return half;
+        }
+        return roundUpOnHalfUnit ? half + 1 : half;
     }
 
     /** Standard 2:1 insurance payout: 2x the stake as profit, plus the stake itself returned -- 3x the stake total. */

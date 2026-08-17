@@ -35,6 +35,37 @@ class BlackjackInsuranceRulesTest {
         assertEquals(0.0, BlackjackInsuranceRules.cost(0.0));
     }
 
+    // --- physicalCost: whole-unit rounding for non-Vault currencies ---
+
+    @Test
+    void physicalCostOfAnEvenWagerIsExactRegardlessOfTheRoundUpFlag() {
+        assertEquals(3.0, BlackjackInsuranceRules.physicalCost(6.0, true));
+        assertEquals(3.0, BlackjackInsuranceRules.physicalCost(6.0, false));
+        assertEquals(10.0, BlackjackInsuranceRules.physicalCost(20.0, true));
+        assertEquals(10.0, BlackjackInsuranceRules.physicalCost(20.0, false));
+    }
+
+    @Test
+    void physicalCostOfAnOddWagerRoundsDownWhenToldTo() {
+        assertEquals(2.0, BlackjackInsuranceRules.physicalCost(5.0, false));
+        assertEquals(3.0, BlackjackInsuranceRules.physicalCost(7.0, false));
+    }
+
+    @Test
+    void physicalCostOfAnOddWagerRoundsUpWhenToldTo() {
+        assertEquals(3.0, BlackjackInsuranceRules.physicalCost(5.0, true));
+        assertEquals(4.0, BlackjackInsuranceRules.physicalCost(7.0, true));
+    }
+
+    @Test
+    void physicalCostToleratesFloatingPointDriftNearAWholeNumber() {
+        // 25.0000000001 must still be read as the whole item amount 25 (odd) --
+        // never silently treated as some other, unintended parity due to
+        // float drift from an unrelated upstream computation.
+        assertEquals(12.0, BlackjackInsuranceRules.physicalCost(24.9999999999, false));
+        assertEquals(10.0, BlackjackInsuranceRules.physicalCost(20.0000000001, true));
+    }
+
     @Test
     void payoutTotalIsStakePlusTwoToOneProfit() {
         // 2:1 profit (2x stake) plus the stake itself returned == 3x stake.
