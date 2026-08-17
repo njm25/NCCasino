@@ -812,11 +812,35 @@ private void registerListener() {
 
     /** Unseated pregame/countdown bottom bar: door@45, brown edge glass@46, everything else background. */
     private void paintUnseatedBottomBar(Inventory target, Player viewer) {
-        target.setItem(BlackjackSlotLayout.UNSEATED_EXIT_SLOT, createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1));
-        target.setItem(BlackjackSlotLayout.UNSEATED_EDGE_GLASS_SLOT, buildBrownEdgeGlassItem());
-        for (int slot = BlackjackSlotLayout.UNDO_ALL_SLOT + 2; slot <= BlackjackSlotLayout.PREGAME_EXIT_SLOT; slot++) {
-            target.setItem(slot, buildBackgroundPaneItem());
+        for (int slot = BlackjackSlotLayout.UNDO_ALL_SLOT; slot <= BlackjackSlotLayout.PREGAME_EXIT_SLOT; slot++) {
+            target.setItem(slot, buildUnseatedBottomBarSlotItem(slot, viewer));
         }
+    }
+
+    /**
+     * Same per-slot interpretation as {@link #paintUnseatedBottomBar}, but
+     * written straight into one viewer's own private view rather than a
+     * caller-supplied {@link Inventory} -- used to immediately (non-
+     * animated) normalize a leaving viewer back to the canonical unseated
+     * bar when animating the conceal isn't appropriate (e.g. the GUI is
+     * closing right after).
+     */
+    private void paintUnseatedBottomBarForViewer(UUID playerId) {
+        Player viewer = Bukkit.getPlayer(playerId);
+        for (int slot = BlackjackSlotLayout.UNDO_ALL_SLOT; slot <= BlackjackSlotLayout.PREGAME_EXIT_SLOT; slot++) {
+            renderPrivateItem(playerId, slot, buildUnseatedBottomBarSlotItem(slot, viewer));
+        }
+    }
+
+    /** Single source of truth for what belongs at one bottom-bar slot for an unseated viewer -- door@45 (UNSEATED_EXIT_SLOT), brown edge glass@46 (UNSEATED_EDGE_GLASS_SLOT), background everywhere else. Reused by the full paint, the door-conceal animation step, and the immediate leave repaint. */
+    private ItemStack buildUnseatedBottomBarSlotItem(int slot, Player viewer) {
+        if (slot == BlackjackSlotLayout.UNSEATED_EXIT_SLOT) {
+            return createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1);
+        }
+        if (slot == BlackjackSlotLayout.UNSEATED_EDGE_GLASS_SLOT) {
+            return buildBrownEdgeGlassItem();
+        }
+        return buildBackgroundPaneItem();
     }
 
     /** Seated pregame/countdown bottom bar: Undo All@45, Undo Last@46, 5 chips@47-51, All In@52, door@53. */
@@ -971,6 +995,43 @@ private void registerListener() {
     private void applyWagerRevealStep(UUID playerId, BlackjackAnimationStep step) {
         Player viewer = Bukkit.getPlayer(playerId);
         renderPrivateItem(playerId, step.getSlot(), buildSeatedBottomBarSlotItem(step.getSlot(), playerId, viewer));
+    }
+
+    /**
+     * Slides the bottom bar from the full seated wager bar back to door+glass
+     * for a player who voluntarily left their chair while their GUI stays
+     * open -- the exact reverse of {@link #startWagerBarReveal}, using
+     * {@link BlackjackWagerRevealPlan#conceal} (structurally the same slot
+     * walk as {@code reveal}, reversed) and the same per-step
+     * {@link #applyDoorConcealStep} the start-transition door-conceal
+     * already uses, so there is only one interpretation of "what the
+     * unseated bar looks like" anywhere in this class. Chains into
+     * {@link #scheduleChairGuidanceStart} only once concealed, mirroring
+     * how {@code startWagerBarReveal} only hands off to wager guidance once
+     * revealed -- calling it any earlier would bump this viewer's animation
+     * generation again immediately and invalidate the very steps just
+     * scheduled here.
+     */
+    private void startWagerBarConceal(UUID playerId) {
+        int myGeneration = bumpAndGetViewerAnimationGeneration(playerId);
+        privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, roundGeneration, myGeneration, capturePhase()));
+
+        List<BlackjackAnimationStep> steps = BlackjackWagerRevealPlan.conceal(BlackjackTiming.WAGER_REVEAL_STEP_TICKS);
+        for (BlackjackAnimationStep step : steps) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (isStaleViewerAnimation(playerId, myGeneration)) {
+                    return;
+                }
+                applyDoorConcealStep(playerId, step);
+            }, step.getDelayTicks());
+        }
+        long totalTicks = steps.isEmpty() ? 0 : steps.get(steps.size() - 1).getDelayTicks() + BlackjackTiming.WAGER_REVEAL_STEP_TICKS;
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (isStaleViewerAnimation(playerId, myGeneration)) {
+                return;
+            }
+            scheduleChairGuidanceStart(playerId);
+        }, totalTicks);
     }
 
     /**
@@ -1169,16 +1230,7 @@ private void registerListener() {
 
     private void applyDoorConcealStep(UUID playerId, BlackjackAnimationStep step) {
         Player viewer = Bukkit.getPlayer(playerId);
-        int slot = step.getSlot();
-        ItemStack item;
-        if (slot == BlackjackSlotLayout.UNSEATED_EXIT_SLOT) {
-            item = createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1);
-        } else if (slot == BlackjackSlotLayout.UNSEATED_EDGE_GLASS_SLOT) {
-            item = buildBrownEdgeGlassItem();
-        } else {
-            item = buildBackgroundPaneItem();
-        }
-        renderPrivateItem(playerId, slot, item);
+        renderPrivateItem(playerId, step.getSlot(), buildUnseatedBottomBarSlotItem(step.getSlot(), viewer));
     }
 
     // ---- Shared dealer U-path inspection ---------------------------------
@@ -2511,7 +2563,11 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
                     break;
                 }
             }
-            handleLeaveChair(player);
+            // The inventory is closing right behind this call -- animating
+            // the conceal would just schedule invisible steps, so repaint
+            // the canonical unseated state immediately instead (see
+            // handleLeaveChair's animateConceal doc).
+            handleLeaveChair(player, false);
             player.closeInventory();
         } else if (BlackjackSlotLayout.isBetSlipSlot(slot)) { // Betting slips (10, 19, 28, 37)
             handleBetClick(slot, player, event);
@@ -3583,6 +3639,17 @@ private void handleDoubleDown(Player player) {
 
 // Handle leave chair during the countdown or active game
 private void handleLeaveChair(Player player) {
+    handleLeaveChair(player, true);
+}
+
+/**
+ * @param animateConceal Whether a revealed pregame wager bar should be
+ *     concealed via {@link #startWagerBarConceal} (mirroring the reveal
+ *     that ran on sit) rather than repainted immediately. False for a
+ *     leave that's about to close the viewer's inventory anyway (the
+ *     door/exit click) -- see that call site's own comment.
+ */
+private void handleLeaveChair(Player player, boolean animateConceal) {
     UUID playerId = player.getUniqueId();
 
     if (!playerSeats.containsKey(playerId)) {
@@ -3590,6 +3657,13 @@ private void handleLeaveChair(Player player) {
     }
 
      if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
+
+    // A wager bar only ever exists on this viewer's own bottom row while
+    // !gameActive (active play shows the exit+timer bar instead, painted
+    // independently of seat status -- see bootstrapView) -- captured here,
+    // before removePlayerData/gameActive can change under us, so the
+    // conceal/repaint decision below reflects what was actually on screen.
+    boolean hadWagerBar = !gameActive;
 
     // Before the deal actually starts (pregame, countdown, or the
     // start-transition window after the countdown clock is already gone
@@ -3610,8 +3684,28 @@ private void handleLeaveChair(Player player) {
     // cards or drops them from the pending turn iterator, leaving a
     // phantom turn for a seat that's already empty. removePlayerData also
     // already re-renders the seat and calls cancelGame() itself once the
-    // last seat empties.
+    // last seat empties. It also cancels this viewer's own private
+    // animation (the door-reveal/wager guidance/bet-spot blink that may
+    // still be running), so the conceal started below always begins its
+    // own fresh generation rather than racing an old one.
     removePlayerData(playerId);
+
+    if (hadWagerBar && animateConceal) {
+        // Mirrors the reveal that ran on sit; chains into
+        // scheduleChairGuidanceStart itself once fully concealed (see that
+        // method's doc for why chair guidance can't be kicked off here
+        // directly without immediately invalidating these very steps).
+        startWagerBarConceal(playerId);
+        return;
+    }
+
+    if (hadWagerBar) {
+        // GUI is closing right behind this call (or some other caller
+        // opted out of the animation) -- an animated conceal would just
+        // schedule invisible steps, so normalize to the canonical unseated
+        // bar immediately instead.
+        paintUnseatedBottomBarForViewer(playerId);
+    }
 
     // This path never closes the viewer's inventory (unlike the door/exit
     // click) -- they're back to being an unseated viewer of the same open
