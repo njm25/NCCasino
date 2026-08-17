@@ -135,6 +135,19 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     // start-transition attempt. Cleared at the start of every
     // beginStartTransition call; read by isReadyToDeal's polling gate.
     private final Set<UUID> startTransitionDoorConcealComplete = new HashSet<>();
+    // The exact set of players who were seated at the moment
+    // beginStartTransition snapshotted them for door-conceal (see
+    // beginStartTransition) -- isReadyToDeal awaits only these players, by
+    // id, never the live playerSeats set. This is deliberate, independent
+    // defense-in-depth alongside handleChairClick's own startTransitionActive
+    // rejection: even if a seat is mutated unexpectedly during the
+    // transition (a late join that somehow slips past that guard, a future
+    // code path that doesn't know about this phase), a player absent from
+    // this snapshot can never be awaited -- and a snapshotted player who
+    // later leaves (see removePlayerData) simply stops being awaited too,
+    // since isReadyToDeal only requires still-seated snapshot members to
+    // have completed conceal. Cleared alongside startTransitionDoorConcealComplete.
+    private final Set<UUID> startTransitionSeatedSnapshot = new HashSet<>();
 
     // ---- Insurance (Phase 5) --------------------------------------------
     // Its own explicit phase, never mixed into turn state -- see
@@ -152,8 +165,12 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     private final Map<UUID, Double> insuranceStakes = new HashMap<>();
     private int insuranceTaskId = -1;
     private int insuranceSecondsRemaining;
-    /** {@code dealers.<name>.insurance.enabled}, loaded once at construction (default true). */
-    private final boolean insuranceEnabled;
+    /**
+     * {@code dealers.<name>.insurance.enabled}, loaded at construction
+     * (default true), then live-patchable by {@link #setInsuranceEnabledLive}
+     * -- see that method's doc for exactly when a live change takes effect.
+     */
+    private boolean insuranceEnabled;
     /** {@code dealers.<name>.insurance.timeout-seconds}, clamped [1,60] (default {@link BlackjackTiming#INSURANCE_TIMEOUT_DEFAULT_SECONDS}). */
     private final int insuranceTimeoutSeconds;
 
@@ -168,8 +185,12 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     // task on its own next tick, and startNextPlayerTurn/handleHit start a
     // fresh one). When disabled, slot 46 simply never leaves its brown
     // edge-glass idle state.
-    /** {@code dealers.<name>.turn-timer.enabled}, loaded once at construction (default true). */
-    private final boolean turnTimerEnabled;
+    /**
+     * {@code dealers.<name>.turn-timer.enabled}, loaded at construction
+     * (default true), then live-patchable by {@link #setTurnTimerEnabledLive}
+     * -- see that method's doc for exactly when a live change takes effect.
+     */
+    private boolean turnTimerEnabled;
     /** {@code dealers.<name>.turn-timer.timeout-seconds}, clamped [1,60] (default 20). */
     private final int turnTimerTimeoutSeconds;
     private int turnTimerTaskId = -1;
@@ -193,10 +214,18 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     // hand queue. See BlackjackSplitEligibility/BlackjackSplitMatching/
     // BlackjackMaxHands for the pure eligibility/matching mechanics this
     // config feeds.
-    /** {@code dealers.<name>.splitting.enabled}, default true. */
-    private final boolean splittingEnabled;
-    /** {@code dealers.<name>.splitting.matching}, default SAME_RANK. */
-    private final BlackjackSplitMatching splitMatching;
+    /**
+     * {@code dealers.<name>.splitting.enabled}, default true, then
+     * live-patchable by {@link #setSplittingEnabledLive} -- see that
+     * method's doc for exactly when a live change takes effect.
+     */
+    private boolean splittingEnabled;
+    /**
+     * {@code dealers.<name>.splitting.matching}, default SAME_RANK, then
+     * live-patchable by {@link #setSplitMatchingLive} -- see that method's
+     * doc for exactly when a live change takes effect.
+     */
+    private BlackjackSplitMatching splitMatching;
     /** {@code dealers.<name>.splitting.max-hands}, default UNBOUNDED. Applies per player, never table-wide. */
     private final BlackjackMaxHands maxHands;
     /** {@code dealers.<name>.splitting.double-after-split}, default true. */
@@ -449,6 +478,65 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
 
 private void registerListener() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
+    }
+
+    // ---- Live-patchable settings ------------------------------------------
+    // A single-click boolean toggle or matching-rule cycle in BlackjackMenu
+    // must never destroy a live table (committed wagers, an in-progress
+    // round, or even just seated players) or close the admin's own settings
+    // menu as an unwanted side effect of persisting the new value -- both of
+    // which used to happen because every settings change, however small,
+    // went through plugin.reloadDealer(), which deletes and recreates this
+    // entire controller (see BlackjackInventory#delete/cancelGame). These
+    // four settings are exactly the ones BlackjackMenu's own boolean/cycle
+    // toggles touch (see BlackjackMenu#handleToggleBoolean/
+    // handleToggleSplitMatching) -- the menu now calls these directly on the
+    // live controller instead of reloading, so config persists to disk and
+    // this instance's own field is updated in the same click, with no
+    // deletion/recreation at all.
+    //
+    // Effective timing, precisely: the new value is read live by every
+    // future evaluation from this point on (including any decision still in
+    // progress this same round -- e.g. disabling splitting immediately
+    // removes Split from a not-yet-decided hand's available actions), but
+    // never retroactively changes anything already resolved, and never
+    // touches an in-flight timer's own already-captured
+    // turnTimerTimeoutSeconds/insuranceTimeoutSeconds snapshot (those are
+    // captured once when a fresh deadline starts -- see startTurnTimer/
+    // beginInsurancePhase -- so a length-only edit, which still goes through
+    // the reload path below, correctly applies at the next controller
+    // creation, not retroactively to a deadline already ticking).
+    //
+    // Every *other* settings edit (numeric timeouts/lengths, max-hands,
+    // stand-on-17, deck count, the pregame timer) still goes through
+    // plugin.reloadDealer() and therefore still deletes and recreates this
+    // controller -- but delete() itself is now economically safe (every
+    // committed wager/hand/split/double/insurance stake is refunded or
+    // durably queued first, see delete()'s own doc), so even that path can
+    // no longer destroy money. Consolidating every one of those onto the
+    // same live-patch model this method demonstrates is deliberately left
+    // for a later round of work, not attempted here.
+
+    /** Live-patches {@code insurance.enabled} for this already-running table -- see the class-level "Live-patchable settings" note for exact timing. */
+    public void setInsuranceEnabledLive(boolean enabled) {
+        this.insuranceEnabled = enabled;
+    }
+
+    /** Live-patches {@code splitting.enabled} for this already-running table -- see the class-level "Live-patchable settings" note for exact timing. */
+    public void setSplittingEnabledLive(boolean enabled) {
+        this.splittingEnabled = enabled;
+    }
+
+    /** Live-patches {@code turn-timer.enabled} for this already-running table -- see the class-level "Live-patchable settings" note for exact timing. Disabling mid-decision does not cancel an already-running deadline (see stopTurnTimerTask's own identity-guarded lifecycle); it takes effect the next time a fresh deadline would otherwise start. */
+    public void setTurnTimerEnabledLive(boolean enabled) {
+        this.turnTimerEnabled = enabled;
+    }
+
+    /** Live-patches {@code splitting.matching} for this already-running table -- see the class-level "Live-patchable settings" note for exact timing. */
+    public void setSplitMatchingLive(BlackjackSplitMatching matching) {
+        if (matching != null) {
+            this.splitMatching = matching;
+        }
     }
 
 
@@ -977,6 +1065,8 @@ private void registerListener() {
         startTransitionDoorConcealComplete.clear();
 
         List<UUID> seatedPlayers = new ArrayList<>(playerSeats.keySet());
+        startTransitionSeatedSnapshot.clear();
+        startTransitionSeatedSnapshot.addAll(seatedPlayers);
         for (UUID playerId : seatedPlayers) {
             // Stops wager guidance / bet-spot blink for anyone still
             // mid-selection -- only players with a committed wager get
@@ -1101,8 +1191,25 @@ private void registerListener() {
      * activateGame() entry point. A stale roundGeneration (table
      * reset/cancelled, or a brand-new round already begun) simply stops
      * the polling loop instead of ever opening the gate.
+     *
+     * <p>Bounded by {@link BlackjackTiming#START_TRANSITION_READINESS_MAX_POLLS}
+     * -- this is deliberate defense-in-depth against ever polling forever,
+     * on top of (not instead of) {@link #isReadyToDeal}'s own snapshot-based
+     * guard against being permanently stalled by an unexpected seat
+     * mutation. Under entirely normal conditions this bound is never even
+     * approached (door-conceal/dealer-inspection are fixed, short
+     * animations); if it's ever actually reached, that means some
+     * start-transition invariant this method doesn't know how to satisfy
+     * has been violated, so rather than deal cards against inconsistent
+     * player/animation state, the round is safely aborted and every seated
+     * player is refunded (see {@link #abortRoundAndRefund}), with a
+     * high-severity log entry for admin diagnosis.
      */
     private void scheduleDealReadinessCheck(long myRoundGeneration) {
+        scheduleDealReadinessCheck(myRoundGeneration, 0);
+    }
+
+    private void scheduleDealReadinessCheck(long myRoundGeneration, int attempt) {
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (roundGeneration != myRoundGeneration) {
                 return;
@@ -1110,19 +1217,43 @@ private void registerListener() {
             if (isReadyToDeal()) {
                 startTransitionActive = false;
                 activateGame();
-            } else {
-                scheduleDealReadinessCheck(myRoundGeneration);
+                return;
             }
+            int nextAttempt = attempt + 1;
+            if (nextAttempt >= BlackjackTiming.START_TRANSITION_READINESS_MAX_POLLS) {
+                plugin.getLogger().severe("[NCCasino] Blackjack start-transition readiness gate for dealer '"
+                    + internalName + "' never resolved after " + nextAttempt + " polls (round generation "
+                    + myRoundGeneration + ") -- aborting the round and refunding every seated player rather than "
+                    + "polling forever or dealing against inconsistent player/animation state. This should never "
+                    + "happen under normal operation and likely indicates a stuck animation or an unexpected seat "
+                    + "mutation during the start transition.");
+                abortRoundAndRefund("blackjack.start-transition-failed-refunded");
+                return;
+            }
+            scheduleDealReadinessCheck(myRoundGeneration, nextAttempt);
         }, BlackjackTiming.START_TRANSITION_READINESS_POLL_TICKS);
     }
 
     /**
      * True once: the dealer has actually arrived at its in-play head slot,
-     * the pregame countdown clock is gone for good, and every seated
-     * viewer's door-conceal has finished (which also implies none of them
+     * the pregame countdown clock is gone for good, and every player who
+     * was actually seated at the moment the start transition began (see
+     * {@link #startTransitionSeatedSnapshot}) and is <em>still</em> seated
+     * now has finished their door-conceal (which also implies none of them
      * are still in a door-revealed/wager-guide/bet-spot-blink lobby state,
      * since beginStartTransition force-cancelled all of those before
      * conceal ever started).
+     *
+     * <p>Deliberately awaits {@code startTransitionSeatedSnapshot}, never
+     * the live {@code playerSeats}: a player seated after the snapshot was
+     * taken was never scheduled a door-conceal sequence at all (see
+     * beginStartTransition/startDoorConceal) and must never be able to
+     * block this gate -- {@code handleChairClick} already rejects seating
+     * during this phase, but this is independent, redundant protection
+     * against that exact deadlock even if some other path mutates
+     * {@code playerSeats} unexpectedly. A snapshotted player who leaves
+     * mid-transition (removePlayerData removes them from playerSeats)
+     * correctly stops being awaited, rather than blocking the gate forever.
      */
     private boolean isReadyToDeal() {
         if (dealerHeadSlot != BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT) {
@@ -1131,8 +1262,8 @@ private void registerListener() {
         if (countdownTaskId != -1) {
             return false;
         }
-        for (UUID playerId : playerSeats.keySet()) {
-            if (!startTransitionDoorConcealComplete.contains(playerId)) {
+        for (UUID playerId : startTransitionSeatedSnapshot) {
+            if (playerSeats.containsKey(playerId) && !startTransitionDoorConcealComplete.contains(playerId)) {
                 return false;
             }
         }
@@ -1409,11 +1540,19 @@ private void registerListener() {
 
         if (active) {
             target.setItem(BlackjackSlotLayout.ACTIVE_EXIT_SLOT, createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1));
-            // Idle brown edge-glass fallback -- a late viewer bootstrapping
-            // mid-decision doesn't get the live countdown text (its exact
-            // seconds-remaining isn't part of BlackjackFrame), but never
-            // sees an empty/background slot 46 either.
-            target.setItem(BlackjackSlotLayout.TURN_TIMER_SLOT, buildBrownEdgeGlassItem());
+            // Table-wide, like the insurance countdown just below: if the
+            // canonical turn-timer deadline is genuinely live right now,
+            // every viewer bootstrapping (spectator or seated) must see the
+            // exact remaining time immediately, not the idle fallback until
+            // the next scheduled tick corrects it up to ~1s later. Never
+            // starts or extends anything -- purely reads existing canonical
+            // state (see isTurnTimerCanonicallyActive) the same way the
+            // running task's own ticks already validate it.
+            if (isTurnTimerCanonicallyActive()) {
+                target.setItem(BlackjackSlotLayout.TURN_TIMER_SLOT, buildTurnTimerItem(viewer, turnTimerSecondsRemaining));
+            } else {
+                target.setItem(BlackjackSlotLayout.TURN_TIMER_SLOT, buildBrownEdgeGlassItem());
+            }
         } else if (playerSeats.containsKey(view.getPlayerId())) {
             paintSeatedBottomBar(target, viewer, view.getPlayerId());
         } else {
@@ -2452,7 +2591,13 @@ private void handlePlayerAction(Player player, int slot) {
         }
 
         if (slot == dealerHeadSlot) {
+            // Fully handled here -- an easter-egg click is never a game
+            // action, so it must never fall through into turn-active/
+            // action-lookup below (which would treat it as an invalid
+            // action and produce a spurious denial sound, chat message,
+            // and repaint on top of the easter egg's own feedback).
             handleDealerHeadEasterEgg(player);
+            return;
         }
 
         // Check if the player's turn is still active
@@ -3244,15 +3389,29 @@ private void handleDoubleDown(Player player) {
 
     /**
      * Aborts the entire round because the shoe cannot immediately continue
-     * supplying it, refunding every debit of that round (original wagers,
-     * split wagers, double wagers, insurance stakes -- see
-     * {@link #totalRoundRefundForPlayer}) to every seated player, then
-     * resets for the next round. Never pays out or settles hands -- the
+     * supplying it, refunding every debit of that round via
+     * {@link #abortRoundAndRefund}. Never pays out or settles hands -- the
      * round simply never happened.
      */
     private void abortRoundForShoeExhaustion() {
+        abortRoundAndRefund("blackjack.shoe-exhausted-refunded");
+    }
+
+    /**
+     * Aborts the entire round for any reason that means it can never
+     * legitimately be dealt/finished (shoe exhaustion, a start-transition
+     * readiness gate that never resolved), refunding every debit of that
+     * round (original wagers, split wagers, double wagers, insurance
+     * stakes -- see {@link #totalRoundRefundForPlayer}) to every seated
+     * player -- delivered live when possible, durably queued otherwise, per
+     * {@link #refundRoundDebit} -- then resets for the next round. Never
+     * pays out or settles hands; the round simply never happened. The
+     * single choke point both abort reasons funnel through, so refund
+     * accounting can never drift between them.
+     */
+    private void abortRoundAndRefund(String messageKey) {
         for (UUID playerId : new ArrayList<>(playerSeats.keySet())) {
-            refundRoundDebit(playerId, totalRoundRefundForPlayer(playerId), "blackjack.shoe-exhausted-refunded");
+            refundRoundDebit(playerId, totalRoundRefundForPlayer(playerId), messageKey);
         }
         insuranceStakes.clear();
         resetGame();
@@ -3261,6 +3420,22 @@ private void handleDoubleDown(Player player) {
     // Handle chair click
     private void handleChairClick(int slot, Player player) {
         UUID playerId = player.getUniqueId();
+
+        // Once the countdown hits zero and the start-transition begins, no
+        // new seat can be taken -- matches the identical guard already on
+        // chip selection, All In, and bet placement (see beginStartTransition).
+        // Without this, a player seating mid-transition is never included in
+        // startTransitionDoorConcealComplete (only the snapshot captured at
+        // beginStartTransition is), which used to stall isReadyToDeal's gate
+        // forever; isReadyToDeal is now also defended against this
+        // independently (it only ever awaits that same snapshot), but
+        // rejecting the seat here is what stops the late player from seeing
+        // an apparently-usable wager bar whose clicks are then silently
+        // rejected by every one of those sibling guards.
+        if (startTransitionActive) {
+            return;
+        }
+
         ItemStack clickedItem = inventory.getItem(slot);
 
         // Check if the player is already sitting in a chair
@@ -4584,12 +4759,36 @@ private void resumeTurnTimerAfterFailedAction(UUID playerId) {
     runTurnTimerTask();
 }
 
-private void renderTurnTimerToAllViews(int secondsLeft) {
+/**
+ * True only if the canonical turn-timer deadline ({@code turnTimer*}
+ * fields) genuinely still belongs to a live, actionable hand right now --
+ * the exact same identity contract the timer's own ticks and
+ * {@link #resumeTurnTimerAfterFailedAction} already validate before
+ * touching it, exposed read-only here so {@link #bootstrapView} can
+ * render the exact remaining time for a freshly created view instead of
+ * always falling back to idle brown glass. Purely a query: never mutates
+ * anything and never resolves a timeout itself, even if the canonical
+ * seconds have already reached zero -- that stays the running task's job.
+ */
+private boolean isTurnTimerCanonicallyActive() {
+    if (!turnTimerEnabled || turnTimerPlayerId == null || turnTimerSecondsRemaining <= 0) {
+        return false;
+    }
+    return !isStaleHandCallback(turnTimerPlayerId, turnTimerRoundGeneration, turnTimerHandToken)
+        && resolveExpectedHand(turnTimerPlayerId, turnTimerRoundGeneration, turnTimerHandId, turnTimerExpectedHandGeneration, BlackjackHandCallbackGuard.ExpectedHandState.ACTIONABLE) != null;
+}
+
+/** The clock item for slot 46 showing {@code secondsLeft}, localized for {@code viewer} (or the server default if {@code null}, e.g. the shared legacy inventory). */
+private ItemStack buildTurnTimerItem(Player viewer, int secondsLeft) {
     int amount = Math.max(secondsLeft, 1);
-    inventory.setItem(BlackjackSlotLayout.TURN_TIMER_SLOT, createCustomItem(Material.CLOCK, text("blackjack.turn-timer-lore", "seconds", secondsLeft), amount));
+    return createCustomItem(Material.CLOCK, localize(viewer, "blackjack.turn-timer-lore", "seconds", secondsLeft), amount);
+}
+
+private void renderTurnTimerToAllViews(int secondsLeft) {
+    inventory.setItem(BlackjackSlotLayout.TURN_TIMER_SLOT, buildTurnTimerItem(null, secondsLeft));
     for (BlackjackView view : views.values()) {
         Player viewer = Bukkit.getPlayer(view.getPlayerId());
-        view.getInventory().setItem(BlackjackSlotLayout.TURN_TIMER_SLOT, createCustomItem(Material.CLOCK, localize(viewer, "blackjack.turn-timer-lore", "seconds", secondsLeft), amount));
+        view.getInventory().setItem(BlackjackSlotLayout.TURN_TIMER_SLOT, buildTurnTimerItem(viewer, secondsLeft));
     }
 }
 
@@ -5297,6 +5496,7 @@ private void resetGame() {
     dealerHeadSlot = BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT;
     startTransitionActive = false;
     startTransitionDoorConcealComplete.clear();
+    startTransitionSeatedSnapshot.clear();
     stopInsurancePhaseBookkeeping();
     playerTurnActive.clear();
 
@@ -5441,7 +5641,40 @@ private void dealCardToPlayer(int slot, Card card, UUID playerId) {
 }
 
 
+/**
+ * Tears this controller down completely -- reached whenever a dealer is
+ * administratively reloaded, replaced, or removed (see
+ * Nccasino#deleteAssociatedInventories/#reloadDealer), and from
+ * DealerInventory#cleanupAll on plugin shutdown. Economically safe: every
+ * seated player's full stake for whatever round is in progress (committed
+ * pregame wager, every split/double-down debit, any still-undetermined
+ * insurance stake) is refunded or durably queued <em>before</em> any of
+ * that state is cleared -- see the refund loop below. A selected-but-
+ * uncommitted wager is correctly never refunded, since it was never
+ * debited in the first place (totalRoundRefundForPlayer never reads
+ * selectedWager). Idempotent: a duplicate call (this instance already
+ * deleted) is a safe, logged no-op rather than a double refund or an NPE
+ * against already-cleared state.
+ */
 public void delete() {
+    if (inventory == null) {
+        plugin.getLogger().warning("[NCCasino] Blackjack delete() called again for dealer " + dealerId
+            + " after it was already deleted -- ignoring the duplicate teardown.");
+        return;
+    }
+
+    // Refund every seated player's complete stake for the round in
+    // progress -- delivered live when the credit actually confirms,
+    // durably queued otherwise (offline recipient, or a failed live Vault
+    // deposit), exactly like abortRoundAndRefund/refundPendingBets already
+    // do for their own teardown reasons. This must run before cancelGame()
+    // below, which is what actually clears playerHands/playerBets/
+    // pregameWagerIncrements/insuranceStakes -- refunding after that point
+    // would have nothing left to read.
+    for (UUID seatedPlayerId : new ArrayList<>(playerSeats.keySet())) {
+        refundRoundDebit(seatedPlayerId, totalRoundRefundForPlayer(seatedPlayerId), "blackjack.table-reset-refunded");
+    }
+
     // Stop any ongoing game operations
     cancelGame();
 
@@ -5460,6 +5693,7 @@ public void delete() {
     dealerHeadSlot = BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT;
     startTransitionActive = false;
     startTransitionDoorConcealComplete.clear();
+    startTransitionSeatedSnapshot.clear();
     stopInsurancePhaseBookkeeping();
     roundGeneration++;
     dealerSequenceToken++;
@@ -5525,6 +5759,7 @@ public void delete() {
         dealerHeadSlot = BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT;
         startTransitionActive = false;
         startTransitionDoorConcealComplete.clear();
+        startTransitionSeatedSnapshot.clear();
         stopInsurancePhaseBookkeeping();
         playerTurnActive.clear();
 
@@ -5669,6 +5904,94 @@ public void delete() {
 
     private String text(Player player, String key, Object... placeholders) {
         return plugin.getLocalization().text(player, key, placeholders);
+    }
+
+    // ---- Test-only accessors (package-private; zero production callers) ---
+    // A narrow, explicit seam for BlackjackControllerTestSupport and the
+    // controller-level integration tests in this same package -- exposes
+    // just enough read access and a few of this class's own already-private
+    // lifecycle/trigger methods to drive and observe genuine controller
+    // behavior, rather than duplicating this class's logic in a parallel
+    // test simulation. Nothing here is reachable from production code
+    // outside this package.
+
+    int playerSeatsSizeForTest() {
+        return playerSeats.size();
+    }
+
+    Set<UUID> seatedPlayerIdsForTest() {
+        return new HashSet<>(playerSeats.keySet());
+    }
+
+    boolean isSeatedForTest(UUID playerId) {
+        return playerSeats.containsKey(playerId);
+    }
+
+    boolean isGameActiveForTest() {
+        return gameActive;
+    }
+
+    boolean isStartTransitionActiveForTest() {
+        return startTransitionActive;
+    }
+
+    int turnTimerSecondsRemainingForTest() {
+        return turnTimerSecondsRemaining;
+    }
+
+    int turnTimerTaskIdForTest() {
+        return turnTimerTaskId;
+    }
+
+    UUID currentPlayerIdForTest() {
+        return currentPlayerId;
+    }
+
+    BlackjackFrame.Phase capturePhaseForTest() {
+        return capturePhase();
+    }
+
+    double totalRoundRefundForPlayerForTest(UUID playerId) {
+        return totalRoundRefundForPlayer(playerId);
+    }
+
+    void stackDeckForTest(List<Card> cardsInDealOrder) {
+        deck.stackForTest(cardsInDealOrder);
+    }
+
+    /** Commits {@code amount} as {@code player}'s pregame wager via the real commitWager path -- test setup only; {@code player} must already be seated. */
+    WagerCommitResult commitWagerForTest(Player player, double amount) {
+        UUID playerId = player.getUniqueId();
+        Integer seatSlot = playerSeats.get(playerId);
+        if (seatSlot == null) {
+            throw new IllegalStateException("commitWagerForTest requires an already-seated player");
+        }
+        int betSpotSlot = BlackjackSlotLayout.betSlipSlot(seatSlot);
+        return commitWager(player, playerId, betSpotSlot, amount);
+    }
+
+    void beginStartTransitionForTest() {
+        beginStartTransition();
+    }
+
+    /**
+     * Simulates the exact "unexpected seat mutation" isReadyToDeal's
+     * snapshot-based defense is meant to survive: a seat that entered
+     * {@code startTransitionSeatedSnapshot}/{@code playerSeats} without
+     * ever being scheduled a door-conceal sequence (since that only
+     * happens inside beginStartTransition's own loop, already finished by
+     * the time this runs) -- so it can never complete and, absent the
+     * bounded-poll fallback in scheduleDealReadinessCheck, would stall the
+     * readiness gate forever. Only reachable from this package's own
+     * integration tests.
+     */
+    void forceUnsatisfiableReadinessForTest(UUID stuckPlayerId, int seatSlot) {
+        playerSeats.put(stuckPlayerId, seatSlot);
+        startTransitionSeatedSnapshot.add(stuckPlayerId);
+    }
+
+    double insuranceStakeForTest(UUID playerId) {
+        return insuranceStakes.getOrDefault(playerId, 0.0);
     }
 
 }

@@ -494,6 +494,8 @@ blackjack:
   split-success: "&aHand split!"
   resplit-offer: "&aSplit again!"
   shoe-exhausted-refunded: "&eThe shoe ran out mid-round -- refunded {amount}."
+  start-transition-failed-refunded: "&eThe round couldn't start -- refunded {amount}."
+  table-reset-refunded: "&eThe table was reset by an admin -- refunded {amount}."
 
 dragon-settings:
   title: "{dealer}'s Dragon Descent Settings"

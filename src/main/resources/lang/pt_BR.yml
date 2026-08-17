@@ -494,6 +494,8 @@ blackjack:
   split-success: "&aMão dividida!"
   resplit-offer: "&aDivida de novo!"
   shoe-exhausted-refunded: "&eO baralho acabou no meio da rodada -- {amount} reembolsado."
+  start-transition-failed-refunded: "&eA rodada não pôde começar -- {amount} reembolsado."
+  table-reset-refunded: "&eA mesa foi reiniciada por um administrador -- {amount} reembolsado."
 
 dragon-settings:
   title: "Configurações de Descida do Dragão de {dealer}"

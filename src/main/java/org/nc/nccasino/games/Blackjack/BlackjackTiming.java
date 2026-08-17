@@ -65,4 +65,16 @@ public final class BlackjackTiming {
      * busy-loop, per the table redesign plan.
      */
     public static final long START_TRANSITION_READINESS_POLL_TICKS = 5L;
+
+    /**
+     * Hard cap on the number of readiness-gate polls before giving up and
+     * safely aborting the round instead of polling forever -- defense in
+     * depth against a stuck animation or an unexpected seat mutation
+     * leaving {@code isReadyToDeal} permanently unsatisfiable. At the
+     * default {@link #START_TRANSITION_READINESS_POLL_TICKS} interval this
+     * is 120 * 5 = 600 ticks (30 seconds), comfortably longer than any
+     * legitimate door-conceal/dealer-inspection sequence, which is fixed
+     * and short by construction.
+     */
+    public static final int START_TRANSITION_READINESS_MAX_POLLS = 120;
 }

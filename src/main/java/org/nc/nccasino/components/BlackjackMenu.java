@@ -20,8 +20,10 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.games.Blackjack.BlackjackInventory;
 import org.nc.nccasino.games.Blackjack.BlackjackMaxHandsInputParser;
 import org.nc.nccasino.games.Blackjack.BlackjackMenuChatRouting;
 import org.nc.nccasino.games.Blackjack.BlackjackSplitMatching;
@@ -278,7 +280,7 @@ public class BlackjackMenu extends Menu {
                 playDefaultSound(player);
                 break;
             case TOGGLE_INSURANCE_ENABLED:
-                handleToggleBoolean("insurance.enabled", true, this::renderInsuranceToggle, "blackjack-settings.insurance-updated");
+                handleToggleBoolean("insurance.enabled", true, this::renderInsuranceToggle, "blackjack-settings.insurance-updated", BlackjackInventory::setInsuranceEnabledLive);
                 playDefaultSound(player);
                 break;
             case EDIT_INSURANCE_TIMEOUT:
@@ -286,7 +288,7 @@ public class BlackjackMenu extends Menu {
                 playDefaultSound(player);
                 break;
             case TOGGLE_SPLITTING_ENABLED:
-                handleToggleBoolean("splitting.enabled", true, this::renderSplittingToggle, "blackjack-settings.splitting-updated");
+                handleToggleBoolean("splitting.enabled", true, this::renderSplittingToggle, "blackjack-settings.splitting-updated", BlackjackInventory::setSplittingEnabledLive);
                 playDefaultSound(player);
                 break;
             case TOGGLE_SPLIT_MATCHING:
@@ -298,7 +300,7 @@ public class BlackjackMenu extends Menu {
                 playDefaultSound(player);
                 break;
             case TOGGLE_TURN_TIMER_ENABLED:
-                handleToggleBoolean("turn-timer.enabled", true, this::renderTurnTimerToggle, "blackjack-settings.turn-timer-updated");
+                handleToggleBoolean("turn-timer.enabled", true, this::renderTurnTimerToggle, "blackjack-settings.turn-timer-updated", BlackjackInventory::setTurnTimerEnabledLive);
                 playDefaultSound(player);
                 break;
             case EDIT_TURN_TIMER_TIMEOUT:
@@ -322,8 +324,29 @@ public class BlackjackMenu extends Menu {
         }
     }
 
-    /** Left-click toggles the boolean immediately: flips, persists with a single saveConfig, reloads the dealer, and repaints the item in place -- no chat prompt involved. */
-    private void handleToggleBoolean(String configKey, boolean defaultValue, Runnable render, String updatedMessageKey) {
+    /**
+     * The live, already-running {@link BlackjackInventory} for this dealer,
+     * if one exists -- {@code null} if nobody has ever opened the table yet
+     * (nothing to live-patch or destroy) or this dealer isn't currently a
+     * Blackjack game at all.
+     */
+    private BlackjackInventory liveBlackjackInventory() {
+        DealerInventory inv = DealerInventory.getInventory(dealerId);
+        return inv instanceof BlackjackInventory blackjack ? blackjack : null;
+    }
+
+    /**
+     * Left-click toggles the boolean immediately: flips, persists with a
+     * single saveConfig, then applies the new value to the live table in
+     * place via {@code liveSetter} -- never deleting/recreating the
+     * controller, so a live round, committed wagers, and even just seated
+     * players are completely undisturbed, and the admin's own settings menu
+     * (a {@code Menu} tied to this same dealer) is never force-closed as a
+     * side effect the way a {@code reloadDealer} call used to. Falls back to
+     * the old reload path only when there's no live table to patch yet
+     * (nothing at risk either way in that case).
+     */
+    private void handleToggleBoolean(String configKey, boolean defaultValue, Runnable render, String updatedMessageKey, java.util.function.BiConsumer<BlackjackInventory, Boolean> liveSetter) {
         if (dealer == null) {
             return;
         }
@@ -331,7 +354,12 @@ public class BlackjackMenu extends Menu {
         boolean next = !plugin.getConfig().getBoolean(path, defaultValue);
         plugin.getConfig().set(path, next);
         plugin.saveConfig();
-        plugin.reloadDealer(dealer);
+        BlackjackInventory live = liveBlackjackInventory();
+        if (live != null) {
+            liveSetter.accept(live, next);
+        } else {
+            plugin.reloadDealer(dealer);
+        }
         render.run();
         if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null) {
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER, 1.0f, 1.0f);
@@ -344,6 +372,7 @@ public class BlackjackMenu extends Menu {
         }
     }
 
+    /** Same live-patch-first, reload-only-as-fallback approach as {@link #handleToggleBoolean} -- see its doc. */
     private void handleToggleSplitMatching() {
         if (dealer == null) {
             return;
@@ -352,7 +381,12 @@ public class BlackjackMenu extends Menu {
             ? BlackjackSplitMatching.SAME_VALUE : BlackjackSplitMatching.SAME_RANK;
         plugin.getConfig().set("dealers." + internalName() + ".splitting.matching", next.name());
         plugin.saveConfig();
-        plugin.reloadDealer(dealer);
+        BlackjackInventory live = liveBlackjackInventory();
+        if (live != null) {
+            live.setSplitMatchingLive(next);
+        } else {
+            plugin.reloadDealer(dealer);
+        }
         renderSplitMatchingToggle();
         if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null) {
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER, 1.0f, 1.0f);
