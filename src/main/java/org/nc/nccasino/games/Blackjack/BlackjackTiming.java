@@ -51,6 +51,15 @@ public final class BlackjackTiming {
      * 36 ticks total).
      */
     public static final long WAGER_REVEAL_STEP_TICKS = 1L;
+    /**
+     * Ticks per frame of the Blackjack settings menu's collapsible-section
+     * slide (see {@code BlackjackMenu#layoutMenuAnimated}) -- a parent
+     * toggle's dependent entries appearing/disappearing slide the
+     * remaining entries into place one slot per tick, the same
+     * one-frame-per-tick feel as {@link #WAGER_REVEAL_STEP_TICKS}, instead
+     * of an instant jump-cut relayout.
+     */
+    public static final long MENU_RELAYOUT_STEP_TICKS = 1L;
     /** Normal per-slot travel time along the dealer's start-transition U-path. */
     public static final long DEALER_INSPECTION_STEP_TICKS = 5L;
     /** Extra time added on top of the base step when the dealer inspects a seat with a committed wager. */

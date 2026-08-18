@@ -4,31 +4,31 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The slide-out/deal/deal/park/reactivate step <em>shape</em> for a split:
- * the acting card slides out into its own hand, a replacement card deals
- * into each of the two hands, the pending sibling hand parks (no visible
- * slot -- see the table redesign plan's "Split rendering" section), and the
- * next pending hand (if any) reactivates into the seat's visible row.
+ * The visible split sequence's pure step shape -- staged so a viewer can
+ * actually see two hands come into being, rather than the second card
+ * silently vanishing while a replacement appears in its place. Using
+ * zero-based card-cell indices within the acting seat's row (0 = the
+ * original hand's first card, "A"; 1 = its original second card, "B"):
  *
- * <p>Real split mechanics (matching rules, max-hands, ace-resplit,
- * depth-first hand-queue ordering, per-hand wagers/payout) are implemented
- * in {@link BlackjackSplitEligibility}, {@link BlackjackSplitQueue}, and
- * {@link BlackjackHand}, wired into gameplay by
- * {@code BlackjackInventory#handleSplit}. That runtime uses this class's
- * first three steps' shape (SLIDE_OUT/DEAL/DEAL, each on a fixed delay,
- * scheduled as a shared/table-owned {@link BlackjackAnimationRun} per the
- * plan -- every viewer sees the same canonical timeline) but deliberately
- * does <b>not</b> call {@link #build} to get PARK/REACTIVATE too: a parked
- * hand needs no actual step (it's simply never rendered, since pending
- * hands have no visible slot at all -- see the "Split rendering" section),
- * and reactivation cannot live on this plan's fixed timeline at all -- it
- * must fire whenever the currently-active hand naturally finishes (which
- * may be many further Hits, or another split, later), never a fixed delay
- * after the original split. The runtime's own
- * {@code BlackjackInventory#activateSplitHand}/{@code resolveHandAfterSplitAnimation}
- * implement that data-driven reactivation instead, reusing PARK/REACTIVATE's
- * exact semantics (full card-row repaint from scratch, since a pending
- * hand's cards were never rendered) without a fixed step delay.
+ * <pre>
+ * Initial:              [A][B]
+ * Phase 1 (slide B out): [A]      [B]        -- B moves to its temporary slot (index 3)
+ * Phase 2 (deal C):      [A][C]   [B]        -- the still-active hand's replacement card
+ * Phase 3 (deal D):      [A][C]   [B][D]     -- the pending sibling's replacement card
+ * Phase 4 (park, step 1):[A][C] [B][D]       -- the inactive pair slides one cell left, into the gap (index 2/3)
+ * Phase 5 (park, step 2):[A][C]              -- temporary slots clear; only the active hand remains visible
+ * </pre>
+ *
+ * Phase 6 (returning control / split-ace auto-resolution) is not a rendering
+ * step at all -- it's {@code BlackjackInventory#resolveHandAfterSplitAnimation},
+ * which reuses {@code activateSplitHand}'s own activation logic once the
+ * sibling hand is later actually reached, exactly as before this redesign.
+ *
+ * <p>The sibling hand is never actually shown "parked" anywhere -- like
+ * before this redesign, a pending hand has no visible slot at all (see the
+ * table redesign plan's "Split rendering" section); this plan only makes
+ * the moment it becomes pending, and the moment its own replacement card
+ * lands, genuinely visible before it disappears from view.
  */
 public final class BlackjackSplitAnimationPlan {
 
@@ -36,38 +36,51 @@ public final class BlackjackSplitAnimationPlan {
     }
 
     /**
-     * @param splitCardFromSlot         the card cell the split-off card currently occupies
-     * @param firstHandReplacementSlot  where the original hand's replacement card lands
-     * @param secondHandReplacementSlot where the newly-split hand's replacement card lands
-     * @param pendingHandParkSlot       the seat's head/marker slot, used only to identify which seat parked (no card cell is ever written for a parked hand)
-     * @param nextHandReactivateSlot    the first card cell the next-activated hand renders into
-     * @param stepTicks                 delay between successive steps
+     * @param seatSlot  the acting player's own seat slot (0/9/18/27/36)
+     * @param stepTicks delay between successive phases
      */
-    public static List<BlackjackAnimationStep> build(
-        int splitCardFromSlot,
-        int firstHandReplacementSlot,
-        int secondHandReplacementSlot,
-        int pendingHandParkSlot,
-        int nextHandReactivateSlot,
-        long stepTicks
-    ) {
+    public static List<BlackjackAnimationStep> build(int seatSlot, long stepTicks) {
+        int slotOrigB = BlackjackSlotLayout.playerCardSlot(seatSlot, 1); // also becomes C's slot in phase 2
+        int slotGap = BlackjackSlotLayout.playerCardSlot(seatSlot, 2);
+        int slotTempB = BlackjackSlotLayout.playerCardSlot(seatSlot, 3);
+        int slotTempD = BlackjackSlotLayout.playerCardSlot(seatSlot, 4);
+
         List<BlackjackAnimationStep> steps = new ArrayList<>();
         long delay = 0;
 
-        steps.add(new BlackjackAnimationStep(splitCardFromSlot, delay, BlackjackAnimationStep.Kind.SLIDE_OUT));
+        // Phase 1: B slides out to its temporary right-hand position --
+        // this is the moment the split genuinely becomes two hands.
+        steps.add(new BlackjackAnimationStep(slotOrigB, delay, BlackjackAnimationStep.Kind.SLIDE_OUT));
+        steps.add(new BlackjackAnimationStep(slotTempB, delay, BlackjackAnimationStep.Kind.MOVE));
         delay += stepTicks;
 
-        steps.add(new BlackjackAnimationStep(firstHandReplacementSlot, delay, BlackjackAnimationStep.Kind.DEAL));
+        // Phase 2: C deals in beside A, into the slot B just vacated.
+        steps.add(new BlackjackAnimationStep(slotOrigB, delay, BlackjackAnimationStep.Kind.DEAL));
         delay += stepTicks;
 
-        steps.add(new BlackjackAnimationStep(secondHandReplacementSlot, delay, BlackjackAnimationStep.Kind.DEAL));
+        // Phase 3: D deals in beside temp-B.
+        steps.add(new BlackjackAnimationStep(slotTempD, delay, BlackjackAnimationStep.Kind.DEAL));
         delay += stepTicks;
 
-        steps.add(new BlackjackAnimationStep(pendingHandParkSlot, delay, BlackjackAnimationStep.Kind.PARK));
+        // Phase 4: the inactive [B][D] pair slides one visible step left,
+        // into the unused gap cell -- never touching A/C's real slots.
+        steps.add(new BlackjackAnimationStep(slotGap, delay, BlackjackAnimationStep.Kind.MOVE));   // B -> gap
+        steps.add(new BlackjackAnimationStep(slotTempB, delay, BlackjackAnimationStep.Kind.MOVE)); // D -> old temp-B slot
         delay += stepTicks;
 
-        steps.add(new BlackjackAnimationStep(nextHandReactivateSlot, delay, BlackjackAnimationStep.Kind.REACTIVATE));
+        // Phase 5: park -- clear the temporary slots. Two ItemStacks can't
+        // share one Minecraft slot, so "parked under the active hand"
+        // resolves to simply no longer being rendered anywhere, exactly
+        // like every other pending hand.
+        steps.add(new BlackjackAnimationStep(slotGap, delay, BlackjackAnimationStep.Kind.PARK));
+        steps.add(new BlackjackAnimationStep(slotTempB, delay, BlackjackAnimationStep.Kind.PARK));
+        steps.add(new BlackjackAnimationStep(slotTempD, delay, BlackjackAnimationStep.Kind.PARK));
 
         return steps;
+    }
+
+    /** Total ticks the full phase 1-5 sequence takes -- derived from {@link #build}'s own shape, per phase count. */
+    public static long durationTicks(long stepTicks) {
+        return 4 * stepTicks;
     }
 }

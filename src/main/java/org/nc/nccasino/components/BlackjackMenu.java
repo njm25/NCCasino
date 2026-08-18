@@ -28,6 +28,7 @@ import org.nc.nccasino.games.Blackjack.BlackjackInventory;
 import org.nc.nccasino.games.Blackjack.BlackjackMaxHandsInputParser;
 import org.nc.nccasino.games.Blackjack.BlackjackMenuChatRouting;
 import org.nc.nccasino.games.Blackjack.BlackjackSplitMatching;
+import org.nc.nccasino.games.Blackjack.BlackjackTiming;
 import org.nc.nccasino.helpers.SoundHelper;
 
 public class BlackjackMenu extends Menu {
@@ -38,6 +39,15 @@ public class BlackjackMenu extends Menu {
     private Nccasino plugin;
     private String returnName;
     private Mob dealer;
+    /**
+     * True while {@link #layoutMenuAnimated()}'s slide is still running --
+     * gates {@link #handleCustomClick} so a click can never land on a
+     * control that's mid-slide toward a slot it doesn't actually occupy
+     * yet. This menu is one instance per admin viewer (unlike the live
+     * table's wager bar), so there's no multi-viewer/reversibility concern
+     * to handle -- a click is simply ignored until the short slide finishes.
+     */
+    private boolean relayoutInProgress = false;
     public static final Map<UUID, BlackjackMenu> BAInventories = new HashMap<>();
 
     public BlackjackMenu(UUID dealerId,Player player, String title, Consumer<Player> ret, Nccasino plugin,String returnName) {
@@ -195,13 +205,14 @@ public class BlackjackMenu extends Menu {
      * Repaints the entire settings list from scratch using {@link #computeLayout}:
      * every slot no longer used by any entry is blanked back to empty; Exit
      * is always pinned at {@code MENU_SIZE - 1}, last, regardless of how
-     * many settings are currently visible. Called once from
-     * {@link #initializeMenu()} for the first paint, and again any time a
-     * "parent" toggle (Insurance/Splitting/Turn Timer enabled) changes --
-     * that's the only kind of edit that can add, remove, or shift any other
-     * entry's slot, so it's the only case that needs a full relayout rather
-     * than a single-slot repaint (see the parent-vs-leaf split in
-     * {@link #handleCustomClick}).
+     * many settings are currently visible. Called from
+     * {@link #initializeMenu()} for the first paint (nothing to slide
+     * {@code from} yet) and as {@link #layoutMenuAnimated()}'s own instant
+     * fallback when a parent toggle change happens to move nothing. Every
+     * other parent-toggle-triggered relayout (Insurance/Splitting enabled
+     * -- see the parent-vs-leaf split in {@link #handleCustomClick}) goes
+     * through {@link #layoutMenuAnimated()} instead, which slides rather
+     * than jump-cuts.
      */
     private void layoutMenu() {
         List<MenuEntry> entries = menuEntries();
@@ -235,6 +246,124 @@ public class BlackjackMenu extends Menu {
         }
         slotMapping.put(SlotOption.EXIT, MENU_SIZE - 1);
         renderExit();
+    }
+
+    /**
+     * Same end result as {@link #layoutMenu()} (settings pack/compact
+     * around whichever parent toggle just changed), but slides there
+     * instead of jump-cutting: every entry that moves travels one slot per
+     * tick toward its new position -- the same one-frame-per-tick, fully
+     * atomic-repaint-per-tick feel as the live table's wager-bar
+     * open/close slide (see {@link BlackjackTiming#MENU_RELAYOUT_STEP_TICKS}
+     * / {@code BlackjackWagerRevealPlan}), just applied to a compacting
+     * list instead of a fixed 9-slot strip. A newly-hidden entry
+     * disappears immediately (nothing to slide it toward); a newly-shown
+     * entry only appears once the slide reaches its final slot -- there's
+     * nothing correct to render for it at any of the intermediate slots in
+     * between, since those briefly belong to whichever entry is still
+     * sliding through them.
+     *
+     * <p>Called only from a parent toggle's click handler, never from
+     * {@link #initializeMenu()}'s first paint (nothing to slide {@code
+     * from} yet -- that still calls the instant {@link #layoutMenu()}).
+     * Input is gated by {@link #relayoutInProgress} for the slide's short
+     * duration (see that field's own doc) rather than trying to support
+     * reversing mid-slide -- this is a single-viewer admin menu, not the
+     * live table's rapid-interaction wager bar.
+     */
+    private void layoutMenuAnimated() {
+        Map<SlotOption, Integer> oldSlots = new java.util.LinkedHashMap<>(slotMapping);
+        List<MenuEntry> entries = menuEntries();
+        List<SlotOption> orderedOptions = new java.util.ArrayList<>();
+        java.util.Set<SlotOption> visibleOptions = new java.util.LinkedHashSet<>();
+        Map<SlotOption, Runnable> renderers = new java.util.LinkedHashMap<>();
+        for (MenuEntry entry : entries) {
+            orderedOptions.add(entry.option);
+            renderers.put(entry.option, entry.render);
+            if (entry.visible.getAsBoolean()) {
+                visibleOptions.add(entry.option);
+            }
+        }
+        Map<SlotOption, Integer> newSlots = computeLayout(orderedOptions, visibleOptions, MENU_SIZE);
+        renderers.put(SlotOption.EXIT, this::renderExit);
+
+        int maxSteps = 0;
+        for (Map.Entry<SlotOption, Integer> entry : newSlots.entrySet()) {
+            Integer from = oldSlots.get(entry.getKey());
+            if (from != null) {
+                maxSteps = Math.max(maxSteps, Math.abs(entry.getValue() - from));
+            }
+        }
+        if (maxSteps == 0) {
+            // Nothing that's staying visible actually changed slot (e.g. the
+            // parent toggle's own icon flipped but nothing else moved) --
+            // no slide to animate, just paint the (possibly still-changed
+            // visibility set) instantly.
+            layoutMenu();
+            return;
+        }
+
+        relayoutInProgress = true;
+        animateRelayoutStep(oldSlots, newSlots, renderers, 1, maxSteps);
+    }
+
+    /**
+     * Pure frame math for one step of {@link #layoutMenuAnimated()}'s
+     * slide: every entry still visible in the final layout ({@code
+     * newSlots}) lands at {@code min(step, its own delta)} slots along the
+     * way from its old slot ({@code oldSlots}) toward its new one (entries
+     * with a smaller delta simply arrive early and hold there for the
+     * remaining steps); a newly-appearing entry (no entry in {@code
+     * oldSlots}) only renders on the final step ({@code step >= maxSteps})
+     * -- there's nothing correct to show it as at any earlier intermediate
+     * slot, since that slot briefly belongs to whichever entry is still
+     * sliding through it. Package-private, static, no Bukkit types --
+     * independently unit-testable without constructing a live menu, same
+     * as {@link #computeLayout}.
+     */
+    static Map<SlotOption, Integer> computeRelayoutFrame(Map<SlotOption, Integer> oldSlots, Map<SlotOption, Integer> newSlots, int step, int maxSteps) {
+        Map<SlotOption, Integer> frameSlots = new java.util.LinkedHashMap<>();
+        for (Map.Entry<SlotOption, Integer> entry : newSlots.entrySet()) {
+            SlotOption option = entry.getKey();
+            int to = entry.getValue();
+            Integer from = oldSlots.get(option);
+            if (from == null) {
+                if (step >= maxSteps) {
+                    frameSlots.put(option, to);
+                }
+                continue;
+            }
+            int delta = to - from;
+            int travelled = Integer.signum(delta) * Math.min(Math.abs(delta), step);
+            frameSlots.put(option, from + travelled);
+        }
+        return frameSlots;
+    }
+
+    /**
+     * Renders one frame of {@link #layoutMenuAnimated()}'s slide (see
+     * {@link #computeRelayoutFrame}), blanking and fully repainting every
+     * slot from scratch each frame -- atomic, like the wager bar's own
+     * per-tick render, so no stale item from a previous frame is ever left
+     * behind mid-slide.
+     */
+    private void animateRelayoutStep(Map<SlotOption, Integer> oldSlots, Map<SlotOption, Integer> newSlots, Map<SlotOption, Runnable> renderers, int step, int maxSteps) {
+        Map<SlotOption, Integer> frameSlots = computeRelayoutFrame(oldSlots, newSlots, step, maxSteps);
+
+        for (int slot = 0; slot < MENU_SIZE; slot++) {
+            addItem(null, slot);
+        }
+        slotMapping.clear();
+        for (Map.Entry<SlotOption, Integer> entry : frameSlots.entrySet()) {
+            slotMapping.put(entry.getKey(), entry.getValue());
+            renderers.get(entry.getKey()).run();
+        }
+
+        if (step >= maxSteps) {
+            relayoutInProgress = false;
+            return;
+        }
+        Bukkit.getScheduler().runTaskLater(plugin, () -> animateRelayoutStep(oldSlots, newSlots, renderers, step + 1, maxSteps), BlackjackTiming.MENU_RELAYOUT_STEP_TICKS);
     }
 
     private boolean configBoolean(String key, boolean defaultValue) {
@@ -411,6 +540,10 @@ public class BlackjackMenu extends Menu {
     protected void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
         UUID playerId = player.getUniqueId();
         if (!BAInventories.containsKey(playerId)) return;
+        // A slide (layoutMenuAnimated) has controls genuinely mid-transit
+        // between slots -- ignore input entirely until it finishes rather
+        // than routing a click through whatever briefly occupies that slot.
+        if (relayoutInProgress) return;
         switch (option) {
             case EDIT_TIMER:
                 handleEditTimer(player);
@@ -428,8 +561,8 @@ public class BlackjackMenu extends Menu {
                 // Insurance is a "parent" setting -- Edit Insurance Timeout
                 // only ever shows while it's enabled, so toggling it can
                 // add/remove/shift that slot and needs a full relayout,
-                // not just its own single-slot repaint (see layoutMenu()).
-                handleToggleBoolean("insurance.enabled", true, this::layoutMenu, "blackjack-settings.insurance-updated", BlackjackInventory::setInsuranceEnabledLive);
+                // animated (slides), not just its own single-slot repaint.
+                handleToggleBoolean("insurance.enabled", true, this::layoutMenuAnimated, "blackjack-settings.insurance-updated", BlackjackInventory::setInsuranceEnabledLive);
                 playDefaultSound(player);
                 break;
             case EDIT_INSURANCE_TIMEOUT:
@@ -439,8 +572,8 @@ public class BlackjackMenu extends Menu {
             case TOGGLE_SPLITTING_ENABLED:
                 // Splitting is a "parent" setting -- Split Matching, Max
                 // Hands, and the four split-ace toggles below all only show
-                // while it's enabled, so this needs a full relayout too.
-                handleToggleBoolean("splitting.enabled", true, this::layoutMenu, "blackjack-settings.splitting-updated", BlackjackInventory::setSplittingEnabledLive);
+                // while it's enabled, so this needs an animated relayout too.
+                handleToggleBoolean("splitting.enabled", true, this::layoutMenuAnimated, "blackjack-settings.splitting-updated", BlackjackInventory::setSplittingEnabledLive);
                 playDefaultSound(player);
                 break;
             case TOGGLE_SPLIT_MATCHING:
@@ -490,9 +623,9 @@ public class BlackjackMenu extends Menu {
 
     /**
      * The live, already-running {@link BlackjackInventory} for this dealer,
-     * if one exists -- {@code null} if nobody has ever opened the table yet
-     * (nothing to live-patch or destroy) or this dealer isn't currently a
-     * Blackjack game at all.
+     * if one exists -- {@code null} if nobody has ever opened the actual
+     * game table yet since the last restart/reload (nothing to live-patch
+     * yet) or this dealer isn't currently a Blackjack game at all.
      */
     private BlackjackInventory liveBlackjackInventory() {
         DealerInventory inv = DealerInventory.getInventory(dealerId);
@@ -500,15 +633,47 @@ public class BlackjackMenu extends Menu {
     }
 
     /**
+     * {@link #liveBlackjackInventory()}, lazily constructing one first if
+     * it's still {@code null} -- exactly mirroring how
+     * {@code DealerInteractListener} already lazily creates the live table
+     * the first time any player opens it, via the same
+     * {@code DealerInventory.updateInventory(dealerId, ...)} registration
+     * ({@code inventories.get(dealerId)} comes back {@code null} there too,
+     * so its own "close whoever's viewing the old one" branch never runs --
+     * see that method's own doc). Never touches config and never force-
+     * closes any other inventory, unlike {@code plugin.reloadDealer}'s
+     * fallback (which sweeps every open {@code Menu} tied to this dealer,
+     * including this very settings menu, via {@code deleteAssociatedInventories}
+     * -&gt; {@code Menu.getOpenInventories} -- exactly the bug a fresh boot's
+     * "nobody has opened the real table yet" case used to hit, since
+     * {@code handleToggleBoolean}/{@code handleToggleSplitMatching} used to
+     * treat "no live table" as the risk-free case and reload anyway).
+     */
+    private BlackjackInventory liveOrLazilyCreatedBlackjackInventory() {
+        BlackjackInventory live = liveBlackjackInventory();
+        if (live != null) {
+            return live;
+        }
+        if (dealer == null || !dealer.isValid()) {
+            return null;
+        }
+        BlackjackInventory created = new BlackjackInventory(dealerId, plugin, internalName());
+        DealerInventory.updateInventory(dealerId, created);
+        return created;
+    }
+
+    /**
      * Left-click toggles the boolean immediately: flips, persists with a
      * single saveConfig, then applies the new value to the live table in
-     * place via {@code liveSetter} -- never deleting/recreating the
-     * controller, so a live round, committed wagers, and even just seated
-     * players are completely undisturbed, and the admin's own settings menu
-     * (a {@code Menu} tied to this same dealer) is never force-closed as a
-     * side effect the way a {@code reloadDealer} call used to. Falls back to
-     * the old reload path only when there's no live table to patch yet
-     * (nothing at risk either way in that case).
+     * place via {@code liveSetter} -- never deleting/recreating an
+     * already-running controller, so a live round, committed wagers, and
+     * even just seated players are completely undisturbed, and the admin's
+     * own settings menu (a {@code Menu} tied to this same dealer) is never
+     * force-closed as a side effect the way a {@code reloadDealer} call
+     * used to. Lazily constructs the live table first if none exists yet
+     * (see {@link #liveOrLazilyCreatedBlackjackInventory}) rather than
+     * falling back to that destructive reload -- there is no longer a
+     * "risk-free" case that still needs it.
      */
     private void handleToggleBoolean(String configKey, boolean defaultValue, Runnable render, String updatedMessageKey, java.util.function.BiConsumer<BlackjackInventory, Boolean> liveSetter) {
         if (dealer == null) {
@@ -518,7 +683,7 @@ public class BlackjackMenu extends Menu {
         boolean next = !plugin.getConfig().getBoolean(path, defaultValue);
         plugin.getConfig().set(path, next);
         plugin.saveConfig();
-        BlackjackInventory live = liveBlackjackInventory();
+        BlackjackInventory live = liveOrLazilyCreatedBlackjackInventory();
         if (live != null) {
             liveSetter.accept(live, next);
         } else {
@@ -545,7 +710,7 @@ public class BlackjackMenu extends Menu {
             ? BlackjackSplitMatching.SAME_VALUE : BlackjackSplitMatching.SAME_RANK;
         plugin.getConfig().set("dealers." + internalName() + ".splitting.matching", next.name());
         plugin.saveConfig();
-        BlackjackInventory live = liveBlackjackInventory();
+        BlackjackInventory live = liveOrLazilyCreatedBlackjackInventory();
         if (live != null) {
             live.setSplitMatchingLive(next);
         } else {

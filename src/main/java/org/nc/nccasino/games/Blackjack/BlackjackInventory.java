@@ -1882,10 +1882,21 @@ private void registerListener() {
                     target.setItem(BlackjackSlotLayout.playerCardSlot(seatSlot, i), buildCardItem(seat.getHand().get(i), viewer, seat.isCurrentTurn()));
                 }
             } else if (frame.phase() == BlackjackFrame.Phase.COUNTDOWN) {
-                target.setItem(
-                    BlackjackSlotLayout.pregameCountdownSlot(seatSlot),
-                    createCustomItem(Material.CLOCK, localize(viewer, "blackjack.starts-in", "seconds", frame.countdownSeconds()), Math.max(frame.countdownSeconds(), 1))
-                );
+                // Private, like the turn-timer/action row above: only this
+                // seat's own owner may see the countdown in their own
+                // freshly-bootstrapped view, immediately, not the idle
+                // background until the next scheduled tick corrects it up
+                // to ~1s later. Every other viewer (another seated player,
+                // a spectator) must never see another player's countdown --
+                // they already get the canonical green background from
+                // paintBackground's own base pass, so this only needs to
+                // explicitly overlay the clock for the owner.
+                if (seat.getPlayerId().equals(view.getPlayerId())) {
+                    target.setItem(
+                        BlackjackSlotLayout.pregameCountdownSlot(seatSlot),
+                        createCustomItem(Material.CLOCK, localize(viewer, "blackjack.starts-in", "seconds", frame.countdownSeconds()), Math.max(frame.countdownSeconds(), 1))
+                    );
+                }
             }
         }
 
@@ -2332,26 +2343,31 @@ private void registerListener() {
     }
 
     /**
-     * Renders the pregame countdown into every seated player's own
-     * {@link BlackjackSlotLayout#pregameCountdownSlot} -- the new 5-seat
-     * layout has no single global clock slot (see the table redesign
-     * plan's slot map); the countdown overlays each seat's first card cell
-     * instead, safe by the same mutual-exclusion pattern used elsewhere
-     * (no cards are dealt into that cell until well after the countdown
-     * clears).
+     * Renders the single canonical pregame countdown into each seated
+     * player's own {@link BlackjackSlotLayout#pregameCountdownSlot} --
+     * private per-viewer, exactly like the turn-timer/insurance countdowns
+     * (see {@link #renderPrivateItem}): a seated viewer sees the clock only
+     * in their own row, never in any other seat's row, and an unseated
+     * spectator sees none at all. There is still only one canonical
+     * countdown/task/deadline ({@code countdownSecondsRemaining}) -- this
+     * only changes who each seat's rendering reaches, never creates a
+     * separate per-player deadline. The shared/legacy {@code inventory} is
+     * deliberately never written here either, so it can never leak a clock
+     * to anything that might still fall back to it. Renamed from
+     * {@code renderPregameCountdownToAllViews}, which became misleading
+     * once this stopped fanning out to every view.
      */
-    private void renderPregameCountdownToAllViews(int seconds) {
+    private void renderPregameCountdownToOwners(int seconds) {
         leverKey = "blackjack.starts-in";
         leverPlaceholders = new Object[] {"seconds", seconds};
         countdownSecondsRemaining = seconds;
         int amount = Math.max(seconds, 1);
-        for (int seatSlot : playerSeats.values()) {
+        for (Map.Entry<UUID, Integer> seatEntry : playerSeats.entrySet()) {
+            UUID ownerId = seatEntry.getKey();
+            int seatSlot = seatEntry.getValue();
             int slot = BlackjackSlotLayout.pregameCountdownSlot(seatSlot);
-            inventory.setItem(slot, createCustomItem(Material.CLOCK, text("blackjack.starts-in", "seconds", seconds), amount));
-            for (BlackjackView view : views.values()) {
-                Player viewer = Bukkit.getPlayer(view.getPlayerId());
-                view.getInventory().setItem(slot, createCustomItem(Material.CLOCK, localize(viewer, "blackjack.starts-in", "seconds", seconds), amount));
-            }
+            Player owner = Bukkit.getPlayer(ownerId);
+            renderPrivateItem(ownerId, slot, createCustomItem(Material.CLOCK, localize(owner, "blackjack.starts-in", "seconds", seconds), amount));
         }
     }
 
@@ -3515,21 +3531,25 @@ private void handleDoubleDown(Player player) {
     }
 
     /**
-     * The shared/table-owned split animation: slides the second card out of
-     * view, deals the original (still-active) hand's replacement card
-     * visibly, deals the sibling's replacement card canonically only (it
-     * has no visible slot while pending), then resolves whatever comes
-     * next. Owned by the table, not the acting viewer -- see
+     * The shared/table-owned split animation, staged so a viewer can
+     * actually see two hands come into being (see
+     * {@link BlackjackSplitAnimationPlan}'s own doc for the full visual
+     * story): B slides out to a temporary slot, C deals in beside A, D
+     * deals in beside temp-B, the inactive [B][D] pair slides one step
+     * left, then both temporary slots clear, leaving only the active [A][C]
+     * hand visible. Owned by the table, not the acting viewer -- see
      * {@link #cancelSharedAnimation()}'s doc -- so a random <em>other</em>
      * viewer closing their inventory never interrupts it; only a genuinely
      * table-wide event (round reset/cancel, generation change) or the
      * <em>acting</em> player themselves leaving their seat does -- the
      * latter is exactly what {@link BlackjackSplitOperationGuard} detects
-     * (see {@link #isSplitOperationValid}), so every step here proves it
+     * (see {@link #isSplitOperationValid}), so every phase here proves it
      * still belongs to this exact split (round + phase + the acting
      * player's own seat + both hands still present by stable handId) before
      * touching anything, never trusting a captured list index or object
-     * reference alone.
+     * reference alone. Every phase repaints only cells inside the acting
+     * seat's own row (see {@link BlackjackSlotLayout#playerCardSlot}'s own
+     * bound), never any other seat's.
      */
     private void runSplitAnimation(UUID playerId, int seatSlot, BlackjackHand originalHand, BlackjackHand siblingHand, Card originalReplacement, Card siblingReplacement) {
         long myGeneration = roundGeneration;
@@ -3541,61 +3561,101 @@ private void handleDoubleDown(Player player) {
         splitAnimationPlayerId = playerId;
         long stepTicks = BlackjackTiming.SPLIT_ANIMATION_STEP_TICKS;
 
-        // Step 1/2's guard: both hands still exactly as handleSplit left
+        // Phase 1/2's guard: both hands still exactly as handleSplit left
         // them -- neither has received its replacement card yet.
         BlackjackSplitOperationGuard guardBeforeAnyDeal = new BlackjackSplitOperationGuard(
             playerId, seatSlot, myGeneration, myPhase, originalHand.getHandId(), siblingHand.getHandId(),
             originalHand.getHandGeneration(), siblingHand.getHandGeneration()
         );
 
-        int splitCardFromSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, 1);
+        int slotOrigB = BlackjackSlotLayout.playerCardSlot(seatSlot, 1); // becomes C's slot in phase 2
+        int slotGap = BlackjackSlotLayout.playerCardSlot(seatSlot, 2);
+        int slotTempB = BlackjackSlotLayout.playerCardSlot(seatSlot, 3);
+        int slotTempD = BlackjackSlotLayout.playerCardSlot(seatSlot, 4);
 
-        // Step 1: the split-off card slides out of view immediately -- it
-        // now belongs to the pending sibling hand, which has no visible slot.
-        renderBackgroundToAllViews(splitCardFromSlot);
+        // Phase 1 (immediate): B slides out of its original slot into its
+        // temporary right-hand position -- the moment the split genuinely
+        // becomes two hands. Purely presentational: neither hand's cards
+        // change yet, so no guard is needed for this one synchronous step.
+        if (isRenderableCardSlot(playerId, slotOrigB)) {
+            renderBackgroundToAllViews(slotOrigB);
+        }
+        if (isRenderableCardSlot(playerId, slotTempB)) {
+            renderCardToAllViews(slotTempB, siblingHand.getCards().get(0), false);
+        }
 
-        // Step 2: the original hand's replacement card deals in visibly.
+        // Phase 2: the original hand's replacement card, C, deals in
+        // visibly beside A, into the slot B just vacated.
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (run != sharedAnimationRun || !isSplitOperationValid(run, guardBeforeAnyDeal)) {
                 return;
             }
             originalHand.addCard(originalReplacement); // bumps originalHand's own generation by exactly 1
-            if (isRenderableCardSlot(playerId, splitCardFromSlot)) {
-                renderCardToAllViews(splitCardFromSlot, originalReplacement, playerId.equals(currentPlayerId));
+            if (isRenderableCardSlot(playerId, slotOrigB)) {
+                renderCardToAllViews(slotOrigB, originalReplacement, playerId.equals(currentPlayerId));
             }
             updatePlayerHead(playerId);
 
-            // Step 3's own guard: derived from this step's, with only
+            // Phase 3's own guard: derived from this phase's, with only
             // originalHand's expected generation advanced -- explicit and
             // provably correct (addCard's own contract), never re-derived
-            // from a captured value that step 2 itself would have already
+            // from a captured value that phase 2 itself would have already
             // invalidated.
             BlackjackSplitOperationGuard guardAfterOriginalDeal = guardBeforeAnyDeal.withExpectedGenerations(
                 originalHand.getHandGeneration(), siblingHand.getHandGeneration()
             );
 
-            // Step 3: the sibling's replacement card deals canonically only.
+            // Phase 3: the sibling's replacement card, D, deals in visibly
+            // beside temp-B.
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (run != sharedAnimationRun || !isSplitOperationValid(run, guardAfterOriginalDeal)) {
                     return;
                 }
                 siblingHand.addCard(siblingReplacement); // bumps siblingHand's own generation by exactly 1
+                if (isRenderableCardSlot(playerId, slotTempD)) {
+                    renderCardToAllViews(slotTempD, siblingReplacement, false);
+                }
 
                 BlackjackSplitOperationGuard guardAfterBothDealt = guardAfterOriginalDeal.withExpectedGenerations(
                     originalHand.getHandGeneration(), siblingHand.getHandGeneration()
                 );
 
-                // Step 4: animation complete -- the original hand (still
-                // active) either auto-completes (split-ace, nothing
-                // permitted) or becomes actionable again.
+                // Phase 4: the inactive [B][D] pair slides one visible step
+                // left, into the unused gap cell -- purely presentational
+                // (no hand mutation), so phase 5 reuses this exact guard.
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     if (run != sharedAnimationRun || !isSplitOperationValid(run, guardAfterBothDealt)) {
                         return;
                     }
-                    sharedAnimationRun = null;
-                    splitAnimationInFlight = false;
-                    splitAnimationPlayerId = null;
-                    resolveHandAfterSplitAnimation(playerId);
+                    if (isRenderableCardSlot(playerId, slotGap)) {
+                        renderCardToAllViews(slotGap, siblingHand.getCards().get(0), false);
+                    }
+                    if (isRenderableCardSlot(playerId, slotTempB)) {
+                        renderCardToAllViews(slotTempB, siblingReplacement, false);
+                    }
+                    if (isRenderableCardSlot(playerId, slotTempD)) {
+                        renderBackgroundToAllViews(slotTempD);
+                    }
+
+                    // Phase 5: park -- clear the temporary slots, leaving
+                    // only the active [A][C] hand visible, then return
+                    // control (phase 6: split-ace auto-resolution or a
+                    // fresh actionable decision).
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        if (run != sharedAnimationRun || !isSplitOperationValid(run, guardAfterBothDealt)) {
+                            return;
+                        }
+                        if (isRenderableCardSlot(playerId, slotGap)) {
+                            renderBackgroundToAllViews(slotGap);
+                        }
+                        if (isRenderableCardSlot(playerId, slotTempB)) {
+                            renderBackgroundToAllViews(slotTempB);
+                        }
+                        sharedAnimationRun = null;
+                        splitAnimationInFlight = false;
+                        splitAnimationPlayerId = null;
+                        resolveHandAfterSplitAnimation(playerId);
+                    }, stepTicks);
                 }, stepTicks);
             }, stepTicks);
         }, stepTicks);
@@ -4576,7 +4636,7 @@ private void removePlayerData(UUID playerId) {
             public void run() {
                 if (countdown > 0) {
                     countdownSecondsRemaining = countdown;
-                    renderPregameCountdownToAllViews(countdown);
+                    renderPregameCountdownToOwners(countdown);
                     if (countdown <=3 ){
                         for (UUID uuid : playerSeats.keySet()) {
                             Player player = Bukkit.getPlayer(uuid);
@@ -6554,6 +6614,15 @@ public void delete() {
 
     boolean isStartTransitionActiveForTest() {
         return startTransitionActive;
+    }
+
+    int countdownSecondsRemainingForTest() {
+        return countdownSecondsRemaining;
+    }
+
+    /** @return this player's live hand queue (canonical, depth-first split order), or an empty list if they have none. */
+    List<BlackjackHand> playerHandsForTest(UUID playerId) {
+        return playerHands.getOrDefault(playerId, List.of());
     }
 
     /** @return the dealer's current canonical slot -- {@link BlackjackSlotLayout#DEALER_LOBBY_HEAD_SLOT} until the start-transition inspection delivers it to {@link BlackjackSlotLayout#DEALER_INPLAY_HEAD_SLOT}. */

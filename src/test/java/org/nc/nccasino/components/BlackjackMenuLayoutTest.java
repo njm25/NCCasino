@@ -148,6 +148,83 @@ class BlackjackMenuLayoutTest {
             "with no content entries visible, Exit is the only occupied slot");
     }
 
+    // ==================================================================
+    // Animated relayout: pure frame math (computeRelayoutFrame)
+    // ==================================================================
+
+    @Test
+    void slideStepAdvancesExactlyOneSlotPerStepTowardTheTargetOnRealSplittingCollapse() {
+        Map<SlotOption, Integer> oldSlots = BlackjackMenu.computeLayout(ORDERED_OPTIONS, allVisibleExcept(), MENU_SIZE);
+        Map<SlotOption, Integer> newSlots = BlackjackMenu.computeLayout(ORDERED_OPTIONS, allVisibleExcept(
+            SlotOption.TOGGLE_SPLIT_MATCHING, SlotOption.EDIT_MAX_HANDS,
+            SlotOption.TOGGLE_DOUBLE_AFTER_SPLIT, SlotOption.TOGGLE_ACES_HIT,
+            SlotOption.TOGGLE_ACES_DOUBLE, SlotOption.TOGGLE_ACES_RESPLIT
+        ), MENU_SIZE);
+        // Confirmed by disablingSplittingHidesItsSixDependentSettingsAndCompactsEverythingAfterLeft: 13 -> 7, delta -6.
+        assertEquals(13, oldSlots.get(SlotOption.EDIT_TURN_TIMER_TIMEOUT));
+        assertEquals(7, newSlots.get(SlotOption.EDIT_TURN_TIMER_TIMEOUT));
+
+        for (int step = 1; step <= 6; step++) {
+            Map<SlotOption, Integer> frame = BlackjackMenu.computeRelayoutFrame(oldSlots, newSlots, step, 6);
+            assertEquals(13 - step, frame.get(SlotOption.EDIT_TURN_TIMER_TIMEOUT), "step " + step);
+        }
+        // The final step must land exactly on the real target slot.
+        assertEquals(newSlots.get(SlotOption.EDIT_TURN_TIMER_TIMEOUT),
+            BlackjackMenu.computeRelayoutFrame(oldSlots, newSlots, 6, 6).get(SlotOption.EDIT_TURN_TIMER_TIMEOUT));
+    }
+
+    @Test
+    void entriesThatDontMoveHoldAtTheSameSlotOnEveryFrame() {
+        Map<SlotOption, Integer> oldSlots = Map.of(SlotOption.STAND_17, 2, SlotOption.NUMBER_OF_DECKS, 3);
+        Map<SlotOption, Integer> newSlots = Map.of(SlotOption.STAND_17, 2, SlotOption.NUMBER_OF_DECKS, 3);
+
+        for (int step = 1; step <= 4; step++) {
+            Map<SlotOption, Integer> frame = BlackjackMenu.computeRelayoutFrame(oldSlots, newSlots, step, 4);
+            assertEquals(2, frame.get(SlotOption.STAND_17));
+            assertEquals(3, frame.get(SlotOption.NUMBER_OF_DECKS));
+        }
+    }
+
+    @Test
+    void anEntryWithASmallerDeltaArrivesEarlyAndHoldsForTheRemainingSteps() {
+        // One entry travels 2 slots, another travels 5 -- the 2-slot mover
+        // must reach its target by step 2 and stay there through step 5.
+        Map<SlotOption, Integer> oldSlots = Map.of(SlotOption.STAND_17, 10, SlotOption.NUMBER_OF_DECKS, 10);
+        Map<SlotOption, Integer> newSlots = Map.of(SlotOption.STAND_17, 8, SlotOption.NUMBER_OF_DECKS, 5);
+
+        assertEquals(9, BlackjackMenu.computeRelayoutFrame(oldSlots, newSlots, 1, 5).get(SlotOption.STAND_17));
+        assertEquals(8, BlackjackMenu.computeRelayoutFrame(oldSlots, newSlots, 2, 5).get(SlotOption.STAND_17), "reaches its target at step 2");
+        assertEquals(8, BlackjackMenu.computeRelayoutFrame(oldSlots, newSlots, 3, 5).get(SlotOption.STAND_17), "holds once arrived");
+        assertEquals(8, BlackjackMenu.computeRelayoutFrame(oldSlots, newSlots, 5, 5).get(SlotOption.STAND_17), "still holding at the final step");
+
+        assertEquals(9, BlackjackMenu.computeRelayoutFrame(oldSlots, newSlots, 1, 5).get(SlotOption.NUMBER_OF_DECKS));
+        assertEquals(5, BlackjackMenu.computeRelayoutFrame(oldSlots, newSlots, 5, 5).get(SlotOption.NUMBER_OF_DECKS), "the 5-slot mover only arrives on the final step");
+    }
+
+    @Test
+    void aDisappearingEntryNeverAppearsInAnyFrame() {
+        Map<SlotOption, Integer> oldSlots = Map.of(SlotOption.TOGGLE_SPLIT_MATCHING, 7, SlotOption.EDIT_TURN_TIMER_TIMEOUT, 13);
+        Map<SlotOption, Integer> newSlots = Map.of(SlotOption.EDIT_TURN_TIMER_TIMEOUT, 7); // Split Matching hidden entirely
+
+        for (int step = 1; step <= 6; step++) {
+            Map<SlotOption, Integer> frame = BlackjackMenu.computeRelayoutFrame(oldSlots, newSlots, step, 6);
+            assertFalse(frame.containsKey(SlotOption.TOGGLE_SPLIT_MATCHING), "a hidden entry must never render at any step, including step " + step);
+        }
+    }
+
+    @Test
+    void anAppearingEntryOnlyRendersOnTheFinalStep() {
+        Map<SlotOption, Integer> oldSlots = Map.of(SlotOption.EDIT_TURN_TIMER_TIMEOUT, 7);
+        Map<SlotOption, Integer> newSlots = Map.of(SlotOption.TOGGLE_SPLIT_MATCHING, 7, SlotOption.EDIT_TURN_TIMER_TIMEOUT, 13); // Split Matching newly shown
+
+        for (int step = 1; step < 6; step++) {
+            Map<SlotOption, Integer> frame = BlackjackMenu.computeRelayoutFrame(oldSlots, newSlots, step, 6);
+            assertFalse(frame.containsKey(SlotOption.TOGGLE_SPLIT_MATCHING), "must not appear before the slide finishes, step " + step);
+        }
+        Map<SlotOption, Integer> finalFrame = BlackjackMenu.computeRelayoutFrame(oldSlots, newSlots, 6, 6);
+        assertEquals(7, finalFrame.get(SlotOption.TOGGLE_SPLIT_MATCHING), "appears exactly at its final slot on the last step");
+    }
+
     @Test
     void allFourteenContentSlotsFitStrictlyBeforeExitWithNoOverlap() {
         Map<SlotOption, Integer> layout = BlackjackMenu.computeLayout(ORDERED_OPTIONS, allVisibleExcept(), MENU_SIZE);
