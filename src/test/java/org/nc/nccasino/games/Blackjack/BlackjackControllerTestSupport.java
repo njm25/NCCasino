@@ -95,11 +95,12 @@ final class BlackjackControllerTestSupport {
         private final MockedStatic<Bukkit> bukkitStatic;
         private final MockedStatic<JavaPlugin> javaPluginStatic;
         private final Map<UUID, Player> onlinePlayers;
+        private final Map<UUID, String> everRegisteredNames;
 
         private Harness(
             Nccasino plugin, BlackjackInventory inventory, FakeScheduler scheduler,
             FakeVaultCurrencyProvider currencyProvider, PendingPayoutStore pendingPayoutStore, Preferences preferences,
-            UUID dealerId, String internalName, Map<UUID, Player> onlinePlayers,
+            UUID dealerId, String internalName, Map<UUID, Player> onlinePlayers, Map<UUID, String> everRegisteredNames,
             MockedStatic<Bukkit> bukkitStatic, MockedStatic<JavaPlugin> javaPluginStatic
         ) {
             this.plugin = plugin;
@@ -111,6 +112,7 @@ final class BlackjackControllerTestSupport {
             this.dealerId = dealerId;
             this.internalName = internalName;
             this.onlinePlayers = onlinePlayers;
+            this.everRegisteredNames = everRegisteredNames;
             this.bukkitStatic = bukkitStatic;
             this.javaPluginStatic = javaPluginStatic;
         }
@@ -119,6 +121,7 @@ final class BlackjackControllerTestSupport {
         Player registerOnlinePlayer(UUID playerId, String name) {
             Player player = fakePlayer(playerId, name);
             onlinePlayers.put(playerId, player);
+            everRegisteredNames.put(playerId, name);
             return player;
         }
 
@@ -284,6 +287,17 @@ final class BlackjackControllerTestSupport {
         bukkitStatic.when(() -> Bukkit.getPlayer(any(UUID.class)))
             .thenAnswer(inv -> onlineRegistry.get((UUID) inv.getArgument(0)));
         bukkitStatic.when(Bukkit::getOnlinePlayers).thenAnswer(inv -> new ArrayList<>(onlineRegistry.values()));
+        // Never pruned on markOffline (unlike onlineRegistry) -- mirrors real
+        // Bukkit.getOfflinePlayer, which keeps resolving a name for anyone
+        // who was ever seen, even long after they've disconnected.
+        Map<UUID, String> everRegisteredNames = new HashMap<>();
+        bukkitStatic.when(() -> Bukkit.getOfflinePlayer(any(UUID.class))).thenAnswer(inv -> {
+            UUID id = inv.getArgument(0);
+            OfflinePlayer offlinePlayer = mock(OfflinePlayer.class);
+            when(offlinePlayer.getUniqueId()).thenReturn(id);
+            when(offlinePlayer.getName()).thenReturn(everRegisteredNames.get(id));
+            return offlinePlayer;
+        });
 
         org.bukkit.configuration.file.FileConfiguration config = new org.bukkit.configuration.file.YamlConfiguration();
         for (Map.Entry<String, Object> entry : dealerConfig.entrySet()) {
@@ -353,7 +367,7 @@ final class BlackjackControllerTestSupport {
 
         return new Harness(
             plugin, inventory, scheduler, currencyProvider, pendingPayoutStore, preferences, dealerId, internalName,
-            onlineRegistry, bukkitStatic, javaPluginStatic
+            onlineRegistry, everRegisteredNames, bukkitStatic, javaPluginStatic
         );
     }
 

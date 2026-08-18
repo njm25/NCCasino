@@ -2406,6 +2406,22 @@ private void registerListener() {
     }
 
     /**
+     * Whether the current player has an actionable, unresolved turn right
+     * now -- independent of whether they're online. Used to decide if the
+     * turn timer must (re)start, since a genuinely offline RIDE_TO_RESULT
+     * player still needs their deadline running so
+     * {@link #autoStandOnTurnTimeout} can resolve their hand; {@link
+     * #currentPlayerActionLayout()} can't be used for that decision because
+     * it deliberately goes empty for an offline player (nothing to render).
+     */
+    private boolean currentPlayerHasActionableTurn() {
+        return currentPlayerId != null
+            && !playerDone.getOrDefault(currentPlayerId, false)
+            && playerTurnActive.getOrDefault(currentPlayerId, false)
+            && activeHand(currentPlayerId) != null;
+    }
+
+    /**
      * The live available-action set for one hand, config- and funds-aware --
      * used by currentPlayerActionLayout for rendering/click-validation.
      * Split-ace hands (still on their 2-card first decision) use the ace
@@ -2505,7 +2521,7 @@ private void registerListener() {
      */
     private void beginActionableDecision() {
         repaintActionsForCurrentPlayer();
-        if (!currentPlayerActionLayout().isEmpty()) {
+        if (currentPlayerHasActionableTurn()) {
             startActionGuidance(currentPlayerId);
             startTurnTimer(currentPlayerId);
             notifyTurnStartedIfAway(currentPlayerId);
@@ -2655,7 +2671,11 @@ private void registerListener() {
         for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
             UUID playerId = seatOwnerAt(seatSlot);
             if (playerId != null) {
-                renderToAllViews(seatSlot, createPlayerHeadItem(Bukkit.getPlayer(playerId), 1));
+                Player seatOwnerPlayer = Bukkit.getPlayer(playerId);
+                ItemStack headItem = seatOwnerPlayer != null
+                        ? createPlayerHeadItem(seatOwnerPlayer, 1)
+                        : createPlayerHead(playerId, Bukkit.getOfflinePlayer(playerId).getName(), null);
+                renderToAllViews(seatSlot, headItem);
             } else {
                 // Personalized per viewer: "click to sit" normally, or a
                 // redirect to their own chair for a viewer already seated
@@ -4757,13 +4777,14 @@ private void dealInitialCards() {
             return;
         }
         for (UUID playerId : orderedSeatedPlayers()) {
-            Player player = Bukkit.getPlayer(playerId);
-            if (player != null) {
-                int handValue = calculateHandValue(activeHandCards(playerId));
-                if (handValue == 21) {
-                    playerDone.put(playerId, true); // Mark the player as done
-                    playerTurnActive.put(playerId, false); // Deactivate the player's turn
-                }
+            // Deliberately not gated on the player being online -- a
+            // RIDE_TO_RESULT player's natural blackjack must still be
+            // resolved here, or they fall through into the ordinary turn
+            // loop and stall it once their turn comes up.
+            int handValue = calculateHandValue(activeHandCards(playerId));
+            if (handValue == 21) {
+                playerDone.put(playerId, true); // Mark the player as done
+                playerTurnActive.put(playerId, false); // Deactivate the player's turn
             }
         }
 
@@ -5431,19 +5452,25 @@ private void startNextPlayerTurn() {
         if (!playerDone.getOrDefault(currentPlayerId, false)) { // Skip players who are done
             Player currentPlayer = Bukkit.getPlayer(currentPlayerId);
 
-            switch(plugin.getPreferences(currentPlayer.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    break;}
-                case VERBOSE:{
+            // currentPlayer is null for a RIDE_TO_RESULT player whose turn
+            // comes up while they're still offline -- just skip the
+            // presence-only feedback (message/sound) and let the turn
+            // proceed as normal so the table doesn't stall on them.
+            if (currentPlayer != null) {
+                switch(plugin.getPreferences(currentPlayerId).getMessageSetting()){
+                    case STANDARD:{
+                        break;}
+                    case VERBOSE:{
 
-                    currentPlayer.sendMessage(text(currentPlayer, "blackjack.your-turn-message"));
-                    break;
+                        currentPlayer.sendMessage(text(currentPlayer, "blackjack.your-turn-message"));
+                        break;
+                    }
+                        case NONE:{
+                        break;
+                    }
                 }
-                    case NONE:{
-                    break;
-                }
+                if (SoundHelper.getSoundSafely("block.enchantment_table.use", currentPlayer) != null)currentPlayer.playSound(currentPlayer.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f);
             }
-             if (SoundHelper.getSoundSafely("block.enchantment_table.use", currentPlayer) != null)currentPlayer.playSound(currentPlayer.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0f, 1.0f);
 
             refreshCardGlow(previousPlayerId, currentPlayerId);
 
@@ -6112,7 +6139,11 @@ private void resetGame() {
     // Re-populate the player heads in the seats
     for (UUID playerId : playerSeats.keySet()) {
         int seatSlot = playerSeats.get(playerId);
-        renderToAllViews(seatSlot, createPlayerHeadItem(Bukkit.getPlayer(playerId), 1));
+        Player seatOwnerPlayer = Bukkit.getPlayer(playerId);
+        ItemStack headItem = seatOwnerPlayer != null
+                ? createPlayerHeadItem(seatOwnerPlayer, 1)
+                : createPlayerHead(playerId, Bukkit.getOfflinePlayer(playerId).getName(), null);
+        renderToAllViews(seatSlot, headItem);
     }
 
 }
@@ -6146,7 +6177,7 @@ private void updatePlayerHead(UUID playerId) {
     String handValue = calculateHandValueWithSoftCheck(hand);
 
     int seatSlot = playerSeats.get(playerId);
-    renderHeadLoreToAllViews(seatSlot, handValue, Bukkit.getPlayer(playerId).getName(), null);
+    renderHeadLoreToAllViews(seatSlot, handValue, Bukkit.getOfflinePlayer(playerId).getName(), null);
 }
 
 private void updateDealerHead() {
