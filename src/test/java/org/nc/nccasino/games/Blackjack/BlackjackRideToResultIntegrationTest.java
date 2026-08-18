@@ -312,6 +312,7 @@ class BlackjackRideToResultIntegrationTest {
             for (int i = 0; i < 40 && !h.inventory.isGameActiveForTest(); i++) {
                 h.scheduler.advance(20);
             }
+            h.scheduler.advance(20); // let the first card's own deck-flight + flip actually land -- gameActive flips before any card data does
             assertTrue(h.inventory.isGameActiveForTest(), "the start-transition must still complete on schedule despite the closed view");
             assertTrue(h.inventory.isSeatedForTest(aliceId));
             assertTrue(h.inventory.activeHandCardCountForTest(aliceId) > 0, "a player riding a committed wager through start-transition must still actually get dealt cards");

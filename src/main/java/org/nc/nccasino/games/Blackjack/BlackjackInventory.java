@@ -154,6 +154,12 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     // BlackjackFrame so a late viewer bootstraps the dealer where it
     // actually is, mid-animation or not.
     private int dealerHeadSlot = BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT;
+    // The deck token's current slot, trailing one row behind the dealer
+    // head during the start-transition slide (see applyDealerInspectionStep)
+    // -- invisible (-1) until the dealer's first move, resting one slot
+    // above the dealer's final in-play position for the rest of the round,
+    // where dealt/hit cards visually originate from.
+    private int dealerDeckTokenSlot = -1;
     // True from the moment the pregame countdown hits zero until the
     // readiness gate opens and activateGame() actually deals -- see
     // beginStartTransition/isReadyToDeal. Drives BlackjackFrame.Phase.START_TRANSITION.
@@ -1415,18 +1421,36 @@ private void registerListener() {
             }
             // Natural completion -- a valid end for a shared run per phase 2's design (not a viewer-close).
             dealerHeadSlot = BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT; // safety net in case the last MOVE step wasn't exactly 53
+            if (dealerDeckTokenSlot != BlackjackSlotLayout.DECK_HOME_SLOT) {
+                if (dealerDeckTokenSlot != -1) {
+                    renderBackgroundToAllViews(dealerDeckTokenSlot);
+                }
+                dealerDeckTokenSlot = BlackjackSlotLayout.DECK_HOME_SLOT;
+                renderHiddenCardToAllViews(dealerDeckTokenSlot);
+            }
             cancelSharedAnimation();
         }, lastStepDelay + BlackjackTiming.DEALER_INSPECTION_STEP_TICKS);
     }
 
-    /** Moves the canonical dealerHeadSlot to {@code step}'s slot and re-renders the dealer head there for every view, clearing the vacated cell back to the felt. */
+    /**
+     * Moves the canonical dealerHeadSlot to {@code step}'s slot and
+     * re-renders the dealer head there for every view. The deck token
+     * trails one row behind, unrendered until the dealer's first genuine
+     * move, then following into wherever the dealer just vacated -- so it
+     * naturally comes to rest one slot above the dealer's final in-play
+     * position once the slide completes.
+     */
     private void applyDealerInspectionStep(BlackjackAnimationStep step) {
         int previousSlot = dealerHeadSlot;
         int newSlot = step.getSlot();
         dealerHeadSlot = newSlot;
 
         if (previousSlot != newSlot) {
-            renderBackgroundToAllViews(previousSlot);
+            if (dealerDeckTokenSlot != -1) {
+                renderBackgroundToAllViews(dealerDeckTokenSlot);
+            }
+            dealerDeckTokenSlot = previousSlot;
+            renderHiddenCardToAllViews(dealerDeckTokenSlot);
         }
         renderLocalizedToAllViews(newSlot, Material.CREEPER_HEAD, 1, "blackjack.dealer");
     }
@@ -4893,16 +4917,26 @@ private void dealInitialCards() {
         (int) BlackjackTiming.CARD_DEAL_DELAY_TICKS
     );
 
+    // Each step's own delayTicks is when its flight FROM THE DECK begins,
+    // not when the card lands -- scheduleCardFlight returns the later tick
+    // (flight + flip) the real deal (data mutation + true-face render) must
+    // actually fire at, so the visual flight's exact landing is what
+    // flips face-down to face-up, never a separate/earlier instant reveal.
+    long lastCardLandingDelay = 0L;
     for (BlackjackDealPlan.Step step : plan.getSteps()) {
+        long landingDelay = scheduleCardFlight(step.getSlot(), step.isDealer(), step.getDelayTicks(), myGeneration);
+        lastCardLandingDelay = Math.max(lastCardLandingDelay, landingDelay);
         if (step.isHidden()) {
             // Hidden placeholder: the Card IS drawn from the shoe now (so
             // its rank is known for the dealer peek below), just rendered
             // as a hidden placeholder until revealDealerHoleCardNow/
-            // revealDealerCardWithDelay later paints it face-up.
+            // revealDealerCardWithDelay later paints it face-up -- staying
+            // face-down at "landing" is exactly the same render either way,
+            // so the hole card is the one card that never visibly flips.
             Card holeCard = deck.dealCard();
-            scheduleHiddenCardDealing(step.getSlot(), holeCard, step.getDelayTicks(), myGeneration);
+            scheduleHiddenCardDealing(step.getSlot(), holeCard, landingDelay, myGeneration);
         } else {
-            scheduleCardDealing(step.getSlot(), deck.dealCard(), step.getDelayTicks(), step.getPlayerId(), myGeneration);
+            scheduleCardDealing(step.getSlot(), deck.dealCard(), (int) landingDelay, step.getPlayerId(), myGeneration);
         }
     }
 
@@ -4934,7 +4968,7 @@ private void dealInitialCards() {
         } else {
             performDealerPeekThenProceed(myGeneration);
         }
-    }, plan.initialBlackjackCheckDelayTicks()); // Delay slightly longer to allow cards to be fully dealt
+    }, lastCardLandingDelay + 2L); // A short margin past the last card's own flight+flip landing, not plan.initialBlackjackCheckDelayTicks() -- the flight adds real time on top of the plan's raw per-step stagger.
 }
 
 /** Whether insurance is offered at all this round -- {@code dealers.<name>.insurance.enabled}, loaded once at construction. */
@@ -6243,6 +6277,7 @@ private void resetGame() {
     currentPlayerId = null;
     hiddenCardPlaceholderVisible = false;
     dealerHeadSlot = BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT;
+    dealerDeckTokenSlot = -1;
     startTransitionActive = false;
     startTransitionDoorConcealComplete.clear();
     startTransitionSeatedSnapshot.clear();
@@ -6286,6 +6321,48 @@ private void resetGame() {
 
 private int calculateHandValue(List<Card> hand) {
     return BlackjackRules.handValue(hand);
+}
+
+/**
+ * Renders a face-down card icon hopping from the deck token to {@code
+ * targetSlot} (see {@link BlackjackCardFlightPlan}), starting {@code
+ * baseDelay} ticks from now. Every hop, including the landing one, renders
+ * face-down -- the caller is responsible for scheduling the real deal
+ * (which paints the true face, i.e. the "flip") at the returned tick, so
+ * the swap from this animation's own final frame to the real card is what
+ * actually reads as a flip rather than a separate reveal. The deck token
+ * itself is restored (not cleared to background) wherever a hop departs
+ * from its own resting slot, since the deck is still sitting there for the
+ * next card.
+ *
+ * @return the tick (relative to now) at which the flight lands and the
+ *     card should flip -- {@code baseDelay} plus the path's travel time
+ *     plus {@link BlackjackTiming#CARD_FLIP_DELAY_TICKS}
+ */
+private long scheduleCardFlight(int targetSlot, boolean dealerCard, long baseDelay, long myGeneration) {
+    int originSlot = dealerDeckTokenSlot != -1 ? dealerDeckTokenSlot : BlackjackSlotLayout.DECK_HOME_SLOT;
+    List<Integer> path = BlackjackCardFlightPlan.path(originSlot, targetSlot, dealerCard);
+    long hopTicks = BlackjackTiming.CARD_FLIGHT_HOP_TICKS;
+
+    for (int i = 1; i < path.size(); i++) {
+        int previousSlot = path.get(i - 1);
+        int hopSlot = path.get(i);
+        long hopDelay = baseDelay + i * hopTicks;
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (roundGeneration != myGeneration) {
+                return;
+            }
+            if (previousSlot == dealerDeckTokenSlot) {
+                renderHiddenCardToAllViews(previousSlot);
+            } else {
+                renderBackgroundToAllViews(previousSlot);
+            }
+            renderHiddenCardToAllViews(hopSlot);
+        }, hopDelay);
+    }
+
+    long flightTicks = (path.size() - 1) * hopTicks;
+    return baseDelay + flightTicks + BlackjackTiming.CARD_FLIP_DELAY_TICKS;
 }
 
 private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId, long myGeneration) {
@@ -6445,6 +6522,7 @@ public void delete() {
     lastBetAmounts.clear();
     hiddenCardPlaceholderVisible = false;
     dealerHeadSlot = BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT;
+    dealerDeckTokenSlot = -1;
     startTransitionActive = false;
     startTransitionDoorConcealComplete.clear();
     startTransitionSeatedSnapshot.clear();
@@ -6517,6 +6595,7 @@ public void delete() {
         // round reset (resetGame) clears those.
         hiddenCardPlaceholderVisible = false;
         dealerHeadSlot = BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT;
+        dealerDeckTokenSlot = -1;
         startTransitionActive = false;
         startTransitionDoorConcealComplete.clear();
         startTransitionSeatedSnapshot.clear();

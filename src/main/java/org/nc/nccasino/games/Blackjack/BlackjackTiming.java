@@ -61,7 +61,11 @@ public final class BlackjackTiming {
      */
     public static final long MENU_RELAYOUT_STEP_TICKS = 1L;
     /** Per-slot travel time along the dealer's start-transition slide -- uniform for every leg, no per-seat pauses. */
-    public static final long DEALER_INSPECTION_STEP_TICKS = 5L;
+    public static final long DEALER_INSPECTION_STEP_TICKS = 2L;
+    /** Per-slot travel time of a dealt card's flight from the deck token to its slot -- deliberately faster than {@link #DEALER_INSPECTION_STEP_TICKS}. */
+    public static final long CARD_FLIGHT_HOP_TICKS = 1L;
+    /** Delay after a card's flight lands before it flips from face-down to its real face. */
+    public static final long CARD_FLIP_DELAY_TICKS = 2L;
     /** Ticks between one diagonal and the next joining the game-reset white-tile sweep's wavefront. */
     public static final long RESET_SWEEP_STEP_TICKS = 1L;
     /** How many diagonals' worth of ticks a reset-sweep tile stays white before revealing the board underneath again. */

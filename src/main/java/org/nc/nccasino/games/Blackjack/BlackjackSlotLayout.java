@@ -47,6 +47,8 @@ public final class BlackjackSlotLayout {
     public static final int DEALER_LOBBY_HEAD_SLOT = 8;
     /** The dealer's permanent head position once the start-transition animation delivers it there. */
     public static final int DEALER_INPLAY_HEAD_SLOT = 53;
+    /** The deck token's resting slot once the start-transition slide completes -- one row directly above {@link #DEALER_INPLAY_HEAD_SLOT}, where dealt/hit cards visually originate from. */
+    public static final int DECK_HOME_SLOT = DEALER_INPLAY_HEAD_SLOT - SEAT_ROW_WIDTH;
     /** Active play only: dealer's first face-up card. */
     public static final int DEALER_UP_CARD_SLOT = 52;
     /** Active play only: dealer's hidden/second card. */
