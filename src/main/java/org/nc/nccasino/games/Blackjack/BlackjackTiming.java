@@ -63,9 +63,9 @@ public final class BlackjackTiming {
     /** Per-slot travel time along the dealer's start-transition slide -- uniform for every leg, no per-seat pauses. */
     public static final long DEALER_INSPECTION_STEP_TICKS = 5L;
     /** Ticks between one diagonal and the next joining the game-reset white-tile sweep's wavefront. */
-    public static final long RESET_SWEEP_STEP_TICKS = 2L;
+    public static final long RESET_SWEEP_STEP_TICKS = 1L;
     /** How many diagonals' worth of ticks a reset-sweep tile stays white before revealing the board underneath again. */
-    public static final long RESET_SWEEP_HOLD_DIAGONALS = 5L;
+    public static final long RESET_SWEEP_HOLD_DIAGONALS = 3L;
     /** How long the whole currently-available action-item set stays glowing (or plain) per phase before flipping to the other. */
     public static final long ACTION_GUIDANCE_STEP_TICKS = 5L;
     /** Delay between successive steps of the split slide-out/park/reactivate sequence. */

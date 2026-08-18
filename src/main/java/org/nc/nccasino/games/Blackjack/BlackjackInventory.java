@@ -1435,7 +1435,7 @@ private void registerListener() {
 
     /** Blank white tile used to cover a slot mid-sweep -- see {@link #startResetSweep}. */
     private ItemStack buildResetSweepWhiteTileItem() {
-        ItemStack item = new ItemStack(Material.WHITE_CONCRETE);
+        ItemStack item = new ItemStack(Material.WHITE_STAINED_GLASS_PANE);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName("§r");
