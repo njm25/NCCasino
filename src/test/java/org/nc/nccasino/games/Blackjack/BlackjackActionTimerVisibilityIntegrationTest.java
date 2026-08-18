@@ -139,30 +139,6 @@ class BlackjackActionTimerVisibilityIntegrationTest {
     }
 
     @Test
-    void disablingTheTimerPaintsBrownForEveryone() {
-        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness(
-            java.util.Map.of("turn-timer.enabled", false)
-        )) {
-            h.inventory.stackDeckForTest(flatStack(Rank.SEVEN, 40));
-            h.currencyProvider.setBalance(1000);
-            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
-            h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]);
-            h.inventory.commitWagerForTest(alice, 10.0);
-            h.inventory.beginStartTransitionForTest();
-            for (int i = 0; i < 40 && !h.inventory.isGameActiveForTest(); i++) {
-                h.scheduler.advance(20);
-            }
-            assertTrue(h.inventory.isGameActiveForTest());
-
-            Player spectator = h.seatOnlinePlayer(UUID.randomUUID(), "Spectator");
-
-            assertEquals(Material.BROWN_STAINED_GLASS_PANE, timerItem(h, alice).getType(),
-                "even the current/acting player sees brown when the feature is disabled");
-            assertEquals(Material.BROWN_STAINED_GLASS_PANE, timerItem(h, spectator).getType());
-        }
-    }
-
-    @Test
     void renderingForAnotherViewerNeverMutatesTheCanonicalDeadline() {
         try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
             h.inventory.stackDeckForTest(flatStack(Rank.SEVEN, 40));
@@ -182,48 +158,6 @@ class BlackjackActionTimerVisibilityIntegrationTest {
 
             assertEquals(before, h.inventory.turnTimerSecondsRemainingForTest(), "opening/reading another viewer's inventory must never mutate the canonical deadline");
             assertEquals(ownerBefore, h.inventory.turnTimerPlayerIdForTest());
-        }
-    }
-
-    @Test
-    void liveDisablingTheTimerPatchesTheSameRunningControllerWithoutCancellingAnInFlightDecision() {
-        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
-            h.inventory.stackDeckForTest(flatStack(Rank.SEVEN, 60));
-            h.currencyProvider.setBalance(1000);
-            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
-            Player bob = h.seatOnlinePlayer(UUID.randomUUID(), "Bob");
-            UUID firstId = seatTwoAndReachActionableTurn(h, alice, bob);
-            Player first = firstId.equals(alice.getUniqueId()) ? alice : bob;
-            Player second = first == alice ? bob : alice;
-
-            assertEquals(Material.CLOCK, timerItem(h, first).getType());
-
-            // This is exactly what BlackjackMenu's turn-timer toggle calls
-            // on the already-running BlackjackInventory instance -- a true
-            // live patch, never a reload/replace of the controller.
-            h.inventory.setTurnTimerEnabledLive(false);
-
-            // Per BlackjackInventory#setTurnTimerEnabledLive's own contract,
-            // disabling mid-decision does not cancel an already-running
-            // deadline -- it only takes effect the next time a fresh
-            // deadline would otherwise start. The current decision (and
-            // committed wagers) must be completely undisturbed.
-            assertEquals(Material.CLOCK, timerItem(h, first).getType(),
-                "a live disable must never cancel/repaint away an in-flight decision's own clock");
-            assertTrue(h.inventory.turnTimerSecondsRemainingForTest() > 0);
-            assertTrue(h.inventory.isGameActiveForTest(), "the controller itself must remain the same running instance, never reloaded/destroyed");
-
-            // The NEXT actionable decision (Stand advances to Bob) must now start with no timer at all --
-            // turnTimerSecondsRemainingForTest() never becomes positive once disabled, so advanceToActionableTurn
-            // would spin for nothing; poll on currentPlayerId instead (mirrors idleBrownGlassShowsWhenTurnTimerIsDisabled).
-            h.click(first, BlackjackSlotLayout.ACTION_STAND_SLOT);
-            for (int i = 0; i < 40 && !second.getUniqueId().equals(h.inventory.currentPlayerIdForTest()); i++) {
-                h.scheduler.advance(20);
-            }
-            assertEquals(second.getUniqueId(), h.inventory.currentPlayerIdForTest());
-
-            assertEquals(Material.BROWN_STAINED_GLASS_PANE, timerItem(h, second).getType(),
-                "once live-disabled, the next fresh decision must never start a timer");
         }
     }
 

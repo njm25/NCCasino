@@ -90,17 +90,17 @@ class LocalizationResourcesTest {
      * by {@link #everyBundledLanguageContainsEveryEnglishKeyWithMatchingPlaceholders()};
      * this additionally pins the English wording itself to the "Action
      * Timer" terminology so a future edit can't silently regress back to
-     * "Turn Timer". Internal config keys (turn-timer.enabled/timeout-seconds)
-     * and existing gameplay text like "Time to decide: {seconds}" are
-     * deliberately out of scope -- see BlackjackInventory's own turn-timer
-     * field docs.
+     * "Turn Timer". The Action Timer is mandatory (no enabled/disabled
+     * toggle), so there is no toggle-turn-timer/turn-timer-updated key pair
+     * anymore -- only the always-visible timeout-edit control's keys remain.
+     * Internal config keys (turn-timer.timeout-seconds) and existing
+     * gameplay text like "Time to decide: {seconds}" are deliberately out of
+     * scope -- see BlackjackInventory's own turn-timer field docs.
      */
     @Test
     void blackjackActionTimerMenuTextUsesActionTimerWordingInEveryLocale() {
         String[] keys = {
-            "blackjack-settings.toggle-turn-timer",
             "blackjack-settings.edit-turn-timer-timeout",
-            "blackjack-settings.turn-timer-updated",
             "blackjack-settings.prompt-turn-timer-timeout",
             "blackjack-settings.turn-timer-timeout-updated"
         };

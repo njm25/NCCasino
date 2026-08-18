@@ -147,15 +147,27 @@ class BlackjackDealerInspectionCoordinationIntegrationTest {
             seatAndCommit(h, carolId, "Carol", BlackjackSlotLayout.SEAT_SLOTS[2], 10.0);
 
             h.inventory.beginStartTransitionForTest();
-            h.scheduler.advance(20); // mid-inspection, well before completion (115)
+            h.scheduler.advance(20); // mid-inspection, well before completion
 
             // Alice's own view closes -- a purely private/per-viewer event.
+            // She still has a committed wager, so this rides to result
+            // (RIDE_TO_RESULT) rather than being refunded-and-removed -- she
+            // stays seated and genuinely gets dealt into this same round, so
+            // the dealer inspection's committed-seat checkpoint pause still
+            // applies to her seat too, same as if she'd stayed online. That
+            // legitimately pushes completion later than a fixed-tick bound
+            // calibrated to her being excluded would assume -- poll instead
+            // of asserting one hardcoded cumulative tick.
             h.inventory.onViewClosed(alice, h.inventory.viewForTest(aliceId));
             assertTrue(h.inventory.hasSharedAnimationForTest(), "one viewer closing must never cancel the shared dealer inspection");
 
-            h.scheduler.advance(95); // cumulative tick 115
+            for (int i = 0; i < 60 && h.inventory.activeHandCardCountForTest(carolId) == 0; i++) {
+                h.scheduler.advance(5);
+            }
             assertTrue(h.inventory.isGameActiveForTest(), "the shared inspection must complete on schedule regardless of alice's closed view");
             assertTrue(h.inventory.activeHandCardCountForTest(carolId) > 0, "carol must still be dealt in");
+            assertTrue(h.inventory.isSeatedForTest(aliceId), "alice's committed wager must ride to result, not be refunded-and-removed");
+            assertTrue(h.inventory.activeHandCardCountForTest(aliceId) > 0, "alice must still be dealt into the very round her wager rode into");
         }
     }
 

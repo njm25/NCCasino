@@ -134,33 +134,4 @@ class BlackjackViewBootstrapIntegrationTest {
         }
     }
 
-    @Test
-    void idleBrownGlassShowsWhenTurnTimerIsDisabled() {
-        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness(
-            java.util.Map.of("turn-timer.enabled", false)
-        )) {
-            h.inventory.stackDeckForTest(flatStack(Rank.SEVEN, 40));
-            h.currencyProvider.setBalance(1000);
-
-            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
-            h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]);
-            h.inventory.commitWagerForTest(alice, 10.0);
-            h.inventory.beginStartTransitionForTest();
-
-            // No actionable-turn wait needed -- with the timer disabled,
-            // turnTimerSecondsRemainingForTest() never becomes positive, so
-            // advanceToActionableTurn would spin for nothing; just advance
-            // enough to reach ACTIVE directly.
-            for (int i = 0; i < 40 && !h.inventory.isGameActiveForTest(); i++) {
-                h.scheduler.advance(20);
-            }
-            assertTrue(h.inventory.isGameActiveForTest());
-
-            Player spectator = h.registerOnlinePlayer(UUID.randomUUID(), "Spectator");
-            Inventory spectatorView = h.inventory.getOrCreateView(spectator);
-            ItemStack turnTimerItem = spectatorView.getItem(BlackjackSlotLayout.TURN_TIMER_SLOT);
-            assertNotNull(turnTimerItem);
-            assertEquals(Material.BROWN_STAINED_GLASS_PANE, turnTimerItem.getType(), "a disabled turn timer must never render the clock, on bootstrap or otherwise");
-        }
-    }
 }

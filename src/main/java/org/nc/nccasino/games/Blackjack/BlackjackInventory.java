@@ -236,15 +236,11 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     // during card-deal/split animations); resets on Hit (a new decision on
     // the same hand bumps handToken, which invalidates the previous timer
     // task on its own next tick, and startNextPlayerTurn/handleHit start a
-    // fresh one). When disabled, slot 46 simply never leaves its brown
-    // edge-glass idle state.
-    /**
-     * {@code dealers.<name>.turn-timer.enabled}, loaded at construction
-     * (default true), then live-patchable by {@link #setTurnTimerEnabledLive}
-     * -- see that method's doc for exactly when a live change takes effect.
-     */
-    private boolean turnTimerEnabled;
-    /** {@code dealers.<name>.turn-timer.timeout-seconds}, clamped [1,60] (default 20). */
+    // fresh one). Mandatory -- always runs; a table wanting minimal time
+    // pressure just configures a long timeout-seconds instead of disabling
+    // it, so a round (and a disconnected/closed player's own hand) always
+    // has a real, bounded resolution path and can never stall indefinitely.
+    /** {@code dealers.<name>.turn-timer.timeout-seconds}, clamped [5,3600] (default 20). */
     private final int turnTimerTimeoutSeconds;
     private int turnTimerTaskId = -1;
     // Canonical turn-timer deadline state, deliberately separate from
@@ -405,8 +401,7 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
 
         this.insuranceEnabled = loadBooleanConfig("insurance.enabled", true);
         this.insuranceTimeoutSeconds = loadClampedIntConfig("insurance.timeout-seconds", BlackjackTiming.INSURANCE_TIMEOUT_DEFAULT_SECONDS, 1, 60);
-        this.turnTimerEnabled = loadBooleanConfig("turn-timer.enabled", true);
-        this.turnTimerTimeoutSeconds = loadClampedIntConfig("turn-timer.timeout-seconds", 20, 1, 60);
+        this.turnTimerTimeoutSeconds = loadClampedIntConfig("turn-timer.timeout-seconds", 20, 5, 3600);
         this.splittingEnabled = loadBooleanConfig("splitting.enabled", true);
         this.splitMatching = loadSplitMatchingConfig("splitting.matching", BlackjackSplitMatching.SAME_RANK);
         this.maxHands = loadMaxHandsConfig("splitting.max-hands", BlackjackMaxHands.unbounded());
@@ -596,10 +591,6 @@ private void registerListener() {
         this.splittingEnabled = enabled;
     }
 
-    /** Live-patches {@code turn-timer.enabled} for this already-running table -- see the class-level "Live-patchable settings" note for exact timing. Disabling mid-decision does not cancel an already-running deadline (see stopTurnTimerTask's own identity-guarded lifecycle); it takes effect the next time a fresh deadline would otherwise start. */
-    public void setTurnTimerEnabledLive(boolean enabled) {
-        this.turnTimerEnabled = enabled;
-    }
 
     /** Live-patches {@code splitting.matching} for this already-running table -- see the class-level "Live-patchable settings" note for exact timing. */
     public void setSplitMatchingLive(BlackjackSplitMatching matching) {
@@ -2501,6 +2492,32 @@ private void registerListener() {
         if (!currentPlayerActionLayout().isEmpty()) {
             startActionGuidance(currentPlayerId);
             startTurnTimer(currentPlayerId);
+            notifyTurnStartedIfAway(currentPlayerId);
+        }
+    }
+
+    /**
+     * If {@code playerId}'s own private view isn't currently open (closed
+     * the GUI, or genuinely disconnected but still riding out an earlier
+     * hand per RIDE_TO_RESULT), they'd otherwise have no way to know it's
+     * now their turn -- the live countdown only ever renders into a
+     * viewer's own open view (see {@code isTurnTimerCanonicallyActive}'s
+     * use in {@code bootstrapView}). A chat message is the only way to
+     * reach them; naturally a no-op if they're genuinely offline.
+     */
+    private void notifyTurnStartedIfAway(UUID playerId) {
+        if (views.containsKey(playerId)) {
+            return;
+        }
+        Player player = Bukkit.getPlayer(playerId);
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        switch (plugin.getPreferences(playerId).getMessageSetting()) {
+            case NONE:
+                break;
+            default:
+                player.sendMessage(text(player, "blackjack.turn-started-while-away", "seconds", turnTimerTimeoutSeconds));
         }
     }
 
@@ -4765,6 +4782,7 @@ private void beginInsurancePhase(long myGeneration) {
         BlackjackHand hand = activeHand(playerId);
         computeAndStoreInsuranceOffer(playerId, hand != null ? hand.getOriginalPreSplitWager() : 0.0);
         renderInsurancePromptForPlayer(playerId);
+        notifyInsuranceOfferedIfAway(playerId);
     }
 
     insuranceTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
@@ -4794,6 +4812,29 @@ private void beginInsurancePhase(long myGeneration) {
             secondsLeft--;
         }
     }, 0L, 20L);
+}
+
+/**
+ * Mirrors {@link #notifyTurnStartedIfAway} for the insurance decision:
+ * if {@code playerId}'s own private view isn't currently open when
+ * insurance is offered, the private Yes/No/countdown UI just rendered
+ * for them is invisible -- a chat message is the only way to reach
+ * them. Naturally a no-op if they're genuinely offline.
+ */
+private void notifyInsuranceOfferedIfAway(UUID playerId) {
+    if (views.containsKey(playerId)) {
+        return;
+    }
+    Player player = Bukkit.getPlayer(playerId);
+    if (player == null || !player.isOnline()) {
+        return;
+    }
+    switch (plugin.getPreferences(playerId).getMessageSetting()) {
+        case NONE:
+            break;
+        default:
+            player.sendMessage(text(player, "blackjack.insurance-available-while-away", "seconds", insuranceTimeoutSeconds));
+    }
 }
 
 /**
@@ -5101,8 +5142,8 @@ private void stopInsurancePhaseBookkeeping() {
  * becomes available (initial turn start, after a Hit, or a split-hand
  * activation) and is implicitly reset by that same call whenever the
  * previous deadline is superseded. Never invoked for a plain repaint (an
- * invalid click, a failed action, reopening a view). No-op (and immediately
- * restores the idle brown-glass slot) when turn-timer.enabled is false.
+ * invalid click, a failed action, reopening a view). Mandatory -- always
+ * starts a real deadline; there is no disabled state.
  *
  * <p>The canonical deadline (identity + remaining seconds) lives in
  * {@code turnTimer*} fields, independent of the rendering task itself --
@@ -5116,9 +5157,6 @@ private void startTurnTimer(UUID playerId) {
     stopTurnTimerTask();
     turnTimerPlayerId = null;
     turnTimerSecondsRemaining = -1;
-    if (!turnTimerEnabled) {
-        return;
-    }
     BlackjackHand hand = activeHand(playerId);
     if (hand == null) {
         return;
@@ -5224,7 +5262,7 @@ private void stopTurnTimerTask() {
  * extra time.
  */
 private void resumeTurnTimerAfterFailedAction(UUID playerId) {
-    if (!turnTimerEnabled || turnTimerPlayerId == null || !turnTimerPlayerId.equals(playerId)) {
+    if (turnTimerPlayerId == null || !turnTimerPlayerId.equals(playerId)) {
         return;
     }
     if (isStaleHandCallback(playerId, turnTimerRoundGeneration, turnTimerHandToken)
@@ -5253,7 +5291,7 @@ private void resumeTurnTimerAfterFailedAction(UUID playerId) {
  * seconds have already reached zero -- that stays the running task's job.
  */
 private boolean isTurnTimerCanonicallyActive() {
-    if (!turnTimerEnabled || turnTimerPlayerId == null || turnTimerSecondsRemaining <= 0) {
+    if (turnTimerPlayerId == null || turnTimerSecondsRemaining <= 0) {
         return false;
     }
     return !isStaleHandCallback(turnTimerPlayerId, turnTimerRoundGeneration, turnTimerHandToken)
@@ -6326,6 +6364,15 @@ public void delete() {
      * table's own InventoryCloseEvent. Transition is based on {@code
      * gameActive} — set the instant dealing is committed server-side, not
      * on any animation — never on what the client had visibly rendered.
+     * {@code gameActive} alone would still leave a real gap though: a
+     * player who already committed a wager during the countdown or the
+     * start-transition window (door-conceal + shared dealer inspection,
+     * before {@code activateGame} flips {@code gameActive}) closing right
+     * then would still be refunded-and-removed rather than riding into the
+     * round they already paid for -- {@code hasCommittedWager} below closes
+     * that gap without affecting a merely-seated, never-bet spectator, who
+     * must still free their seat immediately on close (see
+     * GameTerminationPolicy#blackjack's own doc).
      */
     @Override
     public void onSessionTerminated(UUID playerId, ExitReason reason) {
@@ -6335,12 +6382,14 @@ public void delete() {
             return;
         }
 
+        boolean hasCommittedWager = totalRoundRefundForPlayer(playerId) > 0;
         org.nc.nccasino.session.TerminationAction action =
-            GameTerminationPolicy.blackjack(reason, gameActive);
+            GameTerminationPolicy.blackjack(reason, gameActive, hasCommittedWager);
         if (action == org.nc.nccasino.session.TerminationAction.FORFEIT) {
-            // Deal has begun: forfeit unconditionally. Never calculate an
-            // automated hand or create a pending payout. Advance the turn
-            // safely first if it was theirs.
+            // Only ever reached for a kick now (see GameTerminationPolicy.blackjack) —
+            // a kicked player forfeits unconditionally regardless of phase.
+            // Never calculate an automated hand or create a pending payout.
+            // Advance the turn safely first if it was theirs.
             if (playerId.equals(currentPlayerId)) {
                 playerDone.put(playerId, true);
                 playerTurnActive.put(playerId, false);
@@ -6349,14 +6398,91 @@ public void delete() {
             }
             removePlayerData(playerId);
         } else if (action == org.nc.nccasino.session.TerminationAction.REFUND) {
-            // Before the deal: refund the committed wager, unless kicked —
-            // a kicked player forfeits regardless of phase.
+            // Reached only when nothing is actually at stake yet (no
+            // committed wager, pre-deal) -- refund is a safe no-op in that
+            // case, and the seat is freed immediately rather than held for
+            // a spectator who never bet. Also reached unconditionally on
+            // PLUGIN_DISABLE, which can never ride through a restart.
             refundPendingBets(playerId, reason);
             removePlayerData(playerId);
+        } else if (action == org.nc.nccasino.session.TerminationAction.RIDE_TO_RESULT) {
+            // Either the deal has begun, or a wager is already committed
+            // for the countdown/start-transition round about to deal --
+            // either way real money is on the line, so leave the seat,
+            // hand, wager, and turn state completely untouched. The
+            // mandatory Action Timer (and, during insurance, the insurance
+            // timer) resolves any decision on schedule regardless of
+            // presence, exactly like Roulette/Baccarat/CoinFlip/
+            // RockPaperScissors already do; a pregame/start-transition
+            // wager simply rides into the deal like an online player's
+            // would, once cards are dealt. Settlement already queues a
+            // PendingPayout if they're still offline when it pays out (see
+            // queueBlackjackPendingPayout and its call sites). Re-register
+            // with SessionRegistry (mirroring Roulette's RIDE_TO_RESULT
+            // handling) so a later PLUGIN_DISABLE while still riding still
+            // resolves correctly -- delete() also already iterates
+            // playerSeats directly as a second safety net regardless.
+            SessionRegistry.register(playerId, this);
+            // onViewClosed already unconditionally called
+            // cancelPrivateAnimation(playerId) for this view closing (a
+            // deliberate, necessary cancellation for chair/wager guidance,
+            // bet-spot blink, etc.) -- but that also bumps this viewer's
+            // animation generation, which invalidates an in-flight
+            // start-transition door-conceal's own scheduled stepping
+            // (startDoorConceal/requestWagerBarPosition are guarded by that
+            // same per-viewer generation), freezing it mid-slide. Left
+            // alone, isReadyToDeal's gate -- which still requires this
+            // player's conceal to finish, since they're (correctly) still
+            // seated under RIDE_TO_RESULT -- would stall until the
+            // bounded-poll fallback aborts the whole round. There is no
+            // view to animate the slide for anymore, so there's nothing to
+            // gain by resuming it tick-by-tick either -- jump the position
+            // straight to CLOSED instead. Harmless: bootstrapView/
+            // syncWagerBarPositionToCanonicalResting resets this from live
+            // canonical state on any future reopen, and the pregame wager
+            // bar isn't shown at all once gameActive anyway.
+            if (startTransitionActive && !startTransitionDoorConcealComplete.contains(playerId)) {
+                wagerBarPosition.put(playerId, BlackjackWagerRevealPlan.CLOSED);
+                wagerBarTarget.put(playerId, BlackjackWagerRevealPlan.CLOSED);
+                startTransitionDoorConcealComplete.add(playerId);
+            }
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null && player.isOnline()) {
+                sendRideToResultMessage(player, playerId);
+            }
         } else {
             removePlayerData(playerId);
         }
 
+    }
+
+    /**
+     * Sent to a player spared from forfeiture (RIDE_TO_RESULT) who's still
+     * online -- explains that nothing was taken from them and what happens
+     * if they don't come back in time. Same STANDARD+VERBOSE-fire,
+     * NONE-suppress tier as blackjack.wager-selected/blackjack.insurance-taken,
+     * since a running timer against the player is more consequential than a
+     * routine confirmation message.
+     */
+    private void sendRideToResultMessage(Player player, UUID playerId) {
+        String key;
+        Object[] placeholders;
+        if (insurancePhaseActive && insuranceEligiblePlayers.contains(playerId) && !insuranceDecided.contains(playerId)) {
+            key = "blackjack.closed-during-insurance";
+            placeholders = new Object[]{"seconds", insuranceSecondsRemaining};
+        } else if (playerId.equals(currentPlayerId)) {
+            key = "blackjack.closed-during-turn";
+            placeholders = new Object[]{"seconds", turnTimerSecondsRemaining};
+        } else {
+            key = "blackjack.closed-before-turn";
+            placeholders = new Object[0];
+        }
+        switch (plugin.getPreferences(playerId).getMessageSetting()) {
+            case NONE:
+                break;
+            default:
+                player.sendMessage(text(player, key, placeholders));
+        }
     }
 
     /**

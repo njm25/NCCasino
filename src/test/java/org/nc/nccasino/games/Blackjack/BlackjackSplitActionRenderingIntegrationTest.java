@@ -178,13 +178,14 @@ class BlackjackSplitActionRenderingIntegrationTest {
             h.inventory.stackDeckForTest(splittableHandDeck());
             h.currencyProvider.setBalance(1000);
 
-            // A genuine mid-active-play InventoryCloseEvent is, by this
-            // game's own existing (and unchanged) design, indistinguishable
-            // from disconnecting -- it forfeits the hand (see
-            // handlePlayerClose/onSessionTerminated/GameTerminationPolicy).
-            // The correct way to exercise "reopen reconstructs the view
-            // from scratch while the player is still fully in the hand" is
-            // therefore the same one BlackjackViewBootstrapIntegrationTest
+            // A genuine mid-active-play InventoryCloseEvent now rides to
+            // result rather than forfeiting (see handlePlayerClose/
+            // onSessionTerminated/GameTerminationPolicy's RIDE_TO_RESULT
+            // handling -- BlackjackRideToResultIntegrationTest covers that
+            // directly). This test only cares about bootstrap reconstruction
+            // though, so the simplest way to exercise "reopen reconstructs
+            // the view from scratch while the player is still fully in the
+            // hand" is still the same one BlackjackViewBootstrapIntegrationTest
             // already establishes: never create the view until after the
             // decision is actionable, so getOrCreateView must bootstrap it
             // fresh via the exact same code path a real reopen would use.

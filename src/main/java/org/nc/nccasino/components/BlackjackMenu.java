@@ -109,7 +109,12 @@ public class BlackjackMenu extends Menu {
         String internalName = Dealer.getInternalName(dealer);
         FileConfiguration config = plugin.getConfig();
         int currentTimer = config.contains("dealers." + internalName + ".timer") ? config.getInt("dealers." + internalName + ".timer") : 10;
-        addItemAndLore(Material.CLOCK, currentTimer, text("blackjack-settings.edit-timer"), slotMapping.get(SlotOption.EDIT_TIMER), text("common.current", "value", currentTimer));
+        addItemAndLore(
+            Material.CLOCK, currentTimer,
+            text("blackjack-settings.edit-timer"), slotMapping.get(SlotOption.EDIT_TIMER),
+            text("common.current", "value", currentTimer),
+            text("blackjack-settings.edit-timer-desc-1"), text("blackjack-settings.edit-timer-desc-2")
+        );
     }
 
     private void renderStandOn17() {
@@ -160,8 +165,7 @@ public class BlackjackMenu extends Menu {
             new MenuEntry(SlotOption.TOGGLE_ACES_HIT, () -> configBoolean("splitting.enabled", true), this::renderAcesHitToggle),
             new MenuEntry(SlotOption.TOGGLE_ACES_DOUBLE, () -> configBoolean("splitting.enabled", true), this::renderAcesDoubleToggle),
             new MenuEntry(SlotOption.TOGGLE_ACES_RESPLIT, () -> configBoolean("splitting.enabled", true), this::renderAcesResplitToggle),
-            new MenuEntry(SlotOption.TOGGLE_TURN_TIMER_ENABLED, () -> true, this::renderTurnTimerToggle),
-            new MenuEntry(SlotOption.EDIT_TURN_TIMER_TIMEOUT, () -> configBoolean("turn-timer.enabled", true), this::renderTurnTimerTimeout)
+            new MenuEntry(SlotOption.EDIT_TURN_TIMER_TIMEOUT, () -> true, this::renderTurnTimerTimeout)
         );
     }
 
@@ -252,7 +256,8 @@ public class BlackjackMenu extends Menu {
         addItemAndLore(
             enabled ? Material.TOTEM_OF_UNDYING : Material.BARRIER, 1,
             text("blackjack-settings.toggle-insurance"), slotMapping.get(SlotOption.TOGGLE_INSURANCE_ENABLED),
-            stateLabel(enabled), text("common.click-toggle")
+            stateLabel(enabled), text("common.click-toggle"),
+            text("blackjack-settings.insurance-desc-1"), text("blackjack-settings.insurance-desc-2")
         );
     }
 
@@ -261,15 +266,6 @@ public class BlackjackMenu extends Menu {
         addItemAndLore(
             enabled ? Material.SHEARS : Material.BARRIER, 1,
             text("blackjack-settings.toggle-splitting"), slotMapping.get(SlotOption.TOGGLE_SPLITTING_ENABLED),
-            stateLabel(enabled), text("common.click-toggle")
-        );
-    }
-
-    private void renderTurnTimerToggle() {
-        boolean enabled = configBoolean("turn-timer.enabled", true);
-        addItemAndLore(
-            enabled ? Material.CLOCK : Material.BARRIER, 1,
-            text("blackjack-settings.toggle-turn-timer"), slotMapping.get(SlotOption.TOGGLE_TURN_TIMER_ENABLED),
             stateLabel(enabled), text("common.click-toggle")
         );
     }
@@ -316,7 +312,8 @@ public class BlackjackMenu extends Menu {
         addItemAndLore(
             Material.PAPER, 1,
             text("blackjack-settings.toggle-split-matching"), slotMapping.get(SlotOption.TOGGLE_SPLIT_MATCHING),
-            text("common.current", "value", label), text("common.click-cycle")
+            text("common.current", "value", label), text("common.click-cycle"),
+            text("blackjack-settings.split-matching-desc-1"), text("blackjack-settings.split-matching-desc-2")
         );
     }
 
@@ -338,7 +335,8 @@ public class BlackjackMenu extends Menu {
         addItemAndLore(
             Material.NETHER_STAR, 1,
             text("blackjack-settings.edit-max-hands"), slotMapping.get(SlotOption.EDIT_MAX_HANDS),
-            text("common.current", "value", display)
+            text("common.current", "value", display),
+            text("blackjack-settings.max-hands-desc")
         );
     }
 
@@ -347,7 +345,8 @@ public class BlackjackMenu extends Menu {
         addItemAndLore(
             Material.CLOCK, Math.max(1, Math.min(seconds, 64)),
             text("blackjack-settings.edit-insurance-timeout"), slotMapping.get(SlotOption.EDIT_INSURANCE_TIMEOUT),
-            text("common.current", "value", seconds)
+            text("common.current", "value", seconds),
+            text("blackjack-settings.insurance-timeout-desc")
         );
     }
 
@@ -356,7 +355,8 @@ public class BlackjackMenu extends Menu {
         addItemAndLore(
             Material.CLOCK, Math.max(1, Math.min(seconds, 64)),
             text("blackjack-settings.edit-turn-timer-timeout"), slotMapping.get(SlotOption.EDIT_TURN_TIMER_TIMEOUT),
-            text("common.current", "value", seconds)
+            text("common.current", "value", seconds),
+            text("blackjack-settings.turn-timer-timeout-desc-1"), text("blackjack-settings.turn-timer-timeout-desc-2")
         );
     }
 
@@ -465,13 +465,6 @@ public class BlackjackMenu extends Menu {
                 break;
             case TOGGLE_ACES_RESPLIT:
                 handleToggleBoolean("splitting.aces.resplit", true, this::renderAcesResplitToggle, "blackjack-settings.aces-resplit-updated", BlackjackInventory::setAcesResplitAllowedLive);
-                playDefaultSound(player);
-                break;
-            case TOGGLE_TURN_TIMER_ENABLED:
-                // Turn Timer is a "parent" setting -- Edit Turn Timer
-                // Timeout only shows while it's enabled, so this needs a
-                // full relayout too.
-                handleToggleBoolean("turn-timer.enabled", true, this::layoutMenu, "blackjack-settings.turn-timer-updated", BlackjackInventory::setTurnTimerEnabledLive);
                 playDefaultSound(player);
                 break;
             case EDIT_TURN_TIMER_TIMEOUT:
@@ -716,7 +709,7 @@ public class BlackjackMenu extends Menu {
             } else if (field == AdminMenu.BlackjackEditField.INSURANCE_TIMEOUT) {
                 handleNumericInput(player, message, "insurance.timeout-seconds", 1, 60, "blackjack-settings.insurance-timeout-updated");
             } else if (field == AdminMenu.BlackjackEditField.TURN_TIMER_TIMEOUT) {
-                handleNumericInput(player, message, "turn-timer.timeout-seconds", 1, 60, "blackjack-settings.turn-timer-timeout-updated");
+                handleNumericInput(player, message, "turn-timer.timeout-seconds", 5, 3600, "blackjack-settings.turn-timer-timeout-updated");
             }
         }
     }

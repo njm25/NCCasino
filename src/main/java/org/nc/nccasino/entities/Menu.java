@@ -88,7 +88,6 @@ public abstract class Menu extends DealerInventory {
         TOGGLE_ACES_HIT,
         TOGGLE_ACES_DOUBLE,
         TOGGLE_ACES_RESPLIT,
-        TOGGLE_TURN_TIMER_ENABLED,
         EDIT_TURN_TIMER_TIMEOUT,
         
         // Dragon Descent settings menu
