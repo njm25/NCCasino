@@ -81,6 +81,11 @@ final class BlackjackControllerTestSupport {
     private BlackjackControllerTestSupport() {
     }
 
+    /** Full duration (with slack) of the game-reset white-tile sweep {@code resetGame()}/{@code cancelGame()} now play -- advance the scheduler past this before asserting canonical post-reset board state. */
+    static final long RESET_SWEEP_TOTAL_TICKS = BlackjackResetSweepPlan.totalDurationTicks(
+        BlackjackResetSweepPlan.build(BlackjackTiming.RESET_SWEEP_STEP_TICKS, BlackjackTiming.RESET_SWEEP_HOLD_DIAGONALS)
+    ) + 2;
+
     /** One assembled test table: the live controller, its plugin/currency doubles, and the fake scheduler driving it. */
     static final class Harness implements AutoCloseable {
         final Nccasino plugin;

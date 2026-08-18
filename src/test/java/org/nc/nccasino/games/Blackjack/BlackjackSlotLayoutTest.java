@@ -188,13 +188,24 @@ class BlackjackSlotLayoutTest {
             "a bottom-bar clear loop bounded at ALL_IN_SLOT (inclusive) must never touch the dealer's in-play head slot");
     }
 
-    // --- Dealer U-path ---
+    // --- Dealer start-transition slide ---
 
     @Test
-    void dealerUPathStartsAtLobbyHeadAndEndsAtInPlayHead() {
-        List<Integer> path = BlackjackSlotLayout.dealerUPath();
+    void dealerStartTransitionPathStartsAtLobbyHeadAndEndsAtInPlayHead() {
+        List<Integer> path = BlackjackSlotLayout.dealerStartTransitionPath();
         assertEquals(BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT, path.get(0));
         assertEquals(BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT, path.get(path.size() - 1));
-        assertEquals(18, path.size());
+        assertEquals(6, path.size());
+    }
+
+    @Test
+    void dealerStartTransitionPathIsAStraightVerticalSlideDownOneColumn() {
+        List<Integer> path = BlackjackSlotLayout.dealerStartTransitionPath();
+        for (int slot : path) {
+            assertEquals(path.get(0) % BlackjackSlotLayout.SEAT_ROW_WIDTH, slot % BlackjackSlotLayout.SEAT_ROW_WIDTH, "every step must stay in the same column");
+        }
+        for (int i = 1; i < path.size(); i++) {
+            assertEquals(BlackjackSlotLayout.SEAT_ROW_WIDTH, path.get(i) - path.get(i - 1), "each step must move down exactly one row, with no stops");
+        }
     }
 }

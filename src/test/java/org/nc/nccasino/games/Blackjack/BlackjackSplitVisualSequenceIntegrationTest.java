@@ -75,7 +75,10 @@ class BlackjackSplitVisualSequenceIntegrationTest {
         h.click(alice, SEAT_SLOT);
         h.inventory.commitWagerForTest(alice, 15.0);
         h.inventory.beginStartTransitionForTest();
-        h.advanceToActionableTurn(20, 40);
+        // Fine-grained (1-tick) polling: a coarser step can overshoot well
+        // past the moment the decision actually becomes actionable, eating
+        // into the turn timer's own budget before the test ever acts on it.
+        h.advanceToActionableTurn(1, 800);
         h.click(alice, BlackjackSlotLayout.ACTION_SPLIT_SLOT);
         return alice;
     }
@@ -231,7 +234,11 @@ class BlackjackSplitVisualSequenceIntegrationTest {
             assertTrue(h.inventory.hasSharedAnimationForTest());
 
             h.inventory.resetGameForTest();
-            assertFalse(h.inventory.hasSharedAnimationForTest());
+            // resetGame() immediately starts its own game-reset white-tile
+            // sweep (a LOBBY-phase shared animation) -- what must be gone is
+            // the split sequence specifically, not shared animations
+            // altogether.
+            assertTrue(h.inventory.sharedAnimationPhaseForTest() != BlackjackFrame.Phase.ACTIVE);
 
             // Advancing further must not let a stale callback repaint anything --
             // no exception, and the reset's own canonical (unseated) state stands.

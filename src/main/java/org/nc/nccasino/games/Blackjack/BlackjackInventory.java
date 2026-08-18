@@ -336,6 +336,11 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     // replacement, plugin shutdown) or its own natural completion. See
     // cancelSharedAnimation.
     private BlackjackAnimationRun sharedAnimationRun;
+    // Snapshots the in-flight game-reset white-tile sweep restores from --
+    // see startResetSweep/cancelResetSweepIfActive. Non-null only while a
+    // reset sweep (sharedAnimationRun tagged LOBBY) is actually running.
+    private Map<Integer, ItemStack> resetSweepLegacySnapshot;
+    private Map<UUID, Map<Integer, ItemStack>> resetSweepViewSnapshots;
     // Canonical, locale-neutral record of whether the dealer's hidden-card
     // placeholder has actually been rendered yet -- set only inside the
     // scheduled hidden-card render callback and cleared on reveal and on
@@ -1367,31 +1372,18 @@ private void registerListener() {
     // ---- Shared dealer U-path inspection ---------------------------------
 
     /**
-     * Runs the dealer's U-path as a shared/table-owned animation (viewer =
-     * null) -- per phase 2's cancellation-scope design, this must survive
-     * any single viewer closing their inventory. The bottom-row leg
-     * (47-53) is gated behind every seated viewer's door-conceal finishing
-     * (a fixed worst-case delay, not an event wait, since both animations
-     * want that same slot range) -- but only ever by the <em>minimum</em>
-     * amount actually needed (see {@link BlackjackDealerInspectionPlan#withBottomRowCoordination}):
-     * committed-player checkpoint pauses on the top/left leg (8 down to 38,
-     * which runs concurrently with door-conceal and never touches 47-53)
-     * routinely push the dealer's natural bottom-row arrival past the
-     * conceal's own completion already, in which case no extra delay is
-     * added at all.
+     * Runs the dealer's start-transition slide as a shared/table-owned
+     * animation (viewer = null) -- per phase 2's cancellation-scope design,
+     * this must survive any single viewer closing their inventory. A smooth,
+     * uniform-speed slide straight down the board's right edge with no
+     * stops. The final (bottom-row) step is gated behind every seated
+     * viewer's door-conceal finishing (a fixed worst-case delay, not an
+     * event wait, since both animations want that same slot) -- but only
+     * ever by the <em>minimum</em> amount actually needed (see
+     * {@link BlackjackDealerInspectionPlan#withBottomRowCoordination}).
      */
     private void startDealerInspection(long myRoundGeneration) {
-        Set<Integer> wageredSeats = new HashSet<>();
-        for (UUID playerId : playerSeats.keySet()) {
-            double committed = BlackjackWagerLedger.total(pregameWagerIncrements.getOrDefault(playerId, new java.util.ArrayDeque<>()));
-            if (committed > 0) {
-                wageredSeats.add(playerSeats.get(playerId));
-            }
-        }
-
-        List<BlackjackAnimationStep> path = BlackjackDealerInspectionPlan.build(
-            wageredSeats, BlackjackTiming.DEALER_INSPECTION_STEP_TICKS, BlackjackTiming.DEALER_INSPECTION_SLOWDOWN_EXTRA_TICKS
-        );
+        List<BlackjackAnimationStep> path = BlackjackDealerInspectionPlan.build(BlackjackTiming.DEALER_INSPECTION_STEP_TICKS);
         long bottomRowGateTicks = BlackjackWagerRevealPlan.concealDurationTicks(BlackjackTiming.WAGER_REVEAL_STEP_TICKS);
         // Applies only the minimum shift actually needed -- if committed-player
         // pauses already push the dealer's natural bottom-row arrival past the
@@ -1437,6 +1429,129 @@ private void registerListener() {
             renderBackgroundToAllViews(previousSlot);
         }
         renderLocalizedToAllViews(newSlot, Material.CREEPER_HEAD, 1, "blackjack.dealer");
+    }
+
+    // ---- Game-reset white-tile sweep --------------------------------------
+
+    /** Blank white tile used to cover a slot mid-sweep -- see {@link #startResetSweep}. */
+    private ItemStack buildResetSweepWhiteTileItem() {
+        ItemStack item = new ItemStack(Material.WHITE_CONCRETE);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName("§r");
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    /**
+     * Plays a diagonal white-tile wipe over the whole board, immediately
+     * after the caller (resetGame/cancelGame) has already instantly
+     * repainted it to its correct post-reset state -- the sweep never
+     * invents content, it only briefly covers and then re-reveals exactly
+     * what's already sitting in the legacy inventory and every open view at
+     * the moment it starts, snapshotted here per-view so each viewer's own
+     * personalized items (their own chair/bet-spot text) come back
+     * correctly rather than being collapsed to one shared item. Runs as a
+     * shared/table-owned {@link BlackjackAnimationRun} (viewer = null) under
+     * the fresh post-reset {@code roundGeneration}, so it's automatically
+     * invalidated the instant another reset/round/plugin-shutdown event
+     * calls {@link #cancelAllAnimations()} again -- never a bare timer.
+     *
+     * <p>Swappable: a different reset animation only needs a replacement for
+     * {@link BlackjackResetSweepPlan} with the same {@code build(...)} shape
+     * and a one-line change to the call below.
+     */
+    private void startResetSweep(long myRoundGeneration) {
+        resetSweepLegacySnapshot = snapshotSlots(inventory);
+        resetSweepViewSnapshots = new HashMap<>();
+        for (BlackjackView view : views.values()) {
+            resetSweepViewSnapshots.put(view.getPlayerId(), snapshotSlots(view.getInventory()));
+        }
+
+        List<BlackjackAnimationStep> steps = BlackjackResetSweepPlan.build(
+            BlackjackTiming.RESET_SWEEP_STEP_TICKS, BlackjackTiming.RESET_SWEEP_HOLD_DIAGONALS
+        );
+
+        BlackjackAnimationRun run = new BlackjackAnimationRun(null, myRoundGeneration, 0, BlackjackFrame.Phase.LOBBY);
+        sharedAnimationRun = run;
+
+        for (BlackjackAnimationStep step : steps) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (roundGeneration != myRoundGeneration || run.isCancelled()) {
+                    return;
+                }
+                if (step.getKind() == BlackjackAnimationStep.Kind.CONCEAL) {
+                    renderToAllViews(step.getSlot(), buildResetSweepWhiteTileItem());
+                } else {
+                    restoreSweptSlot(step.getSlot(), resetSweepLegacySnapshot, resetSweepViewSnapshots);
+                }
+            }, step.getDelayTicks());
+        }
+
+        long lastStepDelay = BlackjackResetSweepPlan.totalDurationTicks(steps);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (roundGeneration != myRoundGeneration || run.isCancelled()) {
+                return;
+            }
+            cancelSharedAnimation();
+            resetSweepLegacySnapshot = null;
+            resetSweepViewSnapshots = null;
+        }, lastStepDelay + 1);
+    }
+
+    /**
+     * Cancels an in-flight reset sweep (if one is running) and immediately
+     * restores every slot it might have covered back to its snapshotted
+     * correct content, synchronously -- unlike a plain {@link
+     * #cancelSharedAnimation()}, which only stops <em>future</em> steps and
+     * would leave a slot the sweep happened to be covering at this exact
+     * moment stuck white (and, worse, unclickable as its real functional
+     * item -- e.g. an empty seat's chair) until whatever stale step was
+     * ever going to reveal it. Called the instant any real seat mutation
+     * (sit or leave) is about to happen, since that's exactly the kind of
+     * event a purely cosmetic sweep must always yield to. A no-op when no
+     * reset sweep is currently running, or when the current shared
+     * animation is something else entirely (dealer inspection, split
+     * sequence) -- scoped by the run's own LOBBY phase tag, which only the
+     * reset sweep ever uses.
+     */
+    private void cancelResetSweepIfActive() {
+        if (sharedAnimationRun == null || sharedAnimationRun.getExpectedPhase() != BlackjackFrame.Phase.LOBBY) {
+            return;
+        }
+        cancelSharedAnimation();
+        if (resetSweepLegacySnapshot != null) {
+            for (int slot = 0; slot < BlackjackSlotLayout.TOTAL_SLOTS; slot++) {
+                restoreSweptSlot(slot, resetSweepLegacySnapshot, resetSweepViewSnapshots);
+            }
+            resetSweepLegacySnapshot = null;
+            resetSweepViewSnapshots = null;
+        }
+    }
+
+    /** Captures a defensive-copy snapshot of every slot in {@code target}, for {@link #startResetSweep} to restore later. */
+    private Map<Integer, ItemStack> snapshotSlots(Inventory target) {
+        Map<Integer, ItemStack> snapshot = new HashMap<>();
+        for (int slot = 0; slot < BlackjackSlotLayout.TOTAL_SLOTS; slot++) {
+            ItemStack item = target.getItem(slot);
+            snapshot.put(slot, item == null ? null : item.clone());
+        }
+        return snapshot;
+    }
+
+    /** Restores {@code slot} in the legacy inventory and every open view back to its own snapshotted (already-correct) item. */
+    private void restoreSweptSlot(int slot, Map<Integer, ItemStack> legacySnapshot, Map<UUID, Map<Integer, ItemStack>> viewSnapshots) {
+        inventory.setItem(slot, cloneOrNull(legacySnapshot.get(slot)));
+        for (BlackjackView view : views.values()) {
+            Map<Integer, ItemStack> snapshot = viewSnapshots.get(view.getPlayerId());
+            ItemStack restore = snapshot != null ? snapshot.get(slot) : legacySnapshot.get(slot);
+            view.getInventory().setItem(slot, cloneOrNull(restore));
+        }
+    }
+
+    private ItemStack cloneOrNull(ItemStack item) {
+        return item == null ? null : item.clone();
     }
 
     // ---- Readiness gate before dealing -----------------------------------
@@ -3877,6 +3992,14 @@ private void handleDoubleDown(Player player) {
     private void handleChairClick(int slot, Player player) {
         UUID playerId = player.getUniqueId();
 
+        // Must run before the sittable-check below reads this slot's
+        // rendered item: a mid-flight game-reset sweep can be covering this
+        // very chair with its white tile at the exact instant of this
+        // click, which would otherwise make a perfectly legitimate sit
+        // silently fail the "ends with _STAIRS" check. See
+        // cancelResetSweepIfActive's own doc.
+        cancelResetSweepIfActive();
+
         // Once the countdown hits zero and the start-transition begins, no
         // new seat can be taken -- matches the identical guard already on
         // chip selection, All In, and bet placement (see beginStartTransition).
@@ -4107,6 +4230,18 @@ private void removePlayerData(UUID playerId) {
     if (playerId.equals(splitAnimationPlayerId)) {
         cancelSharedAnimation();
     }
+
+    // A leave that doesn't empty the whole table (cancelGame() not
+    // triggered below) still changes this seat's real content -- if a
+    // game-reset white-tile sweep is still mid-flight from an earlier
+    // resetGame()/cancelGame(), its later steps would otherwise restore
+    // this now-stale slot back to whatever it snapshotted before this
+    // leave happened. Scoped to the sweep specifically (its run is always
+    // tagged LOBBY) so this never touches a genuinely unrelated shared
+    // animation -- the dealer inspection (START_TRANSITION) or split
+    // sequence (ACTIVE) must keep running for remaining players exactly as
+    // before when one player leaves mid-round.
+    cancelResetSweepIfActive();
 
     // Retrieve the player's seat slot
     int seatSlot = playerSeats.getOrDefault(playerId, -1);
@@ -6146,6 +6281,7 @@ private void resetGame() {
         renderToAllViews(seatSlot, headItem);
     }
 
+    startResetSweep(roundGeneration);
 }
 
 private int calculateHandValue(List<Card> hand) {
@@ -6400,6 +6536,7 @@ public void delete() {
         // Reset player seats
         playerSeats.clear();
 
+        startResetSweep(roundGeneration);
     }
 
 
@@ -6661,9 +6798,14 @@ public void delete() {
         return dealerHeadSlot;
     }
 
-    /** @return whether a shared/table-owned animation (the dealer inspection, or the split sequence) is currently running. */
+    /** @return whether a shared/table-owned animation (the dealer inspection, the split sequence, or the reset sweep) is currently running. */
     boolean hasSharedAnimationForTest() {
         return sharedAnimationRun != null;
+    }
+
+    /** @return the currently-running shared animation's own tagged phase (see {@link BlackjackAnimationRun#getExpectedPhase()}), or null if none is running. */
+    BlackjackFrame.Phase sharedAnimationPhaseForTest() {
+        return sharedAnimationRun == null ? null : sharedAnimationRun.getExpectedPhase();
     }
 
     /** @return this player's active hand's card count -- 0 if they have no hand at all (e.g. never committed a wager this round). */

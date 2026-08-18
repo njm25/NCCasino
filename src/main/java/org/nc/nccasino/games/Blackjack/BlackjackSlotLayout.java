@@ -31,6 +31,9 @@ public final class BlackjackSlotLayout {
     private BlackjackSlotLayout() {
     }
 
+    /** The whole board: 6 rows of {@link #SEAT_ROW_WIDTH}, slots 0-53. */
+    public static final int TOTAL_SLOTS = 54;
+
     // --- Seats (5), table order ---
     public static final int[] SEAT_SLOTS = {0, 9, 18, 27, 36};
     public static final int SEAT_ROW_WIDTH = 9;
@@ -40,7 +43,7 @@ public final class BlackjackSlotLayout {
     // --- Dealer position-as-state: canonical current slot is tracked by the
     // caller (BlackjackFrame#dealerHeadSlot / BlackjackInventory's own
     // field), these are just the two endpoints. ---
-    /** The dealer's lobby/idle head position -- top-right of the dealer row, matching the U-path's own start. */
+    /** The dealer's lobby/idle head position -- top-right of the board, matching the start-transition slide's own start. */
     public static final int DEALER_LOBBY_HEAD_SLOT = 8;
     /** The dealer's permanent head position once the start-transition animation delivers it there. */
     public static final int DEALER_INPLAY_HEAD_SLOT = 53;
@@ -155,13 +158,12 @@ public final class BlackjackSlotLayout {
     }
 
     /**
-     * The dealer's start-transition U-path: lobby head (8) across the top of
-     * the dealer/seat-0 row, down the left edge past every seat head, then
-     * along the bottom row into the in-play head slot (53). Pure slot
-     * sequence only -- timing/weighting is BlackjackDealerInspectionPlan's
-     * job.
+     * The dealer's start-transition path: a smooth, uninterrupted slide
+     * straight down the board's right edge, from the lobby head (8) to the
+     * in-play head slot (53). Pure slot sequence only -- timing is
+     * BlackjackDealerInspectionPlan's job.
      */
-    public static List<Integer> dealerUPath() {
-        return List.of(8, 7, 6, 5, 4, 3, 2, 11, 20, 29, 38, 47, 48, 49, 50, 51, 52, 53);
+    public static List<Integer> dealerStartTransitionPath() {
+        return List.of(8, 17, 26, 35, 44, 53);
     }
 }

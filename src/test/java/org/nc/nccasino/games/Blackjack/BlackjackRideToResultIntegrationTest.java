@@ -272,7 +272,7 @@ class BlackjackRideToResultIntegrationTest {
     /**
      * {@code gameActive} only flips true inside {@code activateGame()},
      * which runs after the entire start-transition window (door-conceal +
-     * shared dealer U-path animation + the readiness gate) already
+     * shared dealer slide animation + the readiness gate) already
      * completes -- see {@code beginStartTransition}/{@code activateGame}.
      * A player who already committed a wager and closes during exactly that
      * window -- after paying, but before cards are actually dealt -- must

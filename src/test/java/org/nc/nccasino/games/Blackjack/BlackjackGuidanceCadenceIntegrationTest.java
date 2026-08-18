@@ -273,7 +273,12 @@ class BlackjackGuidanceCadenceIntegrationTest {
             h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]);
             h.inventory.commitWagerForTest(alice, 10.0);
             h.inventory.beginStartTransitionForTest();
-            h.advanceToActionableTurn(20, 40);
+            // Fine-grained (1-tick) polling here specifically: this
+            // assertion checks the very first rendered frame, which must be
+            // glowing (see startActionGuidance's own glowPhase=true first
+            // call) -- a coarser step could overshoot past that first frame
+            // into a later "plain" phase of the 5-tick glow/plain cycle.
+            h.advanceToActionableTurn(1, 800);
 
             assertNotNull(h.inventory.currentPlayerIdForTest(), "test setup must actually reach an actionable turn");
 

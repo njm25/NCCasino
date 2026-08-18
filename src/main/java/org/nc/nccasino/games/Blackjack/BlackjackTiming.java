@@ -60,10 +60,12 @@ public final class BlackjackTiming {
      * of an instant jump-cut relayout.
      */
     public static final long MENU_RELAYOUT_STEP_TICKS = 1L;
-    /** Normal per-slot travel time along the dealer's start-transition U-path. */
+    /** Per-slot travel time along the dealer's start-transition slide -- uniform for every leg, no per-seat pauses. */
     public static final long DEALER_INSPECTION_STEP_TICKS = 5L;
-    /** Extra time added on top of the base step when the dealer inspects a seat with a committed wager. */
-    public static final long DEALER_INSPECTION_SLOWDOWN_EXTRA_TICKS = 15L;
+    /** Ticks between one diagonal and the next joining the game-reset white-tile sweep's wavefront. */
+    public static final long RESET_SWEEP_STEP_TICKS = 2L;
+    /** How many diagonals' worth of ticks a reset-sweep tile stays white before revealing the board underneath again. */
+    public static final long RESET_SWEEP_HOLD_DIAGONALS = 5L;
     /** How long the whole currently-available action-item set stays glowing (or plain) per phase before flipping to the other. */
     public static final long ACTION_GUIDANCE_STEP_TICKS = 5L;
     /** Delay between successive steps of the split slide-out/park/reactivate sequence. */
