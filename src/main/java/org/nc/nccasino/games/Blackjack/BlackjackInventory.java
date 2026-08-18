@@ -1,6 +1,7 @@
 package org.nc.nccasino.games.Blackjack;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -1453,6 +1454,103 @@ private void registerListener() {
             renderHiddenCardToAllViews(dealerDeckTokenSlot);
         }
         renderLocalizedToAllViews(newSlot, Material.CREEPER_HEAD, 1, "blackjack.dealer");
+    }
+
+    // ---- Round-end cards-return-to-deck sweep -----------------------------
+
+    /** Every currently-rendered card slot (bounded to what's actually visible, matching isRenderableCardSlot/the deal itself) -- slot -&gt; whether it's a dealer card. Read before resetGame() clears any hand data. */
+    private Map<Integer, Boolean> collectVisibleCardSlots() {
+        Map<Integer, Boolean> slots = new HashMap<>();
+        for (UUID playerId : playerSeats.keySet()) {
+            Integer seatSlot = playerSeats.get(playerId);
+            if (seatSlot == null) {
+                continue;
+            }
+            List<Card> cards = activeHandCards(playerId);
+            for (int i = 0; i < cards.size() && i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+                slots.put(BlackjackSlotLayout.playerCardSlot(seatSlot, i), false);
+            }
+        }
+        for (int i = 0; i < dealerHand.size() && i < BlackjackSlotLayout.DEALER_CARD_CAPACITY; i++) {
+            slots.put(BlackjackSlotLayout.dealerCardSlot(i), true);
+        }
+        return slots;
+    }
+
+    /**
+     * Plays every visible card's own deal-in flight (see
+     * {@link #scheduleCardFlight}) in reverse, all starting at the same
+     * instant -- the exact same path each card arrived by, walked backward,
+     * which is why this needs no separate geometry: player cards sweep
+     * right along their row into the deck's column before dropping down
+     * into it, the dealer's own cards rise into the deck's row before
+     * sliding right into it. Every card moves at the identical uniform hop
+     * rate, so cards sharing a lane (same row, or the shared descent
+     * column) never catch up to and collide with one another -- whichever
+     * started closer to the deck simply finishes first, freeing the lane
+     * before a farther card arrives.
+     *
+     * <p>{@code onComplete} (in production, the white-tile sweep) fires
+     * once the slowest card's own return lands -- immediately, synchronously,
+     * if there was nothing to animate (an early abort, or a plain reset with
+     * no round ever dealt).
+     */
+    private void animateCardsReturnToDeck(Map<Integer, Boolean> visibleCardSlots, int deckSlot, long myRoundGeneration, Runnable onComplete) {
+        if (visibleCardSlots.isEmpty()) {
+            onComplete.run();
+            return;
+        }
+
+        long flipDelay = BlackjackTiming.CARD_FLIP_DELAY_TICKS;
+        long hopTicks = BlackjackTiming.CARD_FLIGHT_HOP_TICKS;
+        long longestReturnTicks = 0L;
+
+        for (Map.Entry<Integer, Boolean> entry : visibleCardSlots.entrySet()) {
+            int cardSlot = entry.getKey();
+            boolean dealerCard = entry.getValue();
+
+            List<Integer> returnPath = new ArrayList<>(BlackjackCardFlightPlan.path(deckSlot, cardSlot, dealerCard));
+            Collections.reverse(returnPath);
+
+            // resetGame()'s own instant repaint (inventory.clear() +
+            // initializeGameMenu()) already wiped this slot back to plain
+            // felt by the time this method runs -- redraw the card here,
+            // immediately/synchronously, or there'd be a visible gap where
+            // the hand has already vanished before its own return animation
+            // has even begun.
+            renderHiddenCardToAllViews(cardSlot); // flip face-down before sweeping away, mirroring the deal-in's own flip
+
+            for (int i = 1; i < returnPath.size(); i++) {
+                int previousSlot = returnPath.get(i - 1);
+                int hopSlot = returnPath.get(i);
+                boolean isLastHop = i == returnPath.size() - 1;
+                long hopDelay = flipDelay + i * hopTicks;
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (roundGeneration != myRoundGeneration) {
+                        return;
+                    }
+                    renderBackgroundToAllViews(previousSlot);
+                    if (!isLastHop) {
+                        renderHiddenCardToAllViews(hopSlot);
+                    }
+                    // The last hop lands exactly on the deck's own slot --
+                    // left as plain background (already repainted that way
+                    // by resetGame() before this animation ever starts):
+                    // the deck token itself is long gone by round-end, and
+                    // the white sweep right behind this repaints everything
+                    // anyway.
+                }, hopDelay);
+            }
+
+            longestReturnTicks = Math.max(longestReturnTicks, flipDelay + (returnPath.size() - 1) * hopTicks);
+        }
+
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (roundGeneration != myRoundGeneration) {
+                return;
+            }
+            onComplete.run();
+        }, longestReturnTicks + 1);
     }
 
     // ---- Game-reset white-tile sweep --------------------------------------
@@ -6245,6 +6343,14 @@ private int applyProbabilisticRounding(double value) {
 }
 
 private void resetGame() {
+    // Captured before anything below clears it -- which currently-rendered
+    // card slots (and which slot the deck token itself was resting on)
+    // need to sweep back into the deck before the white-tile reset sweep
+    // plays. See the deferred animateCardsReturnToDeck call at the very
+    // end of this method.
+    Map<Integer, Boolean> returningCardSlots = collectVisibleCardSlots();
+    int deckSlotForReturn = dealerDeckTokenSlot != -1 ? dealerDeckTokenSlot : BlackjackSlotLayout.DECK_HOME_SLOT;
+
     gameActive = false;
     roundGeneration++;
     dealerSequenceToken++;
@@ -6322,7 +6428,10 @@ private void resetGame() {
         renderToAllViews(seatSlot, headItem);
     }
 
-    startResetSweep(roundGeneration);
+    // Cards sweep back into the deck first, then the white-tile sweep --
+    // a no-op straight into the sweep when nothing was ever dealt this
+    // round (an early abort, or a plain lobby reset).
+    animateCardsReturnToDeck(returningCardSlots, deckSlotForReturn, roundGeneration, () -> startResetSweep(roundGeneration));
 }
 
 private int calculateHandValue(List<Card> hand) {
