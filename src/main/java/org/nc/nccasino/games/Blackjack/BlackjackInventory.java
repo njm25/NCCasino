@@ -3261,6 +3261,9 @@ private void handleHit(Player player) {
         int generationBeforeCard = hand.getHandGeneration();
 
         Card newCard = deck.dealCard();
+        if (isRenderableCardSlot(playerId, nextCardSlot)) {
+            scheduleCardFlightEndingAt(nextCardSlot, false, BlackjackTiming.CARD_DEAL_DELAY_TICKS, myGeneration);
+        }
         scheduleCardDealingWithDelay(nextCardSlot, newCard, BlackjackTiming.CARD_DEAL_DELAY_TICKS, playerId, myGeneration, myHandToken, handId, generationBeforeCard); // Deal the card with a delay
 
         // Delay the hand value calculation to ensure the card is fully added to the player's hand
@@ -3462,6 +3465,9 @@ private void handleDoubleDown(Player player) {
 
         // Exactly one more card.
         Card newCard = deck.dealCard();
+        if (isRenderableCardSlot(playerId, cardSlot)) {
+            scheduleCardFlightEndingAt(cardSlot, false, BlackjackTiming.CARD_DEAL_DELAY_TICKS, myGeneration);
+        }
         scheduleCardDealingWithDelay(cardSlot, newCard, BlackjackTiming.CARD_DEAL_DELAY_TICKS, playerId, myGeneration, myHandToken, handId, generationBeforeCard);
 
          if (SoundHelper.getSoundSafely("item.armor.equip_chain", player) != null)player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER,1.0f, 1.0f);
@@ -6323,27 +6329,26 @@ private int calculateHandValue(List<Card> hand) {
     return BlackjackRules.handValue(hand);
 }
 
-/**
- * Renders a face-down card icon hopping from the deck token to {@code
- * targetSlot} (see {@link BlackjackCardFlightPlan}), starting {@code
- * baseDelay} ticks from now. Every hop, including the landing one, renders
- * face-down -- the caller is responsible for scheduling the real deal
- * (which paints the true face, i.e. the "flip") at the returned tick, so
- * the swap from this animation's own final frame to the real card is what
- * actually reads as a flip rather than a separate reveal. The deck token
- * itself is restored (not cleared to background) wherever a hop departs
- * from its own resting slot, since the deck is still sitting there for the
- * next card.
- *
- * @return the tick (relative to now) at which the flight lands and the
- *     card should flip -- {@code baseDelay} plus the path's travel time
- *     plus {@link BlackjackTiming#CARD_FLIP_DELAY_TICKS}
- */
-private long scheduleCardFlight(int targetSlot, boolean dealerCard, long baseDelay, long myGeneration) {
+/** The path a card dealt to {@code targetSlot} takes from wherever the deck token currently sits (see {@link BlackjackCardFlightPlan}). */
+private List<Integer> flightPathFromDeck(int targetSlot, boolean dealerCard) {
     int originSlot = dealerDeckTokenSlot != -1 ? dealerDeckTokenSlot : BlackjackSlotLayout.DECK_HOME_SLOT;
-    List<Integer> path = BlackjackCardFlightPlan.path(originSlot, targetSlot, dealerCard);
-    long hopTicks = BlackjackTiming.CARD_FLIGHT_HOP_TICKS;
+    return BlackjackCardFlightPlan.path(originSlot, targetSlot, dealerCard);
+}
 
+/**
+ * Renders a face-down card icon hopping along {@code path}, one hop every
+ * {@link BlackjackTiming#CARD_FLIGHT_HOP_TICKS}, starting {@code baseDelay}
+ * ticks from now -- every hop, including the landing one, renders
+ * face-down; the caller is responsible for scheduling the real deal (which
+ * paints the true face, i.e. the "flip") at its own separately-computed
+ * landing tick, so the swap from this animation's own final frame to the
+ * real card is what actually reads as a flip rather than a separate
+ * reveal. The deck token itself is restored (not cleared to background)
+ * wherever a hop departs from its own resting slot, since the deck is
+ * still sitting there for the next card.
+ */
+private void scheduleCardFlightHops(List<Integer> path, long baseDelay, long myGeneration) {
+    long hopTicks = BlackjackTiming.CARD_FLIGHT_HOP_TICKS;
     for (int i = 1; i < path.size(); i++) {
         int previousSlot = path.get(i - 1);
         int hopSlot = path.get(i);
@@ -6360,9 +6365,42 @@ private long scheduleCardFlight(int targetSlot, boolean dealerCard, long baseDel
             renderHiddenCardToAllViews(hopSlot);
         }, hopDelay);
     }
+}
 
-    long flightTicks = (path.size() - 1) * hopTicks;
+/**
+ * Initial-deal variant: the flight starts at {@code baseDelay} (the deal
+ * plan's own per-card stagger) and the real deal is free to land whenever
+ * the flight actually finishes -- see dealInitialCards, which reschedules
+ * its own downstream (initial-blackjack-check) timing off this method's
+ * return value rather than a fixed constant.
+ *
+ * @return the tick (relative to now) at which the flight lands and the
+ *     card should flip -- {@code baseDelay} plus the path's travel time
+ *     plus {@link BlackjackTiming#CARD_FLIP_DELAY_TICKS}
+ */
+private long scheduleCardFlight(int targetSlot, boolean dealerCard, long baseDelay, long myGeneration) {
+    List<Integer> path = flightPathFromDeck(targetSlot, dealerCard);
+    scheduleCardFlightHops(path, baseDelay, myGeneration);
+    long flightTicks = (path.size() - 1) * BlackjackTiming.CARD_FLIGHT_HOP_TICKS;
     return baseDelay + flightTicks + BlackjackTiming.CARD_FLIP_DELAY_TICKS;
+}
+
+/**
+ * Mid-game (hit/double-down) variant: unlike the initial deal, a hit's
+ * real deal is scheduled on {@link BlackjackTiming#CARD_DEAL_DELAY_TICKS}
+ * and its resulting hand value is read on the independently fixed {@link
+ * BlackjackTiming#HIT_EVALUATION_DELAY_TICKS} -- both locked down by
+ * BlackjackTimingTest and never safe to shift later. So instead the flight
+ * is worked backwards from that fixed {@code dealDelayTicks} landing tick,
+ * starting as late as it can while still finishing (hops + flip) exactly
+ * when the real deal already fires -- purely additive visual polish in
+ * front of unchanged data timing, never behind it.
+ */
+private void scheduleCardFlightEndingAt(int targetSlot, boolean dealerCard, long dealDelayTicks, long myGeneration) {
+    List<Integer> path = flightPathFromDeck(targetSlot, dealerCard);
+    long flightTicks = (path.size() - 1) * BlackjackTiming.CARD_FLIGHT_HOP_TICKS + BlackjackTiming.CARD_FLIP_DELAY_TICKS;
+    long flightStart = Math.max(0L, dealDelayTicks - flightTicks);
+    scheduleCardFlightHops(path, flightStart, myGeneration);
 }
 
 private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId, long myGeneration) {
@@ -6468,6 +6506,16 @@ private void dealCardToPlayer(int slot, Card card, UUID playerId) {
             renderCardToAllViews(slot, card, false);
         }
         updateDealerHead();
+    }
+
+    // Only ever the bottom seat's own last visible card slot (the one seat
+    // row that shares a column with the deck's resting slot) -- a real card
+    // has now permanently taken that cell, so the deck token is gone for
+    // the rest of the round; any later flight passing through here must
+    // clear to plain background like any other transit slot, never
+    // resummon the deck icon over this real card.
+    if (slot == dealerDeckTokenSlot) {
+        dealerDeckTokenSlot = -1;
     }
 }
 
