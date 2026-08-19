@@ -84,7 +84,7 @@ public final class BlackjackTiming {
     /** How long the whole currently-available action-item set stays glowing (or plain) per phase before flipping to the other. */
     public static final long ACTION_GUIDANCE_STEP_TICKS = 5L;
     /** Delay between successive steps of the split slide-out/park/reactivate sequence -- wide enough for C's/D's own deck-flight to comfortably land in sync (see BlackjackInventory#runSplitAnimation). */
-    public static final long SPLIT_ANIMATION_STEP_TICKS = 27L;
+    public static final long SPLIT_ANIMATION_STEP_TICKS = 18L;
     /**
      * Per-hop speed of the split's own slide animations -- B's slide-out
      * and (for the bottom seat) C's own pre-positioning dash -- deliberately
@@ -95,9 +95,23 @@ public final class BlackjackTiming {
      * #SPLIT_ANIMATION_STEP_TICKS}'s own now-slower phase gaps, without
      * touching the speed of every other card dealt anywhere else in the game.
      */
-    public static final long SPLIT_SLIDE_HOP_TICKS = 3L;
+    public static final long SPLIT_SLIDE_HOP_TICKS = 2L;
     /** Per-hop speed of the bottom seat's own split-C dash (see {@code BlackjackInventory#bottomSeatSplitDashPath}) -- deliberately faster than {@link #SPLIT_SLIDE_HOP_TICKS}, since the dash is a longer multi-hop trip and doesn't need to read as deliberately as B's own (much shorter) slide. */
     public static final long BOTTOM_SEAT_DASH_HOP_TICKS = 2L;
+
+    // ---- Hand-to-hand transition (a finished split hand handing control
+    // to the next one in the queue) -----------------------------------
+
+    /** Pause after a hand finishes before its own collapse-and-reveal transition begins -- "tiny, about half a second". */
+    public static final long HAND_TRANSITION_PAUSE_TICKS = 10L;
+    /**
+     * Per-step pacing of the finished hand's own collapse down to just its
+     * first and last card (middle cards vanishing, then the last card
+     * sliding into the second slot) and of the next hand's out-and-back
+     * reveal slide -- 25% slower than the original 2-tick pace (2 * 1.25,
+     * rounded to the nearest whole tick) since that read as too fast.
+     */
+    public static final long HAND_TRANSITION_STEP_TICKS = 3L;
 
     /** Default insurance decision timeout, in seconds, before it auto-resolves to No. */
     public static final int INSURANCE_TIMEOUT_DEFAULT_SECONDS = 25;

@@ -138,15 +138,22 @@ class BlackjackSplitVisualSequenceIntegrationTest {
         }
     }
 
+    /** Advances the scheduler one tick at a time (bounded) until {@code condition} holds, so tests don't have to hardcode exact ticks against the now-per-seat-dynamic D landing/tuck-under timing. */
+    private static void advanceUntil(BlackjackControllerTestSupport.Harness h, java.util.function.BooleanSupplier condition, int maxTicks) {
+        for (int i = 0; i < maxTicks && !condition.getAsBoolean(); i++) {
+            h.scheduler.advance(1);
+        }
+        assertTrue(condition.getAsBoolean(), "condition never became true within " + maxTicks + " ticks");
+    }
+
     @Test
-    void phase3DealsDBesideTempBAfterTwoSteps() {
+    void phase3DealsDBesideTempB() {
         try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
             Player alice = setUpAndSplit(h);
 
-            h.scheduler.advance(2 * BlackjackTiming.SPLIT_ANIMATION_STEP_TICKS);
+            advanceUntil(h, () -> item(h, alice, SLOT_TEMP_D).getType() == RED_CARD, 200);
 
             ItemStack d = item(h, alice, SLOT_TEMP_D);
-            assertEquals(RED_CARD, d.getType());
             assertEquals(8, d.getAmount(), "D (8 of diamonds) must land beside temp-B");
             // Both [B][D] are visible together before parking.
             ItemStack tempB = item(h, alice, SLOT_TEMP_B);
@@ -156,14 +163,14 @@ class BlackjackSplitVisualSequenceIntegrationTest {
     }
 
     @Test
-    void phase4SlidesTheInactivePairOneStepLeftAfterThreeSteps() {
+    void phase4SlidesTheInactivePairOneStepLeft() {
         try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
             Player alice = setUpAndSplit(h);
 
-            h.scheduler.advance(3 * BlackjackTiming.SPLIT_ANIMATION_STEP_TICKS);
+            advanceUntil(h, () -> item(h, alice, SLOT_TEMP_D).getType() == RED_CARD, 200); // D has landed
+            advanceUntil(h, () -> item(h, alice, SLOT_GAP).getType() == BLACK_CARD, 200); // phase 4's own slide
 
             ItemStack bAtGap = item(h, alice, SLOT_GAP);
-            assertEquals(BLACK_CARD, bAtGap.getType());
             assertEquals(8, bAtGap.getAmount(), "B must have slid into the gap cell");
             ItemStack dAtOldTempB = item(h, alice, SLOT_TEMP_B);
             assertEquals(RED_CARD, dAtOldTempB.getType());
@@ -177,12 +184,39 @@ class BlackjackSplitVisualSequenceIntegrationTest {
         }
     }
 
+    /**
+     * Phase 5: B tucks away first -- the gap cell briefly shows D alone
+     * (having taken B's old spot), with B's own old slot (temp-B) already
+     * clear. This is the intermediate state the old single-step "both
+     * clear together" park used to skip straight past.
+     */
     @Test
-    void phase5ParksBothTemporarySlotsLeavingOnlyActiveHandVisible() {
+    void phase5BTucksAwayFirstLeavingDAloneAtTheGap() {
         try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
             Player alice = setUpAndSplit(h);
 
-            h.scheduler.advance(4 * BlackjackTiming.SPLIT_ANIMATION_STEP_TICKS);
+            advanceUntil(h, () -> item(h, alice, SLOT_GAP).getType() == BLACK_CARD, 200); // phase 4: B at gap
+            advanceUntil(h, () -> item(h, alice, SLOT_GAP).getType() == RED_CARD, 200); // phase 5: B gone, D takes its place
+
+            ItemStack dAtGap = item(h, alice, SLOT_GAP);
+            assertEquals(8, dAtGap.getAmount(), "D (8 of diamonds) must now be the sole visible card, at the gap");
+            assertEquals(BACKGROUND, item(h, alice, SLOT_TEMP_B).getType(), "B's old slot must already be clear -- B tucked away first");
+
+            // The active hand is still completely undisturbed.
+            ItemStack c = item(h, alice, SLOT_ORIG_B);
+            assertEquals(RED_CARD, c.getType());
+            assertEquals(2, c.getAmount());
+            assertTrue(h.inventory.isGameActiveForTest());
+        }
+    }
+
+    @Test
+    void phase6ParksTheLastRemainingCardLeavingOnlyActiveHandVisible() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            Player alice = setUpAndSplit(h);
+
+            advanceUntil(h, () -> item(h, alice, SLOT_GAP).getType() == RED_CARD, 200); // phase 5: D alone at the gap
+            advanceUntil(h, () -> item(h, alice, SLOT_GAP).getType() == BACKGROUND, 200); // phase 6: D tucks away too
 
             assertEquals(BACKGROUND, item(h, alice, SLOT_GAP).getType());
             assertEquals(BACKGROUND, item(h, alice, SLOT_TEMP_B).getType());
@@ -206,7 +240,9 @@ class BlackjackSplitVisualSequenceIntegrationTest {
             Player alice = setUpAndSplit(h);
             UUID aliceId = alice.getUniqueId();
 
-            h.scheduler.advance(4 * BlackjackTiming.SPLIT_ANIMATION_STEP_TICKS);
+            advanceUntil(h, () -> item(h, alice, SLOT_GAP).getType() == BACKGROUND
+                && h.inventory.playerHandsForTest(aliceId).size() == 2
+                && h.inventory.playerHandsForTest(aliceId).get(1).getCards().size() == 2, 300);
 
             List<BlackjackHand> hands = h.inventory.playerHandsForTest(aliceId);
             assertEquals(2, hands.size(), "the split must still produce exactly two canonical hands");
@@ -238,7 +274,7 @@ class BlackjackSplitVisualSequenceIntegrationTest {
                 assertTrue(type == null || type == BACKGROUND, "no action control may render mid-animation, slot " + slot);
             }
 
-            h.scheduler.advance(2 * BlackjackTiming.SPLIT_ANIMATION_STEP_TICKS);
+            advanceUntil(h, () -> item(h, alice, BlackjackSlotLayout.ACTION_STAND_SLOT) != null, 300);
             // The still-active (original) hand is actionable again once the animation completes.
             assertNotNull(item(h, alice, BlackjackSlotLayout.ACTION_STAND_SLOT));
         }

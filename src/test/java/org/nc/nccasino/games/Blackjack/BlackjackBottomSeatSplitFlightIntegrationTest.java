@@ -71,7 +71,6 @@ class BlackjackBottomSeatSplitFlightIntegrationTest {
 
             List<Integer> dashPath = h.inventory.bottomSeatSplitDashPathForTest(SLOT_ORIG_B);
             long dashDuration = (dashPath.size() - 1) * BlackjackTiming.BOTTOM_SEAT_DASH_HOP_TICKS;
-            int stagingSlot = dashPath.get(dashPath.size() - 1);
 
             // One tick before the dash finishes: B must still be sitting at
             // its original slot, completely untouched -- its slide hasn't
@@ -81,14 +80,27 @@ class BlackjackBottomSeatSplitFlightIntegrationTest {
             assertEquals(Material.BLACK_STAINED_GLASS_PANE, bStillHome.getType(), "B must still be at its original slot -- its slide hasn't started yet");
             assertEquals(8, bStillHome.getAmount());
 
-            // The instant the dash finishes: C is parked in the dealer's
-            // row, and only now does B's slide trigger, vacating its
-            // original slot.
+            // The instant the dash finishes, B's slide triggers, vacating
+            // its original slot -- left empty (background), not yet showing
+            // C. C stays parked below, paused, until B has genuinely
+            // finished moving right.
             h.scheduler.advance(1);
-            ItemStack cParked = item(h, alice, stagingSlot);
-            assertEquals(Material.WHITE_STAINED_GLASS_PANE, cParked.getType(), "C must be parked (face-down) in the dealer's row the instant the dash completes");
             ItemStack bJustVacated = item(h, alice, SLOT_ORIG_B);
             assertEquals(Material.GREEN_STAINED_GLASS_PANE, bJustVacated.getType(), "B's slide must only begin once C's dash has fully parked, not before");
+
+            // Only once B has fully finished sliding right (reached its
+            // temp slot) does C's own final hop land, folded into that
+            // exact same step -- see the doc on the finalHopDelay task in
+            // runSplitAnimation for why this can't be any earlier without
+            // either racing the vacate step or skipping C's own paused
+            // wait below the target slot.
+            h.scheduler.advance(BlackjackTiming.SPLIT_SLIDE_HOP_TICKS - 1);
+            ItemStack stillWaiting = item(h, alice, SLOT_ORIG_B);
+            assertEquals(Material.GREEN_STAINED_GLASS_PANE, stillWaiting.getType(), "C must still be waiting below -- not landed until B has fully moved right");
+
+            h.scheduler.advance(1);
+            ItemStack cLanded = item(h, alice, SLOT_ORIG_B);
+            assertEquals(Material.WHITE_STAINED_GLASS_PANE, cLanded.getType(), "C must land (hidden/face-down) in slotOrigB the instant B finishes moving right");
         }
     }
 

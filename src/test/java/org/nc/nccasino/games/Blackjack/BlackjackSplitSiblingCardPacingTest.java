@@ -67,8 +67,62 @@ class BlackjackSplitSiblingCardPacingTest {
             long newStart = 2 * STEP_TICKS - newFlightTicks;
             long newIdle = newStart - STEP_TICKS;
 
-            assertTrue(newIdle < ordinaryIdle, "the idle gap must actually shrink, was " + ordinaryIdle + " -> " + newIdle);
+            // Only "shrink or hold", not "must strictly shrink": with a
+            // short enough STEP_TICKS relative to a long flight, the
+            // desired rate can floor out at the ordinary CARD_FLIGHT_HOP_TICKS
+            // rate -- at that point there's no slower (and therefore no
+            // earlier-starting) flight left to give, so the idle gap simply
+            // can't shrink any further. That's the safety floor working as
+            // intended, not a regression.
+            assertTrue(newIdle <= ordinaryIdle, "the idle gap must never grow, was " + ordinaryIdle + " -> " + newIdle);
             assertTrue(newStart >= STEP_TICKS, "must never start before the prior phase lands, even for a long flight");
+        }
+    }
+
+    // --- fasterSiblingCardHopTicks / fasterSiblingCardLandingTick: the
+    // further ~25% speed / ~20% idle-gap tuning on top of the above,
+    // which required unfreezing D's landing tick (see those methods' own
+    // doc for why holding it fixed made the two asks mutually exclusive).
+
+    @Test
+    void fasterHopTicksIsMeaningfullyFasterThanTheHalvedRate() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            for (int hopCount = 1; hopCount <= 8; hopCount++) {
+                long halved = h.inventory.halvedIdleGapHopTicksForTest(hopCount, STEP_TICKS, 2 * STEP_TICKS);
+                long faster = h.inventory.fasterSiblingCardHopTicksForTest(hopCount, STEP_TICKS, 2 * STEP_TICKS);
+                assertTrue(faster <= halved, "hopCount=" + hopCount + ": must never be slower than the already-halved rate, was " + halved + " -> " + faster);
+                assertTrue(faster >= BlackjackTiming.CARD_FLIGHT_HOP_TICKS, "hopCount=" + hopCount + ": must never go faster than the ordinary dealt-card rate");
+            }
+        }
+    }
+
+    @Test
+    void fasterLandingTickIsEarlierThanTheOrdinaryFixedLandingTick() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            for (int hopCount = 1; hopCount <= 8; hopCount++) {
+                long landing = h.inventory.fasterSiblingCardLandingTickForTest(hopCount, STEP_TICKS, 2 * STEP_TICKS);
+                assertTrue(landing <= 2 * STEP_TICKS, "hopCount=" + hopCount + ": landing must move earlier (or stay put), never later, was " + landing);
+                assertTrue(landing >= STEP_TICKS, "hopCount=" + hopCount + ": landing must never move earlier than the prior phase itself, was " + landing);
+            }
+        }
+    }
+
+    @Test
+    void fasterPacingActuallyShrinksTheIdleGapFurtherForAShortFlight() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            int hopCount = 2; // the bottom seat's own D-flight hop count
+            long halvedHopTicks = h.inventory.halvedIdleGapHopTicksForTest(hopCount, STEP_TICKS, 2 * STEP_TICKS);
+            long halvedStart = 2 * STEP_TICKS - (hopCount * halvedHopTicks + BlackjackTiming.CARD_FLIP_DELAY_TICKS);
+            long halvedIdle = halvedStart - STEP_TICKS;
+
+            long fasterHopTicks = h.inventory.fasterSiblingCardHopTicksForTest(hopCount, STEP_TICKS, 2 * STEP_TICKS);
+            long fasterLanding = h.inventory.fasterSiblingCardLandingTickForTest(hopCount, STEP_TICKS, 2 * STEP_TICKS);
+            long fasterStart = fasterLanding - (hopCount * fasterHopTicks + BlackjackTiming.CARD_FLIP_DELAY_TICKS);
+            long fasterIdle = fasterStart - STEP_TICKS;
+
+            assertTrue(fasterIdle < halvedIdle, "idle gap must shrink further, was " + halvedIdle + " -> " + fasterIdle);
+            assertTrue(fasterHopTicks < halvedHopTicks, "per-hop movement must be faster than the already-halved rate, was " + halvedHopTicks + " -> " + fasterHopTicks);
+            assertTrue(fasterLanding < 2 * STEP_TICKS, "landing must move earlier than the ordinary fixed tick, was " + fasterLanding);
         }
     }
 }
