@@ -116,4 +116,77 @@ class BlackjackSplitCardFlightPathTest {
             assertTrue(path.contains(earlyHopUp), "must hop up into the target row before reaching the blocked column");
         }
     }
+
+    /** Seats the bottom seat (index 4) alone -- its own row shares the deck's row, the one case with a dedicated path. */
+    private static BlackjackControllerTestSupport.Harness newTableBottomSeatOnly() {
+        BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness();
+        List<Card> stack = new ArrayList<>();
+        stack.add(new Card(Suit.SPADES, Rank.EIGHT));   // bottom seat card0
+        stack.add(new Card(Suit.HEARTS, Rank.SEVEN));    // dealer up
+        stack.add(new Card(Suit.CLUBS, Rank.EIGHT));     // bottom seat card1
+        stack.add(new Card(Suit.HEARTS, Rank.SEVEN));    // dealer hole -- stays hidden throughout any split
+        for (int i = 0; i < 40; i++) {
+            stack.add(new Card(Suit.DIAMONDS, Rank.TWO));
+        }
+        h.inventory.stackDeckForTest(stack);
+        h.currencyProvider.setBalance(1000);
+        Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+        h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[4]);
+        h.inventory.commitWagerForTest(alice, 10.0);
+        h.inventory.beginStartTransitionForTest();
+        for (int i = 0; i < 300 && h.inventory.activeHandCardCountForTest(alice.getUniqueId()) < 2; i++) {
+            h.scheduler.advance(1);
+        }
+        return h;
+    }
+
+    /**
+     * The bottom seat has no "row below" (it already shares the deck's
+     * row), so C gets an entirely different visual strategy -- see
+     * BlackjackInventory#bottomSeatSplitDashPath. Left along the bottom
+     * seat's own row until directly above the column left of the hole
+     * card, down one slot (now directly left of the hole card), left along
+     * the dealer's row until it's in the target's own column, then parks --
+     * waiting for B's slide-out before the final single hop up.
+     *
+     * <p>Explicitly pins down A's slot and B's own original slot are never
+     * touched at any point in the row-4 leg -- the exact concern from a
+     * live-tested regression where an earlier version of this path
+     * wandered too far left.
+     */
+    @Test
+    void bottomSeatDashPathNeverTouchesAOrBAndParksLeftOfTheHoleCard() {
+        try (BlackjackControllerTestSupport.Harness h = newTableBottomSeatOnly()) {
+            int seatSlot = BlackjackSlotLayout.SEAT_SLOTS[4];
+            int slotA = BlackjackSlotLayout.playerCardSlot(seatSlot, 0);
+            int targetSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, 1); // C's eventual slot -- B's original slot
+            List<Integer> path = h.inventory.bottomSeatSplitDashPathForTest(targetSlot);
+
+            assertEquals(BlackjackSlotLayout.DECK_HOME_SLOT, path.get(0));
+            assertFalse(path.contains(targetSlot), "the dash only parks beneath the target -- the final hop up is a separate step");
+            assertFalse(path.contains(slotA), "must never touch A's own slot");
+
+            // Parks directly beneath the target, one row down, same column.
+            int width = BlackjackSlotLayout.SEAT_ROW_WIDTH;
+            int stagingSlot = path.get(path.size() - 1);
+            assertEquals(targetSlot % width, stagingSlot % width, "must park in the same column as the target");
+            assertEquals(targetSlot / width + 1, stagingSlot / width, "must park exactly one row below the target -- the dealer's row");
+
+            // The drop point (row-4-to-row-5 transition) must be exactly
+            // one column left of the hole card, never any farther left.
+            int holeCardCol = BlackjackSlotLayout.DEALER_HOLE_CARD_SLOT % width;
+            int dealerRow = BlackjackSlotLayout.DEALER_HOLE_CARD_SLOT / width;
+            int lastRow4Slot = -1;
+            for (int slot : path) {
+                if (slot / width != dealerRow) {
+                    lastRow4Slot = slot;
+                }
+            }
+            assertEquals(holeCardCol - 1, lastRow4Slot % width, "must stop in row 4 exactly one column left of the hole card before dropping down");
+
+            assertFalse(path.contains(BlackjackSlotLayout.DEALER_HOLE_CARD_SLOT), "must never touch the dealer's hole card");
+            assertFalse(path.contains(BlackjackSlotLayout.DEALER_UP_CARD_SLOT), "must never touch the dealer's real up-card");
+            assertFalse(path.contains(BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT), "must never touch the dealer head slot");
+        }
+    }
 }

@@ -238,7 +238,7 @@ class BlackjackDealerInspectionCoordinationIntegrationTest {
             for (int i = 0; i < 60 && !h.inventory.isGameActiveForTest(); i++) {
                 h.scheduler.advance(1);
             }
-            h.scheduler.advance(20); // let the first card's own deck-flight + flip actually land -- gameActive flips before any card data does
+            h.scheduler.advance(40); // let the first card's own deck-flight + flip actually land -- gameActive flips before any card data does
 
             assertTrue(h.inventory.isGameActiveForTest(), "round 2 must activate on its own schedule");
             assertEquals(BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT, h.inventory.dealerHeadSlotForTest());

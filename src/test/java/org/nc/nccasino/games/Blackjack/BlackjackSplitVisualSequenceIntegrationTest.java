@@ -88,17 +88,36 @@ class BlackjackSplitVisualSequenceIntegrationTest {
     }
 
     @Test
-    void phase1BSlidesOutToItsTemporarySlotImmediately() {
+    void phase1BVacatesItsOriginalSlotAndEntersTheGapInTheSameInstant() {
         try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
             Player alice = setUpAndSplit(h);
 
-            // Phase 1 is synchronous (no delay) -- visible before any scheduler advance.
+            // B visibly picks up and leaves its original slot immediately --
+            // before any scheduler advance -- and, in that very same
+            // instant, appears at the gap cell. B must never be rendered
+            // nowhere at all (not at the origin, not at the gap) even for
+            // one tick -- that gap-vacate-then-later-arrive ordering used to
+            // produce a real, visible blank flicker.
             assertEquals(BACKGROUND, item(h, alice, SLOT_ORIG_B).getType(), "B's original slot must already be vacated");
+            ItemStack bAtGap = item(h, alice, SLOT_GAP);
+            assertEquals(BLACK_CARD, bAtGap.getType(), "B must already be visible at the gap cell -- never invisible even briefly");
+            assertEquals(8, bAtGap.getAmount());
+            assertEquals(BACKGROUND, item(h, alice, SLOT_TEMP_B).getType(), "B hasn't landed at its temporary slot yet");
+            assertEquals(BACKGROUND, item(h, alice, SLOT_TEMP_D).getType());
+        }
+    }
+
+    @Test
+    void phase1BLandsAtItsTemporarySlotAfterOneMoreHop() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            Player alice = setUpAndSplit(h);
+
+            // One hop later: B lands at its temporary slot, the gap cell clears again.
+            h.scheduler.advance(BlackjackTiming.SPLIT_SLIDE_HOP_TICKS);
             ItemStack tempB = item(h, alice, SLOT_TEMP_B);
             assertEquals(BLACK_CARD, tempB.getType());
-            assertEquals(8, tempB.getAmount(), "B (8 of clubs) must appear at its temporary slot");
-            assertEquals(BACKGROUND, item(h, alice, SLOT_GAP).getType());
-            assertEquals(BACKGROUND, item(h, alice, SLOT_TEMP_D).getType());
+            assertEquals(8, tempB.getAmount(), "B (8 of clubs) must land at its temporary slot");
+            assertEquals(BACKGROUND, item(h, alice, SLOT_GAP).getType(), "the gap cell must clear again once B has passed through it");
         }
     }
 

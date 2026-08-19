@@ -42,6 +42,48 @@ public final class BlackjackRules {
         return rankValue(card.getRank());
     }
 
+    /** Short display symbol for a rank: 2-9 as digits, TEN as "10", face cards as their initial, Ace as "A". */
+    public static String rankAbbreviation(Rank rank) {
+        switch (rank) {
+            case ACE:
+                return "A";
+            case KING:
+                return "K";
+            case QUEEN:
+                return "Q";
+            case JACK:
+                return "J";
+            default:
+                // TWO..TEN: rankValue already gives the right digits ("2".."10").
+                return String.valueOf(rankValue(rank));
+        }
+    }
+
+    /**
+     * Every card's {@link #rankAbbreviation}, joined by "/", followed by
+     * " -> " and the hand's best total -- e.g. {@code "K/A -> 21"}, {@code
+     * "2/2/3/10 -> 17"}. Always the single best (Ace-optimized) total,
+     * never the old dual soft/hard display -- with the actual cards now
+     * shown too, a viewer can already see there's an Ace in play, so a
+     * second number doesn't add anything.
+     *
+     * @return null for an empty (or null) hand -- callers must render no
+     *     lore line at all in that case, never a placeholder {@code "0"}.
+     */
+    public static String formatHandCardsAndTotal(List<Card> hand) {
+        if (hand == null || hand.isEmpty()) {
+            return null;
+        }
+        StringBuilder cards = new StringBuilder();
+        for (int i = 0; i < hand.size(); i++) {
+            if (i > 0) {
+                cards.append('/');
+            }
+            cards.append(rankAbbreviation(hand.get(i).getRank()));
+        }
+        return cards + " -> " + handValue(hand);
+    }
+
     /**
      * Evaluates a hand's hard total (every Ace = 1) and best total (Aces
      * promoted to 11 one at a time as long as doing so doesn't bust),

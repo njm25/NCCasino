@@ -227,7 +227,7 @@ class BlackjackTeardownEconomicsIntegrationTest {
             assertTrue(h.inventory.isGameActiveForTest(), "test setup must actually reach an actionable initial hand");
 
             h.click(alice, BlackjackSlotLayout.ACTION_SPLIT_SLOT);
-            h.scheduler.advance(100);
+            h.scheduler.advance(4 * BlackjackTiming.SPLIT_ANIMATION_STEP_TICKS + 20);
             h.advanceToActionableTurn(20, 40);
 
             h.click(alice, BlackjackSlotLayout.ACTION_DOUBLE_SLOT);
@@ -281,7 +281,7 @@ class BlackjackTeardownEconomicsIntegrationTest {
 
             // First split: hand1 (8,2=10) stays active, hand2 (8,8) is queued next.
             h.click(alice, BlackjackSlotLayout.ACTION_SPLIT_SLOT);
-            h.scheduler.advance(100);
+            h.scheduler.advance(4 * BlackjackTiming.SPLIT_ANIMATION_STEP_TICKS + 20);
             h.advanceToActionableTurn(20, 40);
 
             // Stand on hand1 so hand2 (the 8,8 pair) becomes the active hand.
@@ -291,7 +291,7 @@ class BlackjackTeardownEconomicsIntegrationTest {
 
             // Resplit hand2 into hand2 (8,2=10) and a brand-new hand3 (8,2=10).
             h.click(alice, BlackjackSlotLayout.ACTION_SPLIT_SLOT);
-            h.scheduler.advance(100);
+            h.scheduler.advance(4 * BlackjackTiming.SPLIT_ANIMATION_STEP_TICKS + 20);
 
             h.inventory.delete();
 

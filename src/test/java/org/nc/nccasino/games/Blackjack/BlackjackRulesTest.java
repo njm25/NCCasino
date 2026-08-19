@@ -2,6 +2,7 @@ package org.nc.nccasino.games.Blackjack;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -41,6 +42,45 @@ class BlackjackRulesTest {
         for (Rank rank : Rank.values()) {
             assertEquals(BlackjackRules.rankValue(rank), BlackjackRules.cardStackSize(card(rank)));
         }
+    }
+
+    // --- rankAbbreviation / formatHandCardsAndTotal ---
+
+    @Test
+    void rankAbbreviationsMatchStandardCardShorthand() {
+        assertEquals("2", BlackjackRules.rankAbbreviation(Rank.TWO));
+        assertEquals("9", BlackjackRules.rankAbbreviation(Rank.NINE));
+        assertEquals("10", BlackjackRules.rankAbbreviation(Rank.TEN));
+        assertEquals("J", BlackjackRules.rankAbbreviation(Rank.JACK));
+        assertEquals("Q", BlackjackRules.rankAbbreviation(Rank.QUEEN));
+        assertEquals("K", BlackjackRules.rankAbbreviation(Rank.KING));
+        assertEquals("A", BlackjackRules.rankAbbreviation(Rank.ACE));
+    }
+
+    @Test
+    void formatHandCardsAndTotalJoinsRanksWithSlashesAndAppendsTheHardTotal() {
+        List<Card> hand = List.of(card(Rank.KING), card(Rank.ACE));
+        assertEquals("K/A -> 21", BlackjackRules.formatHandCardsAndTotal(hand));
+    }
+
+    @Test
+    void formatHandCardsAndTotalHandlesMoreThanTwoCardsInOrder() {
+        List<Card> hand = List.of(card(Rank.TWO), card(Rank.TWO), card(Rank.THREE), card(Rank.TEN));
+        assertEquals("2/2/3/10 -> 17", BlackjackRules.formatHandCardsAndTotal(hand));
+    }
+
+    @Test
+    void formatHandCardsAndTotalShowsOnlyTheSingleBestTotalForASoftHand() {
+        // A + 6: best (Ace-optimized) total is 17 -- no separate hard total shown,
+        // since the cards themselves already show the Ace is in play.
+        List<Card> hand = List.of(card(Rank.ACE), card(Rank.SIX));
+        assertEquals("A/6 -> 17", BlackjackRules.formatHandCardsAndTotal(hand));
+    }
+
+    @Test
+    void formatHandCardsAndTotalIsNullForAnEmptyOrNullHand() {
+        assertNull(BlackjackRules.formatHandCardsAndTotal(List.of()));
+        assertNull(BlackjackRules.formatHandCardsAndTotal(null));
     }
 
     // --- hard hand totals ---

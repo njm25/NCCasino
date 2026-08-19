@@ -64,8 +64,19 @@ public final class BlackjackTiming {
     public static final long DEALER_INSPECTION_STEP_TICKS = 2L;
     /** Per-slot travel time of a dealt card's flight from the deck token to its slot -- deliberately faster than {@link #DEALER_INSPECTION_STEP_TICKS}. */
     public static final long CARD_FLIGHT_HOP_TICKS = 1L;
+    /**
+     * During the initial deal, how far ahead of the previous card's own
+     * landing tick the next card is allowed to start its flight -- a brief
+     * head start so consecutive cards' flights just barely overlap, rather
+     * than each one fully landing before the next departs. Small on
+     * purpose: this is a slight overlap, not concurrent free-for-all
+     * flights (see {@code dealInitialCards}'s per-step scheduling, which
+     * derives each step's actual start from the previous step's landing
+     * tick minus this).
+     */
+    public static final long INITIAL_DEAL_OVERLAP_TICKS = 4L;
     /** Delay after a card's flight lands before it flips from face-down to its real face. */
-    public static final long CARD_FLIP_DELAY_TICKS = 0L;
+    public static final long CARD_FLIP_DELAY_TICKS = 6L;
     /** Ticks between one diagonal and the next joining the game-reset white-tile sweep's wavefront. */
     public static final long RESET_SWEEP_STEP_TICKS = 1L;
     /** How many diagonals' worth of ticks a reset-sweep tile stays white before revealing the board underneath again. */
@@ -73,7 +84,20 @@ public final class BlackjackTiming {
     /** How long the whole currently-available action-item set stays glowing (or plain) per phase before flipping to the other. */
     public static final long ACTION_GUIDANCE_STEP_TICKS = 5L;
     /** Delay between successive steps of the split slide-out/park/reactivate sequence -- wide enough for C's/D's own deck-flight to comfortably land in sync (see BlackjackInventory#runSplitAnimation). */
-    public static final long SPLIT_ANIMATION_STEP_TICKS = 14L;
+    public static final long SPLIT_ANIMATION_STEP_TICKS = 27L;
+    /**
+     * Per-hop speed of the split's own slide animations -- B's slide-out
+     * and (for the bottom seat) C's own pre-positioning dash -- deliberately
+     * slower than the ordinary {@link #CARD_FLIGHT_HOP_TICKS} dealt-card
+     * rate. Kept as its own constant, not just reusing {@link
+     * #CARD_FLIGHT_HOP_TICKS}, so these two purely-presentational slides can
+     * be paced to actually read as sliding motion against {@link
+     * #SPLIT_ANIMATION_STEP_TICKS}'s own now-slower phase gaps, without
+     * touching the speed of every other card dealt anywhere else in the game.
+     */
+    public static final long SPLIT_SLIDE_HOP_TICKS = 3L;
+    /** Per-hop speed of the bottom seat's own split-C dash (see {@code BlackjackInventory#bottomSeatSplitDashPath}) -- deliberately faster than {@link #SPLIT_SLIDE_HOP_TICKS}, since the dash is a longer multi-hop trip and doesn't need to read as deliberately as B's own (much shorter) slide. */
+    public static final long BOTTOM_SEAT_DASH_HOP_TICKS = 2L;
 
     /** Default insurance decision timeout, in seconds, before it auto-resolves to No. */
     public static final int INSURANCE_TIMEOUT_DEFAULT_SECONDS = 25;

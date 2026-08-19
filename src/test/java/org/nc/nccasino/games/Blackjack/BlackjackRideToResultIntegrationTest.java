@@ -184,6 +184,36 @@ class BlackjackRideToResultIntegrationTest {
         }
     }
 
+    /**
+     * Once a player's own turn has fully resolved (stood, busted, etc.) --
+     * {@code playerDone}, not merely "not currently my turn" -- there's no
+     * timer running against them and nothing left to return "before".
+     * Closing at that point must send no ride-to-result warning at all,
+     * unlike {@link #closingWhileOnlineBeforeOwnTurnAlsoRidesToResult}
+     * (a player who hasn't played yet, where the warning is still correct).
+     */
+    @Test
+    void spareMessageIsSuppressedOnceThePlayersOwnTurnHasAlreadyResolved() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            when(h.preferences.getMessageSetting()).thenReturn(Preferences.MessageSetting.STANDARD);
+
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            Player bob = h.seatOnlinePlayer(UUID.randomUUID(), "Bob");
+            UUID actingId = seatTwoAndReachActionableTurn(h, alice, bob);
+            Player acting = actingId.equals(alice.getUniqueId()) ? alice : bob;
+            Player other = actingId.equals(alice.getUniqueId()) ? bob : alice;
+
+            h.click(acting, BlackjackSlotLayout.ACTION_STAND_SLOT);
+            h.scheduler.advance(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
+            assertEquals(other.getUniqueId(), h.inventory.currentPlayerIdForTest(), "test setup: standing must advance the turn to the other player");
+
+            org.mockito.Mockito.clearInvocations(acting); // discard Stand's own confirmation message -- only the ride-to-result warning (or its absence) matters here
+            closeView(h, acting);
+
+            verify(acting, never()).sendMessage(org.mockito.ArgumentMatchers.anyString());
+        }
+    }
+
     @Test
     void spareMessageIsNeverSentToAGenuinelyOfflinePlayer() {
         try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {

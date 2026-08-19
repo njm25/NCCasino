@@ -2082,8 +2082,9 @@ private void registerListener() {
         // (peek logic elsewhere legitimately needs it); only rendering is
         // restricted. See BlackjackFrame#publiclyVisibleDealerHand.
         List<Card> visibleDealerHand = frame.publiclyVisibleDealerHand();
-        if (!visibleDealerHand.isEmpty()) {
-            applyHeadLore(target, frame.dealerHeadSlot(), calculateHandValueWithSoftCheck(visibleDealerHand), null, "blackjack.dealer", viewer);
+        String dealerHandText = BlackjackRules.formatHandCardsAndTotal(visibleDealerHand);
+        if (dealerHandText != null) {
+            applyHeadLore(target, frame.dealerHeadSlot(), List.of(dealerHandText), null, "blackjack.dealer", viewer);
         }
         if (active) {
             for (int i = 0; i < frame.dealerHand().size() && i < BlackjackSlotLayout.DEALER_CARD_CAPACITY; i++) {
@@ -2114,8 +2115,15 @@ private void registerListener() {
             Player seatOwnerPlayer = Bukkit.getPlayer(seat.getPlayerId());
             if (seatOwnerPlayer != null) {
                 target.setItem(seatSlot, createPlayerHeadItem(seatOwnerPlayer, 1));
-                if (!seat.getHand().isEmpty()) {
-                    applyHeadLore(target, seatSlot, calculateHandValueWithSoftCheck(seat.getHand()), seatOwnerPlayer.getName(), null, viewer);
+                List<String> seatHandTexts = new ArrayList<>();
+                for (BlackjackFrame.HandSnapshot handSnapshot : seat.getHands()) {
+                    String text = BlackjackRules.formatHandCardsAndTotal(handSnapshot.getCards());
+                    if (text != null) {
+                        seatHandTexts.add(text);
+                    }
+                }
+                if (!seatHandTexts.isEmpty()) {
+                    applyHeadLore(target, seatSlot, seatHandTexts, seatOwnerPlayer.getName(), null, viewer);
                 }
             } else {
                 // Seat tracked but the player can't be resolved (e.g. just
@@ -2532,8 +2540,17 @@ private void registerListener() {
      * Exactly one of {@code literalName}/{@code nameKey} is non-null:
      * player heads keep their real (untranslated) Minecraft name; the
      * dealer head's name is localized per viewer.
+     *
+     * <p>One lore line per entry in {@code cardValueTexts} -- so a split
+     * player's head carries one line per hand in their queue, in order.
+     * {@code cardValueTexts} is empty before any card has actually been
+     * dealt (see {@link BlackjackRules#formatHandCardsAndTotal}), which
+     * intentionally clears the lore to nothing rather than showing a
+     * placeholder total. A single entry renders plain ("K/A:21"); more than
+     * one (a split hand) gets a "Hand N-" label per line so each is
+     * distinguishable.
      */
-    private void applyHeadLore(Inventory target, int slot, String cardValueText, String literalName, String nameKey, Player viewer) {
+    private void applyHeadLore(Inventory target, int slot, List<String> cardValueTexts, String literalName, String nameKey, Player viewer) {
         ItemStack headItem = target.getItem(slot);
         if (headItem == null || (headItem.getType() != Material.PLAYER_HEAD && headItem.getType() != Material.CREEPER_HEAD)) {
             return;
@@ -2544,18 +2561,24 @@ private void registerListener() {
         }
         meta.setDisplayName(literalName != null ? literalName : localize(viewer, nameKey));
         List<String> lore = new ArrayList<>();
-        lore.add(localize(viewer, "blackjack.card-value", "value", cardValueText));
+        if (cardValueTexts.size() == 1) {
+            lore.add(localize(viewer, "blackjack.card-value", "value", cardValueTexts.get(0)));
+        } else {
+            for (int i = 0; i < cardValueTexts.size(); i++) {
+                lore.add(localize(viewer, "blackjack.hand-label", "number", i + 1, "value", cardValueTexts.get(i)));
+            }
+        }
         meta.setLore(lore);
         headItem.setItemMeta(meta);
         target.setItem(slot, headItem);
     }
 
     /** Fans a head-lore update (player or dealer) out to the legacy inventory and every open view. */
-    private void renderHeadLoreToAllViews(int slot, String cardValueText, String literalName, String nameKey) {
-        applyHeadLore(inventory, slot, cardValueText, literalName, nameKey, null);
+    private void renderHeadLoreToAllViews(int slot, List<String> cardValueTexts, String literalName, String nameKey) {
+        applyHeadLore(inventory, slot, cardValueTexts, literalName, nameKey, null);
         for (BlackjackView view : views.values()) {
             Player viewer = Bukkit.getPlayer(view.getPlayerId());
-            applyHeadLore(view.getInventory(), slot, cardValueText, literalName, nameKey, viewer);
+            applyHeadLore(view.getInventory(), slot, cardValueTexts, literalName, nameKey, viewer);
         }
     }
 
@@ -3851,30 +3874,108 @@ private void handleDoubleDown(Player player) {
         int slotTempB = BlackjackSlotLayout.playerCardSlot(seatSlot, 3);
         int slotTempD = BlackjackSlotLayout.playerCardSlot(seatSlot, 4);
 
-        // C (phase 2) and D (phase 3) both shoot in from the deck, same as
-        // any other dealt card -- C needs the zigzag detour around B's own
-        // temp slot (see splitOriginalCardFlightPath's own doc), D's target
-        // is past B entirely so the plain up-then-left flight never crosses
-        // anything. Landing ticks are exactly phase 2's/3's own existing
-        // fixed schedule (stepTicks, then stepTicks again) -- purely
-        // additive visual polish in front of unchanged data timing.
-        if (isRenderableCardSlot(playerId, slotOrigB)) {
-            scheduleCardFlightAlongPathEndingAt(splitOriginalCardFlightPath(slotOrigB), stepTicks, myGeneration);
-        }
+        // D (phase 3) shoots in from the deck, same as any other dealt card
+        // -- its target is past B entirely so the plain up-then-left flight
+        // never crosses anything. Landing tick is exactly phase 3's own
+        // existing fixed schedule (2 * stepTicks) -- purely additive visual
+        // polish in front of unchanged data timing. At the ordinary fast
+        // hop rate its whole flight is short, so most of the wait between
+        // C's own flip (stepTicks) and D visibly starting to move is
+        // genuinely idle screen time -- slowed down (without moving the
+        // landing tick at all) to start about halfway through that idle
+        // gap instead. How far D actually travels varies by seat, so the
+        // exact rate is computed per-call rather than a flat constant --
+        // see halvedIdleGapHopTicks's own doc for why a flat rate isn't
+        // safe here (it can overshoot into starting before C even flips
+        // for a seat far from the deck).
         if (isRenderableCardSlot(playerId, slotTempD)) {
-            scheduleCardFlightEndingAt(slotTempD, false, 2 * stepTicks, myGeneration);
+            List<Integer> dPath = flightPathFromDeck(slotTempD, false);
+            long dHopTicks = halvedIdleGapHopTicks(dPath.size() - 1, stepTicks, 2 * stepTicks);
+            scheduleCardFlightAlongPathEndingAt(dPath, 2 * stepTicks, myGeneration, dHopTicks);
         }
 
-        // Phase 1 (immediate): B slides out of its original slot into its
-        // temporary right-hand position -- the moment the split genuinely
-        // becomes two hands. Purely presentational: neither hand's cards
-        // change yet, so no guard is needed for this one synchronous step.
-        if (isRenderableCardSlot(playerId, slotOrigB)) {
-            renderBackgroundToAllViews(slotOrigB);
+        // Deliberately slower than the ordinary dealt-card hop rate -- see
+        // BlackjackTiming#SPLIT_SLIDE_HOP_TICKS's own doc for why B's slide
+        // needs its own pace, not the fast rate every other flight on the
+        // table already uses. The dash (bottom seat only) gets its own,
+        // faster rate -- see BOTTOM_SEAT_DASH_HOP_TICKS's own doc.
+        long slideHopTicks = BlackjackTiming.SPLIT_SLIDE_HOP_TICKS;
+        long dashHopTicks = BlackjackTiming.BOTTOM_SEAT_DASH_HOP_TICKS;
+        boolean bottomSeat = seatSlot == BlackjackSlotLayout.SEAT_SLOTS[BlackjackSlotLayout.SEAT_SLOTS.length - 1];
+
+        // C's own flight (phase 2, landing at stepTicks): the general case
+        // detours through the row below B's temp slot; the bottom seat
+        // instead runs its own two-part dash + final hop below, since it
+        // has no row below to detour through in the first place. See
+        // bottomSeatSplitDashPath's own doc for the full reasoning.
+        long phase1Delay;
+        if (bottomSeat && isRenderableCardSlot(playerId, slotOrigB)) {
+            List<Integer> dashPath = bottomSeatSplitDashPath(slotOrigB);
+            scheduleCardFlightHops(dashPath, 0L, myGeneration, dashHopTicks);
+            int stagingSlot = dashPath.get(dashPath.size() - 1);
+            phase1Delay = (dashPath.size() - 1) * dashHopTicks;
+            scheduleCardFlightAlongPathEndingAt(List.of(stagingSlot, slotOrigB), stepTicks, myGeneration);
+        } else {
+            phase1Delay = 0L;
+            if (isRenderableCardSlot(playerId, slotOrigB)) {
+                scheduleCardFlightAlongPathEndingAt(splitOriginalCardFlightPath(slotOrigB), stepTicks, myGeneration);
+            }
         }
-        if (isRenderableCardSlot(playerId, slotTempB)) {
-            renderCardToAllViews(slotTempB, siblingHand.getCards().get(0), false);
+
+        // Phase 1: B genuinely slides out of its original slot into its
+        // temporary right-hand position -- hopping visibly through the gap
+        // cell in between, one hop per slideHopTicks, rather than instantly
+        // teleporting -- the moment the split genuinely becomes two hands.
+        // For the bottom seat only, this whole phase is delayed (phase1Delay)
+        // until C's own dash above has fully cleared the row -- B's slide
+        // never has to share the row with C in flight at all. Every step
+        // below is scheduled directly from right now, at an absolute delay
+        // (phase1Delay + ...), never nested inside another already-delayed
+        // callback -- runTaskLater's delay is always relative to whenever
+        // it's called, so nesting it would silently double-delay everything
+        // inside.
+        //
+        // The origin's vacate and B's arrival at the gap happen in the very
+        // same step, not one then-a-hop-later the other -- B must never be
+        // rendered nowhere at all (neither at the origin nor the gap) for
+        // even a moment, which is exactly what a separate vacate-then-wait
+        // step produced (a real, visible blank flicker once slideHopTicks
+        // was slowed down for readability). Only the second half of the
+        // slide (gap -> temp slot) is a genuinely separate, delayed hop.
+        // Purely presentational: neither hand's cards change yet, so
+        // guardBeforeAnyDeal (already valid for this whole pre-deal window)
+        // covers every step.
+        Card slidingSiblingCard = siblingHand.getCards().get(0);
+        Runnable vacateOriginAndEnterGap = () -> {
+            if (isRenderableCardSlot(playerId, slotOrigB)) {
+                renderBackgroundToAllViews(slotOrigB);
+            }
+            if (isRenderableCardSlot(playerId, slotGap)) {
+                renderCardToAllViews(slotGap, slidingSiblingCard, false);
+            }
+        };
+        if (phase1Delay == 0) {
+            vacateOriginAndEnterGap.run();
+        } else {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (run != sharedAnimationRun || !isSplitOperationValid(run, guardBeforeAnyDeal)) {
+                    return;
+                }
+                vacateOriginAndEnterGap.run();
+            }, phase1Delay);
         }
+        long finalHopDelay = phase1Delay + slideHopTicks;
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (run != sharedAnimationRun || !isSplitOperationValid(run, guardBeforeAnyDeal)) {
+                return;
+            }
+            if (isRenderableCardSlot(playerId, slotGap)) {
+                renderBackgroundToAllViews(slotGap);
+            }
+            if (isRenderableCardSlot(playerId, slotTempB)) {
+                renderCardToAllViews(slotTempB, slidingSiblingCard, false);
+            }
+        }, finalHopDelay);
 
         // Phase 2: the original hand's replacement card, C, deals in
         // visibly beside A, into the slot B just vacated.
@@ -5050,15 +5151,20 @@ private void dealInitialCards() {
         (int) BlackjackTiming.CARD_DEAL_DELAY_TICKS
     );
 
-    // Each step's own delayTicks is when its flight FROM THE DECK begins,
-    // not when the card lands -- scheduleCardFlight returns the later tick
-    // (flight + flip) the real deal (data mutation + true-face render) must
-    // actually fire at, so the visual flight's exact landing is what
-    // flips face-down to face-up, never a separate/earlier instant reveal.
+    // Each step's own flight starts as soon as the previous step's card is
+    // about to land (minus a small overlap), not at the plan's own
+    // precomputed stagger -- so consecutive cards' flights just barely
+    // overlap instead of each one fully landing before the next departs.
+    // scheduleCardFlight returns the later tick (flight + flip) the real
+    // deal (data mutation + true-face render) must actually fire at, so the
+    // visual flight's exact landing is what flips face-down to face-up,
+    // never a separate/earlier instant reveal.
+    long nextStepStartDelay = 0L;
     long lastCardLandingDelay = 0L;
     for (BlackjackDealPlan.Step step : plan.getSteps()) {
-        long landingDelay = scheduleCardFlight(step.getSlot(), step.isDealer(), step.getDelayTicks(), myGeneration);
+        long landingDelay = scheduleCardFlight(step.getSlot(), step.isDealer(), nextStepStartDelay, myGeneration);
         lastCardLandingDelay = Math.max(lastCardLandingDelay, landingDelay);
+        nextStepStartDelay = Math.max(nextStepStartDelay + 1, landingDelay - BlackjackTiming.INITIAL_DEAL_OVERLAP_TICKS);
         if (step.isHidden()) {
             // Hidden placeholder: the Card IS drawn from the shoe now (so
             // its rank is known for the dealer peek below), just rendered
@@ -5946,17 +6052,20 @@ private void dealDealerCardsUntilSeventeen(long myGeneration, int myDealerSequen
             return;
         }
         Card newCard = deck.dealCard();
-        dealCardToPlayer(nextSlot, newCard, null); // Deal the card to the dealer
-        mutableDealerCardSum[0] = calculateHandValue(dealerHand); // Recalculate after adding each card
+        if (isRenderableCardSlot(null, nextSlot)) {
+            scheduleCardFlightEndingAt(nextSlot, true, delay, myGeneration);
+        }
 
-        // Update the dealer head after dealing a new card
-        updateDealerHead();
-
-        // Schedule the next card if needed
+        // Deal the card (and schedule the next one) only once its own
+        // deck-flight actually lands -- same pattern as a player's hit/
+        // double-down card, instead of the old instant-appear behavior.
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (isStaleDealerSequenceCallback(myGeneration, myDealerSequenceToken)) {
                 return;
             }
+            dealCardToPlayer(nextSlot, newCard, null); // Deal the card to the dealer
+            mutableDealerCardSum[0] = calculateHandValue(dealerHand); // Recalculate after adding each card
+            updateDealerHead();
             dealDealerCardsUntilSeventeen(myGeneration, myDealerSequenceToken, nextSlot - 1, mutableDealerCardSum[0], delay);
         }, delay);
     } else if (mutableDealerCardSum[0] == 17) {
@@ -5979,14 +6088,17 @@ private void dealDealerCardsUntilSeventeen(long myGeneration, int myDealerSequen
                 return;
             }
             Card newCard = deck.dealCard();
-            dealCardToPlayer(nextSlot, newCard, null);
-            mutableDealerCardSum[0] = calculateHandValue(dealerHand);
-            updateDealerHead();
+            if (isRenderableCardSlot(null, nextSlot)) {
+                scheduleCardFlightEndingAt(nextSlot, true, delay, myGeneration);
+            }
 
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (isStaleDealerSequenceCallback(myGeneration, myDealerSequenceToken)) {
                     return;
                 }
+                dealCardToPlayer(nextSlot, newCard, null);
+                mutableDealerCardSum[0] = calculateHandValue(dealerHand);
+                updateDealerHead();
                 dealDealerCardsUntilSeventeen(myGeneration, myDealerSequenceToken, nextSlot - 1, mutableDealerCardSum[0], delay);
             }, delay);
         }
@@ -6467,9 +6579,27 @@ private int calculateHandValue(List<Card> hand) {
     return BlackjackRules.handValue(hand);
 }
 
-/** The path a card dealt to {@code targetSlot} takes from wherever the deck token currently sits (see {@link BlackjackCardFlightPlan}). */
+/**
+ * The path a card dealt to {@code targetSlot} takes from wherever the deck
+ * token currently sits (see {@link BlackjackCardFlightPlan}).
+ *
+ * <p>A dealer card can never safely take the normal row-first-then-drop
+ * path (or any vertical-first detour -- see {@link BlackjackCardFlightPlan}'s
+ * class doc for why) once the bottom seat's hand has grown far enough out
+ * to either occupy the deck's own resting slot outright, or merely block
+ * an intermediate slot along that row-first sweep: both would mean flying
+ * through (and repainting over) a real card, or -- for any vertical drop --
+ * the dealer's own head slot, which sits directly below the deck's column.
+ * {@link BlackjackCardFlightPlan#dealerRowLegClear} detects either case, and
+ * {@link BlackjackCardFlightPlan#dealerDoorPath} is the one fallback that's
+ * always safe: it originates from the dealer's own row, right of the door,
+ * never touching the deck's row or the head slot at all.
+ */
 private List<Integer> flightPathFromDeck(int targetSlot, boolean dealerCard) {
     int originSlot = dealerDeckTokenSlot != -1 ? dealerDeckTokenSlot : BlackjackSlotLayout.DECK_HOME_SLOT;
+    if (dealerCard && !BlackjackCardFlightPlan.dealerRowLegClear(originSlot, targetSlot, this::isCardOccupiedSlot)) {
+        return BlackjackCardFlightPlan.dealerDoorPath(targetSlot);
+    }
     return BlackjackCardFlightPlan.path(originSlot, targetSlot, dealerCard);
 }
 
@@ -6486,7 +6616,11 @@ private List<Integer> flightPathFromDeck(int targetSlot, boolean dealerCard) {
  * still sitting there for the next card.
  */
 private void scheduleCardFlightHops(List<Integer> path, long baseDelay, long myGeneration) {
-    long hopTicks = BlackjackTiming.CARD_FLIGHT_HOP_TICKS;
+    scheduleCardFlightHops(path, baseDelay, myGeneration, BlackjackTiming.CARD_FLIGHT_HOP_TICKS);
+}
+
+/** Same as {@link #scheduleCardFlightHops(List, long, long)}, but at a caller-chosen hop rate instead of the ordinary dealt-card {@link BlackjackTiming#CARD_FLIGHT_HOP_TICKS} -- see {@link BlackjackTiming#SPLIT_SLIDE_HOP_TICKS}'s own doc for why the split's own slides need their own, slower rate. */
+private void scheduleCardFlightHops(List<Integer> path, long baseDelay, long myGeneration, long hopTicks) {
     for (int i = 1; i < path.size(); i++) {
         int previousSlot = path.get(i - 1);
         int hopSlot = path.get(i);
@@ -6540,9 +6674,46 @@ private void scheduleCardFlightEndingAt(int targetSlot, boolean dealerCard, long
 
 /** Shared backward-scheduling math for any pre-built path -- see {@link #scheduleCardFlightEndingAt} for why the landing tick itself is never allowed to move. */
 private void scheduleCardFlightAlongPathEndingAt(List<Integer> path, long dealDelayTicks, long myGeneration) {
-    long flightTicks = (path.size() - 1) * BlackjackTiming.CARD_FLIGHT_HOP_TICKS + BlackjackTiming.CARD_FLIP_DELAY_TICKS;
+    scheduleCardFlightAlongPathEndingAt(path, dealDelayTicks, myGeneration, BlackjackTiming.CARD_FLIGHT_HOP_TICKS);
+}
+
+/** Same as {@link #scheduleCardFlightAlongPathEndingAt(List, long, long)}, but at a caller-chosen hop rate -- see {@link #halvedIdleGapHopTicks} for the one caller that needs this. */
+private void scheduleCardFlightAlongPathEndingAt(List<Integer> path, long dealDelayTicks, long myGeneration, long hopTicks) {
+    long flightTicks = (path.size() - 1) * hopTicks + BlackjackTiming.CARD_FLIP_DELAY_TICKS;
     long flightStart = Math.max(0L, dealDelayTicks - flightTicks);
-    scheduleCardFlightHops(path, flightStart, myGeneration);
+    scheduleCardFlightHops(path, flightStart, myGeneration, hopTicks);
+}
+
+/**
+ * The per-hop rate that makes a {@code hopCount}-hop flight -- landing at
+ * a fixed {@code landingTick}, worked backward exactly the way {@link
+ * #scheduleCardFlightAlongPathEndingAt} always does -- start visibly
+ * moving about halfway between {@code priorPhaseTick} (when the previous
+ * phase already landed) and wherever it would have started at the
+ * ordinary {@link BlackjackTiming#CARD_FLIGHT_HOP_TICKS} rate, instead of
+ * leaving that whole stretch as idle screen time. Never faster than the
+ * ordinary rate (the floor is {@code CARD_FLIGHT_HOP_TICKS} itself) --
+ * this only ever slows a flight down to fill more of an otherwise-idle
+ * gap, never speeds one up past normal.
+ *
+ * <p>Computed per-call rather than as a flat constant deliberately: how
+ * far a flight actually has to travel (and therefore how much slower it
+ * needs to go to fill half the gap) varies with the target's distance
+ * from the deck -- a flat rate calibrated for a short flight would, for a
+ * long one, overshoot and start moving before the prior phase has even
+ * finished.
+ */
+private long halvedIdleGapHopTicks(int hopCount, long priorPhaseTick, long landingTick) {
+    if (hopCount <= 0) {
+        return BlackjackTiming.CARD_FLIGHT_HOP_TICKS;
+    }
+    long ordinaryFlightTicks = hopCount * BlackjackTiming.CARD_FLIGHT_HOP_TICKS + BlackjackTiming.CARD_FLIP_DELAY_TICKS;
+    long ordinaryStart = Math.max(0L, landingTick - ordinaryFlightTicks);
+    long idleGap = Math.max(0L, ordinaryStart - priorPhaseTick);
+    long desiredStart = priorPhaseTick + idleGap / 2;
+    long desiredFlightTicks = landingTick - desiredStart;
+    long hopTicks = (desiredFlightTicks - BlackjackTiming.CARD_FLIP_DELAY_TICKS) / hopCount;
+    return Math.max(BlackjackTiming.CARD_FLIGHT_HOP_TICKS, hopTicks);
 }
 
 /** Whether {@code slot} currently shows a real dealt card (either face color) -- used only to steer the split zigzag path around real cards, never background/decorative items. */
@@ -6564,9 +6735,13 @@ private boolean isCardOccupiedSlot(int slot) {
  * (toward the deck) instead: up into that row, left across it -- as far as
  * it can go before actually running into a real card there -- then up into
  * the target row, finishing with one last short left if it got blocked
- * before reaching the target column outright. The bottom seat is the one
- * exception: its own row already IS the deck's row, so it detours through
- * the row above instead, the only seat that ever does.
+ * before reaching the target column outright.
+ *
+ * <p>The bottom seat never reaches here -- its own row already IS the
+ * deck's row, so "the row below" doesn't exist. It's handled entirely
+ * separately (see {@link #runSplitAnimation} and {@link
+ * #bottomSeatSplitDashPath}) with a different visual strategy altogether,
+ * not a variant of this one.
  */
 private List<Integer> splitOriginalCardFlightPath(int targetSlot) {
     int width = BlackjackSlotLayout.SEAT_ROW_WIDTH;
@@ -6574,9 +6749,7 @@ private List<Integer> splitOriginalCardFlightPath(int targetSlot) {
     int targetRow = targetSlot / width;
     int targetCol = targetSlot % width;
     int deckCol = deckSlot % width;
-
-    int bottomSeatRow = BlackjackSlotLayout.SEAT_SLOTS[BlackjackSlotLayout.SEAT_SLOTS.length - 1] / width;
-    int detourRow = targetRow == bottomSeatRow ? targetRow - 1 : targetRow + 1;
+    int detourRow = targetRow + 1;
 
     List<Integer> path = new ArrayList<>();
     path.add(deckSlot);
@@ -6592,6 +6765,48 @@ private List<Integer> splitOriginalCardFlightPath(int targetSlot) {
     while (col > targetCol) {
         col--;
         path.add(targetRow * width + col); // blocked partway -- finish left within the target row, already past B's temp slot by now
+    }
+
+    return path;
+}
+
+/**
+ * ONLY for the bottom seat's split -- C's own pre-positioning dash, run
+ * (see {@link #runSplitAnimation}) before B's slide-out even begins, not a
+ * clever route around anything. Left along the bottom seat's own row --
+ * still entirely empty out here, since B hasn't moved yet -- down into the
+ * dealer's row at the column directly left of the hole card (always one of
+ * its own empty not-yet-dealt hit cells; never the up-card, the hole card
+ * itself, or the head slot), then left the rest of the way to directly
+ * beneath the target slot. Ends parked there; {@link #runSplitAnimation}
+ * schedules B's own slide-out only after this dash finishes, then gives C
+ * one final hop straight up into the target slot once B has vacated it.
+ *
+ * @return the path ending at the parked staging slot, directly beneath {@code targetSlot} -- not {@code targetSlot} itself
+ */
+private List<Integer> bottomSeatSplitDashPath(int targetSlot) {
+    int width = BlackjackSlotLayout.SEAT_ROW_WIDTH;
+    int deckSlot = dealerDeckTokenSlot != -1 ? dealerDeckTokenSlot : BlackjackSlotLayout.DECK_HOME_SLOT;
+    int targetRow = targetSlot / width;
+    int targetCol = targetSlot % width;
+    int deckCol = deckSlot % width;
+    int dealerRow = targetRow + 1;
+    int dropCol = BlackjackSlotLayout.DEALER_HOLE_CARD_SLOT % width - 1; // directly left of the hole card
+
+    List<Integer> path = new ArrayList<>();
+    path.add(deckSlot);
+
+    int col = deckCol;
+    while (col > dropCol) {
+        col--;
+        path.add(targetRow * width + col); // left, along the bottom seat's own row -- stops well short of B's own slot
+    }
+
+    path.add(dealerRow * width + col); // down, into the dealer's row, directly left of the hole card -- always an empty not-yet-dealt hit cell
+
+    while (col > targetCol) {
+        col--;
+        path.add(dealerRow * width + col); // left, still within the dealer's row, until it's in the correct column
     }
 
     return path;
@@ -6613,35 +6828,34 @@ private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId, 
     }, delay);
 }
 
+/**
+ * Renders one lore line per hand in {@code playerId}'s own hand queue
+ * (every hand, if split -- not only the currently active one), each as
+ * "cards-total" via {@link BlackjackRules#formatHandCardsAndTotal}. A hand
+ * with no cards yet (including split's not-yet-dealt-into sibling)
+ * contributes no line at all -- never a placeholder {@code "0"}.
+ */
 private void updatePlayerHead(UUID playerId) {
     if (!playerBets.containsKey(playerId) || playerBets.get(playerId).isEmpty() || playerSeats.get(playerId) == null) {
         return; // Skip updating if the player hasn't placed a bet
     }
 
-    List<Card> hand = activeHandCards(playerId);
-    String handValue = calculateHandValueWithSoftCheck(hand);
+    List<BlackjackHand> hands = playerHands.getOrDefault(playerId, List.of());
+    List<String> handTexts = new ArrayList<>();
+    for (BlackjackHand hand : hands) {
+        String text = BlackjackRules.formatHandCardsAndTotal(hand.getCards());
+        if (text != null) {
+            handTexts.add(text);
+        }
+    }
 
     int seatSlot = playerSeats.get(playerId);
-    renderHeadLoreToAllViews(seatSlot, handValue, Bukkit.getOfflinePlayer(playerId).getName(), null);
+    renderHeadLoreToAllViews(seatSlot, handTexts, Bukkit.getOfflinePlayer(playerId).getName(), null);
 }
 
 private void updateDealerHead() {
-    String handValue = calculateHandValueWithSoftCheck(dealerHand);
-    renderHeadLoreToAllViews(dealerHeadSlot, handValue, null, "blackjack.dealer");
-}
-private String calculateHandValueWithSoftCheck(List<Card> hand) {
-    if (hand == null || hand.isEmpty()) {
-        return "0";
-    }
-
-    BlackjackHandValue value = BlackjackRules.evaluate(hand);
-
-    // Return soft/hard value if an ace is present; otherwise, just return the hard value
-    if (value.isSoft()) {
-        return value.getBestTotal() + "/" + value.getHardTotal();
-    } else {
-        return String.valueOf(value.getHardTotal());
-    }
+    String handText = BlackjackRules.formatHandCardsAndTotal(dealerHand);
+    renderHeadLoreToAllViews(dealerHeadSlot, handText != null ? List.of(handText) : List.of(), null, "blackjack.dealer");
 }
 
 /**
@@ -7029,6 +7243,11 @@ public void delete() {
         } else if (playerId.equals(currentPlayerId)) {
             key = "blackjack.closed-during-turn";
             placeholders = new Object[]{"seconds", turnTimerSecondsRemaining};
+        } else if (playerDone.getOrDefault(playerId, false)) {
+            // Their own turn (every hand, if split) already resolved --
+            // nothing left to return "before", and no timer is running
+            // against them at all. Just riding to the result now.
+            return;
         } else {
             key = "blackjack.closed-before-turn";
             placeholders = new Object[0];
@@ -7129,6 +7348,14 @@ public void delete() {
     /** @return the deck-flight path C (the split's original-hand replacement card) would take to {@code targetSlot} against current live board state -- see {@link #splitOriginalCardFlightPath}. */
     List<Integer> splitOriginalCardFlightPathForTest(int targetSlot) {
         return splitOriginalCardFlightPath(targetSlot);
+    }
+
+    List<Integer> bottomSeatSplitDashPathForTest(int targetSlot) {
+        return bottomSeatSplitDashPath(targetSlot);
+    }
+
+    long halvedIdleGapHopTicksForTest(int hopCount, long priorPhaseTick, long landingTick) {
+        return halvedIdleGapHopTicks(hopCount, priorPhaseTick, landingTick);
     }
 
     /** Directly deals {@code card} to {@code playerId} at {@code slot}, bypassing any flight/scheduling -- test setup only, for putting real cards on the board without playing out a whole round. */
