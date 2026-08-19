@@ -3836,6 +3836,20 @@ private void handleDoubleDown(Player player) {
         int slotTempB = BlackjackSlotLayout.playerCardSlot(seatSlot, 3);
         int slotTempD = BlackjackSlotLayout.playerCardSlot(seatSlot, 4);
 
+        // C (phase 2) and D (phase 3) both shoot in from the deck, same as
+        // any other dealt card -- C needs the zigzag detour around B's own
+        // temp slot (see splitOriginalCardFlightPath's own doc), D's target
+        // is past B entirely so the plain up-then-left flight never crosses
+        // anything. Landing ticks are exactly phase 2's/3's own existing
+        // fixed schedule (stepTicks, then stepTicks again) -- purely
+        // additive visual polish in front of unchanged data timing.
+        if (isRenderableCardSlot(playerId, slotOrigB)) {
+            scheduleCardFlightAlongPathEndingAt(splitOriginalCardFlightPath(slotOrigB), stepTicks, myGeneration);
+        }
+        if (isRenderableCardSlot(playerId, slotTempD)) {
+            scheduleCardFlightEndingAt(slotTempD, false, 2 * stepTicks, myGeneration);
+        }
+
         // Phase 1 (immediate): B slides out of its original slot into its
         // temporary right-hand position -- the moment the split genuinely
         // becomes two hands. Purely presentational: neither hand's cards
@@ -6506,10 +6520,66 @@ private long scheduleCardFlight(int targetSlot, boolean dealerCard, long baseDel
  * front of unchanged data timing, never behind it.
  */
 private void scheduleCardFlightEndingAt(int targetSlot, boolean dealerCard, long dealDelayTicks, long myGeneration) {
-    List<Integer> path = flightPathFromDeck(targetSlot, dealerCard);
+    scheduleCardFlightAlongPathEndingAt(flightPathFromDeck(targetSlot, dealerCard), dealDelayTicks, myGeneration);
+}
+
+/** Shared backward-scheduling math for any pre-built path -- see {@link #scheduleCardFlightEndingAt} for why the landing tick itself is never allowed to move. */
+private void scheduleCardFlightAlongPathEndingAt(List<Integer> path, long dealDelayTicks, long myGeneration) {
     long flightTicks = (path.size() - 1) * BlackjackTiming.CARD_FLIGHT_HOP_TICKS + BlackjackTiming.CARD_FLIP_DELAY_TICKS;
     long flightStart = Math.max(0L, dealDelayTicks - flightTicks);
     scheduleCardFlightHops(path, flightStart, myGeneration);
+}
+
+/** Whether {@code slot} currently shows a real dealt card (either face color) -- used only to steer the split zigzag path around real cards, never background/decorative items. */
+private boolean isCardOccupiedSlot(int slot) {
+    ItemStack item = inventory.getItem(slot);
+    if (item == null) {
+        return false;
+    }
+    Material type = item.getType();
+    return type == Material.RED_STAINED_GLASS_PANE || type == Material.BLACK_STAINED_GLASS_PANE;
+}
+
+/**
+ * Card C's own flight path (the split's original hand's replacement card)
+ * -- unlike every other dealt card, its target (the seat's own card index
+ * 1) sits in the very row where B is already resting at its temp slot
+ * (index 3) by the time C deals in, so the plain up-then-left flight would
+ * cut straight through it. Detours through the row below the target
+ * (toward the deck) instead: up into that row, left across it -- as far as
+ * it can go before actually running into a real card there -- then up into
+ * the target row, finishing with one last short left if it got blocked
+ * before reaching the target column outright. The bottom seat is the one
+ * exception: its own row already IS the deck's row, so it detours through
+ * the row above instead, the only seat that ever does.
+ */
+private List<Integer> splitOriginalCardFlightPath(int targetSlot) {
+    int width = BlackjackSlotLayout.SEAT_ROW_WIDTH;
+    int deckSlot = dealerDeckTokenSlot != -1 ? dealerDeckTokenSlot : BlackjackSlotLayout.DECK_HOME_SLOT;
+    int targetRow = targetSlot / width;
+    int targetCol = targetSlot % width;
+    int deckCol = deckSlot % width;
+
+    int bottomSeatRow = BlackjackSlotLayout.SEAT_SLOTS[BlackjackSlotLayout.SEAT_SLOTS.length - 1] / width;
+    int detourRow = targetRow == bottomSeatRow ? targetRow - 1 : targetRow + 1;
+
+    List<Integer> path = new ArrayList<>();
+    path.add(deckSlot);
+    path.add(detourRow * width + deckCol); // up into the detour row
+
+    int col = deckCol;
+    while (col > targetCol && !isCardOccupiedSlot(detourRow * width + (col - 1))) {
+        col--;
+        path.add(detourRow * width + col);
+    }
+
+    path.add(targetRow * width + col); // up into the target row, at whichever column the sweep actually reached
+    while (col > targetCol) {
+        col--;
+        path.add(targetRow * width + col); // blocked partway -- finish left within the target row, already past B's temp slot by now
+    }
+
+    return path;
 }
 
 private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId, long myGeneration) {
@@ -7039,6 +7109,16 @@ public void delete() {
     /** @return the dealer's current canonical slot -- {@link BlackjackSlotLayout#DEALER_LOBBY_HEAD_SLOT} until the start-transition inspection delivers it to {@link BlackjackSlotLayout#DEALER_INPLAY_HEAD_SLOT}. */
     int dealerHeadSlotForTest() {
         return dealerHeadSlot;
+    }
+
+    /** @return the deck-flight path C (the split's original-hand replacement card) would take to {@code targetSlot} against current live board state -- see {@link #splitOriginalCardFlightPath}. */
+    List<Integer> splitOriginalCardFlightPathForTest(int targetSlot) {
+        return splitOriginalCardFlightPath(targetSlot);
+    }
+
+    /** Directly deals {@code card} to {@code playerId} at {@code slot}, bypassing any flight/scheduling -- test setup only, for putting real cards on the board without playing out a whole round. */
+    void dealCardToPlayerForTest(int slot, Card card, UUID playerId) {
+        dealCardToPlayer(slot, card, playerId);
     }
 
     /** @return whether a shared/table-owned animation (the dealer inspection, the split sequence, or the reset sweep) is currently running. */

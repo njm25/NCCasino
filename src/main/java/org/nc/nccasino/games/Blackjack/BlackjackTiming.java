@@ -72,8 +72,8 @@ public final class BlackjackTiming {
     public static final long RESET_SWEEP_HOLD_DIAGONALS = 3L;
     /** How long the whole currently-available action-item set stays glowing (or plain) per phase before flipping to the other. */
     public static final long ACTION_GUIDANCE_STEP_TICKS = 5L;
-    /** Delay between successive steps of the split slide-out/park/reactivate sequence. */
-    public static final long SPLIT_ANIMATION_STEP_TICKS = 10L;
+    /** Delay between successive steps of the split slide-out/park/reactivate sequence -- wide enough for C's/D's own deck-flight to comfortably land in sync (see BlackjackInventory#runSplitAnimation). */
+    public static final long SPLIT_ANIMATION_STEP_TICKS = 14L;
 
     /** Default insurance decision timeout, in seconds, before it auto-resolves to No. */
     public static final int INSURANCE_TIMEOUT_DEFAULT_SECONDS = 25;
