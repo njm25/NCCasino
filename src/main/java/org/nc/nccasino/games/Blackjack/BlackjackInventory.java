@@ -55,7 +55,9 @@ import org.nc.nccasino.session.TerminableSession;
 
 public class BlackjackInventory extends DealerInventory implements TerminableSession {
 
-    /** See {@link #runHandTransitionReveal}'s own doc: how many slots right of its real position the next hand's reveal starts out at -- two slots past its own immediate neighbor, so a visible two-slot background gap opens up against the collapsed previous hand. */
+    /** See {@link #runHandTransitionReveal}'s own doc: the first slot clear of the collapsed previous hand's own two cards -- where the next hand's reveal first becomes visible, sliding out from under the previous hand rather than simply materializing already off to the side. */
+    private static final int HAND_TRANSITION_REVEAL_START_OFFSET = 2;
+    /** See {@link #runHandTransitionReveal}'s own doc: how many slots right of its real position the next hand's reveal slides out to before reversing -- two slots past {@link #HAND_TRANSITION_REVEAL_START_OFFSET}, so a visible two-slot background gap opens up against the collapsed previous hand. */
     private static final int HAND_TRANSITION_REVEAL_OUT_OFFSET = 4;
 
     private final Nccasino plugin; // Reference to the main plugin
@@ -3762,32 +3764,56 @@ private void handleDoubleDown(Player player) {
     }
 
     /**
-     * The next hand emerges from under the (by now collapsed to two cards)
-     * previous hand: its own cards appear {@link #HAND_TRANSITION_REVEAL_OUT_OFFSET}
-     * slots to the right of where they'll actually end up -- two slots
-     * further out than its own final position's immediate neighbor, so a
-     * visible two-slot gap of bare background opens up between the
-     * collapsed previous hand and this hand's starting position, instead
-     * of the two hands' cards starting out touching -- then slides back
-     * left one hop at a time, landing in its real slots -- clearing the
-     * previous hand's own cards (and anything beyond this hand's own card
-     * count, up to the row's capacity) at the exact instant they land, so
-     * there's never a moment with both hands' cards simultaneously
-     * occupying the same slots.
+     * The next hand actually emerges from under the (by now collapsed to
+     * two cards) previous hand, in two visible legs rather than simply
+     * appearing already off to the side: first it slides right, becoming
+     * visible starting at {@link #HAND_TRANSITION_REVEAL_START_OFFSET} --
+     * the first slot clear of the previous hand's own two cards, as far
+     * right as it can be rendered while still reading as coming out from
+     * under it, since a real card can never be visible in the same slot as
+     * the previous hand's still-showing card -- out to {@link
+     * #HAND_TRANSITION_REVEAL_OUT_OFFSET}, two slots further out than its
+     * own final position's immediate neighbor, opening a visible two-slot
+     * gap of bare background against the collapsed previous hand. Only
+     * then does it reverse and slide back left one hop at a time, landing
+     * in its real slots -- clearing the previous hand's own cards (and
+     * anything beyond this hand's own card count, up to the row's
+     * capacity) at the exact instant they land, so there's never a moment
+     * with both hands' cards simultaneously occupying the same slots.
      */
     private void runHandTransitionReveal(UUID playerId, int seatSlot, BlackjackHand nextHand, long myGeneration) {
         List<Card> cards = nextHand.getCards();
         long step = BlackjackTiming.HAND_TRANSITION_STEP_TICKS;
+        int startOffset = HAND_TRANSITION_REVEAL_START_OFFSET;
         int outOffset = HAND_TRANSITION_REVEAL_OUT_OFFSET;
+        int outHops = outOffset - startOffset;
 
         for (int i = 0; i < cards.size(); i++) {
-            int outSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, i + outOffset);
-            Card card = cards.get(i);
-            renderCardToAllViews(outSlot, card, false);
+            int startSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, i + startOffset);
+            renderCardToAllViews(startSlot, cards.get(i), false);
         }
 
-        for (int hop = 1; hop <= outOffset; hop++) {
+        // Leg 1: slide right from startOffset out to outOffset.
+        for (int hop = 1; hop <= outHops; hop++) {
             long hopDelay = hop * step;
+            int hopFinal = hop;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (roundGeneration != myGeneration) {
+                    return;
+                }
+                for (int i = 0; i < cards.size(); i++) {
+                    int fromSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, i + startOffset + hopFinal - 1);
+                    int toSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, i + startOffset + hopFinal);
+                    renderBackgroundToAllViews(fromSlot);
+                    renderCardToAllViews(toSlot, cards.get(i), false);
+                }
+            }, hopDelay);
+        }
+
+        // Leg 2: reverse and slide all the way back left into the real slots.
+        long leg2Base = outHops * step;
+        for (int hop = 1; hop <= outOffset; hop++) {
+            long hopDelay = leg2Base + hop * step;
             boolean finalHop = hop == outOffset;
             int hopFinal = hop;
             Bukkit.getScheduler().runTaskLater(plugin, () -> {

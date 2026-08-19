@@ -103,14 +103,16 @@ public final class BlackjackTiming {
      * the inactive sibling hand sliding one step left into the gap, then
      * tucking away behind the active hand ("hand 2 slipping under hand 1",
      * see {@code BlackjackInventory#runSplitAnimation}'s phase 4-6 doc).
-     * Half of {@link #SPLIT_ANIMATION_STEP_TICKS} -- kept as its own
-     * constant rather than reusing that one directly so this specific
-     * park-away moment can be retuned (it read as too slow) without
-     * touching phase 2/3's own timing, which D's flight-pacing math (see
-     * {@code fasterSiblingCardHopTicks}/{@code fasterSiblingCardLandingTick})
-     * is built around and isn't safe to shrink independently.
+     * Kept as its own constant rather than reusing {@link
+     * #SPLIT_ANIMATION_STEP_TICKS} directly so this specific park-away
+     * moment can be retuned (it read as too slow, then still too slow even
+     * after halving) without touching phase 2/3's own timing, which D's
+     * flight-pacing math (see {@code fasterSiblingCardHopTicks}/{@code
+     * fasterSiblingCardLandingTick}) is built around and isn't safe to
+     * shrink independently. First halved from 18 to 9, then cranked
+     * roughly another 25% faster still, to 7.
      */
-    public static final long SPLIT_PARK_STEP_TICKS = 9L;
+    public static final long SPLIT_PARK_STEP_TICKS = 7L;
 
     // ---- Hand-to-hand transition (a finished split hand handing control
     // to the next one in the queue) -----------------------------------
