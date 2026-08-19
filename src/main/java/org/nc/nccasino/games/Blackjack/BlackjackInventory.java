@@ -3802,7 +3802,19 @@ private void handleDoubleDown(Player player) {
                 }
                 if (finalHop) {
                     for (int i = cards.size(); i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
-                        renderBackgroundToAllViews(BlackjackSlotLayout.playerCardSlot(seatSlot, i));
+                        int slotToClear = BlackjackSlotLayout.playerCardSlot(seatSlot, i);
+                        // The bottom seat's row shares its very last card
+                        // cell with the deck token's own resting slot (see
+                        // BlackjackSlotLayout#DECK_HOME_SLOT's doc) -- a
+                        // blind background clear here would wipe the deck
+                        // icon itself out from under the table. Restore it
+                        // instead of clearing to background whenever this
+                        // cleanup reaches that slot.
+                        if (slotToClear == dealerDeckTokenSlot) {
+                            renderHiddenCardToAllViews(slotToClear);
+                        } else {
+                            renderBackgroundToAllViews(slotToClear);
+                        }
                     }
                     finishActivatingSplitHand(playerId, seatSlot, nextHand);
                 }
@@ -4186,12 +4198,13 @@ private void handleDoubleDown(Player player) {
                 // Phase 4: the inactive [B][D] pair slides one visible step
                 // left, into the unused gap cell -- purely presentational
                 // (no hand mutation), so phase 5 reuses this exact guard.
-                // Deliberately half of stepTicks, not the full gap every
-                // other phase transition uses -- this one is a flat delay
-                // (not derived from D's own hop count the way its flight
-                // pacing is), so it's identical for every seat regardless
-                // of row; it just read as too long a pause once D had
-                // already landed and revealed.
+                // Phases 4-6 all pace off SPLIT_PARK_STEP_TICKS, not the
+                // phase 2/3 stepTicks gap -- a flat delay (not derived from
+                // D's own hop count the way its flight pacing is), so it's
+                // identical for every seat regardless of row; the whole
+                // park-away sequence ("hand 2 slipping under hand 1", see
+                // phase 5's own doc) read as too slow at the shared
+                // stepTicks pace.
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     if (run != sharedAnimationRun || !isSplitOperationValid(run, guardAfterBothDealt)) {
                         return;
@@ -4239,9 +4252,9 @@ private void handleDoubleDown(Player player) {
                             splitAnimationInFlight = false;
                             splitAnimationPlayerId = null;
                             resolveHandAfterSplitAnimation(playerId);
-                        }, stepTicks);
-                    }, stepTicks);
-                }, stepTicks / 2);
+                        }, BlackjackTiming.SPLIT_PARK_STEP_TICKS);
+                    }, BlackjackTiming.SPLIT_PARK_STEP_TICKS);
+                }, BlackjackTiming.SPLIT_PARK_STEP_TICKS / 2);
             }, phase3Delay);
         }, stepTicks);
     }

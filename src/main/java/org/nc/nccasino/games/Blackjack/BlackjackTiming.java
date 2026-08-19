@@ -98,6 +98,19 @@ public final class BlackjackTiming {
     public static final long SPLIT_SLIDE_HOP_TICKS = 2L;
     /** Per-hop speed of the bottom seat's own split-C dash (see {@code BlackjackInventory#bottomSeatSplitDashPath}) -- deliberately faster than {@link #SPLIT_SLIDE_HOP_TICKS}, since the dash is a longer multi-hop trip and doesn't need to read as deliberately as B's own (much shorter) slide. */
     public static final long BOTTOM_SEAT_DASH_HOP_TICKS = 2L;
+    /**
+     * Delay between successive steps of the split's own park sequence --
+     * the inactive sibling hand sliding one step left into the gap, then
+     * tucking away behind the active hand ("hand 2 slipping under hand 1",
+     * see {@code BlackjackInventory#runSplitAnimation}'s phase 4-6 doc).
+     * Half of {@link #SPLIT_ANIMATION_STEP_TICKS} -- kept as its own
+     * constant rather than reusing that one directly so this specific
+     * park-away moment can be retuned (it read as too slow) without
+     * touching phase 2/3's own timing, which D's flight-pacing math (see
+     * {@code fasterSiblingCardHopTicks}/{@code fasterSiblingCardLandingTick})
+     * is built around and isn't safe to shrink independently.
+     */
+    public static final long SPLIT_PARK_STEP_TICKS = 9L;
 
     // ---- Hand-to-hand transition (a finished split hand handing control
     // to the next one in the queue) -----------------------------------
