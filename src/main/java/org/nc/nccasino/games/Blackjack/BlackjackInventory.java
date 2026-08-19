@@ -3711,10 +3711,18 @@ private void handleDoubleDown(Player player) {
      * into the second slot. A no-op straight into {@link
      * #runHandTransitionReveal} if the finished hand never had more than
      * two cards to begin with.
+     *
+     * <p>The finished hand's own glow (the enchant glint marking "this is
+     * the active hand") is dropped the instant this runs, before anything
+     * else -- it's done, so it stops reading as active immediately, not
+     * lingering glowy through its own collapse.
      */
     private void runHandTransitionCollapse(UUID playerId, int seatSlot, BlackjackHand previousHand, BlackjackHand nextHand, long myGeneration) {
         List<Card> prevCards = previousHand.getCards();
         int prevCount = prevCards.size();
+        for (int i = 0; i < prevCount && i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+            renderCardToAllViews(BlackjackSlotLayout.playerCardSlot(seatSlot, i), prevCards.get(i), false);
+        }
         if (prevCount <= 2) {
             runHandTransitionReveal(playerId, seatSlot, nextHand, myGeneration);
             return;
@@ -3766,52 +3774,89 @@ private void handleDoubleDown(Player player) {
     /**
      * The next hand actually emerges from under the (by now collapsed to
      * two cards) previous hand, in two visible legs rather than simply
-     * appearing already off to the side: first it slides right, becoming
-     * visible starting at {@link #HAND_TRANSITION_REVEAL_START_OFFSET} --
-     * the first slot clear of the previous hand's own two cards, as far
-     * right as it can be rendered while still reading as coming out from
-     * under it, since a real card can never be visible in the same slot as
-     * the previous hand's still-showing card -- out to {@link
-     * #HAND_TRANSITION_REVEAL_OUT_OFFSET}, two slots further out than its
-     * own final position's immediate neighbor, opening a visible two-slot
-     * gap of bare background against the collapsed previous hand. Only
-     * then does it reverse and slide back left one hop at a time, landing
-     * in its real slots -- clearing the previous hand's own cards (and
-     * anything beyond this hand's own card count, up to the row's
-     * capacity) at the exact instant they land, so there's never a moment
-     * with both hands' cards simultaneously occupying the same slots.
+     * appearing already off to the side, and glowing (the enchant glint
+     * marking "this is the active hand") from the very first frame it's
+     * visible in, all the way through landing.
+     *
+     * <p>Leg 1 (slide right) is itself staggered, not a rigid two-card
+     * block: the rightmost card becomes visible alone first, at {@link
+     * #HAND_TRANSITION_REVEAL_START_OFFSET} -- the first slot clear of the
+     * previous hand's own two cards, since a real card can never be
+     * visible in the same slot as the previous hand's still-showing card
+     * -- then it hops right one slot per step while each card to its left
+     * joins in, one step later than the card to its right, so the hand
+     * reads as filing out from under the previous hand one card at a time
+     * rather than sliding as a solid block. Every card's own leading
+     * (rightmost, most-recently-vacated) slot is cleared before any card's
+     * new slot is rendered -- not interleaved per card -- since a moving
+     * card's destination is exactly the slot the card ahead of it just
+     * vacated; clearing and rendering per card in index order would wipe
+     * out whichever card had just landed there a moment earlier.
+     *
+     * <p>All cards finish leg 1 together at {@link
+     * #HAND_TRANSITION_REVEAL_OUT_OFFSET}, two slots past {@link
+     * #HAND_TRANSITION_REVEAL_START_OFFSET} -- opening a visible two-slot
+     * gap of bare background against the collapsed previous hand. Leg 2
+     * then reverses, sliding the whole hand back left in lockstep one hop
+     * at a time, landing in its real slots -- clearing the previous hand's
+     * own cards (and anything beyond this hand's own card count, up to the
+     * row's capacity) at the exact instant they land, so there's never a
+     * moment with both hands' cards simultaneously occupying the same
+     * slots.
      */
     private void runHandTransitionReveal(UUID playerId, int seatSlot, BlackjackHand nextHand, long myGeneration) {
         List<Card> cards = nextHand.getCards();
+        int n = cards.size();
         long step = BlackjackTiming.HAND_TRANSITION_STEP_TICKS;
         int startOffset = HAND_TRANSITION_REVEAL_START_OFFSET;
         int outOffset = HAND_TRANSITION_REVEAL_OUT_OFFSET;
         int outHops = outOffset - startOffset;
+        int leg1Hops = outHops + Math.max(0, n - 1);
 
-        for (int i = 0; i < cards.size(); i++) {
-            int startSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, i + startOffset);
-            renderCardToAllViews(startSlot, cards.get(i), false);
+        // t=0: only the rightmost card (laneOffset 0) is visible yet, alone
+        // at startOffset -- it leads the emergence out from under the
+        // previous hand.
+        for (int i = 0; i < n; i++) {
+            int laneOffset = n - 1 - i;
+            if (laneOffset <= 0) {
+                int slot = BlackjackSlotLayout.playerCardSlot(seatSlot, startOffset - laneOffset);
+                renderCardToAllViews(slot, cards.get(i), true);
+            }
         }
 
-        // Leg 1: slide right from startOffset out to outOffset.
-        for (int hop = 1; hop <= outHops; hop++) {
-            long hopDelay = hop * step;
-            int hopFinal = hop;
+        // Leg 1: each card i becomes visible at tick t = laneOffset (i's
+        // distance behind the leading rightmost card) and from then on
+        // moves right one slot per tick, landing every card at i+outOffset
+        // by t = leg1Hops.
+        for (int t = 1; t <= leg1Hops; t++) {
+            long hopDelay = t * step;
+            int tFinal = t;
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (roundGeneration != myGeneration) {
                     return;
                 }
-                for (int i = 0; i < cards.size(); i++) {
-                    int fromSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, i + startOffset + hopFinal - 1);
-                    int toSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, i + startOffset + hopFinal);
-                    renderBackgroundToAllViews(fromSlot);
-                    renderCardToAllViews(toSlot, cards.get(i), false);
+                List<Integer> clears = new ArrayList<>();
+                List<int[]> renders = new ArrayList<>();
+                for (int i = 0; i < n; i++) {
+                    int laneOffset = n - 1 - i;
+                    if (tFinal - 1 >= laneOffset) {
+                        clears.add(BlackjackSlotLayout.playerCardSlot(seatSlot, startOffset + (tFinal - 1) - laneOffset));
+                    }
+                    if (tFinal >= laneOffset) {
+                        renders.add(new int[] {i, startOffset + tFinal - laneOffset});
+                    }
+                }
+                for (int slot : clears) {
+                    renderBackgroundToAllViews(slot);
+                }
+                for (int[] render : renders) {
+                    renderCardToAllViews(BlackjackSlotLayout.playerCardSlot(seatSlot, render[1]), cards.get(render[0]), true);
                 }
             }, hopDelay);
         }
 
         // Leg 2: reverse and slide all the way back left into the real slots.
-        long leg2Base = outHops * step;
+        long leg2Base = leg1Hops * step;
         for (int hop = 1; hop <= outOffset; hop++) {
             long hopDelay = leg2Base + hop * step;
             boolean finalHop = hop == outOffset;
@@ -3820,11 +3865,11 @@ private void handleDoubleDown(Player player) {
                 if (roundGeneration != myGeneration) {
                     return;
                 }
-                for (int i = 0; i < cards.size(); i++) {
+                for (int i = 0; i < n; i++) {
                     int fromSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, i + outOffset - hopFinal + 1);
                     int toSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, i + outOffset - hopFinal);
                     renderBackgroundToAllViews(fromSlot);
-                    renderCardToAllViews(toSlot, cards.get(i), finalHop);
+                    renderCardToAllViews(toSlot, cards.get(i), true);
                 }
                 if (finalHop) {
                     for (int i = cards.size(); i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
