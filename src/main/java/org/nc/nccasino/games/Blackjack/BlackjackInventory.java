@@ -1501,6 +1501,22 @@ private void registerListener() {
             return;
         }
 
+        // The caller (resetGame()/cancelGame()) has already repainted the
+        // whole board correctly for the round that's about to begin --
+        // including, for the dealer's own returning cards, the bottom bar
+        // (45-53) that a still-seated player's row 5 now shows as their
+        // pregame wager bar (chips/Undo/All In/door) rather than the
+        // dealer's card row it was during active play. Snapshotted here so
+        // every hop restores each departed slot to that exact
+        // already-correct per-viewer content instead of blindly clearing to
+        // plain background, which would otherwise blow the wager bar away
+        // wherever a dealer card's return path happens to cross it.
+        Map<Integer, ItemStack> legacySnapshot = snapshotSlots(inventory);
+        Map<UUID, Map<Integer, ItemStack>> viewSnapshots = new HashMap<>();
+        for (BlackjackView view : views.values()) {
+            viewSnapshots.put(view.getPlayerId(), snapshotSlots(view.getInventory()));
+        }
+
         long flipDelay = BlackjackTiming.CARD_FLIP_DELAY_TICKS;
         long hopTicks = BlackjackTiming.CARD_FLIGHT_HOP_TICKS;
         long longestReturnTicks = 0L;
@@ -1529,16 +1545,15 @@ private void registerListener() {
                     if (roundGeneration != myRoundGeneration) {
                         return;
                     }
-                    renderBackgroundToAllViews(previousSlot);
+                    restoreSweptSlot(previousSlot, legacySnapshot, viewSnapshots);
                     if (!isLastHop) {
                         renderHiddenCardToAllViews(hopSlot);
                     }
                     // The last hop lands exactly on the deck's own slot --
-                    // left as plain background (already repainted that way
-                    // by resetGame() before this animation ever starts):
-                    // the deck token itself is long gone by round-end, and
-                    // the white sweep right behind this repaints everything
-                    // anyway.
+                    // left as whatever the snapshot already says belongs
+                    // there (the deck token itself is long gone by
+                    // round-end, and the white sweep right behind this
+                    // repaints everything anyway).
                 }, hopDelay);
             }
 
