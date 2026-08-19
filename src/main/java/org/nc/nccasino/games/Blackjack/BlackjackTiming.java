@@ -121,9 +121,10 @@ public final class BlackjackTiming {
      * flight-pacing math (see {@code fasterSiblingCardHopTicks}/{@code
      * fasterSiblingCardLandingTick}) is built around and isn't safe to
      * shrink independently. First halved from 18 to 9, then cranked
-     * roughly another 25% faster still, to 7.
+     * roughly another 25% faster to 7, then still read as too slow --
+     * cranked again to 4.
      */
-    public static final long SPLIT_PARK_STEP_TICKS = 7L;
+    public static final long SPLIT_PARK_STEP_TICKS = 4L;
 
     // ---- Hand-to-hand transition (a finished split hand handing control
     // to the next one in the queue) -----------------------------------

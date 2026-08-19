@@ -65,6 +65,9 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     private final String internalName; // Internal name for config lookup
     private final CurrencyMode currencyMode;
     private final String currencyName;
+    /** Seated players whose bet-spot glow is transiently forced off mid hand-to-hand transition (see {@link #runHandTransitionCollapse}/{@link #runHandTransitionReveal}) -- otherwise {@link #buildBetSpotItemForViewer} derives glow purely from "is it this player's turn," which stays true the whole time and would leave the bet spot glowing while the transitioning hand itself briefly isn't. */
+    private final Set<UUID> betSpotGlowSuppressed = new HashSet<>();
+
     private final Map<UUID, Integer> playerSeats; // Track player seats
     private final Map<UUID, Map<Integer, Double>> playerBets; // Track player bets by slot number
     private final Map<UUID, List<Double>> lastBetAmounts; // Track the last bet amounts placed by the player
@@ -2238,7 +2241,7 @@ private void registerListener() {
         }
         BlackjackHand hand = activeHand(occupant);
         double wager = hand != null ? hand.getWager() : totalBet(occupant);
-        boolean glowing = gameActive && occupant.equals(currentPlayerId);
+        boolean glowing = gameActive && occupant.equals(currentPlayerId) && !betSpotGlowSuppressed.contains(occupant);
         if (occupant.equals(viewerId)) {
             ItemStack item = gameActive
                 ? buildActiveBetSpotItem(glowing)
@@ -3694,6 +3697,21 @@ private void handleDoubleDown(Player player) {
         int seatSlot = seatSlotBoxed;
         long myGeneration = roundGeneration;
 
+        // The finished hand's own glow (the enchant glint marking "this is
+        // the active hand") -- and the seat's shared bet-spot glow riding
+        // along with it -- drop the instant the hand is actually done,
+        // right here, before the pause even starts: that's the visible
+        // "hand 1 is done" cue, immediately followed by a beat of quiet
+        // before the transition's own motion begins, rather than staying
+        // glowy through the whole pause and only dropping once the
+        // collapse/slide animation starts moving.
+        List<Card> prevCards = previousHand.getCards();
+        for (int i = 0; i < prevCards.size() && i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+            renderCardToAllViews(BlackjackSlotLayout.playerCardSlot(seatSlot, i), prevCards.get(i), false);
+        }
+        betSpotGlowSuppressed.add(playerId);
+        renderBetSpotToAllViews(seatSlot);
+
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (roundGeneration != myGeneration) {
                 return;
@@ -3710,19 +3728,13 @@ private void handleDoubleDown(Player player) {
      * then the last card itself slides left through the now-empty cells
      * into the second slot. A no-op straight into {@link
      * #runHandTransitionReveal} if the finished hand never had more than
-     * two cards to begin with.
-     *
-     * <p>The finished hand's own glow (the enchant glint marking "this is
-     * the active hand") is dropped the instant this runs, before anything
-     * else -- it's done, so it stops reading as active immediately, not
-     * lingering glowy through its own collapse.
+     * two cards to begin with. (The finished hand's own glow was already
+     * dropped back in {@link #activateSplitHand}, before this method's own
+     * pause even started.)
      */
     private void runHandTransitionCollapse(UUID playerId, int seatSlot, BlackjackHand previousHand, BlackjackHand nextHand, long myGeneration) {
         List<Card> prevCards = previousHand.getCards();
         int prevCount = prevCards.size();
-        for (int i = 0; i < prevCount && i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
-            renderCardToAllViews(BlackjackSlotLayout.playerCardSlot(seatSlot, i), prevCards.get(i), false);
-        }
         if (prevCount <= 2) {
             runHandTransitionReveal(playerId, seatSlot, nextHand, myGeneration);
             return;
@@ -3887,6 +3899,11 @@ private void handleDoubleDown(Player player) {
                             renderBackgroundToAllViews(slotToClear);
                         }
                     }
+                    // Hand 2 has just slammed back into its real slots,
+                    // right beside the bet spot -- the bet spot's own glow
+                    // comes back on in this exact same step, not before.
+                    betSpotGlowSuppressed.remove(playerId);
+                    renderBetSpotToAllViews(seatSlot);
                     finishActivatingSplitHand(playerId, seatSlot, nextHand);
                 }
             }, hopDelay);
@@ -4808,6 +4825,7 @@ private void removePlayerData(UUID playerId) {
         playerTurnActive.remove(playerId);
         playerDone.remove(playerId);
         handToken.remove(playerId);
+        betSpotGlowSuppressed.remove(playerId);
 
         // Remove player's bets and related lore
         clearPlayerBetLore(playerId);
@@ -6785,6 +6803,7 @@ private void resetGame() {
     roundGeneration++;
     dealerSequenceToken++;
     handToken.clear();
+    betSpotGlowSuppressed.clear(); // never leave a bet spot stuck un-glowed if a reset lands mid hand-to-hand transition
     // Table-wide event: any shared animation (dealer U-path, split
     // sequence) and every private one both end here -- the whole round is
     // over, not just one viewer's inventory closing.
