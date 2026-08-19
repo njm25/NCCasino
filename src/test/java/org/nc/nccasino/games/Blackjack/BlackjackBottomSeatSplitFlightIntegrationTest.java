@@ -88,19 +88,19 @@ class BlackjackBottomSeatSplitFlightIntegrationTest {
             ItemStack bJustVacated = item(h, alice, SLOT_ORIG_B);
             assertEquals(Material.GREEN_STAINED_GLASS_PANE, bJustVacated.getType(), "B's slide must only begin once C's dash has fully parked, not before");
 
-            // Only once B has fully finished sliding right (reached its
-            // temp slot) does C's own final hop land, folded into that
-            // exact same step -- see the doc on the finalHopDelay task in
-            // runSplitAnimation for why this can't be any earlier without
-            // either racing the vacate step or skipping C's own paused
-            // wait below the target slot.
-            h.scheduler.advance(BlackjackTiming.SPLIT_SLIDE_HOP_TICKS - 1);
+            // C's own hop-up is on its own deliberate pause now --
+            // BOTTOM_SEAT_DASH_PARK_PAUSE_TICKS after the dash finishes --
+            // not tied to B's own temp-slot landing at all (see the doc on
+            // hopUpLandingTick in runSplitAnimation): a short 2-tick gap
+            // read as immediate, so it stays parked, visibly waiting, for
+            // much longer before hopping up.
+            h.scheduler.advance(BlackjackTiming.BOTTOM_SEAT_DASH_PARK_PAUSE_TICKS - 1);
             ItemStack stillWaiting = item(h, alice, SLOT_ORIG_B);
-            assertEquals(Material.GREEN_STAINED_GLASS_PANE, stillWaiting.getType(), "C must still be waiting below -- not landed until B has fully moved right");
+            assertEquals(Material.GREEN_STAINED_GLASS_PANE, stillWaiting.getType(), "C must still be waiting below -- not landed until its own park pause elapses");
 
             h.scheduler.advance(1);
             ItemStack cLanded = item(h, alice, SLOT_ORIG_B);
-            assertEquals(Material.WHITE_STAINED_GLASS_PANE, cLanded.getType(), "C must land (hidden/face-down) in slotOrigB the instant B finishes moving right");
+            assertEquals(Material.WHITE_STAINED_GLASS_PANE, cLanded.getType(), "C must land (hidden/face-down) in slotOrigB exactly BOTTOM_SEAT_DASH_PARK_PAUSE_TICKS after parking");
         }
     }
 

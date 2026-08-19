@@ -99,6 +99,17 @@ public final class BlackjackTiming {
     /** Per-hop speed of the bottom seat's own split-C dash (see {@code BlackjackInventory#bottomSeatSplitDashPath}) -- deliberately faster than {@link #SPLIT_SLIDE_HOP_TICKS}, since the dash is a longer multi-hop trip and doesn't need to read as deliberately as B's own (much shorter) slide. */
     public static final long BOTTOM_SEAT_DASH_HOP_TICKS = 2L;
     /**
+     * How long C sits parked, face-down, two slots below its final
+     * destination (directly beneath {@link BlackjackSlotLayout#playerCardSlot}'s
+     * target column, in the dealer's row) before hopping up into it -- see
+     * {@code BlackjackInventory#runSplitAnimation}'s bottom-seat branch.
+     * The pause read as immediate at a shorter gap, so this is deliberately
+     * generous; scheduling C's own final hop this far out pushes phase 2
+     * (and everything chained after it) later to make room, only for the
+     * bottom seat.
+     */
+    public static final long BOTTOM_SEAT_DASH_PARK_PAUSE_TICKS = 10L;
+    /**
      * Delay between successive steps of the split's own park sequence --
      * the inactive sibling hand sliding one step left into the gap, then
      * tucking away behind the active hand ("hand 2 slipping under hand 1",

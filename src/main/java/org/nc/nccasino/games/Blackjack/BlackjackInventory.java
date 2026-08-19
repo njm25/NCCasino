@@ -4162,20 +4162,9 @@ private void handleDoubleDown(Player player) {
         // slide (gap -> temp slot) is a genuinely separate, delayed hop.
         // Purely presentational: neither hand's cards change yet, so
         // guardBeforeAnyDeal (already valid for this whole pre-deal window)
-        // covers every step.
-        //
-        // For the bottom seat, C's own final hop (staging slot -> slotOrigB)
-        // is folded into this exact same step too, instead of being
-        // scheduled as a separately-timed flight landing on its own
-        // independently computed tick. That independent tick used to
-        // coincide with this step's own tick purely by coincidence of the
-        // current timing constants, leaving the two same-tick tasks' actual
-        // order up to the scheduler -- when this step's blind clear of
-        // slotOrigB happened to run after the final hop had already parked
-        // its hidden card there, it erased that card, leaving slotOrigB
-        // visibly empty for the whole pause instead of showing C waiting
-        // there face-down. Folding both into one atomic step makes the
-        // outcome deterministic instead of scheduler-order-dependent.
+        // covers every step. (For the bottom seat, C's own final hop -- see
+        // hopUpLandingTick below -- is scheduled entirely separately from
+        // this phase, on its own deliberate pause.)
         Card slidingSiblingCard = siblingHand.getCards().get(0);
         Runnable vacateOriginAndEnterGap = () -> {
             if (isRenderableCardSlot(playerId, slotOrigB)) {
@@ -4195,22 +4184,10 @@ private void handleDoubleDown(Player player) {
                 vacateOriginAndEnterGap.run();
             }, phase1Delay);
         }
-        // For the bottom seat, C's own final hop (staging slot -> slotOrigB)
-        // rides along on this exact same tick too, once B has genuinely
-        // finished moving right (all the way to its temp slot) -- not a
-        // moment earlier. It used to be scheduled as its own independently-
-        // timed flight, landing on a tick that (by coincidence of the
-        // timing constants) fell on the very same tick as the vacate step
-        // above, leaving the two same-tick tasks' actual order up to the
-        // scheduler; when the vacate step happened to run last, its blind
-        // clear of slotOrigB erased the hidden card C's hop had just placed
-        // there. Anchoring it here instead -- strictly after B has cleared
-        // out, in the same atomic step as B's own temp-slot landing --
-        // keeps the pause below the target slot genuinely visible and
-        // avoids both the old disappearing-card race and C arriving before
-        // B has actually finished moving out of the way.
+        // B's own temp-slot landing -- the second half of its slide,
+        // genuinely separate from (and unrelated to) how long C itself
+        // waits parked below before hopping up.
         long finalHopDelay = phase1Delay + slideHopTicks;
-        final Integer stagingSlot = bottomSeatStagingSlot;
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (run != sharedAnimationRun || !isSplitOperationValid(run, guardBeforeAnyDeal)) {
                 return;
@@ -4221,13 +4198,49 @@ private void handleDoubleDown(Player player) {
             if (isRenderableCardSlot(playerId, slotTempB)) {
                 renderCardToAllViews(slotTempB, slidingSiblingCard, false);
             }
-            if (stagingSlot != null) {
+        }, finalHopDelay);
+
+        // For the bottom seat, C's own final hop (staging slot -> slotOrigB)
+        // waits out its own deliberate pause parked below the target slot
+        // -- BOTTOM_SEAT_DASH_PARK_PAUSE_TICKS after the dash finishes --
+        // rather than hopping up the instant B clears out of the way. It
+        // used to ride along on B's own temp-slot-landing tick, which
+        // (before that pause existed) happened to land C's hop on the very
+        // same tick as the vacate step above by coincidence of the timing
+        // constants, leaving the two same-tick tasks' actual order up to
+        // the scheduler; when the vacate step happened to run last, its
+        // blind clear of slotOrigB erased the hidden card C's hop had just
+        // placed there. Scheduling it on its own delay, well clear of both
+        // the vacate step and B's own landing, avoids both that old
+        // disappearing-card race and C hopping up looking instantaneous.
+        long hopUpLandingTick = phase1Delay + BlackjackTiming.BOTTOM_SEAT_DASH_PARK_PAUSE_TICKS;
+        final Integer stagingSlot = bottomSeatStagingSlot;
+        if (stagingSlot != null) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (run != sharedAnimationRun || !isSplitOperationValid(run, guardBeforeAnyDeal)) {
+                    return;
+                }
                 renderBackgroundToAllViews(stagingSlot);
                 if (isRenderableCardSlot(playerId, slotOrigB)) {
                     renderHiddenCardToAllViews(slotOrigB);
                 }
-            }
-        }, finalHopDelay);
+            }, hopUpLandingTick);
+        }
+
+        // Phase 2 (C's real reveal) normally fires at stepTicks flat, but
+        // for the bottom seat it must never fire before C's own hop-up
+        // above has actually landed and had at least a brief beat to read
+        // as parked there face-down -- otherwise the "flip" reads as
+        // instantaneous, or phase 2 could even fire while C is still
+        // sitting at the staging slot. Widening phase 2's own delay here
+        // pushes every phase chained after it (3 through 6, all nested
+        // relative-delay callbacks inside phase 2's own closure) later by
+        // the same amount automatically; other seats are unaffected since
+        // stagingSlot is null for them and phase2Delay stays exactly stepTicks.
+        long phase2Delay = stepTicks;
+        if (stagingSlot != null) {
+            phase2Delay = Math.max(stepTicks, hopUpLandingTick + slideHopTicks);
+        }
 
         // Phase 2: the original hand's replacement card, C, deals in
         // visibly beside A, into the slot B just vacated.
@@ -4327,7 +4340,7 @@ private void handleDoubleDown(Player player) {
                     }, BlackjackTiming.SPLIT_PARK_STEP_TICKS);
                 }, BlackjackTiming.SPLIT_PARK_STEP_TICKS / 2);
             }, phase3Delay);
-        }, stepTicks);
+        }, phase2Delay);
     }
 
     /**
