@@ -6724,6 +6724,13 @@ public void delete() {
 
     // Cancel the game and reset the board with all items and options
     private void cancelGame() {
+        // Same reasoning as resetGame()'s identical capture -- a table
+        // emptying out mid-round (the last seated player leaves/is kicked)
+        // can still have real cards on the board, and they deserve the same
+        // sweep-back-into-the-deck treatment as a genuinely finished round.
+        Map<Integer, Boolean> returningCardSlots = collectVisibleCardSlots();
+        int deckSlotForReturn = dealerDeckTokenSlot != -1 ? dealerDeckTokenSlot : BlackjackSlotLayout.DECK_HOME_SLOT;
+
         gameActive = false;
         roundGeneration++;
         dealerSequenceToken++;
@@ -6772,7 +6779,7 @@ public void delete() {
         // Reset player seats
         playerSeats.clear();
 
-        startResetSweep(roundGeneration);
+        animateCardsReturnToDeck(returningCardSlots, deckSlotForReturn, roundGeneration, () -> startResetSweep(roundGeneration));
     }
 
 
