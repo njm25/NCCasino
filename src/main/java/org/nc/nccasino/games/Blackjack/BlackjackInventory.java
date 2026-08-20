@@ -3057,19 +3057,41 @@ private void registerListener() {
      * for both the flight-schedule and the eventual real deal) before
      * {@code dealerHand} gains the new card, exactly like the player-row
      * version reads {@code cardCount} before its own card is added.
+     *
+     * <p>Unlike a player's own shift -- which happens synchronously right
+     * at the player's own click, naturally separated from whatever card
+     * landed before it by however long the player took to decide -- the
+     * dealer draws automatically, back to back, only {@code delay} ticks
+     * apart. Doing the shift's own re-render synchronously here (at the
+     * very instant the previous card lands, since this is called from
+     * that same recursive callback) left the previous real card visible
+     * for zero ticks whenever a further overflow followed immediately:
+     * the shift's own background-clear of this slot landed in the exact
+     * same server tick as that card's real face, so the client never even
+     * saw it before the next card's flight painted over it -- reading as
+     * a run of hidden/face-down cards that never visibly flip. Deferring
+     * the actual re-render by a fraction of {@code delay} (well before the
+     * new card's own flight becomes visible) gives the previous card a
+     * real, visible moment first.
      */
-    private int nextDealerCardSlotWithOverflowShift() {
+    private int nextDealerCardSlotWithOverflowShift(long myGeneration, long delay) {
         int capacity = BlackjackSlotLayout.DEALER_CARD_CAPACITY;
         int cardCount = dealerHand.size();
         if (cardCount < capacity) {
             return BlackjackSlotLayout.dealerCardSlot(cardCount);
         }
-        List<Card> currentWindow = visibleDealerHandWindow(dealerHand);
-        for (int i = 0; i < currentWindow.size() - 1; i++) {
-            renderCardToAllViews(BlackjackSlotLayout.dealerCardSlot(i), currentWindow.get(i + 1), false);
-        }
         int nextSlot = BlackjackSlotLayout.dealerCardSlot(capacity - 1);
-        renderBackgroundToAllViews(nextSlot);
+        long shiftDelay = Math.max(1L, delay / 4);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (roundGeneration != myGeneration) {
+                return;
+            }
+            List<Card> currentWindow = visibleDealerHandWindow(dealerHand);
+            for (int i = 0; i < currentWindow.size() - 1; i++) {
+                renderCardToAllViews(BlackjackSlotLayout.dealerCardSlot(i), currentWindow.get(i + 1), false);
+            }
+            renderBackgroundToAllViews(nextSlot);
+        }, shiftDelay);
         return nextSlot;
     }
 
@@ -6584,7 +6606,7 @@ private void dealDealerCardsUntilSeventeen(long myGeneration, int myDealerSequen
             abortRoundForShoeExhaustion();
             return;
         }
-        int nextSlot = nextDealerCardSlotWithOverflowShift();
+        int nextSlot = nextDealerCardSlotWithOverflowShift(myGeneration, delay);
         Card newCard = deck.dealCard();
         if (isRenderableCardSlot(null, nextSlot)) {
             scheduleCardFlightEndingAt(nextSlot, true, delay, myGeneration);
@@ -6621,7 +6643,7 @@ private void dealDealerCardsUntilSeventeen(long myGeneration, int myDealerSequen
                 abortRoundForShoeExhaustion();
                 return;
             }
-            int nextSlot = nextDealerCardSlotWithOverflowShift();
+            int nextSlot = nextDealerCardSlotWithOverflowShift(myGeneration, delay);
             Card newCard = deck.dealCard();
             if (isRenderableCardSlot(null, nextSlot)) {
                 scheduleCardFlightEndingAt(nextSlot, true, delay, myGeneration);
