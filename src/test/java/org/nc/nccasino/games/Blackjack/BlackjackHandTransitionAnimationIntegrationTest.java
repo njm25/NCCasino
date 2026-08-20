@@ -135,11 +135,15 @@ class BlackjackHandTransitionAnimationIntegrationTest {
             h.scheduler.advance(4 * BlackjackTiming.SPLIT_ANIMATION_STEP_TICKS + 20);
             h.advanceToActionableTurn(1, 300);
 
-            // Hit once on hand 1 (2/2 -> 2/2/3 = 7), then stand.
+            // Hit once on hand 1 (2/2 -> 2/2/3 = 7), then stand. Once past
+            // this hand's own initial two-card decision, only Hit/Stand are
+            // offered -- shifted one slot right and centered at 48/49 (see
+            // BlackjackActionLayout's own centering doc), so Stand itself
+            // now renders at 49, not 48.
             h.click(alice, BlackjackSlotLayout.ACTION_HIT_SLOT);
             h.scheduler.advance(BlackjackTiming.HIT_EVALUATION_DELAY_TICKS);
             assertEquals(3, h.inventory.activeHandCardCountForTest(alice.getUniqueId()), "test setup: hand 1 must have three cards before it finishes");
-            h.click(alice, BlackjackSlotLayout.ACTION_STAND_SLOT);
+            h.click(alice, BlackjackSlotLayout.ACTION_DOUBLE_SLOT);
 
             int slot0 = BlackjackSlotLayout.playerCardSlot(SEAT_SLOT, 0);
             int slot1 = BlackjackSlotLayout.playerCardSlot(SEAT_SLOT, 1);

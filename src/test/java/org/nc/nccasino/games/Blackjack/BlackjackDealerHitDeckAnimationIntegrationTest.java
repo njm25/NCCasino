@@ -57,9 +57,16 @@ class BlackjackDealerHitDeckAnimationIntegrationTest {
 
             // Hit 5 times: 2 initial cards + 5 hits = 7 cards, filling every
             // visible cell in the bottom row (38..44), including 44 itself
-            // -- the deck's own resting slot.
+            // -- the deck's own resting slot. The very first hit is still
+            // the initial two-card decision (Double/Split may also be
+            // offered, so Hit stays at its plain 47), but every hit after
+            // that leaves only Hit/Stand available -- which then render
+            // shifted one slot right, centered at 48/49 (see
+            // BlackjackActionLayout's own centering doc), so Hit itself
+            // moves to 48 from the second hit onward.
             for (int i = 0; i < 5; i++) {
-                h.click(alice, BlackjackSlotLayout.ACTION_HIT_SLOT);
+                int hitSlot = i == 0 ? BlackjackSlotLayout.ACTION_HIT_SLOT : BlackjackSlotLayout.ACTION_STAND_SLOT;
+                h.click(alice, hitSlot);
                 h.scheduler.advance(BlackjackTiming.HIT_EVALUATION_DELAY_TICKS);
             }
             assertEquals(7, h.inventory.activeHandCardCountForTest(alice.getUniqueId()));
@@ -68,7 +75,9 @@ class BlackjackDealerHitDeckAnimationIntegrationTest {
 
             // Stand -- the only seated player, so this immediately starts
             // the dealer's own turn (dealer at 2+2=4, needs several hits).
-            h.click(alice, BlackjackSlotLayout.ACTION_STAND_SLOT);
+            // Only Hit/Stand are available by now, so Stand itself has
+            // shifted one slot right too, to 49.
+            h.click(alice, BlackjackSlotLayout.ACTION_DOUBLE_SLOT);
 
             // Advance well past the dealer's first several hits (each ~20
             // ticks apart, reveal ~20 more before the first) but nowhere
@@ -125,8 +134,14 @@ class BlackjackDealerHitDeckAnimationIntegrationTest {
             // first hit (target 50, column 5) sweeps through columns 7, 6,
             // 5 (slots 43, 42, 41); 42 and 41 are occupied, blocking the
             // sweep well before the deck's own slot itself is ever touched.
+            // The first hit is still the initial two-card decision (Hit at
+            // its plain 47); every hit after that leaves only Hit/Stand
+            // available, shifted one slot right and centered at 48/49 (see
+            // BlackjackActionLayout's own centering doc), so Hit itself
+            // moves to 48 from the second hit onward.
             for (int i = 0; i < 3; i++) {
-                h.click(alice, BlackjackSlotLayout.ACTION_HIT_SLOT);
+                int hitSlot = i == 0 ? BlackjackSlotLayout.ACTION_HIT_SLOT : BlackjackSlotLayout.ACTION_STAND_SLOT;
+                h.click(alice, hitSlot);
                 h.scheduler.advance(BlackjackTiming.HIT_EVALUATION_DELAY_TICKS);
             }
             assertEquals(5, h.inventory.activeHandCardCountForTest(alice.getUniqueId()));
@@ -134,7 +149,9 @@ class BlackjackDealerHitDeckAnimationIntegrationTest {
             assertNotEquals(Material.BLACK_STAINED_GLASS_PANE, deckSlotType, "setup: the deck's own resting slot (44) must still show the deck icon, not a real card");
             assertNotEquals(Material.RED_STAINED_GLASS_PANE, deckSlotType, "setup: the deck's own resting slot (44) must still show the deck icon, not a real card");
 
-            h.click(alice, BlackjackSlotLayout.ACTION_STAND_SLOT);
+            // Only Hit/Stand are available by now, so Stand itself has
+            // shifted one slot right too, to 49.
+            h.click(alice, BlackjackSlotLayout.ACTION_DOUBLE_SLOT);
 
             // Advance well past the dealer's first several hits.
             for (int i = 0; i < 15; i++) {

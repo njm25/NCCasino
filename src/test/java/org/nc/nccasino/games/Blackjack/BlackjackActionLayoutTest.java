@@ -12,8 +12,11 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Slots are a fixed identity mapping (Hit=47/Stand=48/Double=49/Split=50)
- * -- never dynamically centered. Unavailable actions simply leave their
- * slot empty rather than re-centering the remaining ones.
+ * -- unavailable actions simply leave their slot empty rather than
+ * re-centering the remaining ones, with exactly one exception: when Hit
+ * and Stand are the only two actions offered (no Double, no Split), they
+ * shift one slot right (48/49) so the pair sits centered in the 4-slot
+ * row instead of hugging its left edge.
  */
 class BlackjackActionLayoutTest {
 
@@ -34,17 +37,17 @@ class BlackjackActionLayoutTest {
         assertEquals(49, layout.get(BlackjackAction.DOUBLE_DOWN));
     }
 
-    // --- Double Down disappears after a successful Hit, but Hit/Stand never move ---
+    // --- Double Down disappears after a successful Hit, and Hit/Stand shift one slot right to stay centered ---
 
     @Test
-    void afterHitDoubleDownIsGoneAndHitStandStayAtTheirFixedSlots() {
+    void afterHitDoubleDownIsGoneAndHitStandShiftRightToStayCentered() {
         // Three cards in hand -> no longer the initial two-card decision.
         List<BlackjackAction> actions = BlackjackActionLayout.availableActions(15, false, true);
         assertEquals(List.of(BlackjackAction.HIT, BlackjackAction.STAND), actions);
 
         Map<BlackjackAction, Integer> layout = BlackjackActionLayout.layout(actions);
-        assertEquals(47, layout.get(BlackjackAction.HIT));
-        assertEquals(48, layout.get(BlackjackAction.STAND));
+        assertEquals(48, layout.get(BlackjackAction.HIT));
+        assertEquals(49, layout.get(BlackjackAction.STAND));
         assertEquals(2, layout.size());
     }
 

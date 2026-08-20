@@ -265,10 +265,16 @@ class BlackjackActionTimerResetSemanticsIntegrationTest {
             int beforeAttempt = h.inventory.turnTimerSecondsRemainingForTest();
             assertTrue(beforeAttempt < DEFAULT_TIMEOUT_SECONDS);
 
-            h.click(alice, BlackjackSlotLayout.ACTION_DOUBLE_SLOT); // insufficient funds -- denied
+            // Double isn't affordable, so only Hit/Stand are offered -- which
+            // now render centered at 48/49 (see BlackjackActionLayout's own
+            // centering doc), leaving 47/50 genuinely empty. Clicking one of
+            // those empty slots is exactly "attempting an action that isn't
+            // currently available" -- must be denied, same as the old
+            // literal Double-slot click before the layout could shift.
+            h.click(alice, BlackjackSlotLayout.ACTION_SPLIT_SLOT); // no valid action at this slot -- denied
 
             assertEquals(beforeAttempt, h.inventory.turnTimerSecondsRemainingForTest(),
-                "a failed/denied Double Down must never reset or extend the current deadline");
+                "a failed/denied action attempt must never reset or extend the current deadline");
             assertEquals(Material.CLOCK, timerItem(h, alice).getType(), "the same decision resumes -- the clock must still be showing");
         }
     }

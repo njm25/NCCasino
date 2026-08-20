@@ -126,10 +126,21 @@ public final class BlackjackActionLayout {
     /**
      * Maps each available action to its fixed action-row slot. Returns an
      * empty map when no actions are available; unavailable actions simply
-     * have no entry (no dynamic re-centering).
+     * have no entry (no dynamic re-centering) -- with exactly one
+     * exception: when Hit and Stand are the <em>only</em> two actions
+     * offered, they shift one slot right (Hit into Stand's usual 48,
+     * Stand into Double's usual 49) so the pair sits centered in the
+     * 4-slot row instead of hugging its left edge.
      */
     public static Map<BlackjackAction, Integer> layout(List<BlackjackAction> availableActionsInOrder) {
         Map<BlackjackAction, Integer> result = new LinkedHashMap<>();
+        if (availableActionsInOrder.size() == 2
+                && availableActionsInOrder.contains(BlackjackAction.HIT)
+                && availableActionsInOrder.contains(BlackjackAction.STAND)) {
+            result.put(BlackjackAction.HIT, BlackjackSlotLayout.ACTION_STAND_SLOT);
+            result.put(BlackjackAction.STAND, BlackjackSlotLayout.ACTION_DOUBLE_SLOT);
+            return result;
+        }
         for (BlackjackAction action : availableActionsInOrder) {
             Integer slot = FIXED_SLOTS.get(action);
             if (slot != null) {
