@@ -173,6 +173,91 @@ class BlackjackCardReturnAnimationIntegrationTest {
         }
     }
 
+    /**
+     * Reproduces a reported break: two seated hands each hit enough TWOs to
+     * overflow their own row (see {@code BlackjackHandOverflowWindowIntegrationTest}),
+     * then the round ends while both rows -- and potentially the dealer's
+     * own overflowed row too -- are still full of real cards. Every one of
+     * those cards funnels through the same handful of shared lanes on its
+     * way back to the deck (see {@link BlackjackCardFlightPlan#returnToDeckPath}),
+     * so this is the heaviest realistic collision load the round-end
+     * animation ever sees. Asserts the same clean-board outcome as {@link
+     * #multipleHandsWithColliderReturnPathsStillEndInACleanBoard} -- no
+     * exception, no stuck ghost icon anywhere, dealer back at the lobby --
+     * under that heavier load specifically.
+     */
+    @Test
+    void twoOverflowingHandsStillCollectCleanlyAtRoundEnd() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            h.inventory.stackDeckForTest(flatStack(Rank.TWO, 200));
+            h.currencyProvider.setBalance(1000);
+
+            UUID aliceId = UUID.randomUUID();
+            Player alice = h.seatOnlinePlayer(aliceId, "Alice");
+            h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]);
+            h.inventory.commitWagerForTest(alice, 10.0);
+
+            UUID bobId = UUID.randomUUID();
+            Player bob = h.seatOnlinePlayer(bobId, "Bob");
+            h.click(bob, BlackjackSlotLayout.SEAT_SLOTS[3]);
+            h.inventory.commitWagerForTest(bob, 10.0);
+
+            h.inventory.beginStartTransitionForTest();
+            h.advanceToActionableTurn(1, 800);
+
+            // Alice hits until her row overflows (2 initial + 5 hits = 7,
+            // exactly capacity) then one more to actually trigger the shift.
+            for (int i = 0; i < 6; i++) {
+                int hitSlot = i == 0 ? BlackjackSlotLayout.ACTION_HIT_SLOT : BlackjackSlotLayout.ACTION_STAND_SLOT;
+                h.click(alice, hitSlot);
+                h.scheduler.advance(BlackjackTiming.HIT_EVALUATION_DELAY_TICKS);
+            }
+            h.click(alice, BlackjackSlotLayout.ACTION_DOUBLE_SLOT); // Stand -- advances to bob's turn
+            h.scheduler.advance(BlackjackTiming.TURN_ADVANCE_DELAY_TICKS);
+            assertEquals(bobId, h.inventory.currentPlayerIdForTest(), "test setup: turn must have actually advanced to bob");
+
+            for (int i = 0; i < 6; i++) {
+                int hitSlot = i == 0 ? BlackjackSlotLayout.ACTION_HIT_SLOT : BlackjackSlotLayout.ACTION_STAND_SLOT;
+                h.click(bob, hitSlot);
+                h.scheduler.advance(BlackjackTiming.HIT_EVALUATION_DELAY_TICKS);
+            }
+            h.click(bob, BlackjackSlotLayout.ACTION_DOUBLE_SLOT); // Stand -- starts the dealer's own turn
+
+            assertTrue(h.inventory.activeHandCardCountForTest(aliceId) > BlackjackSlotLayout.SEAT_CARD_CAPACITY,
+                "test setup: alice's own hand must have genuinely overflowed its row");
+            assertTrue(h.inventory.activeHandCardCountForTest(bobId) > BlackjackSlotLayout.SEAT_CARD_CAPACITY,
+                "test setup: bob's own hand must have genuinely overflowed its row too");
+
+            // Let the dealer's own hit-until-17 sequence run for a while
+            // (it'll overflow its own row too, on this all-TWOs stack),
+            // then force the round to end right in the middle of it --
+            // the actual reported scenario, cards from every row all still
+            // visible at once when collection begins.
+            h.scheduler.advance(150);
+            h.inventory.resetGameForTest();
+            h.scheduler.advance(500); // comfortably past the full round-end animation chain
+
+            assertEquals(BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT, h.inventory.dealerHeadSlotForTest(),
+                "the whole chain must still reach the lobby under the heaviest realistic collision load");
+            for (int seatSlot : new int[] {BlackjackSlotLayout.SEAT_SLOTS[0], BlackjackSlotLayout.SEAT_SLOTS[3]}) {
+                for (int i = 0; i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+                    int slot = BlackjackSlotLayout.playerCardSlot(seatSlot, i);
+                    if (slot == BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT) {
+                        continue; // see the sibling test's identical caveat
+                    }
+                    Material type = typeOf(item(h, alice, slot));
+                    assertEquals(Material.GREEN_STAINED_GLASS_PANE, type,
+                        "every card cell must end up fully cleared, not stuck showing a merged-away card's ghost icon");
+                }
+            }
+            // The dealer's own card row (47-52) isn't checked here the same
+            // way -- both players are still seated post-reset, so that
+            // bottom row has already flipped back to the seated-wager-phase
+            // layout (chip denominations, Undo All/Last) by the time the
+            // chain settles, not the active-play dealer row anymore.
+        }
+    }
+
     @Test
     void resetWithNoCardsEverDealtSkipsStraightToTheFinalBoardWipe() {
         try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {

@@ -1507,17 +1507,21 @@ private void registerListener() {
     }
 
     /**
-     * Slides every still-visible card back along the exact path it was
-     * dealt in by (see {@link #scheduleCardFlight}), reversed -- showing
-     * its own real face the whole way, never flipping to a hidden
-     * placeholder. Neither the dealer head nor the deck token are touched
-     * (or even cleared) by this method -- both stay exactly where they've
-     * sat all round -- so a card simply disappears the instant it reaches
-     * the deck's own slot, reading as sliding underneath the deck's own
-     * (never-interrupted) icon rather than being swallowed by a separate
-     * effect. Player cards sweep right along their row into the deck's
-     * column before dropping down into it; the dealer's own cards rise
-     * into the deck's row before sliding right into it.
+     * Slides every still-visible card back to the deck along {@link
+     * BlackjackCardFlightPlan#returnToDeckPath} -- its own fixed geometry
+     * computed fresh from wherever the card currently sits, the same shape
+     * for every card in a row regardless of how (or whether) it was ever
+     * actually flown in -- showing its own real face the whole way, never
+     * flipping to a hidden placeholder. Neither the dealer head nor the
+     * deck token are touched (or even cleared) by this method -- both stay
+     * exactly where they've sat all round -- so a card simply disappears
+     * the instant it reaches the deck's own slot, reading as sliding
+     * underneath the deck's own (never-interrupted) icon rather than being
+     * swallowed by a separate effect. Player cards sweep right along their
+     * row into the deck's column before dropping down into it; the
+     * dealer's own cards sweep right to the column just short of the
+     * deck's, rise into the deck's row, then take one final step right --
+     * never crossing the head's own column at any other point.
      *
      * <p>Every player card's vertical leg travels up the SAME shared
      * column (the deck's own), so two cards returning from different
@@ -1525,12 +1529,15 @@ private void registerListener() {
      * tick -- a real collision, not just a near-miss, since an inventory
      * slot can only ever hold one item at a time. Resolved up front, before
      * any hop is actually scheduled: for every (tick, slot) more than one
-     * card would occupy, only the card that finishes its own return
-     * soonest overall "wins" and keeps rendering there; every other
-     * contender is treated as merging into it right at that slot -- it
-     * stops rendering (and stops being scheduled at all) from that hop
-     * onward, exactly as if the two cards collapsed into a single stack and
-     * only one continued on.
+     * card would occupy, a dealer card always wins over a player card
+     * (dealer cards visibly "cover" a player's own last card on their way
+     * home); among cards of the same kind, whichever finishes its own
+     * return soonest overall wins. Every other contender at that slot is
+     * treated as merging into the winner right there -- it stops rendering
+     * (and stops being scheduled at all) from that hop onward, exactly as
+     * if the two cards collapsed into a single stack and only one
+     * continued on -- a Snake-style trail where every segment still
+     * follows its own lane in order, never overtaking or swapping places.
      *
      * <p>A card's own hops stop rendering (without cancelling anything
      * else) the instant its owning player is no longer seated -- e.g. they
@@ -1558,25 +1565,39 @@ private void registerListener() {
         for (int i = 0; i < cardCount; i++) {
             ReturningCard returning = returningCards.get(i);
             boolean dealerCard = returning.ownerPlayerId() == null;
-            List<Integer> returnPath = new ArrayList<>(BlackjackCardFlightPlan.path(deckSlot, returning.slot(), dealerCard));
-            Collections.reverse(returnPath);
+            List<Integer> returnPath = BlackjackCardFlightPlan.returnToDeckPath(returning.slot(), deckSlot, dealerCard);
             returnPaths.add(returnPath);
             finishTick[i] = startPause + (returnPath.size() - 1) * hopTicks;
         }
 
-        // Winner-takes-the-slot pass: earliest-finishing card wins any tie
-        // (index as the final, fully deterministic tie-break), recorded
-        // per (tick, slot) before any actual scheduling happens.
+        // Winner-takes-the-slot pass: a dealer card always outranks a
+        // player card, then whichever finishes its own return soonest
+        // overall wins any remaining tie (index as the final, fully
+        // deterministic tie-break) -- recorded per (tick, slot) before any
+        // actual scheduling happens.
         Map<Long, Map<Integer, Integer>> winnerByTickAndSlot = new HashMap<>();
         for (int i = 0; i < cardCount; i++) {
             List<Integer> path = returnPaths.get(i);
+            boolean iIsDealer = returningCards.get(i).ownerPlayerId() == null;
             for (int hop = 1; hop < path.size(); hop++) {
                 long tick = startPause + hop * hopTicks;
                 int slot = path.get(hop);
                 Map<Integer, Integer> slotWinners = winnerByTickAndSlot.computeIfAbsent(tick, k -> new HashMap<>());
                 Integer currentWinner = slotWinners.get(slot);
-                if (currentWinner == null || finishTick[i] < finishTick[currentWinner]
-                        || (finishTick[i] == finishTick[currentWinner] && i < currentWinner)) {
+                boolean beatsCurrent;
+                if (currentWinner == null) {
+                    beatsCurrent = true;
+                } else {
+                    boolean currentIsDealer = returningCards.get(currentWinner).ownerPlayerId() == null;
+                    if (iIsDealer != currentIsDealer) {
+                        beatsCurrent = iIsDealer;
+                    } else if (finishTick[i] != finishTick[currentWinner]) {
+                        beatsCurrent = finishTick[i] < finishTick[currentWinner];
+                    } else {
+                        beatsCurrent = i < currentWinner;
+                    }
+                }
+                if (beatsCurrent) {
                     slotWinners.put(slot, i);
                 }
             }

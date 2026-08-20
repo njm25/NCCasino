@@ -131,4 +131,76 @@ public final class BlackjackCardFlightPlan {
         }
         return path;
     }
+
+    /**
+     * A card's own trip back to the deck at round-end -- deliberately its
+     * own fixed geometry, not just {@link #path} run in reverse, so every
+     * card in a hand (however many, however far an overflowing hand's row
+     * has shifted) follows the exact same shape, offset only by its own
+     * starting slot -- the "same path per row, order never breaks" rule a
+     * Snake-style trail needs to read cleanly with many cards in flight at
+     * once, rather than each card improvising its own route home.
+     *
+     * <p>A player's card slides right along its own row until it reaches
+     * the deck's own column, then drops straight down that column into the
+     * deck's row -- the mirror of its own deal-in leg order, but computed
+     * fresh from wherever the card currently sits, not reconstructed from
+     * how (or whether) it was ever actually flown in.
+     *
+     * <p>A dealer's card never takes that same two-leg shape: sliding right
+     * across its own row all the way to the deck's column would cross
+     * directly over the dealer's own head slot ({@link
+     * BlackjackSlotLayout#DEALER_INPLAY_HEAD_SLOT}, one column past every
+     * dealer card slot) and erase it mid-flight. Instead it slides right
+     * only as far as the column just short of the deck's own ({@code
+     * deckCol - 1} -- the same column the dealer's own up-card already
+     * lives in), rises straight up that column into the deck's row, then
+     * takes one final step right into the deck's own column -- three legs,
+     * never once touching the head's column outside of that safe final
+     * step, which happens a full row above the head.
+     *
+     * @return the ordered path including both {@code cardSlot} (index 0) and {@code deckSlot} (last)
+     */
+    public static List<Integer> returnToDeckPath(int cardSlot, int deckSlot, boolean dealerCard) {
+        List<Integer> path = new ArrayList<>();
+        path.add(cardSlot);
+
+        int width = BlackjackSlotLayout.SEAT_ROW_WIDTH;
+        int cardRow = cardSlot / width;
+        int cardCol = cardSlot % width;
+        int deckRow = deckSlot / width;
+        int deckCol = deckSlot % width;
+
+        if (dealerCard) {
+            int approachCol = deckCol - 1;
+            int col = cardCol;
+            while (col != approachCol) {
+                col += Integer.signum(approachCol - col);
+                path.add(cardRow * width + col);
+            }
+            int row = cardRow;
+            while (row != deckRow) {
+                row += Integer.signum(deckRow - row);
+                path.add(row * width + approachCol);
+            }
+            col = approachCol;
+            while (col != deckCol) {
+                col += Integer.signum(deckCol - col);
+                path.add(deckRow * width + col);
+            }
+        } else {
+            int col = cardCol;
+            while (col != deckCol) {
+                col += Integer.signum(deckCol - col);
+                path.add(cardRow * width + col);
+            }
+            int row = cardRow;
+            while (row != deckRow) {
+                row += Integer.signum(deckRow - row);
+                path.add(row * width + deckCol);
+            }
+        }
+
+        return path;
+    }
 }
