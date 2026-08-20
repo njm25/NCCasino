@@ -4405,7 +4405,7 @@ private void handleDoubleDown(Player player) {
                             resolveHandAfterSplitAnimation(playerId);
                         }, BlackjackTiming.SPLIT_PARK_STEP_TICKS);
                     }, BlackjackTiming.SPLIT_PARK_STEP_TICKS);
-                }, BlackjackTiming.SPLIT_PARK_STEP_TICKS / 2);
+                }, BlackjackTiming.SPLIT_PARK_STEP_TICKS / 2 + BlackjackTiming.SPLIT_PARK_PRE_SLIDE_EXTRA_PAUSE_TICKS);
             }, phase3Delay);
         }, phase2Delay);
     }
@@ -6567,9 +6567,9 @@ private void finishGame() {
 }
 
 /**
- * Sends one consolidated message covering every hand a split player
- * settled this round -- one line per hand (its outcome plus that hand's
- * own net profit/loss) followed by a total line, instead of the wall of
+ * Sends one consolidated chat message per hand a split player settled
+ * this round (its outcome plus that hand's own net profit/loss), each its
+ * own line, followed by a final total line -- instead of the wall of
  * separate per-hand messages and separate payout confirmations
  * {@link #settleHandOutcome}/{@link #payOut} would otherwise have sent.
  * A no-op for an offline recipient (nothing to message) or a NONE message
@@ -6585,7 +6585,6 @@ private void sendSplitRoundSummary(UUID playerId, List<HandOutcomeSummary> summa
         return;
     }
 
-    StringBuilder message = new StringBuilder();
     double total = 0.0;
     for (HandOutcomeSummary summary : summaries) {
         total += summary.netAmount();
@@ -6617,15 +6616,11 @@ private void sendSplitRoundSummary(UUID playerId, List<HandOutcomeSummary> summa
             default:
                 continue;
         }
-        if (message.length() > 0) {
-            message.append(" &7| ");
-        }
-        message.append(line);
+        player.sendMessage(line);
     }
     String sign = total > 0 ? "+" : total < 0 ? "-" : "";
-    message.append("  ").append(text(player, "blackjack.round-summary-total",
+    player.sendMessage(text(player, "blackjack.round-summary-total",
         "amount", sign + plugin.formatWagerDisplay(currencyMode, currencyName, Math.abs(total))));
-    player.sendMessage(message.toString());
 }
 
 /**

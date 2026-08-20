@@ -478,7 +478,7 @@ blackjack:
   round-summary-total: "&f&lTotal: {amount}"
   inventory-full: "&cNo room for {amount}, dropping..."
   card-value: "{value}"
-  hand-label: "Hand {number}- {value}"
+  hand-label: "Hand {number}: {value}"
   chair-guidance-hint: "&e&oSit here!"
   wager-guidance-hint: "&e&oPick a wager"
   click-to-add-wager: "&aClick to add {amount}"

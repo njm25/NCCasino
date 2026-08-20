@@ -125,6 +125,16 @@ public final class BlackjackTiming {
      * cranked again to 4.
      */
     public static final long SPLIT_PARK_STEP_TICKS = 4L;
+    /**
+     * Extra pause folded into the delay between D pairing up beside temp-B
+     * (phase 3 landing) and phase 4 -- the [B][D] pair's own first visible
+     * step left, "hand 2 starting to slide under hand 1" -- on top of the
+     * ordinary {@link #SPLIT_PARK_STEP_TICKS}/2 gap every other phase
+     * transition here uses. That gap alone read as too abrupt right after
+     * C/D finish pairing up; half a second (10 ticks) more lets that
+     * moment actually read before the park-away begins.
+     */
+    public static final long SPLIT_PARK_PRE_SLIDE_EXTRA_PAUSE_TICKS = 10L;
 
     // ---- Hand-to-hand transition (a finished split hand handing control
     // to the next one in the queue) -----------------------------------
