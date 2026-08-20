@@ -1603,6 +1603,25 @@ private void registerListener() {
             }
         }
 
+        // One card departing a slot and a different card arriving at that
+        // exact same slot on the exact same tick -- a following card
+        // catching up to right where a faster one just vacated -- is a
+        // normal, expected Snake-style hand-off, not a collision (the
+        // winner-takes-the-slot pass above only ever fires for two cards
+        // both wanting to actually render there). But scheduling each
+        // card's own hop as its own independent task left the two events
+        // in whatever order they happened to be registered: if the
+        // arrival's render ran before the departure's own clear, the
+        // clear would immediately erase the card that had just slid in --
+        // reading as a card vanishing well before it ever reached the
+        // deck's own column, anywhere two cards' paths happened to sit
+        // exactly one hop apart. Grouping every hop by its own tick and
+        // running every departure's clear first, then every arrival's
+        // render, removes the ordering dependency entirely.
+        record HopEvent(int previousSlot, int hopSlot, boolean isLastHop, boolean isMergeHop, UUID ownerPlayerId, Card card) {
+        }
+        Map<Long, List<HopEvent>> eventsByTick = new HashMap<>();
+
         long longestReturnTicks = 0L;
         for (int i = 0; i < cardCount; i++) {
             ReturningCard returning = returningCards.get(i);
@@ -1629,20 +1648,35 @@ private void registerListener() {
                 int hopSlot = returnPath.get(hop);
                 boolean isLastHop = hop == returnPath.size() - 1;
                 boolean isMergeHop = hop == mergedAtHop;
-                long hopDelay = startPause + hop * hopTicks;
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    if (roundGeneration != myRoundGeneration) {
-                        return;
+                long tick = startPause + hop * hopTicks;
+                eventsByTick.computeIfAbsent(tick, k -> new ArrayList<>())
+                    .add(new HopEvent(previousSlot, hopSlot, isLastHop, isMergeHop, ownerPlayerId, card));
+            }
+
+            longestReturnTicks = Math.max(longestReturnTicks, finishTick[i]);
+        }
+
+        for (Map.Entry<Long, List<HopEvent>> entry : eventsByTick.entrySet()) {
+            List<HopEvent> events = entry.getValue();
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (roundGeneration != myRoundGeneration) {
+                    return;
+                }
+                for (HopEvent event : events) {
+                    if (event.ownerPlayerId() != null && !playerSeats.containsKey(event.ownerPlayerId())) {
+                        continue; // this card's own seat was already correctly cleared by a mid-animation leave
                     }
-                    if (ownerPlayerId != null && !playerSeats.containsKey(ownerPlayerId)) {
-                        return; // this card's own seat was already correctly cleared by a mid-animation leave
+                    renderBackgroundToAllViews(event.previousSlot());
+                }
+                for (HopEvent event : events) {
+                    if (event.ownerPlayerId() != null && !playerSeats.containsKey(event.ownerPlayerId())) {
+                        continue;
                     }
-                    renderBackgroundToAllViews(previousSlot);
-                    if (!isLastHop && !isMergeHop) {
-                        renderCardToAllViews(hopSlot, card, false);
+                    if (!event.isLastHop() && !event.isMergeHop()) {
+                        renderCardToAllViews(event.hopSlot(), event.card(), false);
                     }
                     // A merge hop renders nothing of its own -- the winning
-                    // card's identical hop (scheduled separately) already
+                    // card's identical hop (in this same batch) already
                     // draws the shared icon at this same slot this same
                     // tick. The last (unmerged) hop lands exactly on the
                     // deck's own slot -- never rendered there at all; the
@@ -1650,10 +1684,8 @@ private void registerListener() {
                     // whole time), so the card simply stops existing right
                     // as it "reaches" the deck, reading as sliding
                     // underneath it.
-                }, hopDelay);
-            }
-
-            longestReturnTicks = Math.max(longestReturnTicks, finishTick[i]);
+                }
+            }, entry.getKey());
         }
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {

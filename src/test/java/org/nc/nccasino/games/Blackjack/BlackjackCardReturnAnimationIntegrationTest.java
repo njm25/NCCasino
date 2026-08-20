@@ -258,6 +258,58 @@ class BlackjackCardReturnAnimationIntegrationTest {
         }
     }
 
+    /**
+     * The bottom seat's own two starting cards sit in adjacent columns
+     * (index 0 one hop behind index 1), sharing the same row as the deck
+     * -- no vertical leg for either, both just sliding right. That means
+     * index 0's own arrival at index 1's starting column and index 1's own
+     * departure from it happen on the exact same tick: a normal Snake-style
+     * hand-off, not a collision (see {@code animateCardsReturnToDeck}'s own
+     * doc on why departures must always be cleared before arrivals are
+     * drawn, in every tick's own batch, regardless of which card's hop
+     * happened to be scheduled first). Asserts the arriving card is
+     * actually visible at that exact tick, not wiped by the departing
+     * card's own clear landing after it.
+     */
+    @Test
+    void aFasterCardArrivingExactlyWhereASlowerCardJustVacatedIsNotWipedByTheDeparture() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            List<Card> stack = new ArrayList<>();
+            stack.add(new Card(Suit.HEARTS, Rank.SEVEN)); // alice card 0 (index 0, one hop behind)
+            stack.add(new Card(Suit.HEARTS, Rank.NINE));  // dealer up
+            stack.add(new Card(Suit.HEARTS, Rank.EIGHT)); // alice card 1 (index 1, one hop ahead)
+            stack.add(new Card(Suit.HEARTS, Rank.NINE));  // dealer hole
+            stack.addAll(flatStack(Rank.TWO, 40));
+            h.inventory.stackDeckForTest(stack);
+            h.currencyProvider.setBalance(1000);
+
+            int bottomSeat = BlackjackSlotLayout.SEAT_SLOTS[4];
+            UUID aliceId = UUID.randomUUID();
+            Player alice = h.seatOnlinePlayer(aliceId, "Alice");
+            h.click(alice, bottomSeat);
+            h.inventory.commitWagerForTest(alice, 10.0);
+            h.inventory.beginStartTransitionForTest();
+            h.advanceToActionableTurn(1, 800);
+            assertEquals(2, h.inventory.activeHandCardCountForTest(aliceId), "test setup must actually deal alice in");
+
+            int slot0 = BlackjackSlotLayout.playerCardSlot(bottomSeat, 0);
+            int slot1 = BlackjackSlotLayout.playerCardSlot(bottomSeat, 1);
+
+            h.inventory.resetGameForTest();
+
+            long handoffTick = BlackjackTiming.RETURN_TO_DECK_START_PAUSE_TICKS + BlackjackTiming.RETURN_TO_DECK_HOP_TICKS;
+            h.scheduler.advance(handoffTick);
+
+            // Card 0 (7 of hearts) must have arrived at slot 1's own
+            // starting column exactly as card 1 (8 of hearts) vacated it --
+            // showing the 7, not background.
+            ItemStack atHandoff = item(h, alice, slot1);
+            assertEquals(Material.RED_STAINED_GLASS_PANE, atHandoff.getType(),
+                "the arriving card must be visible at the hand-off tick, not wiped to background by the departing card's own clear");
+            assertEquals(7, atHandoff.getAmount(), "the arriving card must specifically be the one that was behind (rank 7), not some other state");
+        }
+    }
+
     @Test
     void resetWithNoCardsEverDealtSkipsStraightToTheFinalBoardWipe() {
         try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
