@@ -16,18 +16,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Controller-level regression coverage for the round-end cards-return-to-
- * deck sweep -- every visible card must still be on the board immediately
- * after resetGame() fires (not instantly wiped), then genuinely clear once
- * its own reversed deal-in flight lands, and only then does the existing
- * white-tile sweep begin.
+ * Controller-level regression coverage for the round-end animation: every
+ * visible card slides back along its own reversed deal-in path showing its
+ * real face the whole way (never flipping to a hidden placeholder), while
+ * the dealer head and deck token stay exactly where they've sat all round
+ * until every card has actually landed -- only then do the dealer and deck
+ * walk back up to the lobby together, and only once <em>that</em> finishes
+ * does the board actually wipe to its fresh pregame state.
  */
 class BlackjackCardReturnAnimationIntegrationTest {
 
     private static List<Card> flatStack(Rank rank, int count) {
         List<Card> cards = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            cards.add(new Card(Suit.SPADES, rank));
+            cards.add(new Card(Suit.HEARTS, rank));
         }
         return cards;
     }
@@ -41,7 +43,7 @@ class BlackjackCardReturnAnimationIntegrationTest {
     }
 
     @Test
-    void aDealtHandsCardsStayVisibleImmediatelyAfterResetThenClearBeforeTheWhiteSweep() {
+    void aDealtHandsCardsShowTheirRealFaceThroughReturnThenClearBeforeTheDealerWalksUp() {
         try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
             h.inventory.stackDeckForTest(flatStack(Rank.SEVEN, 40));
             h.currencyProvider.setBalance(1000);
@@ -55,29 +57,51 @@ class BlackjackCardReturnAnimationIntegrationTest {
 
             assertEquals(2, h.inventory.activeHandCardCountForTest(aliceId), "test setup must actually deal alice in");
             int firstCardSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, 0);
-            assertTrue(typeOf(item(h, alice, firstCardSlot)) != Material.GREEN_STAINED_GLASS_PANE, "sanity: a card is actually rendered there before reset");
+            ItemStack beforeReset = item(h, alice, firstCardSlot);
+            assertEquals(Material.RED_STAINED_GLASS_PANE, beforeReset.getType(), "sanity: a real (7 of hearts, rendered red by suit) card is there before reset");
+            assertEquals(7, beforeReset.getAmount());
+            assertEquals(BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT, h.inventory.dealerHeadSlotForTest(), "sanity: the dealer is genuinely in play before reset");
 
             h.inventory.resetGameForTest();
 
-            // Immediately after reset: the card must still be visibly there
-            // (or already mid-flip to face-down), never instantly wiped to
-            // plain background -- that's the whole point of the sweep.
-            Material immediatelyAfterReset = typeOf(item(h, alice, firstCardSlot));
-            assertTrue(immediatelyAfterReset != Material.GREEN_STAINED_GLASS_PANE,
-                "the card must not be instantly wiped to the background felt on reset");
+            // Immediately after reset: the card must still be showing its
+            // own real face -- exactly as it was before reset, never
+            // flipped to a hidden placeholder, never instantly wiped. The
+            // dealer head must not have moved an inch yet either.
+            ItemStack immediatelyAfterReset = item(h, alice, firstCardSlot);
+            assertEquals(Material.RED_STAINED_GLASS_PANE, immediatelyAfterReset.getType(), "the card must keep showing its real face, never flip to a hidden placeholder");
+            assertEquals(7, immediatelyAfterReset.getAmount());
+            assertEquals(BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT, h.inventory.dealerHeadSlotForTest(), "the dealer must not move until every card has actually returned to the deck");
+            assertEquals(0, h.inventory.activeHandCardCountForTest(aliceId), "the canonical hand is still cleared immediately, same as before -- only the rendering is deferred");
 
-            // Give the return flight (and the white sweep behind it) ample
-            // time to fully finish.
+            // Tick forward one at a time until the card's own flight lands,
+            // checking the dealer hasn't budged at every single tick along
+            // the way -- rather than guessing a fixed window, since the two
+            // phases' own durations aren't independent of each other (the
+            // dealer's walk-up phase begins the instant the card phase's
+            // onComplete fires, same tick).
+            boolean cardCleared = false;
+            for (int tick = 0; tick < 100; tick++) {
+                h.scheduler.advance(1);
+                assertEquals(BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT, h.inventory.dealerHeadSlotForTest(),
+                    "the dealer must not move a single tick before the card has actually landed");
+                if (typeOf(item(h, alice, firstCardSlot)) == Material.GREEN_STAINED_GLASS_PANE) {
+                    cardCleared = true;
+                    break;
+                }
+            }
+            assertTrue(cardCleared, "the card's own reversed flight must land (and clear to background) within a reasonable number of ticks");
+
+            // Give the dealer/deck walk-up (and the final board wipe behind
+            // it) ample time to fully finish.
             h.scheduler.advance(200);
-
-            assertEquals(Material.GREEN_STAINED_GLASS_PANE, typeOf(item(h, alice, firstCardSlot)),
-                "once the return flight and reset sweep both finish, the seat's card row must be plain background");
-            assertEquals(0, h.inventory.activeHandCardCountForTest(aliceId), "resetGame() must still clear the canonical hand as before");
+            assertEquals(BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT, h.inventory.dealerHeadSlotForTest(),
+                "the dealer must have walked all the way back up to the lobby by now");
         }
     }
 
     @Test
-    void resetWithNoCardsEverDealtGoesStraightToTheWhiteSweepWithNoExtraDelay() {
+    void resetWithNoCardsEverDealtSkipsStraightToTheFinalBoardWipe() {
         try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
             UUID aliceId = UUID.randomUUID();
             Player alice = h.seatOnlinePlayer(aliceId, "Alice");
@@ -85,12 +109,13 @@ class BlackjackCardReturnAnimationIntegrationTest {
 
             h.inventory.resetGameForTest();
 
-            // With nothing to animate back into the deck, this must behave
-            // exactly like the plain reset-sweep-only path already covered
-            // by BlackjackResetSweepPlanTest/the reset-sweep integration
-            // coverage -- no extra card-return delay tacked on.
-            h.scheduler.advance((int) BlackjackControllerTestSupport.RESET_SWEEP_TOTAL_TICKS);
+            // With nothing to animate back into the deck, and the dealer
+            // never having genuinely entered play (still at the lobby
+            // slot), both animation phases must be a same-tick no-op --
+            // the board settles immediately, no leftover card-return or
+            // dealer-walk-up delay tacked on.
             assertEquals(0, h.inventory.activeHandCardCountForTest(aliceId));
+            assertEquals(BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT, h.inventory.dealerHeadSlotForTest());
         }
     }
 }

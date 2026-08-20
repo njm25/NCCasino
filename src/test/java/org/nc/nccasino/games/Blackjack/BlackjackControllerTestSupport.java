@@ -81,10 +81,22 @@ final class BlackjackControllerTestSupport {
     private BlackjackControllerTestSupport() {
     }
 
-    /** Full duration (with slack) of the game-reset white-tile sweep {@code resetGame()}/{@code cancelGame()} now play -- advance the scheduler past this before asserting canonical post-reset board state. */
-    static final long RESET_SWEEP_TOTAL_TICKS = BlackjackResetSweepPlan.totalDurationTicks(
-        BlackjackResetSweepPlan.build(BlackjackTiming.RESET_SWEEP_STEP_TICKS, BlackjackTiming.RESET_SWEEP_HOLD_DIAGONALS)
-    ) + 2;
+    /**
+     * Full duration (with slack) of the round-end animation {@code
+     * resetGame()}/{@code cancelGame()} now play -- cards sliding back to
+     * the deck with their real face showing, then the dealer/deck walking
+     * back up to the lobby -- advance the scheduler past this before
+     * asserting canonical post-reset board state. Deliberately generous
+     * (worst-case hop count for any single card's return leg, not the
+     * actual shortest one) rather than tied to any specific board layout.
+     */
+    static final long ROUND_END_ANIMATION_TOTAL_TICKS =
+        BlackjackTiming.RETURN_TO_DECK_START_PAUSE_TICKS
+            + (long) (BlackjackSlotLayout.SEAT_ROW_WIDTH * 2) * BlackjackTiming.RETURN_TO_DECK_HOP_TICKS
+            + 1
+            + (long) BlackjackSlotLayout.dealerStartTransitionPath().size() * BlackjackTiming.DEALER_INSPECTION_STEP_TICKS
+            + 1
+            + 5;
 
     /** One assembled test table: the live controller, its plugin/currency doubles, and the fake scheduler driving it. */
     static final class Harness implements AutoCloseable {

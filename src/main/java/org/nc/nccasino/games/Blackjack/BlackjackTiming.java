@@ -78,7 +78,7 @@ public final class BlackjackTiming {
     /** Delay after a card's flight lands before it flips from face-down to its real face. */
     public static final long CARD_FLIP_DELAY_TICKS = 6L;
     /**
-     * Per-slot travel time of the round-end return-to-deck sweep
+     * Per-slot travel time of the round-end return-to-deck animation
      * specifically (see {@code BlackjackInventory#animateCardsReturnToDeck}) --
      * kept as its own constant, deliberately 3x {@link #CARD_FLIGHT_HOP_TICKS},
      * rather than reusing that one directly, so this specific moment can be
@@ -88,17 +88,15 @@ public final class BlackjackTiming {
      */
     public static final long RETURN_TO_DECK_HOP_TICKS = CARD_FLIGHT_HOP_TICKS * 3;
     /**
-     * The return-to-deck sweep's own pre-flip pause before any card starts
+     * The return-to-deck animation's own pause before any card starts
      * moving -- 3x {@link #CARD_FLIP_DELAY_TICKS} for the same reason as
-     * {@link #RETURN_TO_DECK_HOP_TICKS}, so the whole sweep slows down
+     * {@link #RETURN_TO_DECK_HOP_TICKS}, so the whole thing slows down
      * together rather than starting to move almost immediately and then
-     * crawling.
+     * crawling. No flip happens here anymore (cards slide back showing
+     * their real face the whole way), but the same pacing still reads
+     * right as a deliberate pause before the return begins.
      */
-    public static final long RETURN_TO_DECK_FLIP_DELAY_TICKS = CARD_FLIP_DELAY_TICKS * 3;
-    /** Ticks between one diagonal and the next joining the game-reset white-tile sweep's wavefront. */
-    public static final long RESET_SWEEP_STEP_TICKS = 1L;
-    /** How many diagonals' worth of ticks a reset-sweep tile stays white before revealing the board underneath again. */
-    public static final long RESET_SWEEP_HOLD_DIAGONALS = 3L;
+    public static final long RETURN_TO_DECK_START_PAUSE_TICKS = CARD_FLIP_DELAY_TICKS * 3;
     /** How long the whole currently-available action-item set stays glowing (or plain) per phase before flipping to the other. */
     public static final long ACTION_GUIDANCE_STEP_TICKS = 5L;
     /** Delay between successive steps of the split slide-out/park/reactivate sequence -- wide enough for C's/D's own deck-flight to comfortably land in sync (see BlackjackInventory#runSplitAnimation). */

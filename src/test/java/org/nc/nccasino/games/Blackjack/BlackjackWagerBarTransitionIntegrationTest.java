@@ -103,7 +103,7 @@ class BlackjackWagerBarTransitionIntegrationTest {
 
             h.click(alice, seatSlot); // own head -- leave, GUI stays open
             h.scheduler.advance(FULL_TRANSITION_TICKS); // fully concealed
-            h.scheduler.advance(BlackjackControllerTestSupport.RESET_SWEEP_TOTAL_TICKS); // let the solo-leave's cancelGame() reset sweep finish too
+            h.scheduler.advance(BlackjackControllerTestSupport.ROUND_END_ANIMATION_TOTAL_TICKS); // let the solo-leave's cancelGame() round-end animation finish too
 
             assertFalse(h.inventory.isSeatedForTest(id));
             assertCanonicalUnseatedBar(viewInv(h, alice));
@@ -148,7 +148,7 @@ class BlackjackWagerBarTransitionIntegrationTest {
                 "the resting edge glass must not already be showing -- the strip hasn't finished retracting yet");
 
             h.scheduler.advance(FULL_TRANSITION_TICKS);
-            h.scheduler.advance(BlackjackControllerTestSupport.RESET_SWEEP_TOTAL_TICKS); // let the solo-leave's cancelGame() reset sweep finish too
+            h.scheduler.advance(BlackjackControllerTestSupport.ROUND_END_ANIMATION_TOTAL_TICKS); // let the solo-leave's cancelGame() round-end animation finish too
             assertFalse(h.inventory.isSeatedForTest(id));
             assertCanonicalUnseatedBar(inv);
         }
@@ -168,7 +168,7 @@ class BlackjackWagerBarTransitionIntegrationTest {
 
             h.click(alice, seatSlot); // leave
             h.scheduler.advance(FULL_TRANSITION_TICKS);
-            h.scheduler.advance(BlackjackControllerTestSupport.RESET_SWEEP_TOTAL_TICKS); // let the solo-leave's cancelGame() reset sweep finish too
+            h.scheduler.advance(BlackjackControllerTestSupport.ROUND_END_ANIMATION_TOTAL_TICKS); // let the solo-leave's cancelGame() round-end animation finish too
 
             assertNull(h.inventory.selectedWagerForTest(id), "leaving must clear the selection");
             assertCanonicalUnseatedBar(viewInv(h, alice));
@@ -225,7 +225,7 @@ class BlackjackWagerBarTransitionIntegrationTest {
             // any seated item, and a genuine close+reopen must bootstrap
             // the same canonical unseated state fresh.
             h.scheduler.advance(FULL_TRANSITION_TICKS * 2);
-            h.scheduler.advance(BlackjackControllerTestSupport.RESET_SWEEP_TOTAL_TICKS); // let the solo-leave's cancelGame() reset sweep finish too
+            h.scheduler.advance(BlackjackControllerTestSupport.ROUND_END_ANIMATION_TOTAL_TICKS); // let the solo-leave's cancelGame() round-end animation finish too
             assertCanonicalUnseatedBar(viewInv(h, alice));
 
             h.inventory.onViewClosed(alice, h.inventory.viewForTest(id));
@@ -352,7 +352,7 @@ class BlackjackWagerBarTransitionIntegrationTest {
 
             h.click(alice, seatSlot); // leave mid-reveal
             h.scheduler.advance(FULL_TRANSITION_TICKS * 2);
-            h.scheduler.advance(BlackjackControllerTestSupport.RESET_SWEEP_TOTAL_TICKS); // let the solo-leave's cancelGame() reset sweep finish too
+            h.scheduler.advance(BlackjackControllerTestSupport.ROUND_END_ANIMATION_TOTAL_TICKS); // let the solo-leave's cancelGame() round-end animation finish too
 
             assertCanonicalUnseatedBar(viewInv(h, alice));
         }
@@ -389,7 +389,7 @@ class BlackjackWagerBarTransitionIntegrationTest {
             h.click(alice, seatSlot); // leave again, immediately
 
             h.scheduler.advance(FULL_TRANSITION_TICKS * 3);
-            h.scheduler.advance(BlackjackControllerTestSupport.RESET_SWEEP_TOTAL_TICKS); // let the final leave's cancelGame() reset sweep finish too
+            h.scheduler.advance(BlackjackControllerTestSupport.ROUND_END_ANIMATION_TOTAL_TICKS); // let the final leave's cancelGame() round-end animation finish too
 
             assertFalse(h.inventory.isSeatedForTest(id));
             assertCanonicalUnseatedBar(viewInv(h, alice));
@@ -435,7 +435,7 @@ class BlackjackWagerBarTransitionIntegrationTest {
             h.inventory.getOrCreateView(alice);
             h.inventory.onViewOpened(alice);
             h.scheduler.advance(2);
-            h.scheduler.advance(BlackjackControllerTestSupport.RESET_SWEEP_TOTAL_TICKS); // let the solo-leave's cancelGame() reset sweep finish too
+            h.scheduler.advance(BlackjackControllerTestSupport.ROUND_END_ANIMATION_TOTAL_TICKS); // let the solo-leave's cancelGame() round-end animation finish too
 
             assertCanonicalUnseatedBar(viewInv(h, alice));
 
