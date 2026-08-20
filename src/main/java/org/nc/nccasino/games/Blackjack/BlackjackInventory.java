@@ -2216,6 +2216,85 @@ private void registerListener() {
     }
 
     /**
+     * The wager info to show for a seated occupant during active play --
+     * {@code title} is what the occupant's own tile shows as its display
+     * name (never blank -- see {@link #buildBetSpotItemForViewer}'s own
+     * doc for why the old blank {@code "§r"} title read as broken), and
+     * {@code loreLines} is only ever non-empty for the split-with-differing-
+     * wagers case, where the per-hand breakdown doesn't fit in a title.
+     * A non-owner viewer sees {@code title} folded into their own lore
+     * instead, ahead of {@code loreLines}, since their own tile's title is
+     * already spoken for (whose circle it is).
+     */
+    private record WagerSummary(String title, List<String> loreLines) {
+    }
+
+    /**
+     * Builds the wager summary for {@code occupant} from their live hand
+     * queue: a single hand (no split, or a split that hasn't happened yet)
+     * gets the plain "Current wager: X" title; a split where every hand
+     * still carries the same wager (no double-after-split) condenses to
+     * "Wager: X x N hands" instead of repeating the same number N times;
+     * a split where at least one hand's wager has diverged (a double
+     * after split) switches to a "Current Wagers" title plus one lore
+     * line per hand, since a single line can no longer summarize it.
+     */
+    private WagerSummary buildWagerSummary(UUID occupant, Player viewer) {
+        List<BlackjackHand> hands = playerHands.get(occupant);
+        List<BlackjackHand> wageredHands = new ArrayList<>();
+        if (hands != null) {
+            for (BlackjackHand hand : hands) {
+                if (hand.getWager() > 0) {
+                    wageredHands.add(hand);
+                }
+            }
+        }
+        if (wageredHands.size() <= 1) {
+            double wager = wageredHands.isEmpty() ? totalBet(occupant) : wageredHands.get(0).getWager();
+            if (wager <= 0) {
+                return new WagerSummary(null, List.of());
+            }
+            return new WagerSummary(
+                localize(viewer, "blackjack.hand-wager-lore", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, wager)),
+                List.of()
+            );
+        }
+        double firstWager = wageredHands.get(0).getWager();
+        boolean allSameWager = wageredHands.stream().allMatch(hand -> hand.getWager() == firstWager);
+        if (allSameWager) {
+            return new WagerSummary(
+                localize(viewer, "blackjack.wager-per-hand-title",
+                    "amount", plugin.formatWagerDisplay(currencyMode, currencyName, firstWager),
+                    "count", wageredHands.size()),
+                List.of()
+            );
+        }
+        List<String> loreLines = new ArrayList<>();
+        for (int i = 0; i < wageredHands.size(); i++) {
+            loreLines.add(localize(viewer, "blackjack.wager-hand-line",
+                "number", i + 1,
+                "amount", plugin.formatWagerDisplay(currencyMode, currencyName, wageredHands.get(i).getWager())));
+        }
+        return new WagerSummary(localize(viewer, "blackjack.current-wagers-title"), loreLines);
+    }
+
+    /** Sets {@code item}'s display name and lore from a {@link WagerSummary}, skipping either that's empty/null. */
+    private ItemStack applyWagerSummary(ItemStack item, WagerSummary summary) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return item;
+        }
+        if (summary.title() != null) {
+            meta.setDisplayName(summary.title());
+        }
+        if (!summary.loreLines().isEmpty()) {
+            meta.setLore(summary.loreLines());
+        }
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /**
      * The canonical bet-spot item at {@code seatSlot} as {@code viewerId}
      * should see it right now -- the single source of truth every bet-spot
      * repaint (sitting, leaving, committing/undoing/doubling/splitting a
@@ -2225,13 +2304,15 @@ private void registerListener() {
      *   <li>An empty seat is always blank brown edge glass, for every
      *       viewer, in every phase -- a permanent part of the table's edge,
      *       never cleared to the green background.</li>
-     *   <li>The seat's own occupant keeps the existing click-to-bet
-     *       (pregame) / permanent glowing-on-turn (active) item, carrying
-     *       their own wager lore once it's nonzero.</li>
-     *   <li>Any other viewer sees "{name}'s betting circle" instead --
-     *       carrying the same wager lore once nonzero, and glowing while
-     *       it's that seat's turn, so the shared "whose turn is it" cue
-     *       survives becoming per-viewer.</li>
+     *   <li>Pregame, the seat's own occupant keeps the existing click-to-bet
+     *       item, carrying their own wager lore once it's nonzero; any other
+     *       viewer sees "{name}'s betting circle" with the same lore.</li>
+     *   <li>Once {@code gameActive}, the occupant's own tile's display name
+     *       itself carries their wager summary (see {@link #buildWagerSummary})
+     *       instead of the old blank {@code "§r"} title -- any other viewer
+     *       still sees "{name}'s betting circle" as the title, with that same
+     *       summary folded into their own lore instead. Glows solidly while
+     *       it's this seat's turn, plain otherwise, for every viewer alike.</li>
      * </ul>
      */
     private ItemStack buildBetSpotItemForViewer(int seatSlot, UUID viewerId, Player viewer) {
@@ -2239,21 +2320,44 @@ private void registerListener() {
         if (occupant == null) {
             return buildBrownEdgeGlassItem();
         }
-        BlackjackHand hand = activeHand(occupant);
-        double wager = hand != null ? hand.getWager() : totalBet(occupant);
         boolean glowing = gameActive && occupant.equals(currentPlayerId) && !betSpotGlowSuppressed.contains(occupant);
-        if (occupant.equals(viewerId)) {
-            ItemStack item = gameActive
-                ? buildActiveBetSpotItem(glowing)
-                : createCustomItem(Material.BROWN_STAINED_GLASS_PANE, localize(viewer, "blackjack.click-bet"), 1);
+
+        if (!gameActive) {
+            double wager = totalBet(occupant);
+            if (occupant.equals(viewerId)) {
+                ItemStack item = createCustomItem(Material.BROWN_STAINED_GLASS_PANE, localize(viewer, "blackjack.click-bet"), 1);
+                return withWagerLore(item, wager, viewer);
+            }
+            Player pregameOwner = Bukkit.getPlayer(occupant);
+            String pregameDisplayName = localize(viewer, "blackjack.other-betting-circle", "name", pregameOwner != null ? pregameOwner.getName() : "?");
+            ItemStack item = glowing
+                ? createGlowingCustomItem(Material.BROWN_STAINED_GLASS_PANE, pregameDisplayName, 1)
+                : createCustomItem(Material.BROWN_STAINED_GLASS_PANE, pregameDisplayName, 1);
             return withWagerLore(item, wager, viewer);
+        }
+
+        WagerSummary summary = buildWagerSummary(occupant, viewer);
+        if (occupant.equals(viewerId)) {
+            String title = summary.title() != null ? summary.title() : "§r";
+            ItemStack item = glowing
+                ? createGlowingCustomItem(Material.BROWN_STAINED_GLASS_PANE, title, 1)
+                : createCustomItem(Material.BROWN_STAINED_GLASS_PANE, title, 1);
+            if (!summary.loreLines().isEmpty()) {
+                return applyWagerSummary(item, new WagerSummary(null, summary.loreLines()));
+            }
+            return item;
         }
         Player owner = Bukkit.getPlayer(occupant);
         String displayName = localize(viewer, "blackjack.other-betting-circle", "name", owner != null ? owner.getName() : "?");
         ItemStack item = glowing
             ? createGlowingCustomItem(Material.BROWN_STAINED_GLASS_PANE, displayName, 1)
             : createCustomItem(Material.BROWN_STAINED_GLASS_PANE, displayName, 1);
-        return withWagerLore(item, wager, viewer);
+        List<String> otherLore = new ArrayList<>();
+        if (summary.title() != null) {
+            otherLore.add(summary.title());
+        }
+        otherLore.addAll(summary.loreLines());
+        return applyWagerSummary(item, new WagerSummary(null, otherLore));
     }
 
     /** Repaints {@code seatSlot}'s bet spot for the legacy inventory and every open view via {@link #buildBetSpotItemForViewer} -- the single fan-out every bet-spot-affecting event calls. */
@@ -2935,11 +3039,6 @@ private void registerListener() {
             reRenderHand(newCurrentPlayerId, true);
             reRenderBetSpot(newCurrentPlayerId);
         }
-    }
-
-    /** The permanent brown bet-spot item shown throughout active play -- glowing solidly while it's this seat's turn, plain otherwise. Never cleared to background while a player occupies the seat (see transitionBottomBarToActive). */
-    private ItemStack buildActiveBetSpotItem(boolean glowing) {
-        return glowing ? createGlowingCustomItem(Material.BROWN_STAINED_GLASS_PANE, "§r", 1) : buildBrownEdgeGlassItem();
     }
 
     /** Re-renders a seated player's permanent bet spot via {@link #renderBetSpotToAllViews} -- the glow state is derived live from {@code currentPlayerId} (already updated by the caller before this runs), so it self-corrects without needing to be passed in. No-op if the player isn't seated. */
