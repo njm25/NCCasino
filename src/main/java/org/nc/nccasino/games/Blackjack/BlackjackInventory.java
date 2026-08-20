@@ -3721,10 +3721,13 @@ private void handleDoubleDown(Player player) {
         hand.setWager(hand.getWager() * 2);
         hand.setDoubled(true);
 
-        // The seat's single bet-spot slot always reflects the active
-        // hand's own live wager during active play.
+        // The seat's bet-spot tile always reflects every hand's live wager
+        // during active play -- a full repaint (not just a lore patch), so
+        // a double-after-split correctly flips the summary from "X per
+        // hand" over to the per-hand breakdown once this hand's wager no
+        // longer matches its siblings (see buildWagerSummary).
         int seatSlot = playerSeats.get(playerId);
-        updateItemLore(BlackjackSlotLayout.betSlipSlot(seatSlot), hand.getWager());
+        renderBetSpotToAllViews(seatSlot);
 
         int cardCount = hand.getCards().size();
         int cardSlot = seatSlot + 2 + cardCount;
@@ -4069,7 +4072,12 @@ private void handleDoubleDown(Player player) {
         Player player = Bukkit.getPlayer(playerId);
         List<Card> cards = hand.getCards();
         updatePlayerHead(playerId);
-        updateItemLore(BlackjackSlotLayout.betSlipSlot(seatSlot), hand.getWager());
+        // A full repaint (see buildWagerSummary), not a raw single-hand
+        // lore patch -- the latter used to unconditionally stomp whatever
+        // multi-hand wager summary runHandTransitionReveal's own final hop
+        // had just correctly rendered moments earlier, right back down to
+        // the plain single-wager wording.
+        renderBetSpotToAllViews(seatSlot);
 
         if (player != null && hand.isSplitFromAce() && cards.size() == 2) {
             List<BlackjackHand> hands = playerHands.getOrDefault(playerId, List.of());
@@ -4501,6 +4509,14 @@ private void handleDoubleDown(Player player) {
                             sharedAnimationRun = null;
                             splitAnimationInFlight = false;
                             splitAnimationPlayerId = null;
+                            // The bet spot's own title/lore must now reflect
+                            // both hands' wagers (see buildWagerSummary) --
+                            // nothing else repaints it once the split
+                            // animation itself finishes, so without this the
+                            // tile keeps showing whatever it said before the
+                            // split (stale "Current wager: X") until some
+                            // unrelated later event happens to repaint it.
+                            renderBetSpotToAllViews(seatSlot);
                             resolveHandAfterSplitAnimation(playerId);
                         }, BlackjackTiming.SPLIT_PARK_STEP_TICKS);
                     }, BlackjackTiming.SPLIT_PARK_STEP_TICKS);
