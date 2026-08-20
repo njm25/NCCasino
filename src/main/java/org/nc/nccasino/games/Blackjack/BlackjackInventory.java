@@ -4205,6 +4205,14 @@ private void handleDoubleDown(Player player) {
             bumpHandToken(playerId);
             repaintActionsForCurrentPlayer();
 
+            // Both hands' final wagers are already settled right here (the
+            // split animation only ever adds cards afterward, never touches
+            // either hand's wager) -- so the bet spot's own summary (see
+            // buildWagerSummary) is repainted immediately on the click
+            // itself, not left showing the stale pre-split wager for the
+            // whole multi-second animation.
+            renderBetSpotToAllViews(seatSlot);
+
             // Both replacement cards are drawn up front (eligibility already
             // confirmed the shoe can immediately supply both -- a split
             // never reshuffles mid-round) so the animation only ever
@@ -4509,14 +4517,6 @@ private void handleDoubleDown(Player player) {
                             sharedAnimationRun = null;
                             splitAnimationInFlight = false;
                             splitAnimationPlayerId = null;
-                            // The bet spot's own title/lore must now reflect
-                            // both hands' wagers (see buildWagerSummary) --
-                            // nothing else repaints it once the split
-                            // animation itself finishes, so without this the
-                            // tile keeps showing whatever it said before the
-                            // split (stale "Current wager: X") until some
-                            // unrelated later event happens to repaint it.
-                            renderBetSpotToAllViews(seatSlot);
                             resolveHandAfterSplitAnimation(playerId);
                         }, BlackjackTiming.SPLIT_PARK_STEP_TICKS);
                     }, BlackjackTiming.SPLIT_PARK_STEP_TICKS);
