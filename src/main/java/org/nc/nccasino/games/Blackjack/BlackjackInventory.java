@@ -1438,11 +1438,22 @@ private void registerListener() {
 
     /**
      * Moves the canonical dealerHeadSlot to {@code step}'s slot and
-     * re-renders the dealer head there for every view. The deck token
-     * trails one row behind, unrendered until the dealer's first genuine
-     * move, then following into wherever the dealer just vacated -- so it
-     * naturally comes to rest one slot above the dealer's final in-play
-     * position once the slide completes.
+     * re-renders the dealer head there for every view, explicitly clearing
+     * wherever the head just vacated first. The deck token always hugs the
+     * row directly above the dealer's current slot -- recomputed as {@code
+     * newSlot - SEAT_ROW_WIDTH} on every genuine move, never by trailing
+     * into whatever slot the dealer just vacated. That distinction only
+     * matters for direction: on the down-slide (lobby to in-play) the
+     * vacated slot and "one row above the new slot" are always the same
+     * slot -- so the deck token's own render there happened to also cover
+     * the head's stale icon, before this method cleared it explicitly --
+     * but on the reversed up-slide (see {@link
+     * #runDealerAndDeckSlideUpToLobby}) they are not: trailing into the
+     * vacated slot would put the deck one row BELOW the dealer instead of
+     * above it, and without an explicit clear of its own the head's own
+     * stale icon would be left behind as a permanent ghost. Recomputing the
+     * deck slot from the new slot directly, and clearing the head's own
+     * vacated slot directly, are both correct for either direction.
      */
     private void applyDealerInspectionStep(BlackjackAnimationStep step) {
         int previousSlot = dealerHeadSlot;
@@ -1450,11 +1461,15 @@ private void registerListener() {
         dealerHeadSlot = newSlot;
 
         if (previousSlot != newSlot) {
-            if (dealerDeckTokenSlot != -1) {
-                renderBackgroundToAllViews(dealerDeckTokenSlot);
+            renderBackgroundToAllViews(previousSlot);
+            int newDeckSlot = newSlot - BlackjackSlotLayout.SEAT_ROW_WIDTH;
+            if (dealerDeckTokenSlot != newDeckSlot) {
+                if (dealerDeckTokenSlot != -1) {
+                    renderBackgroundToAllViews(dealerDeckTokenSlot);
+                }
+                dealerDeckTokenSlot = newDeckSlot;
+                renderHiddenCardToAllViews(dealerDeckTokenSlot);
             }
-            dealerDeckTokenSlot = previousSlot;
-            renderHiddenCardToAllViews(dealerDeckTokenSlot);
         }
         renderLocalizedToAllViews(newSlot, Material.CREEPER_HEAD, 1, "blackjack.dealer");
     }
@@ -1501,11 +1516,20 @@ private void registerListener() {
      * (never-interrupted) icon rather than being swallowed by a separate
      * effect. Player cards sweep right along their row into the deck's
      * column before dropping down into it; the dealer's own cards rise
-     * into the deck's row before sliding right into it. Every card moves
-     * at the identical uniform hop rate, so cards sharing a lane never
-     * catch up to and collide with one another -- whichever started
-     * closer to the deck simply finishes first, freeing the lane before a
-     * farther card arrives.
+     * into the deck's row before sliding right into it.
+     *
+     * <p>Every player card's vertical leg travels up the SAME shared
+     * column (the deck's own), so two cards returning from different
+     * hands/rows genuinely can land on the identical slot on the identical
+     * tick -- a real collision, not just a near-miss, since an inventory
+     * slot can only ever hold one item at a time. Resolved up front, before
+     * any hop is actually scheduled: for every (tick, slot) more than one
+     * card would occupy, only the card that finishes its own return
+     * soonest overall "wins" and keeps rendering there; every other
+     * contender is treated as merging into it right at that slot -- it
+     * stops rendering (and stops being scheduled at all) from that hop
+     * onward, exactly as if the two cards collapsed into a single stack and
+     * only one continued on.
      *
      * <p>A card's own hops stop rendering (without cancelling anything
      * else) the instant its owning player is no longer seated -- e.g. they
@@ -1526,22 +1550,64 @@ private void registerListener() {
 
         long startPause = BlackjackTiming.RETURN_TO_DECK_START_PAUSE_TICKS;
         long hopTicks = BlackjackTiming.RETURN_TO_DECK_HOP_TICKS;
-        long longestReturnTicks = 0L;
+        int cardCount = returningCards.size();
 
-        for (ReturningCard returning : returningCards) {
-            int cardSlot = returning.slot();
+        List<List<Integer>> returnPaths = new ArrayList<>(cardCount);
+        long[] finishTick = new long[cardCount];
+        for (int i = 0; i < cardCount; i++) {
+            ReturningCard returning = returningCards.get(i);
+            boolean dealerCard = returning.ownerPlayerId() == null;
+            List<Integer> returnPath = new ArrayList<>(BlackjackCardFlightPlan.path(deckSlot, returning.slot(), dealerCard));
+            Collections.reverse(returnPath);
+            returnPaths.add(returnPath);
+            finishTick[i] = startPause + (returnPath.size() - 1) * hopTicks;
+        }
+
+        // Winner-takes-the-slot pass: earliest-finishing card wins any tie
+        // (index as the final, fully deterministic tie-break), recorded
+        // per (tick, slot) before any actual scheduling happens.
+        Map<Long, Map<Integer, Integer>> winnerByTickAndSlot = new HashMap<>();
+        for (int i = 0; i < cardCount; i++) {
+            List<Integer> path = returnPaths.get(i);
+            for (int hop = 1; hop < path.size(); hop++) {
+                long tick = startPause + hop * hopTicks;
+                int slot = path.get(hop);
+                Map<Integer, Integer> slotWinners = winnerByTickAndSlot.computeIfAbsent(tick, k -> new HashMap<>());
+                Integer currentWinner = slotWinners.get(slot);
+                if (currentWinner == null || finishTick[i] < finishTick[currentWinner]
+                        || (finishTick[i] == finishTick[currentWinner] && i < currentWinner)) {
+                    slotWinners.put(slot, i);
+                }
+            }
+        }
+
+        long longestReturnTicks = 0L;
+        for (int i = 0; i < cardCount; i++) {
+            ReturningCard returning = returningCards.get(i);
             Card card = returning.card();
             UUID ownerPlayerId = returning.ownerPlayerId();
-            boolean dealerCard = ownerPlayerId == null;
+            List<Integer> returnPath = returnPaths.get(i);
 
-            List<Integer> returnPath = new ArrayList<>(BlackjackCardFlightPlan.path(deckSlot, cardSlot, dealerCard));
-            Collections.reverse(returnPath);
+            // The first hop (if any) where this card loses its slot to a
+            // higher-priority contender -- every hop from here on is never
+            // even scheduled, since the card has already merged away.
+            int mergedAtHop = -1;
+            for (int hop = 1; hop < returnPath.size(); hop++) {
+                long tick = startPause + hop * hopTicks;
+                int slot = returnPath.get(hop);
+                if (winnerByTickAndSlot.get(tick).get(slot) != i) {
+                    mergedAtHop = hop;
+                    break;
+                }
+            }
 
-            for (int i = 1; i < returnPath.size(); i++) {
-                int previousSlot = returnPath.get(i - 1);
-                int hopSlot = returnPath.get(i);
-                boolean isLastHop = i == returnPath.size() - 1;
-                long hopDelay = startPause + i * hopTicks;
+            int lastScheduledHop = mergedAtHop == -1 ? returnPath.size() - 1 : mergedAtHop;
+            for (int hop = 1; hop <= lastScheduledHop; hop++) {
+                int previousSlot = returnPath.get(hop - 1);
+                int hopSlot = returnPath.get(hop);
+                boolean isLastHop = hop == returnPath.size() - 1;
+                boolean isMergeHop = hop == mergedAtHop;
+                long hopDelay = startPause + hop * hopTicks;
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     if (roundGeneration != myRoundGeneration) {
                         return;
@@ -1550,18 +1616,22 @@ private void registerListener() {
                         return; // this card's own seat was already correctly cleared by a mid-animation leave
                     }
                     renderBackgroundToAllViews(previousSlot);
-                    if (!isLastHop) {
+                    if (!isLastHop && !isMergeHop) {
                         renderCardToAllViews(hopSlot, card, false);
                     }
-                    // The last hop lands exactly on the deck's own slot --
-                    // never rendered there at all; the deck's own icon
-                    // already occupies it (untouched this whole time), so
-                    // the card simply stops existing right as it "reaches"
-                    // the deck, reading as sliding underneath it.
+                    // A merge hop renders nothing of its own -- the winning
+                    // card's identical hop (scheduled separately) already
+                    // draws the shared icon at this same slot this same
+                    // tick. The last (unmerged) hop lands exactly on the
+                    // deck's own slot -- never rendered there at all; the
+                    // deck's own icon already occupies it (untouched this
+                    // whole time), so the card simply stops existing right
+                    // as it "reaches" the deck, reading as sliding
+                    // underneath it.
                 }, hopDelay);
             }
 
-            longestReturnTicks = Math.max(longestReturnTicks, startPause + (returnPath.size() - 1) * hopTicks);
+            longestReturnTicks = Math.max(longestReturnTicks, finishTick[i]);
         }
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {

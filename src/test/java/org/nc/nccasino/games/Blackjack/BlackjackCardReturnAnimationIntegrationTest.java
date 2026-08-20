@@ -92,11 +92,84 @@ class BlackjackCardReturnAnimationIntegrationTest {
             }
             assertTrue(cardCleared, "the card's own reversed flight must land (and clear to background) within a reasonable number of ticks");
 
-            // Give the dealer/deck walk-up (and the final board wipe behind
-            // it) ample time to fully finish.
-            h.scheduler.advance(200);
+            // Tick through the dealer/deck walk-up one at a time: the deck
+            // token must hug the row directly ABOVE the dealer's current
+            // slot at every single step -- never trail one row below it,
+            // which is what reusing the down-slide's own "trail into the
+            // vacated slot" logic unmodified would do once the direction is
+            // reversed.
+            for (int tick = 0; tick < 100 && h.inventory.dealerHeadSlotForTest() != BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT; tick++) {
+                h.scheduler.advance(1);
+                int deckTokenSlot = h.inventory.dealerDeckTokenSlotForTest();
+                if (deckTokenSlot != -1) {
+                    assertEquals(h.inventory.dealerHeadSlotForTest() - BlackjackSlotLayout.SEAT_ROW_WIDTH, deckTokenSlot,
+                        "the deck token must stay exactly one row above the dealer's current slot while walking up, never below it");
+                }
+            }
             assertEquals(BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT, h.inventory.dealerHeadSlotForTest(),
                 "the dealer must have walked all the way back up to the lobby by now");
+
+            // Ample extra time for the final board wipe behind it to finish too.
+            h.scheduler.advance(20);
+        }
+    }
+
+    /**
+     * Two seated hands' cards all share the deck's own column for the
+     * vertical leg of their return flight (see {@code
+     * animateCardsReturnToDeck}'s own doc) -- real collisions, not just a
+     * near-miss, are expected here. This doesn't assert the exact winner of
+     * any one collision (that's the collision-resolution algorithm's own
+     * business), just that the board still comes out clean on the other
+     * side: no exception, every seat's row fully cleared, dealer back at
+     * the lobby -- i.e. a merged-away card never gets stuck rendering a
+     * ghost icon forever, and the whole chain still actually completes.
+     */
+    @Test
+    void multipleHandsWithColliderReturnPathsStillEndInACleanBoard() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            List<Card> stack = new ArrayList<>();
+            stack.add(new Card(Suit.HEARTS, Rank.SEVEN));  // alice card 1
+            stack.add(new Card(Suit.HEARTS, Rank.SEVEN));  // bob card 1
+            stack.add(new Card(Suit.HEARTS, Rank.NINE));   // dealer up
+            stack.add(new Card(Suit.HEARTS, Rank.SEVEN));  // alice card 2
+            stack.add(new Card(Suit.HEARTS, Rank.SEVEN));  // bob card 2
+            stack.add(new Card(Suit.HEARTS, Rank.NINE));   // dealer hole
+            stack.addAll(flatStack(Rank.TWO, 40));
+            h.inventory.stackDeckForTest(stack);
+            h.currencyProvider.setBalance(1000);
+
+            UUID aliceId = UUID.randomUUID();
+            Player alice = h.seatOnlinePlayer(aliceId, "Alice");
+            h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]);
+            h.inventory.commitWagerForTest(alice, 10.0);
+
+            UUID bobId = UUID.randomUUID();
+            Player bob = h.seatOnlinePlayer(bobId, "Bob");
+            h.click(bob, BlackjackSlotLayout.SEAT_SLOTS[3]);
+            h.inventory.commitWagerForTest(bob, 10.0);
+
+            h.inventory.beginStartTransitionForTest();
+            h.advanceToActionableTurn(1, 800);
+            assertEquals(2, h.inventory.activeHandCardCountForTest(aliceId), "test setup must actually deal alice in");
+            assertEquals(2, h.inventory.activeHandCardCountForTest(bobId), "test setup must actually deal bob in");
+
+            h.inventory.resetGameForTest();
+            h.scheduler.advance(400); // comfortably past the full round-end animation chain
+
+            assertEquals(BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT, h.inventory.dealerHeadSlotForTest(),
+                "the whole chain must still reach the lobby even with colliding return paths");
+            for (int seatSlot : new int[] {BlackjackSlotLayout.SEAT_SLOTS[0], BlackjackSlotLayout.SEAT_SLOTS[3]}) {
+                for (int i = 0; i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+                    int slot = BlackjackSlotLayout.playerCardSlot(seatSlot, i);
+                    if (slot == BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT) {
+                        continue; // seat 0's own 7th card cell coincides with the dealer's own lobby head slot by table geometry -- the dealer legitimately rests there once the board settles, that's not a leftover card
+                    }
+                    Material type = typeOf(item(h, alice, slot));
+                    assertEquals(Material.GREEN_STAINED_GLASS_PANE, type,
+                        "every card cell must end up fully cleared, not stuck showing a merged-away card's ghost icon");
+                }
+            }
         }
     }
 
