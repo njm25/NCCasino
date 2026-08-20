@@ -3873,12 +3873,15 @@ private void handleDoubleDown(Player player) {
     }
 
     /**
-     * The finished hand collapses down to just two visible cards -- its
-     * first (untouched, stays exactly where it already is) and its last
-     * (ends up directly beside the first) -- before the next hand reveals.
-     * Any cards strictly between them vanish one at a time, right to left,
-     * then the last card itself slides left through the now-empty cells
-     * into the second slot. A no-op straight into {@link
+     * The finished hand collapses down to just its own original two cards
+     * -- index 0 and index 1, dealt at the very start of this hand (or, for
+     * a split hand, the moment it was created) -- before the next hand
+     * reveals. Every hit card (index 2 onward) vanishes one at a time,
+     * right to left, and neither original card is ever touched: unlike an
+     * earlier version of this animation, the last (most recent) hit card
+     * never slides into index 1 and stands in for the hand's true original
+     * second card -- index 1 already shows that real card and simply stays
+     * exactly as it is throughout. A no-op straight into {@link
      * #runHandTransitionReveal} if the finished hand never had more than
      * two cards to begin with. (The finished hand's own glow was already
      * dropped back in {@link #activateSplitHand}, before this method's own
@@ -3893,9 +3896,9 @@ private void handleDoubleDown(Player player) {
         }
 
         long step = BlackjackTiming.HAND_TRANSITION_STEP_TICKS;
-        int middleCards = prevCount - 2;
-        for (int s = 0; s < middleCards; s++) {
-            int cardIndexToVanish = prevCount - 2 - s; // rightmost middle card first, working left -- "stacking up"
+        int hitCards = prevCount - 2;
+        for (int s = 0; s < hitCards; s++) {
+            int cardIndexToVanish = prevCount - 1 - s; // most recent hit card first, working left -- never reaches index 1, the hand's own original second card
             int slotToClear = BlackjackSlotLayout.playerCardSlot(seatSlot, cardIndexToVanish);
             long delay = (s + 1) * step;
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -3906,27 +3909,7 @@ private void handleDoubleDown(Player player) {
             }, delay);
         }
 
-        long afterVanish = (middleCards + 1) * step;
-        int lastCardIndex = prevCount - 1;
-        Card lastCard = prevCards.get(lastCardIndex);
-        List<Integer> path = new ArrayList<>();
-        for (int i = lastCardIndex; i >= 1; i--) {
-            path.add(BlackjackSlotLayout.playerCardSlot(seatSlot, i));
-        }
-        for (int i = 1; i < path.size(); i++) {
-            int fromSlot = path.get(i - 1);
-            int toSlot = path.get(i);
-            long hopDelay = afterVanish + i * step;
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
-                    return;
-                }
-                renderBackgroundToAllViews(fromSlot);
-                renderCardToAllViews(toSlot, lastCard, false);
-            }, hopDelay);
-        }
-
-        long collapseDone = afterVanish + (path.size() - 1) * step;
+        long collapseDone = hitCards * step;
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
                 return;

@@ -21,9 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code BlackjackInventory#activateSplitHand}/{@code
  * #runHandTransitionCollapse}/{@code #runHandTransitionReveal}): once a
  * split hand finishes and the queue advances to the next one, the finished
- * hand collapses down to just its first and last card, then the newly
- * active hand slides out from under it and back over it -- rather than the
- * row jump-cutting straight from one hand's cards to the other's.
+ * hand collapses down to just its own original two cards (every hit card
+ * vanishes, the original pair is never touched), then the newly active
+ * hand slides out from under it and back over it -- rather than the row
+ * jump-cutting straight from one hand's cards to the other's.
  */
 class BlackjackHandTransitionAnimationIntegrationTest {
 
@@ -106,12 +107,13 @@ class BlackjackHandTransitionAnimationIntegrationTest {
 
     /**
      * Hand 1 grew to three cards (a hit) before finishing -- it must
-     * collapse to just its first (untouched) and last card before hand 2
-     * reveals, not leave the middle card lingering or jump straight to
-     * hand 2 with hand 1's full row still showing.
+     * collapse back down to exactly its own original two cards (the ace
+     * plus its split replacement, both untouched throughout) before hand 2
+     * reveals, never leaving the hit card lingering, and never letting the
+     * hit card slide into and stand in for the hand's real second card.
      */
     @Test
-    void handWithExtraCardsCollapsesToFirstAndLastBeforeTheNextHandReveals() {
+    void handWithExtraCardsCollapsesToItsOwnOriginalTwoCardsBeforeTheNextHandReveals() {
         try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
             List<Card> stack = new ArrayList<>();
             stack.add(new Card(Suit.SPADES, Rank.TWO));    // A
@@ -149,14 +151,17 @@ class BlackjackHandTransitionAnimationIntegrationTest {
             int slot1 = BlackjackSlotLayout.playerCardSlot(SEAT_SLOT, 1);
             int slot2 = BlackjackSlotLayout.playerCardSlot(SEAT_SLOT, 2);
 
-            // Mid-transition: hand 1 collapsed to exactly two cards -- its
-            // own original first card (2 of spades) untouched, and its
-            // last (3 of diamonds) now beside it -- before hand 2 ever
-            // appears anywhere.
-            advanceUntil(h, () -> item(h, alice, slot1).getType() == RED_CARD && item(h, alice, slot1).getAmount() == 3, 300);
+            // Mid-transition: hand 1 collapsed back to exactly its own
+            // original two cards -- the ace (2 of spades) at slot0 and its
+            // split replacement (2 of diamonds) at slot1, both untouched
+            // the entire time -- with only the hit card (3 of diamonds,
+            // slot2) actually vanishing. Slot1 must never have shown the
+            // hit card standing in for the real original second card.
+            advanceUntil(h, () -> item(h, alice, slot2).getType() == BACKGROUND, 300);
             assertEquals(BLACK_CARD, item(h, alice, slot0).getType());
             assertEquals(2, item(h, alice, slot0).getAmount(), "hand 1's own original first card must be untouched throughout its collapse");
-            assertEquals(BACKGROUND, item(h, alice, slot2).getType(), "hand 1's own middle card must already be gone");
+            assertEquals(RED_CARD, item(h, alice, slot1).getType());
+            assertEquals(2, item(h, alice, slot1).getAmount(), "hand 1's own original second card (split replacement) must be untouched throughout its collapse -- never overwritten by the hit card");
 
             // Eventually: hand 2 (2 of clubs / 9 of diamonds) lands for real.
             advanceUntil(h, () -> item(h, alice, slot1).getType() == RED_CARD && item(h, alice, slot1).getAmount() == 9, 300);
