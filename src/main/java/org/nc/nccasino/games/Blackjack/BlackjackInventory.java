@@ -2146,8 +2146,14 @@ private void registerListener() {
             target.setItem(betSlipSlot, buildBetSpotItemForViewer(seatSlot, view.getPlayerId(), viewer));
 
             if (active) {
-                for (int i = 0; i < seat.getHand().size() && i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
-                    target.setItem(BlackjackSlotLayout.playerCardSlot(seatSlot, i), buildCardItem(seat.getHand().get(i), viewer, seat.isCurrentTurn()));
+                // A late-joining/reconnecting viewer must see the same
+                // sliding window handleHit's own shift-left-then-deal
+                // behavior already keeps the row showing -- the hand's
+                // most recent cards, not its first ones, once it's grown
+                // past capacity.
+                List<Card> visibleHand = visibleHandWindow(seat.getHand());
+                for (int i = 0; i < visibleHand.size(); i++) {
+                    target.setItem(BlackjackSlotLayout.playerCardSlot(seatSlot, i), buildCardItem(visibleHand.get(i), viewer, seat.isCurrentTurn()));
                 }
             } else if (frame.phase() == BlackjackFrame.Phase.COUNTDOWN) {
                 // Private, like the turn-timer/action row above: only this
@@ -3014,6 +3020,24 @@ private void registerListener() {
 
     // ---- Card-glow rendering --------------------------------------------
 
+    /**
+     * The at-most-{@link BlackjackSlotLayout#SEAT_CARD_CAPACITY} cards of
+     * {@code cards} actually visible in a seat's own row right now -- once
+     * a hand grows past capacity, that's its most recent cards, not its
+     * first ones (see {@link #handleHit}'s own shift-left-then-deal
+     * behavior, which keeps the row showing a sliding window onto the
+     * hand rather than silently stopping rendering past the 7th card).
+     * The full card list itself (hand value, settlement, etc.) is never
+     * windowed -- only rendering call sites ever call this.
+     */
+    private List<Card> visibleHandWindow(List<Card> cards) {
+        int capacity = BlackjackSlotLayout.SEAT_CARD_CAPACITY;
+        if (cards.size() <= capacity) {
+            return cards;
+        }
+        return cards.subList(cards.size() - capacity, cards.size());
+    }
+
     /** Re-renders a seated player's already-dealt, visible cards with the given glow state. */
     private void reRenderHand(UUID playerId, boolean glowing) {
         if (playerId == null) {
@@ -3023,8 +3047,8 @@ private void registerListener() {
         if (seatSlot == null) {
             return;
         }
-        List<Card> hand = activeHandCards(playerId);
-        for (int i = 0; i < hand.size() && i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+        List<Card> hand = visibleHandWindow(activeHandCards(playerId));
+        for (int i = 0; i < hand.size(); i++) {
             renderCardToAllViews(BlackjackSlotLayout.playerCardSlot(seatSlot, i), hand.get(i), glowing);
         }
     }
@@ -3521,7 +3545,25 @@ private void handleHit(Player player) {
 
         int seatSlot = playerSeats.get(playerId);
         int cardCount = hand.getCards().size(); // Cards already in the active hand -- derived, not a separate lifetime counter, so it's automatically correct for whichever hand (post-split or not) is active.
-        int nextCardSlot = seatSlot + 2 + cardCount; // Plain arithmetic (not playerCardSlot) -- cardCount can exceed the visible row; dealCardToPlayer bounds the render, never the canonical hand.
+        int capacity = BlackjackSlotLayout.SEAT_CARD_CAPACITY;
+        int nextCardSlot;
+        if (cardCount >= capacity) {
+            // The row is already showing the maximum -- before the new
+            // card even starts its own flight, slide the whole visible
+            // window one card left (the leftmost visible card disappears,
+            // every other one shifts down an index), opening up the row's
+            // own rightmost slot for the new card. Purely a re-render of
+            // already-live cards (no data mutation), so it's safe to do
+            // synchronously right here rather than through the generation/
+            // token-guarded scheduling the actual deal below still needs.
+            List<Card> currentWindow = visibleHandWindow(hand.getCards());
+            for (int i = 0; i < currentWindow.size() - 1; i++) {
+                renderCardToAllViews(BlackjackSlotLayout.playerCardSlot(seatSlot, i), currentWindow.get(i + 1), playerId.equals(currentPlayerId));
+            }
+            nextCardSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, capacity - 1);
+        } else {
+            nextCardSlot = seatSlot + 2 + cardCount; // Plain arithmetic -- still comfortably inside the row here.
+        }
 
         long myGeneration = roundGeneration;
         int myHandToken = currentHandToken(playerId);
