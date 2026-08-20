@@ -2059,7 +2059,7 @@ private void registerListener() {
         paintBackground(target);
 
         if (active) {
-            target.setItem(BlackjackSlotLayout.ACTIVE_EXIT_SLOT, createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1));
+            target.setItem(BlackjackSlotLayout.ACTIVE_EXIT_SLOT, buildExitDoorItem(viewer, view.getPlayerId()));
             // Private, like the action row: only the acting player's own
             // freshly-bootstrapped view may show the exact remaining time
             // immediately, not the idle fallback until the next scheduled
@@ -2596,6 +2596,38 @@ private void registerListener() {
         for (BlackjackView view : views.values()) {
             Player viewer = Bukkit.getPlayer(view.getPlayerId());
             view.getInventory().setItem(slot, createCustomItem(material, localize(viewer, key, placeholders), amount));
+        }
+    }
+
+    /**
+     * The active-play exit/door item, personalized per viewer: a seated
+     * viewer who still has real money riding on this round (see {@link
+     * #totalRoundRefundForPlayer}) gets an extra lore line warning that
+     * clicking it forfeits that wager -- unseated spectators and a seated
+     * player with nothing left at stake (every one of their hands already
+     * resolved) get the plain door with no warning. {@code viewerId} may
+     * be null (the legacy/no-viewer inventory), which never has anything
+     * at stake by construction.
+     */
+    private ItemStack buildExitDoorItem(Player viewer, UUID viewerId) {
+        ItemStack item = createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1);
+        if (viewerId != null && totalRoundRefundForPlayer(viewerId) > 0) {
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                meta.setLore(List.of(localize(viewer, "blackjack.leave-exit-forfeit-warning")));
+                item.setItemMeta(meta);
+            }
+        }
+        return item;
+    }
+
+    /** Repaints the active-play exit/door item for the legacy inventory and every open view via {@link #buildExitDoorItem}. */
+    private void renderExitDoorToAllViews() {
+        inventory.setItem(BlackjackSlotLayout.ACTIVE_EXIT_SLOT, buildExitDoorItem(null, null));
+        for (BlackjackView view : views.values()) {
+            UUID viewerId = view.getPlayerId();
+            Player viewer = Bukkit.getPlayer(viewerId);
+            view.getInventory().setItem(BlackjackSlotLayout.ACTIVE_EXIT_SLOT, buildExitDoorItem(viewer, viewerId));
         }
     }
 
@@ -3696,6 +3728,24 @@ private void handleDoubleDown(Player player) {
         }
         int seatSlot = seatSlotBoxed;
         long myGeneration = roundGeneration;
+        // Captured after advanceAfterHandResolved's own bumpHandToken call
+        // (which already ran before this method was invoked), so this is
+        // the token for hand 2 now being current -- if the acting player
+        // leaves (door click) at any point during this whole transition,
+        // isStaleHandCallback catches it below, either via the token
+        // bumping again (handleLeaveChairDuringGame bumps it whenever it
+        // was their turn) or simply via playerSeats no longer containing
+        // them (removePlayerData always removes the seat regardless).
+        // Without this, only roundGeneration (a table-wide counter that
+        // does NOT change on a single player's leave) gated these
+        // callbacks, so a forfeit mid-transition would leave every already-
+        // scheduled step free to keep firing: rendering ghost cards/wager
+        // lore into the now-vacated seat, and finishActivatingSplitHand
+        // eventually calling beginActionableDecision() -- which, since
+        // currentPlayerId has already moved on to whoever's turn is next,
+        // would silently restart *that* unrelated player's own turn timer
+        // and action guidance from scratch.
+        int myHandToken = currentHandToken(playerId);
 
         // The finished hand's own glow (the enchant glint marking "this is
         // the active hand") -- and the seat's shared bet-spot glow riding
@@ -3713,10 +3763,10 @@ private void handleDoubleDown(Player player) {
         renderBetSpotToAllViews(seatSlot);
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (roundGeneration != myGeneration) {
+            if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
                 return;
             }
-            runHandTransitionCollapse(playerId, seatSlot, previousHand, hand, myGeneration);
+            runHandTransitionCollapse(playerId, seatSlot, previousHand, hand, myGeneration, myHandToken);
         }, BlackjackTiming.HAND_TRANSITION_PAUSE_TICKS);
     }
 
@@ -3732,11 +3782,11 @@ private void handleDoubleDown(Player player) {
      * dropped back in {@link #activateSplitHand}, before this method's own
      * pause even started.)
      */
-    private void runHandTransitionCollapse(UUID playerId, int seatSlot, BlackjackHand previousHand, BlackjackHand nextHand, long myGeneration) {
+    private void runHandTransitionCollapse(UUID playerId, int seatSlot, BlackjackHand previousHand, BlackjackHand nextHand, long myGeneration, int myHandToken) {
         List<Card> prevCards = previousHand.getCards();
         int prevCount = prevCards.size();
         if (prevCount <= 2) {
-            runHandTransitionReveal(playerId, seatSlot, nextHand, myGeneration);
+            runHandTransitionReveal(playerId, seatSlot, nextHand, myGeneration, myHandToken);
             return;
         }
 
@@ -3747,7 +3797,7 @@ private void handleDoubleDown(Player player) {
             int slotToClear = BlackjackSlotLayout.playerCardSlot(seatSlot, cardIndexToVanish);
             long delay = (s + 1) * step;
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (roundGeneration != myGeneration) {
+                if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
                     return;
                 }
                 renderBackgroundToAllViews(slotToClear);
@@ -3766,7 +3816,7 @@ private void handleDoubleDown(Player player) {
             int toSlot = path.get(i);
             long hopDelay = afterVanish + i * step;
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (roundGeneration != myGeneration) {
+                if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
                     return;
                 }
                 renderBackgroundToAllViews(fromSlot);
@@ -3776,10 +3826,10 @@ private void handleDoubleDown(Player player) {
 
         long collapseDone = afterVanish + (path.size() - 1) * step;
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (roundGeneration != myGeneration) {
+            if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
                 return;
             }
-            runHandTransitionReveal(playerId, seatSlot, nextHand, myGeneration);
+            runHandTransitionReveal(playerId, seatSlot, nextHand, myGeneration, myHandToken);
         }, collapseDone + step);
     }
 
@@ -3816,7 +3866,7 @@ private void handleDoubleDown(Player player) {
      * moment with both hands' cards simultaneously occupying the same
      * slots.
      */
-    private void runHandTransitionReveal(UUID playerId, int seatSlot, BlackjackHand nextHand, long myGeneration) {
+    private void runHandTransitionReveal(UUID playerId, int seatSlot, BlackjackHand nextHand, long myGeneration, int myHandToken) {
         List<Card> cards = nextHand.getCards();
         int n = cards.size();
         long step = BlackjackTiming.HAND_TRANSITION_STEP_TICKS;
@@ -3844,7 +3894,7 @@ private void handleDoubleDown(Player player) {
             long hopDelay = t * step;
             int tFinal = t;
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (roundGeneration != myGeneration) {
+                if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
                     return;
                 }
                 List<Integer> clears = new ArrayList<>();
@@ -3874,7 +3924,7 @@ private void handleDoubleDown(Player player) {
             boolean finalHop = hop == outOffset;
             int hopFinal = hop;
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (roundGeneration != myGeneration) {
+                if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
                     return;
                 }
                 for (int i = 0; i < n; i++) {
@@ -5397,7 +5447,7 @@ private void removePlayerData(UUID playerId) {
             // background, here or anywhere else. See buildBetSpotItemForViewer.
             renderBetSpotToAllViews(seatSlot);
         }
-        renderLocalizedToAllViews(BlackjackSlotLayout.ACTIVE_EXIT_SLOT, Material.SPRUCE_DOOR, 1, "blackjack.leave-exit");
+        renderExitDoorToAllViews();
         renderToAllViews(BlackjackSlotLayout.TURN_TIMER_SLOT, buildBrownEdgeGlassItem()); // idle until the first player's turn actually starts -- see startTurnTimer
         clearPregameCountdownFromAllViews();
         dealerHeadSlot = BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT;
@@ -6444,11 +6494,28 @@ private void scheduleCardDealingWithDelay(int slot, Card card, long delay, UUID 
 
 
 /**
+ * One hand's own settled outcome and net result (profit for a win/
+ * blackjack, {@code -wager} for a loss/bust, {@code 0} for a push) -- used
+ * only to build the consolidated round-summary message for a player who
+ * settled more than one hand this round (see {@link #sendSplitRoundSummary}).
+ */
+private record HandOutcomeSummary(int handNumber, BlackjackOutcome outcome, double netAmount) {
+}
+
+/**
  * Settles every {@link BlackjackHand} across every seated player
  * independently, using each hand's own {@code handId}-stable wager --
  * required for splitting, where one player can hold several
  * simultaneously-resolved hands with different outcomes (bust one,
  * blackjack-value-win another) from the very same round.
+ *
+ * <p>A player who settled exactly one wagered hand gets the plain,
+ * unchanged per-outcome message straight from {@link #settleHandOutcome}.
+ * A player who settled more than one (split into multiple hands) instead
+ * gets every individual message suppressed and one consolidated summary
+ * sent after the whole loop -- otherwise a lucky player with several split
+ * hands would be flooded with a wall of separate "you won!"/"you lost"
+ * lines and separate payout confirmations for each one.
  */
 private void finishGame() {
     for (UUID playerId : playerSeats.keySet()) {
@@ -6457,16 +6524,27 @@ private void finishGame() {
             continue; // Skip players who never got dealt in
         }
 
+        List<BlackjackHand> wageredHands = new ArrayList<>();
+        for (BlackjackHand hand : hands) {
+            if (hand.getWager() > 0) {
+                wageredHands.add(hand);
+            }
+        }
+        if (wageredHands.isEmpty()) {
+            continue;
+        }
+
         // Deliberately does NOT skip an offline player here -- their hands
         // still owe real money (a win/blackjack/push payout), which must be
         // queued as a PendingPayout, not silently dropped just because
         // Bukkit.getPlayer returns null while they're disconnected. See
         // settleHandOutcome/payOut, which resolve online state per hand and
         // fall back to queuing instead of assuming a live Player exists.
-        for (BlackjackHand hand : hands) {
-            if (hand.getWager() <= 0) {
-                continue;
-            }
+        boolean consolidate = wageredHands.size() > 1;
+        List<HandOutcomeSummary> summaries = consolidate ? new ArrayList<>() : null;
+        int handNumber = 0;
+        for (BlackjackHand hand : wageredHands) {
+            handNumber++;
             // A player natural blackjack pays 3:2 unless the dealer also
             // has a natural, in which case the main wager pushes -- see
             // BlackjackRules.classify and BlackjackRulesTest's both-natural
@@ -6474,12 +6552,80 @@ private void finishGame() {
             // to exactly a two-card post-split 21 -- see BlackjackHand's doc.
             boolean eligibleForNatural = hand.eligibleForNaturalBlackjack(split21IsBlackjack);
             BlackjackOutcome outcome = BlackjackRules.classify(hand.getCards(), dealerHand, eligibleForNatural);
-            settleHandOutcome(playerId, hand, outcome);
+            double netAmount = settleHandOutcome(playerId, hand, outcome, !consolidate);
+            if (consolidate) {
+                summaries.add(new HandOutcomeSummary(handNumber, outcome, netAmount));
+            }
+        }
+        if (consolidate) {
+            sendSplitRoundSummary(playerId, summaries);
         }
     }
 
     // Reset game for the next round
     resetGame();
+}
+
+/**
+ * Sends one consolidated message covering every hand a split player
+ * settled this round -- one line per hand (its outcome plus that hand's
+ * own net profit/loss) followed by a total line, instead of the wall of
+ * separate per-hand messages and separate payout confirmations
+ * {@link #settleHandOutcome}/{@link #payOut} would otherwise have sent.
+ * A no-op for an offline recipient (nothing to message) or a NONE message
+ * preference -- currency itself is already fully settled by the time this
+ * runs regardless, this is presentation only.
+ */
+private void sendSplitRoundSummary(UUID playerId, List<HandOutcomeSummary> summaries) {
+    Player player = Bukkit.getPlayer(playerId);
+    if (player == null || !player.isOnline()) {
+        return;
+    }
+    if (plugin.getPreferences(playerId).getMessageSetting() == org.nc.nccasino.helpers.Preferences.MessageSetting.NONE) {
+        return;
+    }
+
+    StringBuilder message = new StringBuilder();
+    double total = 0.0;
+    for (HandOutcomeSummary summary : summaries) {
+        total += summary.netAmount();
+        String line;
+        switch (summary.outcome()) {
+            case BLACKJACK:
+                line = text(player, "blackjack.round-summary-hand-blackjack",
+                    "number", summary.handNumber(),
+                    "amount", plugin.formatWagerDisplay(currencyMode, currencyName, summary.netAmount()));
+                break;
+            case WIN:
+                line = text(player, "blackjack.round-summary-hand-won",
+                    "number", summary.handNumber(),
+                    "amount", plugin.formatWagerDisplay(currencyMode, currencyName, summary.netAmount()));
+                break;
+            case LOSS:
+                line = text(player, "blackjack.round-summary-hand-lost",
+                    "number", summary.handNumber(),
+                    "amount", plugin.formatWagerDisplay(currencyMode, currencyName, -summary.netAmount()));
+                break;
+            case BUST:
+                line = text(player, "blackjack.round-summary-hand-busted",
+                    "number", summary.handNumber(),
+                    "amount", plugin.formatWagerDisplay(currencyMode, currencyName, -summary.netAmount()));
+                break;
+            case PUSH:
+                line = text(player, "blackjack.round-summary-hand-push", "number", summary.handNumber());
+                break;
+            default:
+                continue;
+        }
+        if (message.length() > 0) {
+            message.append(" &7| ");
+        }
+        message.append(line);
+    }
+    String sign = total > 0 ? "+" : total < 0 ? "-" : "";
+    message.append("  ").append(text(player, "blackjack.round-summary-total",
+        "amount", sign + plugin.formatWagerDisplay(currencyMode, currencyName, Math.abs(total))));
+    player.sendMessage(message.toString());
 }
 
 /**
@@ -6490,64 +6636,78 @@ private void finishGame() {
  * as a durable {@link PendingPayout} otherwise -- an offline recipient
  * (no {@code Player} to message/animate for) still gets paid, just
  * without the online-only presentation.
+ *
+ * @param sendMessage false for a split player whose hands are being folded
+ *        into one consolidated summary by {@link #sendSplitRoundSummary}
+ *        instead -- sounds/particles/payout still happen exactly as
+ *        normal either way, only the per-hand chat line (and, via {@link
+ *        #payOut}, the separate payout confirmation) is suppressed.
+ * @return this hand's own net result: profit for BLACKJACK/WIN, {@code
+ *         -hand.getWager()} for LOSS/BUST, {@code 0} for PUSH.
  */
-private void settleHandOutcome(UUID playerId, BlackjackHand hand, BlackjackOutcome outcome) {
+private double settleHandOutcome(UUID playerId, BlackjackHand hand, BlackjackOutcome outcome, boolean sendMessage) {
     Player player = Bukkit.getPlayer(playerId);
     boolean online = player != null && player.isOnline();
     switch (outcome) {
         case BLACKJACK: {
             if (online) {
-                switch(plugin.getPreferences(playerId).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage(text(player, "blackjack.result-blackjack"));
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage(text(player, "blackjack.result-blackjack"));
-                        break;
+                if (sendMessage) {
+                    switch(plugin.getPreferences(playerId).getMessageSetting()){
+                        case STANDARD:{
+                            player.sendMessage(text(player, "blackjack.result-blackjack"));
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage(text(player, "blackjack.result-blackjack"));
+                            break;
 
-                    }
-                        case NONE:{
-                        break;
+                        }
+                            case NONE:{
+                            break;
+                        }
                     }
                 }
                 if (SoundHelper.getSoundSafely("ui.toast.challenge_complete", player) != null)player.playSound(player.getLocation(),Sound.UI_TOAST_CHALLENGE_COMPLETE,SoundCategory.MASTER, 1.0f,1.0f);
                 player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
             }
-            payOut(playerId, hand.getWager(), outcome.getMultiplier()); // Pay out 2.5x for a blackjack
-            break;
+            double paid = payOut(playerId, hand.getWager(), outcome.getMultiplier(), sendMessage); // Pay out 2.5x for a blackjack
+            return paid - hand.getWager();
         }
         case BUST: {
             if (online) {
-                switch(plugin.getPreferences(playerId).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage(text(player, "blackjack.result-busted"));
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage(text(player, "blackjack.result-busted"));
-                        break;
-                    }
-                        case NONE:{
-                        break;
+                if (sendMessage) {
+                    switch(plugin.getPreferences(playerId).getMessageSetting()){
+                        case STANDARD:{
+                            player.sendMessage(text(player, "blackjack.result-busted"));
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage(text(player, "blackjack.result-busted"));
+                            break;
+                        }
+                            case NONE:{
+                            break;
+                        }
                     }
                 }
                 if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(),Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
                 player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
             }
-            break;
+            return -hand.getWager();
         }
         case WIN: {
             if (online) {
-                switch(plugin.getPreferences(playerId).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage(text(player, "blackjack.result-won"));
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage(text(player, "blackjack.result-won"));
-                        break;
+                if (sendMessage) {
+                    switch(plugin.getPreferences(playerId).getMessageSetting()){
+                        case STANDARD:{
+                            player.sendMessage(text(player, "blackjack.result-won"));
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage(text(player, "blackjack.result-won"));
+                            break;
 
-                    }
-                        case NONE:{
-                        break;
+                        }
+                            case NONE:{
+                            break;
+                        }
                     }
                 }
                 player.getWorld().spawnParticle(Particle.GLOW, player.getLocation(), 50);
@@ -6561,41 +6721,45 @@ private void settleHandOutcome(UUID playerId, BlackjackHand hand, BlackjackOutco
 
                 }
             }
-            payOut(playerId, hand.getWager(), outcome.getMultiplier()); // Regular win pays out 2x
-            break;
+            double paid = payOut(playerId, hand.getWager(), outcome.getMultiplier(), sendMessage); // Regular win pays out 2x
+            return paid - hand.getWager();
         }
         case LOSS: {
             if (online) {
-                switch(plugin.getPreferences(playerId).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage(text(player, "blackjack.result-lost"));
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage(text(player, "blackjack.result-lost"));
-                        break;
-                    }
-                        case NONE:{
-                        break;
+                if (sendMessage) {
+                    switch(plugin.getPreferences(playerId).getMessageSetting()){
+                        case STANDARD:{
+                            player.sendMessage(text(player, "blackjack.result-lost"));
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage(text(player, "blackjack.result-lost"));
+                            break;
+                        }
+                            case NONE:{
+                            break;
+                        }
                     }
                 }
                 if (SoundHelper.getSoundSafely("entity.generic.explode", player) != null)player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE,SoundCategory.MASTER,1.0f,1.0f);
                 player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation(), 20);
             }
-            break;
+            return -hand.getWager();
         }
         case PUSH: {
             if (online) {
-                switch(plugin.getPreferences(playerId).getMessageSetting()){
-                    case STANDARD:{
-                        player.sendMessage(text(player, "blackjack.result-push"));
-                        break;}
-                    case VERBOSE:{
-                        player.sendMessage(text(player, "blackjack.result-push-returned"));
-                        break;
+                if (sendMessage) {
+                    switch(plugin.getPreferences(playerId).getMessageSetting()){
+                        case STANDARD:{
+                            player.sendMessage(text(player, "blackjack.result-push"));
+                            break;}
+                        case VERBOSE:{
+                            player.sendMessage(text(player, "blackjack.result-push-returned"));
+                            break;
 
-                    }
-                        case NONE:{
-                        break;
+                        }
+                            case NONE:{
+                            break;
+                        }
                     }
                 }
             }
@@ -6608,7 +6772,7 @@ private void settleHandOutcome(UUID playerId, BlackjackHand hand, BlackjackOutco
                 if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(),Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
                 player.getWorld().spawnParticle(Particle.LARGE_SMOKE, player.getLocation(), 20);
             }
-            break;
+            return 0.0;
         }
         default:
             // Never silently fall back to a push/refund for an outcome
@@ -6630,8 +6794,16 @@ private void settleHandOutcome(UUID playerId, BlackjackHand hand, BlackjackOutco
  * in exact {@link java.math.BigDecimal} the whole way through, on both
  * the live-delivery and the queued-fallback path, so a queued 12.5/37.5
  * payout is never rounded away.
+ *
+ * @param sendMessage false for a split player whose "payout.paid"/
+ *        "payout.paid-with-profit" confirmation is being folded into
+ *        {@link #sendSplitRoundSummary} instead -- delivery/queueing
+ *        happens identically either way, only this confirmation line
+ *        (never the inventory-full drop warning, which stays important
+ *        enough to always show) is suppressed.
+ * @return the amount this hand's payout is worth (owed, whether delivered live or queued).
  */
-private void payOut(UUID playerId, double totalBet, double multiplier) {
+private double payOut(UUID playerId, double totalBet, double multiplier, boolean sendMessage) {
     Player player = Bukkit.getPlayer(playerId);
     boolean online = player != null && player.isOnline();
     CurrencyProvider provider = getCurrencyProvider();
@@ -6649,37 +6821,39 @@ private void payOut(UUID playerId, double totalBet, double multiplier) {
             queueBlackjackPendingPayout(playerId, payout.doubleValue(), online
                 ? PayoutMessages.committedResultContext("Blackjack")
                 : PayoutMessages.disconnectedMidGameContext("Blackjack"));
-            return;
+            return displayPayout.doubleValue();
         }
         if (!online) {
-            return;
+            return displayPayout.doubleValue();
         }
 
-        switch(plugin.getPreferences(playerId).getMessageSetting()){
-            case STANDARD:{
-                player.sendMessage(text(
-                    player,
-                    "payout.paid",
-                    "amount",
-                    plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue())
-                ));
-                break;}
-            case VERBOSE:{
-                player.sendMessage(text(
-                    player,
-                    "payout.paid-with-profit",
-                    "amount",
-                    plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()),
-                    "profit",
-                    plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue())
-                ));
-                break;
-            }
-                case NONE:{
-                break;
+        if (sendMessage) {
+            switch(plugin.getPreferences(playerId).getMessageSetting()){
+                case STANDARD:{
+                    player.sendMessage(text(
+                        player,
+                        "payout.paid",
+                        "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue())
+                    ));
+                    break;}
+                case VERBOSE:{
+                    player.sendMessage(text(
+                        player,
+                        "payout.paid-with-profit",
+                        "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()),
+                        "profit",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue())
+                    ));
+                    break;
+                }
+                    case NONE:{
+                    break;
+                }
             }
         }
-        return;
+        return displayPayout.doubleValue();
     }
 
     double payout = totalBet * multiplier;
@@ -6689,7 +6863,7 @@ private void payOut(UUID playerId, double totalBet, double multiplier) {
         if (totalAmount > 0) {
             queueBlackjackPendingPayout(playerId, totalAmount, PayoutMessages.disconnectedMidGameContext("Blackjack"));
         }
-        return;
+        return totalAmount;
     }
 
     int fullStacks = totalAmount / 64;
@@ -6728,32 +6902,37 @@ private void payOut(UUID playerId, double totalBet, double multiplier) {
             }
         }
     }
-    switch(plugin.getPreferences(playerId).getMessageSetting()){
-        case STANDARD:{
-            player.sendMessage(text(
-                player,
-                "payout.paid",
-                "amount",
-                plugin.formatWagerDisplay(currencyMode, currencyName, totalAmount)
-            ));
-            break;}
-        case VERBOSE:{
-            player.sendMessage(text(
-                player,
-                "payout.paid-with-profit",
-                "amount",
-                plugin.formatWagerDisplay(currencyMode, currencyName, totalAmount),
-                "profit",
-                (int) Math.abs(totalAmount - totalBet)
-            ));
-            break;
-        }
-            case NONE:{
-            break;
+    if (sendMessage) {
+        switch(plugin.getPreferences(playerId).getMessageSetting()){
+            case STANDARD:{
+                player.sendMessage(text(
+                    player,
+                    "payout.paid",
+                    "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, totalAmount)
+                ));
+                break;}
+            case VERBOSE:{
+                player.sendMessage(text(
+                    player,
+                    "payout.paid-with-profit",
+                    "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, totalAmount),
+                    "profit",
+                    (int) Math.abs(totalAmount - totalBet)
+                ));
+                break;
+            }
+                case NONE:{
+                break;
+            }
         }
     }
 
-    // Print total dropped if any items couldn't fit in inventory
+    // Print total dropped if any items couldn't fit in inventory -- always
+    // shown regardless of sendMessage: this is an important warning about
+    // where the player's items actually ended up, not routine result
+    // spam, so it's never folded into the split-round summary.
     if (totalDropped > 0) {
         switch(plugin.getPreferences(playerId).getMessageSetting()){
             case STANDARD:{
@@ -6778,6 +6957,7 @@ private void payOut(UUID playerId, double totalBet, double multiplier) {
             }
         }
     }
+    return totalAmount;
 }
 
 private int applyProbabilisticRounding(double value) {

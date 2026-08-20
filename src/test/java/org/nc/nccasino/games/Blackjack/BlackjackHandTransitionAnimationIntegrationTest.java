@@ -165,4 +165,87 @@ class BlackjackHandTransitionAnimationIntegrationTest {
             assertNotNull(item(h, alice, BlackjackSlotLayout.ACTION_STAND_SLOT), "hand 2 must now be actionable");
         }
     }
+
+    /**
+     * Regression test for a real exploit: the hand-to-hand transition's own
+     * scheduled callbacks used to be guarded only by roundGeneration --
+     * which does NOT change when a single player leaves mid-round -- so a
+     * player who forfeits (door click) mid-transition left every already-
+     * scheduled collapse/reveal step free to keep firing into their now-
+     * vacated seat, and {@code finishActivatingSplitHand} would eventually
+     * call {@code beginActionableDecision()} again for whoever the turn had
+     * already moved on to, silently resetting *their* turn timer back to
+     * full. Pins down that the next player's timer is never disturbed by
+     * the departed player's stale transition.
+     */
+    @Test
+    void leavingMidTransitionNeverResetsTheNextPlayersTurnTimer() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            int seatSlotAlice = BlackjackSlotLayout.SEAT_SLOTS[0];
+            int seatSlotBob = BlackjackSlotLayout.SEAT_SLOTS[1];
+
+            List<Card> stack = new ArrayList<>();
+            stack.add(new Card(Suit.SPADES, Rank.EIGHT));  // Alice's A
+            stack.add(new Card(Suit.CLUBS, Rank.TWO));     // Bob's own first card
+            stack.add(new Card(Suit.HEARTS, Rank.SEVEN));  // dealer up
+            stack.add(new Card(Suit.CLUBS, Rank.EIGHT));   // Alice's B
+            stack.add(new Card(Suit.DIAMONDS, Rank.THREE));// Bob's own second card
+            stack.add(new Card(Suit.HEARTS, Rank.SEVEN));  // dealer hole
+            stack.add(new Card(Suit.DIAMONDS, Rank.TWO));  // C (Alice hand 1's replacement)
+            stack.add(new Card(Suit.DIAMONDS, Rank.THREE));// D (Alice hand 2's replacement)
+            stack.addAll(flatStack(Rank.TWO, 40));
+            h.inventory.stackDeckForTest(stack);
+            h.currencyProvider.setBalance(1000);
+
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            Player bob = h.seatOnlinePlayer(UUID.randomUUID(), "Bob");
+            h.click(alice, seatSlotAlice);
+            h.inventory.commitWagerForTest(alice, 15.0);
+            h.click(bob, seatSlotBob);
+            h.inventory.commitWagerForTest(bob, 15.0);
+            h.inventory.beginStartTransitionForTest();
+            h.advanceToActionableTurn(1, 800);
+            assertEquals(alice.getUniqueId(), h.inventory.currentPlayerIdForTest(), "test setup: Alice must act first");
+
+            h.click(alice, BlackjackSlotLayout.ACTION_SPLIT_SLOT);
+            h.scheduler.advance(4 * BlackjackTiming.SPLIT_ANIMATION_STEP_TICKS + 20);
+            h.advanceToActionableTurn(1, 300);
+
+            // Stand on hand 1 (8/2 = 10) -- schedules the hand 1 -> hand 2
+            // transition (collapse skipped, straight to reveal since hand 1
+            // never grew past two cards).
+            h.click(alice, BlackjackSlotLayout.ACTION_STAND_SLOT);
+
+            // Immediately forfeit via the door, before the transition has
+            // any chance to finish -- this is the acting player, so the
+            // turn advances to Bob synchronously, right here, starting his
+            // turn timer fresh.
+            h.click(alice, BlackjackSlotLayout.ACTIVE_EXIT_SLOT);
+            assertEquals(bob.getUniqueId(), h.inventory.currentPlayerIdForTest(), "test setup: the turn must move to Bob the instant Alice forfeits");
+
+            // Step tick-by-tick through the entire duration Alice's now-
+            // stale transition (pause + reveal) would have taken, however
+            // long that is, asserting the timer only ever holds steady or
+            // ticks down -- never back up. If any of the transition's
+            // guarded steps fired incorrectly, finishActivatingSplitHand
+            // would call beginActionableDecision() again partway through,
+            // bumping the value back up for exactly one tick before normal
+            // decay resumes from that higher point -- a before/after
+            // snapshot taken on either side of that single bump would still
+            // see "less than", so only sampling every tick actually catches
+            // a one-tick spike like this.
+            long staleWindowTicks = 2 * BlackjackTiming.HAND_TRANSITION_PAUSE_TICKS
+                + 20 * BlackjackTiming.HAND_TRANSITION_STEP_TICKS + 100;
+            int previous = h.inventory.turnTimerSecondsRemainingForTest();
+            for (long i = 0; i < staleWindowTicks; i++) {
+                h.scheduler.advance(1);
+                int now = h.inventory.turnTimerSecondsRemainingForTest();
+                assertTrue(now <= previous, "Bob's turn timer must never tick back up -- Alice's stale transition reset it at tick "
+                    + i + ": was " + previous + " -> " + now);
+                previous = now;
+            }
+
+            assertEquals(bob.getUniqueId(), h.inventory.currentPlayerIdForTest(), "Bob must still be the current player -- Alice's stale transition must never reassign the turn");
+        }
+    }
 }
