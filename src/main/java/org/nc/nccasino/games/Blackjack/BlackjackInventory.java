@@ -1525,8 +1525,8 @@ private void registerListener() {
             viewSnapshots.put(view.getPlayerId(), snapshotSlots(view.getInventory()));
         }
 
-        long flipDelay = BlackjackTiming.CARD_FLIP_DELAY_TICKS;
-        long hopTicks = BlackjackTiming.CARD_FLIGHT_HOP_TICKS;
+        long flipDelay = BlackjackTiming.RETURN_TO_DECK_FLIP_DELAY_TICKS;
+        long hopTicks = BlackjackTiming.RETURN_TO_DECK_HOP_TICKS;
         long longestReturnTicks = 0L;
 
         for (Map.Entry<Integer, Boolean> entry : visibleCardSlots.entrySet()) {

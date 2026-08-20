@@ -77,6 +77,24 @@ public final class BlackjackTiming {
     public static final long INITIAL_DEAL_OVERLAP_TICKS = 4L;
     /** Delay after a card's flight lands before it flips from face-down to its real face. */
     public static final long CARD_FLIP_DELAY_TICKS = 6L;
+    /**
+     * Per-slot travel time of the round-end return-to-deck sweep
+     * specifically (see {@code BlackjackInventory#animateCardsReturnToDeck}) --
+     * kept as its own constant, deliberately 3x {@link #CARD_FLIGHT_HOP_TICKS},
+     * rather than reusing that one directly, so this specific moment can be
+     * slowed down (it read as too fast) without touching every other card
+     * flight in the game (initial deal, hits, splits, etc.), which all
+     * still use the ordinary rate.
+     */
+    public static final long RETURN_TO_DECK_HOP_TICKS = CARD_FLIGHT_HOP_TICKS * 3;
+    /**
+     * The return-to-deck sweep's own pre-flip pause before any card starts
+     * moving -- 3x {@link #CARD_FLIP_DELAY_TICKS} for the same reason as
+     * {@link #RETURN_TO_DECK_HOP_TICKS}, so the whole sweep slows down
+     * together rather than starting to move almost immediately and then
+     * crawling.
+     */
+    public static final long RETURN_TO_DECK_FLIP_DELAY_TICKS = CARD_FLIP_DELAY_TICKS * 3;
     /** Ticks between one diagonal and the next joining the game-reset white-tile sweep's wavefront. */
     public static final long RESET_SWEEP_STEP_TICKS = 1L;
     /** How many diagonals' worth of ticks a reset-sweep tile stays white before revealing the board underneath again. */
