@@ -79,11 +79,18 @@ class BlackjackDealerHitDeckAnimationIntegrationTest {
             // shifted one slot right too, to 49.
             h.click(alice, BlackjackSlotLayout.ACTION_DOUBLE_SLOT);
 
-            // Advance well past the dealer's first several hits (each ~20
-            // ticks apart, reveal ~20 more before the first) but nowhere
-            // near the full climb to 17+/settlement/reset, so the board is
-            // still mid-hit-sequence when asserted below.
-            for (int i = 0; i < 15; i++) {
+            // Advance until the dealer's own hand has fully settled (all
+            // TWOs, starting at 4, needs 7 hits to reach 18 and stop) but
+            // stop short of settlement/round-end actually beginning --
+            // this table needs 190-200 ticks for that, well clear of
+            // both boundaries. Along the way, the dealer's own row
+            // legitimately fills past its 6-slot capacity (up, hole, +4
+            // more) and shifts (see
+            // BlackjackInventory#nextDealerCardSlotWithOverflowShift) --
+            // slot 47 specifically can be transiently background between
+            // an overflow shift and its own next card landing, so this
+            // asserts the fully-settled state, not every tick along the way.
+            for (int i = 0; i < 21; i++) {
                 h.scheduler.advance(10);
             }
 
@@ -97,14 +104,22 @@ class BlackjackDealerHitDeckAnimationIntegrationTest {
             Material dealerHeadType = h.inventory.getOrCreateView(alice).getItem(BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT).getType();
             assertNotEquals(Material.GREEN_STAINED_GLASS_PANE, dealerHeadType, "the dealer head must never be erased to background by a dealer card's flight");
 
-            // The dealer's original up-card and hole-card, and its own
-            // newly-hit cards in the renderable range (47-50), must all
-            // still be real cards -- none of them silently wiped to
-            // background by a corrupted flight path.
+            // Every dealer card slot, now that the whole sequence has
+            // settled, must show a real card -- none of them silently
+            // stuck on background by a corrupted flight path.
             for (int slot = BlackjackSlotLayout.ACTION_HIT_SLOT; slot <= BlackjackSlotLayout.DEALER_UP_CARD_SLOT; slot++) {
                 Material type = h.inventory.getOrCreateView(alice).getItem(slot).getType();
-                assertNotEquals(Material.GREEN_STAINED_GLASS_PANE, type, "dealer card slot " + slot + " must never be wiped to background mid-sequence");
+                assertNotEquals(Material.GREEN_STAINED_GLASS_PANE, type, "dealer card slot " + slot + " must show a real card once the sequence has settled");
             }
+
+            // Every one of these door-path flights departs from the
+            // turn-timer/edge-glass slot itself (46) -- it must be restored
+            // to the idle brown edge glass afterward, not left cleared to
+            // plain background forever (see scheduleCardFlightHops's own
+            // TURN_TIMER_SLOT special case).
+            assertEquals(Material.BROWN_STAINED_GLASS_PANE,
+                h.inventory.getOrCreateView(alice).getItem(BlackjackSlotLayout.TURN_TIMER_SLOT).getType(),
+                "the door-adjacent turn-timer slot must be restored to the idle brown edge glass after a dealer door-path flight departs from it");
         }
     }
 
@@ -153,8 +168,9 @@ class BlackjackDealerHitDeckAnimationIntegrationTest {
             // shifted one slot right too, to 49.
             h.click(alice, BlackjackSlotLayout.ACTION_DOUBLE_SLOT);
 
-            // Advance well past the dealer's first several hits.
-            for (int i = 0; i < 15; i++) {
+            // Advance until the dealer's own hand has fully settled, same
+            // budget (and same reason) as the sibling test above.
+            for (int i = 0; i < 21; i++) {
                 h.scheduler.advance(10);
             }
 
@@ -163,11 +179,15 @@ class BlackjackDealerHitDeckAnimationIntegrationTest {
 
             for (int slot = BlackjackSlotLayout.ACTION_HIT_SLOT; slot <= BlackjackSlotLayout.DEALER_UP_CARD_SLOT; slot++) {
                 Material type = h.inventory.getOrCreateView(alice).getItem(slot).getType();
-                assertNotEquals(Material.GREEN_STAINED_GLASS_PANE, type, "dealer card slot " + slot + " must never be wiped to background by the detour");
+                assertNotEquals(Material.GREEN_STAINED_GLASS_PANE, type, "dealer card slot " + slot + " must show a real card once the sequence has settled, not be wiped by the detour");
             }
 
             // And the bottom seat's own real cards (blocking the sweep) must be untouched too.
             assertEquals(5, h.inventory.activeHandCardCountForTest(alice.getUniqueId()));
+
+            assertEquals(Material.BROWN_STAINED_GLASS_PANE,
+                h.inventory.getOrCreateView(alice).getItem(BlackjackSlotLayout.TURN_TIMER_SLOT).getType(),
+                "the door-adjacent turn-timer slot must be restored to the idle brown edge glass after a dealer door-path flight departs from it");
         }
     }
 }

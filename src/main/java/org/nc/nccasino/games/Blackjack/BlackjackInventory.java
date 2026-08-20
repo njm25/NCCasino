@@ -1499,8 +1499,9 @@ private void registerListener() {
                 cards.add(new ReturningCard(BlackjackSlotLayout.playerCardSlot(seatSlot, i), visible.get(i), playerId));
             }
         }
-        for (int i = 0; i < dealerHand.size() && i < BlackjackSlotLayout.DEALER_CARD_CAPACITY; i++) {
-            cards.add(new ReturningCard(BlackjackSlotLayout.dealerCardSlot(i), dealerHand.get(i), null));
+        List<Card> visibleDealerCards = visibleDealerHandWindow(dealerHand);
+        for (int i = 0; i < visibleDealerCards.size(); i++) {
+            cards.add(new ReturningCard(BlackjackSlotLayout.dealerCardSlot(i), visibleDealerCards.get(i), null));
         }
         return cards;
     }
@@ -2082,8 +2083,9 @@ private void registerListener() {
             applyHeadLore(target, frame.dealerHeadSlot(), List.of(dealerHandText), null, "blackjack.dealer", viewer);
         }
         if (active) {
-            for (int i = 0; i < frame.dealerHand().size() && i < BlackjackSlotLayout.DEALER_CARD_CAPACITY; i++) {
-                target.setItem(BlackjackSlotLayout.dealerCardSlot(i), buildCardItem(frame.dealerHand().get(i), viewer, false));
+            List<Card> visibleDealerCards = visibleDealerHandWindow(frame.dealerHand());
+            for (int i = 0; i < visibleDealerCards.size(); i++) {
+                target.setItem(BlackjackSlotLayout.dealerCardSlot(i), buildCardItem(visibleDealerCards.get(i), viewer, false));
             }
             if (frame.dealerHoleCardHidden()) {
                 target.setItem(BlackjackSlotLayout.DEALER_HOLE_CARD_SLOT, buildHiddenCardItem(viewer));
@@ -3023,6 +3025,52 @@ private void registerListener() {
             return cards;
         }
         return cards.subList(cards.size() - capacity, cards.size());
+    }
+
+    /**
+     * The dealer-row equivalent of {@link #visibleHandWindow} -- at most
+     * {@link BlackjackSlotLayout#DEALER_CARD_CAPACITY} cards, the most
+     * recent ones once the dealer's own hand grows past that (see {@link
+     * #dealDealerCardsUntilSeventeen}'s own shift-left-then-deal behavior,
+     * mirroring {@link #handleHit}'s for a player's row). The full
+     * dealerHand list itself is never windowed -- only rendering call
+     * sites ever call this.
+     */
+    private List<Card> visibleDealerHandWindow(List<Card> cards) {
+        int capacity = BlackjackSlotLayout.DEALER_CARD_CAPACITY;
+        if (cards.size() <= capacity) {
+            return cards;
+        }
+        return cards.subList(cards.size() - capacity, cards.size());
+    }
+
+    /**
+     * The slot the dealer's next drawn card should land in, shifting the
+     * dealer's own row one card left first if it's already showing the
+     * maximum -- the dealer-row mirror of {@link #handleHit}'s own
+     * shift-left-then-deal overflow handling for a player's row (see
+     * {@link #visibleDealerHandWindow}). Without this, a dealer hand deep
+     * enough to fill its row (six cards -- up-card, hole, plus four more)
+     * would have nowhere left to go: the row's own next slot would fall
+     * off its left end onto the turn-timer/edge-glass slot instead of
+     * looping back through the row. Must be called (and its result used
+     * for both the flight-schedule and the eventual real deal) before
+     * {@code dealerHand} gains the new card, exactly like the player-row
+     * version reads {@code cardCount} before its own card is added.
+     */
+    private int nextDealerCardSlotWithOverflowShift() {
+        int capacity = BlackjackSlotLayout.DEALER_CARD_CAPACITY;
+        int cardCount = dealerHand.size();
+        if (cardCount < capacity) {
+            return BlackjackSlotLayout.dealerCardSlot(cardCount);
+        }
+        List<Card> currentWindow = visibleDealerHandWindow(dealerHand);
+        for (int i = 0; i < currentWindow.size() - 1; i++) {
+            renderCardToAllViews(BlackjackSlotLayout.dealerCardSlot(i), currentWindow.get(i + 1), false);
+        }
+        int nextSlot = BlackjackSlotLayout.dealerCardSlot(capacity - 1);
+        renderBackgroundToAllViews(nextSlot);
+        return nextSlot;
     }
 
     /** Re-renders a seated player's already-dealt, visible cards with the given glow state. */
@@ -6427,12 +6475,13 @@ private void startDealerTurn() {
     // Dealer must hit until reaching at least 17. Cards continue leftward
     // from the hole card (51) toward 47 -- descending, not ascending; see
     // the table redesign plan's "Open item to verify" note and
-    // BlackjackSlotLayout#dealerCardSlot.
+    // BlackjackSlotLayout#dealerCardSlot -- and once the row is full, see
+    // dealDealerCardsUntilSeventeen's own shift-left-then-deal behavior.
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
         if (isStaleDealerSequenceCallback(myGeneration, myDealerSequenceToken)) {
             return;
         }
-        dealDealerCardsUntilSeventeen(myGeneration, myDealerSequenceToken, BlackjackSlotLayout.DEALER_HOLE_CARD_SLOT - 1, calculateHandValue(dealerHand), 20L);
+        dealDealerCardsUntilSeventeen(myGeneration, myDealerSequenceToken, calculateHandValue(dealerHand), 20L);
     }, 40L); // Start dealer's turn after revealing with delay
 }
 
@@ -6482,9 +6531,13 @@ private void revealDealerHoleCardNow() {
  * recursive re-schedule, validates {@code myGeneration} first (see
  * {@link #isStaleDealerSequenceCallback}) so a stale recursive draw left
  * over from a reset/cancelled round can never touch the new round's shoe,
- * dealer hand, or settlement.
+ * dealer hand, or settlement. Each card's own target slot is computed
+ * fresh from {@code dealerHand}'s current size right before it's dealt
+ * (see {@link #nextDealerCardSlotWithOverflowShift}) rather than threaded
+ * through as a decrementing parameter, so a hand deep enough to fill the
+ * row shifts left instead of walking off it.
  */
-private void dealDealerCardsUntilSeventeen(long myGeneration, int myDealerSequenceToken, int nextSlot, int dealerCardSum, long delay) {
+private void dealDealerCardsUntilSeventeen(long myGeneration, int myDealerSequenceToken, int dealerCardSum, long delay) {
     if (isStaleDealerSequenceCallback(myGeneration, myDealerSequenceToken) || playerSeats.isEmpty()) {
     // If the round has moved on, or all players have left, stop immediately
         return;
@@ -6531,6 +6584,7 @@ private void dealDealerCardsUntilSeventeen(long myGeneration, int myDealerSequen
             abortRoundForShoeExhaustion();
             return;
         }
+        int nextSlot = nextDealerCardSlotWithOverflowShift();
         Card newCard = deck.dealCard();
         if (isRenderableCardSlot(null, nextSlot)) {
             scheduleCardFlightEndingAt(nextSlot, true, delay, myGeneration);
@@ -6546,7 +6600,7 @@ private void dealDealerCardsUntilSeventeen(long myGeneration, int myDealerSequen
             dealCardToPlayer(nextSlot, newCard, null); // Deal the card to the dealer
             mutableDealerCardSum[0] = calculateHandValue(dealerHand); // Recalculate after adding each card
             updateDealerHead();
-            dealDealerCardsUntilSeventeen(myGeneration, myDealerSequenceToken, nextSlot - 1, mutableDealerCardSum[0], delay);
+            dealDealerCardsUntilSeventeen(myGeneration, myDealerSequenceToken, mutableDealerCardSum[0], delay);
         }, delay);
     } else if (mutableDealerCardSum[0] == 17) {
         // Determine whether the dealer stops at 17 based on the percentage chance
@@ -6567,6 +6621,7 @@ private void dealDealerCardsUntilSeventeen(long myGeneration, int myDealerSequen
                 abortRoundForShoeExhaustion();
                 return;
             }
+            int nextSlot = nextDealerCardSlotWithOverflowShift();
             Card newCard = deck.dealCard();
             if (isRenderableCardSlot(null, nextSlot)) {
                 scheduleCardFlightEndingAt(nextSlot, true, delay, myGeneration);
@@ -6579,7 +6634,7 @@ private void dealDealerCardsUntilSeventeen(long myGeneration, int myDealerSequen
                 dealCardToPlayer(nextSlot, newCard, null);
                 mutableDealerCardSum[0] = calculateHandValue(dealerHand);
                 updateDealerHead();
-                dealDealerCardsUntilSeventeen(myGeneration, myDealerSequenceToken, nextSlot - 1, mutableDealerCardSum[0], delay);
+                dealDealerCardsUntilSeventeen(myGeneration, myDealerSequenceToken, mutableDealerCardSum[0], delay);
             }, delay);
         }
     } else {
@@ -7251,7 +7306,27 @@ private void scheduleCardFlightHops(List<Integer> path, long baseDelay, long myG
     scheduleCardFlightHops(path, baseDelay, myGeneration, BlackjackTiming.CARD_FLIGHT_HOP_TICKS);
 }
 
-/** Same as {@link #scheduleCardFlightHops(List, long, long)}, but at a caller-chosen hop rate instead of the ordinary dealt-card {@link BlackjackTiming#CARD_FLIGHT_HOP_TICKS} -- see {@link BlackjackTiming#SPLIT_SLIDE_HOP_TICKS}'s own doc for why the split's own slides need their own, slower rate. */
+/**
+ * Same as {@link #scheduleCardFlightHops(List, long, long)}, but at a
+ * caller-chosen hop rate instead of the ordinary dealt-card {@link
+ * BlackjackTiming#CARD_FLIGHT_HOP_TICKS} -- see {@link
+ * BlackjackTiming#SPLIT_SLIDE_HOP_TICKS}'s own doc for why the split's own
+ * slides need their own, slower rate.
+ *
+ * <p>{@link BlackjackSlotLayout#TURN_TIMER_SLOT} needs its own special
+ * case: it's the one slot a card flight can legitimately depart from that
+ * isn't the deck's own resting spot -- the origin of {@link
+ * BlackjackCardFlightPlan#dealerDoorPath}, the dealer-card fallback used
+ * whenever the ordinary deck-column route is blocked (see {@link
+ * #flightPathFromDeck}). Clearing it to plain background like any other
+ * transit slot would permanently erase the brown edge-glass/turn-timer
+ * item that belongs there, since (unlike the deck token) nothing else
+ * ever repaints it afterward. Restoring the brown edge glass instead is
+ * always correct here: the dealer only ever draws via the door path once
+ * every player's own turn has already resolved (see {@link
+ * BlackjackSlotLayout}'s own phase doc), so no live per-player countdown
+ * can ever be showing there at this moment.
+ */
 private void scheduleCardFlightHops(List<Integer> path, long baseDelay, long myGeneration, long hopTicks) {
     for (int i = 1; i < path.size(); i++) {
         int previousSlot = path.get(i - 1);
@@ -7263,6 +7338,8 @@ private void scheduleCardFlightHops(List<Integer> path, long baseDelay, long myG
             }
             if (previousSlot == dealerDeckTokenSlot) {
                 renderHiddenCardToAllViews(previousSlot);
+            } else if (previousSlot == BlackjackSlotLayout.TURN_TIMER_SLOT) {
+                renderToAllViews(BlackjackSlotLayout.TURN_TIMER_SLOT, buildBrownEdgeGlassItem());
             } else {
                 renderBackgroundToAllViews(previousSlot);
             }
@@ -8019,6 +8096,10 @@ public void delete() {
     /** @return the deck token's current canonical slot, or -1 if it isn't currently resting anywhere (before the start-transition delivers it, or after a real card has permanently taken its slot). */
     int dealerDeckTokenSlotForTest() {
         return dealerDeckTokenSlot;
+    }
+
+    int dealerHandSizeForTest() {
+        return dealerHand.size();
     }
 
     /** @return the deck-flight path C (the split's original-hand replacement card) would take to {@code targetSlot} against current live board state -- see {@link #splitOriginalCardFlightPath}. */
