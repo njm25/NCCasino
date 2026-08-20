@@ -3561,6 +3561,11 @@ private void handleHit(Player player) {
                 renderCardToAllViews(BlackjackSlotLayout.playerCardSlot(seatSlot, i), currentWindow.get(i + 1), playerId.equals(currentPlayerId));
             }
             nextCardSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, capacity - 1);
+            // The rightmost slot itself must actually go empty here, not
+            // keep showing the card that just "moved" out of it -- without
+            // this it silently sat there stale (never cleared) until the
+            // new card's own flight happened to land on top of it later.
+            renderBackgroundToAllViews(nextCardSlot);
         } else {
             nextCardSlot = seatSlot + 2 + cardCount; // Plain arithmetic -- still comfortably inside the row here.
         }

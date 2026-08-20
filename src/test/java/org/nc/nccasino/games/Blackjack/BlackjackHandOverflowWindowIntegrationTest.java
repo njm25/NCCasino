@@ -86,7 +86,15 @@ class BlackjackHandOverflowWindowIntegrationTest {
             assertEquals(2, item(h, alice, slot0).getAmount(), "test setup: slot 0 must still show the hand's own original first card (rank 2)");
 
             // The 6th hit overflows the row -- this is the one under test.
+            // The instant the click lands, the shift itself is synchronous
+            // (see handleHit's own doc) -- the rightmost slot must be
+            // genuinely empty right here, not still showing the card that
+            // just "moved" out of it, since the new card's own flight
+            // hasn't even started yet.
             h.click(alice, BlackjackSlotLayout.ACTION_STAND_SLOT);
+            assertEquals(Material.GREEN_STAINED_GLASS_PANE, item(h, alice, slot6).getType(),
+                "the rightmost slot must be empty right after the shift, before the new card's own flight has had any chance to land");
+
             h.scheduler.advance(BlackjackTiming.HIT_EVALUATION_DELAY_TICKS);
 
             assertEquals(8, h.inventory.activeHandCardCountForTest(alice.getUniqueId()), "the canonical hand must still hold every card ever dealt, never windowed itself");
