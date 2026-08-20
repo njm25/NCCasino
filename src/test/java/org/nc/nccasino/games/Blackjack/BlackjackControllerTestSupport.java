@@ -365,6 +365,16 @@ final class BlackjackControllerTestSupport {
         Preferences preferences = mock(Preferences.class);
         when(preferences.getSoundSetting()).thenReturn(Preferences.SoundSetting.OFF);
         when(preferences.getMessageSetting()).thenReturn(Preferences.MessageSetting.NONE);
+        // Guidance-seen is persisted forever in real Preferences, so this
+        // shared stub needs to actually remember it was marked -- a plain
+        // mock's default no-op void + always-false boolean would make
+        // guidance-seen assertions fail regardless of what production code does.
+        java.util.concurrent.atomic.AtomicBoolean chairGuidanceSeen = new java.util.concurrent.atomic.AtomicBoolean(false);
+        java.util.concurrent.atomic.AtomicBoolean wagerGuidanceSeen = new java.util.concurrent.atomic.AtomicBoolean(false);
+        when(preferences.hasSeenBlackjackChairGuidance()).thenAnswer(inv -> chairGuidanceSeen.get());
+        when(preferences.hasSeenBlackjackWagerGuidance()).thenAnswer(inv -> wagerGuidanceSeen.get());
+        doAnswer(inv -> { chairGuidanceSeen.set(true); return null; }).when(preferences).markBlackjackChairGuidanceSeen();
+        doAnswer(inv -> { wagerGuidanceSeen.set(true); return null; }).when(preferences).markBlackjackWagerGuidanceSeen();
         when(plugin.getPreferences(any(UUID.class))).thenReturn(preferences);
 
         javaPluginStatic.when(() -> JavaPlugin.getProvidingPlugin(any())).thenAnswer(inv -> plugin);

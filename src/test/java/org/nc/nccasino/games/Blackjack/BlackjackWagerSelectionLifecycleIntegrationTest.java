@@ -523,7 +523,7 @@ class BlackjackWagerSelectionLifecycleIntegrationTest {
     }
 
     @Test
-    void completionFlagsResetAtTheNextGenuineRoundBoundary() {
+    void completionFlagsSurviveAGenuineRoundBoundaryForever() {
         try (BlackjackControllerTestSupport.Harness h = newTable()) {
             UUID id = UUID.randomUUID();
             Player alice = seatAndOpen(h, id, "Alice", BlackjackSlotLayout.SEAT_SLOTS[0]);
@@ -533,8 +533,8 @@ class BlackjackWagerSelectionLifecycleIntegrationTest {
 
             h.inventory.resetGameForTest();
 
-            assertFalse(h.inventory.isChairGuidanceCompletedForTest(id), "a genuine round reset clears chair-guidance completion");
-            assertFalse(h.inventory.isWagerGuidanceCompletedForTest(id), "a genuine round reset clears wager-guidance completion");
+            assertTrue(h.inventory.isChairGuidanceCompletedForTest(id), "guidance-seen is persisted per-player forever, not scoped to the round");
+            assertTrue(h.inventory.isWagerGuidanceCompletedForTest(id), "guidance-seen is persisted per-player forever, not scoped to the round");
         }
     }
 
@@ -545,29 +545,30 @@ class BlackjackWagerSelectionLifecycleIntegrationTest {
             Player alice = seatAndOpen(h, id, "Alice", BlackjackSlotLayout.SEAT_SLOTS[0]);
             h.click(alice, ChipSlots.FIRST_SLOT);
 
-            h.inventory.resetGameForTest(); // completion flags clear, but...
+            h.inventory.resetGameForTest();
 
-            assertNotNull(h.inventory.selectedWagerForTest(id), "...the selection itself is still there, per the persistent-selection lifecycle");
+            assertNotNull(h.inventory.selectedWagerForTest(id), "the selection itself is still there, per the persistent-selection lifecycle");
             // Repainting the view must not fabricate a fresh wager-guidance
             // flash for a player who still has a real selection -- confirmed
             // indirectly: runWagerGuidanceCycle's own selectedWager.containsKey
-            // guard stops it even with the completion flag now cleared.
+            // guard stops it even though the guidance-seen flag would already
+            // suppress it on its own.
         }
     }
 
     @Test
-    void aPlayerWithNoSelectionAfterLeaveReseatCanReceiveWagerGuidanceInTheNextRound() {
+    void aPlayerWithNoSelectionAfterLeaveReseatNeverReceivesWagerGuidanceAgainOnceSeen() {
         try (BlackjackControllerTestSupport.Harness h = newTable()) {
             UUID id = UUID.randomUUID();
             int seatSlot = BlackjackSlotLayout.SEAT_SLOTS[0];
             Player alice = seatAndOpen(h, id, "Alice", seatSlot);
             h.click(alice, ChipSlots.FIRST_SLOT);
-            h.click(alice, seatSlot); // leave -- selection cleared, completion flag stays set this round
+            h.click(alice, seatSlot); // leave -- selection cleared, guidance-seen flag stays set
             assertTrue(h.inventory.isWagerGuidanceCompletedForTest(id));
 
-            h.inventory.resetGameForTest(); // the next genuine round boundary
+            h.inventory.resetGameForTest(); // even a genuine round boundary does not clear a persisted flag
 
-            assertFalse(h.inventory.isWagerGuidanceCompletedForTest(id), "the flag clears, and this player has no selection to keep guidance dormant");
+            assertTrue(h.inventory.isWagerGuidanceCompletedForTest(id), "once seen, wager guidance never shows again for this player, this table or any other");
         }
     }
 

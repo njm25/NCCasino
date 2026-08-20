@@ -96,18 +96,11 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     // or picking a different selection (selectWager overwrites the entry).
     // See BlackjackWagerSelection for the FIXED-vs-ALL_IN typed model.
     private final Map<UUID, BlackjackWagerSelection> selectedWager = new HashMap<>();
-    // Round-scoped "has this player already been guided" completion flags
-    // (see the table redesign plan's chair/wager guidance-completion
-    // requirement) -- separate from selectedWager/playerSeats themselves so
-    // a same-round leave+reseat (which clears the selection, per above, and
-    // removes the seat) does NOT re-trigger guidance that already did its
-    // job earlier in this round. Only cleared by resetGame's own genuine
-    // round boundary -- deliberately NOT by cancelGame (also reached from
-    // an ordinary single-player pregame leave, which must never un-complete
-    // that very player's own guidance) or delete (the controller is being
-    // discarded entirely; nothing left to guide).
-    private final Set<UUID> chairGuidanceCompleted = new HashSet<>();
-    private final Set<UUID> wagerGuidanceCompleted = new HashSet<>();
+    // "Has this player already been guided" completion is no longer tracked
+    // here at all -- it's persisted forever per-player in Preferences (see
+    // hasSeenBlackjackChairGuidance/hasSeenBlackjackWagerGuidance), so once a
+    // player has sat down or picked a wager anywhere, on any table, they
+    // never see that guidance blink again, across rounds and restarts alike.
     // The wager bar's live solid-slide position/target per viewer -- see
     // BlackjackWagerRevealPlan#CLOSED (0, fully unseated) / #OPEN (8, fully
     // seated) and requestWagerBarPosition. wagerBarPosition is the frame
@@ -1001,7 +994,7 @@ private void registerListener() {
 
     private void startChairGuidance(UUID playerId, int myGeneration) {
         if (isStaleViewerAnimation(playerId, myGeneration) || playerSeats.containsKey(playerId) || gameActive
-            || !views.containsKey(playerId) || chairGuidanceCompleted.contains(playerId)) {
+            || !views.containsKey(playerId) || plugin.getPreferences(playerId).hasSeenBlackjackChairGuidance()) {
             return;
         }
         privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, roundGeneration, myGeneration, capturePhase()));
@@ -1016,7 +1009,7 @@ private void registerListener() {
      */
     private void runChairGuidancePhase(UUID playerId, int myGeneration, boolean glowPhase) {
         if (isStaleViewerAnimation(playerId, myGeneration) || playerSeats.containsKey(playerId) || gameActive
-            || !views.containsKey(playerId) || chairGuidanceCompleted.contains(playerId)) {
+            || !views.containsKey(playerId) || plugin.getPreferences(playerId).hasSeenBlackjackChairGuidance()) {
             return;
         }
         Set<Integer> filledSeats = new HashSet<>(playerSeats.values());
@@ -1195,14 +1188,14 @@ private void registerListener() {
     /**
      * Cycles glow left-to-right over the 5 chip slots until the viewer
      * selects a denomination (or All In) -- a help prompt, not something
-     * that restarts after every bet. Gated on wagerGuidanceCompleted, not
-     * merely "no selection currently exists": a player who selected, then
-     * left and reseated (clearing their selection but not the completion
-     * flag -- see removePlayerData/clearPlayerBets), must never see this
-     * flash again in the same round.
+     * that restarts after every bet. Gated on the player's persisted
+     * hasSeenBlackjackWagerGuidance flag, not merely "no selection currently
+     * exists": a player who selected, then left and reseated (clearing their
+     * selection but not the flag -- see removePlayerData/clearPlayerBets),
+     * must never see this flash again, this round or any future one.
      */
     private void startWagerGuidance(UUID playerId) {
-        if (!playerSeats.containsKey(playerId) || gameActive || wagerGuidanceCompleted.contains(playerId)) {
+        if (!playerSeats.containsKey(playerId) || gameActive || plugin.getPreferences(playerId).hasSeenBlackjackWagerGuidance()) {
             return;
         }
         int myGeneration = bumpAndGetViewerAnimationGeneration(playerId);
@@ -1217,7 +1210,7 @@ private void registerListener() {
      */
     private void runWagerGuidancePhase(UUID playerId, int myGeneration, boolean glowPhase) {
         if (isStaleViewerAnimation(playerId, myGeneration) || !playerSeats.containsKey(playerId) || gameActive
-            || wagerGuidanceCompleted.contains(playerId)) {
+            || plugin.getPreferences(playerId).hasSeenBlackjackWagerGuidance()) {
             return;
         }
         if (selectedWager.containsKey(playerId)) {
@@ -1355,6 +1348,11 @@ private void registerListener() {
             // persistent per-seat selection that must survive into next
             // round's bet-spot clicks, not a one-shot pending amount.
             cancelPrivateAnimation(playerId);
+            // Cancelling only stops the blink's *future* toggles -- if it was
+            // caught mid-glow the instant the countdown hit zero, the brown
+            // spot would otherwise stay glowing (nothing else repaints this
+            // slot before the deal). Snap it back to plain immediately.
+            renderBetSpotToAllViews(playerSeats.get(playerId));
         }
 
         for (UUID playerId : seatedPlayers) {
@@ -1463,7 +1461,16 @@ private void registerListener() {
         if (previousSlot != newSlot) {
             renderBackgroundToAllViews(previousSlot);
             int newDeckSlot = newSlot - BlackjackSlotLayout.SEAT_ROW_WIDTH;
-            if (dealerDeckTokenSlot != newDeckSlot) {
+            // The lobby head slot (top row) has no row above it -- this is
+            // the up-slide's final step (see runDealerAndDeckSlideUpToLobby),
+            // where the deck token simply has nowhere left to trail to and
+            // must vanish instead, never render at a negative slot.
+            if (newDeckSlot < 0) {
+                if (dealerDeckTokenSlot != -1) {
+                    renderBackgroundToAllViews(dealerDeckTokenSlot);
+                }
+                dealerDeckTokenSlot = -1;
+            } else if (dealerDeckTokenSlot != newDeckSlot) {
                 if (dealerDeckTokenSlot != -1) {
                     renderBackgroundToAllViews(dealerDeckTokenSlot);
                 }
@@ -1836,10 +1843,10 @@ private void registerListener() {
      * and All In (ALL_IN): the plan treats them identically at selection
      * time (both only select, never commit), differing only in how a later
      * bet-spot click resolves the amount to commit (see
-     * {@link #resolveSelectionAmount}). Also marks wager guidance complete
-     * for this player for the round -- a help prompt that has done its job
-     * the moment a selection exists, never restarted by anything short of
-     * the next genuine round boundary (see wagerGuidanceCompleted's own doc).
+     * {@link #resolveSelectionAmount}). Also permanently marks wager
+     * guidance seen for this player (see Preferences#markBlackjackWagerGuidanceSeen)
+     * -- a help prompt that has done its job the moment a selection exists,
+     * and never shows for that player again, on any table or round.
      *
      * @param displayAmount the amount shown in the (optional) verbose
      *        selection-confirmation message only -- for All In this is the
@@ -1863,7 +1870,7 @@ private void registerListener() {
             }
         }
         selectedWager.put(playerId, selection);
-        wagerGuidanceCompleted.add(playerId);
+        plugin.getPreferences(playerId).markBlackjackWagerGuidanceSeen();
         cancelPrivateAnimation(playerId); // stop wager guidance -- the blink takes over
         refreshWagerControlsForPlayer(playerId);
         startBetSpotBlink(playerId);
@@ -4922,11 +4929,10 @@ private void handleDoubleDown(Player player) {
         // see buildBetSpotItemForViewer.
         renderBetSpotToAllViews(slot);
 
-        // Sitting completes chair guidance for this player for the round --
-        // never restarted by a later leave/reseat/repaint this same round
-        // (see chairGuidanceCompleted's own doc); only the next genuine
-        // round boundary clears it.
-        chairGuidanceCompleted.add(playerId);
+        // Sitting permanently marks chair guidance seen for this player --
+        // never shown again for them, on any table or round, once they've
+        // sat down anywhere (see Preferences#markBlackjackChairGuidanceSeen).
+        plugin.getPreferences(playerId).markBlackjackChairGuidanceSeen();
 
         // Chair guidance no longer applies now that they've sat -- the
         // door-reveal animation (private, this viewer only) takes over,
@@ -7252,13 +7258,8 @@ private void resetGame() {
     // denomination or All In) survives into the next round exactly like
     // their seat does; see clearConsumedRoundWagerLedger's own doc.
     clearConsumedRoundWagerLedger();
-    // This IS the "next genuine round boundary" the chair/wager guidance
-    // completion flags are scoped to -- a player who stays seated keeps
-    // their selection (above) so guidance stays naturally dormant for them
-    // anyway, but one who left and reseated with no selection is now
-    // eligible for guidance again this new round.
-    chairGuidanceCompleted.clear();
-    wagerGuidanceCompleted.clear();
+    // Deliberately NOT clearing any guidance-seen state here -- it's
+    // persisted per-player forever in Preferences, not round-scoped.
     playerCardCounts.clear(); // Clear the card count map
     playerDone.clear(); // Clear the player status map
     playerHands.clear(); // Clear player hands
@@ -7871,12 +7872,6 @@ public void delete() {
         playerIterator = null;
         currentPlayerId = null;
         selectedWager.clear();
-        // Deliberately NOT chairGuidanceCompleted/wagerGuidanceCompleted --
-        // cancelGame() also runs from an ordinary single-player pregame
-        // leave (removePlayerData, once playerSeats empties), which must
-        // never un-complete that very player's own guidance for the round
-        // they're still (from their perspective) part of. Only a genuine
-        // round reset (resetGame) clears those.
         hiddenCardPlaceholderVisible = false;
         startTransitionActive = false;
         startTransitionDoorConcealComplete.clear();
@@ -8329,11 +8324,11 @@ public void delete() {
     }
 
     boolean isChairGuidanceCompletedForTest(UUID playerId) {
-        return chairGuidanceCompleted.contains(playerId);
+        return plugin.getPreferences(playerId).hasSeenBlackjackChairGuidance();
     }
 
     boolean isWagerGuidanceCompletedForTest(UUID playerId) {
-        return wagerGuidanceCompleted.contains(playerId);
+        return plugin.getPreferences(playerId).hasSeenBlackjackWagerGuidance();
     }
 
     boolean hasPrivateAnimationForTest(UUID playerId) {

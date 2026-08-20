@@ -206,6 +206,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 languageMode,
                 preferencesConfig.getString(key + ".language")
             );
+            preferences.loadBlackjackGuidanceSeen(
+                preferencesConfig.getBoolean(key + ".blackjack-chair-guidance-seen", false),
+                preferencesConfig.getBoolean(key + ".blackjack-wager-guidance-seen", false)
+            );
             playerPreferences.put(playerId, preferences);
         }
     }
@@ -387,6 +391,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
                     ? preferences.getExplicitLanguage()
                     : null
             );
+            preferencesConfig.set(entry.getKey() + ".blackjack-chair-guidance-seen", preferences.hasSeenBlackjackChairGuidance());
+            preferencesConfig.set(entry.getKey() + ".blackjack-wager-guidance-seen", preferences.hasSeenBlackjackWagerGuidance());
         }
     
         try {

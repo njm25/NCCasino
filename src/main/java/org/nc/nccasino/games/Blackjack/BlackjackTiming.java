@@ -37,9 +37,9 @@ public final class BlackjackTiming {
     /** Chair guidance begins exactly 2 seconds after a viewer opens the table, per the table redesign plan. */
     public static final long CHAIR_GUIDANCE_START_DELAY_TICKS = 40L;
     /** How long the whole applicable-chair set stays glowing (or plain) per phase before flipping to the other. */
-    public static final long CHAIR_GUIDANCE_STEP_TICKS = 5L;
+    public static final long CHAIR_GUIDANCE_STEP_TICKS = 20L;
     /** How long the whole applicable wager-control set stays glowing (or plain) per phase before flipping to the other. */
-    public static final long WAGER_GUIDANCE_STEP_TICKS = 5L;
+    public static final long WAGER_GUIDANCE_STEP_TICKS = 20L;
     /** How long a bet spot's "click to add" blink stays on per pulse. */
     public static final long BET_SPOT_BLINK_STEP_TICKS = 20L;
     /**
@@ -100,7 +100,7 @@ public final class BlackjackTiming {
      */
     public static final long RETURN_TO_DECK_START_PAUSE_TICKS = 14L;
     /** How long the whole currently-available action-item set stays glowing (or plain) per phase before flipping to the other. */
-    public static final long ACTION_GUIDANCE_STEP_TICKS = 5L;
+    public static final long ACTION_GUIDANCE_STEP_TICKS = 20L;
     /** Delay between successive steps of the split slide-out/park/reactivate sequence -- wide enough for C's/D's own deck-flight to comfortably land in sync (see BlackjackInventory#runSplitAnimation). */
     public static final long SPLIT_ANIMATION_STEP_TICKS = 18L;
     /**
