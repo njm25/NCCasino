@@ -80,26 +80,25 @@ public final class BlackjackTiming {
     /**
      * Per-slot travel time of the round-end return-to-deck animation
      * specifically (see {@code BlackjackInventory#animateCardsReturnToDeck}) --
-     * kept as its own constant, deliberately a large multiple of {@link
-     * #CARD_FLIGHT_HOP_TICKS}, rather than reusing that one directly, so
-     * this specific moment can be slowed down (it read as way too fast,
-     * repeatedly) without touching every other card flight in the game
+     * kept as its own constant rather than reusing {@link
+     * #CARD_FLIGHT_HOP_TICKS} directly, so this specific moment can be
+     * retuned without touching every other card flight in the game
      * (initial deal, hits, splits, etc.), which all still use the ordinary
-     * rate. Started at 3x, still read as way too fast, cranked to 8x, then
-     * that read as way too slow -- brought back down to 6x (~35% faster
-     * than 8x).
+     * rate. Repeatedly retuned by feel: 3x the ordinary rate, then 8x (too
+     * fast, then too slow), then 6x (still too slow) -- now a literal ~30%
+     * faster than that 6x value (6 ticks/hop) rather than another named
+     * multiplier, since the multiplier framing stopped being meaningful
+     * once retuning started moving in both directions.
      */
-    public static final long RETURN_TO_DECK_HOP_TICKS = CARD_FLIGHT_HOP_TICKS * 6;
+    public static final long RETURN_TO_DECK_HOP_TICKS = 5L;
     /**
-     * The return-to-deck animation's own pause before any card starts
-     * moving -- scaled by the same factor as {@link
-     * #RETURN_TO_DECK_HOP_TICKS} for the same reason, so the whole thing
-     * slows down together rather than starting to move almost immediately
-     * and then crawling. No flip happens here anymore (cards slide back
-     * showing their real face the whole way), but the same pacing still
-     * reads right as a deliberate pause before the return begins.
+     * The round-end animation's own pause between the round actually
+     * ending and any card starting to move -- retuned by feel the same way
+     * as {@link #RETURN_TO_DECK_HOP_TICKS}: last at 6x {@link
+     * #CARD_FLIP_DELAY_TICKS} (36 ticks), which read as too long a gap --
+     * shrunk by ~60% from there.
      */
-    public static final long RETURN_TO_DECK_START_PAUSE_TICKS = CARD_FLIP_DELAY_TICKS * 6;
+    public static final long RETURN_TO_DECK_START_PAUSE_TICKS = 14L;
     /** How long the whole currently-available action-item set stays glowing (or plain) per phase before flipping to the other. */
     public static final long ACTION_GUIDANCE_STEP_TICKS = 5L;
     /** Delay between successive steps of the split slide-out/park/reactivate sequence -- wide enough for C's/D's own deck-flight to comfortably land in sync (see BlackjackInventory#runSplitAnimation). */
