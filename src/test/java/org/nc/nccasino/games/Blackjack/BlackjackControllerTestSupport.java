@@ -189,7 +189,31 @@ final class BlackjackControllerTestSupport {
         void openTable(Player player) {
             inventory.getOrCreateView(player);
             inventory.onViewOpened(player);
-            scheduler.advance(2);
+            // A freshly-opened, still-genuinely-empty table also plays the
+            // private "dealer builds the table" entrance animation (see
+            // BlackjackInventory#startTableEntrance) before that viewer's
+            // own seat/bet-spot clicks go live -- advance far enough past
+            // its own total duration so every test using this helper can
+            // immediately interact afterward without knowing about it.
+            // Deliberately conditional, not a blanket extra advance: a
+            // second (or later) player opening an already-occupied table
+            // never actually starts an entrance, and unconditionally
+            // burning ~20+ extra ticks of the *global* scheduler clock
+            // regardless would silently desync any other player's own
+            // precisely-timed guidance/animation state a test is tracking.
+            long advance = 2L;
+            if (inventory.isTableEntranceActiveForTest(player.getUniqueId())) {
+                advance += tableEntranceMaxDurationTicksForTest();
+            }
+            scheduler.advance(advance);
+        }
+
+        /** The entrance's own total duration (see BlackjackTableEntrancePlan#totalDurationTicks), plus a couple of ticks of slack for its completion callback -- derived from the same named constants production schedules with, never a copied literal. Package-visible so any test that opens a table without going through {@link #openTable} can advance past the entrance itself first. */
+        long tableEntranceMaxDurationTicksForTest() {
+            List<BlackjackTableEntrancePlan.Piece> pieces = BlackjackTableEntrancePlan.build(
+                BlackjackTiming.TABLE_ENTRANCE_HOP_TICKS, BlackjackTiming.TABLE_ENTRANCE_LAUNCH_STAGGER_TICKS
+            );
+            return BlackjackTableEntrancePlan.totalDurationTicks(pieces, BlackjackTiming.TABLE_ENTRANCE_HOP_TICKS) + 2;
         }
 
         /** Drives a click at {@code slot} through the exact same InventoryClickEvent-shaped entry point production code uses. */

@@ -61,7 +61,13 @@ class BlackjackGuidanceCadenceIntegrationTest {
             Player alice = h.registerOnlinePlayer(UUID.randomUUID(), "Alice");
             h.inventory.getOrCreateView(alice);
             h.inventory.onViewOpened(alice);
-            h.scheduler.advance(BlackjackTiming.CHAIR_GUIDANCE_START_DELAY_TICKS - h.scheduler.currentTick());
+            // Alice is opening a genuinely empty table, so the private
+            // "dealer builds the table" entrance animation plays first and
+            // only hands off to chair guidance once it finishes (see
+            // BlackjackInventory#startTableEntrance/finishTableEntrance) --
+            // let it run out before chair guidance's own start delay begins.
+            h.scheduler.advance(h.tableEntranceMaxDurationTicksForTest());
+            h.scheduler.advance(BlackjackTiming.CHAIR_GUIDANCE_START_DELAY_TICKS);
 
             // Frame 1 (glow): every one of the 5 empty seats glows together.
             for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
@@ -93,7 +99,13 @@ class BlackjackGuidanceCadenceIntegrationTest {
             Player alice = h.registerOnlinePlayer(UUID.randomUUID(), "Alice");
             h.inventory.getOrCreateView(alice);
             h.inventory.onViewOpened(alice);
-            h.scheduler.advance(BlackjackTiming.CHAIR_GUIDANCE_START_DELAY_TICKS - h.scheduler.currentTick());
+            // Alice is opening a genuinely empty table, so the private
+            // "dealer builds the table" entrance animation plays first and
+            // only hands off to chair guidance once it finishes (see
+            // BlackjackInventory#startTableEntrance/finishTableEntrance) --
+            // let it run out before chair guidance's own start delay begins.
+            h.scheduler.advance(h.tableEntranceMaxDurationTicksForTest());
+            h.scheduler.advance(BlackjackTiming.CHAIR_GUIDANCE_START_DELAY_TICKS);
 
             int filledSeat = BlackjackSlotLayout.SEAT_SLOTS[2];
             Player bob = h.seatOnlinePlayer(UUID.randomUUID(), "Bob");
@@ -119,7 +131,13 @@ class BlackjackGuidanceCadenceIntegrationTest {
             Player alice = h.registerOnlinePlayer(id, "Alice");
             h.inventory.getOrCreateView(alice);
             h.inventory.onViewOpened(alice);
-            h.scheduler.advance(BlackjackTiming.CHAIR_GUIDANCE_START_DELAY_TICKS - h.scheduler.currentTick());
+            // Alice is opening a genuinely empty table, so the private
+            // "dealer builds the table" entrance animation plays first and
+            // only hands off to chair guidance once it finishes (see
+            // BlackjackInventory#startTableEntrance/finishTableEntrance) --
+            // let it run out before chair guidance's own start delay begins.
+            h.scheduler.advance(h.tableEntranceMaxDurationTicksForTest());
+            h.scheduler.advance(BlackjackTiming.CHAIR_GUIDANCE_START_DELAY_TICKS);
             assertTrue(h.inventory.hasPrivateAnimationForTest(id));
 
             h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]); // sits -- completes chair guidance, cancels the chain

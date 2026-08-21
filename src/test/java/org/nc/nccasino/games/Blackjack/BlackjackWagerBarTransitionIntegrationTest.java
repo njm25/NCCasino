@@ -229,9 +229,11 @@ class BlackjackWagerBarTransitionIntegrationTest {
             assertCanonicalUnseatedBar(viewInv(h, alice));
 
             h.inventory.onViewClosed(alice, h.inventory.viewForTest(id));
-            h.inventory.getOrCreateView(alice);
-            h.inventory.onViewOpened(alice);
-            h.scheduler.advance(2);
+            // The table is genuinely empty again now, so reopening also
+            // plays the private "dealer builds the table" entrance
+            // animation (see BlackjackInventory#startTableEntrance) --
+            // openTable already advances past it before returning.
+            h.openTable(alice);
             assertCanonicalUnseatedBar(viewInv(h, alice));
         }
     }
@@ -432,9 +434,11 @@ class BlackjackWagerBarTransitionIntegrationTest {
             h.scheduler.advance(BlackjackTiming.WAGER_REVEAL_STEP_TICKS * 2); // mid-conceal
 
             h.inventory.onViewClosed(alice, h.inventory.viewForTest(id));
-            h.inventory.getOrCreateView(alice);
-            h.inventory.onViewOpened(alice);
-            h.scheduler.advance(2);
+            // The table is genuinely empty again now, so reopening also
+            // plays the private "dealer builds the table" entrance
+            // animation (see BlackjackInventory#startTableEntrance) --
+            // openTable already advances past it before returning.
+            h.openTable(alice);
             h.scheduler.advance(BlackjackControllerTestSupport.ROUND_END_ANIMATION_TOTAL_TICKS); // let the solo-leave's cancelGame() round-end animation finish too
 
             assertCanonicalUnseatedBar(viewInv(h, alice));

@@ -133,6 +133,12 @@ class BlackjackSeatAndBetSpotRenderingIntegrationTest {
 
             Player spectator = h.registerOnlinePlayer(UUID.randomUUID(), "Spectator");
             Inventory spectatorView = h.inventory.getOrCreateView(spectator);
+            // The table is still genuinely empty (Bystander only opened it,
+            // never sat), so the spectator's own freshly-bootstrapped view
+            // also plays the private "dealer builds the table" entrance
+            // animation (see BlackjackInventory#startTableEntrance) -- let
+            // it finish before inspecting the seat item's steady-state look.
+            h.scheduler.advance(h.tableEntranceMaxDurationTicksForTest());
 
             ItemStack seatItem = spectatorView.getItem(BlackjackSlotLayout.SEAT_SLOTS[0]);
             assertEquals(Material.OAK_STAIRS, seatItem.getType());

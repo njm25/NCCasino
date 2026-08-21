@@ -67,6 +67,8 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     private final String currencyName;
     /** Seated players whose bet-spot glow is transiently forced off mid hand-to-hand transition (see {@link #runHandTransitionCollapse}/{@link #runHandTransitionReveal}) -- otherwise {@link #buildBetSpotItemForViewer} derives glow purely from "is it this player's turn," which stays true the whole time and would leave the bet spot glowing while the transitioning hand itself briefly isn't. */
     private final Set<UUID> betSpotGlowSuppressed = new HashSet<>();
+    /** Viewers currently watching their own private "dealer builds the table" entrance animation -- see {@link #startTableEntrance}. Gates handleClick (every transit slot is presentation-only while this is set) and the table-wide repaint helpers (initializeGameMenu et al. must never paint over an in-flight entrance). */
+    private final Set<UUID> tableEntranceActive = new HashSet<>();
 
     private final Map<UUID, Integer> playerSeats; // Track player seats
     private final Map<UUID, Map<Integer, Double>> playerBets; // Track player bets by slot number
@@ -2088,6 +2090,18 @@ private void registerListener() {
      * they are themselves the current, actionable player.
      */
     private void bootstrapView(BlackjackView view) {
+        bootstrapView(view, true);
+    }
+
+    /**
+     * @param allowTableEntrance false for a final/abort canonical repaint
+     *        issued BY the table-entrance animation itself (see {@link
+     *        #finishTableEntrance}/{@link #abortTableEntrance}) -- prevents
+     *        that repaint from turning right around and starting a brand
+     *        new entrance. Every other caller goes through the {@code
+     *        bootstrapView(view)} overload (true), the normal case.
+     */
+    private void bootstrapView(BlackjackView view, boolean allowTableEntrance) {
         Inventory target = view.getInventory();
         Player viewer = Bukkit.getPlayer(view.getPlayerId());
 
@@ -2100,6 +2114,9 @@ private void registerListener() {
         // the wager-selection board mid-round and dropped their unanswered
         // insurance Yes/No prompt and countdown entirely.
         boolean active = frame.phase() == BlackjackFrame.Phase.ACTIVE || frame.phase() == BlackjackFrame.Phase.INSURANCE;
+        // See isTableEntranceEligible's own doc for the future persisted-
+        // once-ever gate this single call site is where that belongs.
+        boolean entranceEligible = allowTableEntrance && isTableEntranceEligible();
 
         // Felt the whole board green first -- everything painted below
         // overlays it; anything left untouched (unused card-row slots,
@@ -2127,6 +2144,14 @@ private void registerListener() {
             syncWagerBarPositionToCanonicalResting(view.getPlayerId());
         } else {
             paintUnseatedBottomBar(target, viewer);
+            if (entranceEligible) {
+                // The door and brown edge glass are also flown in by the
+                // entrance (see startTableEntrance) -- start as background
+                // like every other empty seat/bet-spot instead of their
+                // real items.
+                target.setItem(BlackjackSlotLayout.UNSEATED_EXIT_SLOT, buildBackgroundPaneItem());
+                target.setItem(BlackjackSlotLayout.UNSEATED_EDGE_GLASS_SLOT, buildBackgroundPaneItem());
+            }
             syncWagerBarPositionToCanonicalResting(view.getPlayerId());
         }
 
@@ -2161,11 +2186,21 @@ private void registerListener() {
             int betSlipSlot = BlackjackSlotLayout.betSlipSlot(seatSlot);
 
             if (seat == null) {
-                target.setItem(seatSlot, buildEmptySeatChairItem(view.getPlayerId(), viewer));
-                // Brown is a permanent part of the table's edge -- painted
-                // for an empty seat in every phase, never left as (or
-                // cleared to) the green background. See buildBetSpotItemForViewer.
-                target.setItem(betSlipSlot, buildBrownEdgeGlassItem());
+                if (entranceEligible) {
+                    // The table-entrance animation (started at the end of
+                    // this method) owns flying the real chair/pane in --
+                    // starts as plain background so the very first frame
+                    // this viewer ever sees is the "before" state, not an
+                    // already-complete board.
+                    target.setItem(seatSlot, buildBackgroundPaneItem());
+                    target.setItem(betSlipSlot, buildBackgroundPaneItem());
+                } else {
+                    target.setItem(seatSlot, buildEmptySeatChairItem(view.getPlayerId(), viewer));
+                    // Brown is a permanent part of the table's edge -- painted
+                    // for an empty seat in every phase, never left as (or
+                    // cleared to) the green background. See buildBetSpotItemForViewer.
+                    target.setItem(betSlipSlot, buildBrownEdgeGlassItem());
+                }
                 continue;
             }
 
@@ -2240,6 +2275,261 @@ private void registerListener() {
             // restores this one viewer's own rendering of it.
             renderInsurancePromptForPlayer(view.getPlayerId());
         }
+
+        if (entranceEligible) {
+            startTableEntrance(view);
+        }
+    }
+
+    // ---- Table entrance ("dealer builds the table," private per freshly-
+    // bootstrapped viewer, pregame only) -----------------------------------
+    // See BlackjackTableEntrancePlan's own class doc for the full geometry.
+    // This section only turns that pure plan's ticks/pieces into real
+    // per-viewer renders, on the exact same private-animation-generation
+    // idiom every other private animation (chair guide, wager guide,
+    // bet-spot blink, door reveal/conceal) already uses.
+
+    /**
+     * Whether a freshly-bootstrapped view is eligible for the entrance --
+     * true only during the safe LOBBY phase with every seat genuinely
+     * empty. Deliberately narrower than "COUNTDOWN is safe too": COUNTDOWN
+     * can only ever be reached once some player has both sat AND committed
+     * a wager, so it never actually coincides with an all-empty table --
+     * checking phase alone would be equivalent but less obviously correct
+     * than spelling out the real invariant this animation depends on.
+     *
+     * <p>Restricting to an all-empty table (rather than merely "this
+     * viewer's own seat is empty") is also what keeps this safe against
+     * occupied rows: the chair/pane corridors physically reuse the seat
+     * column and the dealer's own column as transit routes, so a transiting
+     * piece passing through a slot that's actually a real occupied seat
+     * would flash a chair over that player's canonical head for a frame.
+     * Restricting to "table is entirely empty" sidesteps that case
+     * completely rather than trying to route around occupied rows.
+     *
+     * <p>Deliberately NOT yet gated by a persisted "has this player already
+     * seen it" flag (mirroring Preferences#hasSeenBlackjackChairGuidance) --
+     * a future persisted per-player gate belongs at this exact call site,
+     * ANDed into this same return expression, once added.
+     */
+    private boolean isTableEntranceEligible() {
+        return capturePhase() == BlackjackFrame.Phase.LOBBY && playerSeats.isEmpty();
+    }
+
+    /**
+     * Starts {@code view}'s private entrance animation -- called only from
+     * {@link #bootstrapView(BlackjackView, boolean)} immediately after it
+     * paints everything else (dealer at its lobby slot, background over
+     * every seat/bet-spot). Registers its own {@link BlackjackAnimationRun}
+     * under a freshly-bumped viewer-animation generation, exactly like
+     * chair/wager guidance, so {@link #onViewClosed}'s unconditional {@link
+     * #cancelPrivateAnimation} tears it down correctly on close, and marks
+     * {@link #tableEntranceActive} so every transit slot is presentation-
+     * only for the duration (see handleClick's own guard).
+     *
+     * <p>Deliberately does NOT call {@link #scheduleChairGuidanceStart}
+     * itself -- {@link #onViewOpened} checks {@link #tableEntranceActive}
+     * and skips its own call when this just ran, deferring to this
+     * animation's own completion ({@link #finishTableEntrance}/{@link
+     * #abortTableEntrance}) instead. Two private animations bumping the same
+     * viewer's generation back-to-back would instantly stale whichever
+     * scheduled its steps first; handing off sequentially avoids that race
+     * entirely rather than trying to out-order it.
+     */
+    private void startTableEntrance(BlackjackView view) {
+        UUID playerId = view.getPlayerId();
+        tableEntranceActive.add(playerId);
+        int myGeneration = bumpAndGetViewerAnimationGeneration(playerId);
+        long myRoundGeneration = roundGeneration;
+        privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, myRoundGeneration, myGeneration, BlackjackFrame.Phase.LOBBY));
+
+        List<BlackjackTableEntrancePlan.Piece> pieces = BlackjackTableEntrancePlan.build(
+            BlackjackTiming.TABLE_ENTRANCE_HOP_TICKS, BlackjackTiming.TABLE_ENTRANCE_LAUNCH_STAGGER_TICKS
+        );
+        Set<Integer> affectedSlots = BlackjackTableEntrancePlan.affectedSlots(pieces);
+        List<Long> ticks = BlackjackTableEntrancePlan.distinctTicks(pieces, BlackjackTiming.TABLE_ENTRANCE_HOP_TICKS);
+        long totalDuration = BlackjackTableEntrancePlan.totalDurationTicks(pieces, BlackjackTiming.TABLE_ENTRANCE_HOP_TICKS);
+
+        // All ten SoundCategory channels firing rapid-fire, one right after
+        // another (TABLE_ENTRANCE_WHOOSH_RAPID_FIRE_STAGGER_TICKS apart) --
+        // matching the "busy, overlapping, slightly sporadic" character of
+        // the visual itself, rather than a few isolated beats. Each on its
+        // own category (stopSound stops every currently-playing sound
+        // sharing its exact Sound+SoundCategory, so sharing one would mean
+        // cutting one off also chops its neighbors mid-note) and its own
+        // slightly different pitch, so ten back-to-back plays of the same
+        // sample still read as a volley of distinct swoops, not one sound
+        // repeated. The whole burst starts at
+        // TABLE_ENTRANCE_WHOOSH_START_DELAY_TICKS -- the exact point the
+        // very first whoosh already lands well after the entrance itself
+        // starts, confirmed to no longer clash with the client's own
+        // inventory-open transition sound -- rather than tick 0.
+        SoundCategory[] whooshChannels = SoundCategory.values();
+        Random whooshPitchRandom = new Random();
+        for (int i = 0; i < whooshChannels.length; i++) {
+            long tick = BlackjackTiming.TABLE_ENTRANCE_WHOOSH_START_DELAY_TICKS
+                + (long) i * BlackjackTiming.TABLE_ENTRANCE_WHOOSH_RAPID_FIRE_STAGGER_TICKS;
+            // Random, not a deterministic ramp -- but tightly clustered
+            // around the base pitch (the very first whoosh's own pitch,
+            // already confirmed to sound right) rather than spread wide.
+            float jitter = (whooshPitchRandom.nextFloat() * 2f - 1f) * BlackjackTiming.TABLE_ENTRANCE_WHOOSH_PITCH_JITTER;
+            float pitch = BlackjackTiming.TABLE_ENTRANCE_WHOOSH_BASE_PITCH + jitter;
+            scheduleTableEntranceWhoosh(playerId, myGeneration, myRoundGeneration, tick, whooshChannels[i], pitch);
+        }
+
+        // The burst above only covers its own ~13 ticks (10 channels, 1
+        // tick apart, each cut off after TABLE_ENTRANCE_WHOOSH_CUTOFF_TICKS)
+        // -- several ticks of pieces still visibly landing after the last
+        // one cuts off would otherwise play out in silence. One closing
+        // whoosh, timed to land right as the whole entrance actually
+        // finishes, fills that gap. Safe to reuse the very first channel:
+        // every burst instance (the latest starting at index length-1) has
+        // long since been cut off by the time this one starts, so there's
+        // no shared-category cutoff collision.
+        long closingWhooshTick = Math.max(
+            totalDuration - BlackjackTiming.TABLE_ENTRANCE_WHOOSH_CUTOFF_TICKS,
+            BlackjackTiming.TABLE_ENTRANCE_WHOOSH_START_DELAY_TICKS
+                + (long) (whooshChannels.length - 1) * BlackjackTiming.TABLE_ENTRANCE_WHOOSH_RAPID_FIRE_STAGGER_TICKS
+                + BlackjackTiming.TABLE_ENTRANCE_WHOOSH_CUTOFF_TICKS
+        );
+        scheduleTableEntranceWhoosh(playerId, myGeneration, myRoundGeneration, closingWhooshTick,
+            whooshChannels[0], BlackjackTiming.TABLE_ENTRANCE_WHOOSH_BASE_PITCH);
+
+        for (long tick : ticks) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (isStaleViewerAnimation(playerId, myGeneration)) {
+                    // A newer private animation for this viewer (most often
+                    // a brand new entrance -- close then reopen fast enough
+                    // and the old one's still-pending steps land after the
+                    // new one has already started) has already superseded
+                    // this run. That newer run owns tableEntranceActive/the
+                    // repaint now; calling abortTableEntrance from here
+                    // would rip tableEntranceActive out from under it
+                    // mid-flight and jump its view straight to the finished
+                    // canonical state, skipping the rest of its own
+                    // animation. Just no-op.
+                    return;
+                }
+                if (roundGeneration != myRoundGeneration || !isTableEntranceEligible() || !views.containsKey(playerId)) {
+                    // Still this exact (non-superseded) entrance, but the
+                    // table state moved on mid-flight (someone sat, the
+                    // round advanced, this view closed) -- stop rather than
+                    // paint a frame that no longer matches reality.
+                    abortTableEntrance(playerId);
+                    return;
+                }
+                renderTableEntranceFrame(playerId, pieces, affectedSlots, tick);
+            }, tick);
+        }
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (isStaleViewerAnimation(playerId, myGeneration) || roundGeneration != myRoundGeneration) {
+                return; // already aborted/superseded -- that path already handed off, nothing further to finalize
+            }
+            finishTableEntrance(playerId);
+        }, totalDuration + 1);
+    }
+
+    /** Schedules one table-entrance whoosh (see {@link #playTableEntranceWhoosh}) at {@code tick}, guarded exactly like every other private per-viewer callback this animation schedules. */
+    private void scheduleTableEntranceWhoosh(UUID playerId, int myGeneration, long myRoundGeneration, long tick, SoundCategory category, float pitch) {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (isStaleViewerAnimation(playerId, myGeneration) || roundGeneration != myRoundGeneration || !views.containsKey(playerId)) {
+                return;
+            }
+            playTableEntranceWhoosh(Bukkit.getPlayer(playerId), category, pitch);
+        }, Math.max(tick, 0L));
+    }
+
+    /**
+     * A quick swoop, private to one viewer, for one beat of the table-
+     * entrance's rapid-fire whoosh burst -- see startTableEntrance's own doc
+     * for why this fires once per {@link SoundCategory} (all ten) in quick
+     * succession rather than once per piece/hop, and why each of those ten
+     * uses its own {@code category} (an independent stop-control "channel"
+     * -- see below) and {@code pitch} (so ten back-to-back plays of the same
+     * sample still read as a volley of distinct swoops, not one sound
+     * repeated). No-op if the viewer isn't currently resolvable
+     * (disconnected mid-entrance).
+     *
+     * <p>Cut short deliberately: bat-takeoff's own tail (a faint echo/reverb
+     * after the initial flap) reads as lingering against this animation's
+     * fast pacing, so this schedules a hard {@code stopSound} a few ticks in
+     * -- clipped, not faded (Bukkit has no fade-out API), but short enough
+     * that the cut itself isn't noticeable. {@code stopSound} stops every
+     * currently-playing sound sharing its exact {@code Sound}+{@code
+     * SoundCategory}, not just "this one instance" -- so two overlapping
+     * whooshes sharing a category would have one's cutoff also chop the
+     * other off mid-note; giving each of the ten call sites its own
+     * category is what keeps their cutoffs independent. Retune {@link
+     * BlackjackTiming#TABLE_ENTRANCE_WHOOSH_CUTOFF_TICKS} by ear if the clip
+     * point ever needs to move.
+     */
+    private void playTableEntranceWhoosh(Player viewer, SoundCategory category, float pitch) {
+        if (viewer == null) {
+            return;
+        }
+        if (SoundHelper.getSoundSafely("entity.bat.takeoff", viewer) != null) {
+            viewer.playSound(viewer.getLocation(), Sound.ENTITY_BAT_TAKEOFF, category, BlackjackTiming.TABLE_ENTRANCE_WHOOSH_VOLUME, pitch);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (viewer.isOnline()) {
+                    viewer.stopSound(Sound.ENTITY_BAT_TAKEOFF, category);
+                }
+            }, BlackjackTiming.TABLE_ENTRANCE_WHOOSH_CUTOFF_TICKS);
+        }
+    }
+
+    /** One frame: every slot the whole entrance ever touches gets a fresh, complete, deterministic repaint from {@link BlackjackTableEntrancePlan#frameAt} -- landed pieces show the exact real chair/pane item (clickable normally from this frame on), everything else vacates to background. */
+    private void renderTableEntranceFrame(UUID playerId, List<BlackjackTableEntrancePlan.Piece> pieces, Set<Integer> affectedSlots, long tick) {
+        Player viewer = Bukkit.getPlayer(playerId);
+        Map<Integer, BlackjackTableEntrancePlan.PieceKind> occupied =
+            BlackjackTableEntrancePlan.frameAt(pieces, tick, BlackjackTiming.TABLE_ENTRANCE_HOP_TICKS);
+        for (int slot : affectedSlots) {
+            BlackjackTableEntrancePlan.PieceKind kind = occupied.get(slot);
+            ItemStack item;
+            if (kind == BlackjackTableEntrancePlan.PieceKind.CHAIR) {
+                item = buildEmptySeatChairItem(playerId, viewer);
+            } else if (kind == BlackjackTableEntrancePlan.PieceKind.PANE) {
+                item = buildBrownEdgeGlassItem();
+            } else if (kind == BlackjackTableEntrancePlan.PieceKind.DOOR) {
+                // Same real door item buildUnseatedBottomBarSlotItem paints
+                // once landed -- transiting and landed look identical here
+                // exactly like every other piece (see class doc).
+                item = createCustomItem(Material.SPRUCE_DOOR, localize(viewer, "blackjack.leave-exit"), 1);
+            } else {
+                item = buildBackgroundPaneItem();
+            }
+            renderPrivateItem(playerId, slot, item);
+        }
+    }
+
+    /**
+     * Normal completion: every piece has landed. Repaints {@code playerId}'s
+     * view from fresh canonical state via {@code bootstrapView(view, false)}
+     * -- never trusting the plan's own last frame to already exactly match
+     * canonical reality -- then hands off to chair guidance, exactly as if
+     * this viewer had just opened the table with nothing to animate.
+     */
+    private void finishTableEntrance(UUID playerId) {
+        if (!tableEntranceActive.remove(playerId)) {
+            return; // already finished/aborted -- avoid a duplicate repaint/hand-off
+        }
+        BlackjackView view = views.get(playerId);
+        if (view != null) {
+            bootstrapView(view, false);
+        }
+        privateAnimationRuns.remove(playerId);
+        scheduleChairGuidanceStart(playerId);
+    }
+
+    /**
+     * Table state changed mid-entrance (a seat filled, the round moved on,
+     * this view closed) -- stop scheme, repaint canonical, and still hand
+     * off to chair guidance so it isn't stranded forever without its own
+     * start. Shares the exact same cleanup as {@link #finishTableEntrance};
+     * kept as a separate, identically-named entry point purely for
+     * call-site clarity about which case triggered it.
+     */
+    private void abortTableEntrance(UUID playerId) {
+        finishTableEntrance(playerId);
     }
 
     private ItemStack withWagerLore(ItemStack item, double wager, Player viewer) {
@@ -2375,6 +2665,10 @@ private void registerListener() {
         if (occupant == null) {
             return buildBrownEdgeGlassItem();
         }
+        RoundResult result = roundResults.get(occupant);
+        if (result != null) {
+            return buildRoundResultBetSpotItem(occupant, result, viewer);
+        }
         boolean glowing = gameActive && occupant.equals(currentPlayerId) && !betSpotGlowSuppressed.contains(occupant);
 
         if (!gameActive) {
@@ -2415,11 +2709,124 @@ private void registerListener() {
         return applyWagerSummary(item, new WagerSummary(null, otherLore));
     }
 
+    // ---- Round-end result reveal (color-coded bet spot, briefly) ---------
+    // Deliberately independent of gameActive/playerHands/selectedWager --
+    // finishGame() populates this the instant it settles a player's hands
+    // (while gameActive is still nominally true), but by the time the win
+    // flash's own scheduled toggles run, resetGame() has already flipped
+    // gameActive false and cleared playerHands in the very same tick. So
+    // buildBetSpotItemForViewer checks this map FIRST, ahead of every other
+    // branch, and this whole feature carries its own self-contained display
+    // string/net-amount rather than reading any other (by-then-gone) round
+    // state. Cleared only in finishRoundEndBoardWipe, once the round-end
+    // animation has genuinely finished and the board is about to repaint
+    // fresh for the next round anyway.
+    private enum RoundResultColor { WIN, LOSS, PUSH }
+
+    private record RoundResult(RoundResultColor color, double netAmount) {
+    }
+
+    private final Map<UUID, RoundResult> roundResults = new HashMap<>();
+    /** Bet spots currently in the "dim" (plain brown, pre-color) beat of their reveal flash -- see {@link #startRoundResultFlash}. */
+    private final Set<UUID> roundResultFlashDim = new HashSet<>();
+
+    /**
+     * The bet spot shown once a round settles, for every viewer at the
+     * table -- keeps swapping back and forth between the ordinary brown
+     * pane and this outcome's own color (lime/red/light gray) the whole
+     * time the reveal is showing, see {@link #startRoundResultFlash}. Only
+     * WIN's colored beat is enchanted; LOSS/PUSH swap color but never glow.
+     */
+    private ItemStack buildRoundResultBetSpotItem(UUID occupant, RoundResult result, Player viewer) {
+        boolean dim = roundResultFlashDim.contains(occupant);
+        Material material = dim ? Material.BROWN_STAINED_GLASS_PANE : switch (result.color()) {
+            case WIN -> Material.LIME_STAINED_GLASS_PANE;
+            case LOSS -> Material.RED_STAINED_GLASS_PANE;
+            case PUSH -> Material.LIGHT_GRAY_STAINED_GLASS_PANE;
+        };
+        String titleKey = switch (result.color()) {
+            case WIN -> "blackjack.result-won";
+            case LOSS -> "blackjack.result-lost";
+            case PUSH -> "blackjack.result-push";
+        };
+        boolean glowing = result.color() == RoundResultColor.WIN && !dim;
+        ItemStack item = glowing
+            ? createGlowingCustomItem(material, localize(viewer, titleKey), 1)
+            : createCustomItem(material, localize(viewer, titleKey), 1);
+        if (result.color() != RoundResultColor.PUSH) {
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                String sign = result.netAmount() > 0 ? "+" : "-";
+                meta.setLore(List.of(localize(viewer, "blackjack.round-summary-total",
+                    "amount", sign + plugin.formatWagerDisplay(currencyMode, currencyName, Math.abs(result.netAmount())))));
+                item.setItemMeta(meta);
+            }
+        }
+        return item;
+    }
+
+    /**
+     * Keeps color-toggling {@code playerId}'s bet spot (brown /
+     * this-outcome's-color) indefinitely -- re-scheduling itself every
+     * {@link BlackjackTiming#ROUND_RESULT_FLASH_STEP_TICKS} -- for as long
+     * as this same round's reveal is still showing, for every outcome
+     * (WIN/LOSS/PUSH alike; only WIN's colored beat also glows). Purely a
+     * bare {@code runTaskLater} self-reschedule guarded by {@code
+     * myRoundGeneration} and {@code roundResults} still holding this
+     * player, never registered in {@code privateAnimationRuns}: {@code
+     * cancelAllAnimations} already ran synchronously (as part of the very
+     * same {@code resetGame}/{@code cancelGame} call that triggers this)
+     * before this method is ever invoked, so registering it there would
+     * mean it's cancelled before its first frame ever plays. The chain
+     * naturally stops the moment {@link #finishRoundEndBoardWipe} clears
+     * {@code roundResults} -- i.e. once the whole round-end animation
+     * (cards back to the deck, dealer/deck walked back up to the lobby) has
+     * genuinely finished and the board is about to repaint fresh for the
+     * next round.
+     */
+    private void startRoundResultFlash(UUID playerId, int seatSlot, long myRoundGeneration) {
+        roundResultFlashDim.add(playerId);
+        renderBetSpotToAllViews(seatSlot);
+        scheduleRoundResultFlashStep(playerId, seatSlot, myRoundGeneration);
+    }
+
+    private void scheduleRoundResultFlashStep(UUID playerId, int seatSlot, long myRoundGeneration) {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (roundGeneration != myRoundGeneration || !roundResults.containsKey(playerId)) {
+                return; // a new round started, or this reveal has already been wiped -- stop rescheduling
+            }
+            if (roundResultFlashDim.contains(playerId)) {
+                roundResultFlashDim.remove(playerId);
+            } else {
+                roundResultFlashDim.add(playerId);
+            }
+            renderBetSpotToAllViews(seatSlot);
+            scheduleRoundResultFlashStep(playerId, seatSlot, myRoundGeneration);
+        }, roundResultFlashStepTicks(playerId));
+    }
+
+    /** WIN flashes at the ordinary fast rate; LOSS/PUSH flash at half that speed -- see BlackjackTiming's own constants for why these are kept separate. */
+    private long roundResultFlashStepTicks(UUID playerId) {
+        RoundResult result = roundResults.get(playerId);
+        return result != null && result.color() == RoundResultColor.WIN
+            ? BlackjackTiming.ROUND_RESULT_FLASH_STEP_TICKS
+            : BlackjackTiming.ROUND_RESULT_FLASH_STEP_TICKS_SLOW;
+    }
+
     /** Repaints {@code seatSlot}'s bet spot for the legacy inventory and every open view via {@link #buildBetSpotItemForViewer} -- the single fan-out every bet-spot-affecting event calls. */
     private void renderBetSpotToAllViews(int seatSlot) {
         int betSpotSlot = BlackjackSlotLayout.betSlipSlot(seatSlot);
         inventory.setItem(betSpotSlot, buildBetSpotItemForViewer(seatSlot, null, null));
         for (BlackjackView view : views.values()) {
+            // A table-entrance in flight for this viewer owns this exact
+            // slot until it finishes/aborts (see startTableEntrance) -- any
+            // other event repainting bet spots table-wide must never race
+            // it. Self-heals within one entrance tick regardless (its own
+            // per-tick eligibility check aborts and does a full canonical
+            // repaint the moment something table-wide actually changed).
+            if (tableEntranceActive.contains(view.getPlayerId())) {
+                continue;
+            }
             Player viewer = Bukkit.getPlayer(view.getPlayerId());
             view.getInventory().setItem(betSpotSlot, buildBetSpotItemForViewer(seatSlot, view.getPlayerId(), viewer));
         }
@@ -2429,6 +2836,10 @@ private void registerListener() {
     private void renderEmptySeatChairToAllViews(int seatSlot) {
         inventory.setItem(seatSlot, buildEmptySeatChairItem(null, null));
         for (BlackjackView view : views.values()) {
+            // See renderBetSpotToAllViews's identical guard/reasoning.
+            if (tableEntranceActive.contains(view.getPlayerId())) {
+                continue;
+            }
             Player viewer = Bukkit.getPlayer(view.getPlayerId());
             view.getInventory().setItem(seatSlot, buildEmptySeatChairItem(view.getPlayerId(), viewer));
         }
@@ -2505,6 +2916,15 @@ private void registerListener() {
         // sequence) is deliberately untouched here -- see
         // cancelPrivateAnimation's doc and BlackjackAnimationRun's class doc.
         cancelPrivateAnimation(player.getUniqueId());
+        // tableEntranceActive isn't touched by cancelPrivateAnimation (it's
+        // a click-blocking flag, not animation-run state) -- a scheduled
+        // table-entrance step catching this close would eventually clear it
+        // via abortTableEntrance's own staleness check, but only if one is
+        // actually still scheduled to run; clearing it directly here
+        // guarantees it can never leak permanently-blocked clicks into a
+        // future reopen of this same table if a close lands after the last
+        // scheduled step but before the completion callback would have.
+        tableEntranceActive.remove(player.getUniqueId());
         // Closing this viewer also discards their wager bar's own slide
         // position state -- a reopen bootstraps position 8/0 fresh from
         // canonical seated status (see bootstrapView), never resuming a
@@ -2544,8 +2964,16 @@ private void registerListener() {
         // Chair guidance begins CHAIR_GUIDANCE_START_DELAY_TICKS after the
         // table opens, per the table redesign plan -- startChairGuidance
         // itself no-ops if the viewer has already sat (or the game is
-        // active) by the time it fires.
-        scheduleChairGuidanceStart(player.getUniqueId());
+        // active) by the time it fires. Skipped entirely when the table
+        // entrance just started for this viewer (see bootstrapView/
+        // startTableEntrance, which runs synchronously just before this,
+        // via getOrCreateView -> Bukkit's own synchronous InventoryOpenEvent
+        // dispatch) -- that animation calls this itself once it finishes,
+        // so it alone bumps this viewer's animation generation, rather than
+        // both competing to bump it here.
+        if (!tableEntranceActive.contains(player.getUniqueId())) {
+            scheduleChairGuidanceStart(player.getUniqueId());
+        }
     }
 
     /**
@@ -3211,6 +3639,16 @@ private void registerListener() {
 
         inventory.clear(); // Clear the inventory before setting up the page
         for (BlackjackView view : views.values()) {
+            // A view mid-table-entrance was already freshly and correctly
+            // bootstrapped this exact tick (see bootstrapView/
+            // startTableEntrance) -- wiping it here (this firstFin path can
+            // land as little as 2 ticks after that bootstrap) would blank
+            // over its dealer head and every already-landed chair/pane, or
+            // outright kill its in-flight frames. That animation owns this
+            // view's repaint entirely until it finishes/aborts.
+            if (tableEntranceActive.contains(view.getPlayerId())) {
+                continue;
+            }
             view.getInventory().clear();
         }
 
@@ -3220,6 +3658,9 @@ private void registerListener() {
         // going blank.
         paintBackground(inventory);
         for (BlackjackView view : views.values()) {
+            if (tableEntranceActive.contains(view.getPlayerId())) {
+                continue;
+            }
             paintBackground(view.getInventory());
         }
 
@@ -3256,6 +3697,9 @@ private void registerListener() {
         // betting (no permanent Hit/Stand/Double-Down anymore either way).
         paintUnseatedBottomBar(inventory, null);
         for (BlackjackView view : views.values()) {
+            if (tableEntranceActive.contains(view.getPlayerId())) {
+                continue;
+            }
             Player viewer = Bukkit.getPlayer(view.getPlayerId());
             if (playerSeats.containsKey(view.getPlayerId())) {
                 paintSeatedBottomBar(view.getInventory(), viewer, view.getPlayerId());
@@ -3326,6 +3770,15 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
         return;
     }
     UUID playerId = player.getUniqueId();
+
+    // The table-entrance animation's transiting/landed chair, pane, and
+    // door icons are presentation only for the seat/card field plus the
+    // door/edge-glass it also flies in (0-46, see startTableEntrance) --
+    // real sit/bet/leave clicks wait until it finishes. Slots 47+ (always
+    // background/unused in this same LOBBY phase) are untouched either way.
+    if (tableEntranceActive.contains(playerId) && slot <= BlackjackSlotLayout.UNSEATED_EDGE_GLASS_SLOT) {
+        return;
+    }
 
     if (gameActive) { // Game is active, handle player actions
         if (insurancePhaseActive && insuranceEligiblePlayers.contains(playerId) && !insuranceDecided.contains(playerId)
@@ -6802,6 +7255,7 @@ private void finishGame() {
         boolean consolidate = wageredHands.size() > 1;
         List<HandOutcomeSummary> summaries = consolidate ? new ArrayList<>() : null;
         int handNumber = 0;
+        double totalNet = 0.0;
         for (BlackjackHand hand : wageredHands) {
             handNumber++;
             // A player natural blackjack pays 3:2 unless the dealer also
@@ -6812,6 +7266,7 @@ private void finishGame() {
             boolean eligibleForNatural = hand.eligibleForNaturalBlackjack(split21IsBlackjack);
             BlackjackOutcome outcome = BlackjackRules.classify(hand.getCards(), dealerHand, eligibleForNatural);
             double netAmount = settleHandOutcome(playerId, hand, outcome, !consolidate);
+            totalNet += netAmount;
             if (consolidate) {
                 summaries.add(new HandOutcomeSummary(handNumber, outcome, netAmount));
             }
@@ -6819,6 +7274,20 @@ private void finishGame() {
         if (consolidate) {
             sendSplitRoundSummary(playerId, summaries);
         }
+
+        // Colors the seat's bet spot lime/red/light-gray for this player's
+        // combined result across every hand they settled this round (a
+        // split with mixed outcomes nets out to whichever side actually won
+        // or lost money) -- rendered now, while the seat is still populated,
+        // so it's already showing by the time resetGame (called right after
+        // this loop finishes) kicks off the round-end animation. See the
+        // "Round-end result reveal" section for why this deliberately
+        // doesn't depend on gameActive/playerHands surviving past this point.
+        RoundResultColor color = totalNet > 0 ? RoundResultColor.WIN
+            : totalNet < 0 ? RoundResultColor.LOSS
+            : RoundResultColor.PUSH;
+        roundResults.put(playerId, new RoundResult(color, totalNet));
+        renderBetSpotToAllViews(playerSeats.get(playerId));
     }
 
     // Reset game for the next round
@@ -7245,6 +7714,18 @@ private void resetGame() {
     // over, not just one viewer's inventory closing.
     cancelAllAnimations();
 
+    // finishGame() already painted every settled player's WIN/LOSS/PUSH
+    // bet-spot color moments ago; the flash itself is scheduled here (using
+    // this fresh myRoundGeneration), not from finishGame(), since
+    // cancelAllAnimations() just ran and anything scheduled before it would
+    // never get a chance to play its first frame.
+    for (UUID playerId : roundResults.keySet()) {
+        Integer seatSlot = playerSeats.get(playerId);
+        if (seatSlot != null) {
+            startRoundResultFlash(playerId, seatSlot, myRoundGeneration);
+        }
+    }
+
     playerBets.clear();
     lastBetAmounts.clear();
     // Every committed pregame wager increment this round already had its
@@ -7311,6 +7792,13 @@ private void finishRoundEndBoardWipe(long myRoundGeneration, boolean clearSeats)
     }
     dealerHeadSlot = BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT;
     dealerDeckTokenSlot = -1;
+    // The round-end result reveal (see buildRoundResultBetSpotItem) has had
+    // its whole window -- the entire return-to-deck + dealer-walk-up
+    // animation -- to be seen; the board is about to repaint fresh below
+    // regardless, so this is also the one safe place to clear it (clearing
+    // any earlier would erase it before it ever got shown).
+    roundResults.clear();
+    roundResultFlashDim.clear();
 
     if (clearSeats) {
         playerSeats.clear();
@@ -8325,6 +8813,11 @@ public void delete() {
 
     boolean isChairGuidanceCompletedForTest(UUID playerId) {
         return plugin.getPreferences(playerId).hasSeenBlackjackChairGuidance();
+    }
+
+    /** Whether {@code playerId} currently has an in-flight table-entrance animation (see startTableEntrance) -- lets tests advance the scheduler only as far as actually needed instead of unconditionally burning the entrance's full duration on every open. */
+    boolean isTableEntranceActiveForTest(UUID playerId) {
+        return tableEntranceActive.contains(playerId);
     }
 
     boolean isWagerGuidanceCompletedForTest(UUID playerId) {

@@ -42,6 +42,39 @@ public final class BlackjackTiming {
     public static final long WAGER_GUIDANCE_STEP_TICKS = 20L;
     /** How long a bet spot's "click to add" blink stays on per pulse. */
     public static final long BET_SPOT_BLINK_STEP_TICKS = 20L;
+    /** Ticks between successive toggles of the round-end WIN bet-spot reveal flash -- deliberately fast/flickery, a quick flourish rather than a slow guidance-style blink. Keeps toggling for the whole round-end animation, not a fixed count -- see BlackjackInventory#startRoundResultFlash. */
+    public static final long ROUND_RESULT_FLASH_STEP_TICKS = 2L;
+
+    // ---- Table entrance ("dealer builds the table," pregame only) --------
+
+    /** Per-slot travel time for every piece in {@link BlackjackTableEntrancePlan} -- one tick/hop, same fast rate as an ordinary dealt card's own flight ({@link #CARD_FLIGHT_HOP_TICKS}). Left untouched when the whole entrance was slowed ~30% (see {@link #TABLE_ENTRANCE_LAUNCH_STAGGER_TICKS}) -- a single tick is already the finest possible per-hop granularity, so the slowdown is carried entirely by widening the launch gap instead. */
+    public static final long TABLE_ENTRANCE_HOP_TICKS = 1L;
+    /**
+     * How many ticks apart successive same-stream launches are (chair-to-
+     * chair, pane-to-pane), deepest target first. A freshly-launched
+     * follower starts a full {@link #TABLE_ENTRANCE_HOP_TICKS} behind where
+     * its leader already is by then, so the whole thing still reads as
+     * "busy, overlapping" without two pieces ever sharing a slot -- just
+     * retuned from an original 2x {@link #TABLE_ENTRANCE_HOP_TICKS} (a
+     * literal one-empty-slot gap) up to 3x, which -- combined with the door/
+     * edge-glass pieces added to each stream's deep end -- reads about 30%
+     * slower overall (total duration 17 ticks -> 22 ticks at 1-tick hops).
+     */
+    public static final long TABLE_ENTRANCE_LAUNCH_STAGGER_TICKS = TABLE_ENTRANCE_HOP_TICKS * 3;
+    /** How long the entrance's own "whoosh" (see BlackjackInventory#playTableEntranceWhoosh) is allowed to play before a hard stopSound cuts it off -- trims the sound's own tail/reverb rather than letting it linger past the fast pacing it's layered over. Retune by ear. */
+    public static final long TABLE_ENTRANCE_WHOOSH_CUTOFF_TICKS = 4L;
+    /** Delay before the entrance's whoosh burst starts, relative to the entrance's own start -- played perfectly synchronously with bootstrapView, the first one audibly overlapped the client's own inventory-open transition sound. Retune by ear. */
+    public static final long TABLE_ENTRANCE_WHOOSH_START_DELAY_TICKS = 3L;
+    /** Ticks between successive whooshes in the entrance's rapid-fire burst (one per SoundCategory, ten total) -- fast, matching the visual's own busy pacing rather than isolated beats. Retune by ear. */
+    public static final long TABLE_ENTRANCE_WHOOSH_RAPID_FIRE_STAGGER_TICKS = 1L;
+    /** Volume of each entrance whoosh -- 20% quieter than the original 0.6f. Retune by ear. */
+    public static final float TABLE_ENTRANCE_WHOOSH_VOLUME = 0.48f;
+    /** Center pitch of the entrance's whoosh burst -- the very first whoosh's own pitch, already confirmed to sound right. Each of the ten burst instances jitters randomly around this rather than using it exactly, see {@link #TABLE_ENTRANCE_WHOOSH_PITCH_JITTER}. */
+    public static final float TABLE_ENTRANCE_WHOOSH_BASE_PITCH = 1.0f;
+    /** Max random pitch deviation (plus or minus) from {@link #TABLE_ENTRANCE_WHOOSH_BASE_PITCH} for each burst instance -- small on purpose, "very close" per feedback, not spread across a wide range. Retune by ear. */
+    public static final float TABLE_ENTRANCE_WHOOSH_PITCH_JITTER = 0.08f;
+    /** Same reveal flash for LOSS/PUSH, but at half the WIN rate -- a calmer flicker for the non-win outcomes. */
+    public static final long ROUND_RESULT_FLASH_STEP_TICKS_SLOW = ROUND_RESULT_FLASH_STEP_TICKS * 2;
     /**
      * Ticks per frame of the wager bar's solid slide (reveal on sit, conceal
      * on unsit) -- one frame per tick, so the full 8-frame endpoint-to-
