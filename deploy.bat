@@ -9,8 +9,8 @@ for /f "usebackq tokens=1,* delims==" %%i in ("config.txt") do (
 REM Navigate to the project directory
 cd /d "%PROJECT_DIR%" || exit /b
 
-REM Build the project using Gradle
-call .\gradlew.bat clean build || exit /b
+REM Build the deployable plugin JAR without running the test suite
+call .\gradlew.bat shadowJar || exit /b
 
 REM Navigate to the build output directory
 cd "%PROJECT_DIR%\build\libs" || exit /b

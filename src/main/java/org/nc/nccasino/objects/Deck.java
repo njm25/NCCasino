@@ -66,4 +66,16 @@ public class Deck {
         }
         shuffle();
     }
+
+    /**
+     * Test-only: replaces the live card list with an exact, unshuffled
+     * sequence so integration tests can drive deterministic hands (no
+     * accidental natural blackjack/insurance/bust) instead of depending on
+     * {@link #shuffle}'s randomness. {@code cardsInDealOrder.get(0)} is the
+     * next card {@link #dealCard()} returns. Never called from production
+     * code.
+     */
+    public void stackForTest(List<Card> cardsInDealOrder) {
+        this.cards = new ArrayList<>(cardsInDealOrder);
+    }
 }

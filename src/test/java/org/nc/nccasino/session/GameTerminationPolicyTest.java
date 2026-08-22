@@ -18,8 +18,9 @@ class GameTerminationPolicyTest {
 
     @Test
     void kicksAlwaysForfeitAcrossEveryGameAndPhase() {
-        assertEquals(FORFEIT, GameTerminationPolicy.blackjack(ExitReason.KICKED, false));
-        assertEquals(FORFEIT, GameTerminationPolicy.blackjack(ExitReason.KICKED, true));
+        assertEquals(FORFEIT, GameTerminationPolicy.blackjack(ExitReason.KICKED, false, false));
+        assertEquals(FORFEIT, GameTerminationPolicy.blackjack(ExitReason.KICKED, false, true));
+        assertEquals(FORFEIT, GameTerminationPolicy.blackjack(ExitReason.KICKED, true, true));
         assertEquals(FORFEIT, GameTerminationPolicy.mines(ExitReason.KICKED, PREGAME));
         assertEquals(FORFEIT, GameTerminationPolicy.mines(ExitReason.KICKED, PLAYING));
         assertEquals(FORFEIT, GameTerminationPolicy.dragon(ExitReason.KICKED, true, false));
@@ -35,22 +36,32 @@ class GameTerminationPolicyTest {
     }
 
     @Test
-    void blackjackRefundsPregameButForfeitsOnceDealStarts() {
+    void blackjackRefundsOnlyAnUncommittedSpectatorAndRidesToResultOnceAnythingIsAtStake() {
         for (ExitReason reason : new ExitReason[] {
             ExitReason.DISCONNECTED,
             ExitReason.VOLUNTARY_INVENTORY_CLOSE
         }) {
-            assertEquals(REFUND, GameTerminationPolicy.blackjack(reason, false));
-            assertEquals(FORFEIT, GameTerminationPolicy.blackjack(reason, true));
+            // Merely seated, nothing committed yet -- free the seat.
+            assertEquals(REFUND, GameTerminationPolicy.blackjack(reason, false, false));
+            // A wager is already committed for the pregame/countdown or
+            // start-transition round about to deal -- ride it out, exactly
+            // like an online player's committed wager would.
+            assertEquals(RIDE_TO_RESULT, GameTerminationPolicy.blackjack(reason, false, true));
+            // Deal has begun -- always rides, regardless of the wager flag.
+            assertEquals(RIDE_TO_RESULT, GameTerminationPolicy.blackjack(reason, true, false));
+            assertEquals(RIDE_TO_RESULT, GameTerminationPolicy.blackjack(reason, true, true));
         }
+        // PLUGIN_DISABLE can never ride through a restart -- always refunds, regardless of phase/wager.
         assertEquals(REFUND,
-            GameTerminationPolicy.blackjack(ExitReason.PLUGIN_DISABLE, false));
+            GameTerminationPolicy.blackjack(ExitReason.PLUGIN_DISABLE, false, false));
         assertEquals(REFUND,
-            GameTerminationPolicy.blackjack(ExitReason.PLUGIN_DISABLE, true));
+            GameTerminationPolicy.blackjack(ExitReason.PLUGIN_DISABLE, false, true));
+        assertEquals(REFUND,
+            GameTerminationPolicy.blackjack(ExitReason.PLUGIN_DISABLE, true, true));
         assertEquals(NO_ACTION,
-            GameTerminationPolicy.blackjack(ExitReason.GAME_COMPLETED, false));
+            GameTerminationPolicy.blackjack(ExitReason.GAME_COMPLETED, false, false));
         assertEquals(NO_ACTION,
-            GameTerminationPolicy.blackjack(ExitReason.GAME_COMPLETED, true));
+            GameTerminationPolicy.blackjack(ExitReason.GAME_COMPLETED, true, true));
     }
 
     @Test

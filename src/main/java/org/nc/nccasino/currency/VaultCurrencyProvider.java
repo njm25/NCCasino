@@ -82,36 +82,92 @@ public class VaultCurrencyProvider implements CurrencyProvider {
 	}
 
 	@Override
-	public void deposit(Player player, String internalName, int amount) {
-		if (player == null || amount <= 0) {
-			return;
+	public boolean deposit(Player player, String internalName, int amount) {
+		if (amount <= 0) {
+			return true;
+		}
+		if (player == null) {
+			return false;
 		}
 
-		deposit(player, internalName, MoneyHelper.bd((long) amount));
+		return deposit(player, internalName, MoneyHelper.bd((long) amount));
 	}
 
-	public void deposit(Player player, String internalName, BigDecimal amount) {
+	/**
+	 * @return whether the deposit was actually confirmed by Vault -- callers that owe this
+	 *         amount unconditionally (payouts/refunds) must treat {@code false} as "not
+	 *         delivered" and durably queue the exact amount rather than assuming it landed.
+	 */
+	public boolean deposit(Player player, String internalName, BigDecimal amount) {
 		if (player == null || amount == null) {
-			return;
+			return false;
 		}
 
 		BigDecimal safeAmount = MoneyHelper.clampNonNegative(amount);
 		if (safeAmount.compareTo(BigDecimal.ZERO) <= 0) {
-			return;
+			// Nothing was actually owed -- trivially "delivered", same
+			// convention PendingPayout itself uses for amount() <= 0.
+			return true;
 		}
 
 		Economy economy = getEconomyOrWarn(internalName);
 		if (economy == null) {
-			return;
+			return false;
 		}
 
 		double depositValue = MoneyHelper.toVaultDouble(safeAmount);
 		EconomyResponse resp = economy.depositPlayer(player, depositValue);
 		if (resp != null && resp.transactionSuccess()) {
-			return;
+			return true;
 		}
 
 		warnOnce(internalName, "Vault deposit failed for dealer '" + internalName + "': " + (resp != null ? resp.errorMessage : "unknown error"));
+		return false;
+	}
+
+	/**
+	 * Decimal-aware balance check, bypassing the {@link CurrencyProvider}
+	 * interface's whole-unit-only {@link #has(Player, String, int)} --
+	 * Vault economies support exact fractional balances (e.g. checking a
+	 * 12.5 insurance stake off an odd wager), and flooring that down to an
+	 * int first would wrongly report insufficient funds for a player who
+	 * can actually afford it.
+	 */
+	public boolean hasAtLeastDecimal(Player player, String internalName, BigDecimal amount) {
+		if (player == null || amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+			return false;
+		}
+		Economy economy = getEconomyOrWarn(internalName);
+		if (economy == null) {
+			return false;
+		}
+		BigDecimal bal = MoneyHelper.clampNonNegative(MoneyHelper.bd(economy.getBalance(player)));
+		return bal.compareTo(amount) >= 0;
+	}
+
+	/**
+	 * Decimal-aware withdrawal, the debit-side counterpart to
+	 * {@link #hasAtLeastDecimal}. Returns whether the withdrawal actually
+	 * happened.
+	 */
+	public boolean withdrawDecimal(Player player, String internalName, BigDecimal amount) {
+		if (player == null || amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+			return false;
+		}
+		Economy economy = getEconomyOrWarn(internalName);
+		if (economy == null) {
+			return false;
+		}
+		BigDecimal bal = MoneyHelper.clampNonNegative(MoneyHelper.bd(economy.getBalance(player)));
+		if (bal.compareTo(amount) < 0) {
+			return false;
+		}
+		EconomyResponse resp = economy.withdrawPlayer(player, amount.doubleValue());
+		if (resp != null && resp.transactionSuccess()) {
+			return true;
+		}
+		warnOnce(internalName, "Vault withdraw failed for dealer '" + internalName + "': " + (resp != null ? resp.errorMessage : "unknown error"));
+		return false;
 	}
 
 	@Override
@@ -146,4 +202,3 @@ public class VaultCurrencyProvider implements CurrencyProvider {
 		}
 	}
 }
-

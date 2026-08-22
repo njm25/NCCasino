@@ -1064,7 +1064,16 @@ private boolean isValidSlotPage2(int slot) {
 			// rather than preserving it.
 			java.math.BigDecimal preciseAmount = MoneyHelper.clampNonNegative(MoneyHelper.bd(amount));
 			if (preciseAmount.compareTo(java.math.BigDecimal.ZERO) > 0) {
-				vaultProvider.deposit(player, internalName, preciseAmount);
+				// deposit()'s boolean return exists specifically so a
+				// caller that owes this amount unconditionally (this is
+				// exactly that: a spin's winnings, an undone bet's refund,
+				// or a round's payout) must not treat a false return as
+				// success -- queue it durably instead of letting a failed
+				// Vault/economy-hook deposit silently vanish the money.
+				boolean delivered = vaultProvider.deposit(player, internalName, preciseAmount);
+				if (!delivered) {
+					queueFailedDepositPayout(player.getUniqueId(), amount, currencyMaterial);
+				}
 			}
 			return;
 		}
@@ -1074,10 +1083,18 @@ private boolean isValidSlotPage2(int slot) {
 			// delivered as multiple int-sized deposits rather than clamped
 			// to one -- clamping here would announce the full long total in
 			// the round message but only pay out the size of a single chunk.
+			// If a chunk fails partway through, only the genuinely
+			// undelivered remainder (this failed chunk plus whatever hadn't
+			// been attempted yet) gets queued -- chunks that already
+			// succeeded must never be paid twice.
 			long remaining = amount;
 			while (remaining > 0) {
 				int chunk = remaining > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) remaining;
-				provider.deposit(player, internalName, chunk);
+				boolean delivered = provider.deposit(player, internalName, chunk);
+				if (!delivered) {
+					queueFailedDepositPayout(player.getUniqueId(), remaining, currencyMaterial);
+					return;
+				}
 				remaining -= chunk;
 			}
 			return;
@@ -1102,6 +1119,32 @@ private boolean isValidSlotPage2(int slot) {
 			amount = DEFENSIVE_ITEM_DELIVERY_CEILING;
 		}
 		giveItemChunk(player, provider, currencyMaterial, (int) amount);
+    }
+
+    /**
+     * Durably queues a payout that {@link #refundWagerToInventory} owed a
+     * still-online player but couldn't actually deliver live (a failed
+     * Vault/CUSTOM deposit) -- mirrors the existing offline-at-resolution
+     * queuing in {@code processSpinResult} (same {@link PendingPayout}
+     * shape), just for "online but the deposit itself failed" instead of
+     * "not online to deposit to at all". Never silently drops the amount.
+     */
+    private void queueFailedDepositPayout(UUID playerId, long amount, Material currencyMaterial) {
+        PendingPayout payout = PendingPayout.create(
+            playerId,
+            "Roulette",
+            internalName,
+            currencyMode,
+            currencyMaterial.name(),
+            currencyName,
+            amount,
+            PayoutMessages.committedResultContext("Roulette")
+        );
+        boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
+        if (!persisted) {
+            plugin.getLogger().severe("[NCCasino] Roulette payout of " + amount + " for " + playerId
+                + " failed to deliver AND failed to persist as a pending payout -- money genuinely lost.");
+        }
     }
 
     /**

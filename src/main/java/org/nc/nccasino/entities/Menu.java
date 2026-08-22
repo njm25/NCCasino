@@ -24,7 +24,7 @@ import java.util.function.Consumer;
  */
 public abstract class Menu extends DealerInventory {
 
-    protected enum SlotOption {
+    public enum SlotOption {
 
         // Default options
         EXIT,
@@ -79,6 +79,16 @@ public abstract class Menu extends DealerInventory {
         // Blackjack settings menu
         STAND_17,
         NUMBER_OF_DECKS,
+        TOGGLE_INSURANCE_ENABLED,
+        EDIT_INSURANCE_TIMEOUT,
+        TOGGLE_SPLITTING_ENABLED,
+        TOGGLE_SPLIT_MATCHING,
+        EDIT_MAX_HANDS,
+        TOGGLE_DOUBLE_AFTER_SPLIT,
+        TOGGLE_ACES_HIT,
+        TOGGLE_ACES_DOUBLE,
+        TOGGLE_ACES_RESPLIT,
+        EDIT_TURN_TIMER_TIMEOUT,
         
         // Dragon Descent settings menu
         EDIT_COLUMNS,

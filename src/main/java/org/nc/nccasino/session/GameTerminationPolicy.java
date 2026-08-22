@@ -26,7 +26,17 @@ public final class GameTerminationPolicy {
     private GameTerminationPolicy() {
     }
 
-    public static TerminationAction blackjack(ExitReason reason, boolean gameActive) {
+    /**
+     * @param hasCommittedWager whether this player currently has real money
+     *     already at stake for the round in progress -- a pregame/countdown
+     *     or start-transition committed wager, or (once {@code gameActive})
+     *     always true by construction. Distinguishes "money is already on
+     *     the line, ride it out" from "nothing committed yet, just free the
+     *     seat" during the two phases before {@code gameActive} -- without
+     *     this, a merely-seated spectator who closes their GUI without ever
+     *     betting would stay seated forever instead of freeing the seat.
+     */
+    public static TerminationAction blackjack(ExitReason reason, boolean gameActive, boolean hasCommittedWager) {
         if (reason == ExitReason.GAME_COMPLETED) {
             return NO_ACTION;
         }
@@ -36,8 +46,8 @@ public final class GameTerminationPolicy {
         if (reason == ExitReason.PLUGIN_DISABLE) {
             return REFUND;
         }
-        if (gameActive) {
-            return FORFEIT;
+        if (gameActive || hasCommittedWager) {
+            return RIDE_TO_RESULT;
         }
         return REFUND;
     }

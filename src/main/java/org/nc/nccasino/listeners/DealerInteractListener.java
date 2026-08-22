@@ -21,6 +21,7 @@ import org.nc.nccasino.components.AnimationMessage;
 import org.nc.nccasino.components.PlayerMenu;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.games.Blackjack.BlackjackInventory;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
 import org.nc.nccasino.helpers.Preferences.MessageSetting;
 import org.nc.nccasino.helpers.SoundHelper;
@@ -294,13 +295,15 @@ public class DealerInteractListener implements Listener {
     }
 
     /**
-     * Opens a dealer's inventory for a player. Roulette gets a per-player
-     * localized wheel view instead of the shared inventory directly; every
-     * other game type is unaffected.
+     * Opens a dealer's inventory for a player. Roulette and Blackjack each
+     * get a per-player localized view instead of the shared inventory
+     * directly; every other game type is unaffected.
      */
     private void openDealerInventoryForPlayer(Player player, DealerInventory dealerInventory) {
         if (dealerInventory instanceof RouletteInventory roulette) {
             player.openInventory(roulette.getOrCreateView(player));
+        } else if (dealerInventory instanceof BlackjackInventory blackjack) {
+            player.openInventory(blackjack.getOrCreateView(player));
         } else {
             player.openInventory(dealerInventory.getInventory());
         }

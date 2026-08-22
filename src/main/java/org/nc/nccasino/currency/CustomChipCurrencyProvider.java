@@ -29,7 +29,8 @@ public class CustomChipCurrencyProvider implements CurrencyProvider {
 	}
 
 	@Override
-	public void deposit(Player player, String internalName, int amount) {
+	public boolean deposit(Player player, String internalName, int amount) {
+		return false;
 	}
 
 	@Override

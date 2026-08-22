@@ -14,6 +14,8 @@ public class Preferences {
     private MessageSetting messageSetting;
     private LanguageMode languageMode;
     private String explicitLanguage;
+    private boolean blackjackChairGuidanceSeen;
+    private boolean blackjackWagerGuidanceSeen;
     private final Nccasino plugin;
 
     public Preferences(UUID playerId) {
@@ -22,6 +24,8 @@ public class Preferences {
         this.messageSetting = MessageSetting.STANDARD; // Default
         this.languageMode = LanguageMode.SERVER_DEFAULT;
         this.explicitLanguage = null;
+        this.blackjackChairGuidanceSeen = false;
+        this.blackjackWagerGuidanceSeen = false;
         this.plugin = Nccasino.getPlugin(Nccasino.class); // Get plugin instance
     }
 
@@ -80,6 +84,38 @@ public class Preferences {
         languageMode = LanguageMode.EXPLICIT;
         explicitLanguage = normalized;
         plugin.savePreferences();
+    }
+
+    /** Whether this player has ever sat down at a Blackjack table before -- once true, the chair-guidance blink never shows for them again, on any table, ever. */
+    public boolean hasSeenBlackjackChairGuidance() {
+        return blackjackChairGuidanceSeen;
+    }
+
+    /** Marks the Blackjack chair guidance as permanently seen for this player and persists it immediately -- never reset by anything, including a fresh round or a server restart. */
+    public void markBlackjackChairGuidanceSeen() {
+        if (!blackjackChairGuidanceSeen) {
+            blackjackChairGuidanceSeen = true;
+            plugin.savePreferences();
+        }
+    }
+
+    /** Whether this player has ever selected a Blackjack wager before -- once true, the wager-guidance blink never shows for them again, on any table, ever. */
+    public boolean hasSeenBlackjackWagerGuidance() {
+        return blackjackWagerGuidanceSeen;
+    }
+
+    /** Marks the Blackjack wager guidance as permanently seen for this player and persists it immediately -- never reset by anything, including a fresh round or a server restart. */
+    public void markBlackjackWagerGuidanceSeen() {
+        if (!blackjackWagerGuidanceSeen) {
+            blackjackWagerGuidanceSeen = true;
+            plugin.savePreferences();
+        }
+    }
+
+    /** Used only by {@link Nccasino#loadPreferences()} to restore these flags from disk without re-triggering a save. */
+    public void loadBlackjackGuidanceSeen(boolean chairSeen, boolean wagerSeen) {
+        this.blackjackChairGuidanceSeen = chairSeen;
+        this.blackjackWagerGuidanceSeen = wagerSeen;
     }
 
     public void loadLanguage(

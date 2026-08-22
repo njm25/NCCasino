@@ -86,6 +86,15 @@ public class AdminMenu extends Menu {
     public static final Map<UUID, Mob> editRpsChainMode = new HashMap<>();
     public static final Map<UUID, Mob> editCoinFlipChainMode = new HashMap<>();
 
+    /** Which chat-prompt field {@link #blackjackFieldEditMode} is currently open for. */
+    public enum BlackjackEditField { MAX_HANDS, INSURANCE_TIMEOUT, TURN_TIMER_TIMEOUT }
+    // One consolidated pair covers every BlackjackMenu numeric chat prompt
+    // beyond the pre-existing timer/standOn17/decks maps above -- a typed
+    // "which field" companion map instead of one more single-purpose
+    // Map<UUID, Mob> per field.
+    public static final Map<UUID, Mob> blackjackFieldEditMode = new HashMap<>();
+    public static final Map<UUID, BlackjackEditField> blackjackFieldEditTarget = new HashMap<>();
+
     // All active AdminInventories by player ID
     public static final Map<UUID, AdminMenu> adminInventories = new HashMap<>();
     // Tracks which dealer is being edited by which player
@@ -1747,6 +1756,8 @@ public class AdminMenu extends Menu {
         currencyEditMode.remove(playerId);
         decksEditMode.remove(playerId);
         dragonEditMode.remove(playerId);
+        blackjackFieldEditMode.remove(playerId);
+        blackjackFieldEditTarget.remove(playerId);
         localMob.remove(playerId);
 
         AdminMenu menu = adminInventories.remove(playerId);
@@ -1761,6 +1772,13 @@ public class AdminMenu extends Menu {
         amsgEditMode.values().removeIf(mob::equals);
         chipEditMode.values().removeIf(mob::equals);
         currencyEditMode.values().removeIf(mob::equals);
+        blackjackFieldEditMode.entrySet().removeIf(entry -> {
+            boolean matches = entry.getValue().equals(mob);
+            if (matches) {
+                blackjackFieldEditTarget.remove(entry.getKey());
+            }
+            return matches;
+        });
     
         // Unregister any active AdminMenu associated with this Mob
         adminInventories.entrySet().removeIf(entry -> {
