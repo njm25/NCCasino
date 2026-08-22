@@ -470,7 +470,7 @@ public class BlackjackMenu extends Menu {
     }
 
     private void renderInsuranceTimeout() {
-        int seconds = configInt("insurance.timeout-seconds", 10);
+        int seconds = configInt("insurance.timeout-seconds", BlackjackTiming.INSURANCE_TIMEOUT_DEFAULT_SECONDS);
         addItemAndLore(
             Material.CLOCK, Math.max(1, Math.min(seconds, 64)),
             text("blackjack-settings.edit-insurance-timeout"), slotMapping.get(SlotOption.EDIT_INSURANCE_TIMEOUT),
