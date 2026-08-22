@@ -21,7 +21,7 @@ import org.nc.nccasino.objects.Card;
  */
 public final class BlackjackFrame {
 
-    public enum Phase { LOBBY, COUNTDOWN, START_TRANSITION, ACTIVE, INSURANCE }
+    public enum Phase { LOBBY, COUNTDOWN, START_TRANSITION, ACTIVE, INSURANCE, ROUND_END }
 
     /**
      * One hand's render-relevant snapshot -- a seat carries a list of these

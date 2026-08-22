@@ -90,6 +90,8 @@ public final class BlackjackSlotLayout {
     public static final int INSURANCE_NO_SLOT = 48;
     /** Totem of Undying "Yes" -- numerically the same slot as ACTION_DOUBLE_SLOT (49), never live at the same time. */
     public static final int INSURANCE_YES_SLOT = 49;
+    /** Private insurance countdown clock at the board's top-right corner. During insurance every player has only the initial two cards, so slot 8 is not yet needed by the top seat's card row. */
+    public static final int INSURANCE_TIMER_SLOT = 8;
 
     /** The permanent bet-spot slot immediately after a seat's head. */
     public static int betSlipSlot(int seatSlot) {
@@ -125,11 +127,6 @@ public final class BlackjackSlotLayout {
     /** Pregame countdown clock slot for a seated player -- overlays that seat's first card cell (mutual exclusion, no cards dealt yet). */
     public static int pregameCountdownSlot(int seatSlot) {
         return seatSlot + 2;
-    }
-
-    /** Private per-seat insurance decision countdown slot. */
-    public static int insuranceTimerSlot(int seatSlot) {
-        return seatSlot + 4;
     }
 
     public static boolean isSeatSlot(int slot) {

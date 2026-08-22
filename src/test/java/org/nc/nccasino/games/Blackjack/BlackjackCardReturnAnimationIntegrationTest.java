@@ -3,10 +3,14 @@ package org.nc.nccasino.games.Blackjack;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.junit.jupiter.api.Test;
 import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Rank;
 import org.nc.nccasino.objects.Suit;
+import org.nc.nccasino.session.ExitReason;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +30,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class BlackjackCardReturnAnimationIntegrationTest {
 
+    private static List<Material> materials(Inventory inventory) {
+        List<Material> result = new ArrayList<>();
+        for (int slot = 0; slot <= BlackjackSlotLayout.DECK_HOME_SLOT; slot++) {
+            result.add(inventory.getItem(slot) == null ? Material.AIR : inventory.getItem(slot).getType());
+        }
+        result.add(inventory.getItem(BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT).getType());
+        return result;
+    }
+
     private static List<Card> flatStack(Rank rank, int count) {
         List<Card> cards = new ArrayList<>();
         for (int i = 0; i < count; i++) {
@@ -40,6 +53,56 @@ class BlackjackCardReturnAnimationIntegrationTest {
 
     private static Material typeOf(ItemStack item) {
         return item == null ? null : item.getType();
+    }
+
+    private static void assertCompleteHeadPresentationEquals(ItemStack expected, ItemStack actual, String message) {
+        assertEquals(expected.getType(), actual.getType(), message + " (material)");
+        assertEquals(expected.getAmount(), actual.getAmount(), message + " (amount)");
+        ItemMeta expectedMeta = expected.getItemMeta();
+        ItemMeta actualMeta = actual.getItemMeta();
+        assertEquals(expectedMeta.getDisplayName(), actualMeta.getDisplayName(), message + " (display name)");
+        assertEquals(expectedMeta.getLore(), actualMeta.getLore(), message + " (complete lore)");
+        assertEquals(expectedMeta.getItemFlags(), actualMeta.getItemFlags(), message + " (item flags)");
+        if (expectedMeta instanceof SkullMeta expectedSkull && actualMeta instanceof SkullMeta actualSkull) {
+            UUID expectedOwner = expectedSkull.getOwningPlayer() != null ? expectedSkull.getOwningPlayer().getUniqueId() : null;
+            UUID actualOwner = actualSkull.getOwningPlayer() != null ? actualSkull.getOwningPlayer().getUniqueId() : null;
+            assertEquals(expectedOwner, actualOwner, message + " (owner)");
+        }
+    }
+
+    @Test
+    void leavingMidReturnClearsOnlyThatOwnersTransientCardsForExistingAndNewViews() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            h.inventory.stackDeckForTest(flatStack(Rank.SEVEN, 60));
+            h.currencyProvider.setBalance(1000);
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            Player bob = h.seatOnlinePlayer(UUID.randomUUID(), "Bob");
+            int aliceSeat = BlackjackSlotLayout.SEAT_SLOTS[0];
+            h.click(alice, aliceSeat);
+            h.inventory.commitWagerForTest(alice, 10.0);
+            h.click(bob, BlackjackSlotLayout.SEAT_SLOTS[2]);
+            h.inventory.commitWagerForTest(bob, 10.0);
+            h.inventory.beginStartTransitionForTest();
+            h.advanceToActionableTurn(1, 800);
+
+            h.inventory.resetGameForTest();
+            h.scheduler.advance(BlackjackTiming.RETURN_TO_DECK_START_PAUSE_TICKS + BlackjackTiming.RETURN_TO_DECK_HOP_TICKS);
+            h.inventory.onSessionTerminated(alice.getUniqueId(), ExitReason.KICKED);
+
+            for (int i = 0; i < BlackjackSlotLayout.SEAT_CARD_CAPACITY - 1; i++) {
+                assertEquals(Material.GREEN_STAINED_GLASS_PANE,
+                    item(h, bob, BlackjackSlotLayout.playerCardSlot(aliceSeat, i)).getType(),
+                    "the departed owner's current return frame must clear synchronously");
+            }
+            Player spectator = h.registerOnlinePlayer(UUID.randomUUID(), "Spectator");
+            Inventory newView = h.inventory.getOrCreateView(spectator);
+            assertEquals(materials(h.inventory.getOrCreateView(bob)), materials(newView),
+                "existing and newly bootstrapped views must agree after owner cleanup");
+
+            h.scheduler.advance(300);
+            assertTrue(h.inventory.playerHandsForTest(alice.getUniqueId()).isEmpty());
+            assertTrue(!h.inventory.isSeatedForTest(alice.getUniqueId()));
+        }
     }
 
     @Test
@@ -111,6 +174,49 @@ class BlackjackCardReturnAnimationIntegrationTest {
 
             // Ample extra time for the final board wipe behind it to finish too.
             h.scheduler.advance(20);
+        }
+    }
+
+    @Test
+    void reopeningDuringReturnUsesRoundEndPresentationInsteadOfStartingTheTableEntrance() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            h.inventory.stackDeckForTest(flatStack(Rank.SEVEN, 40));
+            h.currencyProvider.setBalance(1000);
+            UUID aliceId = UUID.randomUUID();
+            Player alice = h.seatOnlinePlayer(aliceId, "Alice");
+            int seatSlot = BlackjackSlotLayout.SEAT_SLOTS[0];
+            h.click(alice, seatSlot);
+            h.inventory.commitWagerForTest(alice, 10.0);
+            h.inventory.beginStartTransitionForTest();
+            h.advanceToActionableTurn(1, 800);
+
+            Inventory original = h.inventory.getOrCreateView(alice);
+            h.inventory.resetGameForTest();
+            assertEquals(BlackjackFrame.Phase.ROUND_END, h.inventory.capturePhaseForTest());
+            List<Material> frameBeforeClose = materials(original);
+            int dealerHeadSlot = h.inventory.dealerHeadSlotForTest();
+            ItemStack finalPlayerHead = original.getItem(seatSlot).clone();
+            ItemStack finalDealerHead = original.getItem(dealerHeadSlot).clone();
+
+            h.inventory.onViewClosed(alice, h.inventory.viewForTest(aliceId));
+            Inventory reopened = h.inventory.getOrCreateView(alice);
+
+            assertEquals(frameBeforeClose, materials(reopened),
+                "returning real cards, seats, deck, and dealer must reconstruct at the same tick");
+            assertCompleteHeadPresentationEquals(finalPlayerHead, reopened.getItem(seatSlot),
+                "ROUND_END bootstrap must preserve the complete final player head meta/lore");
+            assertCompleteHeadPresentationEquals(finalDealerHead, reopened.getItem(dealerHeadSlot),
+                "ROUND_END bootstrap must preserve the complete final dealer head meta/lore");
+            h.markOffline(aliceId);
+            Player spectator = h.registerOnlinePlayer(UUID.randomUUID(), "Spectator");
+            Inventory spectatorView = h.inventory.getOrCreateView(spectator);
+            assertCompleteHeadPresentationEquals(finalPlayerHead, spectatorView.getItem(seatSlot),
+                "ROUND_END bootstrap must preserve final lore for a retained offline owner too");
+            assertTrue(!h.inventory.isTableEntranceActiveForTest(aliceId),
+                "ROUND_END must never be misclassified as an entrance-eligible lobby");
+            assertEquals(Material.RED_STAINED_GLASS_PANE,
+                reopened.getItem(BlackjackSlotLayout.playerCardSlot(seatSlot, 0)).getType(),
+                "the returning card must remain visible even though canonical hands were already cleared");
         }
     }
 

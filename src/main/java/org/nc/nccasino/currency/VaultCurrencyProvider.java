@@ -83,8 +83,11 @@ public class VaultCurrencyProvider implements CurrencyProvider {
 
 	@Override
 	public boolean deposit(Player player, String internalName, int amount) {
-		if (player == null || amount <= 0) {
+		if (amount <= 0) {
 			return true;
+		}
+		if (player == null) {
+			return false;
 		}
 
 		return deposit(player, internalName, MoneyHelper.bd((long) amount));
@@ -199,4 +202,3 @@ public class VaultCurrencyProvider implements CurrencyProvider {
 		}
 	}
 }
-

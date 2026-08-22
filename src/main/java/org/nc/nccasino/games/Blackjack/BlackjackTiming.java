@@ -85,6 +85,16 @@ public final class BlackjackTiming {
     public static final int SHUFFLE_CARD_COUNT = 16;
     /** The brief pause between the deck arriving at the shuffle's center slot and the first card starting to move -- lets the deck's own arrival actually read before the cards take over. Retune by ear. */
     public static final long SHUFFLE_START_PAUSE_TICKS = 3L;
+    /** Hard cutoff for every shuffle bat-whoosh burst, trimming the sample's lingering tail exactly like the proven table-entrance sound. */
+    public static final long SHUFFLE_WHOOSH_CUTOFF_TICKS = 4L;
+    /** Densest smooth Bukkit cadence: one new clipped bat beat every server tick throughout the complete shuffle. */
+    public static final long SHUFFLE_WHOOSH_BEAT_TICKS = 1L;
+    /** Volume of each shared shuffle whoosh. */
+    public static final float SHUFFLE_WHOOSH_VOLUME = 0.48f;
+    /** Center pitch for the shuffle burst. */
+    public static final float SHUFFLE_WHOOSH_BASE_PITCH = 1.0f;
+    /** Small random pitch variation that keeps the repeated sample from sounding mechanically identical. */
+    public static final float SHUFFLE_WHOOSH_PITCH_JITTER = 0.08f;
 
     /** Same reveal flash for LOSS/PUSH, but at half the WIN rate -- a calmer flicker for the non-win outcomes. */
     public static final long ROUND_RESULT_FLASH_STEP_TICKS_SLOW = ROUND_RESULT_FLASH_STEP_TICKS * 2;

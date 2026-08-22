@@ -154,8 +154,16 @@ class BlackjackSelectedWagerLoreIntegrationTest {
     void repeatedBootstrapRepaintDoesNotDuplicateTheLore() {
         try (BlackjackControllerTestSupport.Harness h = newTable()) {
             UUID id = UUID.randomUUID();
+            h.currencyProvider.setBalance(1000);
+            org.mockito.Mockito.when(h.plugin.getTimer(org.mockito.ArgumentMatchers.anyString())).thenReturn(30);
             Player alice = seatAndOpen(h, id, "Alice", BlackjackSlotLayout.SEAT_SLOTS[0]);
             h.click(alice, ChipSlots.FIRST_SLOT);
+            // Commit the selected wager so a real close/reopen keeps Alice
+            // seated under RIDE_TO_RESULT. Without money at stake, the
+            // scheduled close resolution correctly removes her seat and
+            // selection; the old test accidentally asserted before that
+            // zero-delay scheduler task had run.
+            h.click(alice, BlackjackSlotLayout.betSlipSlot(BlackjackSlotLayout.SEAT_SLOTS[0]));
 
             // Force a genuine close/reopen -- the exact bootstrapView path a
             // late or returning viewer takes, distinct from the incremental
@@ -163,6 +171,7 @@ class BlackjackSelectedWagerLoreIntegrationTest {
             BlackjackView view = h.inventory.viewForTest(id);
             h.inventory.onViewClosed(alice, view);
             h.inventory.getOrCreateView(alice);
+            h.scheduler.advance(h.tableEntranceMaxDurationTicksForTest());
 
             ItemStack afterReopen = h.inventory.getOrCreateView(alice).getItem(ChipSlots.FIRST_SLOT);
             assertEquals(1, countSelectedLoreLines(afterReopen), "reopening the inventory must not duplicate the subtitle");

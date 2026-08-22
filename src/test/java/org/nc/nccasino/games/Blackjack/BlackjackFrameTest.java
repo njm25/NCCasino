@@ -282,7 +282,7 @@ class BlackjackFrameTest {
     @Test
     void phaseEnumIncludesStartTransitionAndInsurance() {
         assertEquals(
-            List.of("LOBBY", "COUNTDOWN", "START_TRANSITION", "ACTIVE", "INSURANCE"),
+            List.of("LOBBY", "COUNTDOWN", "START_TRANSITION", "ACTIVE", "INSURANCE", "ROUND_END"),
             List.of(BlackjackFrame.Phase.values()).stream().map(Enum::name).toList()
         );
     }

@@ -3,6 +3,7 @@ package org.nc.nccasino.games.Blackjack;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.Inventory;
 import org.junit.jupiter.api.Test;
 import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Rank;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -46,11 +48,93 @@ class BlackjackHandTransitionAnimationIntegrationTest {
         return h.inventory.getOrCreateView(viewer).getItem(slot);
     }
 
+    private static List<String> rowSignature(Inventory inventory) {
+        List<String> result = new ArrayList<>();
+        for (int i = 0; i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+            ItemStack item = inventory.getItem(BlackjackSlotLayout.playerCardSlot(SEAT_SLOT, i));
+            result.add(item == null ? "AIR" : item.getType() + ":" + item.getAmount());
+        }
+        return result;
+    }
+
     private static void advanceUntil(BlackjackControllerTestSupport.Harness h, java.util.function.BooleanSupplier condition, int maxTicks) {
         for (int i = 0; i < maxTicks && !condition.getAsBoolean(); i++) {
             h.scheduler.advance(1);
         }
         assertTrue(condition.getAsBoolean(), "condition never became true within " + maxTicks + " ticks");
+    }
+
+    @Test
+    void eightCardCompletedSplitHandTransitionsWithinItsVisibleRow() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            List<Card> stack = new ArrayList<>();
+            stack.add(new Card(Suit.SPADES, Rank.TWO));
+            stack.add(new Card(Suit.HEARTS, Rank.SEVEN));
+            stack.add(new Card(Suit.CLUBS, Rank.TWO));
+            stack.add(new Card(Suit.HEARTS, Rank.SEVEN));
+            stack.add(new Card(Suit.DIAMONDS, Rank.TWO));
+            stack.add(new Card(Suit.DIAMONDS, Rank.THREE));
+            stack.addAll(flatStack(Rank.TWO, 40));
+            h.inventory.stackDeckForTest(stack);
+            h.currencyProvider.setBalance(1000);
+
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            h.click(alice, SEAT_SLOT);
+            h.inventory.commitWagerForTest(alice, 15.0);
+            h.inventory.beginStartTransitionForTest();
+            h.advanceToActionableTurn(1, 800);
+            h.click(alice, BlackjackSlotLayout.ACTION_SPLIT_SLOT);
+            h.scheduler.advance(4 * BlackjackTiming.SPLIT_ANIMATION_STEP_TICKS + 40);
+            h.advanceToActionableTurn(1, 300);
+
+            for (int i = 2; i < 8; i++) {
+                int visibleIndex = Math.min(i, BlackjackSlotLayout.SEAT_CARD_CAPACITY - 1);
+                h.inventory.dealCardToPlayerForTest(
+                    BlackjackSlotLayout.playerCardSlot(SEAT_SLOT, visibleIndex),
+                    new Card(Suit.SPADES, Rank.TWO), alice.getUniqueId());
+            }
+            assertEquals(8, h.inventory.activeHandCardCountForTest(alice.getUniqueId()));
+
+            h.click(alice, BlackjackSlotLayout.ACTION_DOUBLE_SLOT); // Stand in the two-action layout
+            advanceUntil(h, () -> h.inventory.activeHandIndexForTest(alice.getUniqueId()) == 1
+                && h.inventory.turnTimerSecondsRemainingForTest() > 0, 500);
+            assertNotNull(item(h, alice, BlackjackSlotLayout.ACTION_STAND_SLOT));
+        }
+    }
+
+    @Test
+    void bottomSeatHandTransitionNeverErasesTheRestingDeckToken() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            int bottomSeat = BlackjackSlotLayout.SEAT_SLOTS[4];
+            List<Card> stack = new ArrayList<>();
+            stack.add(new Card(Suit.SPADES, Rank.EIGHT));
+            stack.add(new Card(Suit.HEARTS, Rank.SEVEN));
+            stack.add(new Card(Suit.CLUBS, Rank.EIGHT));
+            stack.add(new Card(Suit.HEARTS, Rank.SEVEN));
+            stack.add(new Card(Suit.DIAMONDS, Rank.TWO));
+            stack.add(new Card(Suit.DIAMONDS, Rank.NINE));
+            stack.addAll(flatStack(Rank.TWO, 40));
+            h.inventory.stackDeckForTest(stack);
+            h.currencyProvider.setBalance(1000);
+
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            h.click(alice, bottomSeat);
+            h.inventory.commitWagerForTest(alice, 15.0);
+            h.inventory.beginStartTransitionForTest();
+            h.advanceToActionableTurn(1, 800);
+            h.click(alice, BlackjackSlotLayout.ACTION_SPLIT_SLOT);
+            h.scheduler.advance(5 * BlackjackTiming.SPLIT_ANIMATION_STEP_TICKS + 80);
+            h.advanceToActionableTurn(1, 300);
+
+            h.click(alice, BlackjackSlotLayout.ACTION_STAND_SLOT);
+            for (int tick = 0; tick < 400 && h.inventory.activeHandIndexForTest(alice.getUniqueId()) == 0; tick++) {
+                h.scheduler.advance(1);
+                assertNotEquals(BACKGROUND,
+                    item(h, alice, BlackjackSlotLayout.DECK_HOME_SLOT).getType(),
+                    "the bottom-row claim/clear may not hide the deck during any transition tick");
+            }
+            assertEquals(1, h.inventory.activeHandIndexForTest(alice.getUniqueId()));
+        }
     }
 
     /**
@@ -162,6 +246,18 @@ class BlackjackHandTransitionAnimationIntegrationTest {
             assertEquals(2, item(h, alice, slot0).getAmount(), "hand 1's own original first card must be untouched throughout its collapse");
             assertEquals(RED_CARD, item(h, alice, slot1).getType());
             assertEquals(2, item(h, alice, slot1).getAmount(), "hand 1's own original second card (split replacement) must be untouched throughout its collapse -- never overwritten by the hit card");
+
+            // activeHandIndex already points at hand 2 here, but the visual
+            // transition is still deliberately showing collapsed hand 1.
+            // A canonical-only bootstrap used to jump straight to hand 2
+            // and the remaining reveal callbacks then cleared/moved that
+            // freshly-painted endpoint again.
+            Inventory beforeCloseInventory = h.inventory.getOrCreateView(alice);
+            List<String> beforeClose = rowSignature(beforeCloseInventory);
+            h.inventory.onViewClosed(alice, h.inventory.viewForTest(alice.getUniqueId()));
+            Inventory reopened = h.inventory.getOrCreateView(alice);
+            assertEquals(beforeClose, rowSignature(reopened),
+                "a reopen during hand-to-hand collapse must preserve the exact outgoing hand frame");
 
             // Eventually: hand 2 (2 of clubs / 9 of diamonds) lands for real.
             advanceUntil(h, () -> item(h, alice, slot1).getType() == RED_CARD && item(h, alice, slot1).getAmount() == 9, 300);

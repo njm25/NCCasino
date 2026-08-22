@@ -173,6 +173,31 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     // satisfies isReadyToDeal's own check on its own), but dealing must
     // still wait for the deck's own round trip out to the shuffle and back.
     private boolean shuffleInProgress = false;
+    // True while settled cards are returning and the dealer/deck are walking
+    // home. gameActive is already false in this window, but it is not a
+    // lobby: a fresh view must reconstruct the outgoing presentation and
+    // must never start the private table-entrance animation over it.
+    private boolean roundEndAnimationActive = false;
+    private enum SharedVisualKind { BACKGROUND, HIDDEN_CARD, CARD }
+    private record SharedVisual(SharedVisualKind kind, Card card, boolean glowing, UUID ownerPlayerId) {
+        static SharedVisual background(UUID ownerPlayerId) { return new SharedVisual(SharedVisualKind.BACKGROUND, null, false, ownerPlayerId); }
+        static SharedVisual hiddenCard(UUID ownerPlayerId) { return new SharedVisual(SharedVisualKind.HIDDEN_CARD, null, false, ownerPlayerId); }
+        static SharedVisual card(Card card, boolean glowing, UUID ownerPlayerId) { return new SharedVisual(SharedVisualKind.CARD, card, glowing, ownerPlayerId); }
+    }
+    /**
+     * Exact locale-neutral presentation currently owned by table-wide
+     * animation callbacks. Canonical game state intentionally does not
+     * contain cards between flight hops, parked split cards, or returning
+     * cards after resetGame clears the hands; this overlay is the missing
+     * reconnect snapshot for those transient cells.
+     */
+    private final Map<Integer, SharedVisual> sharedAnimationOverlay = new HashMap<>();
+    private final Set<UUID> overflowPresentationPlayers = new HashSet<>();
+    private boolean dealerOverflowPresentation = false;
+    /** Final, locale-neutral head-lore inputs retained while canonical hands are cleared during ROUND_END. */
+    private record RoundEndSnapshot(Map<UUID, List<List<Card>>> playerHands, List<Card> dealerHand) {
+    }
+    private RoundEndSnapshot roundEndSnapshot;
     // Seated players whose private door-conceal animation has finished
     // (the final step, door arrived at slot 45) during the current
     // start-transition attempt. Cleared at the start of every
@@ -800,6 +825,9 @@ private void registerListener() {
         }
         splitAnimationInFlight = false;
         splitAnimationPlayerId = null;
+        sharedAnimationOverlay.clear();
+        overflowPresentationPlayers.clear();
+        dealerOverflowPresentation = false;
     }
 
     /** Cancels every currently-tracked animation (private and shared) -- for table-wide teardown only (reset/cancel/delete). */
@@ -834,6 +862,9 @@ private void registerListener() {
         }
         if (startTransitionActive) {
             return BlackjackFrame.Phase.START_TRANSITION;
+        }
+        if (roundEndAnimationActive) {
+            return BlackjackFrame.Phase.ROUND_END;
         }
         if (countdownTaskId != -1) {
             return BlackjackFrame.Phase.COUNTDOWN;
@@ -999,8 +1030,33 @@ private void registerListener() {
         Bukkit.getScheduler().runTaskLater(plugin, () -> startChairGuidance(playerId, myGeneration), BlackjackTiming.CHAIR_GUIDANCE_START_DELAY_TICKS);
     }
 
+    private boolean isPregameGuidancePhase() {
+        BlackjackFrame.Phase phase = capturePhase();
+        return phase == BlackjackFrame.Phase.LOBBY || phase == BlackjackFrame.Phase.COUNTDOWN;
+    }
+
+    /** Restarts only the private/cosmetic loop appropriate to a fresh view. */
+    private void resumePrivateAnimationForView(UUID playerId) {
+        if (!views.containsKey(playerId)) {
+            return;
+        }
+        if (isPregameGuidancePhase()) {
+            if (!playerSeats.containsKey(playerId)) {
+                scheduleChairGuidanceStart(playerId);
+            } else if (selectedWager.containsKey(playerId)) {
+                startBetSpotBlink(playerId);
+            } else {
+                startWagerGuidance(playerId);
+            }
+        } else if (capturePhase() == BlackjackFrame.Phase.ACTIVE
+            && playerId.equals(currentPlayerId)
+            && playerTurnActive.getOrDefault(playerId, false)) {
+            startActionGuidance(playerId);
+        }
+    }
+
     private void startChairGuidance(UUID playerId, int myGeneration) {
-        if (isStaleViewerAnimation(playerId, myGeneration) || playerSeats.containsKey(playerId) || gameActive
+        if (isStaleViewerAnimation(playerId, myGeneration) || playerSeats.containsKey(playerId) || !isPregameGuidancePhase()
             || !views.containsKey(playerId) || plugin.getPreferences(playerId).hasSeenBlackjackChairGuidance()) {
             return;
         }
@@ -1015,7 +1071,7 @@ private void registerListener() {
      * Every currently-empty seat glows (or goes plain) together in the same tick -- never one seat at a time.
      */
     private void runChairGuidancePhase(UUID playerId, int myGeneration, boolean glowPhase) {
-        if (isStaleViewerAnimation(playerId, myGeneration) || playerSeats.containsKey(playerId) || gameActive
+        if (isStaleViewerAnimation(playerId, myGeneration) || playerSeats.containsKey(playerId) || !isPregameGuidancePhase()
             || !views.containsKey(playerId) || plugin.getPreferences(playerId).hasSeenBlackjackChairGuidance()) {
             return;
         }
@@ -1241,7 +1297,7 @@ private void registerListener() {
      * must never see this flash again, this round or any future one.
      */
     private void startWagerGuidance(UUID playerId) {
-        if (!playerSeats.containsKey(playerId) || gameActive || plugin.getPreferences(playerId).hasSeenBlackjackWagerGuidance()) {
+        if (!playerSeats.containsKey(playerId) || !isPregameGuidancePhase() || plugin.getPreferences(playerId).hasSeenBlackjackWagerGuidance()) {
             return;
         }
         int myGeneration = bumpAndGetViewerAnimationGeneration(playerId);
@@ -1255,7 +1311,7 @@ private void registerListener() {
      * -- never one chip at a time.
      */
     private void runWagerGuidancePhase(UUID playerId, int myGeneration, boolean glowPhase) {
-        if (isStaleViewerAnimation(playerId, myGeneration) || !playerSeats.containsKey(playerId) || gameActive
+        if (isStaleViewerAnimation(playerId, myGeneration) || !playerSeats.containsKey(playerId) || !isPregameGuidancePhase()
             || plugin.getPreferences(playerId).hasSeenBlackjackWagerGuidance()) {
             return;
         }
@@ -1294,7 +1350,7 @@ private void registerListener() {
 
     /** Blinks glow on the viewer's own bet spot, showing "Click to add {amount}", until they commit or select something else. */
     private void startBetSpotBlink(UUID playerId) {
-        if (!playerSeats.containsKey(playerId)) {
+        if (!playerSeats.containsKey(playerId) || !isPregameGuidancePhase()) {
             return;
         }
         int betSpotSlot = BlackjackSlotLayout.betSlipSlot(playerSeats.get(playerId));
@@ -1304,7 +1360,7 @@ private void registerListener() {
     }
 
     private void runBetSpotBlinkCycle(UUID playerId, int betSpotSlot, int myGeneration) {
-        if (isStaleViewerAnimation(playerId, myGeneration) || !playerSeats.containsKey(playerId) || gameActive) {
+        if (isStaleViewerAnimation(playerId, myGeneration) || !playerSeats.containsKey(playerId) || !isPregameGuidancePhase()) {
             return;
         }
         if (!selectedWager.containsKey(playerId)) {
@@ -1376,6 +1432,23 @@ private void registerListener() {
             countdownTaskId = -1;
         }
         clearPregameCountdownFromAllViews();
+
+        // A view can still be midway through its private build when the
+        // shared countdown reaches zero. Hand it back to the complete
+        // pregame endpoint before START_TRANSITION is exposed; otherwise
+        // cancelPrivateAnimation invalidates its callbacks while its
+        // tableEntranceActive ownership flag and half-green seat row remain
+        // stranded. Doing this before the phase flip also preserves the
+        // intended OPEN -> CLOSED wager-bar conceal instead of bootstrapping
+        // directly to the closed transition endpoint.
+        for (UUID viewerId : new HashSet<>(tableEntranceActive)) {
+            tableEntranceActive.remove(viewerId);
+            cancelPrivateAnimation(viewerId);
+            BlackjackView liveView = views.get(viewerId);
+            if (liveView != null) {
+                bootstrapView(liveView, false);
+            }
+        }
 
         roundGeneration++;
         dealerSequenceToken++;
@@ -1523,6 +1596,7 @@ private void registerListener() {
         // own doc for why it's set the instant the whole start-transition
         // begins, not only once this method (which only runs once the
         // dealer's own walk has already finished) is reached.
+        scheduleShuffleWhooshSequence(shuffleSequenceDurationTicks(), myRoundGeneration, run);
         scheduleShuffleDeckTravel(BlackjackShuffleAnimationPlan.DECK_TO_CENTER_PATH, myRoundGeneration, run, () ->
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (roundGeneration != myRoundGeneration || run.isCancelled()) {
@@ -1599,8 +1673,95 @@ private void registerListener() {
             for (int slot : affectedSlots) {
                 renderBackgroundToAllViews(slot);
             }
+            releaseSharedAnimationSlots(affectedSlots);
             finishShuffleSequence(myRoundGeneration, run);
         }, totalDuration + 1);
+    }
+
+    /**
+     * Carries the shuffle's clipped bat-whoosh texture across the complete
+     * sequence -- deck travel out, center pause, card stream, and deck travel
+     * home -- at the densest smooth server cadence of one beat per tick.
+     * Channels rotate round-robin, so with the available Bukkit categories a
+     * channel is not reused until well after its previous four-tick cutoff;
+     * no stop can chop a newer beat. The last beat is scheduled exactly one
+     * cutoff before the animation ends, so its tail stops on the final deck
+     * landing without a dead gap or a separate late restart.
+     */
+    private void scheduleShuffleWhooshSequence(
+        long totalDuration,
+        long myRoundGeneration,
+        BlackjackAnimationRun run
+    ) {
+        SoundCategory[] channels = SoundCategory.values();
+        Random pitchRandom = new Random();
+        long lastBeatTick = Math.max(totalDuration - BlackjackTiming.SHUFFLE_WHOOSH_CUTOFF_TICKS, 0L);
+        int beatIndex = 0;
+        for (long tick = 0; tick <= lastBeatTick; tick += BlackjackTiming.SHUFFLE_WHOOSH_BEAT_TICKS) {
+            scheduleShuffleWhooshBeat(
+                tick, channels[beatIndex % channels.length], randomShuffleWhooshPitch(pitchRandom),
+                myRoundGeneration, run
+            );
+            beatIndex++;
+        }
+    }
+
+    /** Exact startShuffleSequence-to-final-deck-landing duration, derived from the same paths/plans the render schedule uses. */
+    private long shuffleSequenceDurationTicks() {
+        long deckOut = (long) (BlackjackShuffleAnimationPlan.DECK_TO_CENTER_PATH.size() - 1)
+            * BlackjackTiming.SHUFFLE_HOP_TICKS;
+        List<BlackjackShuffleAnimationPlan.CardPiece> cards = BlackjackShuffleAnimationPlan.build(
+            BlackjackTiming.SHUFFLE_CARD_COUNT,
+            BlackjackTiming.SHUFFLE_HOP_TICKS,
+            BlackjackTiming.SHUFFLE_CARD_LAUNCH_STAGGER_TICKS
+        );
+        long cardPhase = BlackjackShuffleAnimationPlan.totalDurationTicks(cards, BlackjackTiming.SHUFFLE_HOP_TICKS);
+        long cleanupHandoff = 1L;
+        long deckHome = (long) (BlackjackShuffleAnimationPlan.CENTER_TO_DECK_PATH.size() - 1)
+            * BlackjackTiming.SHUFFLE_HOP_TICKS;
+        return deckOut + BlackjackTiming.SHUFFLE_START_PAUSE_TICKS + cardPhase + cleanupHandoff + deckHome;
+    }
+
+    private float randomShuffleWhooshPitch(Random pitchRandom) {
+        float jitter = (pitchRandom.nextFloat() * 2f - 1f) * BlackjackTiming.SHUFFLE_WHOOSH_PITCH_JITTER;
+        return BlackjackTiming.SHUFFLE_WHOOSH_BASE_PITCH + jitter;
+    }
+
+    /** Schedules one table-wide shuffle beat under the shared run's normal stale/cancellation guard. */
+    private void scheduleShuffleWhooshBeat(
+        long delay, SoundCategory channel, float pitch,
+        long myRoundGeneration, BlackjackAnimationRun run
+    ) {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (roundGeneration != myRoundGeneration || run.isCancelled()) {
+                return;
+            }
+            // Snapshot the current views for this beat. The cutoff captures
+            // exactly those who heard it, even if a view closes afterward.
+            for (BlackjackView view : new ArrayList<>(views.values())) {
+                playClippedShuffleWhoosh(Bukkit.getPlayer(view.getPlayerId()), channel, pitch);
+            }
+        }, delay);
+    }
+
+    /** Plays one shuffle swoop and hard-stops only its independent category channel after the tuned cutoff. */
+    private void playClippedShuffleWhoosh(Player viewer, SoundCategory channel, float pitch) {
+        if (viewer == null) {
+            return;
+        }
+        Sound shuffleSound = SoundHelper.getSoundSafely("entity.bat.takeoff", viewer);
+        if (shuffleSound == null) {
+            return;
+        }
+        viewer.playSound(
+            viewer.getLocation(), shuffleSound, channel,
+            BlackjackTiming.SHUFFLE_WHOOSH_VOLUME, pitch
+        );
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (viewer.isOnline()) {
+                viewer.stopSound(shuffleSound, channel);
+            }
+        }, BlackjackTiming.SHUFFLE_WHOOSH_CUTOFF_TICKS);
     }
 
     /** One frame: every slot the whole card phase ever touches (excluding the deck's own center slot) gets a fresh, complete, deterministic repaint -- an in-flight card shows the same hidden-card icon the deck token itself uses, everything else vacates to background. */
@@ -1609,7 +1770,7 @@ private void registerListener() {
             BlackjackShuffleAnimationPlan.frameAt(cards, tick, BlackjackTiming.SHUFFLE_HOP_TICKS);
         for (int slot : affectedSlots) {
             if (occupied.containsKey(slot)) {
-                renderHiddenCardToAllViews(slot);
+                renderSharedAnimationHiddenCard(slot);
             } else {
                 renderBackgroundToAllViews(slot);
             }
@@ -1877,7 +2038,7 @@ private void registerListener() {
                         continue;
                     }
                     if (!event.isLastHop() && !event.isMergeHop()) {
-                        renderCardToAllViews(event.hopSlot(), event.card(), false);
+                        renderSharedAnimationCard(event.hopSlot(), event.card(), false, event.ownerPlayerId());
                     }
                     // A merge hop renders nothing of its own -- the winning
                     // card's identical hop (in this same batch) already
@@ -2314,6 +2475,7 @@ private void registerListener() {
         // the wager-selection board mid-round and dropped their unanswered
         // insurance Yes/No prompt and countdown entirely.
         boolean active = frame.phase() == BlackjackFrame.Phase.ACTIVE || frame.phase() == BlackjackFrame.Phase.INSURANCE;
+        boolean inPlayPresentation = active || frame.phase() == BlackjackFrame.Phase.ROUND_END;
         // See isTableEntranceEligible's own doc for the future persisted-
         // once-ever gate this single call site is where that belongs.
         boolean entranceEligible = allowTableEntrance && isTableEntranceEligible();
@@ -2323,7 +2485,7 @@ private void registerListener() {
         // unused action slots, etc.) stays this background.
         paintBackground(target);
 
-        if (active) {
+        if (inPlayPresentation) {
             target.setItem(BlackjackSlotLayout.ACTIVE_EXIT_SLOT, buildExitDoorItem(viewer, view.getPlayerId()));
             // Private, like the action row: only the acting player's own
             // freshly-bootstrapped view may show the exact remaining time
@@ -2339,23 +2501,36 @@ private void registerListener() {
             } else {
                 target.setItem(BlackjackSlotLayout.TURN_TIMER_SLOT, buildBrownEdgeGlassItem());
             }
+        } else if (entranceEligible) {
+            // The entrance owns the entire pregame bottom row while it
+            // builds the board. This keeps a seated viewer's already-open
+            // wager controls from appearing underneath the door flight;
+            // finishTableEntrance restores the exact canonical seated or
+            // unseated row once every piece has landed.
+            for (int slot = BlackjackSlotLayout.UNDO_ALL_SLOT; slot <= BlackjackSlotLayout.PREGAME_EXIT_SLOT; slot++) {
+                target.setItem(slot, buildBackgroundPaneItem());
+            }
+            syncWagerBarPositionToCanonicalResting(view.getPlayerId());
+        } else if (frame.phase() == BlackjackFrame.Phase.START_TRANSITION) {
+            // Every committed seat's reveal has been (or, if they closed,
+            // was canonically fast-forwarded to) CLOSED before the deal can
+            // begin. Reopening must never resurrect the seated controls on
+            // top of the dealer/shuffle sequence.
+            paintUnseatedBottomBar(target, viewer);
+            wagerBarPosition.put(view.getPlayerId(), BlackjackWagerRevealPlan.CLOSED);
+            wagerBarTarget.put(view.getPlayerId(), BlackjackWagerRevealPlan.CLOSED);
         } else if (playerSeats.containsKey(view.getPlayerId())) {
             paintSeatedBottomBar(target, viewer, view.getPlayerId());
             syncWagerBarPositionToCanonicalResting(view.getPlayerId());
         } else {
             paintUnseatedBottomBar(target, viewer);
-            if (entranceEligible) {
-                // The door and brown edge glass are also flown in by the
-                // entrance (see startTableEntrance) -- start as background
-                // like every other empty seat/bet-spot instead of their
-                // real items.
-                target.setItem(BlackjackSlotLayout.UNSEATED_EXIT_SLOT, buildBackgroundPaneItem());
-                target.setItem(BlackjackSlotLayout.UNSEATED_EDGE_GLASS_SLOT, buildBackgroundPaneItem());
-            }
             syncWagerBarPositionToCanonicalResting(view.getPlayerId());
         }
 
         target.setItem(frame.dealerHeadSlot(), createCustomItem(Material.CREEPER_HEAD, localize(viewer, "blackjack.dealer")));
+        if (dealerDeckTokenSlot != -1) {
+            target.setItem(dealerDeckTokenSlot, buildHiddenCardItem(viewer));
+        }
         // While the hole card is hidden, presentation must never calculate
         // or expose a value derived from it -- only the publicly visible
         // portion of the canonical hand (the up-card) may feed the head
@@ -2385,43 +2560,48 @@ private void registerListener() {
             BlackjackFrame.Seat seat = frame.seatAt(seatSlot);
             int betSlipSlot = BlackjackSlotLayout.betSlipSlot(seatSlot);
 
+            if (entranceEligible) {
+                // Occupied seats participate too: their player heads and
+                // real per-viewer bet spots are dealt along the same paths
+                // empty chairs/brown panes use. Start every target green so
+                // the first visible frame is consistently unbuilt.
+                target.setItem(seatSlot, buildBackgroundPaneItem());
+                target.setItem(betSlipSlot, buildBackgroundPaneItem());
+                continue;
+            }
+
             if (seat == null) {
-                if (entranceEligible) {
-                    // The table-entrance animation (started at the end of
-                    // this method) owns flying the real chair/pane in --
-                    // starts as plain background so the very first frame
-                    // this viewer ever sees is the "before" state, not an
-                    // already-complete board.
-                    target.setItem(seatSlot, buildBackgroundPaneItem());
-                    target.setItem(betSlipSlot, buildBackgroundPaneItem());
-                } else {
                     target.setItem(seatSlot, buildEmptySeatChairItem(view.getPlayerId(), viewer));
                     // Brown is a permanent part of the table's edge -- painted
                     // for an empty seat in every phase, never left as (or
                     // cleared to) the green background. See buildBetSpotItemForViewer.
                     target.setItem(betSlipSlot, buildBrownEdgeGlassItem());
-                }
                 continue;
             }
 
             Player seatOwnerPlayer = Bukkit.getPlayer(seat.getPlayerId());
+            String seatOwnerName;
             if (seatOwnerPlayer != null) {
+                seatOwnerName = seatOwnerPlayer.getName();
                 target.setItem(seatSlot, createPlayerHeadItem(seatOwnerPlayer, 1));
-                List<String> seatHandTexts = new ArrayList<>();
-                for (BlackjackFrame.HandSnapshot handSnapshot : seat.getHands()) {
-                    String text = BlackjackRules.formatHandCardsAndTotal(handSnapshot.getCards());
-                    if (text != null) {
-                        seatHandTexts.add(text);
-                    }
-                }
-                if (!seatHandTexts.isEmpty()) {
-                    applyHeadLore(target, seatSlot, seatHandTexts, seatOwnerPlayer.getName(), null, viewer);
-                }
             } else {
-                // Seat tracked but the player can't be resolved (e.g. just
-                // disconnected) -- fall back to the empty-seat item rather
-                // than leave the slot blank.
-                target.setItem(seatSlot, buildEmptySeatChairItem(view.getPlayerId(), viewer));
+                // RIDE_TO_RESULT deliberately retains an absent wagered
+                // player's real seat. Render their stored skin/name rather
+                // than an empty, clickable-looking chair that is logically
+                // occupied and therefore rejects clicks.
+                seatOwnerName = Bukkit.getOfflinePlayer(seat.getPlayerId()).getName();
+                target.setItem(seatSlot, createPlayerHead(
+                    seat.getPlayerId(), seatOwnerName, null));
+            }
+            List<String> seatHandTexts = new ArrayList<>();
+            for (BlackjackFrame.HandSnapshot handSnapshot : seat.getHands()) {
+                String handText = BlackjackRules.formatHandCardsAndTotal(handSnapshot.getCards());
+                if (handText != null) {
+                    seatHandTexts.add(handText);
+                }
+            }
+            if (!seatHandTexts.isEmpty()) {
+                applyHeadLore(target, seatSlot, seatHandTexts, seatOwnerName, null, viewer);
             }
 
             // Permanent bet spot: the seat owner's own click-to-bet/active
@@ -2476,6 +2656,11 @@ private void registerListener() {
             renderInsurancePromptForPlayer(view.getPlayerId());
         }
 
+        // Last shared layer wins over canonical endpoint rendering. This is
+        // what lets a fresh view join a shuffle/card flight/split/return at
+        // the exact frame the already-open viewers currently see.
+        applySharedAnimationOverlay(target, viewer);
+
         if (entranceEligible) {
             startTableEntrance(view);
         }
@@ -2491,21 +2676,13 @@ private void registerListener() {
 
     /**
      * Whether a freshly-bootstrapped view is eligible for the entrance --
-     * true only during the safe LOBBY phase with every seat genuinely
-     * empty. Deliberately narrower than "COUNTDOWN is safe too": COUNTDOWN
-     * can only ever be reached once some player has both sat AND committed
-     * a wager, so it never actually coincides with an all-empty table --
-     * checking phase alone would be equivalent but less obviously correct
-     * than spelling out the real invariant this animation depends on.
-     *
-     * <p>Restricting to an all-empty table (rather than merely "this
-     * viewer's own seat is empty") is also what keeps this safe against
-     * occupied rows: the chair/pane corridors physically reuse the seat
-     * column and the dealer's own column as transit routes, so a transiting
-     * piece passing through a slot that's actually a real occupied seat
-     * would flash a chair over that player's canonical head for a frame.
-     * Restricting to "table is entirely empty" sidesteps that case
-     * completely rather than trying to route around occupied rows.
+     * true throughout the genuinely pregame LOBBY and COUNTDOWN phases,
+     * regardless of how many seats are occupied. Occupied chairs fly as
+     * their real player heads and occupied bet spots fly as their canonical
+     * per-viewer items, so reopening while seated no longer skips the build.
+     * START_TRANSITION and all dealt-card phases are deliberately excluded:
+     * once the countdown reaches zero, a late/reopening viewer must see the
+     * live shared dealer/shuffle/deal state immediately.
      *
      * <p>Deliberately NOT yet gated by a persisted "has this player already
      * seen it" flag (mirroring Preferences#hasSeenBlackjackChairGuidance) --
@@ -2513,7 +2690,8 @@ private void registerListener() {
      * ANDed into this same return expression, once added.
      */
     private boolean isTableEntranceEligible() {
-        return capturePhase() == BlackjackFrame.Phase.LOBBY && playerSeats.isEmpty();
+        BlackjackFrame.Phase phase = capturePhase();
+        return phase == BlackjackFrame.Phase.LOBBY || phase == BlackjackFrame.Phase.COUNTDOWN;
     }
 
     /**
@@ -2680,16 +2858,29 @@ private void registerListener() {
     /** One frame: every slot the whole entrance ever touches gets a fresh, complete, deterministic repaint from {@link BlackjackTableEntrancePlan#frameAt} -- landed pieces show the exact real chair/pane item (clickable normally from this frame on), everything else vacates to background. */
     private void renderTableEntranceFrame(UUID playerId, List<BlackjackTableEntrancePlan.Piece> pieces, Set<Integer> affectedSlots, long tick) {
         Player viewer = Bukkit.getPlayer(playerId);
-        Map<Integer, BlackjackTableEntrancePlan.PieceKind> occupied =
-            BlackjackTableEntrancePlan.frameAt(pieces, tick, BlackjackTiming.TABLE_ENTRANCE_HOP_TICKS);
+        Map<Integer, BlackjackTableEntrancePlan.Piece> occupied =
+            BlackjackTableEntrancePlan.pieceFrameAt(pieces, tick, BlackjackTiming.TABLE_ENTRANCE_HOP_TICKS);
         for (int slot : affectedSlots) {
-            BlackjackTableEntrancePlan.PieceKind kind = occupied.get(slot);
+            BlackjackTableEntrancePlan.Piece piece = occupied.get(slot);
             ItemStack item;
-            if (kind == BlackjackTableEntrancePlan.PieceKind.CHAIR) {
-                item = buildEmptySeatChairItem(playerId, viewer);
-            } else if (kind == BlackjackTableEntrancePlan.PieceKind.PANE) {
-                item = buildBrownEdgeGlassItem();
-            } else if (kind == BlackjackTableEntrancePlan.PieceKind.DOOR) {
+            if (piece == null) {
+                item = buildBackgroundPaneItem();
+            } else if (piece.getKind() == BlackjackTableEntrancePlan.PieceKind.CHAIR) {
+                UUID seatOwnerId = seatOwnerAt(piece.getTargetSlot());
+                Player seatOwner = seatOwnerId == null ? null : Bukkit.getPlayer(seatOwnerId);
+                item = seatOwnerId == null
+                    ? buildEmptySeatChairItem(playerId, viewer)
+                    : (seatOwner != null
+                        ? createPlayerHeadItem(seatOwner, 1)
+                        : createPlayerHead(seatOwnerId, Bukkit.getOfflinePlayer(seatOwnerId).getName(), null));
+            } else if (piece.getKind() == BlackjackTableEntrancePlan.PieceKind.PANE) {
+                int targetSlot = piece.getTargetSlot();
+                if (targetSlot == BlackjackTableEntrancePlan.EDGE_GLASS_TARGET) {
+                    item = buildBrownEdgeGlassItem();
+                } else {
+                    item = buildBetSpotItemForViewer(targetSlot - 1, playerId, viewer);
+                }
+            } else if (piece.getKind() == BlackjackTableEntrancePlan.PieceKind.DOOR) {
                 // Same real door item buildUnseatedBottomBarSlotItem paints
                 // once landed -- transiting and landed look identical here
                 // exactly like every other piece (see class doc).
@@ -2717,7 +2908,7 @@ private void registerListener() {
             bootstrapView(view, false);
         }
         privateAnimationRuns.remove(playerId);
-        scheduleChairGuidanceStart(playerId);
+        resumePrivateAnimationForView(playerId);
     }
 
     /**
@@ -3053,6 +3244,7 @@ private void registerListener() {
      */
     private BlackjackFrame captureFrame() {
         BlackjackFrame.Phase phase = capturePhase();
+        RoundEndSnapshot finalSnapshot = phase == BlackjackFrame.Phase.ROUND_END ? roundEndSnapshot : null;
 
         List<BlackjackFrame.Seat> seats = new ArrayList<>();
         for (int seatSlot : BlackjackSlotLayout.SEAT_SLOTS) {
@@ -3067,7 +3259,12 @@ private void registerListener() {
             List<BlackjackHand> hands = playerHands.get(playerId);
             List<BlackjackFrame.HandSnapshot> snapshots = new ArrayList<>();
             int activeIdx = 0;
-            if (hands != null && !hands.isEmpty()) {
+            List<List<Card>> finalHands = finalSnapshot != null ? finalSnapshot.playerHands().get(playerId) : null;
+            if (finalHands != null && !finalHands.isEmpty()) {
+                for (int i = 0; i < finalHands.size(); i++) {
+                    snapshots.add(new BlackjackFrame.HandSnapshot(finalHands.get(i), 0.0, true, i == 0));
+                }
+            } else if (hands != null && !hands.isEmpty()) {
                 activeIdx = activeHandIndex.getOrDefault(playerId, 0);
                 if (activeIdx < 0 || activeIdx >= hands.size()) {
                     activeIdx = 0;
@@ -3091,8 +3288,8 @@ private void registerListener() {
             countdownSecondsRemaining,
             leverKey != null ? leverKey : "blackjack.game-info",
             List.of(leverPlaceholders),
-            dealerHand,
-            hiddenCardPlaceholderVisible,
+            finalSnapshot != null ? finalSnapshot.dealerHand() : dealerHand,
+            finalSnapshot == null && hiddenCardPlaceholderVisible,
             dealerHeadSlot,
             seats
         );
@@ -3172,7 +3369,7 @@ private void registerListener() {
         // so it alone bumps this viewer's animation generation, rather than
         // both competing to bump it here.
         if (!tableEntranceActive.contains(player.getUniqueId())) {
-            scheduleChairGuidanceStart(player.getUniqueId());
+            resumePrivateAnimationForView(player.getUniqueId());
         }
     }
 
@@ -3314,8 +3511,101 @@ private void registerListener() {
         }
     }
 
+    private void renderSharedAnimationBackground(int slot) {
+        renderSharedAnimationBackground(slot, null);
+    }
+
+    private void renderSharedAnimationBackground(int slot, UUID ownerPlayerId) {
+        renderBackgroundToAllViews(slot);
+        sharedAnimationOverlay.put(slot, SharedVisual.background(ownerPlayerId));
+    }
+
+    private void renderSharedAnimationHiddenCard(int slot) {
+        renderSharedAnimationHiddenCard(slot, null);
+    }
+
+    private void renderSharedAnimationHiddenCard(int slot, UUID ownerPlayerId) {
+        renderHiddenCardToAllViews(slot);
+        sharedAnimationOverlay.put(slot, SharedVisual.hiddenCard(ownerPlayerId));
+    }
+
+    private void renderSharedAnimationCard(int slot, Card card, boolean glowing) {
+        renderSharedAnimationCard(slot, card, glowing, null);
+    }
+
+    private void renderSharedAnimationCard(int slot, Card card, boolean glowing, UUID ownerPlayerId) {
+        renderCardToAllViews(slot, card, glowing);
+        sharedAnimationOverlay.put(slot, SharedVisual.card(card, glowing, ownerPlayerId));
+    }
+
+    private void releaseSharedAnimationSlot(int slot) {
+        sharedAnimationOverlay.remove(slot);
+    }
+
+    private void releaseSharedAnimationSlots(Iterable<Integer> slots) {
+        for (int slot : slots) {
+            sharedAnimationOverlay.remove(slot);
+        }
+    }
+
+    private void applySharedAnimationOverlay(Inventory target, Player viewer) {
+        for (Map.Entry<Integer, SharedVisual> entry : new HashMap<>(sharedAnimationOverlay).entrySet()) {
+            SharedVisual visual = entry.getValue();
+            ItemStack item = switch (visual.kind()) {
+                case BACKGROUND -> buildBackgroundPaneItem();
+                case HIDDEN_CARD -> buildHiddenCardItem(viewer);
+                case CARD -> buildCardItem(visual.card(), viewer, visual.glowing());
+            };
+            target.setItem(entry.getKey(), item);
+        }
+    }
+
+    private void renderPlayerAnimationBackground(UUID playerId, int slot) {
+        if (slot == dealerDeckTokenSlot) {
+            renderSharedAnimationHiddenCard(slot);
+        } else {
+            renderSharedAnimationBackground(slot, playerId);
+        }
+    }
+
+    private void claimPlayerCardRow(UUID playerId, int seatSlot, List<Card> cards, boolean glowing) {
+        for (int i = 0; i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+            int slot = BlackjackSlotLayout.playerCardSlot(seatSlot, i);
+            if (i < cards.size()) {
+                renderSharedAnimationCard(slot, cards.get(i), glowing, playerId);
+            } else {
+                renderPlayerAnimationBackground(playerId, slot);
+            }
+        }
+    }
+
+    /** Removes only one player's transient cells, then rebuilds every view from canonical state plus all remaining overlays. */
+    private void cleanupSharedVisualsOwnedBy(UUID playerId) {
+        boolean removed = sharedAnimationOverlay.entrySet().removeIf(entry -> playerId.equals(entry.getValue().ownerPlayerId()));
+        overflowPresentationPlayers.remove(playerId);
+        if (!removed) {
+            return;
+        }
+        for (BlackjackView view : new ArrayList<>(views.values())) {
+            bootstrapView(view, false);
+        }
+    }
+
+    private void releasePlayerCardRow(int seatSlot) {
+        for (int i = 0; i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+            releaseSharedAnimationSlot(BlackjackSlotLayout.playerCardSlot(seatSlot, i));
+        }
+    }
+
+    private void releaseDealerCardRow() {
+        for (int i = 0; i < BlackjackSlotLayout.DEALER_CARD_CAPACITY; i++) {
+            releaseSharedAnimationSlot(BlackjackSlotLayout.dealerCardSlot(i));
+        }
+    }
+
     /** Clears {@code slot} back to the background pane (never to a bare null) in the legacy inventory and every open view. */
     private void renderBackgroundToAllViews(int slot) {
+        sharedAnimationOverlay.remove(slot);
         renderToAllViews(slot, buildBackgroundPaneItem());
     }
 
@@ -3428,6 +3718,7 @@ private void registerListener() {
 
     /** Deals one Card into the legacy inventory and every open view, each rendered in its own locale. */
     private void renderCardToAllViews(int slot, Card card, boolean glowing) {
+        sharedAnimationOverlay.remove(slot);
         inventory.setItem(slot, buildCardItem(card, null, glowing));
         for (BlackjackView view : views.values()) {
             Player viewer = Bukkit.getPlayer(view.getPlayerId());
@@ -3437,6 +3728,7 @@ private void registerListener() {
 
     /** Draws the dealer's hidden-card placeholder into the legacy inventory and every open view. */
     private void renderHiddenCardToAllViews(int slot) {
+        sharedAnimationOverlay.remove(slot);
         inventory.setItem(slot, buildHiddenCardItem(null));
         for (BlackjackView view : views.values()) {
             Player viewer = Bukkit.getPlayer(view.getPlayerId());
@@ -3775,10 +4067,11 @@ private void registerListener() {
                 return;
             }
             List<Card> currentWindow = visibleDealerHandWindow(dealerHand);
+            dealerOverflowPresentation = true;
             for (int i = 0; i < currentWindow.size() - 1; i++) {
-                renderCardToAllViews(BlackjackSlotLayout.dealerCardSlot(i), currentWindow.get(i + 1), false);
+                renderSharedAnimationCard(BlackjackSlotLayout.dealerCardSlot(i), currentWindow.get(i + 1), false);
             }
-            renderBackgroundToAllViews(nextSlot);
+            renderSharedAnimationBackground(nextSlot);
         }, shiftDelay);
         return nextSlot;
     }
@@ -3977,6 +4270,14 @@ public void handleClick(int slot, Player player, InventoryClickEvent event) {
     // real sit/bet/leave clicks wait until it finishes. Slots 47+ (always
     // background/unused in this same LOBBY phase) are untouched either way.
     if (tableEntranceActive.contains(playerId) && slot <= BlackjackSlotLayout.UNSEATED_EDGE_GLASS_SLOT) {
+        return;
+    }
+
+    // gameActive is deliberately already false while the settled board is
+    // returning to the deck. That does not make ROUND_END a betting lobby:
+    // every inventory click is presentation-only until the board wipe has
+    // completed. Players can still close the inventory normally (escape/E).
+    if (roundEndAnimationActive) {
         return;
     }
 
@@ -4327,15 +4628,16 @@ private void handleHit(Player player) {
             // synchronously right here rather than through the generation/
             // token-guarded scheduling the actual deal below still needs.
             List<Card> currentWindow = visibleHandWindow(hand.getCards());
+            overflowPresentationPlayers.add(playerId);
             for (int i = 0; i < currentWindow.size() - 1; i++) {
-                renderCardToAllViews(BlackjackSlotLayout.playerCardSlot(seatSlot, i), currentWindow.get(i + 1), playerId.equals(currentPlayerId));
+                renderSharedAnimationCard(BlackjackSlotLayout.playerCardSlot(seatSlot, i), currentWindow.get(i + 1), playerId.equals(currentPlayerId), playerId);
             }
             nextCardSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, capacity - 1);
             // The rightmost slot itself must actually go empty here, not
             // keep showing the card that just "moved" out of it -- without
             // this it silently sat there stale (never cleared) until the
             // new card's own flight happened to land on top of it later.
-            renderBackgroundToAllViews(nextCardSlot);
+            renderPlayerAnimationBackground(playerId, nextCardSlot);
         } else {
             nextCardSlot = seatSlot + 2 + cardCount; // Plain arithmetic -- still comfortably inside the row here.
         }
@@ -4354,7 +4656,7 @@ private void handleHit(Player player) {
 
         Card newCard = deck.dealCard();
         if (isRenderableCardSlot(playerId, nextCardSlot)) {
-            scheduleCardFlightEndingAt(nextCardSlot, false, BlackjackTiming.CARD_DEAL_DELAY_TICKS, myGeneration);
+            scheduleCardFlightEndingAt(nextCardSlot, false, BlackjackTiming.CARD_DEAL_DELAY_TICKS, myGeneration, playerId);
         }
         scheduleCardDealingWithDelay(nextCardSlot, newCard, BlackjackTiming.CARD_DEAL_DELAY_TICKS, playerId, myGeneration, myHandToken, handId, generationBeforeCard); // Deal the card with a delay
 
@@ -4561,7 +4863,7 @@ private void handleDoubleDown(Player player) {
         // Exactly one more card.
         Card newCard = deck.dealCard();
         if (isRenderableCardSlot(playerId, cardSlot)) {
-            scheduleCardFlightEndingAt(cardSlot, false, BlackjackTiming.CARD_DEAL_DELAY_TICKS, myGeneration);
+            scheduleCardFlightEndingAt(cardSlot, false, BlackjackTiming.CARD_DEAL_DELAY_TICKS, myGeneration, playerId);
         }
         scheduleCardDealingWithDelay(cardSlot, newCard, BlackjackTiming.CARD_DEAL_DELAY_TICKS, playerId, myGeneration, myHandToken, handId, generationBeforeCard);
 
@@ -4675,9 +4977,7 @@ private void handleDoubleDown(Player player) {
         // glowy through the whole pause and only dropping once the
         // collapse/slide animation starts moving.
         List<Card> prevCards = previousHand.getCards();
-        for (int i = 0; i < prevCards.size() && i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
-            renderCardToAllViews(BlackjackSlotLayout.playerCardSlot(seatSlot, i), prevCards.get(i), false);
-        }
+        claimPlayerCardRow(playerId, seatSlot, visibleHandWindow(prevCards), false);
         betSpotGlowSuppressed.add(playerId);
         renderBetSpotToAllViews(seatSlot);
 
@@ -4706,23 +5006,23 @@ private void handleDoubleDown(Player player) {
      */
     private void runHandTransitionCollapse(UUID playerId, int seatSlot, BlackjackHand previousHand, BlackjackHand nextHand, long myGeneration, int myHandToken) {
         List<Card> prevCards = previousHand.getCards();
-        int prevCount = prevCards.size();
-        if (prevCount <= 2) {
+        int visibleCount = Math.min(prevCards.size(), BlackjackSlotLayout.SEAT_CARD_CAPACITY);
+        if (visibleCount <= 2) {
             runHandTransitionReveal(playerId, seatSlot, nextHand, myGeneration, myHandToken);
             return;
         }
 
         long step = BlackjackTiming.HAND_TRANSITION_STEP_TICKS;
-        int hitCards = prevCount - 2;
+        int hitCards = visibleCount - 2;
         for (int s = 0; s < hitCards; s++) {
-            int cardIndexToVanish = prevCount - 1 - s; // most recent hit card first, working left -- never reaches index 1, the hand's own original second card
+            int cardIndexToVanish = visibleCount - 1 - s; // rightmost visible card first; never indexes beyond the seven-cell row
             int slotToClear = BlackjackSlotLayout.playerCardSlot(seatSlot, cardIndexToVanish);
             long delay = (s + 1) * step;
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (isStaleHandCallback(playerId, myGeneration, myHandToken)) {
                     return;
                 }
-                renderBackgroundToAllViews(slotToClear);
+                renderPlayerAnimationBackground(playerId, slotToClear);
             }, delay);
         }
 
@@ -4784,7 +5084,7 @@ private void handleDoubleDown(Player player) {
             int laneOffset = n - 1 - i;
             if (laneOffset <= 0) {
                 int slot = BlackjackSlotLayout.playerCardSlot(seatSlot, startOffset - laneOffset);
-                renderCardToAllViews(slot, cards.get(i), true);
+                renderSharedAnimationCard(slot, cards.get(i), true, playerId);
             }
         }
 
@@ -4811,10 +5111,10 @@ private void handleDoubleDown(Player player) {
                     }
                 }
                 for (int slot : clears) {
-                    renderBackgroundToAllViews(slot);
+                    renderPlayerAnimationBackground(playerId, slot);
                 }
                 for (int[] render : renders) {
-                    renderCardToAllViews(BlackjackSlotLayout.playerCardSlot(seatSlot, render[1]), cards.get(render[0]), true);
+                    renderSharedAnimationCard(BlackjackSlotLayout.playerCardSlot(seatSlot, render[1]), cards.get(render[0]), true, playerId);
                 }
             }, hopDelay);
         }
@@ -4832,8 +5132,8 @@ private void handleDoubleDown(Player player) {
                 for (int i = 0; i < n; i++) {
                     int fromSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, i + outOffset - hopFinal + 1);
                     int toSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, i + outOffset - hopFinal);
-                    renderBackgroundToAllViews(fromSlot);
-                    renderCardToAllViews(toSlot, cards.get(i), true);
+                    renderPlayerAnimationBackground(playerId, fromSlot);
+                    renderSharedAnimationCard(toSlot, cards.get(i), true, playerId);
                 }
                 if (finalHop) {
                     for (int i = cards.size(); i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
@@ -4846,9 +5146,9 @@ private void handleDoubleDown(Player player) {
                         // instead of clearing to background whenever this
                         // cleanup reaches that slot.
                         if (slotToClear == dealerDeckTokenSlot) {
-                            renderHiddenCardToAllViews(slotToClear);
+                            renderSharedAnimationHiddenCard(slotToClear);
                         } else {
-                            renderBackgroundToAllViews(slotToClear);
+                            renderSharedAnimationBackground(slotToClear, playerId);
                         }
                     }
                     // Hand 2 has just slammed back into its real slots,
@@ -4856,6 +5156,7 @@ private void handleDoubleDown(Player player) {
                     // comes back on in this exact same step, not before.
                     betSpotGlowSuppressed.remove(playerId);
                     renderBetSpotToAllViews(seatSlot);
+                    releasePlayerCardRow(seatSlot);
                     finishActivatingSplitHand(playerId, seatSlot, nextHand);
                 }
             }, hopDelay);
@@ -5066,6 +5367,11 @@ private void handleDoubleDown(Player player) {
         int slotGap = BlackjackSlotLayout.playerCardSlot(seatSlot, 2);
         int slotTempB = BlackjackSlotLayout.playerCardSlot(seatSlot, 3);
         int slotTempD = BlackjackSlotLayout.playerCardSlot(seatSlot, 4);
+        for (int i = 0; i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+            renderPlayerAnimationBackground(playerId, BlackjackSlotLayout.playerCardSlot(seatSlot, i));
+        }
+        renderSharedAnimationCard(BlackjackSlotLayout.playerCardSlot(seatSlot, 0), originalHand.getCards().get(0), true, playerId);
+        renderSharedAnimationCard(slotOrigB, siblingHand.getCards().get(0), false, playerId);
 
         // D (phase 3) shoots in from the deck, same as any other dealt card
         // -- its target is past B entirely so the plain up-then-left flight
@@ -5090,7 +5396,7 @@ private void handleDoubleDown(Player player) {
             long dLandingTick = fasterSiblingCardLandingTick(dHopCount, stepTicks, 2 * stepTicks);
             phase3ShiftEarlier = Math.max(0L, 2 * stepTicks - dLandingTick);
 
-            scheduleCardFlightAlongPathEndingAt(dPath, dLandingTick, myGeneration, dHopTicks);
+            scheduleCardFlightAlongPathEndingAt(dPath, dLandingTick, myGeneration, dHopTicks, playerId);
         }
         long phase3Delay = Math.max(1L, stepTicks - phase3ShiftEarlier);
 
@@ -5112,13 +5418,13 @@ private void handleDoubleDown(Player player) {
         Integer bottomSeatStagingSlot = null;
         if (bottomSeat && isRenderableCardSlot(playerId, slotOrigB)) {
             List<Integer> dashPath = bottomSeatSplitDashPath(slotOrigB);
-            scheduleCardFlightHops(dashPath, 0L, myGeneration, dashHopTicks);
+            scheduleCardFlightHops(dashPath, 0L, myGeneration, dashHopTicks, playerId);
             bottomSeatStagingSlot = dashPath.get(dashPath.size() - 1);
             phase1Delay = (dashPath.size() - 1) * dashHopTicks;
         } else {
             phase1Delay = 0L;
             if (isRenderableCardSlot(playerId, slotOrigB)) {
-                scheduleCardFlightAlongPathEndingAt(splitOriginalCardFlightPath(slotOrigB), stepTicks, myGeneration);
+                scheduleCardFlightAlongPathEndingAt(splitOriginalCardFlightPath(slotOrigB), stepTicks, myGeneration, playerId);
             }
         }
 
@@ -5150,10 +5456,10 @@ private void handleDoubleDown(Player player) {
         Card slidingSiblingCard = siblingHand.getCards().get(0);
         Runnable vacateOriginAndEnterGap = () -> {
             if (isRenderableCardSlot(playerId, slotOrigB)) {
-                renderBackgroundToAllViews(slotOrigB);
+                renderPlayerAnimationBackground(playerId, slotOrigB);
             }
             if (isRenderableCardSlot(playerId, slotGap)) {
-                renderCardToAllViews(slotGap, slidingSiblingCard, false);
+                renderSharedAnimationCard(slotGap, slidingSiblingCard, false, playerId);
             }
         };
         if (phase1Delay == 0) {
@@ -5175,10 +5481,10 @@ private void handleDoubleDown(Player player) {
                 return;
             }
             if (isRenderableCardSlot(playerId, slotGap)) {
-                renderBackgroundToAllViews(slotGap);
+                renderPlayerAnimationBackground(playerId, slotGap);
             }
             if (isRenderableCardSlot(playerId, slotTempB)) {
-                renderCardToAllViews(slotTempB, slidingSiblingCard, false);
+                renderSharedAnimationCard(slotTempB, slidingSiblingCard, false, playerId);
             }
         }, finalHopDelay);
 
@@ -5202,9 +5508,9 @@ private void handleDoubleDown(Player player) {
                 if (run != sharedAnimationRun || !isSplitOperationValid(run, guardBeforeAnyDeal)) {
                     return;
                 }
-                renderBackgroundToAllViews(stagingSlot);
+                renderSharedAnimationBackground(stagingSlot, playerId);
                 if (isRenderableCardSlot(playerId, slotOrigB)) {
-                    renderHiddenCardToAllViews(slotOrigB);
+                    renderSharedAnimationHiddenCard(slotOrigB, playerId);
                 }
             }, hopUpLandingTick);
         }
@@ -5232,7 +5538,7 @@ private void handleDoubleDown(Player player) {
             }
             originalHand.addCard(originalReplacement); // bumps originalHand's own generation by exactly 1
             if (isRenderableCardSlot(playerId, slotOrigB)) {
-                renderCardToAllViews(slotOrigB, originalReplacement, playerId.equals(currentPlayerId));
+                renderSharedAnimationCard(slotOrigB, originalReplacement, playerId.equals(currentPlayerId), playerId);
             }
             updatePlayerHead(playerId);
 
@@ -5253,7 +5559,7 @@ private void handleDoubleDown(Player player) {
                 }
                 siblingHand.addCard(siblingReplacement); // bumps siblingHand's own generation by exactly 1
                 if (isRenderableCardSlot(playerId, slotTempD)) {
-                    renderCardToAllViews(slotTempD, siblingReplacement, false);
+                    renderSharedAnimationCard(slotTempD, siblingReplacement, false, playerId);
                 }
                 updatePlayerHead(playerId); // the sibling hand's own lore line must reflect D immediately, not stay stale until something unrelated repaints it
 
@@ -5276,13 +5582,13 @@ private void handleDoubleDown(Player player) {
                         return;
                     }
                     if (isRenderableCardSlot(playerId, slotGap)) {
-                        renderCardToAllViews(slotGap, siblingHand.getCards().get(0), false);
+                        renderSharedAnimationCard(slotGap, siblingHand.getCards().get(0), false, playerId);
                     }
                     if (isRenderableCardSlot(playerId, slotTempB)) {
-                        renderCardToAllViews(slotTempB, siblingReplacement, false);
+                        renderSharedAnimationCard(slotTempB, siblingReplacement, false, playerId);
                     }
                     if (isRenderableCardSlot(playerId, slotTempD)) {
-                        renderBackgroundToAllViews(slotTempD);
+                        renderPlayerAnimationBackground(playerId, slotTempD);
                     }
 
                     // Phase 5: the sibling hand tucks away behind the active
@@ -5297,10 +5603,10 @@ private void handleDoubleDown(Player player) {
                             return;
                         }
                         if (isRenderableCardSlot(playerId, slotTempB)) {
-                            renderBackgroundToAllViews(slotTempB);
+                            renderPlayerAnimationBackground(playerId, slotTempB);
                         }
                         if (isRenderableCardSlot(playerId, slotGap)) {
-                            renderCardToAllViews(slotGap, siblingReplacement, false);
+                            renderSharedAnimationCard(slotGap, siblingReplacement, false, playerId);
                         }
 
                         // Phase 6: park -- D (now alone at the gap) also
@@ -5312,11 +5618,12 @@ private void handleDoubleDown(Player player) {
                                 return;
                             }
                             if (isRenderableCardSlot(playerId, slotGap)) {
-                                renderBackgroundToAllViews(slotGap);
+                                renderPlayerAnimationBackground(playerId, slotGap);
                             }
                             sharedAnimationRun = null;
                             splitAnimationInFlight = false;
                             splitAnimationPlayerId = null;
+                            releasePlayerCardRow(seatSlot);
                             resolveHandAfterSplitAnimation(playerId);
                         }, BlackjackTiming.SPLIT_PARK_STEP_TICKS);
                     }, BlackjackTiming.SPLIT_PARK_STEP_TICKS);
@@ -5747,7 +6054,12 @@ private void removePlayerData(UUID playerId) {
     // tear it down here instead of leaving a stale in-flight flag around
     // until its now-guarded-off steps eventually no-op on their own.
     if (playerId.equals(splitAnimationPlayerId)) {
-        cancelSharedAnimation();
+        if (sharedAnimationRun != null) {
+            sharedAnimationRun.cancel();
+            sharedAnimationRun = null;
+        }
+        splitAnimationInFlight = false;
+        splitAnimationPlayerId = null;
     }
 
     // A leave that doesn't empty the whole table (cancelGame() not
@@ -5769,7 +6081,12 @@ private void removePlayerData(UUID playerId) {
         // Clear the player's cards from the table
         List<Card> hand = activeHandCards(playerId);
         for (int i = 0; i < hand.size() && i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
-            renderBackgroundToAllViews(BlackjackSlotLayout.playerCardSlot(seatSlot, i)); // Clear each card slot in the player's row back to the felt
+            int cardSlot = BlackjackSlotLayout.playerCardSlot(seatSlot, i);
+            if (cardSlot == dealerDeckTokenSlot) {
+                renderHiddenCardToAllViews(cardSlot);
+            } else {
+                renderBackgroundToAllViews(cardSlot); // Clear each card slot in the player's row back to the felt
+            }
         }
 
         // Remove player's data from tracking maps
@@ -5788,6 +6105,12 @@ private void removePlayerData(UUID playerId) {
         // Remove player from seat map
         playerSeats.remove(playerId);
         SessionRegistry.unregister(playerId, this);
+
+        // Canonical ownership is gone now, so rebuild precisely the cells
+        // this player transiently owned (split/transition/overflow/flight/
+        // return) before any cancelled or owner-guarded callback can strand
+        // its last frame. Other owners' overlay entries remain untouched.
+        cleanupSharedVisualsOwnedBy(playerId);
 
         // Repaint the now-empty seat and its bet spot for every viewer,
         // personalized per viewer -- must run after playerSeats.remove
@@ -6405,6 +6728,10 @@ private void dealInitialCards() {
     }
 
     long myGeneration = roundGeneration;
+    Map<UUID, BlackjackHand> initialDealHands = new HashMap<>();
+    for (UUID playerId : bettingPlayerOrder) {
+        initialDealHands.put(playerId, ensureActiveHand(playerId));
+    }
 
     BlackjackDealPlan.Plan plan = BlackjackDealPlan.initialDeal(
         bettingPlayerOrder, playerSeats,
@@ -6423,7 +6750,7 @@ private void dealInitialCards() {
     long nextStepStartDelay = 0L;
     long lastCardLandingDelay = 0L;
     for (BlackjackDealPlan.Step step : plan.getSteps()) {
-        long landingDelay = scheduleCardFlight(step.getSlot(), step.isDealer(), nextStepStartDelay, myGeneration);
+        long landingDelay = scheduleCardFlight(step.getSlot(), step.isDealer(), nextStepStartDelay, myGeneration, step.getPlayerId());
         lastCardLandingDelay = Math.max(lastCardLandingDelay, landingDelay);
         nextStepStartDelay = Math.max(nextStepStartDelay + 1, landingDelay - BlackjackTiming.INITIAL_DEAL_OVERLAP_TICKS);
         if (step.isHidden()) {
@@ -6436,7 +6763,8 @@ private void dealInitialCards() {
             Card holeCard = deck.dealCard();
             scheduleHiddenCardDealing(step.getSlot(), holeCard, landingDelay, myGeneration);
         } else {
-            scheduleCardDealing(step.getSlot(), deck.dealCard(), (int) landingDelay, step.getPlayerId(), myGeneration);
+            scheduleCardDealing(step.getSlot(), deck.dealCard(), (int) landingDelay, step.getPlayerId(), myGeneration,
+                step.getPlayerId() != null ? initialDealHands.get(step.getPlayerId()) : null);
         }
     }
 
@@ -6846,20 +7174,17 @@ private void renderInsurancePromptForPlayer(UUID playerId) {
 
 private void renderInsuranceCountdownForPlayer(UUID playerId, int secondsLeft) {
     Player viewer = Bukkit.getPlayer(playerId);
-    Integer seatSlot = playerSeats.get(playerId);
-    if (seatSlot == null) {
+    if (!playerSeats.containsKey(playerId)) {
         return;
     }
-    int slot = BlackjackSlotLayout.insuranceTimerSlot(seatSlot);
-    renderPrivateItem(playerId, slot, createCustomItem(Material.CLOCK, localize(viewer, "blackjack.insurance-timer-lore", "seconds", secondsLeft), Math.max(secondsLeft, 1)));
+    renderPrivateItem(playerId, BlackjackSlotLayout.INSURANCE_TIMER_SLOT, createCustomItem(Material.CLOCK, localize(viewer, "blackjack.insurance-timer-lore", "seconds", secondsLeft), Math.max(secondsLeft, 1)));
 }
 
 private void clearInsurancePromptForPlayer(UUID playerId) {
     renderPrivateItem(playerId, BlackjackSlotLayout.INSURANCE_YES_SLOT, buildBackgroundPaneItem());
     renderPrivateItem(playerId, BlackjackSlotLayout.INSURANCE_NO_SLOT, buildBackgroundPaneItem());
-    Integer seatSlot = playerSeats.get(playerId);
-    if (seatSlot != null) {
-        renderPrivateItem(playerId, BlackjackSlotLayout.insuranceTimerSlot(seatSlot), buildBackgroundPaneItem());
+    if (playerSeats.containsKey(playerId)) {
+        renderPrivateItem(playerId, BlackjackSlotLayout.INSURANCE_TIMER_SLOT, buildBackgroundPaneItem());
     }
 }
 
@@ -7892,6 +8217,18 @@ private int applyProbabilisticRounding(double value) {
     return integerPart; // Otherwise, keep it rounded down
 }
 
+private RoundEndSnapshot captureRoundEndSnapshot() {
+    Map<UUID, List<List<Card>>> handsByPlayer = new HashMap<>();
+    for (Map.Entry<UUID, List<BlackjackHand>> entry : playerHands.entrySet()) {
+        List<List<Card>> hands = new ArrayList<>();
+        for (BlackjackHand hand : entry.getValue()) {
+            hands.add(List.copyOf(hand.getCards()));
+        }
+        handsByPlayer.put(entry.getKey(), List.copyOf(hands));
+    }
+    return new RoundEndSnapshot(Map.copyOf(handsByPlayer), List.copyOf(dealerHand));
+}
+
 private void resetGame() {
     // Captured before anything below clears it -- every card still on the
     // board right now needs to slide back into the deck (see the deferred
@@ -7903,6 +8240,8 @@ private void resetGame() {
     int deckSlotForReturn = dealerDeckTokenSlot != -1 ? dealerDeckTokenSlot : BlackjackSlotLayout.DECK_HOME_SLOT;
 
     gameActive = false;
+    roundEndAnimationActive = true;
+    roundEndSnapshot = captureRoundEndSnapshot();
     roundGeneration++;
     long myRoundGeneration = roundGeneration;
     dealerSequenceToken++;
@@ -7912,6 +8251,9 @@ private void resetGame() {
     // sequence) and every private one both end here -- the whole round is
     // over, not just one viewer's inventory closing.
     cancelAllAnimations();
+    for (ReturningCard returningCard : returningCards) {
+        sharedAnimationOverlay.put(returningCard.slot(), SharedVisual.card(returningCard.card(), false, returningCard.ownerPlayerId()));
+    }
 
     // finishGame() already painted every settled player's WIN/LOSS/PUSH
     // bet-spot color moments ago; the flash itself is scheduled here (using
@@ -7992,6 +8334,9 @@ private void finishRoundEndBoardWipe(long myRoundGeneration, boolean clearSeats)
     }
     dealerHeadSlot = BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT;
     dealerDeckTokenSlot = -1;
+    roundEndAnimationActive = false;
+    roundEndSnapshot = null;
+    sharedAnimationOverlay.clear();
     // The round-end result reveal (see buildRoundResultBetSpotItem) has had
     // its whole window -- the entire return-to-deck + dealer-walk-up
     // animation -- to be seen; the board is about to repaint fresh below
@@ -8067,7 +8412,7 @@ private List<Integer> flightPathFromDeck(int targetSlot, boolean dealerCard) {
  * still sitting there for the next card.
  */
 private void scheduleCardFlightHops(List<Integer> path, long baseDelay, long myGeneration) {
-    scheduleCardFlightHops(path, baseDelay, myGeneration, BlackjackTiming.CARD_FLIGHT_HOP_TICKS);
+    scheduleCardFlightHops(path, baseDelay, myGeneration, BlackjackTiming.CARD_FLIGHT_HOP_TICKS, null);
 }
 
 /**
@@ -8092,12 +8437,16 @@ private void scheduleCardFlightHops(List<Integer> path, long baseDelay, long myG
  * can ever be showing there at this moment.
  */
 private void scheduleCardFlightHops(List<Integer> path, long baseDelay, long myGeneration, long hopTicks) {
+    scheduleCardFlightHops(path, baseDelay, myGeneration, hopTicks, null);
+}
+
+private void scheduleCardFlightHops(List<Integer> path, long baseDelay, long myGeneration, long hopTicks, UUID ownerPlayerId) {
     for (int i = 1; i < path.size(); i++) {
         int previousSlot = path.get(i - 1);
         int hopSlot = path.get(i);
         long hopDelay = baseDelay + i * hopTicks;
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (roundGeneration != myGeneration) {
+            if (roundGeneration != myGeneration || (ownerPlayerId != null && !playerSeats.containsKey(ownerPlayerId))) {
                 return;
             }
             if (previousSlot == dealerDeckTokenSlot) {
@@ -8107,7 +8456,7 @@ private void scheduleCardFlightHops(List<Integer> path, long baseDelay, long myG
             } else {
                 renderBackgroundToAllViews(previousSlot);
             }
-            renderHiddenCardToAllViews(hopSlot);
+            renderSharedAnimationHiddenCard(hopSlot, ownerPlayerId);
         }, hopDelay);
     }
 }
@@ -8124,8 +8473,12 @@ private void scheduleCardFlightHops(List<Integer> path, long baseDelay, long myG
  *     plus {@link BlackjackTiming#CARD_FLIP_DELAY_TICKS}
  */
 private long scheduleCardFlight(int targetSlot, boolean dealerCard, long baseDelay, long myGeneration) {
+    return scheduleCardFlight(targetSlot, dealerCard, baseDelay, myGeneration, null);
+}
+
+private long scheduleCardFlight(int targetSlot, boolean dealerCard, long baseDelay, long myGeneration, UUID ownerPlayerId) {
     List<Integer> path = flightPathFromDeck(targetSlot, dealerCard);
-    scheduleCardFlightHops(path, baseDelay, myGeneration);
+    scheduleCardFlightHops(path, baseDelay, myGeneration, BlackjackTiming.CARD_FLIGHT_HOP_TICKS, ownerPlayerId);
     long flightTicks = (path.size() - 1) * BlackjackTiming.CARD_FLIGHT_HOP_TICKS;
     return baseDelay + flightTicks + BlackjackTiming.CARD_FLIP_DELAY_TICKS;
 }
@@ -8142,19 +8495,31 @@ private long scheduleCardFlight(int targetSlot, boolean dealerCard, long baseDel
  * front of unchanged data timing, never behind it.
  */
 private void scheduleCardFlightEndingAt(int targetSlot, boolean dealerCard, long dealDelayTicks, long myGeneration) {
-    scheduleCardFlightAlongPathEndingAt(flightPathFromDeck(targetSlot, dealerCard), dealDelayTicks, myGeneration);
+    scheduleCardFlightEndingAt(targetSlot, dealerCard, dealDelayTicks, myGeneration, null);
+}
+
+private void scheduleCardFlightEndingAt(int targetSlot, boolean dealerCard, long dealDelayTicks, long myGeneration, UUID ownerPlayerId) {
+    scheduleCardFlightAlongPathEndingAt(flightPathFromDeck(targetSlot, dealerCard), dealDelayTicks, myGeneration, ownerPlayerId);
 }
 
 /** Shared backward-scheduling math for any pre-built path -- see {@link #scheduleCardFlightEndingAt} for why the landing tick itself is never allowed to move. */
 private void scheduleCardFlightAlongPathEndingAt(List<Integer> path, long dealDelayTicks, long myGeneration) {
-    scheduleCardFlightAlongPathEndingAt(path, dealDelayTicks, myGeneration, BlackjackTiming.CARD_FLIGHT_HOP_TICKS);
+    scheduleCardFlightAlongPathEndingAt(path, dealDelayTicks, myGeneration, BlackjackTiming.CARD_FLIGHT_HOP_TICKS, null);
+}
+
+private void scheduleCardFlightAlongPathEndingAt(List<Integer> path, long dealDelayTicks, long myGeneration, UUID ownerPlayerId) {
+    scheduleCardFlightAlongPathEndingAt(path, dealDelayTicks, myGeneration, BlackjackTiming.CARD_FLIGHT_HOP_TICKS, ownerPlayerId);
 }
 
 /** Same as {@link #scheduleCardFlightAlongPathEndingAt(List, long, long)}, but at a caller-chosen hop rate -- see {@link #halvedIdleGapHopTicks} for the one caller that needs this. */
 private void scheduleCardFlightAlongPathEndingAt(List<Integer> path, long dealDelayTicks, long myGeneration, long hopTicks) {
+    scheduleCardFlightAlongPathEndingAt(path, dealDelayTicks, myGeneration, hopTicks, null);
+}
+
+private void scheduleCardFlightAlongPathEndingAt(List<Integer> path, long dealDelayTicks, long myGeneration, long hopTicks, UUID ownerPlayerId) {
     long flightTicks = (path.size() - 1) * hopTicks + BlackjackTiming.CARD_FLIP_DELAY_TICKS;
     long flightStart = Math.max(0L, dealDelayTicks - flightTicks);
-    scheduleCardFlightHops(path, flightStart, myGeneration, hopTicks);
+    scheduleCardFlightHops(path, flightStart, myGeneration, hopTicks, ownerPlayerId);
 }
 
 /**
@@ -8321,10 +8686,17 @@ private List<Integer> bottomSeatSplitDashPath(int targetSlot) {
     return path;
 }
 
-private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId, long myGeneration) {
+private void scheduleCardDealing(int slot, Card card, int delay, UUID playerId, long myGeneration, BlackjackHand expectedPlayerHand) {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
         if (roundGeneration != myGeneration || !gameActive || playerSeats.isEmpty()) {
             return;
+        }
+        if (playerId != null) {
+            Integer seatSlot = playerSeats.get(playerId);
+            int expectedSeatSlot = slot - 2 - ((slot - 2) % BlackjackSlotLayout.SEAT_ROW_WIDTH);
+            if (seatSlot == null || seatSlot != expectedSeatSlot || activeHand(playerId) != expectedPlayerHand) {
+                return;
+            }
         }
         for (UUID uuid : playerSeats.keySet()) {
             Player player = Bukkit.getPlayer(uuid);
@@ -8417,12 +8789,22 @@ private void dealCardToPlayer(int slot, Card card, UUID playerId) {
             renderCardToAllViews(slot, card, playerId.equals(currentPlayerId));
         }
         updatePlayerHead(playerId);
+        if (overflowPresentationPlayers.remove(playerId)) {
+            Integer seatSlot = playerSeats.get(playerId);
+            if (seatSlot != null) {
+                releasePlayerCardRow(seatSlot);
+            }
+        }
     } else { // If this card is dealt to the dealer
         dealerHand.add(card);
         if (isRenderableCardSlot(null, slot)) {
             renderCardToAllViews(slot, card, false);
         }
         updateDealerHead();
+        if (dealerOverflowPresentation) {
+            dealerOverflowPresentation = false;
+            releaseDealerCardRow();
+        }
     }
 
     // Only ever the bottom seat's own last visible card slot (the one seat
@@ -8490,6 +8872,8 @@ public void delete() {
     dealerDeckTokenSlot = -1;
     startTransitionActive = false;
     shuffleInProgress = false;
+    roundEndAnimationActive = false;
+    roundEndSnapshot = null;
     startTransitionDoorConcealComplete.clear();
     startTransitionSeatedSnapshot.clear();
     stopInsurancePhaseBookkeeping();
@@ -8541,12 +8925,17 @@ public void delete() {
         int deckSlotForReturn = dealerDeckTokenSlot != -1 ? dealerDeckTokenSlot : BlackjackSlotLayout.DECK_HOME_SLOT;
 
         gameActive = false;
+        roundEndAnimationActive = true;
+        roundEndSnapshot = captureRoundEndSnapshot();
         roundGeneration++;
         long myRoundGeneration = roundGeneration;
         dealerSequenceToken++;
         handToken.clear();
         // Table-wide event -- ends every animation, shared and private alike.
         cancelAllAnimations();
+        for (ReturningCard returningCard : returningCards) {
+            sharedAnimationOverlay.put(returningCard.slot(), SharedVisual.card(returningCard.card(), false, returningCard.ownerPlayerId()));
+        }
 
         // Clear all player and game-related data
         clearPlayerBets(null); // Clear all bets

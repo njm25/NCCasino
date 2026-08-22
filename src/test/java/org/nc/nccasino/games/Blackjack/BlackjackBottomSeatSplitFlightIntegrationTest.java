@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -154,6 +155,9 @@ class BlackjackBottomSeatSplitFlightIntegrationTest {
             // relative to B's slide -- is guaranteed to have fully passed.
             for (int i = 0; i < 4 * BlackjackTiming.SPLIT_ANIMATION_STEP_TICKS + 10; i++) {
                 h.scheduler.advance(1);
+                assertNotEquals(Material.GREEN_STAINED_GLASS_PANE,
+                    item(h, alice, BlackjackSlotLayout.DECK_HOME_SLOT).getType(),
+                    "claiming/clearing the bottom seat row must preserve the deck token on every split tick");
 
                 // At every single tick, B's temp slot must be either empty
                 // (not landed yet / already parked) or genuinely showing B --

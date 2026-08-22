@@ -270,6 +270,17 @@ class BlackjackGuidanceCadenceIntegrationTest {
             Player bob = h.seatOnlinePlayer(bobId, "Bob"); // never sits -- still on chair guidance
             advanceToWagerGuidanceGlow(h);
 
+            // Bob's now-required occupied-table entrance advances the
+            // shared fake scheduler while Alice's private wager guidance
+            // keeps cycling. Find Alice's next glow frame instead of
+            // assuming Bob's open left that independent cycle at tick zero.
+            for (long tick = 0;
+                 tick <= BlackjackTiming.WAGER_GUIDANCE_STEP_TICKS * 2
+                     && !isGlowing(h.inventory.getOrCreateView(alice).getItem(ChipSlots.FIRST_SLOT));
+                 tick++) {
+                h.scheduler.advance(1);
+            }
+
             for (int slot = ChipSlots.FIRST_SLOT; slot <= ChipSlots.LAST_SLOT; slot++) {
                 assertTrue(isGlowing(h.inventory.getOrCreateView(alice).getItem(slot)), "Alice's own wager guidance must be flashing");
                 ItemStack bobsCopyOfAliceSlot = h.inventory.getOrCreateView(bob).getItem(slot);

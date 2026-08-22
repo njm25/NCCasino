@@ -195,12 +195,11 @@ final class BlackjackControllerTestSupport {
             // own seat/bet-spot clicks go live -- advance far enough past
             // its own total duration so every test using this helper can
             // immediately interact afterward without knowing about it.
-            // Deliberately conditional, not a blanket extra advance: a
-            // second (or later) player opening an already-occupied table
-            // never actually starts an entrance, and unconditionally
+            // Deliberately conditional, not a blanket extra advance: every
+            // pregame open now starts an entrance even with occupied seats,
+            // while active/start-transition opens do not. Unconditionally
             // burning ~20+ extra ticks of the *global* scheduler clock
-            // regardless would silently desync any other player's own
-            // precisely-timed guidance/animation state a test is tracking.
+            // would silently desync other precisely-timed animation state.
             long advance = 2L;
             if (inventory.isTableEntranceActiveForTest(player.getUniqueId())) {
                 advance += tableEntranceMaxDurationTicksForTest();

@@ -138,14 +138,18 @@ class BlackjackPregameCountdownPrivacyIntegrationTest {
             // Bob registers online and sits/bets *without* ever having
             // opened the table yet (no view exists for him at all) -- his
             // first-ever bootstrap, via getOrCreateView below, must show
-            // his own private clock immediately, straight from live
-            // canonical state, not wait up to a second for the next
-            // scheduled tick to correct it.
+            // his private entrance first, then restore the clock straight
+            // from live canonical state on its completion (not wait for a
+            // later one-second countdown tick to repair the view).
             Player bob = h.registerOnlinePlayer(UUID.randomUUID(), "Bob");
             h.click(bob, bobSeat);
             placeRealBet(h, bob, bobSeat);
 
-            assertEquals(CLOCK, countdownSlotItem(h, bob, bobSeat).getType(), "a freshly bootstrapped view mid-countdown must show the owner's own clock immediately");
+            countdownSlotItem(h, bob, bobSeat); // first bootstrap starts Bob's entrance
+            assertTrue(h.inventory.isTableEntranceActiveForTest(bob.getUniqueId()));
+            h.scheduler.advance(h.tableEntranceMaxDurationTicksForTest());
+
+            assertEquals(CLOCK, countdownSlotItem(h, bob, bobSeat).getType(), "finishing a fresh mid-countdown entrance must restore the owner's live clock immediately");
             assertEquals(BACKGROUND, countdownSlotItem(h, bob, aliceSeat).getType(), "still never Alice's countdown, even on first bootstrap");
         }
     }

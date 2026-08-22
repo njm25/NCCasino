@@ -230,6 +230,15 @@ class BlackjackRideToResultIntegrationTest {
             verify(acting, never()).sendMessage(org.mockito.ArgumentMatchers.anyString());
             assertTrue(h.inventory.isSeatedForTest(actingId), "still rides to result even while offline -- only messaging is skipped");
             assertTrue(SessionRegistry.isRegistered(actingId, h.inventory));
+
+            Player spectator = h.registerOnlinePlayer(UUID.randomUUID(), "Spectator");
+            int retainedSeat = actingId.equals(alice.getUniqueId())
+                ? BlackjackSlotLayout.SEAT_SLOTS[0]
+                : BlackjackSlotLayout.SEAT_SLOTS[1];
+            ItemStack retainedHead = h.inventory.getOrCreateView(spectator).getItem(retainedSeat);
+            assertNotNull(retainedHead);
+            assertEquals(Material.PLAYER_HEAD, retainedHead.getType(),
+                "an offline RIDE_TO_RESULT seat must render as occupied, never as an empty chair");
         }
     }
 

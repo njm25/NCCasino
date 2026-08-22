@@ -281,6 +281,25 @@ public final class BlackjackTableEntrancePlan {
         return occupied;
     }
 
+    /**
+     * The same occupancy snapshot as {@link #frameAt}, retaining each
+     * moving piece's target identity. Controllers use this when the item
+     * flying along a CHAIR or PANE path depends on who occupies that
+     * piece's eventual seat (for example, a player head instead of an empty
+     * chair). The plan remains collision-free, so every occupied slot maps
+     * to exactly one piece.
+     */
+    public static Map<Integer, Piece> pieceFrameAt(List<Piece> pieces, long tick, long hopTicks) {
+        Map<Integer, Piece> occupied = new HashMap<>();
+        for (Piece piece : pieces) {
+            int slot = piece.slotAt(tick, hopTicks);
+            if (slot != -1) {
+                occupied.put(slot, piece);
+            }
+        }
+        return occupied;
+    }
+
     /** The real, actual completion tick of the whole entrance -- the latest landing tick across every piece. Callers must derive total duration from this, never a separately-added constant that could drift from the schedule actually built. */
     public static long totalDurationTicks(List<Piece> pieces, long hopTicks) {
         long max = 0L;

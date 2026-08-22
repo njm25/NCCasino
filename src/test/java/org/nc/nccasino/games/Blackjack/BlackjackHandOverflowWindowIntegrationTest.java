@@ -3,10 +3,12 @@ package org.nc.nccasino.games.Blackjack;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.Inventory;
 import org.junit.jupiter.api.Test;
 import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Rank;
 import org.nc.nccasino.objects.Suit;
+import org.nc.nccasino.session.ExitReason;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -114,6 +116,43 @@ class BlackjackHandOverflowWindowIntegrationTest {
             int seatOneFirstCardSlot = BlackjackSlotLayout.playerCardSlot(BlackjackSlotLayout.SEAT_SLOTS[1], 0);
             ItemStack belowRow = item(h, alice, seatOneFirstCardSlot);
             assertEquals(Material.GREEN_STAINED_GLASS_PANE, belowRow.getType(), "the shift must never bleed a card into the unoccupied seat's row below");
+        }
+    }
+
+    @Test
+    void leavingDuringAnOverflowHitFlightClearsTheShiftAndNeverDealsTheReservedCard() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            h.inventory.stackDeckForTest(flatStack(Rank.TWO, 80));
+            h.currencyProvider.setBalance(1000);
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            h.click(alice, SEAT_SLOT);
+            h.inventory.commitWagerForTest(alice, 10.0);
+            h.inventory.beginStartTransitionForTest();
+            h.advanceToActionableTurn(1, 800);
+
+            for (int i = 0; i < 5; i++) {
+                h.click(alice, i == 0 ? BlackjackSlotLayout.ACTION_HIT_SLOT : BlackjackSlotLayout.ACTION_STAND_SLOT);
+                h.scheduler.advance(BlackjackTiming.HIT_EVALUATION_DELAY_TICKS);
+            }
+            h.click(alice, BlackjackSlotLayout.ACTION_STAND_SLOT); // overflow shift + reserved flight
+            h.scheduler.advance(1);
+            h.inventory.onSessionTerminated(alice.getUniqueId(), ExitReason.KICKED);
+
+            for (int i = 0; i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+                assertEquals(Material.GREEN_STAINED_GLASS_PANE,
+                    item(h, alice, BlackjackSlotLayout.playerCardSlot(SEAT_SLOT, i)).getType());
+            }
+            Player spectator = h.registerOnlinePlayer(UUID.randomUUID(), "Spectator");
+            Inventory reopened = h.inventory.getOrCreateView(spectator);
+            for (int i = 0; i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+                int slot = BlackjackSlotLayout.playerCardSlot(SEAT_SLOT, i);
+                assertEquals(item(h, alice, slot).getType(), reopened.getItem(slot).getType());
+                assertEquals(item(h, alice, slot).getAmount(), reopened.getItem(slot).getAmount());
+            }
+
+            h.scheduler.advance(BlackjackTiming.HIT_EVALUATION_DELAY_TICKS + 100);
+            assertTrue(h.inventory.playerHandsForTest(alice.getUniqueId()).isEmpty());
+            assertTrue(!h.inventory.isSeatedForTest(alice.getUniqueId()));
         }
     }
 }

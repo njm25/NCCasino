@@ -125,6 +125,12 @@ class VaultCurrencyProviderTest {
     }
 
     @Test
+    void intOverloadRejectsPositiveDepositForNullPlayer() {
+        assertFalse(provider.deposit(null, "table", 20));
+        verify(economy, times(0)).depositPlayer(eq(player), org.mockito.ArgumentMatchers.anyDouble());
+    }
+
+    @Test
     void multipleFailedDepositsForDifferentPlayersEachReportFailureIndependently() {
         Player other = mock(Player.class);
         when(economy.depositPlayer(player, 10.0)).thenReturn(failure());

@@ -170,10 +170,10 @@ class BlackjackSlotLayoutTest {
     }
 
     @Test
-    void insuranceTimerSlotIsSeatPlusFour() {
-        for (int seat : BlackjackSlotLayout.SEAT_SLOTS) {
-            assertEquals(seat + 4, BlackjackSlotLayout.insuranceTimerSlot(seat));
-        }
+    void insuranceTimerUsesBoardTopRight() {
+        assertEquals(8, BlackjackSlotLayout.INSURANCE_TIMER_SLOT);
+        assertEquals(BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT, BlackjackSlotLayout.INSURANCE_TIMER_SLOT,
+            "the insurance phase begins only after the dealer has left the top-right lobby slot");
     }
 
     // --- Regression: the active-phase bottom-bar clear must stop short of

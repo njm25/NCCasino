@@ -38,6 +38,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class BlackjackViewBootstrapIntegrationTest {
 
+    private static List<String> boardSignature(Inventory inventory) {
+        List<String> result = new ArrayList<>();
+        for (int slot = 0; slot < inventory.getSize(); slot++) {
+            ItemStack item = inventory.getItem(slot);
+            result.add(item == null ? "AIR" : item.getType() + ":" + item.getAmount());
+        }
+        return result;
+    }
+
     private static List<Card> flatStack(Rank rank, int count) {
         List<Card> cards = new ArrayList<>();
         for (int i = 0; i < count; i++) {
@@ -131,6 +140,43 @@ class BlackjackViewBootstrapIntegrationTest {
             h.inventory.getOrCreateView(spectator2);
 
             assertEquals(before, h.inventory.turnTimerSecondsRemainingForTest(), "merely opening/bootstrapping views must never mutate the canonical deadline");
+        }
+    }
+
+    @Test
+    void reopeningDuringAHitFlightReconstructsTheCurrentFaceDownHop() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            h.inventory.stackDeckForTest(flatStack(Rank.SEVEN, 40));
+            h.currencyProvider.setBalance(1000);
+            UUID aliceId = UUID.randomUUID();
+            Player alice = h.seatOnlinePlayer(aliceId, "Alice");
+            h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]);
+            h.inventory.commitWagerForTest(alice, 10.0);
+            h.inventory.beginStartTransitionForTest();
+            h.advanceToActionableTurn(1, 800);
+
+            Inventory original = h.inventory.getOrCreateView(alice);
+            h.click(alice, BlackjackSlotLayout.ACTION_HIT_SLOT);
+            for (int tick = 0; tick < BlackjackTiming.CARD_DEAL_DELAY_TICKS; tick++) {
+                h.scheduler.advance(1);
+                long hidden = boardSignature(original).stream()
+                    .filter(value -> value.startsWith(Material.WHITE_STAINED_GLASS_PANE.name()))
+                    .count();
+                if (hidden >= 3) {
+                    break; // deck token + dealer hole card + flying card
+                }
+            }
+            long hiddenBefore = boardSignature(original).stream()
+                .filter(value -> value.startsWith(Material.WHITE_STAINED_GLASS_PANE.name()))
+                .count();
+            assertTrue(hiddenBefore >= 3, "setup must stop while the hit card is visibly in flight");
+            List<String> beforeClose = boardSignature(original);
+
+            h.inventory.onViewClosed(alice, h.inventory.viewForTest(aliceId));
+            Inventory reopened = h.inventory.getOrCreateView(alice);
+
+            assertEquals(beforeClose, boardSignature(reopened),
+                "the current hit-flight hop must be present immediately on reopen");
         }
     }
 

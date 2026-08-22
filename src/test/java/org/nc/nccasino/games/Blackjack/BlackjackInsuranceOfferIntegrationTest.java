@@ -1,5 +1,6 @@
 package org.nc.nccasino.games.Blackjack;
 
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.Test;
 import org.nc.nccasino.currency.CurrencyMode;
@@ -113,6 +114,29 @@ class BlackjackInsuranceOfferIntegrationTest {
         // existing config.yml already uses.
         try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness(java.util.Map.of("insurance.timeout-seconds", 15))) {
             assertEquals(15, h.inventory.insuranceTimeoutSecondsForTest(), "an explicit config override must still take effect under the same key");
+        }
+    }
+
+    @Test
+    void insuranceCountdownRendersAtBoardTopRightRegardlessOfSeat() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            h.currencyProvider.setBalance(1000);
+            h.inventory.stackDeckForTest(oneSeatedInsuranceDeck(Rank.SEVEN, Rank.SEVEN));
+
+            UUID id = UUID.randomUUID();
+            Player alice = h.seatOnlinePlayer(id, "Alice");
+            int seatSlot = BlackjackSlotLayout.SEAT_SLOTS[3];
+            h.click(alice, seatSlot);
+            h.inventory.commitWagerForTest(alice, 10.0);
+            h.inventory.beginStartTransitionForTest();
+            driveToInsurancePhase(h);
+
+            assertNotNull(h.inventory.getOrCreateView(alice).getItem(BlackjackSlotLayout.INSURANCE_TIMER_SLOT));
+            assertEquals(Material.CLOCK,
+                h.inventory.getOrCreateView(alice).getItem(BlackjackSlotLayout.INSURANCE_TIMER_SLOT).getType());
+            assertNotEquals(Material.CLOCK,
+                h.inventory.getOrCreateView(alice).getItem(seatSlot + 4).getType(),
+                "the countdown must no longer follow the player's seat row");
         }
     }
 

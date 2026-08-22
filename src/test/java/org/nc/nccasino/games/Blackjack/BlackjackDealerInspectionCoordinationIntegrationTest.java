@@ -2,6 +2,10 @@ package org.nc.nccasino.games.Blackjack;
 
 import org.bukkit.entity.Player;
 import org.junit.jupiter.api.Test;
+import org.nc.nccasino.objects.Card;
+import org.nc.nccasino.objects.Rank;
+import org.nc.nccasino.objects.Suit;
+import org.nc.nccasino.session.ExitReason;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +35,32 @@ class BlackjackDealerInspectionCoordinationIntegrationTest {
             h.inventory.commitWagerForTest(player, wager);
         }
         return player;
+    }
+
+    @Test
+    void removedInitialDealTargetCannotReceiveAReservedCardLater() {
+        try (BlackjackControllerTestSupport.Harness h = newTable()) {
+            List<Card> stack = new ArrayList<>();
+            for (int i = 0; i < 60; i++) {
+                stack.add(new Card(Suit.HEARTS, Rank.SEVEN));
+            }
+            h.inventory.stackDeckForTest(stack);
+            h.currencyProvider.setBalance(1000);
+            Player alice = seatAndCommit(h, UUID.randomUUID(), "Alice", BlackjackSlotLayout.SEAT_SLOTS[0], 10.0);
+            Player bob = seatAndCommit(h, UUID.randomUUID(), "Bob", BlackjackSlotLayout.SEAT_SLOTS[1], 10.0);
+            h.inventory.beginStartTransitionForTest();
+            for (int i = 0; i < 500 && !h.inventory.isGameActiveForTest(); i++) {
+                h.scheduler.advance(1);
+            }
+            assertTrue(h.inventory.isGameActiveForTest());
+
+            h.inventory.onSessionTerminated(alice.getUniqueId(), ExitReason.KICKED);
+            h.scheduler.advance(100);
+            assertEquals(0, h.inventory.activeHandCardCountForTest(alice.getUniqueId()));
+            assertFalse(h.inventory.isSeatedForTest(alice.getUniqueId()));
+            assertTrue(h.inventory.activeHandCardCountForTest(bob.getUniqueId()) > 0,
+                "the still-seated target's independent scheduled deal must remain intact");
+        }
     }
 
     /** Records dealerHeadSlot once per tick, collapsing consecutive repeats, up to {@code maxTicks} or until the slide completes. */
@@ -250,6 +280,7 @@ class BlackjackDealerInspectionCoordinationIntegrationTest {
             // abortRoundAndRefund's resetGame() immediately starts its own
             // reset sweep -- see the identical comment further up this file.
             assertNotEquals(BlackjackFrame.Phase.START_TRANSITION, h.inventory.sharedAnimationPhaseForTest());
+            h.scheduler.advance(BlackjackControllerTestSupport.ROUND_END_ANIMATION_TOTAL_TICKS);
 
             // Round 2: a different player, bob, seats and commits; the
             // transition begins again from a fresh generation.

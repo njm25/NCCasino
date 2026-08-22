@@ -3,10 +3,12 @@ package org.nc.nccasino.games.Blackjack;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.Inventory;
 import org.junit.jupiter.api.Test;
 import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Rank;
 import org.nc.nccasino.objects.Suit;
+import org.nc.nccasino.session.ExitReason;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -85,6 +87,40 @@ class BlackjackSplitVisualSequenceIntegrationTest {
 
     private static ItemStack item(BlackjackControllerTestSupport.Harness h, Player viewer, int slot) {
         return h.inventory.getOrCreateView(viewer).getItem(slot);
+    }
+
+    private static List<String> rowSignature(Inventory inventory) {
+        List<String> result = new ArrayList<>();
+        for (int i = 0; i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+            ItemStack item = inventory.getItem(BlackjackSlotLayout.playerCardSlot(SEAT_SLOT, i));
+            result.add(item == null ? "AIR" : item.getType() + ":" + item.getAmount());
+        }
+        return result;
+    }
+
+    @Test
+    void actingPlayerLeavingMidSplitSynchronouslyClearsEveryOwnedTransientFrame() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            Player alice = setUpAndSplit(h);
+            UUID aliceId = alice.getUniqueId();
+            h.scheduler.advance(BlackjackTiming.SPLIT_SLIDE_HOP_TICKS);
+
+            h.inventory.onSessionTerminated(aliceId, ExitReason.KICKED);
+            assertTrue(!h.inventory.isSeatedForTest(aliceId));
+            assertTrue(h.inventory.playerHandsForTest(aliceId).isEmpty());
+            for (int i = 0; i < BlackjackSlotLayout.SEAT_CARD_CAPACITY; i++) {
+                assertEquals(BACKGROUND, item(h, alice, BlackjackSlotLayout.playerCardSlot(SEAT_SLOT, i)).getType(),
+                    "the cancelled split may not strand a parked, staging, or flight card");
+            }
+
+            Player spectator = h.registerOnlinePlayer(UUID.randomUUID(), "Spectator");
+            Inventory reopened = h.inventory.getOrCreateView(spectator);
+            assertEquals(rowSignature(h.inventory.getOrCreateView(alice)), rowSignature(reopened));
+
+            h.scheduler.advance(300);
+            assertTrue(h.inventory.playerHandsForTest(aliceId).isEmpty(),
+                "stale split/deal callbacks must never resurrect the departed hand");
+        }
     }
 
     @Test
@@ -207,6 +243,28 @@ class BlackjackSplitVisualSequenceIntegrationTest {
             assertEquals(RED_CARD, c.getType());
             assertEquals(2, c.getAmount());
             assertTrue(h.inventory.isGameActiveForTest());
+        }
+    }
+
+    @Test
+    void reopeningMidSplitReconstructsTheExactParkedCardLayout() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            Player alice = setUpAndSplit(h);
+            UUID aliceId = alice.getUniqueId();
+
+            advanceUntil(h, () -> item(h, alice, SLOT_TEMP_D).getType() == RED_CARD, 200);
+            advanceUntil(h, () -> item(h, alice, SLOT_GAP).getType() == BLACK_CARD, 200);
+            Inventory original = h.inventory.getOrCreateView(alice);
+            List<String> beforeClose = rowSignature(original);
+
+            h.inventory.onViewClosed(alice, h.inventory.viewForTest(aliceId));
+            Inventory reopened = h.inventory.getOrCreateView(alice);
+
+            assertEquals(beforeClose, rowSignature(reopened),
+                "bootstrap must paint the split's parked B/D frame, not the canonical active-hand endpoint");
+            assertEquals(BLACK_CARD, reopened.getItem(SLOT_GAP).getType());
+            assertEquals(RED_CARD, reopened.getItem(SLOT_TEMP_B).getType());
+            assertEquals(BACKGROUND, reopened.getItem(SLOT_TEMP_D).getType());
         }
     }
 
