@@ -168,6 +168,11 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     // readiness gate opens and activateGame() actually deals -- see
     // beginStartTransition/isReadyToDeal. Drives BlackjackFrame.Phase.START_TRANSITION.
     private boolean startTransitionActive = false;
+    // True for the duration of the shuffle flourish (see startShuffleSequence)
+    // -- the dealer has already arrived at its in-play slot (dealerHeadSlot
+    // satisfies isReadyToDeal's own check on its own), but dealing must
+    // still wait for the deck's own round trip out to the shuffle and back.
+    private boolean shuffleInProgress = false;
     // Seated players whose private door-conceal animation has finished
     // (the final step, door arrived at slot 45) during the current
     // start-transition attempt. Cleared at the start of every
@@ -1103,9 +1108,48 @@ private void registerListener() {
             }
             return;
         }
+        playWagerBarSlideSound(playerId, targetPosition);
         int myGeneration = bumpAndGetViewerAnimationGeneration(playerId);
         privateAnimationRuns.put(playerId, new BlackjackAnimationRun(playerId, myRoundGeneration, myGeneration, capturePhase()));
         scheduleWagerBarFrameStep(playerId, myGeneration, myRoundGeneration, targetPosition, onReachTarget);
+    }
+
+    /**
+     * One quiet grindstone scrape per genuine slide request -- high for
+     * OPEN, low for CLOSED. Opening and closing use separate Bukkit sound
+     * categories as lightweight channels; a real mid-slide reversal stops
+     * the opposite channel before starting its own scrape, cutting the old
+     * tail short instead of letting both directions overlap. This is called
+     * only after requestWagerBarPosition's idempotent/already-at-target exits,
+     * so repeating the same request still produces no sound spam.
+     */
+    private void playWagerBarSlideSound(UUID playerId, int targetPosition) {
+        Player viewer = Bukkit.getPlayer(playerId);
+        // This is private inventory-UI feedback, not a table/world sound. A
+        // committed RIDE_TO_RESULT player can remain seated after closing
+        // their inventory, so online presence alone does not mean they
+        // should hear a later start-transition conceal scrape.
+        if (viewer == null || !views.containsKey(playerId)
+            || SoundHelper.getSoundSafely("block.grindstone.use", viewer) == null) {
+            return;
+        }
+        float pitch = targetPosition == BlackjackWagerRevealPlan.OPEN
+            ? BlackjackTiming.WAGER_SLIDE_OPEN_PITCH
+            : BlackjackTiming.WAGER_SLIDE_CLOSE_PITCH;
+        SoundCategory channel = targetPosition == BlackjackWagerRevealPlan.OPEN
+            ? SoundCategory.BLOCKS
+            : SoundCategory.PLAYERS;
+        SoundCategory oppositeChannel = targetPosition == BlackjackWagerRevealPlan.OPEN
+            ? SoundCategory.PLAYERS
+            : SoundCategory.BLOCKS;
+        viewer.stopSound(Sound.BLOCK_GRINDSTONE_USE, oppositeChannel);
+        viewer.playSound(
+            viewer.getLocation(),
+            Sound.BLOCK_GRINDSTONE_USE,
+            channel,
+            BlackjackTiming.WAGER_SLIDE_SOUND_VOLUME,
+            pitch
+        );
     }
 
     private void scheduleWagerBarFrameStep(UUID playerId, int myGeneration, long myRoundGeneration, int targetPosition, Runnable onReachTarget) {
@@ -1404,6 +1448,19 @@ private void registerListener() {
 
         BlackjackAnimationRun run = new BlackjackAnimationRun(null, myRoundGeneration, 0, BlackjackFrame.Phase.START_TRANSITION);
         sharedAnimationRun = run;
+        // Set here, not inside startShuffleSequence -- the dealer's own
+        // per-step MOVE callback below already sets dealerHeadSlot to its
+        // final in-play value several ticks before this method's own
+        // "safety net" completion callback (which hands off to the
+        // shuffle) runs. START_TRANSITION_READINESS_POLL_TICKS (5) evenly
+        // divides the dealer's own walk timing here, so a readiness poll
+        // deterministically landed on that exact gap tick and saw
+        // dealerHeadSlot already correct but shuffleInProgress still false,
+        // slipping straight to activateGame() before the shuffle ever
+        // started. Setting this the instant the whole start-transition
+        // begins (rather than only once the shuffle itself starts) closes
+        // that gap completely, regardless of exact poll/step tick alignment.
+        shuffleInProgress = true;
 
         for (BlackjackAnimationStep step : path) {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -1432,8 +1489,146 @@ private void registerListener() {
                 dealerDeckTokenSlot = BlackjackSlotLayout.DECK_HOME_SLOT;
                 renderHiddenCardToAllViews(dealerDeckTokenSlot);
             }
-            cancelSharedAnimation();
+            // The dealer and deck have both genuinely settled -- the shuffle
+            // flourish takes over the shared run from here (see
+            // startShuffleSequence's own doc), only calling
+            // cancelSharedAnimation itself once the deck is back home again.
+            startShuffleSequence(myRoundGeneration, run);
         }, lastStepDelay + BlackjackTiming.DEALER_INSPECTION_STEP_TICKS);
+    }
+
+    // ---- Pregame shuffle flourish (shared, table-wide) --------------------
+    // See BlackjackShuffleAnimationPlan's own class doc for the full
+    // geometry. This section only turns that pure plan's ticks/pieces into
+    // real renders, extending the SAME shared BlackjackAnimationRun
+    // startDealerInspection already created (this is a continuation of that
+    // run, not a new one) -- so a viewer closing their own inventory mid-
+    // shuffle never affects it (shared runs are only ever cancelled by
+    // genuinely table-wide events), and every step below uses the exact
+    // same roundGeneration+run.isCancelled() staleness guard as the dealer's
+    // own walk-down steps just above.
+
+    /**
+     * Slides the deck from its just-settled resting slot out to {@link
+     * BlackjackShuffleAnimationPlan#CENTER_SLOT}, pauses briefly, streams
+     * {@link BlackjackTiming#SHUFFLE_CARD_COUNT} cards around the board's
+     * full perimeter and back into it, then slides the deck back to {@link
+     * BlackjackSlotLayout#DECK_HOME_SLOT} -- only once that whole round trip
+     * is done does this hand back to {@link #cancelSharedAnimation} and flip
+     * {@link #shuffleInProgress} false, which is what actually lets {@link
+     * #isReadyToDeal} open the gate to dealing.
+     */
+    private void startShuffleSequence(long myRoundGeneration, BlackjackAnimationRun run) {
+        // shuffleInProgress is already true here -- see startDealerInspection's
+        // own doc for why it's set the instant the whole start-transition
+        // begins, not only once this method (which only runs once the
+        // dealer's own walk has already finished) is reached.
+        scheduleShuffleDeckTravel(BlackjackShuffleAnimationPlan.DECK_TO_CENTER_PATH, myRoundGeneration, run, () ->
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (roundGeneration != myRoundGeneration || run.isCancelled()) {
+                    return;
+                }
+                startShuffleCardPhase(myRoundGeneration, run);
+            }, BlackjackTiming.SHUFFLE_START_PAUSE_TICKS)
+        );
+    }
+
+    /** Schedules the deck token hopping along {@code path} (its first entry assumed to be wherever the deck already is), one slot per {@link BlackjackTiming#SHUFFLE_HOP_TICKS}, then {@code onComplete} once it's fully arrived. */
+    private void scheduleShuffleDeckTravel(List<Integer> path, long myRoundGeneration, BlackjackAnimationRun run, Runnable onComplete) {
+        for (int i = 1; i < path.size(); i++) {
+            int slot = path.get(i);
+            long delay = (long) i * BlackjackTiming.SHUFFLE_HOP_TICKS;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (roundGeneration != myRoundGeneration || run.isCancelled()) {
+                    return;
+                }
+                moveShuffleDeckTokenTo(slot);
+            }, delay);
+        }
+        long totalDelay = (long) (path.size() - 1) * BlackjackTiming.SHUFFLE_HOP_TICKS;
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (roundGeneration != myRoundGeneration || run.isCancelled()) {
+                return;
+            }
+            onComplete.run();
+        }, totalDelay);
+    }
+
+    /** Moves the canonical dealerDeckTokenSlot to {@code newSlot} and re-renders it for every view, clearing wherever it just vacated -- the shuffle's own version of applyDealerInspectionStep's identical deck-only logic (no dealer head involved here, it stays fixed at its in-play slot the whole time). */
+    private void moveShuffleDeckTokenTo(int newSlot) {
+        if (dealerDeckTokenSlot != -1 && dealerDeckTokenSlot != newSlot) {
+            renderBackgroundToAllViews(dealerDeckTokenSlot);
+        }
+        dealerDeckTokenSlot = newSlot;
+        renderHiddenCardToAllViews(dealerDeckTokenSlot);
+    }
+
+    /** Builds and schedules the card-streaming phase -- one complete, deterministic frame repaint per distinct tick (mirroring the table entrance's own rendering approach), then hands off to {@link #finishShuffleSequence} once every card has fully cycled back into the deck. */
+    private void startShuffleCardPhase(long myRoundGeneration, BlackjackAnimationRun run) {
+        List<BlackjackShuffleAnimationPlan.CardPiece> cards = BlackjackShuffleAnimationPlan.build(
+            BlackjackTiming.SHUFFLE_CARD_COUNT, BlackjackTiming.SHUFFLE_HOP_TICKS, BlackjackTiming.SHUFFLE_CARD_LAUNCH_STAGGER_TICKS
+        );
+        Set<Integer> affectedSlots = new HashSet<>();
+        for (BlackjackShuffleAnimationPlan.CardPiece card : cards) {
+            affectedSlots.addAll(card.getPath());
+        }
+        // The deck itself already occupies this slot (see moveShuffleDeckTokenTo)
+        // for the whole card phase -- every card's path starts and ends here,
+        // but this frame loop must never repaint over the deck's own icon.
+        affectedSlots.remove(BlackjackShuffleAnimationPlan.CENTER_SLOT);
+
+        List<Long> ticks = BlackjackShuffleAnimationPlan.distinctTicks(cards, BlackjackTiming.SHUFFLE_HOP_TICKS);
+        long totalDuration = BlackjackShuffleAnimationPlan.totalDurationTicks(cards, BlackjackTiming.SHUFFLE_HOP_TICKS);
+
+        for (long tick : ticks) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (roundGeneration != myRoundGeneration || run.isCancelled()) {
+                    return;
+                }
+                renderShuffleFrame(cards, affectedSlots, tick);
+            }, tick);
+        }
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (roundGeneration != myRoundGeneration || run.isCancelled()) {
+                return;
+            }
+            // Final canonical sweep before the deck starts home. Individual
+            // landing frames already clear their own vacated cells, but this
+            // guarantees that no transit card can survive due to same-tick
+            // callback ordering and linger until the real deal repaints it.
+            for (int slot : affectedSlots) {
+                renderBackgroundToAllViews(slot);
+            }
+            finishShuffleSequence(myRoundGeneration, run);
+        }, totalDuration + 1);
+    }
+
+    /** One frame: every slot the whole card phase ever touches (excluding the deck's own center slot) gets a fresh, complete, deterministic repaint -- an in-flight card shows the same hidden-card icon the deck token itself uses, everything else vacates to background. */
+    private void renderShuffleFrame(List<BlackjackShuffleAnimationPlan.CardPiece> cards, Set<Integer> affectedSlots, long tick) {
+        Map<Integer, BlackjackShuffleAnimationPlan.CardDirection> occupied =
+            BlackjackShuffleAnimationPlan.frameAt(cards, tick, BlackjackTiming.SHUFFLE_HOP_TICKS);
+        for (int slot : affectedSlots) {
+            if (occupied.containsKey(slot)) {
+                renderHiddenCardToAllViews(slot);
+            } else {
+                renderBackgroundToAllViews(slot);
+            }
+        }
+    }
+
+    /** Every card has cycled back into the deck -- slides it back to its ordinary resting slot, then hands the shared run back to cancelSharedAnimation and opens isReadyToDeal's own gate. */
+    private void finishShuffleSequence(long myRoundGeneration, BlackjackAnimationRun run) {
+        scheduleShuffleDeckTravel(BlackjackShuffleAnimationPlan.CENTER_TO_DECK_PATH, myRoundGeneration, run, () -> {
+            // Canonical final repaint, not just an assumption that the last
+            // return hop's clear/render pair won every same-tick ordering
+            // race. The temporary shuffle deck at CENTER_SLOT must never
+            // survive into the deal as a ghost duplicate.
+            renderBackgroundToAllViews(BlackjackShuffleAnimationPlan.CENTER_SLOT);
+            dealerDeckTokenSlot = BlackjackSlotLayout.DECK_HOME_SLOT;
+            renderHiddenCardToAllViews(dealerDeckTokenSlot);
+            shuffleInProgress = false;
+            cancelSharedAnimation();
+        });
     }
 
     /**
@@ -1803,8 +1998,10 @@ private void registerListener() {
 
     /**
      * True once: the dealer has actually arrived at its in-play head slot,
-     * the pregame countdown clock is gone for good, and every player who
-     * was actually seated at the moment the start transition began (see
+     * the shuffle flourish (see {@link #startShuffleSequence}) that plays
+     * once it gets there has finished and sent the deck back home, the
+     * pregame countdown clock is gone for good, and every player who was
+     * actually seated at the moment the start transition began (see
      * {@link #startTransitionSeatedSnapshot}) and is <em>still</em> seated
      * now has finished their door-conceal (which also implies none of them
      * are still in a door-revealed/wager-guide/bet-spot-blink lobby state,
@@ -1824,6 +2021,9 @@ private void registerListener() {
      */
     private boolean isReadyToDeal() {
         if (dealerHeadSlot != BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT) {
+            return false;
+        }
+        if (shuffleInProgress) {
             return false;
         }
         if (countdownTaskId != -1) {
@@ -5358,7 +5558,9 @@ private void handleDoubleDown(Player player) {
             return;
         }
 
-         if (SoundHelper.getSoundSafely("block.wood.place", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE,SoundCategory.MASTER, 1.0f, 1.0f);
+        if (SoundHelper.getSoundSafely("block.wood.place", player) != null) {
+            player.playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE, SoundCategory.MASTER, 1.0f, 1.0f);
+        }
         // Set the player's actual head at the chair's position
         renderToAllViews(slot, createPlayerHeadItem(player, 1));
         switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
@@ -5419,8 +5621,6 @@ private void handleLeaveChair(Player player, boolean animateConceal) {
     if (!playerSeats.containsKey(playerId)) {
         return;
     }
-
-     if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
 
     // A wager bar only ever exists on this viewer's own bottom row while
     // !gameActive (active play shows the exit+timer bar instead, painted
@@ -5532,7 +5732,6 @@ private void handleLeaveChairDuringGame(Player player) {
     // there's no need to repeat that check here.
     removePlayerData(playerId);
 
-     if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f);
 }
 
 private void removePlayerData(UUID playerId) {
@@ -7750,6 +7949,7 @@ private void resetGame() {
     currentPlayerId = null;
     hiddenCardPlaceholderVisible = false;
     startTransitionActive = false;
+    shuffleInProgress = false;
     startTransitionDoorConcealComplete.clear();
     startTransitionSeatedSnapshot.clear();
     stopInsurancePhaseBookkeeping();
@@ -8289,6 +8489,7 @@ public void delete() {
     dealerHeadSlot = BlackjackSlotLayout.DEALER_LOBBY_HEAD_SLOT;
     dealerDeckTokenSlot = -1;
     startTransitionActive = false;
+    shuffleInProgress = false;
     startTransitionDoorConcealComplete.clear();
     startTransitionSeatedSnapshot.clear();
     stopInsurancePhaseBookkeeping();
@@ -8362,6 +8563,7 @@ public void delete() {
         selectedWager.clear();
         hiddenCardPlaceholderVisible = false;
         startTransitionActive = false;
+        shuffleInProgress = false;
         startTransitionDoorConcealComplete.clear();
         startTransitionSeatedSnapshot.clear();
         stopInsurancePhaseBookkeeping();

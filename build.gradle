@@ -61,6 +61,11 @@ tasks.withType(JavaCompile).configureEach {
 tasks.test {
     useJUnitPlatform()
     maxHeapSize = '2g'
+    // The Bukkit/Mockito integration harness retains enough class/static
+    // state that one worker running the complete Blackjack suite can exhaust
+    // this heap even though the same classes pass in smaller batches. Recycle
+    // the worker periodically so `gradlew test` remains a reliable merge gate.
+    forkEvery = 8
 }
 
 processResources {

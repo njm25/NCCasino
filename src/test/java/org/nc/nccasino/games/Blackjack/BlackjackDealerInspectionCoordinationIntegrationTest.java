@@ -48,7 +48,7 @@ class BlackjackDealerInspectionCoordinationIntegrationTest {
     }
 
     // ==================================================================
-    // Straight slide: no stops, ends at the in-play head, activates promptly
+    // Straight slide: no stops, ends at the in-play head, then hands off to shuffle
     // ==================================================================
 
     @Test
@@ -67,7 +67,7 @@ class BlackjackDealerInspectionCoordinationIntegrationTest {
     }
 
     @Test
-    void slideCompletesAndActivatesTheGamePromptly() {
+    void slideCompletesAndActivatesTheGameAfterShuffle() {
         try (BlackjackControllerTestSupport.Harness h = newTable()) {
             h.currencyProvider.setBalance(1000);
             UUID id = UUID.randomUUID();
@@ -75,10 +75,13 @@ class BlackjackDealerInspectionCoordinationIntegrationTest {
 
             h.inventory.beginStartTransitionForTest();
 
-            for (int i = 0; i < 60 && !h.inventory.isGameActiveForTest(); i++) {
+            // The dealer slide now hands the same shared run to the shuffle;
+            // activation intentionally waits for that complete flourish and
+            // the next readiness poll rather than occurring on slide arrival.
+            for (int i = 0; i < 100 && !h.inventory.isGameActiveForTest(); i++) {
                 h.scheduler.advance(1);
             }
-            assertTrue(h.inventory.isGameActiveForTest(), "the round must activate shortly after the slide completes");
+            assertTrue(h.inventory.isGameActiveForTest(), "the round must activate after the dealer slide and shuffle both complete");
             assertEquals(BlackjackSlotLayout.DEALER_INPLAY_HEAD_SLOT, h.inventory.dealerHeadSlotForTest());
         }
     }
@@ -94,7 +97,15 @@ class BlackjackDealerInspectionCoordinationIntegrationTest {
 
             h.inventory.beginStartTransitionForTest();
 
-            h.scheduler.advance(200); // let the slide and dealing both finish
+            // Advance tickwise because the shuffle and initial deal are a
+            // chain: callbacks reached during this window schedule their own
+            // later callbacks. A single coarse jump can place those newly
+            // scheduled landings beyond the jump's endpoint in the fake
+            // scheduler even though a real Bukkit scheduler ticks through
+            // each intermediate instant.
+            for (int i = 0; i < 250 && h.inventory.activeHandCardCountForTest(aliceId) == 0; i++) {
+                h.scheduler.advance(1);
+            }
             assertTrue(h.inventory.activeHandCardCountForTest(aliceId) > 0, "the committed player must receive a hand");
             assertEquals(0, h.inventory.activeHandCardCountForTest(bobId), "a player without a committed wager must receive no hand");
         }

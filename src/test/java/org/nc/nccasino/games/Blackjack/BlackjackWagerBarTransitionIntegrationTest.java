@@ -1,6 +1,9 @@
 package org.nc.nccasino.games.Blackjack;
 
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.junit.jupiter.api.Test;
@@ -17,6 +20,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyFloat;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -89,6 +96,35 @@ class BlackjackWagerBarTransitionIntegrationTest {
             h.scheduler.advance(FULL_TRANSITION_TICKS);
 
             assertCanonicalSeatedBar(viewInv(h, alice));
+        }
+    }
+
+    @Test
+    void closedRideToResultPlayerDoesNotHearThePrivateConcealScrape() {
+        try (BlackjackControllerTestSupport.Harness h = newTable()) {
+            Player alice = openUnseated(h, UUID.randomUUID(), "Alice");
+            UUID aliceId = alice.getUniqueId();
+
+            h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]);
+            h.scheduler.advance(FULL_TRANSITION_TICKS);
+            h.inventory.commitWagerForTest(alice, 10.0);
+
+            BlackjackView view = h.inventory.viewForTest(aliceId);
+            h.inventory.onViewClosed(alice, view);
+            h.scheduler.advance(1); // flush the close's RIDE_TO_RESULT decision
+            assertTrue(h.inventory.isSeatedForTest(aliceId));
+            assertNull(h.inventory.viewForTest(aliceId));
+
+            clearInvocations(alice);
+            h.inventory.beginStartTransitionForTest();
+
+            verify(alice, never()).playSound(
+                any(Location.class),
+                any(Sound.class),
+                any(SoundCategory.class),
+                anyFloat(),
+                anyFloat()
+            );
         }
     }
 

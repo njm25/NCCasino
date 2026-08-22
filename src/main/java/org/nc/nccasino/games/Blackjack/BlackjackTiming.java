@@ -73,6 +73,19 @@ public final class BlackjackTiming {
     public static final float TABLE_ENTRANCE_WHOOSH_BASE_PITCH = 1.0f;
     /** Max random pitch deviation (plus or minus) from {@link #TABLE_ENTRANCE_WHOOSH_BASE_PITCH} for each burst instance -- small on purpose, "very close" per feedback, not spread across a wide range. Retune by ear. */
     public static final float TABLE_ENTRANCE_WHOOSH_PITCH_JITTER = 0.08f;
+
+    // ---- Pregame shuffle flourish (shared, plays once the dealer's own
+    // walk-down animation has already landed it in-play) -------------------
+
+    /** Per-slot travel time for the deck token and every card in {@link BlackjackShuffleAnimationPlan} -- the same 1-tick floor the table entrance uses. */
+    public static final long SHUFFLE_HOP_TICKS = 1L;
+    /** Ticks apart successive cards launch from the deck, regardless of which direction either takes -- twice {@link #SHUFFLE_HOP_TICKS}, the same "genuine one-empty-slot gap" pacing proven out by the table entrance. */
+    public static final long SHUFFLE_CARD_LAUNCH_STAGGER_TICKS = SHUFFLE_HOP_TICKS * 2;
+    /** How many cards stream out during the shuffle -- picked so the whole round trip (deck out, cards, deck back) lands close to a ~3-second/60-tick "super fast" target with real gaps between cards, not a card count chosen for its own sake. Retune together with the timing constants above if either changes. */
+    public static final int SHUFFLE_CARD_COUNT = 16;
+    /** The brief pause between the deck arriving at the shuffle's center slot and the first card starting to move -- lets the deck's own arrival actually read before the cards take over. Retune by ear. */
+    public static final long SHUFFLE_START_PAUSE_TICKS = 3L;
+
     /** Same reveal flash for LOSS/PUSH, but at half the WIN rate -- a calmer flicker for the non-win outcomes. */
     public static final long ROUND_RESULT_FLASH_STEP_TICKS_SLOW = ROUND_RESULT_FLASH_STEP_TICKS * 2;
     /**
@@ -84,6 +97,12 @@ public final class BlackjackTiming {
      * 36 ticks total).
      */
     public static final long WAGER_REVEAL_STEP_TICKS = 1L;
+    /** Quiet single scrape played once when the wager bar genuinely starts moving, matching Roulette's ball-scraping grindstone texture. */
+    public static final float WAGER_SLIDE_SOUND_VOLUME = 0.20f;
+    /** Higher/lighter grindstone pitch for the wager bar opening toward {@link BlackjackWagerRevealPlan#OPEN}. */
+    public static final float WAGER_SLIDE_OPEN_PITCH = 1.30f;
+    /** Lower/heavier grindstone pitch for the wager bar closing toward {@link BlackjackWagerRevealPlan#CLOSED}. */
+    public static final float WAGER_SLIDE_CLOSE_PITCH = 0.80f;
     /**
      * Ticks per frame of the Blackjack settings menu's collapsible-section
      * slide (see {@code BlackjackMenu#layoutMenuAnimated}) -- a parent

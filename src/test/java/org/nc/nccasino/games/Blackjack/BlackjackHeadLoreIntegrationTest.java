@@ -58,7 +58,11 @@ class BlackjackHeadLoreIntegrationTest {
             // has actually landed (dealInitialCards schedules flights with
             // real delay) -- the head must show no card-value line at all,
             // never a placeholder "0".
-            for (int i = 0; i < 60 && !h.inventory.isGameActiveForTest(); i++) {
+            // Await the state this test actually needs instead of pinning it
+            // to the old pre-shuffle transition duration. The 300-tick cap
+            // is only deadlock protection; this assertion is about the
+            // frame at activation, not how quickly activation occurs.
+            for (int i = 0; i < 300 && !h.inventory.isGameActiveForTest(); i++) {
                 h.scheduler.advance(1);
             }
             assertTrue(h.inventory.isGameActiveForTest(), "test setup must actually reach gameActive");
