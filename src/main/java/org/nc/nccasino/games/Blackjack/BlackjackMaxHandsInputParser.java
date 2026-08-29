@@ -4,9 +4,9 @@ import java.util.Optional;
 
 /**
  * Pure parser for the admin max-hands chat prompt (see
- * {@code BlackjackMenu#handleMaxHandsInput}) -- accepts case-insensitive
- * {@code "unbounded"}, or an integer &gt;= 2, and returns exactly the
- * string that should be persisted to config (mirroring
+ * {@code BlackjackMenu#handleMaxHandsInput}) -- accepts {@code -1}, an
+ * integer &gt;= 2, or the legacy case-insensitive {@code "unbounded"} alias,
+ * and returns exactly the string that should be persisted to config (mirroring
  * {@link BlackjackMaxHands#configValue()}'s own shape). Never throws: an
  * overflowing digit string (more digits than fit in a {@code long}) is
  * rejected the same as any other invalid input, not left to propagate an
@@ -26,7 +26,7 @@ public final class BlackjackMaxHandsInputParser {
         if (trimmed.isEmpty()) {
             return Optional.empty();
         }
-        if ("unbounded".equalsIgnoreCase(trimmed)) {
+        if ("-1".equals(trimmed) || "unbounded".equalsIgnoreCase(trimmed)) {
             return Optional.of("UNBOUNDED");
         }
         if (!trimmed.matches("\\d+")) {
