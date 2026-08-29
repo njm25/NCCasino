@@ -93,8 +93,13 @@ public abstract class Menu extends DealerInventory {
         
         // Dragon Descent settings menu
         EDIT_COLUMNS,
-        EDIT_VINES, 
+        EDIT_VINES,
         EDIT_FLOORS,
+
+        // Slots settings menu
+        SLOTS_HOUSE_EDGE,
+        SLOTS_DEFAULT_COLUMNS,
+        SLOTS_DEFAULT_LINES,
 
         YES,
         NO,

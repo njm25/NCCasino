@@ -11,6 +11,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.nc.nccasino.Nccasino;
@@ -36,36 +37,51 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * One player's independent Slots table: a personal 54-slot view backed by
- * the explicit {@link SlotsSessionState} lifecycle. A dealer mob may have
- * any number of these open concurrently, one per player, dispatched by
- * {@link SlotsInventory}.
+ * One player's independent Slots machine: a personal 54-slot view backed by
+ * the explicit {@link SlotsSessionState} lifecycle.
+ *
+ * <p>The machine's width ({@link SlotsGeometry}) and active payline count are
+ * both player-selectable in session, and the grid physically grows outward
+ * from the centre as columns are added. Because the configured house edge is
+ * applied by deriving the paytable ({@link SlotsPaytable}) rather than by
+ * hardcoding multipliers, neither choice moves the machine's return -- a wider
+ * machine is higher variance at identical RTP, and extra lines scale stake and
+ * expected return together.
  *
  * <p>Financial contract: a debit ({@link WagerTransaction#tryWithdraw}) is
  * always attempted and confirmed <em>before</em> any outcome is generated.
  * The instant that debit succeeds, {@link SlotsSpinGenerator} produces one
- * immutable {@link SlotsOutcome} and the payout owed is computed and stored
- * -- everything from that point on (the animation, the highlight, the
- * eventual credit) is just carrying out an already-decided result. There is
- * no route back from a committed result to a refundable pregame state (see
+ * immutable {@link SlotsOutcome} and the payout owed is computed and stored --
+ * everything from that point on (the reel motion, the win walk-through, the
+ * eventual credit) is just carrying out an already-decided result. There is no
+ * route back from a committed result to a refundable pregame state (see
  * {@link SlotsStateMachine}).
  */
 public class SlotsMachine extends DealerInventory implements TerminableSession {
 
-    private static final int[][] GRID_SLOTS = {
-        {12, 13, 14},
-        {21, 22, 23},
-        {30, 31, 32}
-    };
+    // ---- layout ----------------------------------------------------------
+    // Row 0: machine controls (width, info, lines).  Rows 1-3: reel grid.
+    // Row 4: payline selectors.  Row 5: wager controls and meters.
+
+    private static final int FEWER_COLUMNS_SLOT = 1;
+    private static final int COLUMNS_DISPLAY_SLOT = 2;
+    private static final int MORE_COLUMNS_SLOT = 3;
+    private static final int MACHINE_INFO_SLOT = 4;
+    private static final int FEWER_LINES_SLOT = 5;
+    private static final int LINES_DISPLAY_SLOT = 6;
+    private static final int MORE_LINES_SLOT = 7;
+
+    private static final int LINE_SELECTOR_ROW_START = 36;
+
     private static final int EXIT_SLOT = 45;
-    private static final int PREV_DENOM_SLOT = 47;
-    private static final int SPIN_SLOT = 49;
-    private static final int NEXT_DENOM_SLOT = 51;
-    private static final int PAYTABLE_SLOT = 53;
-    private static final int WAGER_INFO_SLOT = 4;
-    private static final int TOTAL_BET_SLOT = 40;
     private static final int BALANCE_SLOT = 46;
-    private static final int LAST_WIN_SLOT = 48;
+    private static final int PREV_DENOM_SLOT = 47;
+    private static final int DENOM_DISPLAY_SLOT = 48;
+    private static final int SPIN_SLOT = 49;
+    private static final int TOTAL_BET_SLOT = 50;
+    private static final int NEXT_DENOM_SLOT = 51;
+    private static final int WIN_METER_SLOT = 52;
+    private static final int PAYTABLE_SLOT = 53;
 
     private final UUID playerId;
     private final Player player;
@@ -75,14 +91,21 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     private final String currencyName;
     private final SlotsInventory slotsInventory;
     private final double[] chipValues;
-    private BukkitTask animationTask;
 
+    private SlotsConfig config;
     private final SlotsSpinController controller = new SlotsSpinController();
     private int denominationIndex = 0;
     private boolean closeFlag = false;
 
+    private BukkitTask animationTask;
+    private BukkitTask winMeterTask;
+    /** Cosmetic symbols currently shown per reel, top row first. Never authoritative. */
+    private SlotsSymbol[][] reelDisplay;
+    private long displayedWin = -1L;
+
     public SlotsMachine(UUID dealerId, Player player, Nccasino plugin, String internalName, SlotsInventory slotsInventory) {
-        super(player.getUniqueId(), 54, plugin.getLocalization().text(player, "slots.title"));
+        super(player.getUniqueId(), SlotsGeometry.INVENTORY_SIZE,
+            plugin.getLocalization().text(player, "slots.title"));
         this.dealerId = dealerId;
         this.playerId = player.getUniqueId();
         this.player = player;
@@ -92,6 +115,8 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         this.currencyName = plugin.getCurrencyName(internalName);
         this.slotsInventory = slotsInventory;
         this.chipValues = loadChipValues();
+        this.config = SlotsConfig.load(plugin, internalName);
+        this.reelDisplay = new SlotsSymbol[config.columns()][SlotsGeometry.ROWS];
 
         Bukkit.getPluginManager().registerEvents(this, plugin);
         SessionRegistry.register(playerId, this);
@@ -106,172 +131,339 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     }
 
     public void initializeTable() {
+        redrawEverything();
+    }
+
+    private void redrawEverything() {
         renderFrame();
+        renderMachineControls();
+        renderLineSelectors();
         renderIdleGrid();
         renderControls();
         renderInfo();
     }
 
-    // ---- rendering -----------------------------------------------------
+    // ---- rendering -------------------------------------------------------
 
     private void renderFrame() {
-        for (int slot = 0; slot < 54; slot++) {
-            if (isGridSlot(slot) || isReservedSlot(slot)) {
+        for (int slot = 0; slot < SlotsGeometry.INVENTORY_SIZE; slot++) {
+            if (isInteractiveSlot(slot) || SlotsGeometry.isGridSlot(config.columns(), slot)) {
                 continue;
             }
             addItemAndLore(Material.BLACK_STAINED_GLASS_PANE, 1, " ", slot);
         }
     }
 
-    private boolean isGridSlot(int slot) {
-        for (int[] row : GRID_SLOTS) {
-            for (int gridSlot : row) {
-                if (gridSlot == slot) {
-                    return true;
+    private boolean isInteractiveSlot(int slot) {
+        if (slot >= LINE_SELECTOR_ROW_START && slot < LINE_SELECTOR_ROW_START + SlotsPayline.MAX_LINES) {
+            return true;
+        }
+        return switch (slot) {
+            case FEWER_COLUMNS_SLOT, COLUMNS_DISPLAY_SLOT, MORE_COLUMNS_SLOT, MACHINE_INFO_SLOT,
+                 FEWER_LINES_SLOT, LINES_DISPLAY_SLOT, MORE_LINES_SLOT,
+                 EXIT_SLOT, BALANCE_SLOT, PREV_DENOM_SLOT, DENOM_DISPLAY_SLOT, SPIN_SLOT,
+                 TOTAL_BET_SLOT, NEXT_DENOM_SLOT, WIN_METER_SLOT, PAYTABLE_SLOT -> true;
+            default -> false;
+        };
+    }
+
+    /** Machine width and payline count controls, plus the live RTP readout. */
+    private void renderMachineControls() {
+        boolean locked = !controller.isReadyForSpin();
+        int columns = config.columns();
+
+        addItemAndLore(
+            columns > SlotsGeometry.MIN_COLUMNS ? Material.REDSTONE_TORCH : Material.LEVER,
+            1,
+            text("slots.fewer-columns"),
+            FEWER_COLUMNS_SLOT,
+            text("slots.columns-current", "columns", columns));
+        addItemAndLore(
+            Material.OBSERVER, 1, text("slots.columns"), COLUMNS_DISPLAY_SLOT,
+            text("slots.columns-current", "columns", columns),
+            text("slots.columns-hint"));
+        addItemAndLore(
+            columns < SlotsGeometry.MAX_COLUMNS ? Material.REDSTONE_TORCH : Material.LEVER,
+            1,
+            text("slots.more-columns"),
+            MORE_COLUMNS_SLOT,
+            text("slots.columns-current", "columns", columns));
+
+        addItemAndLore(
+            Material.KNOWLEDGE_BOOK, 1, text("slots.machine-info"), MACHINE_INFO_SLOT,
+            text("slots.machine-info-rtp", "rtp", formatPercent(config.paytable().theoreticalRtp())),
+            text("slots.machine-info-edge", "edge", formatPercent(config.houseEdge())),
+            text("slots.machine-info-width", "columns", columns),
+            text("slots.machine-info-lines", "lines", config.activeLines()));
+
+        addItemAndLore(
+            config.activeLines() > 1 ? Material.REDSTONE_TORCH : Material.LEVER,
+            1, text("slots.fewer-lines"), FEWER_LINES_SLOT,
+            text("slots.lines-current", "lines", config.activeLines()));
+        addItemAndLore(
+            Material.ITEM_FRAME, 1, text("slots.lines"), LINES_DISPLAY_SLOT,
+            text("slots.lines-current", "lines", config.activeLines()),
+            text("slots.lines-hint"));
+        addItemAndLore(
+            config.activeLines() < SlotsPayline.MAX_LINES ? Material.REDSTONE_TORCH : Material.LEVER,
+            1, text("slots.more-lines"), MORE_LINES_SLOT,
+            text("slots.lines-current", "lines", config.activeLines()));
+
+        if (locked) {
+            // Width/line changes are stake-affecting, so they are visibly
+            // inert mid-spin rather than silently ignored.
+            dimSlot(FEWER_COLUMNS_SLOT);
+            dimSlot(MORE_COLUMNS_SLOT);
+            dimSlot(FEWER_LINES_SLOT);
+            dimSlot(MORE_LINES_SLOT);
+        }
+    }
+
+    /**
+     * One selector per possible payline. Active lines glow; clicking a
+     * selector sets the line count to that line, which is how a player sees
+     * what each line's shape actually is before staking on it.
+     */
+    private void renderLineSelectors() {
+        for (int line = 0; line < SlotsPayline.MAX_LINES; line++) {
+            int slot = LINE_SELECTOR_ROW_START + line;
+            boolean active = line < config.activeLines();
+            String name = text(active ? "slots.line-selector-active" : "slots.line-selector-inactive", "line", line + 1);
+            String[] lore = {
+                active ? text("slots.line-active") : text("slots.line-inactive"),
+                text("slots.line-shape", "shape", text(paylineKey(SlotsPayline.ALL[line]))),
+                text("slots.line-selector-hint")
+            };
+            if (active) {
+                setGlowingItem(slot, Material.LIME_STAINED_GLASS_PANE, name, lore);
+            } else {
+                addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, name, slot, lore);
+            }
+        }
+    }
+
+    /**
+     * The pregame grid. Cells that sit on at least one active payline are
+     * lit, so the player can see the shape of what they are betting on before
+     * committing -- the off-line cells stay dark.
+     */
+    private void renderIdleGrid() {
+        boolean[][] onActiveLine = activeLineCoverage();
+        int columns = config.columns();
+        for (int row = 0; row < SlotsGeometry.ROWS; row++) {
+            for (int col = 0; col < columns; col++) {
+                int slot = SlotsGeometry.gridSlot(columns, row, col);
+                if (onActiveLine[row][col]) {
+                    setGlowingItem(slot, Material.LIGHT_BLUE_STAINED_GLASS_PANE,
+                        text("slots.cell-on-line"),
+                        text("slots.cell-on-line-lore"));
+                } else {
+                    addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1,
+                        text("slots.cell-off-line"), slot);
                 }
             }
         }
-        return false;
     }
 
-    private boolean isReservedSlot(int slot) {
-        return slot == EXIT_SLOT || slot == PREV_DENOM_SLOT || slot == SPIN_SLOT || slot == NEXT_DENOM_SLOT
-            || slot == PAYTABLE_SLOT || slot == WAGER_INFO_SLOT || slot == TOTAL_BET_SLOT
-            || slot == BALANCE_SLOT || slot == LAST_WIN_SLOT;
-    }
-
-    private void renderIdleGrid() {
-        for (int row = 0; row < 3; row++) {
-            for (int col = 0; col < 3; col++) {
-                addItemAndLore(Material.GRAY_STAINED_GLASS_PANE, 1, text("slots.grid-empty"), GRID_SLOTS[row][col]);
+    private boolean[][] activeLineCoverage() {
+        int columns = config.columns();
+        boolean[][] covered = new boolean[SlotsGeometry.ROWS][columns];
+        for (SlotsPayline payline : SlotsPayline.active(config.activeLines())) {
+            for (int col = 0; col < columns; col++) {
+                covered[payline.rowAt(col, columns)][col] = true;
             }
         }
+        return covered;
     }
 
     private void renderControls() {
-        boolean locked = !isReadyForSpin();
+        boolean locked = !controller.isReadyForSpin();
         boolean blocked = controller.state() == SlotsSessionState.SETTLEMENT_FAILED;
-        addItemAndLore(
-            Material.ARROW,
-            1,
-            text("slots.previous-denomination"),
-            PREV_DENOM_SLOT
-        );
-        addItemAndLore(
-            locked ? Material.REDSTONE_BLOCK : Material.EMERALD_BLOCK,
-            1,
-            locked ? text(blocked ? "slots.payout-blocked" : "slots.spin-locked") : text("slots.spin"),
-            SPIN_SLOT
-        );
-        addItemAndLore(
-            Material.ARROW,
-            1,
-            text("slots.next-denomination"),
-            NEXT_DENOM_SLOT
-        );
-        addItemAndLore(
-            Material.SPRUCE_DOOR,
-            1,
-            text("slots.exit"),
-            EXIT_SLOT
-        );
+
+        addItemAndLore(Material.SPRUCE_DOOR, 1, text("slots.exit"), EXIT_SLOT,
+            text("slots.exit-lore"));
+
+        addItemAndLore(Material.ARROW, 1, text("slots.previous-denomination"), PREV_DENOM_SLOT,
+            text("slots.denomination-hint"));
+        addItemAndLore(Material.ARROW, 1, text("slots.next-denomination"), NEXT_DENOM_SLOT,
+            text("slots.denomination-hint"));
+
+        if (blocked) {
+            setGlowingItem(SPIN_SLOT, Material.REDSTONE_BLOCK,
+                text("slots.payout-blocked"),
+                text("slots.payout-blocked-retry"));
+        } else if (locked) {
+            addItemAndLore(Material.REDSTONE_BLOCK, 1, text("slots.spin-locked"),
+                SPIN_SLOT, text("slots.spin-locked-lore"));
+        } else {
+            setGlowingItem(SPIN_SLOT, Material.EMERALD_BLOCK,
+                text("slots.spin"),
+                text("slots.spin-lore", "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, currentTotalBet())));
+        }
 
         List<String> paytableLore = new ArrayList<>();
-        for (SlotsSymbol symbol : SlotsSymbol.values()) {
-            paytableLore.add(text("slots.paytable-line", "symbol", text(symbolKey(symbol)), "multiplier", symbol.multiplier()));
+        SlotsPaytable paytable = config.paytable();
+        for (SlotsSymbol symbol : SlotsSymbol.payingSymbols()) {
+            StringBuilder runs = new StringBuilder();
+            for (int run = symbol.minimumRun(); run <= config.columns(); run++) {
+                if (runs.length() > 0) {
+                    runs.append("  ");
+                }
+                runs.append(run).append("x").append(formatMultiplier(paytable.multiplier(symbol, run)));
+            }
+            paytableLore.add(text("slots.paytable-line",
+                "symbol", text(symbolKey(symbol)), "payouts", runs.toString()));
         }
-        addItemAndLore(Material.KNOWLEDGE_BOOK, 1, text("slots.paytable"), PAYTABLE_SLOT, paytableLore.toArray(new String[0]));
+        paytableLore.add(text("slots.paytable-blank-note"));
+        paytableLore.add(text("slots.paytable-rtp", "rtp", formatPercent(paytable.theoreticalRtp())));
+        addItemAndLore(Material.ENCHANTED_BOOK, 1, text("slots.paytable"), PAYTABLE_SLOT,
+            paytableLore.toArray(new String[0]));
     }
 
     private void renderInfo() {
         double denomination = chipValues[denominationIndex];
-        long denomUnits = Math.max(0L, Math.round(denomination));
-        long totalBet;
-        try {
-            totalBet = SlotsMath.totalBet(denomUnits);
-        } catch (ArithmeticException e) {
-            totalBet = Long.MAX_VALUE;
-        }
 
-        addItemAndLore(
-            Material.SUNFLOWER,
-            1,
-            text("slots.wager-denomination"),
-            WAGER_INFO_SLOT,
-            text("slots.wager-denomination-value", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, denomination))
-        );
-        addItemAndLore(
-            Material.GOLD_INGOT,
-            1,
-            text("slots.total-bet"),
-            TOTAL_BET_SLOT,
-            text("slots.total-bet-value", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, totalBet))
-        );
+        addItemAndLore(Material.SUNFLOWER, 1, text("slots.wager-denomination"), DENOM_DISPLAY_SLOT,
+            text("slots.wager-denomination-value", "amount",
+                plugin.formatWagerDisplay(currencyMode, currencyName, denomination)));
+
+        addItemAndLore(Material.GOLD_INGOT, 1, text("slots.total-bet"), TOTAL_BET_SLOT,
+            text("slots.total-bet-value", "amount",
+                plugin.formatWagerDisplay(currencyMode, currencyName, currentTotalBet())),
+            text("slots.total-bet-breakdown", "lines", config.activeLines()));
 
         CurrencyProvider provider = getCurrencyProvider();
         if (provider != null) {
             int balance = provider.getBalance(player, internalName);
-            addItemAndLore(
-                Material.EMERALD,
-                1,
-                text("slots.balance"),
-                BALANCE_SLOT,
-                text("slots.balance-value", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, balance))
-            );
+            addItemAndLore(Material.EMERALD, 1, text("slots.balance"), BALANCE_SLOT,
+                text("slots.balance-value", "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, balance)));
         } else {
-            addItemAndLore(Material.BLACK_STAINED_GLASS_PANE, 1, " ", BALANCE_SLOT);
+            addItemAndLore(Material.EMERALD, 1, text("slots.balance"), BALANCE_SLOT,
+                text("slots.balance-items"));
         }
 
-        long lastWinAmount = controller.lastWinAmount();
-        if (lastWinAmount < 0) {
-            addItemAndLore(Material.PAPER, 1, text("slots.last-win-none"), LAST_WIN_SLOT);
-        } else if (lastWinAmount == 0) {
-            addItemAndLore(Material.PAPER, 1, text("slots.last-win-loss"), LAST_WIN_SLOT);
+        renderWinMeter(displayedWin);
+    }
+
+    /**
+     * Counts the win meter up to the awarded amount rather than snapping to
+     * it. The credited balance is already final before this starts -- this is
+     * presentation only, and a termination mid-count loses nothing.
+     *
+     * <p>The step size is derived from the total so a huge win does not take
+     * proportionally longer to count than a small one; the whole run is capped
+     * at {@link SlotsTiming#WIN_METER_MAX_TICKS}.
+     */
+    private void animateWinMeter(long payout) {
+        cancelWinMeterTask();
+        long steps = Math.max(1L, SlotsTiming.WIN_METER_MAX_TICKS / SlotsTiming.WIN_METER_STEP_TICKS);
+        long increment = Math.max(1L, payout / steps);
+        final long[] shown = {0L};
+
+        BukkitRunnable runnable = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (closeFlag || player == null || !player.isOnline()) {
+                    cancel();
+                    winMeterTask = null;
+                    return;
+                }
+                shown[0] = Math.min(payout, shown[0] + increment);
+                renderWinMeter(shown[0]);
+                playMeterTick(shown[0], payout);
+                if (shown[0] >= payout) {
+                    cancel();
+                    winMeterTask = null;
+                }
+            }
+        };
+        winMeterTask = runnable.runTaskTimer(plugin, SlotsTiming.WIN_METER_STEP_TICKS, SlotsTiming.WIN_METER_STEP_TICKS);
+    }
+
+    /** Rising ticks as the meter climbs, the way a physical machine pays out. */
+    private void playMeterTick(long shown, long payout) {
+        float progress = payout <= 0 ? 1f : (float) shown / payout;
+        play("block.note_block.hat", Sound.BLOCK_NOTE_BLOCK_HAT, 0.35f, 0.9f + (progress * 0.9f));
+    }
+
+    private void renderWinMeter(long amount) {
+        if (amount < 0) {
+            addItemAndLore(Material.PAPER, 1, text("slots.last-win-none"), WIN_METER_SLOT,
+                text("slots.last-win-none-lore"));
+        } else if (amount == 0) {
+            addItemAndLore(Material.PAPER, 1, text("slots.last-win-loss"), WIN_METER_SLOT,
+                text("slots.last-win-loss-lore"));
         } else {
-            addItemAndLore(
-                Material.PAPER,
-                1,
+            setGlowingItem(WIN_METER_SLOT, Material.GOLD_NUGGET,
                 text("slots.last-win"),
-                LAST_WIN_SLOT,
-                text("slots.last-win-value", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, lastWinAmount))
-            );
+                text("slots.last-win-value", "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, amount)));
         }
     }
 
-    private void renderReelSpin(int col) {
-        for (int row = 0; row < 3; row++) {
-            SlotsSymbol cosmetic = SlotsSpinGenerator.sampleSymbol(bound -> ThreadLocalRandom.current().nextInt(bound));
-            addItemAndLore(cosmetic.material(), 1, text(symbolKey(cosmetic)), GRID_SLOTS[row][col]);
+    private long currentTotalBet() {
+        long denomUnits = Math.max(0L, Math.round(chipValues[denominationIndex]));
+        try {
+            return SlotsMath.totalBet(denomUnits, config.activeLines());
+        } catch (ArithmeticException e) {
+            return Long.MAX_VALUE;
         }
     }
 
-    private void renderReelFinal(int col) {
-        SlotsOutcome outcome = controller.currentOutcome();
-        for (int row = 0; row < 3; row++) {
-            SlotsSymbol symbol = outcome.symbolAt(row, col);
-            addItemAndLore(symbol.material(), 1, text(symbolKey(symbol)), ChatColor.WHITE, GRID_SLOTS[row][col]);
-        }
-    }
+    // ---- small render helpers -------------------------------------------
 
-    private void highlightWinningLines() {
-        for (SlotsMath.LineResult result : SlotsMath.evaluateAllLines(controller.currentOutcome())) {
-            if (!result.winning()) {
-                continue;
+    /** Item with the repo's standard "glow" treatment (harmless enchant, hidden from lore). */
+    private void setGlowingItem(int slot, Material material, String name, String... lore) {
+        ItemStack item = new ItemStack(material, 1);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(name);
+            if (lore.length > 0) {
+                List<String> loreList = new ArrayList<>();
+                for (String line : lore) {
+                    loreList.add(ChatColor.GRAY + line);
+                }
+                meta.setLore(loreList);
             }
-            for (int[] cell : result.payline().cells()) {
-                addItemAndLore(
-                    result.symbol().material(),
-                    1,
-                    text(symbolKey(result.symbol())),
-                    ChatColor.GOLD,
-                    GRID_SLOTS[cell[0]][cell[1]]
-                );
-            }
+            meta.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
+            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+            item.setItemMeta(meta);
         }
+        getInventory().setItem(slot, item);
+    }
+
+    private void dimSlot(int slot) {
+        ItemStack existing = getInventory().getItem(slot);
+        if (existing == null) {
+            return;
+        }
+        ItemMeta meta = existing.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.DARK_GRAY + ChatColor.stripColor(
+                meta.hasDisplayName() ? meta.getDisplayName() : ""));
+            existing.setItemMeta(meta);
+        }
+    }
+
+    private String formatPercent(double fraction) {
+        return String.format("%.2f%%", fraction * 100.0);
+    }
+
+    private String formatMultiplier(double multiplier) {
+        if (multiplier >= 100.0) {
+            return String.valueOf(Math.round(multiplier));
+        }
+        return String.format("%.1f", multiplier);
     }
 
     private String symbolKey(SlotsSymbol symbol) {
         return "slots.symbol-" + symbol.name().toLowerCase();
+    }
+
+    private String paylineKey(SlotsPayline payline) {
+        return "slots.payline-" + payline.name().toLowerCase().replace('_', '-');
     }
 
     // ---- click handling --------------------------------------------------
@@ -289,12 +481,24 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             }
             return;
         }
+
+        if (slot >= LINE_SELECTOR_ROW_START && slot < LINE_SELECTOR_ROW_START + SlotsPayline.MAX_LINES) {
+            handleSelectLineCount(slot - LINE_SELECTOR_ROW_START + 1);
+            return;
+        }
+
         switch (slot) {
             case EXIT_SLOT -> handleExit();
             case SPIN_SLOT -> handleSpin();
             case PREV_DENOM_SLOT -> handleChangeDenomination(-1);
             case NEXT_DENOM_SLOT -> handleChangeDenomination(1);
-            case PAYTABLE_SLOT -> handlePaytable();
+            case PAYTABLE_SLOT, MACHINE_INFO_SLOT -> handlePaytable();
+            case FEWER_COLUMNS_SLOT -> handleChangeColumns(-2);
+            case MORE_COLUMNS_SLOT -> handleChangeColumns(2);
+            case FEWER_LINES_SLOT -> handleSelectLineCount(config.activeLines() - 1);
+            case MORE_LINES_SLOT -> handleSelectLineCount(config.activeLines() + 1);
+            case COLUMNS_DISPLAY_SLOT, LINES_DISPLAY_SLOT, TOTAL_BET_SLOT, DENOM_DISPLAY_SLOT,
+                 BALANCE_SLOT, WIN_METER_SLOT -> playDefaultSound(player);
             default -> {
             }
         }
@@ -308,24 +512,76 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     private void handlePaytable() {
         playDefaultSound(player);
         player.sendMessage(text("slots.paytable-header"));
-        for (SlotsSymbol symbol : SlotsSymbol.values()) {
-            player.sendMessage(text("slots.paytable-line", "symbol", text(symbolKey(symbol)), "multiplier", symbol.multiplier()));
+        SlotsPaytable paytable = config.paytable();
+        for (SlotsSymbol symbol : SlotsSymbol.payingSymbols()) {
+            StringBuilder runs = new StringBuilder();
+            for (int run = symbol.minimumRun(); run <= config.columns(); run++) {
+                if (runs.length() > 0) {
+                    runs.append("  ");
+                }
+                runs.append(run).append("x").append(formatMultiplier(paytable.multiplier(symbol, run)));
+            }
+            player.sendMessage(text("slots.paytable-line",
+                "symbol", text(symbolKey(symbol)), "payouts", runs.toString()));
         }
+        player.sendMessage(text("slots.paytable-rtp", "rtp", formatPercent(paytable.theoreticalRtp())));
     }
 
-    private void handleChangeDenomination(int delta) {
-        if (!isReadyForSpin()) {
+    /** Width steps by two so the machine only ever sits on a legal odd width. */
+    private void handleChangeColumns(int delta) {
+        if (!controller.isReadyForSpin()) {
             denyAction(player, text("slots.spin-locked"));
             return;
         }
-        denominationIndex = SlotsDenominationPolicy.nextAllowedIndex(
-            chipValues, denominationIndex, delta, isItemMode());
-        playDefaultSound(player);
+        int target = config.columns() + delta;
+        if (!SlotsGeometry.isSupportedColumnCount(target)) {
+            denyAction(player, text(delta > 0 ? "slots.columns-at-max" : "slots.columns-at-min"));
+            return;
+        }
+        config = SlotsConfig.of(target, config.activeLines(), config.houseEdge());
+        reelDisplay = new SlotsSymbol[config.columns()][SlotsGeometry.ROWS];
+        displayedWin = -1L;
+        playClick(1.0f + (delta > 0 ? 0.2f : -0.2f));
+        // The grid physically changes size, so the whole view is rebuilt
+        // rather than patched -- old grid slots must go back to being frame.
+        redrawEverything();
+    }
+
+    private void handleSelectLineCount(int lines) {
+        if (!controller.isReadyForSpin()) {
+            denyAction(player, text("slots.spin-locked"));
+            return;
+        }
+        int normalized = SlotsPayline.normalizeLineCount(lines);
+        if (normalized == config.activeLines()) {
+            playDefaultSound(player);
+            return;
+        }
+        boolean increasing = normalized > config.activeLines();
+        config = config.withActiveLines(normalized);
+        playClick(increasing ? 1.4f : 0.8f);
+        renderMachineControls();
+        renderLineSelectors();
+        renderIdleGrid();
+        renderControls();
         renderInfo();
     }
 
-    private boolean isReadyForSpin() {
-        return controller.isReadyForSpin();
+    private void handleChangeDenomination(int delta) {
+        if (!controller.isReadyForSpin()) {
+            denyAction(player, text("slots.spin-locked"));
+            return;
+        }
+        int next = SlotsDenominationPolicy.nextAllowedIndex(
+            chipValues, denominationIndex, delta, config.activeLines(), isItemMode(), config.paytable());
+        if (next == denominationIndex) {
+            denyAction(player, text("slots.no-safe-denomination"));
+            return;
+        }
+        denominationIndex = next;
+        playClick(delta > 0 ? 1.2f : 0.9f);
+        renderControls();
+        renderInfo();
     }
 
     private boolean isItemMode() {
@@ -333,16 +589,26 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         return provider == null || provider.getMode() != CurrencyMode.VAULT;
     }
 
+    // ---- spin ------------------------------------------------------------
+
     private void handleSpin() {
         long denomUnits = Math.max(0L, Math.round(chipValues[denominationIndex]));
         SlotsSpinController.SpinAttempt attempt = controller.trySpin(
-            denomUnits, isItemMode(), SlotsRandomSource.production(), this::attemptDebit);
+            denomUnits,
+            config.columns(),
+            config.activeLines(),
+            isItemMode(),
+            config.paytable(),
+            SlotsRandomSource.production(),
+            this::attemptDebit);
 
         switch (attempt) {
             case SlotsSpinController.SpinAttempt.Rejected rejected -> handleRejectedSpin(rejected.reason());
             case SlotsSpinController.SpinAttempt.Accepted accepted -> {
                 controller.beginAnimating();
-                playDefaultSound(player);
+                displayedWin = -1L;
+                playLeverPull();
+                renderMachineControls();
                 renderControls();
                 renderInfo();
                 startAnimation(new SlotsCallbackGuard.SpinToken(playerId, dealerId, accepted.generation()));
@@ -386,9 +652,19 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
 
     private void startAnimation(SlotsCallbackGuard.SpinToken token) {
         cancelAnimationTask();
+        // A still-counting meter from the previous spin would otherwise keep
+        // repainting the slot underneath this spin's result.
+        cancelWinMeterTask();
+        SlotsOutcome outcome = controller.currentOutcome();
+        final SlotsReelPlan plan = SlotsReelPlan.build(outcome, config.activeLines());
+        final int columns = outcome.columns();
+        final List<SlotsMath.LineResult> winners = winningLines(outcome);
         final long[] elapsed = {0L};
-        final boolean[] reelStopped = {false, false, false};
-        final boolean[] highlighted = {false};
+        final boolean[] landed = new boolean[columns];
+        final boolean[] anticipationAnnounced = {false};
+        final int[] revealIndex = {0};
+
+        seedReelDisplay(columns);
 
         BukkitRunnable runnable = new BukkitRunnable() {
             @Override
@@ -398,39 +674,206 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
                     animationTask = null;
                     return;
                 }
+                long tick = elapsed[0];
 
-                elapsed[0] += SlotsSpinPlan.TICKER_INTERVAL;
-                for (int reel = 0; reel < 3; reel++) {
-                    if (!reelStopped[reel] && SlotsSpinPlan.isReelStopped(reel, elapsed[0])) {
-                        reelStopped[reel] = true;
-                        renderReelFinal(reel);
-                        playReelStopSound();
-                    } else if (!reelStopped[reel]) {
-                        renderReelSpin(reel);
+                for (int reel = 0; reel < columns; reel++) {
+                    if (landed[reel]) {
+                        continue;
+                    }
+                    if (plan.isStopped(reel, tick)) {
+                        landed[reel] = true;
+                        lockReel(reel, outcome);
+                        playReelStop(reel, columns);
+                        continue;
+                    }
+                    if (plan.advancesAt(reel, tick)) {
+                        advanceReel(reel);
                     }
                 }
 
-                if (!highlighted[0] && SlotsSpinPlan.isHighlightActive(elapsed[0])) {
-                    highlighted[0] = true;
-                    highlightWinningLines();
+                if (!anticipationAnnounced[0]
+                    && plan.isAnticipated()
+                    && columns >= 2
+                    && landed[columns - 2]
+                    && !landed[columns - 1]) {
+                    anticipationAnnounced[0] = true;
+                    playAnticipation();
                 }
 
-                if (elapsed[0] >= SlotsSpinPlan.SETTLE_TICK) {
-                    cancel();
-                    animationTask = null;
-                    settle(token);
+                if (tick >= plan.revealStartTick()) {
+                    long sinceReveal = tick - plan.revealStartTick();
+                    long perLine = SlotsTiming.LINE_REVEAL_HOLD_TICKS + SlotsTiming.LINE_REVEAL_GAP_TICKS;
+
+                    if (winners.isEmpty()) {
+                        if (sinceReveal >= SlotsTiming.LOSS_SETTLE_TICKS) {
+                            cancel();
+                            animationTask = null;
+                            settle(token);
+                        }
+                    } else if (revealIndex[0] < winners.size()) {
+                        if (sinceReveal >= revealIndex[0] * perLine) {
+                            SlotsMath.LineResult win = winners.get(revealIndex[0]);
+                            revealIndex[0]++;
+                            paintOutcomeGrid(outcome);
+                            highlightLine(win, outcome);
+                            playLineReveal(revealIndex[0], winners.size());
+                        }
+                    } else {
+                        long finaleStart = winners.size() * perLine;
+                        if (sinceReveal == finaleStart) {
+                            paintOutcomeGrid(outcome);
+                            for (SlotsMath.LineResult win : winners) {
+                                highlightLine(win, outcome);
+                            }
+                            playFinale(controller.pendingPayoutAmount());
+                        }
+                        if (sinceReveal >= finaleStart + SlotsTiming.ALL_LINES_FINALE_TICKS) {
+                            cancel();
+                            animationTask = null;
+                            settle(token);
+                        }
+                    }
                 }
+
+                elapsed[0] = tick + SlotsTiming.TICK_INTERVAL;
             }
         };
-
-        animationTask = runnable.runTaskTimer(plugin, SlotsSpinPlan.TICKER_INTERVAL, SlotsSpinPlan.TICKER_INTERVAL);
+        animationTask = runnable.runTaskTimer(plugin, SlotsTiming.TICK_INTERVAL, SlotsTiming.TICK_INTERVAL);
     }
 
-    private void playReelStopSound() {
-        if (SoundHelper.getSoundSafely("block.note_block.hat", player) != null) {
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, SoundCategory.MASTER, 1.0f, 1.0f);
+    private List<SlotsMath.LineResult> winningLines(SlotsOutcome outcome) {
+        List<SlotsMath.LineResult> winners = new ArrayList<>();
+        for (SlotsMath.LineResult result : SlotsMath.evaluateActiveLines(outcome, config.activeLines(), config.paytable())) {
+            if (result.winning()) {
+                winners.add(result);
+            }
+        }
+        return winners;
+    }
+
+    private void seedReelDisplay(int columns) {
+        reelDisplay = new SlotsSymbol[columns][SlotsGeometry.ROWS];
+        for (int col = 0; col < columns; col++) {
+            for (int row = 0; row < SlotsGeometry.ROWS; row++) {
+                reelDisplay[col][row] = randomCosmeticSymbol(col);
+            }
+            paintReel(col);
         }
     }
+
+    /** Scrolls one reel down by a symbol, feeding a fresh one in at the top. */
+    private void advanceReel(int col) {
+        for (int row = SlotsGeometry.ROWS - 1; row > 0; row--) {
+            reelDisplay[col][row] = reelDisplay[col][row - 1];
+        }
+        reelDisplay[col][0] = randomCosmeticSymbol(col);
+        paintReel(col);
+    }
+
+    private void lockReel(int col, SlotsOutcome outcome) {
+        for (int row = 0; row < SlotsGeometry.ROWS; row++) {
+            reelDisplay[col][row] = outcome.symbolAt(row, col);
+        }
+        paintReel(col);
+    }
+
+    private SlotsSymbol randomCosmeticSymbol(int col) {
+        return SlotsSpinGenerator.sampleSymbol(col, bound -> ThreadLocalRandom.current().nextInt(bound));
+    }
+
+    private void paintReel(int col) {
+        int columns = config.columns();
+        for (int row = 0; row < SlotsGeometry.ROWS; row++) {
+            SlotsSymbol symbol = reelDisplay[col][row];
+            addItemAndLore(symbol.material(), 1, text(symbolKey(symbol)), ChatColor.WHITE,
+                SlotsGeometry.gridSlot(columns, row, col));
+        }
+    }
+
+    private void paintOutcomeGrid(SlotsOutcome outcome) {
+        int columns = outcome.columns();
+        for (int row = 0; row < SlotsGeometry.ROWS; row++) {
+            for (int col = 0; col < columns; col++) {
+                SlotsSymbol symbol = outcome.symbolAt(row, col);
+                addItemAndLore(symbol.material(), 1, text(symbolKey(symbol)), ChatColor.WHITE,
+                    SlotsGeometry.gridSlot(columns, row, col));
+            }
+        }
+    }
+
+    /** Lights only the cells that actually matched -- the run, not the whole line. */
+    private void highlightLine(SlotsMath.LineResult win, SlotsOutcome outcome) {
+        int columns = outcome.columns();
+        for (int col = 0; col < win.runLength(); col++) {
+            int row = win.payline().rowAt(col, columns);
+            setGlowingItem(
+                SlotsGeometry.gridSlot(columns, row, col),
+                win.symbol().material(),
+                ChatColor.GOLD + text(symbolKey(win.symbol())),
+                text("slots.win-line-lore",
+                    "run", win.runLength(),
+                    "multiplier", formatMultiplier(win.multiplier())));
+        }
+    }
+
+    // ---- audio -----------------------------------------------------------
+
+    private void play(String key, Sound sound, float volume, float pitch) {
+        if (SoundHelper.getSoundSafely(key, player) != null) {
+            player.playSound(player.getLocation(), sound, SoundCategory.MASTER, volume, pitch);
+        }
+    }
+
+    private void playClick(float pitch) {
+        play("ui.button.click", Sound.UI_BUTTON_CLICK, 0.6f, pitch);
+    }
+
+    private void playLeverPull() {
+        play("block.lever.click", Sound.BLOCK_LEVER_CLICK, 1.0f, 0.7f);
+        play("block.piston.extend", Sound.BLOCK_PISTON_EXTEND, 0.5f, 1.6f);
+    }
+
+    /**
+     * The pitch ladder: each reel stops a step higher than the one before it.
+     * This is the cheapest and most effective tension device a slot machine
+     * has -- the ear tracks the rising sequence and anticipates the last one.
+     */
+    private void playReelStop(int reel, int columns) {
+        float progress = columns <= 1 ? 0f : (float) reel / (columns - 1);
+        float pitch = 0.8f + (progress * 0.9f);
+        play("block.note_block.bass", Sound.BLOCK_NOTE_BLOCK_BASS, 0.9f, pitch);
+        play("block.wooden_button.click_on", Sound.BLOCK_WOODEN_BUTTON_CLICK_ON, 0.5f, pitch);
+    }
+
+    private void playAnticipation() {
+        play("block.note_block.pling", Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.9f);
+        play("entity.experience_orb.pickup", Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.7f, 0.6f);
+    }
+
+    private void playLineReveal(int index, int total) {
+        float pitch = 1.0f + (0.12f * Math.min(index, 8));
+        play("block.note_block.bell", Sound.BLOCK_NOTE_BLOCK_BELL, 0.8f, pitch);
+    }
+
+    /** Win audio scales with the size of the win relative to the stake. */
+    private void playFinale(long payout) {
+        long bet = Math.max(1L, currentTotalBet());
+        double ratio = (double) payout / bet;
+        if (ratio >= 20.0) {
+            play("ui.toast.challenge_complete", Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+            play("entity.player.levelup", Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 0.8f);
+        } else if (ratio >= 5.0) {
+            play("entity.player.levelup", Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+        } else {
+            play("block.note_block.chime", Sound.BLOCK_NOTE_BLOCK_CHIME, 0.9f, 1.5f);
+        }
+    }
+
+    private void playLoss() {
+        play("block.note_block.bass", Sound.BLOCK_NOTE_BLOCK_BASS, 0.5f, 0.6f);
+    }
+
+    // ---- settlement ------------------------------------------------------
 
     private void settle(SlotsCallbackGuard.SpinToken token) {
         if (!SlotsCallbackGuard.isValid(token, playerId, dealerId, controller.generation())) {
@@ -462,18 +905,27 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     }
 
     private void reportSettlement(SlotsSettlementResult result, long payout) {
+        displayedWin = payout;
+        renderMachineControls();
         renderControls();
         renderInfo();
+        if (payout > 0) {
+            animateWinMeter(payout);
+        }
 
         switch (result) {
             case DELIVERED -> {
                 if (payout > 0) {
-                    player.sendMessage(text("slots.win", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, payout)));
-                    if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null) {
-                        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.0f);
-                    }
+                    long bet = Math.max(1L, currentTotalBet());
+                    // Reported against the stake so a payout smaller than the
+                    // total bet reads honestly as a partial return, not a win.
+                    String key = payout >= bet ? "slots.win" : "slots.partial-return";
+                    player.sendMessage(text(key,
+                        "amount", plugin.formatWagerDisplay(currencyMode, currencyName, payout),
+                        "bet", plugin.formatWagerDisplay(currencyMode, currencyName, bet)));
                 } else {
                     player.sendMessage(text("slots.loss"));
+                    playLoss();
                 }
             }
             case QUEUED -> player.sendMessage(text("slots.payout-pending"));
@@ -649,12 +1101,20 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
 
     private void cancelScheduledTasks() {
         cancelAnimationTask();
+        cancelWinMeterTask();
     }
 
     private void cancelAnimationTask() {
         if (animationTask != null) {
             animationTask.cancel();
             animationTask = null;
+        }
+    }
+
+    private void cancelWinMeterTask() {
+        if (winMeterTask != null) {
+            winMeterTask.cancel();
+            winMeterTask = null;
         }
     }
 

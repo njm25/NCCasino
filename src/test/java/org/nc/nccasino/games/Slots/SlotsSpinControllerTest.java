@@ -23,9 +23,28 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class SlotsSpinControllerTest {
 
-    /** Every draw returns the same roll, so every one of the 9 cells samples the same symbol. */
+    private static final int COLUMNS = 3;
+    private static final int LINES = 5;
+    private static final SlotsPaytable PAYTABLE =
+        SlotsPaytable.forConfig(COLUMNS, SlotsPaytable.DEFAULT_HOUSE_EDGE);
+
+    /** Every draw returns the same roll, so every cell samples the same symbol. */
     private static SlotsRandomSource constantRoll(int roll) {
         return bound -> roll;
+    }
+
+    /**
+     * Cumulative weight boundaries are BLANK[0,30) CHERRY[30,52) LEMON[52,70)
+     * BELL[70,84) DIAMOND[84,94) SEVEN[94,100), so these two fixtures pin the
+     * extremes: a full grid of sevens (every line wins at full width) and a
+     * full grid of blanks (nothing can pay, since BLANK never pays).
+     */
+    private static SlotsRandomSource allSevens() {
+        return constantRoll(95);
+    }
+
+    private static SlotsRandomSource allBlanks() {
+        return constantRoll(0);
     }
 
     /** A fixed sequence of rolls, one per cell, crafted so no payline matches (see class javadoc math in the test body). */
@@ -65,8 +84,7 @@ class SlotsSpinControllerTest {
         RecordingPredicate queue = new RecordingPredicate(true);
 
         for (int spinNumber = 1; spinNumber <= 25; spinNumber++) {
-            SlotsSpinController.SpinAttempt attempt = controller.trySpin(
-                10, false, constantRoll(0), debit::test);
+            SlotsSpinController.SpinAttempt attempt = controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allSevens(), debit::test);
             assertInstanceOf(SlotsSpinController.SpinAttempt.Accepted.class, attempt,
                 "spin #" + spinNumber + " must be accepted");
             assertEquals(spinNumber, debit.callCount(), "exactly one debit for spin #" + spinNumber);
@@ -83,11 +101,11 @@ class SlotsSpinControllerTest {
         SlotsSpinController controller = new SlotsSpinController();
         RecordingPredicate debit = new RecordingPredicate(true);
 
-        controller.trySpin(10, false, constantRoll(0), debit::test);
+        controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allSevens(), debit::test);
         controller.settle(amount -> true, amount -> true);
         assertEquals(SlotsSessionState.RESOLVED, controller.state());
 
-        SlotsSpinController.SpinAttempt second = controller.trySpin(10, false, constantRoll(0), debit::test);
+        SlotsSpinController.SpinAttempt second = controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allSevens(), debit::test);
         assertInstanceOf(SlotsSpinController.SpinAttempt.Accepted.class, second);
         assertEquals(2, debit.callCount());
     }
@@ -97,7 +115,7 @@ class SlotsSpinControllerTest {
         SlotsSpinController controller = new SlotsSpinController();
         RecordingPredicate debit = new RecordingPredicate(false);
 
-        SlotsSpinController.SpinAttempt attempt = controller.trySpin(10, false, constantRoll(0), debit::test);
+        SlotsSpinController.SpinAttempt attempt = controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allSevens(), debit::test);
         assertInstanceOf(SlotsSpinController.SpinAttempt.Rejected.class, attempt);
         assertEquals(SlotsSpinController.RejectReason.INSUFFICIENT_FUNDS,
             ((SlotsSpinController.SpinAttempt.Rejected) attempt).reason());
@@ -110,10 +128,10 @@ class SlotsSpinControllerTest {
     void notReadyDuringAnActiveSpinRejectsWithoutTouchingDebit() {
         SlotsSpinController controller = new SlotsSpinController();
         RecordingPredicate debit = new RecordingPredicate(true);
-        controller.trySpin(10, false, constantRoll(0), debit::test);
+        controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allSevens(), debit::test);
         assertEquals(SlotsSessionState.RESULT_COMMITTED, controller.state());
 
-        SlotsSpinController.SpinAttempt second = controller.trySpin(10, false, constantRoll(0), debit::test);
+        SlotsSpinController.SpinAttempt second = controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allSevens(), debit::test);
         assertInstanceOf(SlotsSpinController.SpinAttempt.Rejected.class, second);
         assertEquals(SlotsSpinController.RejectReason.NOT_READY,
             ((SlotsSpinController.SpinAttempt.Rejected) second).reason());
@@ -126,7 +144,7 @@ class SlotsSpinControllerTest {
     void invalidDenominationIsRejectedBeforeAnyDebit() {
         SlotsSpinController controller = new SlotsSpinController();
         RecordingPredicate debit = new RecordingPredicate(true);
-        SlotsSpinController.SpinAttempt attempt = controller.trySpin(0, false, constantRoll(0), debit::test);
+        SlotsSpinController.SpinAttempt attempt = controller.trySpin(0, COLUMNS, LINES, false, PAYTABLE, allSevens(), debit::test);
         assertInstanceOf(SlotsSpinController.SpinAttempt.Rejected.class, attempt);
         assertEquals(SlotsSpinController.RejectReason.INVALID_DENOMINATION,
             ((SlotsSpinController.SpinAttempt.Rejected) attempt).reason());
@@ -137,19 +155,32 @@ class SlotsSpinControllerTest {
     void wagerOverflowIsRejectedBeforeAnyDebit() {
         SlotsSpinController controller = new SlotsSpinController();
         RecordingPredicate debit = new RecordingPredicate(true);
-        SlotsSpinController.SpinAttempt attempt = controller.trySpin(Long.MAX_VALUE, false, constantRoll(0), debit::test);
+        SlotsSpinController.SpinAttempt attempt = controller.trySpin(Long.MAX_VALUE, COLUMNS, LINES, false, PAYTABLE, allSevens(), debit::test);
         assertInstanceOf(SlotsSpinController.SpinAttempt.Rejected.class, attempt);
         assertEquals(SlotsSpinController.RejectReason.WAGER_OVERFLOW,
             ((SlotsSpinController.SpinAttempt.Rejected) attempt).reason());
         assertEquals(0, debit.callCount());
     }
 
+    /**
+     * Largest per-line wager whose worst case still fits under the item-mode
+     * ceiling. Derived from the live paytable rather than hardcoded, so this
+     * stays a genuine boundary test if the paytable's shape or the configured
+     * edge ever changes.
+     */
+    private static long largestSafeItemModeWager() {
+        return (long) Math.floor(SlotsMath.MAX_ITEM_MODE_PAYOUT / (PAYTABLE.maxLineMultiplier() * LINES));
+    }
+
     @Test
     void itemModeRejectsAWagerWhoseWorstCasePayoutExceedsTheCeilingBeforeAnyDebit() {
         SlotsSpinController controller = new SlotsSpinController();
         RecordingPredicate debit = new RecordingPredicate(true);
-        // 5 lines * SEVEN's x104 multiplier * 20 per-line units = 10,400 > MAX_ITEM_MODE_PAYOUT (10,000).
-        SlotsSpinController.SpinAttempt attempt = controller.trySpin(20, true, constantRoll(0), debit::test);
+        long oversized = largestSafeItemModeWager() + 1;
+        assertTrue(SlotsMath.maxPossiblePayout(oversized, LINES, PAYTABLE) > SlotsMath.MAX_ITEM_MODE_PAYOUT,
+            "fixture must actually exceed the ceiling");
+
+        SlotsSpinController.SpinAttempt attempt = controller.trySpin(oversized, COLUMNS, LINES, true, PAYTABLE, allSevens(), debit::test);
         assertInstanceOf(SlotsSpinController.SpinAttempt.Rejected.class, attempt);
         assertEquals(SlotsSpinController.RejectReason.BET_TOO_LARGE_FOR_MODE,
             ((SlotsSpinController.SpinAttempt.Rejected) attempt).reason());
@@ -160,7 +191,8 @@ class SlotsSpinControllerTest {
     void sameWagerIsAcceptedWhenNotInItemMode() {
         SlotsSpinController controller = new SlotsSpinController();
         RecordingPredicate debit = new RecordingPredicate(true);
-        SlotsSpinController.SpinAttempt attempt = controller.trySpin(20, false, constantRoll(0), debit::test);
+        long oversized = largestSafeItemModeWager() + 1;
+        SlotsSpinController.SpinAttempt attempt = controller.trySpin(oversized, COLUMNS, LINES, false, PAYTABLE, allSevens(), debit::test);
         assertInstanceOf(SlotsSpinController.SpinAttempt.Accepted.class, attempt);
         assertEquals(1, debit.callCount());
     }
@@ -169,8 +201,11 @@ class SlotsSpinControllerTest {
     void itemModeAcceptsAWagerAtExactlyTheCeiling() {
         SlotsSpinController controller = new SlotsSpinController();
         RecordingPredicate debit = new RecordingPredicate(true);
-        // 5 * 104 * 19 = 9,880 <= 10,000.
-        SlotsSpinController.SpinAttempt attempt = controller.trySpin(19, true, constantRoll(0), debit::test);
+        long atCeiling = largestSafeItemModeWager();
+        assertTrue(atCeiling > 0, "the ceiling must leave at least one playable denomination");
+        assertTrue(SlotsMath.maxPossiblePayout(atCeiling, LINES, PAYTABLE) <= SlotsMath.MAX_ITEM_MODE_PAYOUT);
+
+        SlotsSpinController.SpinAttempt attempt = controller.trySpin(atCeiling, COLUMNS, LINES, true, PAYTABLE, allSevens(), debit::test);
         assertInstanceOf(SlotsSpinController.SpinAttempt.Accepted.class, attempt);
         assertEquals(1, debit.callCount());
     }
@@ -180,7 +215,7 @@ class SlotsSpinControllerTest {
     @Test
     void successfulLiveDeliveryNeverQueues() {
         SlotsSpinController controller = new SlotsSpinController();
-        controller.trySpin(10, false, constantRoll(0), amount -> true);
+        controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allSevens(), amount -> true);
         RecordingPredicate liveDeliver = new RecordingPredicate(true);
         RecordingPredicate queue = new RecordingPredicate(true);
 
@@ -196,7 +231,7 @@ class SlotsSpinControllerTest {
     @Test
     void failedLiveDeliveryFallsBackToQueueAndReportsQueued() {
         SlotsSpinController controller = new SlotsSpinController();
-        controller.trySpin(10, false, constantRoll(0), amount -> true);
+        controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allSevens(), amount -> true);
         RecordingPredicate liveDeliver = new RecordingPredicate(false);
         RecordingPredicate queue = new RecordingPredicate(true);
 
@@ -212,11 +247,9 @@ class SlotsSpinControllerTest {
     @Test
     void zeroPayoutIsACompletedLossAndNeverInvokesDeliveryOrQueue() {
         SlotsSpinController controller = new SlotsSpinController();
-        // Crafted so every one of the 9 cells samples a distinct symbol pattern
-        // with no row/diagonal payline uniform -- see SlotsSymbol cumulative
-        // weight boundaries: CHERRY[0,40) LEMON[40,65) BELL[65,83) DIAMOND[83,94) SEVEN[94,100).
-        SlotsRandomSource losingSpin = sequence(0, 40, 65, 83, 94, 0, 40, 65, 83);
-        SlotsSpinController.SpinAttempt attempt = controller.trySpin(10, false, losingSpin, amount -> true);
+        // A full grid of BLANK cannot pay on any line at any width, since
+        // BLANK is the one symbol with no payout at all.
+        SlotsSpinController.SpinAttempt attempt = controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allBlanks(), amount -> true);
         assertInstanceOf(SlotsSpinController.SpinAttempt.Accepted.class, attempt);
         assertEquals(0, ((SlotsSpinController.SpinAttempt.Accepted) attempt).payout());
 
@@ -233,7 +266,7 @@ class SlotsSpinControllerTest {
     @Test
     void failedSettlementRetainsTheAmountAndRetryDoesNotDoublePay() {
         SlotsSpinController controller = new SlotsSpinController();
-        SlotsSpinController.SpinAttempt attempt = controller.trySpin(10, false, constantRoll(0), amount -> true);
+        SlotsSpinController.SpinAttempt attempt = controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allSevens(), amount -> true);
         long owed = ((SlotsSpinController.SpinAttempt.Accepted) attempt).payout();
         assertTrue(owed > 0);
 
@@ -262,7 +295,7 @@ class SlotsSpinControllerTest {
     @Test
     void repeatedRetryFailuresNeverClearTheObligation() {
         SlotsSpinController controller = new SlotsSpinController();
-        SlotsSpinController.SpinAttempt attempt = controller.trySpin(10, false, constantRoll(0), amount -> true);
+        SlotsSpinController.SpinAttempt attempt = controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allSevens(), amount -> true);
         long owed = ((SlotsSpinController.SpinAttempt.Accepted) attempt).payout();
 
         controller.settle(amount -> false, amount -> false);

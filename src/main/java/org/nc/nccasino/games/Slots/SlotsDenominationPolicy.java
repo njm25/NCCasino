@@ -6,8 +6,8 @@ public final class SlotsDenominationPolicy {
     private SlotsDenominationPolicy() {
     }
 
-    public static boolean isAllowed(double denomination, boolean itemMode) {
-        if (!Double.isFinite(denomination)) {
+    public static boolean isAllowed(double denomination, int activeLines, boolean itemMode, SlotsPaytable paytable) {
+        if (!Double.isFinite(denomination) || paytable == null) {
             return false;
         }
         long units = Math.max(0L, Math.round(denomination));
@@ -15,8 +15,8 @@ public final class SlotsDenominationPolicy {
             return false;
         }
         try {
-            SlotsMath.totalBet(units);
-            long maximumPayout = SlotsMath.totalPayout(SlotsMath.MAX_PAYOUT_PROBE_OUTCOME, units);
+            SlotsMath.totalBet(units, activeLines);
+            long maximumPayout = SlotsMath.maxPossiblePayout(units, activeLines, paytable);
             return !itemMode || maximumPayout <= SlotsMath.MAX_ITEM_MODE_PAYOUT;
         } catch (ArithmeticException e) {
             return false;
@@ -28,7 +28,14 @@ public final class SlotsDenominationPolicy {
      * If no alternative is safe, the current index is retained so the spin
      * controller can surface the precise rejection reason.
      */
-    public static int nextAllowedIndex(double[] denominations, int currentIndex, int delta, boolean itemMode) {
+    public static int nextAllowedIndex(
+        double[] denominations,
+        int currentIndex,
+        int delta,
+        int activeLines,
+        boolean itemMode,
+        SlotsPaytable paytable
+    ) {
         if (denominations == null || denominations.length == 0) {
             throw new IllegalArgumentException("denominations must not be empty");
         }
@@ -41,7 +48,7 @@ public final class SlotsDenominationPolicy {
         }
         for (int offset = 1; offset <= denominations.length; offset++) {
             int candidate = Math.floorMod(currentIndex + direction * offset, denominations.length);
-            if (isAllowed(denominations[candidate], itemMode)) {
+            if (isAllowed(denominations[candidate], activeLines, itemMode, paytable)) {
                 return candidate;
             }
         }

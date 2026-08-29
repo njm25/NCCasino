@@ -81,14 +81,26 @@ public final class SlotsSpinController {
      * touches the player's balance.
      *
      * @param denomUnits per-line wager, in whole currency units
+     * @param columns machine width for this spin (3, 5, or 7)
+     * @param activeLines how many paylines the player has switched on
      * @param itemMode whether payouts for this table can only be delivered
      *     as physical items/int-precision balances (no exact large-payout
      *     path), so the item-mode payout ceiling applies
+     * @param paytable the multipliers derived from this dealer's configured
+     *     house edge; also supplies the worst-case exposure probe
      * @param rng the (production or test) randomness source for outcome generation
      * @param debit attempts to withdraw the given total wager; returning
      *     {@code false} means insufficient funds and nothing was withdrawn
      */
-    public SpinAttempt trySpin(long denomUnits, boolean itemMode, SlotsRandomSource rng, LongPredicate debit) {
+    public SpinAttempt trySpin(
+        long denomUnits,
+        int columns,
+        int activeLines,
+        boolean itemMode,
+        SlotsPaytable paytable,
+        SlotsRandomSource rng,
+        LongPredicate debit
+    ) {
         if (!isReadyForSpin()) {
             return new SpinAttempt.Rejected(RejectReason.NOT_READY);
         }
@@ -99,8 +111,8 @@ public final class SlotsSpinController {
         long totalBetUnits;
         long maxPossiblePayout;
         try {
-            totalBetUnits = SlotsMath.totalBet(denomUnits);
-            maxPossiblePayout = SlotsMath.totalPayout(SlotsMath.MAX_PAYOUT_PROBE_OUTCOME, denomUnits);
+            totalBetUnits = SlotsMath.totalBet(denomUnits, activeLines);
+            maxPossiblePayout = SlotsMath.maxPossiblePayout(denomUnits, activeLines, paytable);
         } catch (ArithmeticException e) {
             return new SpinAttempt.Rejected(RejectReason.WAGER_OVERFLOW);
         }
@@ -118,10 +130,10 @@ public final class SlotsSpinController {
 
         state = SlotsStateMachine.transition(state, SlotsSessionState.DEBIT_ACCEPTED);
         generation++;
-        SlotsOutcome outcome = SlotsSpinGenerator.generate(rng);
+        SlotsOutcome outcome = SlotsSpinGenerator.generate(columns, rng);
         currentOutcome = outcome;
         state = SlotsStateMachine.transition(state, SlotsSessionState.RESULT_COMMITTED);
-        pendingPayoutAmount = SlotsMath.totalPayout(outcome, denomUnits);
+        pendingPayoutAmount = SlotsMath.totalPayout(outcome, activeLines, denomUnits, paytable);
 
         return new SpinAttempt.Accepted(outcome, totalBetUnits, pendingPayoutAmount, generation);
     }

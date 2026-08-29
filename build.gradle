@@ -65,7 +65,11 @@ tasks.test {
     // state that one worker running the complete Blackjack suite can exhaust
     // this heap even though the same classes pass in smaller batches. Recycle
     // the worker periodically so `gradlew test` remains a reliable merge gate.
-    forkEvery = 8
+    // Lowered from 8 when the Slots rewrite added enough further mock-heavy
+    // classes to put a batch back over the limit -- the failure resurfaces as
+    // an OutOfMemoryError inside ByteBuddy's mock generation, not as a test
+    // assertion failure, so it is easy to misread as a broken test.
+    forkEvery = 4
 }
 
 processResources {

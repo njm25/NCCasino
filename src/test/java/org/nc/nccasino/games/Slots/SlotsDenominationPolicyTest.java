@@ -1,44 +1,90 @@
 package org.nc.nccasino.games.Slots;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SlotsDenominationPolicyTest {
 
-    private static final double[] DEFAULTS = {1, 5, 10, 25, 50};
+    private static final int LINES = 5;
+    private static final SlotsPaytable PAYTABLE = SlotsPaytable.forConfig(3, 0.03);
 
-    @Test
-    void itemModeSkipsDefaultDenominationsAboveTheProvisionalExposureCeiling() {
-        assertEquals(0, SlotsDenominationPolicy.nextAllowedIndex(DEFAULTS, 2, 1, true));
-        assertEquals(2, SlotsDenominationPolicy.nextAllowedIndex(DEFAULTS, 0, -1, true));
+    /** Largest per-line wager whose worst case still fits under the item-mode ceiling. */
+    private static long ceilingUnits() {
+        return (long) Math.floor(SlotsMath.MAX_ITEM_MODE_PAYOUT / (PAYTABLE.maxLineMultiplier() * LINES));
     }
 
     @Test
-    void vaultModeKeepsEveryPositiveDefaultDenominationAvailable() {
-        assertEquals(3, SlotsDenominationPolicy.nextAllowedIndex(DEFAULTS, 2, 1, false));
-        assertEquals(4, SlotsDenominationPolicy.nextAllowedIndex(DEFAULTS, 0, -1, false));
+    @DisplayName("vault mode allows any finite positive denomination")
+    void vaultModeAllowsAnyPositiveDenomination() {
+        assertTrue(SlotsDenominationPolicy.isAllowed(1, LINES, false, PAYTABLE));
+        assertTrue(SlotsDenominationPolicy.isAllowed(100_000, LINES, false, PAYTABLE));
     }
 
     @Test
-    void validityMatchesTheCurrentPrototypeMaximumExposure() {
-        assertTrue(SlotsDenominationPolicy.isAllowed(19, true));
-        assertFalse(SlotsDenominationPolicy.isAllowed(20, true));
-        assertTrue(SlotsDenominationPolicy.isAllowed(50, false));
+    @DisplayName("non-positive and non-finite denominations are always rejected")
+    void invalidDenominationsRejected() {
+        assertFalse(SlotsDenominationPolicy.isAllowed(0, LINES, false, PAYTABLE));
+        assertFalse(SlotsDenominationPolicy.isAllowed(-5, LINES, false, PAYTABLE));
+        assertFalse(SlotsDenominationPolicy.isAllowed(0.4, LINES, false, PAYTABLE), "rounds to zero units");
+        assertFalse(SlotsDenominationPolicy.isAllowed(Double.NaN, LINES, false, PAYTABLE));
+        assertFalse(SlotsDenominationPolicy.isAllowed(Double.POSITIVE_INFINITY, LINES, false, PAYTABLE));
+        assertFalse(SlotsDenominationPolicy.isAllowed(10, LINES, false, null), "a missing paytable is never safe");
     }
 
     @Test
-    void invalidAndNonPositiveDenominationsAreNeverSelectable() {
-        assertFalse(SlotsDenominationPolicy.isAllowed(0, false));
-        assertFalse(SlotsDenominationPolicy.isAllowed(-1, false));
-        assertFalse(SlotsDenominationPolicy.isAllowed(Double.NaN, false));
-        assertFalse(SlotsDenominationPolicy.isAllowed(Double.POSITIVE_INFINITY, false));
+    @DisplayName("item mode enforces the payout ceiling exactly at the boundary")
+    void itemModeEnforcesCeiling() {
+        long safe = ceilingUnits();
+        assertTrue(safe > 0, "at least one denomination must remain playable in item mode");
+        assertTrue(SlotsDenominationPolicy.isAllowed(safe, LINES, true, PAYTABLE));
+        assertFalse(SlotsDenominationPolicy.isAllowed(safe + 1, LINES, true, PAYTABLE));
+        // The same wager is fine when payouts are not item-bound.
+        assertTrue(SlotsDenominationPolicy.isAllowed(safe + 1, LINES, false, PAYTABLE));
     }
 
     @Test
-    void retainsCurrentIndexWhenNoConfiguredDenominationIsSafe() {
-        assertEquals(1, SlotsDenominationPolicy.nextAllowedIndex(new double[] {25, 50}, 1, 1, true));
+    @DisplayName("more active lines lower the safe denomination in item mode")
+    void moreLinesTightenTheCeiling() {
+        long safeAtFive = (long) Math.floor(SlotsMath.MAX_ITEM_MODE_PAYOUT / (PAYTABLE.maxLineMultiplier() * 5));
+        assertTrue(SlotsDenominationPolicy.isAllowed(safeAtFive, 5, true, PAYTABLE));
+        assertFalse(SlotsDenominationPolicy.isAllowed(safeAtFive, 9, true, PAYTABLE),
+            "the same denomination exposes more with nine lines live");
+    }
+
+    @Test
+    @DisplayName("cycling skips unsafe denominations in the requested direction")
+    void cyclingSkipsUnsafeDenominations() {
+        long safe = ceilingUnits();
+        double[] denominations = {1, safe, safe * 1000, 2};
+
+        // Forward from index 1 must skip the oversized entry at index 2.
+        assertEquals(3, SlotsDenominationPolicy.nextAllowedIndex(denominations, 1, 1, LINES, true, PAYTABLE));
+        // Backward from index 3 wraps past the oversized entry too.
+        assertEquals(1, SlotsDenominationPolicy.nextAllowedIndex(denominations, 3, -1, LINES, true, PAYTABLE));
+        // No movement requested.
+        assertEquals(1, SlotsDenominationPolicy.nextAllowedIndex(denominations, 1, 0, LINES, true, PAYTABLE));
+    }
+
+    @Test
+    @DisplayName("when nothing is safe the current index is retained")
+    void retainsIndexWhenNothingIsSafe() {
+        double[] denominations = {1e12, 2e12};
+        assertEquals(0, SlotsDenominationPolicy.nextAllowedIndex(denominations, 0, 1, LINES, true, PAYTABLE));
+    }
+
+    @Test
+    @DisplayName("malformed inputs throw rather than silently misbehaving")
+    void malformedInputsThrow() {
+        assertThrows(IllegalArgumentException.class,
+            () -> SlotsDenominationPolicy.nextAllowedIndex(new double[0], 0, 1, LINES, false, PAYTABLE));
+        assertThrows(IllegalArgumentException.class,
+            () -> SlotsDenominationPolicy.nextAllowedIndex(null, 0, 1, LINES, false, PAYTABLE));
+        assertThrows(IllegalArgumentException.class,
+            () -> SlotsDenominationPolicy.nextAllowedIndex(new double[] {1, 2}, 5, 1, LINES, false, PAYTABLE));
     }
 }

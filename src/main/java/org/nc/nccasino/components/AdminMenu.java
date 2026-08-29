@@ -808,7 +808,8 @@ public class AdminMenu extends Menu {
                             player.openInventory(adminInventory.getInventory());
                         }
                     },
-                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer))
+                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer)),
+                    Dealer.getInternalName(dealer)
                 );
                 player.openInventory(slotsAdminInventory.getInventory());
                 break;
