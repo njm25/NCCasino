@@ -313,6 +313,7 @@ slots:
   win: "&a&lDu hast {amount} gewonnen!"
   loss: "&c&lKein Gewinn bei dieser Drehung."
   payout-pending: "&eDein Gewinn konnte nicht sofort ausgezahlt werden und wurde zur Auszahlung vorgemerkt."
+  payout-blocked: "&cYour winnings could not be delivered or queued. Click Spin to retry; contact staff if the problem continues." # TODO temporary English placeholder, not yet translated
   invalid-denomination: "&cDiese Einsatzstufe ist für diesen Dealer nicht konfiguriert."
   bet-too-large: "&cDieser Einsatz ist zu hoch, um zu drehen."
   insufficient-funds: "&cDu hast nicht genug Guthaben für diesen Einsatz."

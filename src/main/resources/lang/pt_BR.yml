@@ -313,6 +313,7 @@ slots:
   win: "&a&lVocê ganhou {amount}!"
   loss: "&c&lNenhum prêmio neste giro."
   payout-pending: "&eSeu prêmio não pôde ser entregue imediatamente e foi colocado na fila de entrega."
+  payout-blocked: "&cYour winnings could not be delivered or queued. Click Spin to retry; contact staff if the problem continues." # TODO temporary English placeholder, not yet translated
   invalid-denomination: "&cEssa denominação de aposta não está configurada para este dealer."
   bet-too-large: "&cEssa aposta é grande demais para girar."
   insufficient-funds: "&cVocê não tem moeda suficiente para fazer essa aposta."

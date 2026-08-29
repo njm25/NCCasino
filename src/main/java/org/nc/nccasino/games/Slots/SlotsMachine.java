@@ -67,13 +67,6 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     private static final int BALANCE_SLOT = 46;
     private static final int LAST_WIN_SLOT = 48;
 
-    /** All five lines hitting SEVEN -- the maximum possible multiplier sum, used only to probe for payout overflow before a spin's debit is accepted. */
-    private static final SlotsOutcome MAX_PAYOUT_PROBE_OUTCOME = new SlotsOutcome(new SlotsSymbol[][] {
-        {SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN},
-        {SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN},
-        {SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN}
-    });
-
     private final UUID playerId;
     private final Player player;
     private final Nccasino plugin;
@@ -82,14 +75,10 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     private final String currencyName;
     private final SlotsInventory slotsInventory;
     private final double[] chipValues;
-    private final List<Integer> scheduledTaskIds = new ArrayList<>();
+    private BukkitTask animationTask;
 
+    private final SlotsSpinController controller = new SlotsSpinController();
     private int denominationIndex = 0;
-    private SlotsSessionState state = SlotsSessionState.IDLE;
-    private long generation = 0;
-    private SlotsOutcome currentOutcome;
-    private long pendingPayoutAmount = 0;
-    private long lastWinAmount = -1;
     private boolean closeFlag = false;
 
     public SlotsMachine(UUID dealerId, Player player, Nccasino plugin, String internalName, SlotsInventory slotsInventory) {
@@ -161,6 +150,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
 
     private void renderControls() {
         boolean locked = !isReadyForSpin();
+        boolean blocked = controller.state() == SlotsSessionState.SETTLEMENT_FAILED;
         addItemAndLore(
             Material.ARROW,
             1,
@@ -170,7 +160,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         addItemAndLore(
             locked ? Material.REDSTONE_BLOCK : Material.EMERALD_BLOCK,
             1,
-            locked ? text("slots.spin-locked") : text("slots.spin"),
+            locked ? text(blocked ? "slots.payout-blocked" : "slots.spin-locked") : text("slots.spin"),
             SPIN_SLOT
         );
         addItemAndLore(
@@ -232,6 +222,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             addItemAndLore(Material.BLACK_STAINED_GLASS_PANE, 1, " ", BALANCE_SLOT);
         }
 
+        long lastWinAmount = controller.lastWinAmount();
         if (lastWinAmount < 0) {
             addItemAndLore(Material.PAPER, 1, text("slots.last-win-none"), LAST_WIN_SLOT);
         } else if (lastWinAmount == 0) {
@@ -255,14 +246,15 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     }
 
     private void renderReelFinal(int col) {
+        SlotsOutcome outcome = controller.currentOutcome();
         for (int row = 0; row < 3; row++) {
-            SlotsSymbol symbol = currentOutcome.symbolAt(row, col);
+            SlotsSymbol symbol = outcome.symbolAt(row, col);
             addItemAndLore(symbol.material(), 1, text(symbolKey(symbol)), ChatColor.WHITE, GRID_SLOTS[row][col]);
         }
     }
 
     private void highlightWinningLines() {
-        for (SlotsMath.LineResult result : SlotsMath.evaluateAllLines(currentOutcome)) {
+        for (SlotsMath.LineResult result : SlotsMath.evaluateAllLines(controller.currentOutcome())) {
             if (!result.winning()) {
                 continue;
             }
@@ -287,6 +279,14 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     @Override
     public void handleClick(int slot, Player clicker, InventoryClickEvent event) {
         if (!(event.getInventory().getHolder() instanceof SlotsMachine) || !clicker.getUniqueId().equals(playerId)) {
+            return;
+        }
+        if (controller.state() == SlotsSessionState.SETTLEMENT_FAILED) {
+            if (slot == SPIN_SLOT) {
+                attemptSettlementRetry();
+            } else {
+                denyAction(player, text("slots.payout-blocked"));
+            }
             return;
         }
         switch (slot) {
@@ -318,63 +318,46 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             denyAction(player, text("slots.spin-locked"));
             return;
         }
-        int size = chipValues.length;
-        denominationIndex = ((denominationIndex + delta) % size + size) % size;
+        denominationIndex = SlotsDenominationPolicy.nextAllowedIndex(
+            chipValues, denominationIndex, delta, isItemMode());
         playDefaultSound(player);
         renderInfo();
     }
 
     private boolean isReadyForSpin() {
-        return state == SlotsSessionState.IDLE || state == SlotsSessionState.RESOLVED;
+        return controller.isReadyForSpin();
+    }
+
+    private boolean isItemMode() {
+        CurrencyProvider provider = getCurrencyProvider();
+        return provider == null || provider.getMode() != CurrencyMode.VAULT;
     }
 
     private void handleSpin() {
-        if (!isReadyForSpin()) {
-            denyAction(player, text("slots.spin-locked"));
-            return;
-        }
-
         long denomUnits = Math.max(0L, Math.round(chipValues[denominationIndex]));
-        if (denomUnits <= 0) {
-            denyAction(player, text("slots.invalid-denomination"));
-            return;
+        SlotsSpinController.SpinAttempt attempt = controller.trySpin(
+            denomUnits, isItemMode(), SlotsRandomSource.production(), this::attemptDebit);
+
+        switch (attempt) {
+            case SlotsSpinController.SpinAttempt.Rejected rejected -> handleRejectedSpin(rejected.reason());
+            case SlotsSpinController.SpinAttempt.Accepted accepted -> {
+                controller.beginAnimating();
+                playDefaultSound(player);
+                renderControls();
+                renderInfo();
+                startAnimation(new SlotsCallbackGuard.SpinToken(playerId, dealerId, accepted.generation()));
+            }
         }
+    }
 
-        long totalBetUnits;
-        try {
-            totalBetUnits = SlotsMath.totalBet(denomUnits);
-            // The worst-case payout (all five lines hitting the richest
-            // symbol) multiplies by far more than totalBet's fixed x5, so a
-            // wager that passes totalBet's overflow check can still overflow
-            // the payout once an outcome is generated. Reject it up front,
-            // before any debit happens, rather than discovering the
-            // overflow only after money has already left the player.
-            SlotsMath.totalPayout(MAX_PAYOUT_PROBE_OUTCOME, denomUnits);
-        } catch (ArithmeticException e) {
-            denyAction(player, text("slots.bet-too-large"));
-            return;
-        }
-
-        boolean withdrawn = attemptDebit(totalBetUnits);
-        if (!withdrawn) {
-            denyAction(player, text("slots.insufficient-funds"));
-            return;
-        }
-
-        state = SlotsStateMachine.transition(state, SlotsSessionState.DEBIT_ACCEPTED);
-        generation++;
-        long myGeneration = generation;
-
-        SlotsOutcome outcome = SlotsSpinGenerator.generate(SlotsRandomSource.production());
-        currentOutcome = outcome;
-        state = SlotsStateMachine.transition(state, SlotsSessionState.RESULT_COMMITTED);
-        pendingPayoutAmount = SlotsMath.totalPayout(outcome, denomUnits);
-
-        state = SlotsStateMachine.transition(state, SlotsSessionState.ANIMATING);
-        playDefaultSound(player);
-        renderControls();
-        renderInfo();
-        startAnimation(new SlotsCallbackGuard.SpinToken(playerId, dealerId, myGeneration));
+    private void handleRejectedSpin(SlotsSpinController.RejectReason reason) {
+        String key = switch (reason) {
+            case NOT_READY -> "slots.spin-locked";
+            case INVALID_DENOMINATION -> "slots.invalid-denomination";
+            case WAGER_OVERFLOW, BET_TOO_LARGE_FOR_MODE -> "slots.bet-too-large";
+            case INSUFFICIENT_FUNDS -> "slots.insufficient-funds";
+        };
+        denyAction(player, text(key));
     }
 
     private boolean attemptDebit(long totalBetUnits) {
@@ -402,6 +385,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     // ---- animation -------------------------------------------------------
 
     private void startAnimation(SlotsCallbackGuard.SpinToken token) {
+        cancelAnimationTask();
         final long[] elapsed = {0L};
         final boolean[] reelStopped = {false, false, false};
         final boolean[] highlighted = {false};
@@ -409,8 +393,9 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         BukkitRunnable runnable = new BukkitRunnable() {
             @Override
             public void run() {
-                if (!SlotsCallbackGuard.isValid(token, playerId, dealerId, generation)) {
+                if (!SlotsCallbackGuard.isValid(token, playerId, dealerId, controller.generation())) {
                     cancel();
+                    animationTask = null;
                     return;
                 }
 
@@ -432,13 +417,13 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
 
                 if (elapsed[0] >= SlotsSpinPlan.SETTLE_TICK) {
                     cancel();
+                    animationTask = null;
                     settle(token);
                 }
             }
         };
 
-        BukkitTask task = runnable.runTaskTimer(plugin, SlotsSpinPlan.TICKER_INTERVAL, SlotsSpinPlan.TICKER_INTERVAL);
-        scheduledTaskIds.add(task.getTaskId());
+        animationTask = runnable.runTaskTimer(plugin, SlotsSpinPlan.TICKER_INTERVAL, SlotsSpinPlan.TICKER_INTERVAL);
     }
 
     private void playReelStopSound() {
@@ -448,41 +433,56 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     }
 
     private void settle(SlotsCallbackGuard.SpinToken token) {
-        if (!SlotsCallbackGuard.isValid(token, playerId, dealerId, generation)) {
+        if (!SlotsCallbackGuard.isValid(token, playerId, dealerId, controller.generation())) {
             return;
         }
-        if (state != SlotsSessionState.ANIMATING) {
+        if (controller.state() != SlotsSessionState.ANIMATING && controller.state() != SlotsSessionState.RESULT_COMMITTED) {
             return;
         }
-        state = SlotsStateMachine.transition(state, SlotsSessionState.SETTLING);
+        long payout = controller.pendingPayoutAmount();
+        SlotsSettlementResult result = controller.settle(
+            this::creditPlayerDirect,
+            amount -> queuePayout(amount, PayoutMessages.committedResultContext("Slots")));
+        reportSettlement(result, payout);
+    }
 
-        long payout = pendingPayoutAmount;
-        boolean delivered = true;
-        if (payout > 0) {
-            delivered = creditPlayerDirect(payout);
-            if (!delivered) {
-                delivered = queuePayout(payout, PayoutMessages.committedResultContext("Slots"));
-            }
-        }
+    /**
+     * Retried only when the player clicks the blocked spin control. The
+     * retry consumes that click even when it succeeds, so resolving an old
+     * obligation can never also debit a new spin as a side effect of the
+     * same interaction. The retained amount is re-attempted exactly as-is,
+     * never recomputed.
+     */
+    private void attemptSettlementRetry() {
+        long payout = controller.pendingPayoutAmount();
+        SlotsSettlementResult result = controller.retrySettlement(
+            this::creditPlayerDirect,
+            amount -> queuePayout(amount, PayoutMessages.committedResultContext("Slots")));
+        reportSettlement(result, payout);
+    }
 
-        lastWinAmount = payout;
-        state = SlotsStateMachine.transition(state, SlotsSessionState.RESOLVED);
-        pendingPayoutAmount = 0;
-
+    private void reportSettlement(SlotsSettlementResult result, long payout) {
         renderControls();
         renderInfo();
 
-        if (payout > 0) {
-            if (delivered) {
-                player.sendMessage(text("slots.win", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, payout)));
-            } else {
-                player.sendMessage(text("slots.payout-pending"));
+        switch (result) {
+            case DELIVERED -> {
+                if (payout > 0) {
+                    player.sendMessage(text("slots.win", "amount", plugin.formatWagerDisplay(currencyMode, currencyName, payout)));
+                    if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null) {
+                        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.0f);
+                    }
+                } else {
+                    player.sendMessage(text("slots.loss"));
+                }
             }
-            if (SoundHelper.getSoundSafely("entity.player.levelup", player) != null) {
-                player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.0f);
+            case QUEUED -> player.sendMessage(text("slots.payout-pending"));
+            case FAILED -> {
+                plugin.getLogger().severe("[NCCasino] Slots payout could not be delivered or durably queued -- player="
+                    + playerId + ", dealer=" + internalName + ", game=Slots, amount=" + payout
+                    + ", currencyMode=" + currencyMode + ". Retained as SETTLEMENT_FAILED for retry; requires manual reconciliation if this persists.");
+                player.sendMessage(text("slots.payout-blocked"));
             }
-        } else {
-            player.sendMessage(text("slots.loss"));
         }
     }
 
@@ -498,16 +498,22 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             if (provider.getMode() == CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider vaultProvider) {
                 return vaultProvider.deposit(player, internalName, MoneyHelper.bd(amount));
             }
-            int intAmount = amount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) amount;
-            return provider.deposit(player, internalName, intAmount);
+            // Non-Vault providers only expose an int-precision deposit; the
+            // item-mode payout ceiling enforced before every debit
+            // (SlotsMath.MAX_ITEM_MODE_PAYOUT) guarantees this is never hit
+            // in practice. Reject rather than clamp-and-report-success if it
+            // ever is, so an unpaid remainder is never silently dropped.
+            if (amount > Integer.MAX_VALUE) {
+                return false;
+            }
+            return provider.deposit(player, internalName, (int) amount);
         }
 
         Material mat = plugin.getCurrency(internalName);
-        if (mat == null) {
+        if (mat == null || amount > Integer.MAX_VALUE) {
             return false;
         }
-        int intAmount = amount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) amount;
-        depositRawMaterial(mat, intAmount);
+        depositRawMaterial(mat, (int) amount);
         return true;
     }
 
@@ -528,13 +534,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         }
     }
 
-    /**
-     * Attempts a live delivery first (the player is actively at the
-     * machine, so this is expected to succeed); on failure durably queues
-     * the exact amount, with a last-resort direct-credit retry only if the
-     * durable write itself fails -- mirroring the same fallback shape used
-     * for Blackjack/Mines payouts.
-     */
+    /** Attempts only durable persistence; live delivery is owned exclusively by the controller. */
     private boolean queuePayout(long amount, String context) {
         Material mat = plugin.getCurrency(internalName);
         PendingPayout payout = PendingPayout.create(
@@ -547,18 +547,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             amount,
             context
         );
-        boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
-        if (!persisted) {
-            plugin.getLogger().severe("[NCCasino] Slots pending payout failed to persist for " + playerId
-                + " at dealer " + internalName + " (amount=" + amount + "); attempting direct credit fallback.");
-            boolean fallback = creditPlayerDirect(amount);
-            if (!fallback) {
-                plugin.getLogger().severe("[NCCasino] Slots payout of " + amount + " for " + playerId
-                    + " at dealer " + internalName + " could not be delivered or durably queued.");
-            }
-            return fallback;
-        }
-        return true;
+        return plugin.getPendingPayoutStore().addPendingPayout(payout);
     }
 
     // ---- lifecycle ---------------------------------------------------
@@ -596,9 +585,14 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         }
         closeFlag = true;
 
-        GameTerminationPolicy.SlotsPhase phase = switch (state) {
+        GameTerminationPolicy.SlotsPhase phase = switch (controller.state()) {
             case IDLE, RESOLVED -> GameTerminationPolicy.SlotsPhase.PREGAME;
             case TERMINATED -> GameTerminationPolicy.SlotsPhase.RESOLVED;
+            // Covers DEBIT_ACCEPTED, RESULT_COMMITTED, ANIMATING, SETTLING,
+            // and SETTLEMENT_FAILED alike -- in every one of those a
+            // positive committed payout may still be owed, so termination
+            // always (re-)queues it durably, including a fresh attempt for
+            // an amount already stuck in SETTLEMENT_FAILED.
             default -> GameTerminationPolicy.SlotsPhase.RESULT_COMMITTED;
         };
         TerminationAction action = GameTerminationPolicy.slots(reason, phase);
@@ -607,15 +601,13 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             String context = reason == ExitReason.PLUGIN_DISABLE
                 ? PayoutMessages.committedResultContext("Slots")
                 : PayoutMessages.disconnectedMidGameContext("Slots");
-            queuePayoutDurableOnly(pendingPayoutAmount, context);
+            queuePayoutDurableOnly(controller.pendingPayoutAmount(), context);
         }
         // FORFEIT (kicked): the debited stake stays with the house, nothing to give back.
         // NO_ACTION: nothing was owed (pregame) or it was already resolved through normal play.
 
         cancelScheduledTasks();
-        if (state != SlotsSessionState.TERMINATED) {
-            state = SlotsStateMachine.transition(state, SlotsSessionState.TERMINATED);
-        }
+        controller.terminate();
         slotsInventory.removeTable(terminatedPlayerId);
         HandlerList.unregisterAll(this);
     }
@@ -642,19 +634,28 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
         if (!persisted) {
             plugin.getLogger().severe("[NCCasino] Slots pending payout failed to persist for " + playerId
-                + " at dealer " + internalName + " (amount=" + amount + "); attempting direct credit fallback.");
-            if (amount > 0 && player != null && player.isOnline() && !creditPlayerDirect(amount)) {
-                plugin.getLogger().severe("[NCCasino] Slots payout of " + amount + " for " + playerId
-                    + " at dealer " + internalName + " could not be delivered or durably queued.");
+                + " at dealer " + internalName + " (amount=" + amount
+                + "); attempting a live fallback only if the player is still safely online.");
+            boolean fallbackDelivered = amount <= 0
+                || (player != null && player.isOnline() && creditPlayerDirect(amount));
+            if (!fallbackDelivered) {
+                plugin.getLogger().severe("[NCCasino] Slots termination payout requires manual reconciliation -- player="
+                    + playerId + ", dealer=" + internalName + ", game=Slots, amount=" + amount
+                    + ", currencyMode=" + currencyMode + ", context=" + context
+                    + ". It could not be delivered live or durably queued and the client is terminating.");
             }
         }
     }
 
     private void cancelScheduledTasks() {
-        for (int id : scheduledTaskIds) {
-            Bukkit.getScheduler().cancelTask(id);
+        cancelAnimationTask();
+    }
+
+    private void cancelAnimationTask() {
+        if (animationTask != null) {
+            animationTask.cancel();
+            animationTask = null;
         }
-        scheduledTaskIds.clear();
     }
 
     @Override

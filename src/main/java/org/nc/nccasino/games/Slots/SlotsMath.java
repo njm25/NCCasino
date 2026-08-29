@@ -11,6 +11,34 @@ import java.util.List;
  */
 public final class SlotsMath {
 
+    /**
+     * Item-backed currencies (raw material fallback, or {@code STANDARD}/
+     * {@code CUSTOM} providers) only ever move whole physical items through
+     * {@code int}-typed deposit calls -- there is no exact-precision path
+     * for them the way {@code VAULT} has {@link java.math.BigDecimal}.
+     * Rather than silently clamp an oversized payout to {@code Integer.MAX_VALUE}
+     * and report it delivered (underpaying the player), or synchronously
+     * hand out millions of item stacks, a spin whose worst-case payout could
+     * exceed this ceiling is rejected up front, before any wager is
+     * withdrawn. Mirrors {@code BettingTable.MAX_ITEM_MODE_PAYOUT} in
+     * Roulette, the currently-endorsed fix (commit c632881) after an earlier
+     * chunking approach there was found to still risk main-thread hangs and
+     * silent loss on a failed queue.
+     */
+    public static final long MAX_ITEM_MODE_PAYOUT = 10_000L;
+
+    /**
+     * All five lines hitting {@link SlotsSymbol#SEVEN} -- the highest
+     * possible payout multiplier -- used only to probe the worst-case
+     * exposure of a spin before its wager is accepted. Never itself a real
+     * committed outcome.
+     */
+    public static final SlotsOutcome MAX_PAYOUT_PROBE_OUTCOME = new SlotsOutcome(new SlotsSymbol[][] {
+        {SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN},
+        {SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN},
+        {SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN}
+    });
+
     private SlotsMath() {
     }
 

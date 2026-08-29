@@ -10,6 +10,7 @@ import static org.nc.nccasino.games.Slots.SlotsSessionState.DEBIT_ACCEPTED;
 import static org.nc.nccasino.games.Slots.SlotsSessionState.IDLE;
 import static org.nc.nccasino.games.Slots.SlotsSessionState.RESOLVED;
 import static org.nc.nccasino.games.Slots.SlotsSessionState.RESULT_COMMITTED;
+import static org.nc.nccasino.games.Slots.SlotsSessionState.SETTLEMENT_FAILED;
 import static org.nc.nccasino.games.Slots.SlotsSessionState.SETTLING;
 import static org.nc.nccasino.games.Slots.SlotsSessionState.TERMINATED;
 
@@ -31,8 +32,9 @@ public final class SlotsStateMachine {
         ALLOWED.put(DEBIT_ACCEPTED, EnumSet.of(RESULT_COMMITTED, TERMINATED));
         ALLOWED.put(RESULT_COMMITTED, EnumSet.of(ANIMATING, SETTLING, TERMINATED));
         ALLOWED.put(ANIMATING, EnumSet.of(SETTLING, TERMINATED));
-        ALLOWED.put(SETTLING, EnumSet.of(RESOLVED, TERMINATED));
+        ALLOWED.put(SETTLING, EnumSet.of(RESOLVED, SETTLEMENT_FAILED, TERMINATED));
         ALLOWED.put(RESOLVED, EnumSet.of(IDLE, TERMINATED));
+        ALLOWED.put(SETTLEMENT_FAILED, EnumSet.of(RESOLVED, TERMINATED));
         ALLOWED.put(TERMINATED, EnumSet.noneOf(SlotsSessionState.class));
     }
 

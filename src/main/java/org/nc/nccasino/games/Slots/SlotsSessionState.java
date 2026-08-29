@@ -11,5 +11,11 @@ public enum SlotsSessionState {
     ANIMATING,
     SETTLING,
     RESOLVED,
+    /**
+     * A committed positive payout could neither be delivered live nor
+     * durably queued. The amount is retained (never cleared) and no new
+     * spin is permitted until a retry resolves it to {@link #RESOLVED}.
+     */
+    SETTLEMENT_FAILED,
     TERMINATED
 }

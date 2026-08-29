@@ -11,6 +11,7 @@ import static org.nc.nccasino.games.Slots.SlotsSessionState.DEBIT_ACCEPTED;
 import static org.nc.nccasino.games.Slots.SlotsSessionState.IDLE;
 import static org.nc.nccasino.games.Slots.SlotsSessionState.RESOLVED;
 import static org.nc.nccasino.games.Slots.SlotsSessionState.RESULT_COMMITTED;
+import static org.nc.nccasino.games.Slots.SlotsSessionState.SETTLEMENT_FAILED;
 import static org.nc.nccasino.games.Slots.SlotsSessionState.SETTLING;
 import static org.nc.nccasino.games.Slots.SlotsSessionState.TERMINATED;
 
@@ -46,10 +47,21 @@ class SlotsStateMachineTest {
 
     @Test
     void thereIsNoRouteFromACommittedResultBackToARefundablePregameState() {
-        for (SlotsSessionState committedOrLater : new SlotsSessionState[] {RESULT_COMMITTED, ANIMATING, SETTLING}) {
+        for (SlotsSessionState committedOrLater : new SlotsSessionState[] {RESULT_COMMITTED, ANIMATING, SETTLING, SETTLEMENT_FAILED}) {
             assertFalse(SlotsStateMachine.canTransition(committedOrLater, IDLE));
             assertFalse(SlotsStateMachine.canTransition(committedOrLater, DEBIT_ACCEPTED));
         }
+    }
+
+    @Test
+    void settlementFailedRetainsTheObligationUntilResolvedOrTerminated() {
+        assertTrue(SlotsStateMachine.canTransition(SETTLING, SETTLEMENT_FAILED));
+        assertTrue(SlotsStateMachine.canTransition(SETTLEMENT_FAILED, RESOLVED));
+        assertTrue(SlotsStateMachine.canTransition(SETTLEMENT_FAILED, TERMINATED));
+        assertFalse(SlotsStateMachine.canTransition(SETTLEMENT_FAILED, IDLE));
+        assertFalse(SlotsStateMachine.canTransition(SETTLEMENT_FAILED, DEBIT_ACCEPTED));
+        assertFalse(SlotsStateMachine.canTransition(SETTLEMENT_FAILED, ANIMATING));
+        assertFalse(SlotsStateMachine.canTransition(SETTLEMENT_FAILED, SETTLING));
     }
 
     @Test

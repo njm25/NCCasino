@@ -313,6 +313,7 @@ slots:
   win: "&a&lYou won {amount}!"
   loss: "&c&lNo win this spin."
   payout-pending: "&eYour winnings could not be delivered immediately and have been queued for delivery."
+  payout-blocked: "&cYour winnings could not be delivered or queued. Click Spin to retry; contact staff if the problem continues."
   invalid-denomination: "&cThat wager denomination is not configured for this dealer."
   bet-too-large: "&cThat wager is too large to spin with."
   insufficient-funds: "&cYou do not have enough currency to place that bet."
