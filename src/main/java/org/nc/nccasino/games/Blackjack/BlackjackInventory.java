@@ -56,6 +56,9 @@ import org.nc.nccasino.payout.WagerGate;
 import org.nc.nccasino.payout.BankedCurrency;
 import org.nc.nccasino.payout.ItemDeliveryOutcome;
 import org.nc.nccasino.payout.OverflowBankService;
+import org.nc.nccasino.payout.WagerFunding;
+import org.nc.nccasino.payout.UnsettledPayouts;
+import org.nc.nccasino.payout.PayoutDisposition;
 
 public class BlackjackInventory extends DealerInventory implements TerminableSession {
 
@@ -5746,18 +5749,51 @@ private void handleDoubleDown(Player player) {
             return;
         }
         Player player = Bukkit.getPlayer(playerId);
-        if (player != null && player.isOnline() && addWagerToInventory(player, amount)) {
-            if (messageKey != null) {
-                switch (plugin.getPreferences(playerId).getMessageSetting()) {
-                    case NONE:
-                        break;
-                    default:
-                        player.sendMessage(text(player, messageKey, "amount", plugin.formatWagerDisplay(currencyMode, currencyName, amount)));
-                }
-            }
+        if (player == null || !player.isOnline()) {
+            queuePendingRefund(playerId, amount);
             return;
         }
-        queuePendingRefund(playerId, amount);
+
+        // deliverOrRetain owns the retention: an undeliverable refund is
+        // already recorded once inside it, so queueing here as well would
+        // create a second PendingPayout for the same obligation.
+        PayoutDisposition disposition = addWagerToInventory(
+            player, amount, PayoutMessages.serverRestartRefundContext("Blackjack"));
+
+        if (messageKey != null && disposition.isInHand()) {
+            switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                case NONE:
+                    break;
+                default:
+                    player.sendMessage(text(player, messageKey, "amount", plugin.formatWagerDisplay(currencyMode, currencyName, amount)));
+            }
+        } else if (disposition == PayoutDisposition.RETAINED) {
+            notifyRetained(player);
+        }
+    }
+
+    /**
+     * Tells a player that money they are owed could not be handed over yet but
+     * is safely recorded and will retry. Reuses the existing pending-payout
+     * wording rather than claiming a completed payment.
+     */
+    private void notifyRetained(Player player) {
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case NONE:
+                return;
+            default:
+                player.sendMessage(plugin.getLocalization().text(player, "payout.retry-one", "count", 1));
+        }
+    }
+
+    /** Shared reporting for the undo/refund paths, which have no success line of their own. */
+    private void reportRefundDisposition(Player player, PayoutDisposition disposition) {
+        if (disposition == PayoutDisposition.RETAINED) {
+            notifyRetained(player);
+        }
     }
 
     /** Queues {@code amount} as a refund {@link PendingPayout}, claimable regardless of the player's online state. */
@@ -5775,9 +5811,10 @@ private void handleDoubleDown(Player player) {
      * this table, the exact amount, and the reason, since at that point the
      * money is genuinely at risk of being lost rather than merely delayed.
      */
-    private void queueBlackjackPendingPayout(UUID playerId, double amount, String context) {
+    /** @return whether the obligation is now durably recorded and will retry automatically */
+    private boolean queueBlackjackPendingPayout(UUID playerId, double amount, String context) {
         if (amount <= 0) {
-            return;
+            return true;
         }
         Material currencyMaterial = plugin.getCurrency(internalName);
         PendingPayout payout = PendingPayout.create(
@@ -5794,7 +5831,9 @@ private void handleDoubleDown(Player player) {
             plugin.getLogger().severe("[NCCasino] FAILED TO PERSIST a Blackjack pending payout -- player="
                 + playerId + ", table=" + internalName + ", amount=" + amount + ", reason=" + context
                 + ". This amount may be permanently lost and requires manual reconciliation.");
+            return false;
         }
+        return true;
     }
 
     /**
@@ -6232,6 +6271,12 @@ private void removePlayerData(UUID playerId) {
         // whatever amount was previously selected via a chip/All In click.
         ItemStack heldItem = event.getCursor();
         if (isCurrencyItem(heldItem) && heldItem != null && heldItem.getAmount() > 0) {
+            // A cursor-dragged stack IS the debit: clearing it is irreversible,
+            // so the universal overflow-bank gate must run before it, exactly
+            // as it does for a provider withdrawal.
+            if (!WagerGate.allowsWager(plugin, player, WagerFunding.CURSOR)) {
+                return;
+            }
             double amount = heldItem.getAmount();
             player.setItemOnCursor(null); // Removes the stack from the cursor -- this IS the debit for a cursor-drag commit
             // must NOT also call removeWagerFromInventory -- see commitWager's doc. May reject and refund (see
@@ -6331,9 +6376,10 @@ private void removePlayerData(UUID playerId) {
                 }
             }
             double totalRefund = BlackjackWagerLedger.undoAll(increments);
-            if (!addWagerToInventory(player, totalRefund)) {
-                queuePendingRefund(playerId, totalRefund);
-            }
+            // Retained inside deliverOrRetain if it cannot be handed over --
+            // never queued again here.
+            reportRefundDisposition(player, addWagerToInventory(
+                player, totalRefund, PayoutMessages.serverRestartRefundContext("Blackjack")));
             clearPlayerBetLore(playerId);  // Clear lore for items related to this player
             pregameWagerIncrements.remove(playerId);
             playerBets.remove(playerId);
@@ -6405,9 +6451,8 @@ private void removePlayerData(UUID playerId) {
                 updateItemLore(betSpotSlot, BlackjackWagerLedger.total(increments));
             }
 
-            if (!addWagerToInventory(player, lastBet)) {
-                queuePendingRefund(playerId, lastBet);
-            }
+            reportRefundDisposition(player, addWagerToInventory(
+                player, lastBet, PayoutMessages.serverRestartRefundContext("Blackjack")));
 
             // Check if there are no bets left for ANY player at the table
             // (matches handleUndoAllBets' scope -- one player emptying
@@ -6542,17 +6587,13 @@ private void removePlayerData(UUID playerId) {
      * unconditionally must queue a {@link PendingPayout} for the exact
      * amount when this returns {@code false}, never assume delivery.
      */
-    private boolean addWagerToInventory(Player player, double amount) {
-        CurrencyProvider provider = getCurrencyProvider();
-        if (provider != null && provider.getMode() == CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider vaultProvider) {
-            java.math.BigDecimal refund = MoneyHelper.clampNonNegative(MoneyHelper.bd(amount));
-            if (refund.compareTo(java.math.BigDecimal.ZERO) > 0) {
-                return vaultProvider.deposit(player, internalName, refund);
-            }
-            return true;
-        }
-        int totalAmount = (int) Math.floor(amount);
-        return deliverCurrencyItems(player, totalAmount).settled();
+    /**
+     * Returns a wager to a player (a refund, an undo, a push or an insurance
+     * win). Delegates to {@link #deliverOrRetain}, so an undeliverable amount
+     * is retained exactly once here -- callers must not queue it again.
+     */
+    private PayoutDisposition addWagerToInventory(Player player, double amount, String context) {
+        return deliverOrRetain(player, amount, context);
     }
 
     /**
@@ -6573,8 +6614,61 @@ private void removePlayerData(UUID playerId) {
         if (bank == null || material == null || recipient == null) {
             return ItemDeliveryOutcome.allUnsettled(amount);
         }
-        return bank.deliverOrDrop(recipient,
+        return bank.deliver(recipient,
             new BankedCurrency(currencyMode, material.name(), currencyName), amount);
+    }
+
+    /**
+     * The single owner of "deliver this, and if it cannot be delivered, make
+     * sure it is not lost". Every Blackjack path that hands a player money --
+     * refunds, undo, insurance, pushes and ordinary winnings -- goes through
+     * here.
+     *
+     * <p>Retention happens here and ONLY here. Callers must never queue a
+     * second {@link PendingPayout} off a non-DELIVERED result: that was the
+     * duplicate-payout bug this method exists to remove.
+     *
+     * @param context the pending-payout context to record if retention is needed
+     * @return which of the three dispositions applies; only
+     *     {@link PayoutDisposition#UNRESOLVED} means money is genuinely at risk
+     */
+    private PayoutDisposition deliverOrRetain(Player recipient, double amount, String context) {
+        if (amount <= 0) {
+            return PayoutDisposition.DELIVERED;
+        }
+        UUID recipientId = recipient == null ? null : recipient.getUniqueId();
+        if (recipientId == null) {
+            return PayoutDisposition.UNRESOLVED;
+        }
+
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null && provider.getMode() == CurrencyMode.VAULT
+            && provider instanceof VaultCurrencyProvider vaultProvider) {
+            java.math.BigDecimal credit = MoneyHelper.clampNonNegative(MoneyHelper.bd(amount));
+            if (credit.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                return PayoutDisposition.DELIVERED;
+            }
+            boolean delivered = vaultProvider.deposit(recipient, internalName, credit);
+            return PayoutDisposition.of(delivered,
+                delivered || queueBlackjackPendingPayout(recipientId, amount, context));
+        }
+
+        int wholeAmount = (int) Math.floor(amount);
+        OverflowBankService bank = plugin.getOverflowBankService();
+        Material material = plugin.getCurrency(internalName);
+        if (bank == null || material == null) {
+            return PayoutDisposition.of(false,
+                queueBlackjackPendingPayout(recipientId, wholeAmount, context));
+        }
+        // The shared single-owner primitive: it delivers, and retains any
+        // remainder exactly once. Nothing here may queue a second record.
+        return bank.deliverAndRetain(
+            recipient,
+            new BankedCurrency(currencyMode, material.name(), currencyName),
+            wholeAmount,
+            "Blackjack",
+            internalName,
+            context);
     }
 
     private void clearPlayerBets(UUID playerId) {
@@ -7123,11 +7217,18 @@ private void payInsuranceWinners() {
         double payout = BlackjackInsuranceRules.payoutTotal(stake);
         Player player = Bukkit.getPlayer(playerId);
         boolean online = player != null && player.isOnline();
-        boolean delivered = online && addWagerToInventory(player, payout);
-        if (!delivered) {
-            queueBlackjackPendingPayout(playerId, payout, online
-                ? PayoutMessages.committedResultContext("Blackjack")
-                : PayoutMessages.disconnectedMidGameContext("Blackjack"));
+        if (!online) {
+            queueBlackjackPendingPayout(playerId, payout,
+                PayoutMessages.disconnectedMidGameContext("Blackjack"));
+            continue;
+        }
+        PayoutDisposition disposition = addWagerToInventory(
+            player, payout, PayoutMessages.committedResultContext("Blackjack"));
+        if (!disposition.isInHand()) {
+            // Already retained (or explicitly unresolved) inside the helper.
+            if (disposition == PayoutDisposition.RETAINED) {
+                notifyRetained(player);
+            }
             continue;
         }
         switch (plugin.getPreferences(playerId).getMessageSetting()) {
@@ -8012,11 +8113,16 @@ private double settleHandOutcome(UUID playerId, BlackjackHand hand, BlackjackOut
                     }
                 }
             }
-            boolean delivered = online && addWagerToInventory(player, hand.getWager());
-            if (!delivered) {
-                queueBlackjackPendingPayout(playerId, hand.getWager(), online
-                    ? PayoutMessages.committedResultContext("Blackjack")
-                    : PayoutMessages.disconnectedMidGameContext("Blackjack"));
+            PayoutDisposition pushDisposition = online
+                ? addWagerToInventory(player, hand.getWager(),
+                    PayoutMessages.committedResultContext("Blackjack"))
+                : (queueBlackjackPendingPayout(playerId, hand.getWager(),
+                    PayoutMessages.disconnectedMidGameContext("Blackjack"))
+                        ? PayoutDisposition.RETAINED : PayoutDisposition.UNRESOLVED);
+            if (!pushDisposition.isInHand()) {
+                if (online && pushDisposition == PayoutDisposition.RETAINED) {
+                    notifyRetained(player);
+                }
             } else {
                 if (SoundHelper.getSoundSafely("item.shield.break", player) != null)player.playSound(player.getLocation(),Sound.ITEM_SHIELD_BREAK,SoundCategory.MASTER,1.0f, 1.0f);
                 player.getWorld().spawnParticle(Particle.LARGE_SMOKE, player.getLocation(), 20);
@@ -8121,7 +8227,23 @@ private double payOut(UUID playerId, double totalBet, double multiplier, boolean
     // banked or capped-dropped rather than scattered on the ground.
     int totalDropped = (int) Math.min(Integer.MAX_VALUE, delivery.dropped() + delivery.banked());
 
-    if (sendMessage) {
+    // Single retention point for winnings, matching every other Blackjack
+    // payout path. A remainder that cannot be banked is recorded once here.
+    PayoutDisposition disposition = PayoutDisposition.of(
+        delivery.settled(),
+        delivery.settled() || queueBlackjackPendingPayout(playerId, delivery.unsettled(),
+            PayoutMessages.committedResultContext("Blackjack")));
+
+    if (disposition == PayoutDisposition.UNRESOLVED) {
+        // Neither delivered nor durably recorded -- never claim it was paid.
+        plugin.getLogger().severe("[NCCasino] Blackjack winnings of " + delivery.unsettled()
+            + " for " + playerId + " at table " + internalName
+            + " could not be delivered, banked, or retained. Manual reconciliation required.");
+    } else if (disposition == PayoutDisposition.RETAINED && sendMessage) {
+        notifyRetained(player);
+    }
+
+    if (sendMessage && disposition.isInHand()) {
         switch(plugin.getPreferences(playerId).getMessageSetting()){
             case STANDARD:{
                 player.sendMessage(text(

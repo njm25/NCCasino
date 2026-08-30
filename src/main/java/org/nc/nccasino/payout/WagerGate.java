@@ -41,6 +41,20 @@ public final class WagerGate {
      *     wager before withdrawing currency or choosing a random result.
      */
     public static boolean allowsWager(Nccasino plugin, Player player) {
+        return allowsWager(plugin, player, WagerFunding.INVENTORY);
+    }
+
+    /**
+     * @param funding how this wager would be debited. Recorded at the call
+     *     site rather than inferred, so the irreversible cursor-drag paths are
+     *     visibly gated; it never changes the decision itself
+     *     ({@link WagerAdmissionPolicy}).
+     * @return {@code true} when the player may wager. A {@code false} return
+     *     means nothing has been debited and the caller must abandon the
+     *     wager before withdrawing currency, clearing the cursor, or choosing
+     *     a random result.
+     */
+    public static boolean allowsWager(Nccasino plugin, Player player, WagerFunding funding) {
         if (plugin == null || player == null) {
             return true;
         }
@@ -60,7 +74,7 @@ public final class WagerGate {
             return false;
         }
 
-        if (remaining <= 0) {
+        if (WagerAdmissionPolicy.admits(remaining, funding)) {
             LAST_NOTICE.remove(player.getUniqueId());
             return true;
         }

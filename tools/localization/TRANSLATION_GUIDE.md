@@ -104,12 +104,15 @@ Current games/dealer types:
 - Coin Flip
 - Rock Paper Scissors
 - Dragon Descent
+- Slots
 - Test Game (development/testing surface, not a normal player-facing release
   game)
 
 Current shared/player menu surfaces:
 
 - Player, Preferences, Language, Game Options, and Confirm menus
+- The overflow bank: `payout.bank-*`, `payout.wager-blocked`,
+  `preferences.overflow.*`, and `slots.payout-banked`
 - Shared betting, card, payout, game-welcome, interaction, dealer, occupation,
   error, and command messages
 
@@ -289,6 +292,29 @@ actual implementation, and update this section.
   collapse them into one generic "your bet was handled" message, and do not
   change a completed-past-tense payout into a future/conditional one or vice
   versa.
+
+- **The overflow bank is a delivery buffer, not a second wallet or a bet.**
+  `payout.bank-*`, `payout.wager-blocked`, `preferences.overflow.*` and
+  `slots.payout-banked` all describe winnings the player has *already won*
+  that could not physically fit in their inventory, so NCCasino is holding
+  them until space exists. Three consequences for translation: the money is
+  never described as at risk, lost, or still being gambled; "banked" here is
+  storage, not a Baccarat banker (§C) and not a real-world bank account; and
+  `payout.wager-blocked` states a precondition for playing again, not a
+  punishment or an error in the player's conduct. `preferences.overflow.bank`
+  vs. `drop` is a player choice between *holding* the excess and *dropping it
+  on the ground nearby up to a server limit* -- "drop" is the Minecraft
+  drop-item sense, and even DROP holds whatever exceeds the limit, so it must
+  not be translated as discarding or losing anything. (Verified:
+  `OverflowBankService.deliver`, `WagerGate.allowsWager`,
+  `OverflowPreferenceToggle`.)
+- **`preferences.overflow.server-controlled` / `server-controlled-notice`
+  mean the administrator has overridden the choice, while the player's own
+  saved choice is untouched and will apply again later.** Keep both halves:
+  the override is current, and the personal setting survives it. Do not
+  translate these as the player's setting having been reset or removed.
+  (Verified: `OverflowPreferenceToggle.toggle` returns the stored choice
+  unchanged while forced.)
 
 This registry is not exhaustive. When a new ambiguous key is resolved via
 Java inspection, add it here with the exact affected key family and a short
@@ -482,6 +508,8 @@ far from the original example that established the pin.
 | Dragon Descent: vine mechanic | *(pin when first reviewed — climbing-vine sense)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
 | ON/OFF display state | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
 | seat | Sitz | asiento | siège | assento |
+| banked winnings (overflow bank) | verwahrte Gewinne | ganancias guardadas | gains conservés | ganhos guardados |
+| overflow: hold vs. drop nearby | aufbewahren / fallen lassen | guardar / soltar | garder / lâcher | guardar / largar |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as

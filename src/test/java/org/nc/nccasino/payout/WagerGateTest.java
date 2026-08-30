@@ -43,6 +43,9 @@ import static org.mockito.Mockito.when;
  */
 class WagerGateTest {
 
+    /** Line feed, written as a code point to keep this file CRLF-safe. */
+    private static final char LINE_FEED = (char) 10;
+
     private static final BankedCurrency DIAMONDS =
         new BankedCurrency(CurrencyMode.STANDARD, "DIAMOND", "High Roller Chip");
 
@@ -90,6 +93,31 @@ class WagerGateTest {
         verify(fixture.player).sendMessage(anyString());
         assertEquals(900L, store.balanceOf(fixture.playerId, DIAMONDS),
             "a blocked wager must not consume the banked balance");
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(WagerFunding.class)
+    void aBankedBalanceBlocksEveryFundingSourceIncludingACursorDrag(WagerFunding funding) {
+        OverflowTestSupport.Fixture fixture = OverflowTestSupport.fixture();
+        fixture.fillCompletely();
+        assertTrue(store.credit(fixture.playerId, DIAMONDS, 750L));
+        WagerGate.clearPlayerState(fixture.playerId);
+
+        assertFalse(WagerGate.allowsWager(plugin, fixture.player, funding),
+            funding + " wagers must be blocked while anything is banked");
+        assertEquals(750L, store.balanceOf(fixture.playerId, DIAMONDS));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(WagerFunding.class)
+    void everyFundingSourceIsAdmittedOnceTheBankIsClear(WagerFunding funding) {
+        OverflowTestSupport.Fixture fixture = OverflowTestSupport.fixture();
+        fixture.leaveFreeSlots(36);
+        store.credit(fixture.playerId, DIAMONDS, 120L);
+        WagerGate.clearPlayerState(fixture.playerId);
+
+        assertTrue(WagerGate.allowsWager(plugin, fixture.player, funding));
+        assertFalse(store.hasAnyBalance(fixture.playerId));
     }
 
     @Test
@@ -170,6 +198,91 @@ class WagerGateTest {
             String body = source.substring(methodStart, Math.min(source.length(), methodStart + 900));
             assertTrue(body.contains("WagerGate.allowsWager"),
                 entry[0] + "#" + entry[1] + " must call WagerGate.allowsWager before debiting currency");
+        }
+    }
+
+    /**
+     * The cursor-drag commits. Clearing the cursor IS the debit, so each of
+     * these must consult the gate before it happens -- this is exactly the
+     * bypass the audit found, and the guard exists so it cannot come back.
+     */
+    @Test
+    void everyCursorDragCommitIsGatedBeforeTheCursorIsCleared() throws IOException {
+        List<String> cursorCommitFiles = List.of(
+            "entities/Client.java",
+            "games/Baccarat/BaccaratClient.java",
+            "games/Mines/MinesTable.java",
+            "games/Roulette/BettingTable.java",
+            "games/Blackjack/BlackjackInventory.java");
+
+        for (String relative : cursorCommitFiles) {
+            String source = readSource(relative);
+            List<Integer> commits = executableCursorCommits(source);
+            assertTrue(!commits.isEmpty(),
+                relative + " no longer has a cursor commit; revisit this guard");
+
+            for (int clear : commits) {
+                // Walk back a short window and require the gate call in it.
+                String preceding = source.substring(Math.max(0, clear - 700), clear);
+                assertTrue(preceding.contains("WagerGate.allowsWager"),
+                    relative + " clears the cursor without consulting WagerGate first");
+                assertTrue(preceding.contains("WagerFunding.CURSOR"),
+                    relative + " must declare the cursor funding source at the gate call");
+            }
+        }
+    }
+
+    /**
+     * Offsets of real cursor-clearing statements, skipping the ones that only
+     * appear inside comments explaining the mechanic.
+     */
+    private static List<Integer> executableCursorCommits(String source) {
+        List<Integer> offsets = new java.util.ArrayList<>();
+        int from = 0;
+        while (true) {
+            int at = source.indexOf("setItemOnCursor(null)", from);
+            if (at < 0) {
+                return offsets;
+            }
+            from = at + 1;
+            int lineStart = source.lastIndexOf(LINE_FEED, at) + 1;
+            String linePrefix = source.substring(lineStart, at).trim();
+            boolean isComment = linePrefix.startsWith("*") || linePrefix.startsWith("//")
+                || linePrefix.startsWith("/*");
+            if (!isComment) {
+                offsets.add(at);
+            }
+        }
+    }
+
+    @Test
+    void noCursorCommitExistsOutsideTheGatedSet() throws IOException {
+        // A new game clearing a cursor stack somewhere else would be a fresh
+        // bypass, so the set of files allowed to do it is pinned.
+        List<String> allowed = List.of(
+            "entities/Client.java",
+            "games/Baccarat/BaccaratClient.java",
+            "games/Mines/MinesTable.java",
+            "games/Roulette/BettingTable.java",
+            "games/Blackjack/BlackjackInventory.java");
+
+        Path root = Paths.get("src/main/java/org/nc/nccasino");
+        try (java.util.stream.Stream<Path> walk = Files.walk(root)) {
+            List<String> offenders = walk
+                .filter(Files::isRegularFile)
+                .filter(p -> p.toString().endsWith(".java"))
+                .filter(p -> {
+                    try {
+                        return Files.readString(p).contains("setItemOnCursor(null)");
+                    } catch (IOException e) {
+                        return false;
+                    }
+                })
+                .map(p -> root.relativize(p).toString().replace(java.io.File.separatorChar, '/'))
+                .filter(rel -> !allowed.contains(rel))
+                .toList();
+            assertTrue(offenders.isEmpty(),
+                "ungated cursor wager commits found in: " + offenders);
         }
     }
 

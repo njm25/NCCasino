@@ -33,6 +33,14 @@ preferences:
     effective: "&7Aktive Sprache: &f{language}"
     server-default: "Serverstandard"
     explicit: "Ausgewählt"
+  overflow:
+    title: "&eGewinne, die nicht passen"
+    bank: "&aFür mich aufbewahren"
+    drop: "&eIn der Nähe fallen lassen"
+    bank-explained: "&7Aufbewahren: sicher verwahrt, bis du Platz schaffst."
+    drop-explained: "&7Fallen lassen: bis zum Serverlimit in der Nähe fallen gelassen, der Rest wird sicher verwahrt."
+    server-controlled: "&8Der Server legt das für alle fest. Deine eigene Wahl bleibt gespeichert."
+    server-controlled-notice: "&7Der Server legt das derzeit für alle fest. Deine eigene Wahl bleibt gespeichert und gilt wieder, sobald der Server es erlaubt."
 
 language-menu:
   title: "Sprache wählen"
@@ -80,6 +88,12 @@ payout:
   context-committed-result: "Der Server wurde neu gestartet, nachdem das Ergebnis deines {game}-Spiels bereits feststand. Dein Ergebnis wurde beibehalten."
   retry-one: "&6Du hast 1 ausstehende Auszahlung, die noch nicht zugestellt werden konnte. Sie wird automatisch erneut versucht."
   retry-many: "&6Du hast {count} ausstehende Auszahlungen, die noch nicht zugestellt werden konnten. Sie werden automatisch erneut versucht."
+  bank-reminder: "&6{amount} deiner Gewinne warten noch auf Platz im Inventar. Schaffe Platz und hole sie dann mit &e/ncc claim&6 ab."
+  bank-claimed: "&a{amount} verwahrte Gewinne abgeholt."
+  bank-cleared: "&aAlle deine verwahrten Gewinne wurden abgeholt."
+  bank-empty: "&7Es warten keine verwahrten Gewinne auf dich."
+  bank-still-blocked: "&6{amount} Gewinne warten noch auf Platz im Inventar. Schaffe Platz und hole sie dann mit &e/ncc claim&6 ab."
+  wager-blocked: "&cSchaffe Platz für {amount} verwahrte Items, bevor du weiterspielst."
 
 cards:
   name: "{rank} ({suit})"
@@ -362,6 +376,7 @@ slots:
   payout-pending: "&eDein Gewinn konnte nicht sofort ausgezahlt werden und wurde zur Auszahlung vorgemerkt."
   payout-blocked: "&cDein Gewinn konnte weder ausgezahlt noch vorgemerkt werden. Klicke auf Drehen, um es erneut zu versuchen; wende dich an das Team, wenn das Problem bestehen bleibt."
   payout-blocked-retry: "&7Klicke, um die Auszahlung erneut zu versuchen."
+  payout-banked: "&e{amount} deiner Gewinne haben nicht gepasst und warten auf Platz im Inventar."
   invalid-denomination: "&cDieser Einsatzwert ist für diesen Dealer nicht konfiguriert."
   bet-too-large: "&cDieser Einsatz ist zu hoch zum Drehen."
   insufficient-funds: "&cDu hast nicht genug Währung für diesen Einsatz."

@@ -33,6 +33,14 @@ preferences:
     effective: "&7Langue active : &f{language}"
     server-default: "Langue du serveur"
     explicit: "Sélectionnée"
+  overflow:
+    title: "&eGains qui ne rentrent pas"
+    bank: "&aLes garder pour moi"
+    drop: "&eLâcher à proximité"
+    bank-explained: "&7Garder : conservés en sécurité jusqu’à ce que vous fassiez de la place."
+    drop-explained: "&7Lâcher : lâchés à proximité jusqu’à la limite du serveur, le reste est conservé en sécurité."
+    server-controlled: "&8Le serveur en décide pour tout le monde. Votre propre choix reste enregistré."
+    server-controlled-notice: "&7Le serveur en décide actuellement pour tout le monde. Votre propre choix reste enregistré et s’appliquera de nouveau lorsque le serveur l’autorisera."
 
 language-menu:
   title: "Choisir la langue"
@@ -80,6 +88,12 @@ payout:
   context-committed-result: "Le serveur a redémarré après que le résultat de votre partie de {game} a déjà été déterminé. Votre résultat a été conservé."
   retry-one: "&6Vous avez 1 paiement en attente qui n’a pas encore pu être remis. Une nouvelle tentative sera effectuée automatiquement."
   retry-many: "&6Vous avez {count} paiements en attente qui n’ont pas encore pu être remis. Une nouvelle tentative sera effectuée automatiquement."
+  bank-reminder: "&6{amount} de vos gains attendent encore de la place dans votre inventaire. Faites de la place, puis utilisez &e/ncc claim&6 pour les récupérer."
+  bank-claimed: "&a{amount} de gains conservés récupérés."
+  bank-cleared: "&aTous vos gains conservés ont été récupérés."
+  bank-empty: "&7Aucun gain conservé ne vous attend."
+  bank-still-blocked: "&6{amount} de gains attendent encore de la place dans votre inventaire. Faites de la place, puis utilisez &e/ncc claim&6 pour les récupérer."
+  wager-blocked: "&cFaites de la place pour {amount} objets conservés avant de rejouer."
 
 cards:
   name: "{rank} de {suit}"
@@ -362,6 +376,7 @@ slots:
   payout-pending: "&eVos gains n'ont pas pu être remis immédiatement et ont été mis en file d'attente pour la remise."
   payout-blocked: "&cVos gains n'ont pu être ni remis ni mis en file d'attente. Cliquez sur Lancer pour réessayer ; contactez le personnel si le problème persiste."
   payout-blocked-retry: "&7Cliquez pour réessayer le paiement."
+  payout-banked: "&e{amount} de vos gains ne rentraient pas et attendent de la place dans votre inventaire."
   invalid-denomination: "&cCette valeur de mise n'est pas configurée pour ce croupier."
   bet-too-large: "&cCette mise est trop élevée pour lancer."
   insufficient-funds: "&cVous n'avez pas assez de monnaie pour placer cette mise."

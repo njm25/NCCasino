@@ -48,6 +48,8 @@ import org.nc.nccasino.payout.WagerGate;
 import org.nc.nccasino.payout.BankedCurrency;
 import org.nc.nccasino.payout.ItemDeliveryOutcome;
 import org.nc.nccasino.payout.OverflowBankService;
+import org.nc.nccasino.payout.WagerFunding;
+import org.nc.nccasino.payout.UnsettledPayouts;
 
 public class MinesTable extends DealerInventory implements TerminableSession {
     // Game state management
@@ -655,6 +657,13 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 if (canBet) {
                     // If the player was holding the item, remove it from the cursor
                     if (usedHeldItem) {
+                        // A cursor-dragged stack IS the debit: clearing it is irreversible,
+                        // so the gate runs here, inside the cursor branch only. Inventory
+                        // wagers are gated by their own INVENTORY debit instead -- running
+                        // both would trigger two automatic claim attempts per wager.
+                        if (!WagerGate.allowsWager(plugin, player, WagerFunding.CURSOR)) {
+                            return;
+                        }
                         player.setItemOnCursor(null);
                     } else {
                         boolean removed = units > 0 && removeWagerFromInventory(player, units);
@@ -1648,10 +1657,37 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         OverflowBankService bank = plugin.getOverflowBankService();
         Material material = plugin.getCurrency(internalName);
         if (bank == null || material == null || recipient == null) {
+            retainUnsettledPayout(recipient, amount, material);
             return ItemDeliveryOutcome.allUnsettled(amount);
         }
-        return bank.deliverOrDrop(recipient,
+        ItemDeliveryOutcome outcome = bank.deliver(recipient,
             new BankedCurrency(currencyMode, material.name(), currencyName), amount);
+        if (!outcome.settled()) {
+            // Never dropped without limit and never merely logged: an
+            // unbankable remainder becomes a retryable pending payout.
+            retainUnsettledPayout(recipient, outcome.unsettled(), material);
+        }
+        return outcome;
+    }
+
+    /**
+     * Records a remainder that reached neither the player nor the bank as a
+     * durable, retryable obligation. The amount is by construction
+     * undelivered, so retaining it can never double-pay.
+     */
+    private void retainUnsettledPayout(Player recipient, long amount, Material material) {
+        if (recipient == null || amount <= 0) {
+            return;
+        }
+        UnsettledPayouts.retain(
+            plugin,
+            recipient.getUniqueId(),
+            "Mines",
+            internalName,
+            currencyMode,
+            material == null ? null : material.name(),
+            currencyName,
+            amount);
     }
 
 

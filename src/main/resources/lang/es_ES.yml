@@ -33,6 +33,14 @@ preferences:
     effective: "&7Idioma activo: &f{language}"
     server-default: "Predeterminado del servidor"
     explicit: "Seleccionado"
+  overflow:
+    title: "&eGanancias que no caben"
+    bank: "&aGuárdalas por mí"
+    drop: "&eSoltar cerca"
+    bank-explained: "&7Guardar: se conservan a salvo hasta que hagas sitio."
+    drop-explained: "&7Soltar: se sueltan cerca hasta el límite del servidor; el resto se conserva a salvo."
+    server-controlled: "&8El servidor decide esto para todos. Tu elección queda guardada."
+    server-controlled-notice: "&7Ahora mismo el servidor decide esto para todos. Tu elección queda guardada y volverá a aplicarse cuando el servidor lo permita."
 
 language-menu:
   title: "Elegir idioma"
@@ -80,6 +88,12 @@ payout:
   context-committed-result: "El servidor se reinició después de que se determinara el resultado de tu partida de {game}. Tu resultado se conservó."
   retry-one: "&6Tienes 1 pago pendiente que aún no pudo entregarse. Se reintentará automáticamente."
   retry-many: "&6Tienes {count} pagos pendientes que aún no pudieron entregarse. Se reintentarán automáticamente."
+  bank-reminder: "&6{amount} de tus ganancias siguen esperando espacio en el inventario. Haz sitio y luego usa &e/ncc claim&6 para recogerlas."
+  bank-claimed: "&aHas recogido {amount} en ganancias guardadas."
+  bank-cleared: "&aSe han recogido todas tus ganancias guardadas."
+  bank-empty: "&7No tienes ganancias guardadas esperando."
+  bank-still-blocked: "&6{amount} en ganancias siguen esperando espacio en el inventario. Haz sitio y luego usa &e/ncc claim&6 para recogerlas."
+  wager-blocked: "&cHaz sitio para {amount} objetos guardados antes de volver a jugar."
 
 cards:
   name: "{rank} de {suit}"
@@ -362,6 +376,7 @@ slots:
   payout-pending: "&eTus ganancias no se han podido entregar de inmediato y se han puesto en cola para su entrega."
   payout-blocked: "&cTus ganancias no se han podido entregar ni poner en cola. Haz clic en Girar para reintentarlo; avisa al personal si el problema continúa."
   payout-blocked-retry: "&7Haz clic para reintentar el pago."
+  payout-banked: "&e{amount} de tus ganancias no cabían y están esperando espacio en el inventario."
   invalid-denomination: "&cEse valor de apuesta no está configurado para este crupier."
   bet-too-large: "&cEsa apuesta es demasiado alta para girar."
   insufficient-funds: "&cNo tienes suficiente moneda para hacer esa apuesta."

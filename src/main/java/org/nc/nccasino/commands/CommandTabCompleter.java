@@ -40,15 +40,9 @@ public class CommandTabCompleter implements TabCompleter {
             if (player.hasPermission("nccasino.commands.list")) completions.add("list");
             if (player.hasPermission("nccasino.commands.delete")) completions.add("delete");
             if (player.hasPermission("nccasino.commands.claim")) completions.add("claim");
-            if (player.hasPermission("nccasino.commands.overflow")) completions.add("overflow");
         } 
         else if (args.length == 2) {
-            if (args[0].equalsIgnoreCase("overflow") && player.hasPermission("nccasino.commands.overflow")) {
-                for (String choice : OverflowCommand.choices()) {
-                    if (choice.startsWith(args[1].toLowerCase())) completions.add(choice);
-                }
-            }
-            else if (args[0].equalsIgnoreCase("delete") && player.hasPermission("nccasino.commands.delete")) {
+            if (args[0].equalsIgnoreCase("delete") && player.hasPermission("nccasino.commands.delete")) {
                 // Allow deleting all dealers using "*"
                 completions.add("*");
 

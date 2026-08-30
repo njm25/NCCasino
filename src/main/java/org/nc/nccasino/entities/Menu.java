@@ -39,6 +39,7 @@ public abstract class Menu extends DealerInventory {
         SOUNDS,
         MESSAGES,
         LANGUAGE,
+        OVERFLOW,
         LANGUAGE_SERVER_DEFAULT,
 
         // Player menu

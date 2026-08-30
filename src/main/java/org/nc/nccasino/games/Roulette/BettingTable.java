@@ -34,6 +34,8 @@ import java.util.*;
 import org.nc.nccasino.payout.BankedCurrency;
 import org.nc.nccasino.payout.OverflowBankService;
 import org.nc.nccasino.payout.WagerGate;
+import org.nc.nccasino.payout.WagerFunding;
+import org.nc.nccasino.payout.ItemDeliveryOutcome;
 
 public class BettingTable extends DealerInventory {
     public static final Set<UUID> switchingPlayers = new HashSet<>();
@@ -808,6 +810,13 @@ public class BettingTable extends DealerInventory {
 
                 if (canBet) {
                     if (usedHeldItem) {
+                        // A cursor-dragged stack IS the debit: clearing it is irreversible,
+                        // so the gate runs here, inside the cursor branch only. Inventory
+                        // wagers are gated by their own INVENTORY debit instead -- running
+                        // both would trigger two automatic claim attempts per wager.
+                        if (!WagerGate.allowsWager(plugin, player, WagerFunding.CURSOR)) {
+                            return;
+                        }
                         player.setItemOnCursor(null); // Remove the held stack
                     } else {
 						boolean removed = removeWagerFromInventory(player, wagerAmount);
@@ -1103,25 +1112,44 @@ private boolean isValidSlotPage2(int slot) {
 			return;
 		}
 
-		// STANDARD / no provider: item-stack based, delivered through
-		// giveItemChunk's synchronous 64-item ItemStack loop on the main
-		// thread. This is safe to do in one call, unchunked, because
-		// item-mode bet placement rejects any wager whose worst-case
-		// payout would exceed MAX_ITEM_MODE_PAYOUT before it's ever
-		// withdrawn -- see wouldExceedItemModePayoutCeiling and its call
-		// site in handleClick. amount here can therefore never approach a
-		// size that would need looping or queuing. The clamp below is a
-		// last-resort guard against that invariant somehow being violated
-		// (a bug elsewhere, not an expected path) -- if it ever fires, it
-		// logs loudly rather than silently under- or over-delivering.
-		if (amount > DEFENSIVE_ITEM_DELIVERY_CEILING) {
-			plugin.getLogger().severe("[NCCasino] Roulette item-mode payout of " + amount
-				+ " for " + player.getUniqueId() + " exceeds the pre-acceptance exposure cap -- "
-				+ "delivering only " + DEFENSIVE_ITEM_DELIVERY_CEILING + " and dropping the rest. "
-				+ "This should be unreachable; the bet-placement exposure check has a bug.");
-			amount = DEFENSIVE_ITEM_DELIVERY_CEILING;
+		// STANDARD / no provider: the whole long-valued payout goes through
+		// the shared overflow service, which is long-native. It fills the
+		// inventory, applies the Bank/Drop preference within the configured
+		// drop cap, and durably banks the rest.
+		//
+		// This previously clamped anything above a "defensive" 1,000,000 and
+		// delivered only the clamped amount -- the log claimed the remainder
+		// was dropped, but it was simply lost. A committed payout is now never
+		// clamped: whatever the bank cannot record is retained as a pending
+		// payout and retried instead.
+		OverflowBankService bank = plugin.getOverflowBankService();
+		if (bank == null) {
+			queueFailedDepositPayout(player.getUniqueId(), amount, currencyMaterial);
+			return;
 		}
-		giveItemChunk(player, provider, currencyMaterial, (int) amount);
+		ItemDeliveryOutcome outcome = bank.deliver(
+			player, new BankedCurrency(currencyMode, currencyMaterial.name(), currencyName), amount);
+
+		// Preserve the existing "some of this did not fit" notice, now covering
+		// what was banked or capped-dropped rather than scattered on the floor.
+		long didNotFit = outcome.dropped() + outcome.banked();
+		if (didNotFit > 0) {
+			switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+				case STANDARD:
+				case VERBOSE:
+					player.sendMessage(text(
+						"roulette.inventory-full",
+						"amount",
+						plugin.formatWagerDisplay(currencyMode, currencyName, didNotFit)));
+					break;
+				case NONE:
+					break;
+			}
+		}
+
+		if (!outcome.settled()) {
+			queueFailedDepositPayout(player.getUniqueId(), outcome.unsettled(), currencyMaterial);
+		}
     }
 
     /**
@@ -1161,19 +1189,21 @@ private boolean isValidSlotPage2(int slot) {
      * through {@code OverflowBankService}, which banks whatever will not fit,
      * so inventory size no longer constrains a bet.
      *
-     * <p>What still constrains it is the delivery path's own arithmetic:
-     * {@link #giveItemChunk} moves whole items through {@code int}-typed
-     * amounts, so a payout beyond {@link Integer#MAX_VALUE} could not be
-     * represented and is refused before any wager is taken.
+     * <p>The delivery path is now long-native and pays whatever it accepts
+     * in full, so this is purely a pre-wager numeric bound. It stays at
+     * {@link Integer#MAX_VALUE}: comfortably inside the exact-integer range
+     * of the {@code double}-typed {@link org.nc.nccasino.payout.PendingPayout}
+     * a failed delivery is retained in, and far above any exposure reachable
+     * from Roulette's {@code int}-typed stakes. Nothing accepted here can
+     * exceed what settlement can pay.
      */
     static final long MAX_ITEM_MODE_PAYOUT = Integer.MAX_VALUE;
 
-    /**
-     * Belt-and-suspenders ceiling for the actual item-giving loop in
-     * {@link #refundWagerToInventory}, independent of and well above
-     * MAX_ITEM_MODE_PAYOUT -- see the comment there.
-     */
-    private static final long DEFENSIVE_ITEM_DELIVERY_CEILING = 1_000_000L;
+    /** Whether this dealer's currency ultimately settles as physical items rather than a Vault/CUSTOM balance -- the only mode MAX_ITEM_MODE_PAYOUT applies to. */
+    private boolean isItemMode() {
+        CurrencyProvider provider = getCurrencyProvider();
+        return provider == null || provider.getMode() == org.nc.nccasino.currency.CurrencyMode.STANDARD;
+    }
 
     /**
      * Whether adding a hypothetical bet of {@code wagerAmount} on
@@ -1194,98 +1224,6 @@ private boolean isValidSlotPage2(int slot) {
         return false;
     }
 
-    /** Whether this dealer's currency ultimately settles as physical items rather than a Vault/CUSTOM balance -- the only mode MAX_ITEM_MODE_PAYOUT applies to. */
-    private boolean isItemMode() {
-        CurrencyProvider provider = getCurrencyProvider();
-        return provider == null || provider.getMode() == org.nc.nccasino.currency.CurrencyMode.STANDARD;
-    }
-
-    private void giveItemChunk(Player player, CurrencyProvider provider, Material currencyMaterial, int amountToGive) {
-        int fullStacks = amountToGive / 64;
-        int remainder = amountToGive % 64;
-        int totalLeftoverAmount = 0;
-        HashMap<Integer, ItemStack> leftover;
-
-        // Try adding full stacks
-        for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = null;
-            if (provider != null) {
-                stack = provider.createCurrencyStack(internalName, 64);
-            }
-            if (stack == null || stack.getType() == Material.AIR) {
-                stack = new ItemStack(currencyMaterial, 64);
-            }
-            leftover = player.getInventory().addItem(stack);
-            if (!leftover.isEmpty()) {
-                totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-            }
-        }
-
-        // Try adding remainder
-        if (remainder > 0) {
-            ItemStack remainderStack = null;
-            if (provider != null) {
-                remainderStack = provider.createCurrencyStack(internalName, remainder);
-            }
-            if (remainderStack == null || remainderStack.getType() == Material.AIR) {
-                remainderStack = new ItemStack(currencyMaterial, remainder);
-            }
-            leftover = player.getInventory().addItem(remainderStack);
-            if (!leftover.isEmpty()) {
-                totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-            }
-        }
-
-
-        if (totalLeftoverAmount > 0) {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage(text(
-                        "roulette.inventory-full",
-                        "amount",
-                        plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount)
-                    ));
-
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage(text(
-                        "roulette.inventory-full",
-                        "amount",
-                        plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount)
-                    ));
-                    break;
-                }
-                    case NONE:{
-                    break;
-                }
-            }
-            dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
-        }
-    }
-    
-    // Drops all excess winnings in one batch
-    private void dropExcessItems(Player player, int amount, Material currencyMaterial) {
-        if (amount <= 0) {
-            return;
-        }
-        OverflowBankService bank = plugin.getOverflowBankService();
-        if (bank == null || currencyMaterial == null) {
-            // Nothing safer available; fall back to the historical behavior
-            // rather than losing the winnings outright.
-            int remaining = amount;
-            while (remaining > 0) {
-                int dropAmount = Math.min(remaining, 64);
-                player.getWorld().dropItemNaturally(player.getLocation(), new ItemStack(currencyMaterial, dropAmount));
-                remaining -= dropAmount;
-            }
-            return;
-        }
-        // Route the overflow through the shared bank: it re-checks inventory
-        // room, applies the player's Bank/Drop preference, caps how much may
-        // physically hit the ground, and durably banks the rest instead of
-        // leaving winnings to despawn or be stolen.
-        bank.deliverOrDrop(player, new BankedCurrency(currencyMode, currencyMaterial.name(), currencyName), amount);
-    }
 
     // CurrencyProvider helper for this dealer/game
     private CurrencyProvider getCurrencyProvider() {

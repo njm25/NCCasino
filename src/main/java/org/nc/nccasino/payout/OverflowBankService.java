@@ -161,41 +161,57 @@ public class OverflowBankService {
     }
 
     /**
-     * {@link #deliver} for callers that have no obligation of their own to
-     * retain -- a one-shot refund or payout with no pending record and no
-     * settlement state machine behind it.
+     * Delivers a payout and, if any part of it cannot be handed over, retains
+     * that remainder as a {@link PendingPayout} exactly once.
      *
-     * <p>If the durable bank write fails, whatever is left is physically
-     * dropped as a last resort and logged loudly. That deliberately ignores
-     * the configured drop cap: the cap bounds routine overflow, but the only
-     * alternative here is destroying money the player has already won, which
-     * the design forbids outright. Callers that CAN retain an obligation
-     * (pending payouts, the Slots settlement machine) must use
-     * {@link #deliver} instead and keep the remainder rather than dropping it.
+     * <p>This is the single-owner entry point for money-bearing callers that
+     * have no settlement state machine of their own. It exists specifically to
+     * remove the "helper retains, caller retains again" hazard: because the
+     * retention happens here and the caller receives a
+     * {@link PayoutDisposition} rather than a bare boolean, there is no
+     * failure signal a caller could misread as "nothing was recorded, I should
+     * record it myself" -- which would create two obligations for one payout.
+     *
+     * @param context the encoded {@link PayoutMessages} reason to store on the
+     *     retained record, so a refund is not later shown to the player as an
+     *     ordinary winning; {@code null} records it as a committed result
+     * @return {@link PayoutDisposition#DELIVERED} if it all reached the
+     *     player, {@link PayoutDisposition#RETAINED} if the remainder is
+     *     durably recorded for retry, or {@link PayoutDisposition#UNRESOLVED}
+     *     if it is neither -- the only state that must never be reported to a
+     *     player as a completed payout.
      */
-    public ItemDeliveryOutcome deliverOrDrop(Player player, BankedCurrency currency, long amount) {
+    public PayoutDisposition deliverAndRetain(
+        Player player,
+        BankedCurrency currency,
+        long amount,
+        String gameType,
+        String dealerInternalName,
+        String context
+    ) {
+        if (amount <= 0) {
+            return PayoutDisposition.DELIVERED;
+        }
+        if (player == null || currency == null) {
+            return PayoutDisposition.UNRESOLVED;
+        }
+
         ItemDeliveryOutcome outcome = deliver(player, currency, amount);
         if (outcome.settled()) {
-            return outcome;
+            return PayoutDisposition.DELIVERED;
         }
 
-        Material material = resolveMaterial(currency);
-        if (player == null || material == null || player.getWorld() == null) {
-            plugin.getLogger().severe("[NCCasino] " + outcome.unsettled() + " " + currency.storageKey()
-                + " could be neither delivered, banked, nor dropped. This requires manual reconciliation.");
-            return outcome;
-        }
-
-        long dropped = drop(player, material, outcome.unsettled(), maxStackSize(material));
-        plugin.getLogger().severe("[NCCasino] Overflow bank unavailable; dropped " + dropped + " "
-            + currency.storageKey() + " on the ground for " + player.getUniqueId()
-            + " rather than destroying it. The drop cap was intentionally bypassed for this failure path.");
-        return new ItemDeliveryOutcome(
-            outcome.requested(),
-            outcome.toInventory(),
-            outcome.dropped() + dropped,
-            outcome.banked(),
-            outcome.unsettled() - dropped);
+        boolean retained = UnsettledPayouts.retain(
+            plugin,
+            player.getUniqueId(),
+            gameType,
+            dealerInternalName,
+            currency.mode(),
+            currency.material(),
+            currency.name(),
+            outcome.unsettled(),
+            context);
+        return PayoutDisposition.of(false, retained);
     }
 
     /**

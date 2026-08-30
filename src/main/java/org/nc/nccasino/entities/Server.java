@@ -23,6 +23,8 @@ import org.nc.nccasino.currency.VaultCurrencyProvider;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.payout.BankedCurrency;
 import org.nc.nccasino.payout.OverflowBankService;
+import org.nc.nccasino.payout.ItemDeliveryOutcome;
+import org.nc.nccasino.payout.UnsettledPayouts;
 
 public abstract class Server extends DealerInventory {
 
@@ -437,26 +439,45 @@ public abstract class Server extends DealerInventory {
     }
 
     protected void dropExcessItems(Player player, int amount, Material currencyMaterial) {
-        if (amount <= 0) {
+        if (amount <= 0 || currencyMaterial == null) {
             return;
         }
         OverflowBankService bank = plugin.getOverflowBankService();
-        if (bank == null || currencyMaterial == null) {
-            // Nothing safer available; fall back to the historical behavior
-            // rather than losing the winnings outright.
-            int remaining = amount;
-            while (remaining > 0) {
-                int dropAmount = Math.min(remaining, 64);
-                player.getWorld().dropItemNaturally(player.getLocation(), new ItemStack(currencyMaterial, dropAmount));
-                remaining -= dropAmount;
-            }
+        if (bank == null) {
+            retainUnsettledPayout(player, amount, currencyMaterial);
             return;
         }
-        // Route the overflow through the shared bank: it re-checks inventory
-        // room, applies the player's Bank/Drop preference, caps how much may
-        // physically hit the ground, and durably banks the rest instead of
-        // leaving winnings to despawn or be stolen.
-        bank.deliverOrDrop(player, new BankedCurrency(currencyMode, currencyMaterial.name(), currencyName), amount);
+        // Deliver what fits, drop only within the configured cap, bank the
+        // rest. Anything the bank could not record becomes a durable pending
+        // payout -- never an uncapped drop, and never merely a log line.
+        ItemDeliveryOutcome outcome = bank.deliver(
+            player, new BankedCurrency(currencyMode, currencyMaterial.name(), currencyName), amount);
+        if (!outcome.settled()) {
+            retainUnsettledPayout(player, outcome.unsettled(), currencyMaterial);
+        }
+    }
+
+    /**
+     * Records a remainder that reached neither the player nor the bank as a
+     * retryable obligation. The amount is by construction undelivered, so
+     * retaining it cannot double-pay.
+     */
+    private void retainUnsettledPayout(Player player, long amount, Material currencyMaterial) {
+        UnsettledPayouts.retain(
+            plugin,
+            player.getUniqueId(),
+            resolveGameType(),
+            internalName,
+            currencyMode,
+            currencyMaterial.name(),
+            currencyName,
+            amount);
+    }
+
+    /** The dealer's configured game, used to label a retained obligation. */
+    private String resolveGameType() {
+        String configured = plugin.getConfig().getString("dealers." + internalName + ".game");
+        return configured == null ? "NCCasino" : configured;
     }
 
 	// Thin wrapper around the CurrencyManager to obtain the provider for this server.

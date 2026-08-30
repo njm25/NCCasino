@@ -29,6 +29,8 @@ import org.nc.nccasino.session.GameTerminationPolicy;
 import org.nc.nccasino.session.TerminationAction;
 import org.nc.nccasino.session.SessionRegistry;
 import org.nc.nccasino.session.TerminableSession;
+import org.nc.nccasino.payout.WagerFunding;
+import org.nc.nccasino.payout.WagerGate;
 
 public class BaccaratClient extends Client implements TerminableSession {
     private final int[] playerCardSlots = {10,11,12};  // Left to right
@@ -697,11 +699,19 @@ public class BaccaratClient extends Client implements TerminableSession {
         BetOption betType = betMapping.get(slot);
 
 
+        // The cursor gate has to run BEFORE the bet is recorded below:
+        // Baccarat pushes onto betHistory/betStacks first and clears the
+        // cursor afterwards, so refusing any later would leave a recorded bet
+        // that was never paid for. Gated only for cursor wagers -- inventory
+        // wagers are gated by removeWagerFromInventory's own INVENTORY debit,
+        // and running both would mean two automatic claim attempts per bet.
+        if (isDraggingCurrency && !WagerGate.allowsWager(plugin, player, WagerFunding.CURSOR)) {
+            return;
+        }
+
         betHistory.add(new BetData(betType, betAmount)); // Maintain exact bet order
         betStacks.putIfAbsent(betType, new ArrayDeque<>());
         betStacks.get(betType).push(betAmount);
-
-
 
         if (isDraggingCurrency) {
         player.setItemOnCursor(null); // Remove held stack
