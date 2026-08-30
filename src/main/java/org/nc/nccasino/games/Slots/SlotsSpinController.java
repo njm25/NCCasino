@@ -27,6 +27,25 @@ import java.util.function.LongPredicate;
  */
 public final class SlotsSpinController {
 
+    /**
+     * A live payout attempt that may only partly succeed.
+     *
+     * <p>Returning the amount still outstanding rather than a bare
+     * success/failure flag is what makes partial delivery safe: item payouts
+     * can put some of the win in the player's inventory and bank the rest, and
+     * a settlement that reports "failed" while having already handed over part
+     * of the money would otherwise be re-paid in full on retry.
+     */
+    @FunctionalInterface
+    public interface PayoutDelivery {
+        /**
+         * @param owed the amount still committed to the player
+         * @return how much of {@code owed} is STILL outstanding afterwards;
+         *     {@code 0} means fully delivered
+         */
+        long deliver(long owed);
+    }
+
     public enum RejectReason {
         NOT_READY,
         INVALID_DENOMINATION,
@@ -151,10 +170,13 @@ public final class SlotsSpinController {
      * {@link SlotsSessionState#SETTLEMENT_FAILED}; on any other result it
      * is cleared and the table moves to {@link SlotsSessionState#RESOLVED}.
      */
-    public SlotsSettlementResult settle(LongPredicate liveDeliver, LongPredicate durableQueue) {
+    public SlotsSettlementResult settle(PayoutDelivery liveDeliver, LongPredicate durableQueue) {
         state = SlotsStateMachine.transition(state, SlotsSessionState.SETTLING);
+        // Captured before resolution: the win the player actually scored is
+        // what gets displayed, not whatever remains undelivered afterwards.
+        long committed = pendingPayoutAmount;
         SlotsSettlementResult result = resolvePayout(liveDeliver, durableQueue);
-        lastWinAmount = pendingPayoutAmount;
+        lastWinAmount = committed;
         applySettlementResult(result);
         return result;
     }
@@ -166,7 +188,7 @@ public final class SlotsSpinController {
      * single source of truth for what is still owed, so a retry can never
      * pay twice.
      */
-    public SlotsSettlementResult retrySettlement(LongPredicate liveDeliver, LongPredicate durableQueue) {
+    public SlotsSettlementResult retrySettlement(PayoutDelivery liveDeliver, LongPredicate durableQueue) {
         if (state != SlotsSessionState.SETTLEMENT_FAILED) {
             throw new IllegalStateException("retrySettlement called outside SETTLEMENT_FAILED: " + state);
         }
@@ -175,15 +197,24 @@ public final class SlotsSpinController {
         return result;
     }
 
-    private SlotsSettlementResult resolvePayout(LongPredicate liveDeliver, LongPredicate durableQueue) {
+    private SlotsSettlementResult resolvePayout(PayoutDelivery liveDeliver, LongPredicate durableQueue) {
         long payout = pendingPayoutAmount;
         if (payout <= 0) {
             return SlotsSettlementResult.DELIVERED;
         }
-        if (liveDeliver.test(payout)) {
+
+        long remaining = liveDeliver.deliver(payout);
+        if (remaining <= 0) {
             return SlotsSettlementResult.DELIVERED;
         }
-        if (durableQueue.test(payout)) {
+
+        // Retain only what is genuinely still outstanding. If delivery placed
+        // part of the win in the inventory and banked part of it, the queued
+        // or retried obligation must cover the remainder alone -- never the
+        // original total, which would pay the delivered portion twice.
+        pendingPayoutAmount = Math.min(payout, remaining);
+
+        if (durableQueue.test(pendingPayoutAmount)) {
             return SlotsSettlementResult.QUEUED;
         }
         return SlotsSettlementResult.FAILED;

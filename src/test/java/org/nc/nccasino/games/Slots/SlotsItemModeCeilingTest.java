@@ -86,7 +86,7 @@ class SlotsItemModeCeilingTest {
         SlotsSettlementResult result = controller.settle(
             amount -> {
                 delivered[0] = amount;
-                return true;
+                return 0L;
             },
             amount -> false);
 

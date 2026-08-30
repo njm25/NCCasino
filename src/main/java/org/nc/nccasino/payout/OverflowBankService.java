@@ -59,61 +59,104 @@ public class OverflowBankService {
             return ItemDeliveryOutcome.nothing();
         }
         if (player == null || currency == null) {
-            return new ItemDeliveryOutcome(amount, 0L, 0L, 0L, amount);
+            return ItemDeliveryOutcome.allUnsettled(amount);
         }
 
+        UUID playerId = player.getUniqueId();
         Material material = resolveMaterial(currency);
         if (material == null) {
-            // Without a material nothing can be handed over, but the debt is
-            // real -- bank it so it survives for manual reconciliation
-            // rather than evaporating.
-            boolean banked = store.credit(player.getUniqueId(), currency, amount);
-            return new ItemDeliveryOutcome(amount, 0L, 0L, banked ? amount : 0L, banked ? 0L : amount);
+            // Nothing can be handed over, but the debt is real. Bank it so it
+            // survives for reconciliation rather than evaporating.
+            return store.credit(playerId, currency, amount)
+                ? new ItemDeliveryOutcome(amount, 0L, 0L, amount, 0L)
+                : ItemDeliveryOutcome.allUnsettled(amount);
         }
 
         OverflowSettings config = settings();
-        OverflowPreference preference = config.effectivePreference(playerPreference(player.getUniqueId()));
+        OverflowPreference preference = config.effectivePreference(playerPreference(playerId));
         int stackSize = maxStackSize(material);
         long dropCapUnits = (long) config.maxDropStacks() * stackSize;
 
         long capacity = freeCapacityUnits(player.getInventory(), material, stackSize);
         ItemDeliveryPlan plan = ItemDeliveryPlanner.plan(amount, capacity, preference, dropCapUnits);
 
+        if (!plan.hasOverflow()) {
+            return deliverEntirelyIntoInventory(player, playerId, currency, material, amount, stackSize);
+        }
+        return deliverWithOverflow(player, playerId, currency, material, plan, amount, stackSize);
+    }
+
+    /**
+     * The common case: the whole payout fits, so no durable state is needed at
+     * all and the player simply receives it.
+     */
+    private ItemDeliveryOutcome deliverEntirelyIntoInventory(
+        Player player, UUID playerId, BankedCurrency currency, Material material, long amount, int stackSize) {
+
+        long inserted = insert(player, material, amount, stackSize);
+        long shortfall = amount - inserted;
+        if (shortfall <= 0) {
+            return new ItemDeliveryOutcome(amount, inserted, 0L, 0L, 0L);
+        }
+
+        // The capacity probe said this would fit and Bukkit disagreed. Bank
+        // the difference; only report it unsettled if even that fails.
+        if (store.credit(playerId, currency, shortfall)) {
+            return new ItemDeliveryOutcome(amount, inserted, 0L, shortfall, 0L);
+        }
+        return new ItemDeliveryOutcome(amount, inserted, 0L, 0L, shortfall);
+    }
+
+    /**
+     * The overflow case, ordered so a failed bank write can never cause a
+     * double payment.
+     *
+     * <p>The entire overflow is reserved in the bank <em>before</em> a single
+     * item moves. If that write fails nothing physical has happened, so the
+     * caller is told the whole payout is unsettled and a retry pays it exactly
+     * once. Once the reservation is on disk the value is durably the player's,
+     * and every subsequent step can only move it out of the bank -- never lose
+     * it. Dropping likewise debits first and drops second, so a failed write
+     * simply leaves the value banked instead of scattering items the bank
+     * still thinks it holds.
+     */
+    private ItemDeliveryOutcome deliverWithOverflow(
+        Player player, UUID playerId, BankedCurrency currency, Material material,
+        ItemDeliveryPlan plan, long amount, int stackSize) {
+
+        long reserved = plan.toDrop() + plan.toBank();
+        if (!store.credit(playerId, currency, reserved)) {
+            plugin.getLogger().severe("[NCCasino] Could not reserve " + reserved + " " + currency.storageKey()
+                + " in the overflow bank for " + playerId + "; no items were moved and the paying game still owes"
+                + " the full " + amount + ". It must retry rather than treat this as settled.");
+            return ItemDeliveryOutcome.allUnsettled(amount);
+        }
+
         long inserted = insert(player, material, plan.toInventory(), stackSize);
-        // The capacity probe and the actual insert run in the same tick, so a
-        // shortfall should be impossible; if Bukkit still refuses part of it,
-        // push the difference back into the overflow rather than losing it.
-        long shortfall = plan.toInventory() - inserted;
-
-        long dropTarget = plan.toDrop();
-        long bankTarget = plan.toBank();
-        if (shortfall > 0) {
-            if (preference == OverflowPreference.DROP) {
-                long extraDropRoom = Math.max(0L, dropCapUnits - dropTarget);
-                long extraDrop = Math.min(shortfall, extraDropRoom);
-                dropTarget += extraDrop;
-                shortfall -= extraDrop;
-            }
-            bankTarget += shortfall;
-        }
-
-        long dropped = drop(player, material, dropTarget, stackSize);
-        long undropped = dropTarget - dropped;
-        bankTarget += undropped;
-
-        long banked = 0L;
         long unsettled = 0L;
-        if (bankTarget > 0) {
-            if (store.credit(player.getUniqueId(), currency, bankTarget)) {
-                banked = bankTarget;
+        long shortfall = plan.toInventory() - inserted;
+        if (shortfall > 0) {
+            if (store.credit(playerId, currency, shortfall)) {
+                reserved += shortfall;
             } else {
-                unsettled = bankTarget;
-                plugin.getLogger().severe("[NCCasino] Overflow bank write failed for " + player.getUniqueId()
-                    + "; " + bankTarget + " " + currency.storageKey() + " remains UNSETTLED and the paying game"
-                    + " must retain the obligation.");
+                // Never delivered and never banked -- the caller still owes
+                // exactly this much, and nothing more.
+                unsettled = shortfall;
             }
         }
 
+        long dropped = 0L;
+        long dropTarget = Math.min(plan.toDrop(), reserved);
+        if (dropTarget > 0 && player.getWorld() != null
+            && store.debitBeforeDelivery(playerId, currency, dropTarget)) {
+            dropped = drop(player, material, dropTarget, stackSize);
+            if (dropped < dropTarget) {
+                // Put back whatever never actually hit the ground.
+                store.credit(playerId, currency, dropTarget - dropped);
+            }
+        }
+
+        long banked = reserved - dropped;
         return new ItemDeliveryOutcome(amount, inserted, dropped, banked, unsettled);
     }
 

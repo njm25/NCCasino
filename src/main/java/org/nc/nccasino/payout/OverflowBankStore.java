@@ -194,6 +194,51 @@ public class OverflowBankStore {
      * for manual reconciliation instead, which is strictly the safer of the
      * two failure modes.
      */
+    /**
+     * Removes {@code amount} from a balance <em>before</em> the matching items
+     * are handed over, reporting whether the reduction actually reached disk.
+     *
+     * <p>Used for the drop leg of a payout, where the caller can still choose
+     * not to drop: if this returns {@code false} nothing has left the bank, so
+     * the caller simply leaves the value banked. That avoids both failure
+     * modes at once -- no loss, and no second claim of value already on the
+     * ground.
+     */
+    public synchronized boolean debitBeforeDelivery(UUID playerId, BankedCurrency currency, long amount) {
+        if (playerId == null || currency == null || amount <= 0) {
+            return false;
+        }
+        Map<String, Entry> forPlayer = balances.get(playerId);
+        if (forPlayer == null) {
+            return false;
+        }
+        String key = currency.storageKey();
+        Entry existing = forPlayer.get(key);
+        if (existing == null || existing.amount() < amount) {
+            return false;
+        }
+
+        long remaining = existing.amount() - amount;
+        if (remaining == 0) {
+            forPlayer.remove(key);
+            if (forPlayer.isEmpty()) {
+                balances.remove(playerId);
+            }
+        } else {
+            forPlayer.put(key, new Entry(existing.currency(), remaining));
+        }
+
+        if (persist()) {
+            return true;
+        }
+
+        // Nothing has been handed over yet, so restoring the balance is the
+        // safe rollback here -- unlike debit(), which runs after delivery.
+        forPlayer = balances.computeIfAbsent(playerId, k -> new LinkedHashMap<>());
+        forPlayer.put(key, existing);
+        return false;
+    }
+
     public synchronized void debit(UUID playerId, BankedCurrency currency, long amount) {
         if (playerId == null || currency == null || amount <= 0) {
             return;

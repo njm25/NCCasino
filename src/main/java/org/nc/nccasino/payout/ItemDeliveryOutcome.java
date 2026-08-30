@@ -21,6 +21,20 @@ public record ItemDeliveryOutcome(
         return new ItemDeliveryOutcome(0L, 0L, 0L, 0L, 0L);
     }
 
+    /**
+     * Nothing moved at all: no items were delivered or dropped and nothing was
+     * banked, so the caller still owes the full amount and a retry pays it
+     * exactly once.
+     */
+    public static ItemDeliveryOutcome allUnsettled(long amount) {
+        return new ItemDeliveryOutcome(amount, 0L, 0L, 0L, amount);
+    }
+
+    /** Whether any part of this payout physically reached the player or the ground. */
+    public boolean movedAnythingPhysical() {
+        return toInventory > 0 || dropped > 0;
+    }
+
     /** Everything owed reached the player, the ground, or the bank. */
     public boolean settled() {
         return unsettled <= 0;

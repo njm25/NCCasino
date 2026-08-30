@@ -977,24 +977,38 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
      * bank write returns {@code false}, which hands the obligation on to the
      * controller's durable-queue step instead of losing it.
      */
-    private boolean creditPlayerDirect(long amount) {
+    /**
+     * Live delivery of a committed payout.
+     *
+     * <p>Vault balances are numeric and deposit exactly. Item currencies go
+     * through {@link OverflowBankService}, which reserves any overflow in the
+     * bank before moving a single item, then fills the inventory, applies the
+     * player's Bank/Drop preference and caps physical drops -- so an item win
+     * larger than the inventory is a completed payout rather than a failed
+     * one.
+     *
+     * @return how much of {@code amount} is STILL owed. A partial result
+     *     matters: the controller retains exactly this remainder, so the
+     *     portion already delivered is never paid a second time.
+     */
+    private long creditPlayerDirect(long amount) {
         if (amount <= 0) {
-            return true;
+            return 0L;
         }
         if (player == null || !player.isOnline()) {
-            return false;
+            return amount;
         }
         CurrencyProvider provider = getCurrencyProvider();
         if (provider != null
             && provider.getMode() == CurrencyMode.VAULT
             && provider instanceof VaultCurrencyProvider vaultProvider) {
-            return vaultProvider.deposit(player, internalName, MoneyHelper.bd(amount));
+            return vaultProvider.deposit(player, internalName, MoneyHelper.bd(amount)) ? 0L : amount;
         }
 
         OverflowBankService bank = plugin.getOverflowBankService();
         Material mat = plugin.getCurrency(internalName);
         if (bank == null || mat == null) {
-            return false;
+            return amount;
         }
 
         ItemDeliveryOutcome outcome = bank.deliver(
@@ -1002,7 +1016,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         if (outcome.hasBanked()) {
             player.sendMessage(text("slots.payout-banked", "amount", outcome.banked()));
         }
-        return outcome.settled();
+        return outcome.unsettled();
     }
 
     /** Attempts only durable persistence; live delivery is owned exclusively by the controller. */
@@ -1108,7 +1122,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
                 + " at dealer " + internalName + " (amount=" + amount
                 + "); attempting a live fallback only if the player is still safely online.");
             boolean fallbackDelivered = amount <= 0
-                || (player != null && player.isOnline() && creditPlayerDirect(amount));
+                || (player != null && player.isOnline() && creditPlayerDirect(amount) <= 0);
             if (!fallbackDelivered) {
                 plugin.getLogger().severe("[NCCasino] Slots termination payout requires manual reconciliation -- player="
                     + playerId + ", dealer=" + internalName + ", game=Slots, amount=" + amount

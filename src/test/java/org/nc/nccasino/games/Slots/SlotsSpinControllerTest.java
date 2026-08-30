@@ -29,6 +29,14 @@ class SlotsSpinControllerTest {
         SlotsPaytable.forConfig(COLUMNS, SlotsPaytable.DEFAULT_HOUSE_EDGE);
 
     /** Every draw returns the same roll, so every cell samples the same symbol. */
+    /**
+     * Adapts an all-or-nothing predicate to the partial-delivery contract:
+     * success leaves nothing owed, failure leaves the whole amount owed.
+     */
+    private static SlotsSpinController.PayoutDelivery fully(RecordingPredicate predicate) {
+        return amount -> predicate.test(amount) ? 0L : amount;
+    }
+
     private static SlotsRandomSource constantRoll(int roll) {
         return bound -> roll;
     }
@@ -89,7 +97,7 @@ class SlotsSpinControllerTest {
                 "spin #" + spinNumber + " must be accepted");
             assertEquals(spinNumber, debit.callCount(), "exactly one debit for spin #" + spinNumber);
 
-            SlotsSettlementResult result = controller.settle(liveDeliver::test, queue::test);
+            SlotsSettlementResult result = controller.settle(fully(liveDeliver), queue::test);
             assertEquals(SlotsSettlementResult.DELIVERED, result);
             assertTrue(controller.isReadyForSpin(), "controller must be ready to spin again after resolving spin #" + spinNumber);
         }
@@ -102,7 +110,7 @@ class SlotsSpinControllerTest {
         RecordingPredicate debit = new RecordingPredicate(true);
 
         controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allSevens(), debit::test);
-        controller.settle(amount -> true, amount -> true);
+        controller.settle(amount -> 0L, amount -> true);
         assertEquals(SlotsSessionState.RESOLVED, controller.state());
 
         SlotsSpinController.SpinAttempt second = controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allSevens(), debit::test);
@@ -219,7 +227,7 @@ class SlotsSpinControllerTest {
         RecordingPredicate liveDeliver = new RecordingPredicate(true);
         RecordingPredicate queue = new RecordingPredicate(true);
 
-        SlotsSettlementResult result = controller.settle(liveDeliver::test, queue::test);
+        SlotsSettlementResult result = controller.settle(fully(liveDeliver), queue::test);
 
         assertEquals(SlotsSettlementResult.DELIVERED, result);
         assertEquals(1, liveDeliver.callCount());
@@ -235,7 +243,7 @@ class SlotsSpinControllerTest {
         RecordingPredicate liveDeliver = new RecordingPredicate(false);
         RecordingPredicate queue = new RecordingPredicate(true);
 
-        SlotsSettlementResult result = controller.settle(liveDeliver::test, queue::test);
+        SlotsSettlementResult result = controller.settle(fully(liveDeliver), queue::test);
 
         assertEquals(SlotsSettlementResult.QUEUED, result);
         assertEquals(1, liveDeliver.callCount());
@@ -255,7 +263,7 @@ class SlotsSpinControllerTest {
 
         RecordingPredicate liveDeliver = new RecordingPredicate(true);
         RecordingPredicate queue = new RecordingPredicate(true);
-        SlotsSettlementResult result = controller.settle(liveDeliver::test, queue::test);
+        SlotsSettlementResult result = controller.settle(fully(liveDeliver), queue::test);
 
         assertEquals(SlotsSettlementResult.DELIVERED, result);
         assertEquals(0, liveDeliver.callCount());
@@ -270,7 +278,7 @@ class SlotsSpinControllerTest {
         long owed = ((SlotsSpinController.SpinAttempt.Accepted) attempt).payout();
         assertTrue(owed > 0);
 
-        SlotsSettlementResult first = controller.settle(amount -> false, amount -> false);
+        SlotsSettlementResult first = controller.settle(amount -> amount, amount -> false);
         assertEquals(SlotsSettlementResult.FAILED, first);
         assertEquals(SlotsSessionState.SETTLEMENT_FAILED, controller.state());
         assertEquals(owed, controller.pendingPayoutAmount(), "a failed settlement must retain the exact committed amount");
@@ -280,7 +288,7 @@ class SlotsSpinControllerTest {
         SlotsSettlementResult retried = controller.retrySettlement(
             amount -> {
                 creditedAmounts.add(amount);
-                return true;
+                return 0L;
             },
             amount -> {
                 throw new AssertionError("queue must not be tried once live delivery succeeds on retry");
@@ -298,9 +306,9 @@ class SlotsSpinControllerTest {
         SlotsSpinController.SpinAttempt attempt = controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allSevens(), amount -> true);
         long owed = ((SlotsSpinController.SpinAttempt.Accepted) attempt).payout();
 
-        controller.settle(amount -> false, amount -> false);
+        controller.settle(amount -> amount, amount -> false);
         for (int i = 0; i < 5; i++) {
-            SlotsSettlementResult retry = controller.retrySettlement(amount -> false, amount -> false);
+            SlotsSettlementResult retry = controller.retrySettlement(amount -> amount, amount -> false);
             assertEquals(SlotsSettlementResult.FAILED, retry);
             assertEquals(owed, controller.pendingPayoutAmount());
             assertEquals(SlotsSessionState.SETTLEMENT_FAILED, controller.state());
@@ -310,7 +318,7 @@ class SlotsSpinControllerTest {
     @Test
     void retrySettlementOutsideFailedStateThrows() {
         SlotsSpinController controller = new SlotsSpinController();
-        assertThrows(IllegalStateException.class, () -> controller.retrySettlement(amount -> true, amount -> true));
+        assertThrows(IllegalStateException.class, () -> controller.retrySettlement(amount -> 0L, amount -> true));
     }
 
     @Test
