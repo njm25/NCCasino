@@ -50,6 +50,10 @@ import org.nc.nccasino.payout.ItemDeliveryOutcome;
 import org.nc.nccasino.payout.OverflowBankService;
 import org.nc.nccasino.payout.WagerFunding;
 import org.nc.nccasino.payout.UnsettledPayouts;
+import org.nc.nccasino.budget.Commitment;
+import org.nc.nccasino.budget.DealerBudgetService;
+import org.nc.nccasino.budget.Exposure;
+import org.nc.nccasino.budget.Money;
 
 public class MinesTable extends DealerInventory implements TerminableSession {
     // Game state management
@@ -77,6 +81,14 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     private boolean[][] mineGrid;      // [5][5]
     private boolean[][] revealedGrid;  // [5][5]
     private int safePicks;
+    /**
+     * The single dealer-budget promise covering this board, reserved when
+     * the mine layout is generated and grown before each safe-tile reveal.
+     * Null between rounds and after settlement.
+     */
+    private Commitment budgetCommitment;
+    private final String budgetSessionId = java.util.UUID.randomUUID().toString();
+    private long budgetRoundCounter = 0;
     private boolean gameOver;
     private boolean wagerPlaced = false;
     private boolean minesSelected = true; // Default to true since default minesCount is set
@@ -800,6 +812,9 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             // Start the gamet
             if (minesSelected) {
                 if (wager > 0) {
+                     if (!ensureBudgetCoversNextPick(0)) {
+                        return;
+                     }
                      if (SoundHelper.getSoundSafely("block.enchantment_table.use", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER,1.0f, 1.0f);
                     startGame();
                 } else {
@@ -942,6 +957,60 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         previousWager = totalBet;
     }
 
+    /**
+     * Checks and, if covered, atomically opens or grows this board's single
+     * dealer-budget reservation to the cash-out that would exist after one
+     * more safe pick. Denies before the tile reveal, before any currency or
+     * random result is involved for this pick.
+     */
+    private boolean ensureBudgetCoversNextPick(int picksSoFar) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null) {
+            return true;
+        }
+        double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
+        Exposure updatedExposure = MinesLiability.exposureAfterNextSafePick(
+            totalBet, totalTiles, minesCount, picksSoFar);
+
+        Commitment result;
+        if (budgetCommitment == null) {
+            budgetRoundCounter++;
+            Material material = plugin.getCurrency(internalName);
+            org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
+                currencyMode, material == null ? null : material.name(), currencyName);
+            result = budget.reserve(
+                internalName, playerId, "Mines",
+                budgetSessionId + "-round-" + budgetRoundCounter, currency, updatedExposure);
+        } else {
+            result = budget.increase(internalName, budgetCommitment, updatedExposure, Money.ZERO);
+        }
+
+        if (!result.isAccepted()) {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD, VERBOSE -> player.sendMessage(text("mines.dealer-cannot-cover"));
+                case NONE -> {
+                }
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            return false;
+        }
+        budgetCommitment = result;
+        return true;
+    }
+
+    /** Pays the round's result and releases the board's reservation, exactly once. */
+    private void settleBudget(java.math.BigDecimal payout) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null || budgetCommitment == null) {
+            budgetCommitment = null;
+            return;
+        }
+        budget.settle(internalName, budgetCommitment, payout);
+        budgetCommitment = null;
+    }
+
     private void placeMines() {
         Random random = new Random();
         int minesPlaced = 0;
@@ -978,6 +1047,14 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         return;
     }
 
+    // The mine layout was fixed when the round started, but the reveal is
+    // the player-visible moment a result becomes known. Deny here, before
+    // that reveal, if the dealer could not cover the cash-out a safe tile
+    // would create -- never after the player has already seen a win.
+    if (!ensureBudgetCoversNextPick(safePicks)) {
+        return;
+    }
+
     if (mineGrid[x][y]) {
        // Change the cash-out button to a barrier immediately
        updateCashOutToBarrier();
@@ -995,6 +1072,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 
        gameOver = true;
        gameState = GameState.GAME_OVER;
+       settleBudget(Money.ZERO);
        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
         case STANDARD:{
             player.sendMessage(text("mines.game-over-message"));
@@ -1232,6 +1310,10 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 double payoutMultiplier = calculatePayoutMultiplier(safePicks);
                 winnings = totalBet * payoutMultiplier;
             }
+            // The dealer's books close here, before delivery -- delivery may
+            // still bank or queue the amount, but the dealer has already
+            // paid it either way.
+            settleBudget(Money.of(winnings));
 			CurrencyProvider provider = getCurrencyProvider();
 			boolean isVault = provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider;
 
@@ -1337,6 +1419,10 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 double payoutMultiplier = calculatePayoutMultiplier(safePicks);
                 winnings = totalBet * payoutMultiplier;
             }
+            // The dealer's books close here, before delivery -- delivery may
+            // still bank or queue the amount, but the dealer has already
+            // paid it either way.
+            settleBudget(Money.of(winnings));
 			CurrencyProvider provider = getCurrencyProvider();
 			boolean isVault = provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider;
 
@@ -1866,6 +1952,12 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         // KICKED: forfeit unconditionally regardless of phase — no refund,
         // no cash-out.
 
+        // Safety net: releases any reservation a path above did not already
+        // settle (e.g. a pregame refund, or a forfeit). A no-op wherever the
+        // round already settled explicitly, since settleBudget clears the
+        // commitment the first time it runs.
+        settleBudget(Money.ZERO);
+
         betStack.clear();
 
         for (int taskId : scheduledTasks) {
@@ -1894,6 +1986,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             totalBet += t;
         }
         double winnings = safePicks == 0 ? totalBet : totalBet * calculatePayoutMultiplier(safePicks);
+        settleBudget(Money.of(Math.max(0.0, winnings)));
         if (winnings <= 0) {
             return;
         }

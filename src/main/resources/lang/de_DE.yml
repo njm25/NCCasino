@@ -444,6 +444,7 @@ mines:
   select-mines-first: "&cMinenanzahl auswählen."
   all-bets-undone: "&dAlle Einsätze wurden rückgängig gemacht."
   no-bets-to-undo: "&cKeine Einsätze zum Rückgängigmachen."
+  dealer-cannot-cover: "&cDieses Feld kann eine so hohe Auszahlung gerade nicht decken. Versuche es später erneut oder setze weniger."
   last-bet-undone: "&dDer letzte Einsatz wurde rückgängig gemacht."
   tile-revealed: "&dDas Feld wurde bereits aufgedeckt."
   game-over-message: "&c&lSpiel vorbei!"

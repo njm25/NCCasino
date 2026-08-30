@@ -444,6 +444,7 @@ mines:
   select-mines-first: "&cSelecciona el número de minas."
   all-bets-undone: "&dSe deshicieron todas las apuestas."
   no-bets-to-undo: "&cNo hay apuestas que deshacer."
+  dealer-cannot-cover: "&cEste tablero no puede cubrir un cobro tan grande ahora mismo. Inténtalo más tarde o reduce tu apuesta."
   last-bet-undone: "&dSe deshizo la última apuesta."
   tile-revealed: "&dLa casilla ya está revelada."
   game-over-message: "&c&l¡Fin del juego!"

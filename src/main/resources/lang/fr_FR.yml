@@ -444,6 +444,7 @@ mines:
   select-mines-first: "&cSélectionnez le nombre de mines."
   all-bets-undone: "&dTous les paris ont été annulés."
   no-bets-to-undo: "&cAucun pari à annuler."
+  dealer-cannot-cover: "&cCette grille ne peut pas couvrir un retrait aussi élevé pour le moment. Réessayez plus tard ou réduisez votre mise."
   last-bet-undone: "&dLe dernier pari a été annulé."
   tile-revealed: "&dLa case est déjà révélée."
   game-over-message: "&c&lPartie terminée !"

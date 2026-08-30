@@ -444,6 +444,7 @@ mines:
   select-mines-first: "&cSelect number of mines."
   all-bets-undone: "&dAll bets undone."
   no-bets-to-undo: "&cNo bets to undo."
+  dealer-cannot-cover: "&cThis board cannot cover a cash-out that large right now. Try again later, or lower your wager."
   last-bet-undone: "&dLast bet undone."
   tile-revealed: "&dTile already revealed."
   game-over-message: "&c&lGame Over!"
