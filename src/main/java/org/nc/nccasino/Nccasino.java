@@ -65,6 +65,8 @@ import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.payout.OverflowBankReminder;
 import org.nc.nccasino.payout.OverflowBankService;
 import org.nc.nccasino.payout.OverflowBankStore;
+import org.nc.nccasino.budget.DealerBudgetService;
+import org.nc.nccasino.budget.DealerBudgetStore;
 import org.nc.nccasino.payout.PendingPayoutStore;
 import org.nc.nccasino.localization.LanguageMode;
 import org.nc.nccasino.localization.LocalizationService;
@@ -88,6 +90,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
     private OverflowBankStore overflowBankStore;
     private OverflowBankService overflowBankService;
     private OverflowBankReminder overflowBankReminder;
+    private DealerBudgetStore dealerBudgetStore;
+    private DealerBudgetService dealerBudgetService;
     private LocalizationService localizationService;
 
     /**
@@ -138,6 +142,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
         overflowBankService = new OverflowBankService(this, overflowBankStore);
         overflowBankReminder = new OverflowBankReminder(this, overflowBankStore);
         overflowBankReminder.start();
+
+        // Dealer token inventories. Every existing dealer is UNLIMITED, so
+        // constructing this changes no behavior until an administrator opts a
+        // dealer into LIMITED mode; the store simply loads an empty file.
+        dealerBudgetStore = new DealerBudgetStore(this);
+        dealerBudgetService = new DealerBudgetService(this, dealerBudgetStore);
 
         // Register event listeners
         getServer().getPluginManager().registerEvents(new DealerInteractListener(this), this);
@@ -489,6 +499,18 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     public PendingPayoutStore getPendingPayoutStore() {
         return pendingPayoutStore;
+    }
+
+    public DealerBudgetStore getDealerBudgetStore() {
+        return dealerBudgetStore;
+    }
+
+    /**
+     * The shared dealer-budget gate. Games ask this before taking a wager or
+     * increasing exposure; it answers immediately for an UNLIMITED dealer.
+     */
+    public DealerBudgetService getDealerBudgetService() {
+        return dealerBudgetService;
     }
 
     private void reinitializeDealers() {
