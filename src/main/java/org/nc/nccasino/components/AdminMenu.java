@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -57,6 +58,7 @@ import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.entities.Menu;
+import org.nc.nccasino.games.Slots.SlotsConfig;
 import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.listeners.DealerEventListener;
@@ -349,7 +351,12 @@ public class AdminMenu extends Menu {
                 lore.add(text("admin.default-floors-lore", "value", defaultFloors));
                 break;
             case "Slots":
-                lore.add(text("admin.slots-rtp-lore"));
+                SlotsConfig slotsConfig = SlotsConfig.load(plugin, internalName);
+                String slotsRtp = String.format(
+                    Locale.ROOT,
+                    "%.2f%%",
+                    slotsConfig.paytable().theoreticalRtp() * 100.0);
+                lore.add(text("admin.slots-rtp-lore", "rtp", slotsRtp));
                 break;
             default:
                 lore.add(text("admin.no-settings"));

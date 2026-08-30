@@ -22,6 +22,9 @@ import org.nc.nccasino.currency.VaultCurrencyProvider;
 import org.nc.nccasino.currency.WagerTransaction;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.payout.BankedCurrency;
+import org.nc.nccasino.payout.ItemDeliveryOutcome;
+import org.nc.nccasino.payout.OverflowBankService;
 import org.nc.nccasino.payout.PayoutMessages;
 import org.nc.nccasino.payout.PendingPayout;
 import org.nc.nccasino.session.ExitReason;
@@ -31,7 +34,6 @@ import org.nc.nccasino.session.TerminableSession;
 import org.nc.nccasino.session.TerminationAction;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -592,6 +594,9 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     // ---- spin ------------------------------------------------------------
 
     private void handleSpin() {
+        if (!passesOverflowBankGate()) {
+            return;
+        }
         long denomUnits = Math.max(0L, Math.round(chipValues[denominationIndex]));
         SlotsSpinController.SpinAttempt attempt = controller.trySpin(
             denomUnits,
@@ -624,6 +629,29 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             case INSUFFICIENT_FUNDS -> "slots.insufficient-funds";
         };
         denyAction(player, text(key));
+    }
+
+    /**
+     * The universal pre-wager overflow-bank gate.
+     *
+     * <p>Any nonzero banked balance blocks every NCCasino wager, whatever
+     * currency it is in -- banked emeralds block a diamond spin just as much
+     * as a diamond balance would. An automatic delivery attempt runs first,
+     * so a player who has since made room simply plays on without noticing
+     * the gate at all; only a balance that still cannot fit rejects the
+     * spin, before any wager is withdrawn.
+     */
+    private boolean passesOverflowBankGate() {
+        OverflowBankService bank = plugin.getOverflowBankService();
+        if (bank == null || player == null) {
+            return true;
+        }
+        long remaining = bank.clearForWager(player);
+        if (remaining <= 0) {
+            return true;
+        }
+        denyAction(player, text("slots.bank-blocked", "amount", remaining));
+        return false;
     }
 
     private boolean attemptDebit(long totalBetUnits) {
@@ -938,6 +966,17 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         }
     }
 
+    /**
+     * Live delivery of a committed payout.
+     *
+     * <p>Vault balances are numeric and deposit exactly. Item currencies go
+     * through {@link OverflowBankService}, which fills the inventory, applies
+     * the player's Bank/Drop preference to the rest, caps physical drops and
+     * banks the final remainder -- so an item win larger than the inventory
+     * is a completed payout rather than a failed one. Only a failed durable
+     * bank write returns {@code false}, which hands the obligation on to the
+     * controller's durable-queue step instead of losing it.
+     */
     private boolean creditPlayerDirect(long amount) {
         if (amount <= 0) {
             return true;
@@ -946,44 +985,24 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             return false;
         }
         CurrencyProvider provider = getCurrencyProvider();
-        if (provider != null) {
-            if (provider.getMode() == CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider vaultProvider) {
-                return vaultProvider.deposit(player, internalName, MoneyHelper.bd(amount));
-            }
-            // Non-Vault providers only expose an int-precision deposit; the
-            // item-mode payout ceiling enforced before every debit
-            // (SlotsMath.MAX_ITEM_MODE_PAYOUT) guarantees this is never hit
-            // in practice. Reject rather than clamp-and-report-success if it
-            // ever is, so an unpaid remainder is never silently dropped.
-            if (amount > Integer.MAX_VALUE) {
-                return false;
-            }
-            return provider.deposit(player, internalName, (int) amount);
+        if (provider != null
+            && provider.getMode() == CurrencyMode.VAULT
+            && provider instanceof VaultCurrencyProvider vaultProvider) {
+            return vaultProvider.deposit(player, internalName, MoneyHelper.bd(amount));
         }
 
+        OverflowBankService bank = plugin.getOverflowBankService();
         Material mat = plugin.getCurrency(internalName);
-        if (mat == null || amount > Integer.MAX_VALUE) {
+        if (bank == null || mat == null) {
             return false;
         }
-        depositRawMaterial(mat, (int) amount);
-        return true;
-    }
 
-    private void depositRawMaterial(Material mat, int amount) {
-        int fullStacks = amount / 64;
-        int remainder = amount % 64;
-        for (int i = 0; i < fullStacks; i++) {
-            dropLeftover(player.getInventory().addItem(new ItemStack(mat, 64)));
+        ItemDeliveryOutcome outcome = bank.deliver(
+            player, new BankedCurrency(currencyMode, mat.name(), currencyName), amount);
+        if (outcome.hasBanked()) {
+            player.sendMessage(text("slots.payout-banked", "amount", outcome.banked()));
         }
-        if (remainder > 0) {
-            dropLeftover(player.getInventory().addItem(new ItemStack(mat, remainder)));
-        }
-    }
-
-    private void dropLeftover(HashMap<Integer, ItemStack> leftover) {
-        for (ItemStack item : leftover.values()) {
-            player.getWorld().dropItemNaturally(player.getLocation(), item);
-        }
+        return outcome.settled();
     }
 
     /** Attempts only durable persistence; live delivery is owned exclusively by the controller. */

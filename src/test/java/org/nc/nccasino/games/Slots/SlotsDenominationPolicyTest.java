@@ -73,7 +73,16 @@ class SlotsDenominationPolicyTest {
     @Test
     @DisplayName("when nothing is safe the current index is retained")
     void retainsIndexWhenNothingIsSafe() {
-        double[] denominations = {1e12, 2e12};
+        // Derived from the live ceiling rather than hardcoded: with the old
+        // 10,000-item delivery limit any large literal was unsafe, but under
+        // the precision ceiling that replaced it a fixed 1e12 is comfortably
+        // playable, which quietly stopped this from testing what it claims.
+        double justOver = ceilingUnits() + 1d;
+        double[] denominations = {justOver, justOver * 2d};
+        assertFalse(SlotsDenominationPolicy.isAllowed(denominations[0], LINES, true, PAYTABLE),
+            "fixture must actually contain no safe denomination");
+        assertFalse(SlotsDenominationPolicy.isAllowed(denominations[1], LINES, true, PAYTABLE));
+
         assertEquals(0, SlotsDenominationPolicy.nextAllowedIndex(denominations, 0, 1, LINES, true, PAYTABLE));
     }
 

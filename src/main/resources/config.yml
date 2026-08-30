@@ -2,3 +2,28 @@ language:
   # Language inherited by players who have not explicitly selected one.
   # Supported: en_US, es_ES, pt_BR, de_DE, fr_FR
   default: en_US
+
+payouts:
+  # How item winnings that do not fit in a player's inventory are handled.
+  # Nothing is ever deleted: whatever cannot be delivered or safely dropped
+  # is banked until the player makes room.
+  #
+  # overflow-mode: PLAYER_CHOICE lets each player pick Bank or Drop.
+  #                BANK or DROP forces that choice for everyone. A player's
+  #                own stored choice is kept either way, so returning to
+  #                PLAYER_CHOICE restores what they had picked before.
+  overflow-mode: PLAYER_CHOICE
+  # Applied to players who have never chosen for themselves.
+  default-player-overflow: BANK
+  # Fixed safety limit on how much a single payout may drop on the ground,
+  # in stacks of the currency's real stack size. Everything beyond it is
+  # banked. This limit never moves with TPS or server load.
+  max-drop-stacks: 36
+  # How often a player with banked winnings is reminded. Informational only:
+  # the reminder never touches an inventory and never delivers anything.
+  # Use 0, off, or none to disable it.
+  reminder-period: 1h
+  # Automatically attempt to deliver banked winnings immediately before a
+  # wager. A nonzero bank balance blocks wagering either way; disabling this
+  # only means the player must claim manually with /ncc claim first.
+  clear-bank-before-wager: true

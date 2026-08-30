@@ -959,7 +959,7 @@ admin:
   coin-flip-timer-lore: "&7Timer: &a{value} &7(PvP)"
   coin-flip-max-chain-lore: "&7Máx. de Rodadas em Sequência: &a{value} &7(PvE)"
   coin-flip-max-chain-lore-unbounded: "&7Máx. de Rodadas em Sequência: &aIlimitado &7(PvE)"
-  slots-rtp-lore: "&7RTP auditado fixo: &a91.197%"
+  slots-rtp-lore: "&7RTP atual: &a{rtp}"
   no-settings: "&7Nenhuma configuração disponível."
   select-currency: "Selecionar moeda"
   disabled-vault: "[Desativado no modo Vault]"

@@ -7,7 +7,6 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.MoneyHelper;
@@ -265,6 +264,18 @@ public class PendingPayoutStore {
         return resp != null && resp.transactionSuccess();
     }
 
+    /**
+     * Hands a pending item payout over through {@link OverflowBankService},
+     * so the part that does not fit is banked rather than scattered on the
+     * ground. This is the hand-off point between the two systems: the record
+     * stops being an unresolved outcome and whatever could not physically
+     * fit becomes a bank balance the player already owns.
+     *
+     * <p>Returns {@code false} unless every unit reached the player, the
+     * ground, or durable bank storage -- a failed bank write leaves the
+     * record pending for a later retry instead of reporting a delivery that
+     * did not fully happen.
+     */
     private boolean depositItems(Player player, PendingPayout payout) {
         Material material = payout.currencyMaterial() != null
             ? Material.matchMaterial(payout.currencyMaterial())
@@ -281,11 +292,17 @@ public class PendingPayoutStore {
             return true;
         }
 
-        Map<Integer, ItemStack> leftover = player.getInventory().addItem(new ItemStack(material, wholeAmount));
-        if (!leftover.isEmpty()) {
-            int leftoverAmount = leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-            player.getWorld().dropItemNaturally(player.getLocation(), new ItemStack(material, leftoverAmount));
+        OverflowBankService bank = plugin.getOverflowBankService();
+        if (bank == null) {
+            // No safe destination for a remainder yet; leave the record
+            // pending rather than risk dropping winnings on the floor.
+            return false;
         }
-        return true;
+
+        ItemDeliveryOutcome outcome = bank.deliver(
+            player,
+            new BankedCurrency(payout.currencyMode(), material.name(), payout.currencyName()),
+            wholeAmount);
+        return outcome.settled();
     }
 }

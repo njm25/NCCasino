@@ -21,20 +21,27 @@ import java.util.List;
 public final class SlotsMath {
 
     /**
-     * Item-backed currencies (raw material fallback, or {@code STANDARD}/
-     * {@code CUSTOM} providers) only ever move whole physical items through
-     * {@code int}-typed deposit calls -- there is no exact-precision path
-     * for them the way {@code VAULT} has {@link java.math.BigDecimal}.
-     * Rather than silently clamp an oversized payout to {@code Integer.MAX_VALUE}
-     * and report it delivered (underpaying the player), or synchronously
-     * hand out millions of item stacks, a spin whose worst-case payout could
-     * exceed this ceiling is rejected up front, before any wager is
-     * withdrawn. Mirrors {@code BettingTable.MAX_ITEM_MODE_PAYOUT} in
-     * Roulette, the currently-endorsed fix (commit c632881) after an earlier
-     * chunking approach there was found to still risk main-thread hangs and
-     * silent loss on a failed queue.
+     * The largest item-mode payout NCCasino will commit to, in whole
+     * currency units.
+     *
+     * <p>This is a <em>numeric precision</em> ceiling, not a delivery one.
+     * Physical inventory size no longer constrains a spin: overflow that
+     * cannot fit is delivered partially and the remainder is banked by
+     * {@code OverflowBankService}, so a win larger than the player's
+     * inventory is paid rather than refused. What remains constrained is
+     * representability -- an item payout can still travel through a
+     * {@code double}-typed durable record ({@code PendingPayout#amount}) if
+     * the player disconnects mid-spin, and above 2^53 a {@code double} can no
+     * longer represent every whole number, which would silently round the
+     * amount owed. A spin whose worst case could exceed that is rejected up
+     * front, before any wager is withdrawn, rather than paid inaccurately.
+     *
+     * <p>Was previously 10,000 -- a physical-delivery limit that made item
+     * mode reject most five- and seven-reel wagers outright. That limit was
+     * removed once overflow banking guaranteed a safe destination for
+     * winnings of any size.
      */
-    public static final long MAX_ITEM_MODE_PAYOUT = 10_000L;
+    public static final long MAX_ITEM_MODE_PAYOUT = 9_007_199_254_740_992L;
 
     private SlotsMath() {
     }

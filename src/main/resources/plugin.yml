@@ -18,11 +18,16 @@ permissions:
     description: Grants access to all NCCasino commands
     default: op
     children:
+      nccasino.commands.claim: true
       nccasino.commands.create: true
       nccasino.commands.delete: true
       nccasino.commands.help: true
       nccasino.commands.list: true
       nccasino.commands.reload: true
+
+  nccasino.commands.claim:
+    description: Allows claiming overflow-banked winnings with /ncc claim
+    default: true
 
   nccasino.commands.create:
     description: Allows creating a dealer in NCCasino

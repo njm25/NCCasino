@@ -39,6 +39,7 @@ public class CommandTabCompleter implements TabCompleter {
             if (player.hasPermission("nccasino.commands.reload")) completions.add("reload");
             if (player.hasPermission("nccasino.commands.list")) completions.add("list");
             if (player.hasPermission("nccasino.commands.delete")) completions.add("delete");
+            if (player.hasPermission("nccasino.commands.claim")) completions.add("claim");
         } 
         else if (args.length == 2) {
             if (args[0].equalsIgnoreCase("delete") && player.hasPermission("nccasino.commands.delete")) {

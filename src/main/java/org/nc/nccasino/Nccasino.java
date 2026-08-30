@@ -62,6 +62,9 @@ import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.CurrencyDisplay;
 import org.nc.nccasino.currency.DealerCurrencySettings;
 import org.nc.nccasino.currency.MoneyHelper;
+import org.nc.nccasino.payout.OverflowBankReminder;
+import org.nc.nccasino.payout.OverflowBankService;
+import org.nc.nccasino.payout.OverflowBankStore;
 import org.nc.nccasino.payout.PendingPayoutStore;
 import org.nc.nccasino.localization.LanguageMode;
 import org.nc.nccasino.localization.LocalizationService;
@@ -82,6 +85,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
     private VaultHook vaultHook;
     private CurrencyManager currencyManager;
     private PendingPayoutStore pendingPayoutStore;
+    private OverflowBankStore overflowBankStore;
+    private OverflowBankService overflowBankService;
+    private OverflowBankReminder overflowBankReminder;
     private LocalizationService localizationService;
 
     /**
@@ -97,6 +103,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
         // tasks that would otherwise resolve in-flight rounds get
         // cancelled along with everything else the plugin owns.
         SessionRegistry.terminateAll(ExitReason.PLUGIN_DISABLE);
+        if (overflowBankReminder != null) {
+            overflowBankReminder.stop();
+        }
         savePreferences();
     }
 
@@ -121,6 +130,14 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
         // Durable pending-payout storage (delivered on join once wired up)
         pendingPayoutStore = new PendingPayoutStore(this);
+
+        // Overflow banking: already-won item money waiting only for physical
+        // space. Constructed before any listener so nothing can pay out
+        // before there is somewhere safe for the remainder to go.
+        overflowBankStore = new OverflowBankStore(this);
+        overflowBankService = new OverflowBankService(this, overflowBankStore);
+        overflowBankReminder = new OverflowBankReminder(this, overflowBankStore);
+        overflowBankReminder.start();
 
         // Register event listeners
         getServer().getPluginManager().registerEvents(new DealerInteractListener(this), this);
@@ -205,6 +222,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
             preferences.loadLanguage(
                 languageMode,
                 preferencesConfig.getString(key + ".language")
+            );
+            preferences.loadOverflowPreference(
+                preferencesConfig.getString(key + ".overflow-preference", null)
             );
             preferences.loadBlackjackGuidanceSeen(
                 preferencesConfig.getBoolean(key + ".blackjack-chair-guidance-seen", false),
@@ -391,6 +411,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
                     ? preferences.getExplicitLanguage()
                     : null
             );
+            preferencesConfig.set(
+                entry.getKey() + ".overflow-preference",
+                preferences.getOverflowPreference() == null ? null : preferences.getOverflowPreference().name());
             preferencesConfig.set(entry.getKey() + ".blackjack-chair-guidance-seen", preferences.hasSeenBlackjackChairGuidance());
             preferencesConfig.set(entry.getKey() + ".blackjack-wager-guidance-seen", preferences.hasSeenBlackjackWagerGuidance());
         }
@@ -454,6 +477,14 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     public CurrencyManager getCurrencyManager() {
         return currencyManager;
+    }
+
+    public OverflowBankStore getOverflowBankStore() {
+        return overflowBankStore;
+    }
+
+    public OverflowBankService getOverflowBankService() {
+        return overflowBankService;
     }
 
     public PendingPayoutStore getPendingPayoutStore() {

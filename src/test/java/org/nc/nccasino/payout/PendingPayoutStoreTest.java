@@ -42,6 +42,7 @@ class PendingPayoutStoreTest {
     private Nccasino plugin;
     private VaultHook vaultHook;
     private Economy economy;
+    private OverflowBankStore overflowBankStore;
 
     @BeforeEach
     void setUp() {
@@ -53,6 +54,21 @@ class PendingPayoutStoreTest {
         when(plugin.getVaultHook()).thenReturn(vaultHook);
         when(vaultHook.isEconomyAvailable()).thenReturn(true);
         when(vaultHook.getEconomy()).thenReturn(economy);
+
+        // Item payouts are handed over through the overflow bank, so the
+        // store needs a real one to deliver into.
+        org.bukkit.configuration.file.FileConfiguration config =
+            new org.bukkit.configuration.file.YamlConfiguration();
+        config.set(OverflowSettings.PATH_MODE, "BANK");
+        when(plugin.getConfig()).thenReturn(config);
+        org.nc.nccasino.helpers.Preferences preferences =
+            mock(org.nc.nccasino.helpers.Preferences.class);
+        when(preferences.getOverflowPreference()).thenReturn(null);
+        when(plugin.getPreferences(any(UUID.class))).thenReturn(preferences);
+        overflowBankStore = new OverflowBankStore(plugin);
+        when(plugin.getOverflowBankStore()).thenReturn(overflowBankStore);
+        when(plugin.getOverflowBankService())
+            .thenReturn(new OverflowBankService(plugin, overflowBankStore));
     }
 
     @Test
@@ -176,6 +192,7 @@ class PendingPayoutStoreTest {
         Player player = player(playerId);
         PlayerInventory inventory = mock(PlayerInventory.class);
         when(player.getInventory()).thenReturn(inventory);
+        when(inventory.getStorageContents()).thenReturn(new ItemStack[36]);
         when(inventory.addItem(any(ItemStack[].class))).thenReturn(new HashMap<>());
         PendingPayout payout = itemPayout(playerId, "EMERALD", 32);
         PendingPayoutStore store = new PendingPayoutStore(plugin);
@@ -190,7 +207,10 @@ class PendingPayoutStoreTest {
     }
 
     @Test
-    void itemOverflowDropsRemainderAtPlayerLocationInsteadOfLosingIt() {
+    void itemOverflowIsBankedRatherThanDroppedOrLost() {
+        // Before overflow banking this dropped the remainder on the ground,
+        // where it could despawn or be stolen. It is now recorded as a bank
+        // balance the player already owns and can claim when they make room.
         UUID playerId = UUID.randomUUID();
         Player player = player(playerId);
         PlayerInventory inventory = mock(PlayerInventory.class);
@@ -199,16 +219,23 @@ class PendingPayoutStoreTest {
         when(player.getInventory()).thenReturn(inventory);
         when(player.getWorld()).thenReturn(world);
         when(player.getLocation()).thenReturn(location);
-        HashMap<Integer, ItemStack> leftover = new HashMap<>();
-        leftover.put(0, new ItemStack(Material.EMERALD, 7));
-        when(inventory.addItem(any(ItemStack[].class))).thenReturn(leftover);
+        // A completely full inventory: nothing can be handed over directly.
+        ItemStack[] full = new ItemStack[36];
+        for (int i = 0; i < full.length; i++) {
+            full[i] = new ItemStack(Material.COBBLESTONE, 64);
+        }
+        when(inventory.getStorageContents()).thenReturn(full);
         PendingPayoutStore store = new PendingPayoutStore(plugin);
         assertTrue(store.addPendingPayout(itemPayout(playerId, "EMERALD", 32)));
 
-        store.attemptDeliver(player);
+        DeliveryResult result = store.attemptDeliver(player);
 
-        verify(world).dropItemNaturally(eq(location), argThat(item ->
-            item.getType() == Material.EMERALD && item.getAmount() == 7));
+        assertEquals(1, result.delivered().size(),
+            "the pending obligation is fully resolved once the remainder is banked");
+        assertFalse(store.hasPending(playerId));
+        assertEquals(32L, overflowBankStore.balanceOf(
+            playerId, new BankedCurrency(CurrencyMode.STANDARD, "EMERALD", "Casino Token")));
+        verify(world, never()).dropItemNaturally(any(Location.class), any(ItemStack.class));
     }
 
     @Test

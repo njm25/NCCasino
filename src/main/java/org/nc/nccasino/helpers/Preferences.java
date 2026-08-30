@@ -3,6 +3,7 @@ package org.nc.nccasino.helpers;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.localization.LanguageMode;
 import org.nc.nccasino.localization.LocaleIds;
+import org.nc.nccasino.payout.OverflowPreference;
 import java.util.UUID;
 
 public class Preferences {
@@ -16,6 +17,8 @@ public class Preferences {
     private String explicitLanguage;
     private boolean blackjackChairGuidanceSeen;
     private boolean blackjackWagerGuidanceSeen;
+    /** Null means "never chose" -- such a player inherits the server default, and keeps inheriting it if the default later changes. */
+    private OverflowPreference overflowPreference;
     private final Nccasino plugin;
 
     public Preferences(UUID playerId) {
@@ -26,6 +29,7 @@ public class Preferences {
         this.explicitLanguage = null;
         this.blackjackChairGuidanceSeen = false;
         this.blackjackWagerGuidanceSeen = false;
+        this.overflowPreference = null;
         this.plugin = Nccasino.getPlugin(Nccasino.class); // Get plugin instance
     }
 
@@ -116,6 +120,29 @@ public class Preferences {
     public void loadBlackjackGuidanceSeen(boolean chairSeen, boolean wagerSeen) {
         this.blackjackChairGuidanceSeen = chairSeen;
         this.blackjackWagerGuidanceSeen = wagerSeen;
+    }
+
+    /**
+     * This player's Bank/Drop choice for winnings that do not fit, or
+     * {@code null} if they have never chosen. Stored independently of the
+     * server's current overflow mode: if an administrator temporarily forces
+     * BANK and later restores PLAYER_CHOICE, this value comes back rather
+     * than having been overwritten.
+     */
+    public OverflowPreference getOverflowPreference() {
+        return overflowPreference;
+    }
+
+    public void setOverflowPreference(OverflowPreference preference) {
+        this.overflowPreference = preference;
+        plugin.savePreferences();
+    }
+
+    /** Used only by {@link Nccasino#loadPreferences()} to restore the stored choice without re-triggering a save. */
+    public void loadOverflowPreference(String stored) {
+        this.overflowPreference = stored == null || stored.isBlank()
+            ? null
+            : OverflowPreference.parse(stored, null);
     }
 
     public void loadLanguage(

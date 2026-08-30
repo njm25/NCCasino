@@ -21,6 +21,8 @@ import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.currency.VaultCurrencyProvider;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.payout.BankedCurrency;
+import org.nc.nccasino.payout.OverflowBankService;
 
 public abstract class Server extends DealerInventory {
 
@@ -435,11 +437,26 @@ public abstract class Server extends DealerInventory {
     }
 
     protected void dropExcessItems(Player player, int amount, Material currencyMaterial) {
-        while (amount > 0) {
-            int dropAmount = Math.min(amount, 64);
-            player.getWorld().dropItemNaturally(player.getLocation(), new ItemStack(currencyMaterial, dropAmount));
-            amount -= dropAmount;
+        if (amount <= 0) {
+            return;
         }
+        OverflowBankService bank = plugin.getOverflowBankService();
+        if (bank == null || currencyMaterial == null) {
+            // Nothing safer available; fall back to the historical behavior
+            // rather than losing the winnings outright.
+            int remaining = amount;
+            while (remaining > 0) {
+                int dropAmount = Math.min(remaining, 64);
+                player.getWorld().dropItemNaturally(player.getLocation(), new ItemStack(currencyMaterial, dropAmount));
+                remaining -= dropAmount;
+            }
+            return;
+        }
+        // Route the overflow through the shared bank: it re-checks inventory
+        // room, applies the player's Bank/Drop preference, caps how much may
+        // physically hit the ground, and durably banks the rest instead of
+        // leaving winnings to despawn or be stolen.
+        bank.deliver(player, new BankedCurrency(currencyMode, currencyMaterial.name(), currencyName), amount);
     }
 
 	// Thin wrapper around the CurrencyManager to obtain the provider for this server.
