@@ -901,8 +901,9 @@ public class BlackjackMenu extends Menu {
     }
 
     /**
-     * Accepts case-insensitive "unbounded", or an integer >= 2 -- parsing
-     * itself never throws (see {@link BlackjackMaxHandsInputParser}, which
+     * Accepts -1 for unlimited, an integer >= 2, or the legacy
+     * case-insensitive "unbounded" alias -- parsing itself never throws (see
+     * {@link BlackjackMaxHandsInputParser}, which
      * safely rejects an overflowing digit string instead of letting
      * {@code Long.parseLong} propagate an uncaught exception out of this
      * async chat handler), and an invalid message never overwrites the

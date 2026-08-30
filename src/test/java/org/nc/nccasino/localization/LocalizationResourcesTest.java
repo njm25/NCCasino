@@ -2,6 +2,8 @@ package org.nc.nccasino.localization;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
@@ -14,13 +16,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LocalizationResourcesTest {
-    private static final String[] LOCALES = {
-        "en_US",
-        "es_ES",
-        "pt_BR",
-        "de_DE",
-        "fr_FR"
-    };
+    private static final Map<String, LocaleRegistry.LocaleSpec> REGISTRY = loadRegistry();
+    private static final String[] LOCALES = REGISTRY.keySet().toArray(String[]::new);
+
+    @Test
+    void localeRegistryIsTheSourceOfTruthForBundledCatalogs() {
+        assertEquals("en_US", LOCALES[0]);
+        assertTrue(LOCALES.length >= 5);
+    }
 
     @Test
     void everyBundledLanguageContainsEveryEnglishKeyWithMatchingPlaceholders() {
@@ -29,6 +32,7 @@ class LocalizationResourcesTest {
         for (String locale : LOCALES) {
             YamlConfiguration translation = load(locale);
             assertEquals(locale, translation.getString("_meta.locale"));
+            assertEquals(REGISTRY.get(locale).name(), translation.getString("_meta.name"));
 
             for (String key : english.getKeys(true)) {
                 if (key.startsWith("_meta") || !english.isString(key)) {
@@ -137,5 +141,15 @@ class LocalizationResourcesTest {
         return YamlConfiguration.loadConfiguration(
             new InputStreamReader(stream, StandardCharsets.UTF_8)
         );
+    }
+
+    private static Map<String, LocaleRegistry.LocaleSpec> loadRegistry() {
+        try (InputStream stream = LocalizationResourcesTest.class.getClassLoader()
+            .getResourceAsStream(LocaleRegistry.RESOURCE)) {
+            assertNotNull(stream, "Missing classpath resource " + LocaleRegistry.RESOURCE);
+            return LocaleRegistry.load(stream);
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
     }
 }
