@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import org.nc.nccasino.payout.WagerGate;
 
 /**
  * One player's independent Slots machine: a personal 54-slot view backed by
@@ -642,19 +643,19 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
      * spin, before any wager is withdrawn.
      */
     private boolean passesOverflowBankGate() {
-        OverflowBankService bank = plugin.getOverflowBankService();
-        if (bank == null || player == null) {
-            return true;
-        }
-        long remaining = bank.clearForWager(player);
-        if (remaining <= 0) {
-            return true;
-        }
-        denyAction(player, text("slots.bank-blocked", "amount", remaining));
-        return false;
+        // Checked here, before trySpin, so a blocked player never reaches the
+        // debit OR the random outcome generation. attemptDebit re-checks as
+        // defence in depth; this call is what keeps the rejection clean.
+        return WagerGate.allowsWager(plugin, player);
     }
 
     private boolean attemptDebit(long totalBetUnits) {
+        // Universal overflow-bank gate: any banked balance, in any currency,
+        // blocks every new wager. Checked here -- the single point money
+        // actually leaves the player -- so no betting path can bypass it.
+        if (!WagerGate.allowsWager(plugin, player)) {
+            return false;
+        }
         CurrencyProvider provider = getCurrencyProvider();
         if (provider != null) {
             return WagerTransaction.tryWithdraw(provider, player, internalName, (double) totalBetUnits);

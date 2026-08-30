@@ -23,6 +23,7 @@ import org.nc.nccasino.payout.OverflowBankService;
 import org.nc.nccasino.payout.PayoutMessages;
 import org.nc.nccasino.payout.PendingPayout;
 import org.nc.nccasino.payout.PendingPayoutStore;
+import org.nc.nccasino.payout.WagerGate;
 import org.nc.nccasino.session.ExitReason;
 import org.nc.nccasino.session.SessionRegistry;
 
@@ -111,6 +112,7 @@ public class PlayerSessionListener implements Listener {
         RockPaperScissorsMenu.clearPlayerState(playerId);
         SlotsMenu.clearPlayerState(playerId);
         DealerInteractListener.clearActiveAnimation(player);
+        WagerGate.clearPlayerState(playerId);
     }
 
     @EventHandler

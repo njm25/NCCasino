@@ -33,6 +33,7 @@ import org.nc.nccasino.payout.PendingPayout;
 import java.util.*;
 import org.nc.nccasino.payout.BankedCurrency;
 import org.nc.nccasino.payout.OverflowBankService;
+import org.nc.nccasino.payout.WagerGate;
 
 public class BettingTable extends DealerInventory {
     public static final Set<UUID> switchingPlayers = new HashSet<>();
@@ -1398,6 +1399,12 @@ private boolean isValidSlotPage2(int slot) {
 
 	// Removes wager currency; returns true if removal succeeded.
 	private boolean removeWagerFromInventory(Player player, double amount) {
+        // Universal overflow-bank gate: any banked balance, in any currency,
+        // blocks every new wager. Checked here -- the single point money
+        // actually leaves the player -- so no betting path can bypass it.
+        if (!WagerGate.allowsWager(plugin, player)) {
+            return false;
+        }
 		int requiredAmount = org.nc.nccasino.currency.MoneyHelper.toWagerUnits(amount);
 		if (requiredAmount > 0) {
 			CurrencyProvider provider = getCurrencyProvider();

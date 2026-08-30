@@ -44,6 +44,7 @@ import org.nc.nccasino.session.GameTerminationPolicy;
 import org.nc.nccasino.session.TerminationAction;
 import org.nc.nccasino.session.SessionRegistry;
 import org.nc.nccasino.session.TerminableSession;
+import org.nc.nccasino.payout.WagerGate;
 
 public class MinesTable extends DealerInventory implements TerminableSession {
     // Game state management
@@ -1580,6 +1581,13 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 
     private boolean removeWagerFromInventory(Player player, int amount) {
         if (amount == 0) return true; // No need to remove currency for zero wager
+
+        // Universal overflow-bank gate: any banked balance, in any currency,
+        // blocks every new wager. Checked here -- the single point money
+        // actually leaves the player -- so no betting path can bypass it.
+        if (!WagerGate.allowsWager(plugin, player)) {
+            return false;
+        }
 
         CurrencyProvider provider = getCurrencyProvider();
         if (provider != null) {

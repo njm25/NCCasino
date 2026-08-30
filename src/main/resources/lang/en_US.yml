@@ -85,6 +85,7 @@ payout:
   bank-cleared: "&aAll of your banked winnings have been collected."
   bank-empty: "&7You have no banked winnings waiting."
   bank-still-blocked: "&6{amount} winnings are still waiting for inventory space. Make room, then use &e/ncc claim&6 to collect them."
+  wager-blocked: "&cMake room for {amount} banked items before playing again."
 
 cards:
   name: "{rank} of {suit}"
@@ -368,7 +369,6 @@ slots:
   payout-blocked: "&cYour winnings could not be delivered or queued. Click Spin to retry; contact staff if the problem continues."
   payout-blocked-retry: "&7Click to retry the payout."
   payout-banked: "&e{amount} of your winnings did not fit and are waiting for inventory space."
-  bank-blocked: "&cMake room for {amount} banked items before playing again."
   invalid-denomination: "&cThat wager denomination is not configured for this dealer."
   bet-too-large: "&cThat wager is too large to spin with."
   insufficient-funds: "&cYou do not have enough currency to place that bet."

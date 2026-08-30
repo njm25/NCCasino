@@ -52,6 +52,7 @@ import org.nc.nccasino.session.ExitReason;
 import org.nc.nccasino.session.GameTerminationPolicy;
 import org.nc.nccasino.session.SessionRegistry;
 import org.nc.nccasino.session.TerminableSession;
+import org.nc.nccasino.payout.WagerGate;
 
 public class BlackjackInventory extends DealerInventory implements TerminableSession {
 
@@ -6493,6 +6494,13 @@ private void removePlayerData(UUID playerId) {
      */
     private boolean tryRemoveWager(Player player, double amount) {
         if (amount <= 0.0) {
+            return false;
+        }
+
+        // Universal overflow-bank gate: any banked balance, in any currency,
+        // blocks every new wager. Checked here -- the single point money
+        // actually leaves the player -- so no betting path can bypass it.
+        if (!WagerGate.allowsWager(plugin, player)) {
             return false;
         }
         CurrencyProvider provider = getCurrencyProvider();
