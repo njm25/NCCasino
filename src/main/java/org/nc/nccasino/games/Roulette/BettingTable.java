@@ -36,6 +36,10 @@ import org.nc.nccasino.payout.OverflowBankService;
 import org.nc.nccasino.payout.WagerGate;
 import org.nc.nccasino.payout.WagerFunding;
 import org.nc.nccasino.payout.ItemDeliveryOutcome;
+import org.nc.nccasino.budget.Commitment;
+import org.nc.nccasino.budget.DealerBudgetService;
+import org.nc.nccasino.budget.Exposure;
+import org.nc.nccasino.budget.Money;
 
 public class BettingTable extends DealerInventory {
     public static final Set<UUID> switchingPlayers = new HashSet<>();
@@ -55,6 +59,15 @@ public class BettingTable extends DealerInventory {
     private Stack<Pair<String, Integer>> testStack;
     private boolean betsClosed=false;
     private int countdown1=30;
+    /**
+     * The single dealer-budget promise covering this player's whole table,
+     * updated atomically as bets are added -- Roulette bets are not
+     * independent (several can win on one number), so the shared budget must
+     * reason about the entire portfolio, never one bet at a time.
+     */
+    private Commitment budgetCommitment;
+    private final String budgetSessionId = java.util.UUID.randomUUID().toString();
+    private long budgetRoundCounter = 0;
     public BettingTable(Player player, Mob dealer, Nccasino plugin, Stack<Pair<String, Integer>> existingBets, String internalName,RouletteInventory rouletteInventory,int countdown) {
         super(player.getUniqueId(), 54, plugin.getLocalization().text(player, "roulette.table-title"));
         this.countdown1=countdown;
@@ -444,6 +457,11 @@ public class BettingTable extends DealerInventory {
         long totalPayout = evaluation.totalPayout;
 
         final long totalPayoutFinal = totalPayout;
+        // The dealer's books close here, at the moment the result is known --
+        // before delivery, which may still bank or queue the amount. Whether
+        // the player is online only changes how the payout is delivered, not
+        // whether the dealer has already paid it.
+        settlePortfolio(Money.of(totalPayoutFinal));
         Player player = Bukkit.getPlayer(playerId);
 
         if (player != null && player.isOnline()) {
@@ -806,6 +824,9 @@ public class BettingTable extends DealerInventory {
                         player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
                     return;
                 }
+                if (!ensurePortfolioCovered(player, betType, (int) wagerAmount)) {
+                    return;
+                }
                 boolean canBet = usedHeldItem || hasEnoughWager(player, wagerAmount);
 
                 if (canBet) {
@@ -1050,8 +1071,76 @@ private boolean isValidSlotPage2(int slot) {
 
     public void clearAllBetsAndRefund(Player player) {
         long totalRefund = betStack.stream().mapToLong(Pair::getSecond).sum();
+        refundPortfolio(Money.of(totalRefund));
         refundWagerToInventory(player, totalRefund);
         betStack.clear();
+    }
+
+    /**
+     * Checks and, if covered, atomically grows the single portfolio
+     * reservation to include a hypothetical bet of {@code wagerAmount} on
+     * {@code betType}. Denies before any currency moves -- money is only
+     * ever taken from the player after this returns {@code true}.
+     */
+    private boolean ensurePortfolioCovered(Player player, String betType, int wagerAmount) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null) {
+            return true;
+        }
+        Exposure updatedExposure = RouletteLiability.exposureAfterAdding(betStack, betType, wagerAmount);
+        Material material = plugin.getCurrency(internalName);
+        org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
+            currencyMode, material == null ? null : material.name(), currencyName);
+
+        Commitment result;
+        if (budgetCommitment == null) {
+            budgetRoundCounter++;
+            result = budget.reserve(
+                internalName, playerId, "Roulette",
+                budgetSessionId + "-round-" + budgetRoundCounter, currency, updatedExposure);
+        } else {
+            result = budget.increase(internalName, budgetCommitment, updatedExposure, Money.of(wagerAmount));
+        }
+
+        if (!result.isAccepted()) {
+            denyPortfolioBet(player);
+            return false;
+        }
+        budgetCommitment = result;
+        return true;
+    }
+
+    private void denyPortfolioBet(Player player) {
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case STANDARD, VERBOSE -> player.sendMessage(text("roulette.dealer-cannot-cover"));
+            case NONE -> {
+            }
+        }
+        if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+        }
+    }
+
+    /** Pays the round's result and releases the portfolio reservation, exactly once. */
+    private void settlePortfolio(java.math.BigDecimal payout) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null || budgetCommitment == null) {
+            budgetCommitment = null;
+            return;
+        }
+        budget.settle(internalName, budgetCommitment, payout);
+        budgetCommitment = null;
+    }
+
+    /** Returns the stake and releases the portfolio reservation for a cancelled table. */
+    private void refundPortfolio(java.math.BigDecimal stake) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null || budgetCommitment == null) {
+            budgetCommitment = null;
+            return;
+        }
+        budget.refund(internalName, budgetCommitment, stake);
+        budgetCommitment = null;
     }
     /**
      * Handles both small single-bet refunds/undoes and a round's full

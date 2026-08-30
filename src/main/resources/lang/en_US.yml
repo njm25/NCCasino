@@ -515,6 +515,7 @@ roulette:
   inventory-full: "&cNo room for {amount}, dropping..."
   invalid-wager-amount: "&cInvalid wager amount: {amount}"
   item-payout-too-large: "&cThat bet's possible payout is too large for item currency. Lower your wager or spread it across fewer bets."
+  dealer-cannot-cover: "&cThe table cannot cover a win that large right now. Try again later, or reduce your bets."
   spin-results: "&e----- Spin Results -----\n"
   category-header: "&eCategory"
   wager-header: "&bWager"

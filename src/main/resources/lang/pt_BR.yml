@@ -515,6 +515,7 @@ roulette:
   inventory-full: "&cSem espaço para {amount}; soltando..."
   invalid-wager-amount: "&cValor de aposta inválido: {amount}"
   item-payout-too-large: "&cO possível ganho dessa aposta é grande demais para moeda de itens. Reduza sua aposta ou divida-a em menos apostas."
+  dealer-cannot-cover: "&cA mesa não consegue cobrir um prêmio tão alto agora. Tente mais tarde ou reduza suas apostas."
   spin-results: "&e----- Resultados da rodada -----\n"
   category-header: "&eCategoria"
   wager-header: "&bAposta"

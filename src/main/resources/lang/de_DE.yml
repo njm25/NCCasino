@@ -515,6 +515,7 @@ roulette:
   inventory-full: "&cKein Platz für {amount}; wird fallen gelassen..."
   invalid-wager-amount: "&cUngültiger Einsatzbetrag: {amount}"
   item-payout-too-large: "&cDer mögliche Gewinn dieser Wette ist für Item-Währung zu groß. Verringere deinen Einsatz oder verteile ihn auf weniger Wetten."
+  dealer-cannot-cover: "&cDer Tisch kann einen so hohen Gewinn gerade nicht decken. Versuche es später erneut oder verringere deine Einsätze."
   spin-results: "&e----- Drehergebnis -----\n"
   category-header: "&eKategorie"
   wager-header: "&bEinsatz"

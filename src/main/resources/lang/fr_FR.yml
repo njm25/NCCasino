@@ -515,6 +515,7 @@ roulette:
   inventory-full: "&cPas de place pour {amount}, objet déposé..."
   invalid-wager-amount: "&cMontant de mise invalide : {amount}"
   item-payout-too-large: "&cLe gain possible de cette mise est trop élevé pour une monnaie en objets. Réduisez votre mise ou répartissez-la sur moins de paris."
+  dealer-cannot-cover: "&cCette table ne peut pas couvrir un gain aussi élevé pour le moment. Réessayez plus tard ou réduisez vos mises."
   spin-results: "&e----- Résultats du tour -----\n"
   category-header: "&eCatégorie"
   wager-header: "&bMise"
