@@ -27,3 +27,33 @@ payouts:
   # wager. A nonzero bank balance blocks wagering either way; disabling this
   # only means the player must claim manually with /ncc claim first.
   clear-bank-before-wager: true
+
+# Per-dealer bounded-liability budget (Phase 2). Configured per dealer under
+# dealers.<internal-name>.budget -- there is no global default block here
+# because a missing budget section already means UNLIMITED, identical to
+# every dealer's behavior before this feature existed.
+#
+# Example (do not uncomment -- copy into a real dealer's own config block):
+#
+# dealers:
+#   <internal-name>:
+#     budget:
+#       mode: UNLIMITED              # UNLIMITED | LIMITED. Default: UNLIMITED.
+#       underwriting-baseline: 5000  # LIMITED only. The fixed risk capacity;
+#                                    # does not shrink as the dealer loses or
+#                                    # grow as it profits. See
+#                                    # docs/DEALER_BUDGET_SCHEMA.md.
+#       guaranteed-worst-case-rounds: 1   # How many consecutive worst-case
+#                                         # results the baseline must absorb.
+#       refill-mode: NONE            # NONE | ADD | RESET. Default: NONE.
+#       refill-amount: 100           # ADD only: added once per elapsed period.
+#       refill-period: 1h            # ADD, RESET.
+#       refill-cap: 10000            # ADD only, optional.
+#       reset-target: 5000           # RESET only: total live balance the
+#                                    # dealer is set to each period (never
+#                                    # below its active reservations).
+#
+# The live balance and active reservations are NOT stored here -- they are
+# persistent economic data in data/dealer-budgets.yml, documented in
+# docs/DEALER_BUDGET_SCHEMA.md. Editing this block never moves money, and a
+# balance change never rewrites this file.
