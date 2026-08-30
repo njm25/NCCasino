@@ -234,6 +234,7 @@ baccarat:
   all-bets-undone: "&dTous les paris ont été annulés."
   last-bet-undone: "&dLe dernier pari a été annulé."
   insufficient-currency: "&cPas assez de monnaie pour placer le pari."
+  dealer-cannot-cover: "&cCette table ne peut pas couvrir un gain aussi élevé pour le moment. Réessayez plus tard ou réduisez vos mises."
   your-bet: "Votre pari : {amount}"
   rebet-disabled: "&cRejouer désactivé."
   rebet-insufficient: "&cFonds insuffisants pour rejouer. Rejouer désactivé."

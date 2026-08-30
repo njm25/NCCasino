@@ -234,6 +234,7 @@ baccarat:
   all-bets-undone: "&dAlle Einsätze wurden rückgängig gemacht."
   last-bet-undone: "&dDer letzte Einsatz wurde rückgängig gemacht."
   insufficient-currency: "&cNicht genug Währung für diesen Einsatz."
+  dealer-cannot-cover: "&cDer Tisch kann einen so hohen Gewinn gerade nicht decken. Versuche es später erneut oder verringere deine Einsätze."
   your-bet: "Dein Einsatz: {amount}"
   rebet-disabled: "&cErneutes Setzen deaktiviert."
   rebet-insufficient: "&cNicht genug für den erneuten Einsatz. Erneutes Setzen deaktiviert."

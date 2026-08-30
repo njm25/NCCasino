@@ -234,6 +234,7 @@ baccarat:
   all-bets-undone: "&dSe deshicieron todas las apuestas."
   last-bet-undone: "&dSe deshizo la última apuesta."
   insufficient-currency: "&cNo hay suficiente moneda para realizar la apuesta."
+  dealer-cannot-cover: "&cLa mesa no puede cubrir un premio tan grande ahora mismo. Inténtalo más tarde o reduce tus apuestas."
   your-bet: "Tu apuesta: {amount}"
   rebet-disabled: "&cReapuesta desactivada."
   rebet-insufficient: "&cNo tienes suficiente para reapostar. Reapuesta desactivada."

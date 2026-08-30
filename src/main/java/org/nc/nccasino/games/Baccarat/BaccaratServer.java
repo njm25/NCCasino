@@ -286,6 +286,9 @@ public class BaccaratServer extends Server {
 
         if (playerBets.containsKey(playerId)) {
             double totalRefund = playerBets.get(playerId).values().stream().mapToDouble(Double::doubleValue).sum();
+            if (clients.get(playerId) instanceof BaccaratClient baccaratClient) {
+                baccaratClient.refundPortfolio(MoneyHelper.clampNonNegative(MoneyHelper.bd(totalRefund)));
+            }
             creditPlayer(player, totalRefund);
             if (SoundHelper.getSoundSafely("entity.villager.work_cartographer", player) != null)
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER, SoundCategory.MASTER, 1.0f, 1.0f);
@@ -304,6 +307,13 @@ public class BaccaratServer extends Server {
         clearRidingSession(playerId);
         seatedPlayers.remove(playerId);
         seatMap.values().removeIf(id -> id.equals(playerId));
+
+        // A forfeit keeps the stake with the house -- a loss, not a refund --
+        // so the reservation is released with nothing paid, exactly like an
+        // ordinary loss settlement.
+        if (clients.get(playerId) instanceof BaccaratClient baccaratClient) {
+            baccaratClient.settlePortfolio(java.math.BigDecimal.ZERO);
+        }
 
         Map<BaccaratClient.BetOption, Double> bets = playerBets.remove(playerId);
         if (bets != null) {
@@ -745,6 +755,14 @@ public class BaccaratServer extends Server {
     			}
     		}
 
+    		// The dealer's books close here, at the moment the result is known --
+    		// before delivery, which may still queue the amount if the player is
+    		// offline. Whether the player is online only changes how the payout
+    		// is delivered, not whether the dealer has already paid it.
+    		if (clients.get(playerId) instanceof BaccaratClient baccaratClient) {
+    			baccaratClient.settlePortfolio(MoneyHelper.clampNonNegative(MoneyHelper.bd(payout)));
+    		}
+
 			CurrencyProvider provider = plugin.getCurrencyManager() != null ? plugin.getCurrencyManager().getProvider(internalName) : null;
 			boolean isVault = provider != null && provider.getMode() == CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider;
 
@@ -892,6 +910,9 @@ public class BaccaratServer extends Server {
     	}
 
     	double total = bets.values().stream().mapToDouble(Double::doubleValue).sum();
+    	if (clients.get(playerId) instanceof BaccaratClient baccaratClient) {
+    		baccaratClient.refundPortfolio(MoneyHelper.clampNonNegative(MoneyHelper.bd(total)));
+    	}
     	for (Map.Entry<BaccaratClient.BetOption, Double> entry : bets.entrySet()) {
     		double amount = entry.getValue();
     		totalBets.computeIfPresent(entry.getKey(), (k, v) -> (v - amount) <= 0 ? null : v - amount);

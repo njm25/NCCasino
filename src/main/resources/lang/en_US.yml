@@ -234,6 +234,7 @@ baccarat:
   all-bets-undone: "&dAll bets undone."
   last-bet-undone: "&dLast bet undone."
   insufficient-currency: "&cNot enough currency to place bet."
+  dealer-cannot-cover: "&cThe table cannot cover a win that large right now. Try again later, or reduce your bets."
   your-bet: "Your Bet: {amount}"
   rebet-disabled: "&cRebet Disabled."
   rebet-insufficient: "&cNot enough to place rebet. Rebet disabled."

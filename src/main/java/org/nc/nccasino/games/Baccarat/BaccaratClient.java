@@ -31,6 +31,10 @@ import org.nc.nccasino.session.SessionRegistry;
 import org.nc.nccasino.session.TerminableSession;
 import org.nc.nccasino.payout.WagerFunding;
 import org.nc.nccasino.payout.WagerGate;
+import org.nc.nccasino.budget.Commitment;
+import org.nc.nccasino.budget.DealerBudgetService;
+import org.nc.nccasino.budget.Exposure;
+import org.nc.nccasino.budget.Money;
 
 public class BaccaratClient extends Client implements TerminableSession {
     private final int[] playerCardSlots = {10,11,12};  // Left to right
@@ -40,6 +44,15 @@ public class BaccaratClient extends Client implements TerminableSession {
     private int taskId=-1;
     protected final List<BetData> previousBets = new ArrayList<>();
     protected final Map<BetOption, Deque<Double>> betStacks = new HashMap<>();
+    /**
+     * The single dealer-budget promise covering this player's whole Player/
+     * Banker/Tie/pair portfolio, updated atomically as bets are added -- a
+     * pair can pay alongside the main result, so the shared budget must
+     * reason about the entire portfolio at once, never one bet at a time.
+     */
+    private Commitment budgetCommitment;
+    private final String budgetSessionId = java.util.UUID.randomUUID().toString();
+    private long budgetRoundCounter = 0;
     private boolean catchingUp=false;
     protected final List<BetData> betHistory = new ArrayList<>();
      private final Map<Integer, UUID> seatMap = new HashMap<>();
@@ -708,6 +721,9 @@ public class BaccaratClient extends Client implements TerminableSession {
         if (isDraggingCurrency && !WagerGate.allowsWager(plugin, player, WagerFunding.CURSOR)) {
             return;
         }
+        if (!ensurePortfolioCovered(betType, betAmount)) {
+            return;
+        }
 
         betHistory.add(new BetData(betType, betAmount)); // Maintain exact bet order
         betStacks.putIfAbsent(betType, new ArrayDeque<>());
@@ -730,6 +746,76 @@ public class BaccaratClient extends Client implements TerminableSession {
         for (BetOption betType : betStacks.keySet()) {
             updateBetDisplay(betType,((BaccaratServer) server).getTotalBetForType(betType));
         }
+    }
+
+    /**
+     * Checks and, if covered, atomically grows the single portfolio
+     * reservation to include a hypothetical {@code additional} staked on
+     * {@code option}. Denies before any currency moves.
+     */
+    private boolean ensurePortfolioCovered(BetOption option, double additional) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null) {
+            return true;
+        }
+        Map<BetOption, Double> current = new java.util.EnumMap<>(BetOption.class);
+        for (Map.Entry<BetOption, Deque<Double>> entry : betStacks.entrySet()) {
+            current.put(entry.getKey(), entry.getValue().stream().mapToDouble(Double::doubleValue).sum());
+        }
+        Exposure updatedExposure = BaccaratLiability.exposureAfterAdding(current, option, additional);
+        Material material = plugin.getCurrency(internalName);
+        org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
+            currencyMode, material == null ? null : material.name(), currencyName);
+
+        Commitment result;
+        if (budgetCommitment == null) {
+            budgetRoundCounter++;
+            result = budget.reserve(
+                internalName, player.getUniqueId(), "Baccarat",
+                budgetSessionId + "-round-" + budgetRoundCounter, currency, updatedExposure);
+        } else {
+            result = budget.increase(internalName, budgetCommitment, updatedExposure, Money.of(additional));
+        }
+
+        if (!result.isAccepted()) {
+            denyPortfolioBet();
+            return false;
+        }
+        budgetCommitment = result;
+        return true;
+    }
+
+    private void denyPortfolioBet() {
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case STANDARD, VERBOSE -> player.sendMessage(text("baccarat.dealer-cannot-cover"));
+            case NONE -> {
+            }
+        }
+        if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+        }
+    }
+
+    /** Pays the round's result and releases the portfolio reservation, exactly once. */
+    void settlePortfolio(java.math.BigDecimal payout) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null || budgetCommitment == null) {
+            budgetCommitment = null;
+            return;
+        }
+        budget.settle(internalName, budgetCommitment, payout);
+        budgetCommitment = null;
+    }
+
+    /** Returns the stake and releases the portfolio reservation for a cancelled hand. */
+    void refundPortfolio(java.math.BigDecimal stake) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null || budgetCommitment == null) {
+            budgetCommitment = null;
+            return;
+        }
+        budget.refund(internalName, budgetCommitment, stake);
+        budgetCommitment = null;
     }
 
     private void updateBetDisplay(BetOption betType, double totalBet) {
