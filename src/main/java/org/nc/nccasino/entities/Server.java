@@ -456,7 +456,7 @@ public abstract class Server extends DealerInventory {
         // room, applies the player's Bank/Drop preference, caps how much may
         // physically hit the ground, and durably banks the rest instead of
         // leaving winnings to despawn or be stolen.
-        bank.deliver(player, new BankedCurrency(currencyMode, currencyMaterial.name(), currencyName), amount);
+        bank.deliverOrDrop(player, new BankedCurrency(currencyMode, currencyMaterial.name(), currencyName), amount);
     }
 
 	// Thin wrapper around the CurrencyManager to obtain the provider for this server.

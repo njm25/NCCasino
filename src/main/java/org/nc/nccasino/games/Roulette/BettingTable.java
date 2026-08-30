@@ -1151,15 +1151,22 @@ private boolean isValidSlotPage2(int slot) {
     }
 
     /**
-     * Worst-case total payout (across every possible spin result, 0-36)
-     * that STANDARD/item-mode bet placement will allow the current table
-     * to expose a player to. Chosen so a single {@code giveItemChunk} call
-     * for exactly this amount needs at most a few hundred synchronous
-     * {@code addItem} calls (this / 64) -- comfortably instant, and even a
-     * completely full inventory would only need to drop that same handful
-     * of item stacks, not thousands.
+     * The largest single-spin payout item-mode bet placement will let a table
+     * expose a player to, in whole currency units.
+     *
+     * <p>This is now a <em>representation</em> ceiling rather than a physical
+     * one. It was 10,000 because overflow used to fall on the ground, so a
+     * payout bigger than an inventory meant losing winnings to despawn or
+     * theft; bets were refused up front instead. Roulette's delivery now runs
+     * through {@code OverflowBankService}, which banks whatever will not fit,
+     * so inventory size no longer constrains a bet.
+     *
+     * <p>What still constrains it is the delivery path's own arithmetic:
+     * {@link #giveItemChunk} moves whole items through {@code int}-typed
+     * amounts, so a payout beyond {@link Integer#MAX_VALUE} could not be
+     * represented and is refused before any wager is taken.
      */
-    static final long MAX_ITEM_MODE_PAYOUT = 10_000L;
+    static final long MAX_ITEM_MODE_PAYOUT = Integer.MAX_VALUE;
 
     /**
      * Belt-and-suspenders ceiling for the actual item-giving loop in
@@ -1277,7 +1284,7 @@ private boolean isValidSlotPage2(int slot) {
         // room, applies the player's Bank/Drop preference, caps how much may
         // physically hit the ground, and durably banks the rest instead of
         // leaving winnings to despawn or be stolen.
-        bank.deliver(player, new BankedCurrency(currencyMode, currencyMaterial.name(), currencyName), amount);
+        bank.deliverOrDrop(player, new BankedCurrency(currencyMode, currencyMaterial.name(), currencyName), amount);
     }
 
     // CurrencyProvider helper for this dealer/game

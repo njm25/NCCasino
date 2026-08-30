@@ -23,6 +23,7 @@ permissions:
       nccasino.commands.delete: true
       nccasino.commands.help: true
       nccasino.commands.list: true
+      nccasino.commands.overflow: true
       nccasino.commands.reload: true
 
   nccasino.commands.claim:
@@ -44,6 +45,10 @@ permissions:
   nccasino.commands.list:
     description: Allows listing dealers in NCCasino
     default: op
+
+  nccasino.commands.overflow:
+    description: Allows choosing how overflow winnings are handled with /ncc overflow
+    default: true
 
   nccasino.commands.reload:
     description: Allows reloading the NCCasino plugin

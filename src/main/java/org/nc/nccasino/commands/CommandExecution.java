@@ -25,6 +25,7 @@ public class CommandExecution implements CommandExecutor {
         commands.put("list", new ListDealersCommand((Nccasino) plugin));
         commands.put("delete", new DeleteCommand((Nccasino) plugin));
         commands.put("claim", new ClaimCommand(this.plugin));
+        commands.put("overflow", new OverflowCommand(this.plugin));
 
         // Define required permissions for each command
         commandPermissions.put("help", "nccasino.commands.help");
@@ -33,6 +34,7 @@ public class CommandExecution implements CommandExecutor {
         commandPermissions.put("list", "nccasino.commands.list");
         commandPermissions.put("delete", "nccasino.commands.delete");
         commandPermissions.put("claim", "nccasino.commands.claim");
+        commandPermissions.put("overflow", "nccasino.commands.overflow");
     }
 
     @Override

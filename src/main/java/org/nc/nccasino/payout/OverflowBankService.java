@@ -161,6 +161,44 @@ public class OverflowBankService {
     }
 
     /**
+     * {@link #deliver} for callers that have no obligation of their own to
+     * retain -- a one-shot refund or payout with no pending record and no
+     * settlement state machine behind it.
+     *
+     * <p>If the durable bank write fails, whatever is left is physically
+     * dropped as a last resort and logged loudly. That deliberately ignores
+     * the configured drop cap: the cap bounds routine overflow, but the only
+     * alternative here is destroying money the player has already won, which
+     * the design forbids outright. Callers that CAN retain an obligation
+     * (pending payouts, the Slots settlement machine) must use
+     * {@link #deliver} instead and keep the remainder rather than dropping it.
+     */
+    public ItemDeliveryOutcome deliverOrDrop(Player player, BankedCurrency currency, long amount) {
+        ItemDeliveryOutcome outcome = deliver(player, currency, amount);
+        if (outcome.settled()) {
+            return outcome;
+        }
+
+        Material material = resolveMaterial(currency);
+        if (player == null || material == null || player.getWorld() == null) {
+            plugin.getLogger().severe("[NCCasino] " + outcome.unsettled() + " " + currency.storageKey()
+                + " could be neither delivered, banked, nor dropped. This requires manual reconciliation.");
+            return outcome;
+        }
+
+        long dropped = drop(player, material, outcome.unsettled(), maxStackSize(material));
+        plugin.getLogger().severe("[NCCasino] Overflow bank unavailable; dropped " + dropped + " "
+            + currency.storageKey() + " on the ground for " + player.getUniqueId()
+            + " rather than destroying it. The drop cap was intentionally bypassed for this failure path.");
+        return new ItemDeliveryOutcome(
+            outcome.requested(),
+            outcome.toInventory(),
+            outcome.dropped() + dropped,
+            outcome.banked(),
+            outcome.unsettled() - dropped);
+    }
+
+    /**
      * Attempts to hand back everything currently banked for {@code player}.
      * Only inventory space is used -- see the class note on why a claim
      * never drops.

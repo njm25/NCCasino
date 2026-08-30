@@ -53,6 +53,9 @@ import org.nc.nccasino.session.GameTerminationPolicy;
 import org.nc.nccasino.session.SessionRegistry;
 import org.nc.nccasino.session.TerminableSession;
 import org.nc.nccasino.payout.WagerGate;
+import org.nc.nccasino.payout.BankedCurrency;
+import org.nc.nccasino.payout.ItemDeliveryOutcome;
+import org.nc.nccasino.payout.OverflowBankService;
 
 public class BlackjackInventory extends DealerInventory implements TerminableSession {
 
@@ -6549,38 +6552,29 @@ private void removePlayerData(UUID playerId) {
             return true;
         }
         int totalAmount = (int) Math.floor(amount);
-        int fullStacks = totalAmount / 64;
-        int remainder = totalAmount % 64;
-        Material currencyMaterial = plugin.getCurrency(internalName);
-        for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = null;
-            if (provider != null) {
-                stack = provider.createCurrencyStack(internalName, 64);
-            } else {
-                stack = new ItemStack(currencyMaterial, 64);
-            }
-            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
-            if (!leftover.isEmpty()) {
-                for (ItemStack item : leftover.values()) {
-                    player.getWorld().dropItemNaturally(player.getLocation(), item);
-                }
-            }
+        return deliverCurrencyItems(player, totalAmount).settled();
+    }
+
+    /**
+     * Hands whole currency items over through the shared overflow bank rather
+     * than dropping whatever will not fit. Anything beyond the inventory (and
+     * beyond the server's drop cap) is durably banked, so a large payout or
+     * refund can no longer despawn on the floor.
+     *
+     * @return the full accounting -- inventory, dropped, banked and any
+     *     genuinely unsettled remainder the caller still owes
+     */
+    private ItemDeliveryOutcome deliverCurrencyItems(Player recipient, int amount) {
+        if (amount <= 0) {
+            return ItemDeliveryOutcome.nothing();
         }
-        if (remainder > 0) {
-            ItemStack stack = null;
-            if (provider != null) {
-                stack = provider.createCurrencyStack(internalName, remainder);
-            } else {
-                stack = new ItemStack(currencyMaterial, remainder);
-            }
-            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
-            if (!leftover.isEmpty()) {
-                for (ItemStack item : leftover.values()) {
-                    player.getWorld().dropItemNaturally(player.getLocation(), item);
-                }
-            }
+        OverflowBankService bank = plugin.getOverflowBankService();
+        Material material = plugin.getCurrency(internalName);
+        if (bank == null || material == null || recipient == null) {
+            return ItemDeliveryOutcome.allUnsettled(amount);
         }
-        return true;
+        return bank.deliverOrDrop(recipient,
+            new BankedCurrency(currencyMode, material.name(), currencyName), amount);
     }
 
     private void clearPlayerBets(UUID playerId) {
@@ -8121,42 +8115,12 @@ private double payOut(UUID playerId, double totalBet, double multiplier, boolean
         return totalAmount;
     }
 
-    int fullStacks = totalAmount / 64;
-    int remainder = totalAmount % 64;
-    Material currencyMaterial = plugin.getCurrency(internalName);
-    int totalDropped = 0; // Track how many items were dropped
+    ItemDeliveryOutcome delivery = deliverCurrencyItems(player, totalAmount);
+    // Kept as "how much did not fit in the inventory" so the existing
+    // inventory-full notice still reports the right figure -- it is now
+    // banked or capped-dropped rather than scattered on the ground.
+    int totalDropped = (int) Math.min(Integer.MAX_VALUE, delivery.dropped() + delivery.banked());
 
-    for (int i = 0; i < fullStacks; i++) {
-        ItemStack stack = null;
-        if (provider != null) {
-            stack = provider.createCurrencyStack(internalName, 64);
-        } else {
-            stack = new ItemStack(currencyMaterial, 64);
-        }
-        HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
-        if (!leftover.isEmpty()) {
-            for (ItemStack item : leftover.values()) {
-                player.getWorld().dropItemNaturally(player.getLocation(), item);
-                totalDropped += item.getAmount();
-            }
-        }
-    }
-
-    if (remainder > 0) {
-        ItemStack stack = null;
-        if (provider != null) {
-            stack = provider.createCurrencyStack(internalName, remainder);
-        } else {
-            stack = new ItemStack(currencyMaterial, remainder);
-        }
-        HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
-        if (!leftover.isEmpty()) {
-            for (ItemStack item : leftover.values()) {
-                player.getWorld().dropItemNaturally(player.getLocation(), item);
-                totalDropped += item.getAmount();
-            }
-        }
-    }
     if (sendMessage) {
         switch(plugin.getPreferences(playerId).getMessageSetting()){
             case STANDARD:{

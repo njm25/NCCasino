@@ -86,6 +86,10 @@ payout:
   bank-empty: "&7You have no banked winnings waiting."
   bank-still-blocked: "&6{amount} winnings are still waiting for inventory space. Make room, then use &e/ncc claim&6 to collect them."
   wager-blocked: "&cMake room for {amount} banked items before playing again."
+  overflow-usage: "&7Usage: &e/ncc overflow <bank|drop>&7 - choose what happens to winnings that do not fit."
+  overflow-bank-selected: "&aWinnings that do not fit will be held for you until you make room."
+  overflow-drop-selected: "&aWinnings that do not fit will be dropped nearby, up to the server limit. Anything beyond that is still held for you."
+  overflow-forced: "&7The server currently decides this for everyone. Your choice is saved and applies again when player choice returns."
 
 cards:
   name: "{rank} of {suit}"
