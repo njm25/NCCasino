@@ -380,6 +380,8 @@ slots:
   invalid-denomination: "&cThat wager denomination is not configured for this dealer."
   bet-too-large: "&cThat wager is too large to spin with."
   insufficient-funds: "&cYou do not have enough currency to place that bet."
+  dealer-cannot-cover: "&cThis machine cannot cover a win that large right now. Try again later, or play fewer lines."
+  dealer-wager-too-large: "&cThis machine does not take wagers that large. Try a smaller wager or fewer lines."
   symbol-blank: "Blank"
   symbol-cherry: "Cherry"
   symbol-lemon: "Lemon"

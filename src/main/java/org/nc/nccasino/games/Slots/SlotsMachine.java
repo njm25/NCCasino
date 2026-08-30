@@ -38,6 +38,11 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import org.nc.nccasino.payout.WagerGate;
+import org.nc.nccasino.budget.AdmissionDecision;
+import org.nc.nccasino.budget.Commitment;
+import org.nc.nccasino.budget.DealerBudgetService;
+import org.nc.nccasino.budget.Exposure;
+import org.nc.nccasino.budget.Money;
 
 /**
  * One player's independent Slots machine: a personal 54-slot view backed by
@@ -97,6 +102,20 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
 
     private SlotsConfig config;
     private final SlotsSpinController controller = new SlotsSpinController();
+    /**
+     * Distinguishes this table's commitments from those of any earlier
+     * session at the same dealer.
+     *
+     * <p>A reservation id must be stable across retries of one spin and
+     * distinct across everything else. {@code generation} alone gives the
+     * first but not the second: it restarts at zero when the plugin restarts,
+     * so a crash that left spin 1 unsettled would let the next session's spin
+     * 1 silently adopt that stale reservation instead of making its own. The
+     * session nonce closes that, and the orphan is left for
+     * {@code staleReservations} to report rather than being quietly reused.
+     */
+    private final String budgetSessionId = java.util.UUID.randomUUID().toString();
+    private final SlotsUnderwriting underwriting = new DealerBudgetUnderwriting();
     private int denominationIndex = 0;
     private boolean closeFlag = false;
 
@@ -606,10 +625,12 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             isItemMode(),
             config.paytable(),
             SlotsRandomSource.production(),
+            underwriting,
             this::attemptDebit);
 
         switch (attempt) {
-            case SlotsSpinController.SpinAttempt.Rejected rejected -> handleRejectedSpin(rejected.reason());
+            case SlotsSpinController.SpinAttempt.Rejected rejected ->
+                handleRejectedSpin(rejected.reason(), rejected.dealerDecision());
             case SlotsSpinController.SpinAttempt.Accepted accepted -> {
                 controller.beginAnimating();
                 displayedWin = -1L;
@@ -622,12 +643,21 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         }
     }
 
-    private void handleRejectedSpin(SlotsSpinController.RejectReason reason) {
+    private void handleRejectedSpin(
+        SlotsSpinController.RejectReason reason, AdmissionDecision dealerDecision) {
+
         String key = switch (reason) {
             case NOT_READY -> "slots.spin-locked";
             case INVALID_DENOMINATION -> "slots.invalid-denomination";
             case WAGER_OVERFLOW, BET_TOO_LARGE_FOR_MODE -> "slots.bet-too-large";
             case INSUFFICIENT_FUNDS -> "slots.insufficient-funds";
+            // The machine is short, not the player. Saying "you cannot afford
+            // this" would send them to top up a balance that is already fine.
+            // A wager over the machine's fixed tier will never be accepted, so
+            // it must not be reported as something to retry later.
+            case DEALER_CANNOT_COVER -> dealerDecision == AdmissionDecision.EXCEEDS_RISK_TIER
+                ? "slots.dealer-wager-too-large"
+                : "slots.dealer-cannot-cover";
         };
         denyAction(player, text(key));
     }
@@ -914,7 +944,8 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         long payout = controller.pendingPayoutAmount();
         SlotsSettlementResult result = controller.settle(
             this::creditPlayerDirect,
-            amount -> queuePayout(amount, PayoutMessages.committedResultContext("Slots")));
+            amount -> queuePayout(amount, PayoutMessages.committedResultContext("Slots")),
+            underwriting);
         reportSettlement(result, payout);
     }
 
@@ -1087,7 +1118,15 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             String context = reason == ExitReason.PLUGIN_DISABLE
                 ? PayoutMessages.committedResultContext("Slots")
                 : PayoutMessages.disconnectedMidGameContext("Slots");
+            // The result stands and the payout is preserved, so the dealer's
+            // books close here too. Idempotent: if the round had already
+            // settled normally, there is no open commitment left to settle.
+            controller.settleBudgetOnTermination(underwriting);
             queuePayoutDurableOnly(controller.pendingPayoutAmount(), context);
+        } else {
+            // Nothing is owed -- a pregame exit, an already-resolved round, or
+            // a forfeit. Release any promise so the funds are not stranded.
+            controller.settleBudgetOnTermination(underwriting);
         }
         // FORFEIT (kicked): the debited stake stays with the house, nothing to give back.
         // NO_ACTION: nothing was owed (pregame) or it was already resolved through normal play.
@@ -1130,6 +1169,52 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
                     + ", currencyMode=" + currencyMode + ", context=" + context
                     + ". It could not be delivered live or durably queued and the client is terminating.");
             }
+        }
+    }
+
+    /**
+     * Binds the pure spin controller to this dealer's shared budget.
+     *
+     * <p>Every method short-circuits for an UNLIMITED dealer, which is every
+     * dealer until an administrator opts one in -- so an ordinary server runs
+     * exactly the code it ran before Phase 2.
+     */
+    private final class DealerBudgetUnderwriting implements SlotsUnderwriting {
+
+        @Override
+        public Commitment underwrite(long totalBetUnits, long maxPossiblePayout) {
+            DealerBudgetService budget = plugin.getDealerBudgetService();
+            if (budget == null) {
+                return Commitment.forUnlimitedDealer();
+            }
+            Material material = plugin.getCurrency(internalName);
+            return budget.reserve(
+                internalName,
+                playerId,
+                "Slots",
+                budgetSessionId + "-spin-" + (controller.generation() + 1),
+                new BankedCurrency(currencyMode, material == null ? null : material.name(), currencyName),
+                Exposure.of(totalBetUnits, maxPossiblePayout));
+        }
+
+        @Override
+        public void cancel(Commitment commitment, long totalBetUnits) {
+            DealerBudgetService budget = plugin.getDealerBudgetService();
+            if (budget == null || commitment == null) {
+                return;
+            }
+            // Paying the stake back out of the dealer exactly reverses the
+            // credit taken when the commitment was accepted.
+            budget.refund(internalName, commitment, Money.of(totalBetUnits));
+        }
+
+        @Override
+        public void settle(Commitment commitment, long payout) {
+            DealerBudgetService budget = plugin.getDealerBudgetService();
+            if (budget == null || commitment == null) {
+                return;
+            }
+            budget.settle(internalName, commitment, Money.of(payout));
         }
     }
 

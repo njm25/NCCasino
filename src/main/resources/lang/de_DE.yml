@@ -380,6 +380,8 @@ slots:
   invalid-denomination: "&cDieser Einsatzwert ist für diesen Dealer nicht konfiguriert."
   bet-too-large: "&cDieser Einsatz ist zu hoch zum Drehen."
   insufficient-funds: "&cDu hast nicht genug Währung für diesen Einsatz."
+  dealer-cannot-cover: "&cDieser Automat kann einen so hohen Gewinn gerade nicht decken. Versuche es später noch einmal oder spiele weniger Linien."
+  dealer-wager-too-large: "&cDieser Automat nimmt keine so hohen Einsätze an. Setze weniger oder spiele weniger Linien."
   symbol-blank: "Leerfeld"
   symbol-cherry: "Kirsche"
   symbol-lemon: "Zitrone"

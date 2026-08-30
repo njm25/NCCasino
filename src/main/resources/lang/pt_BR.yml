@@ -380,6 +380,8 @@ slots:
   invalid-denomination: "&cEsse valor de aposta não está configurado para este crupiê."
   bet-too-large: "&cEssa aposta é alta demais para girar."
   insufficient-funds: "&cVocê não tem moeda suficiente para fazer essa aposta."
+  dealer-cannot-cover: "&cEsta máquina não consegue cobrir um prêmio tão alto agora. Tente mais tarde ou jogue menos linhas."
+  dealer-wager-too-large: "&cEsta máquina não aceita apostas tão altas. Aposte menos ou jogue menos linhas."
   symbol-blank: "Vazio"
   symbol-cherry: "Cereja"
   symbol-lemon: "Limão"

@@ -1,5 +1,8 @@
 package org.nc.nccasino.games.Slots;
 
+import org.nc.nccasino.budget.AdmissionDecision;
+import org.nc.nccasino.budget.Commitment;
+
 import java.util.function.LongPredicate;
 
 /**
@@ -51,14 +54,32 @@ public final class SlotsSpinController {
         INVALID_DENOMINATION,
         WAGER_OVERFLOW,
         BET_TOO_LARGE_FOR_MODE,
-        INSUFFICIENT_FUNDS
+        INSUFFICIENT_FUNDS,
+        /**
+         * The dealer cannot cover this spin's worst case. Distinct from
+         * {@link #INSUFFICIENT_FUNDS}, which is about the <em>player's</em>
+         * balance -- conflating them would tell a player to top up when the
+         * machine is the one that is short.
+         */
+        DEALER_CANNOT_COVER
     }
 
     public sealed interface SpinAttempt permits SpinAttempt.Accepted, SpinAttempt.Rejected {
         record Accepted(SlotsOutcome outcome, long totalBetUnits, long payout, long generation) implements SpinAttempt {
         }
 
-        record Rejected(RejectReason reason) implements SpinAttempt {
+        /**
+         * @param dealerDecision the budget's own verdict when
+         *     {@code reason} is {@link RejectReason#DEALER_CANNOT_COVER}, and
+         *     {@code null} otherwise. Carried separately so a permanently
+         *     over-tier wager and a temporary shortage stay distinguishable in
+         *     player messaging -- telling a player to "try again later" about a
+         *     wager this machine will never accept is its own small cruelty.
+         */
+        record Rejected(RejectReason reason, AdmissionDecision dealerDecision) implements SpinAttempt {
+            public Rejected(RejectReason reason) {
+                this(reason, null);
+            }
         }
     }
 
@@ -67,6 +88,12 @@ public final class SlotsSpinController {
     private SlotsOutcome currentOutcome;
     private long pendingPayoutAmount = 0;
     private long lastWinAmount = -1;
+    /**
+     * The dealer-budget promise backing the committed spin, held from
+     * underwriting until it is settled exactly once. Null between rounds and
+     * after settlement, which is what stops a retry touching the budget again.
+     */
+    private Commitment commitment;
 
     public SlotsSessionState state() {
         return state;
@@ -86,6 +113,11 @@ public final class SlotsSpinController {
 
     public long lastWinAmount() {
         return lastWinAmount;
+    }
+
+    /** The open dealer-budget promise, or {@code null} when nothing is owed. */
+    public Commitment commitment() {
+        return commitment;
     }
 
     public boolean isReadyForSpin() {
@@ -108,6 +140,11 @@ public final class SlotsSpinController {
      * @param paytable the multipliers derived from this dealer's configured
      *     house edge; also supplies the worst-case exposure probe
      * @param rng the (production or test) randomness source for outcome generation
+     * @param underwriting the dealer-budget gate. Consulted after the cheap
+     *     validations but strictly before the player is debited and before any
+     *     outcome exists, so a dealer that cannot cover the worst case refuses
+     *     the spin rather than discovering the problem once a jackpot is
+     *     already committed.
      * @param debit attempts to withdraw the given total wager; returning
      *     {@code false} means insufficient funds and nothing was withdrawn
      */
@@ -118,6 +155,25 @@ public final class SlotsSpinController {
         boolean itemMode,
         SlotsPaytable paytable,
         SlotsRandomSource rng,
+        LongPredicate debit
+    ) {
+        return trySpin(denomUnits, columns, activeLines, itemMode, paytable, rng,
+            SlotsUnderwriting.unlimited(), debit);
+    }
+
+    /**
+     * {@link #trySpin} against an UNLIMITED dealer, which is how every dealer
+     * behaves until an administrator opts one into a budget. Exists so the
+     * pre-Phase-2 behavior stays directly expressible and directly testable.
+     */
+    public SpinAttempt trySpin(
+        long denomUnits,
+        int columns,
+        int activeLines,
+        boolean itemMode,
+        SlotsPaytable paytable,
+        SlotsRandomSource rng,
+        SlotsUnderwriting underwriting,
         LongPredicate debit
     ) {
         if (!isReadyForSpin()) {
@@ -139,14 +195,30 @@ public final class SlotsSpinController {
             return new SpinAttempt.Rejected(RejectReason.BET_TOO_LARGE_FOR_MODE);
         }
 
+        // The dealer commits before the player does, and before any random
+        // result exists. Ordered this way round because unwinding the dealer
+        // side is a clean bookkeeping reversal, whereas refunding a player who
+        // has already been debited is not.
+        Commitment accepted = underwriting.underwrite(totalBetUnits, maxPossiblePayout);
+        if (accepted == null || !accepted.isAccepted()) {
+            return new SpinAttempt.Rejected(
+                RejectReason.DEALER_CANNOT_COVER,
+                accepted == null ? null : accepted.decision());
+        }
+
         if (state == SlotsSessionState.RESOLVED) {
             state = SlotsStateMachine.transition(state, SlotsSessionState.IDLE);
         }
 
         if (!debit.test(totalBetUnits)) {
+            // The player could not pay. Hand the stake back off the dealer's
+            // books and release the promise, or the dealer would be left
+            // holding money it never actually received.
+            underwriting.cancel(accepted, totalBetUnits);
             return new SpinAttempt.Rejected(RejectReason.INSUFFICIENT_FUNDS);
         }
 
+        commitment = accepted;
         state = SlotsStateMachine.transition(state, SlotsSessionState.DEBIT_ACCEPTED);
         generation++;
         SlotsOutcome outcome = SlotsSpinGenerator.generate(columns, rng);
@@ -171,10 +243,24 @@ public final class SlotsSpinController {
      * is cleared and the table moves to {@link SlotsSessionState#RESOLVED}.
      */
     public SlotsSettlementResult settle(PayoutDelivery liveDeliver, LongPredicate durableQueue) {
+        return settle(liveDeliver, durableQueue, SlotsUnderwriting.unlimited());
+    }
+
+    /** {@link #settle} with the dealer-budget side made explicit. */
+    public SlotsSettlementResult settle(
+        PayoutDelivery liveDeliver, LongPredicate durableQueue, SlotsUnderwriting underwriting) {
+
         state = SlotsStateMachine.transition(state, SlotsSessionState.SETTLING);
         // Captured before resolution: the win the player actually scored is
         // what gets displayed, not whatever remains undelivered afterwards.
         long committed = pendingPayoutAmount;
+
+        // The dealer's books close here, on the awarded amount, before any
+        // delivery is attempted. Whether the win reaches the inventory, the
+        // overflow bank, or a pending record is a delivery question; the money
+        // has left the dealer either way, and exactly once.
+        settleBudget(underwriting, committed);
+
         SlotsSettlementResult result = resolvePayout(liveDeliver, durableQueue);
         lastWinAmount = committed;
         applySettlementResult(result);
@@ -182,16 +268,46 @@ public final class SlotsSpinController {
     }
 
     /**
+     * Closes the dealer's books for the committed round and drops the promise.
+     *
+     * <p>Clearing {@link #commitment} is what guarantees the budget is touched
+     * once: every later path -- a settlement retry, a termination, a duplicated
+     * callback -- finds nothing to settle. The store's idempotent reservation
+     * id is the second line of defence, not the first.
+     */
+    private void settleBudget(SlotsUnderwriting underwriting, long payout) {
+        if (commitment == null) {
+            return;
+        }
+        Commitment closing = commitment;
+        commitment = null;
+        underwriting.settle(closing, payout);
+    }
+
+    /**
+     * Closes the dealer's books for a round being abandoned at shutdown or
+     * disconnect, where the payout is preserved rather than replayed. Safe to
+     * call when nothing is open.
+     */
+    public void settleBudgetOnTermination(SlotsUnderwriting underwriting) {
+        settleBudget(underwriting, pendingPayoutAmount);
+    }
+
+    /**
      * Re-attempts a previously {@link SlotsSettlementResult#FAILED}
      * settlement without re-deriving or re-crediting anything already
      * accounted for -- the retained {@link #pendingPayoutAmount()} is the
      * single source of truth for what is still owed, so a retry can never
-     * pay twice.
+     * pay twice. It has no dealer-budget effect either: the dealer was
+     * debited when the result was awarded, not when it was delivered.
      */
     public SlotsSettlementResult retrySettlement(PayoutDelivery liveDeliver, LongPredicate durableQueue) {
         if (state != SlotsSessionState.SETTLEMENT_FAILED) {
             throw new IllegalStateException("retrySettlement called outside SETTLEMENT_FAILED: " + state);
         }
+        // Deliberately no budget call: the dealer was debited when the payout
+        // was awarded. This is a delivery retry, and delivery is not an
+        // economic event.
         SlotsSettlementResult result = resolvePayout(liveDeliver, durableQueue);
         applySettlementResult(result);
         return result;
