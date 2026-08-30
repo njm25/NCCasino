@@ -33,19 +33,8 @@ public final class LocalizationService {
     public static final String ENGLISH = "en_US";
 
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z][A-Za-z0-9_-]*)}");
-    private static final Map<String, String> SUPPORTED;
-
-    static {
-        Map<String, String> supported = new LinkedHashMap<>();
-        supported.put("en_US", "English");
-        supported.put("es_ES", "Español");
-        supported.put("pt_BR", "Português (Brasil)");
-        supported.put("de_DE", "Deutsch");
-        supported.put("fr_FR", "Français");
-        SUPPORTED = Collections.unmodifiableMap(supported);
-    }
-
     private final Nccasino plugin;
+    private Map<String, String> supported = Map.of(ENGLISH, "English");
     private final Map<String, YamlConfiguration> bundled = new LinkedHashMap<>();
     private final Map<String, YamlConfiguration> overrides = new LinkedHashMap<>();
     private String serverDefault = ENGLISH;
@@ -57,6 +46,7 @@ public final class LocalizationService {
     public void load() {
         bundled.clear();
         overrides.clear();
+        loadLocaleRegistry();
 
         File languageDirectory = new File(plugin.getDataFolder(), "lang");
         try {
@@ -65,7 +55,7 @@ public final class LocalizationService {
             plugin.getLogger().log(Level.SEVERE, "Could not create NCCasino lang directory.", exception);
         }
 
-        for (String locale : SUPPORTED.keySet()) {
+        for (String locale : supported.keySet()) {
             loadBundled(locale);
             File external = new File(languageDirectory, locale + ".yml");
             if (!external.exists()) {
@@ -83,7 +73,7 @@ public final class LocalizationService {
         String configured = LocaleIds.normalize(
             plugin.getConfig().getString("language.default", ENGLISH)
         );
-        if (configured == null || !SUPPORTED.containsKey(configured)) {
+        if (configured == null || !supported.containsKey(configured)) {
             plugin.getLogger().warning("Unsupported language.default; falling back to " + ENGLISH + ".");
             serverDefault = ENGLISH;
         } else {
@@ -102,14 +92,14 @@ public final class LocalizationService {
     }
 
     public Map<String, String> supportedLanguages() {
-        return SUPPORTED;
+        return supported;
     }
 
     public String effectiveLocale(UUID playerId) {
         Preferences preferences = plugin.getPreferences(playerId);
         if (preferences.getLanguageMode() == LanguageMode.EXPLICIT) {
             String explicit = preferences.getExplicitLanguage();
-            if (explicit != null && SUPPORTED.containsKey(explicit)) {
+            if (explicit != null && supported.containsKey(explicit)) {
                 return explicit;
             }
         }
@@ -136,7 +126,7 @@ public final class LocalizationService {
 
     public String text(String locale, String key, Map<String, ?> placeholders) {
         String normalized = LocaleIds.normalize(locale);
-        if (normalized == null || !SUPPORTED.containsKey(normalized)) {
+        if (normalized == null || !supported.containsKey(normalized)) {
             normalized = ENGLISH;
         }
 
@@ -221,6 +211,23 @@ public final class LocalizationService {
 
     private static String value(YamlConfiguration configuration, String key) {
         return configuration != null ? configuration.getString(key) : null;
+    }
+
+    private void loadLocaleRegistry() {
+        try (InputStream stream = plugin.getResource(LocaleRegistry.RESOURCE)) {
+            Map<String, String> names = new LinkedHashMap<>();
+            for (LocaleRegistry.LocaleSpec locale : LocaleRegistry.load(stream).values()) {
+                names.put(locale.id(), locale.name());
+            }
+            supported = Collections.unmodifiableMap(names);
+        } catch (IOException | IllegalArgumentException exception) {
+            plugin.getLogger().log(
+                Level.SEVERE,
+                "Could not load the locale registry; only English will be available.",
+                exception
+            );
+            supported = Map.of(ENGLISH, "English");
+        }
     }
 
     private String validValue(YamlConfiguration configuration, String key) {

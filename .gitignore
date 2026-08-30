@@ -8,3 +8,6 @@
 config.txt
 /.vscode
 /.env
+
+# Generated localization candidates, comparisons, and review artifacts are local-only.
+/tools/localization/benchmarks/

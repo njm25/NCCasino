@@ -50,6 +50,22 @@ java {
     toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
 }
 
+sourceSets {
+    localizationTools {
+        java.srcDir 'src/localizationTools/java'
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+configurations {
+    localizationToolsImplementation.extendsFrom compileOnly
+}
+
+dependencies {
+    testImplementation sourceSets.localizationTools.output
+}
+
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 
@@ -70,6 +86,35 @@ tasks.test {
     // an OutOfMemoryError inside ByteBuddy's mock generation, not as a test
     // assertion failure, so it is easy to misread as a broken test.
     forkEvery = 4
+}
+
+tasks.register('localizationCheck', JavaExec) {
+    group = 'localization'
+    description = 'Validates bundled translations without making API calls.'
+    classpath = sourceSets.localizationTools.runtimeClasspath
+    mainClass = 'org.nc.nccasino.localization.tools.LocalizationCli'
+    args 'check'
+    if (providers.gradleProperty('locales').isPresent()) {
+        args '--locales', providers.gradleProperty('locales').get()
+    }
+}
+
+tasks.register('localizationCandidateCheck', JavaExec) {
+    group = 'localization'
+    description = 'Strictly validates one local candidate catalog without making API calls.'
+    classpath = sourceSets.localizationTools.runtimeClasspath
+    mainClass = 'org.nc.nccasino.localization.tools.LocalizationCli'
+    doFirst {
+        if (!providers.gradleProperty('locale').isPresent()
+            || !providers.gradleProperty('candidate').isPresent()) {
+            throw new GradleException(
+                'localizationCandidateCheck requires -Plocale=<id> and -Pcandidate=<path>.'
+            )
+        }
+        args 'check-candidate',
+            '--locale', providers.gradleProperty('locale').get(),
+            '--candidate', providers.gradleProperty('candidate').get()
+    }
 }
 
 processResources {

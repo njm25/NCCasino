@@ -18,7 +18,13 @@ import org.junit.jupiter.api.Test;
 class BlackjackMaxHandsInputParserTest {
 
     @Test
-    void unboundedIsAcceptedCaseInsensitively() {
+    void negativeOneMapsToUnboundedConfigValue() {
+        assertEquals(Optional.of("UNBOUNDED"), BlackjackMaxHandsInputParser.parse("-1"));
+        assertEquals(Optional.of("UNBOUNDED"), BlackjackMaxHandsInputParser.parse("  -1  "));
+    }
+
+    @Test
+    void legacyUnboundedAliasRemainsAcceptedCaseInsensitively() {
         assertEquals(Optional.of("UNBOUNDED"), BlackjackMaxHandsInputParser.parse("unbounded"));
         assertEquals(Optional.of("UNBOUNDED"), BlackjackMaxHandsInputParser.parse("UNBOUNDED"));
         assertEquals(Optional.of("UNBOUNDED"), BlackjackMaxHandsInputParser.parse("UnBounded"));

@@ -1,6 +1,6 @@
 language:
   # Language inherited by players who have not explicitly selected one.
-  # Supported: en_US, es_ES, pt_BR, de_DE, fr_FR
+  # Supported locales are declared in the bundled lang/locales.yml registry.
   default: en_US
 
 payouts:

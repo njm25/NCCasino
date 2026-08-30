@@ -40,11 +40,6 @@ public abstract class Menu extends DealerInventory {
         MESSAGES,
         LANGUAGE,
         LANGUAGE_SERVER_DEFAULT,
-        LANGUAGE_ENGLISH,
-        LANGUAGE_SPANISH,
-        LANGUAGE_PORTUGUESE,
-        LANGUAGE_GERMAN,
-        LANGUAGE_FRENCH,
 
         // Player menu
         PREFERENCES,
