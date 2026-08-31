@@ -563,6 +563,7 @@ blackjack:
   drew-card: "&aVous avez tiré un {rank}."
   stood: "&9Vous restez."
   insufficient-funds: "&cFonds insuffisants."
+  dealer-cannot-cover: "&cLe croupier ne peut pas couvrir un gain aussi élevé pour le moment. Réessayez plus tard ou réduisez votre mise."
   insufficient-double-down: "&cFonds insuffisants pour doubler."
   doubled-down: "&9Vous avez doublé."
   already-seated: "&cVous êtes déjà assis"

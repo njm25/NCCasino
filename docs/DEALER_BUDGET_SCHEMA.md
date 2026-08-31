@@ -213,3 +213,36 @@ warning and never rewrites the stored config value.
 per-level comparison — `SlotsVarianceStats` exists as ready-to-render data for
 that, but adding it to `SlotsInventory` or the admin settings menu is a GUI
 change requiring separate approval per the design's GUI-approval rule.
+
+## Blackjack: one reservation per hand, not per portfolio
+
+Blackjack differs from Roulette/Baccarat (one portfolio reservation) and
+Mines/Dragon Descent/the chain games (one reservation for the whole session):
+a seat can hold several simultaneously-open hands after a split, each with
+its own independent card sequence and its own independent settlement. So
+Blackjack reserves **one commitment per `BlackjackHand.getHandId()`**, plus a
+separate one for insurance (a side bet independent of the hand outcome).
+
+- **Opening wager**: reserved while chips are still being added, keyed by the
+  player (no hand exists yet) — moved onto the hand's own id the instant
+  `ensureActiveHand` creates it (`BlackjackInventory.claimPendingOpeningCommitment`).
+- **Split**: opens a brand-new reservation for the sibling hand
+  (`BlackjackLiability.splitHand`) — never grows the hand it split from,
+  which keeps its own reservation exactly as it was.
+- **Double**: grows the acting hand's existing reservation
+  (`BlackjackLiability.doubledHand`) — a doubled hand can never be a
+  natural (three cards), so its ceiling is lower than a fresh hand's would be.
+- **Insurance**: its own reservation, independent of the hand — a hand and its
+  insurance can both pay in the same round.
+- **Settlement**: exactly one call per hand, in `settleHandOutcome`, using
+  `hand.getWager() * outcome.getMultiplier()` — this single expression is
+  correct for all five outcomes (2.5x blackjack, 2x win, 1x push, 0x
+  loss/bust) because `BlackjackOutcome`'s multipliers already encode exactly
+  that. Insurance settles separately in `payInsuranceWinners`/
+  `forfeitInsuranceStakes`.
+- **Abandonment** (kick, voluntary leave, disconnect-refund, shoe-exhaustion
+  abort): every open hand and insurance reservation for the affected seat(s)
+  releases through one shared helper, `releaseAllBudgetCommitments` — paying
+  each its own real stake back on a refund, or nothing on a forfeit. A
+  disconnect that can still ride to a real result (`RIDE_TO_RESULT`) touches
+  nothing; the round resolves normally into `settleHandOutcome` on schedule.

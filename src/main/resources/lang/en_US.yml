@@ -563,6 +563,7 @@ blackjack:
   drew-card: "&aYou drew a {rank}."
   stood: "&9You stood."
   insufficient-funds: "&cNot enough funds."
+  dealer-cannot-cover: "&cThe dealer cannot cover a win that large right now. Try again later, or lower your wager."
   insufficient-double-down: "&cNot enough funds for double down."
   doubled-down: "&9You doubled down."
   already-seated: "&cYou're sitting buster"

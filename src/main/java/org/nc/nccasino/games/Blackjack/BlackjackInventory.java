@@ -239,6 +239,29 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     /** Players who took insurance, and how much they staked (already debited) -- paid out 2:1+stake only if the dealer's peek finds blackjack. */
     private final Map<UUID, Double> insuranceStakes = new HashMap<>();
     /**
+     * The single dealer-budget promise covering one seat's opening
+     * wager while it is still being built up across possibly several chip
+     * commits, before {@link #ensureActiveHand} creates the
+     * {@link BlackjackHand} it belongs to. Moved into {@link #handBudgetCommitments}
+     * under that hand's stable id the moment the hand exists -- see
+     * {@link #claimPendingOpeningCommitment}.
+     */
+    private final Map<UUID, org.nc.nccasino.budget.Commitment> pendingOpeningBudgetCommitment = new HashMap<>();
+    /**
+     * One dealer-budget promise per live {@link BlackjackHand}, keyed by
+     * its stable {@link BlackjackHand#getHandId()} -- required because a
+     * split can leave one player holding several simultaneously-open
+     * hands, each with its own independent exposure and its own
+     * independent settlement at round end.
+     */
+    private final Map<Long, org.nc.nccasino.budget.Commitment> handBudgetCommitments = new HashMap<>();
+    /** One dealer-budget promise per player who currently has insurance down this round. */
+    private final Map<UUID, org.nc.nccasino.budget.Commitment> insuranceBudgetCommitments = new HashMap<>();
+    private final String budgetSessionId = java.util.UUID.randomUUID().toString();
+    private long budgetRoundCounter = 0;
+    /** Transient handoff between ensureSplitHandCovered and claimPendingSplitCommitment for the sibling being created right now. */
+    private org.nc.nccasino.budget.Commitment pendingSplitBudgetCommitment;
+    /**
      * Every eligible player's exact offered insurance cost, computed and
      * stored exactly once per player when the offer is created (see
      * {@link #beginInsurancePhase}) -- never recomputed at display,
@@ -766,6 +789,243 @@ private void registerListener() {
     }
 
     /**
+     * Checks and, if covered, atomically opens or grows a seat's pending
+     * opening-wager reservation to include one more chip commit. Denies
+     * before any currency moves. Not yet associated with a hand -- see
+     * {@link #claimPendingOpeningCommitment}, which happens once one
+     * actually exists.
+     */
+    private boolean ensureOpeningWagerCovered(Player player, UUID playerId, double newTotalWager) {
+        org.nc.nccasino.budget.DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null) {
+            return true;
+        }
+        org.nc.nccasino.budget.Exposure updatedExposure =
+            org.nc.nccasino.games.Blackjack.BlackjackLiability.openingHand(newTotalWager);
+
+        org.nc.nccasino.budget.Commitment existing = pendingOpeningBudgetCommitment.get(playerId);
+        org.nc.nccasino.budget.Commitment result;
+        if (existing == null) {
+            budgetRoundCounter++;
+            Material material = plugin.getCurrency(internalName);
+            org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
+                currencyMode, material == null ? null : material.name(), currencyName);
+            result = budget.reserve(
+                internalName, playerId, "Blackjack",
+                budgetSessionId + "-open-" + budgetRoundCounter, currency, updatedExposure);
+        } else {
+            result = budget.increase(internalName, existing, updatedExposure, org.nc.nccasino.budget.Money.ZERO);
+        }
+
+        if (!result.isAccepted()) {
+            switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                case STANDARD, VERBOSE -> player.sendMessage(text(player, "blackjack.dealer-cannot-cover"));
+                case NONE -> {
+                }
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            return false;
+        }
+        pendingOpeningBudgetCommitment.put(playerId, result);
+        return true;
+    }
+
+    /** Moves a fully-built opening-wager reservation onto the hand it was building toward, the moment that hand exists. */
+    private void claimPendingOpeningCommitment(UUID playerId, BlackjackHand hand) {
+        org.nc.nccasino.budget.Commitment commitment = pendingOpeningBudgetCommitment.remove(playerId);
+        if (commitment != null) {
+            handBudgetCommitments.put(hand.getHandId(), commitment);
+        }
+    }
+
+    /**
+     * Releases a pregame opening-wager reservation that will never become a
+     * hand -- a full undo-all, or leaving the chair before the deal. No hand
+     * exists yet at this point, so there is nothing in {@link #handBudgetCommitments}
+     * to touch.
+     *
+     * @param refundedStake the actual stake being handed back to the player
+     *     (never the reservation's gross-payout ceiling, which is a
+     *     different, larger number)
+     */
+    private void releasePendingOpeningBudgetCommitment(UUID playerId, double refundedStake) {
+        org.nc.nccasino.budget.Commitment commitment = pendingOpeningBudgetCommitment.remove(playerId);
+        if (commitment == null) {
+            return;
+        }
+        org.nc.nccasino.budget.DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null) {
+            return;
+        }
+        budget.settle(internalName, commitment, org.nc.nccasino.budget.Money.of(refundedStake));
+    }
+
+    /**
+     * Checks and, if covered, opens a brand-new reservation for a split
+     * sibling hand -- never an increase of the hand it split from, which
+     * keeps its own reservation exactly as it was. Denies before the
+     * split debit moves any currency.
+     */
+    private boolean ensureSplitHandCovered(Player player, UUID playerId, double wager) {
+        org.nc.nccasino.budget.DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null) {
+            return true;
+        }
+        org.nc.nccasino.budget.Exposure exposure =
+            org.nc.nccasino.games.Blackjack.BlackjackLiability.splitHand(wager, split21IsBlackjack);
+        budgetRoundCounter++;
+        Material material = plugin.getCurrency(internalName);
+        org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
+            currencyMode, material == null ? null : material.name(), currencyName);
+        org.nc.nccasino.budget.Commitment result = budget.reserve(
+            internalName, playerId, "Blackjack",
+            budgetSessionId + "-split-" + budgetRoundCounter, currency, exposure);
+        if (!result.isAccepted()) {
+            switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                case STANDARD, VERBOSE -> player.sendMessage(text(player, "blackjack.dealer-cannot-cover"));
+                case NONE -> {
+                }
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            return false;
+        }
+        pendingSplitBudgetCommitment = result;
+        return true;
+    }
+
+    /** Registers a just-created split sibling's reservation under its own stable hand id. */
+    private void claimPendingSplitCommitment(BlackjackHand sibling) {
+        if (pendingSplitBudgetCommitment != null) {
+            handBudgetCommitments.put(sibling.getHandId(), pendingSplitBudgetCommitment);
+            pendingSplitBudgetCommitment = null;
+        }
+    }
+
+    /**
+     * Checks and, if covered, grows one hand's existing reservation to
+     * cover a double. Denies before the double's debit moves any
+     * currency. A doubled hand can never be a natural (it has exactly
+     * three cards), so its ceiling is the plain win multiplier, never the
+     * blackjack one -- see {@link BlackjackLiability#doubledHand}.
+     */
+    private boolean ensureDoubleCovered(Player player, UUID playerId, BlackjackHand hand, double additionalStake) {
+        org.nc.nccasino.budget.DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null) {
+            return true;
+        }
+        org.nc.nccasino.budget.Commitment existing = handBudgetCommitments.get(hand.getHandId());
+        if (existing == null) {
+            // Unlimited dealer, or this hand was never tracked (e.g. the
+            // budget service was absent when it was opened) -- nothing to grow.
+            return true;
+        }
+        org.nc.nccasino.budget.Exposure totalExposure =
+            org.nc.nccasino.games.Blackjack.BlackjackLiability.doubledHand(hand.getWager() + additionalStake);
+        org.nc.nccasino.budget.Commitment result = budget.increase(
+            internalName, existing, totalExposure, org.nc.nccasino.budget.Money.of(additionalStake));
+        if (!result.isAccepted()) {
+            switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                case STANDARD, VERBOSE -> player.sendMessage(text(player, "blackjack.dealer-cannot-cover"));
+                case NONE -> {
+                }
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            return false;
+        }
+        handBudgetCommitments.put(hand.getHandId(), result);
+        return true;
+    }
+
+    /**
+     * Checks and, if covered, opens or grows the one dealer-budget
+     * reservation an insurance stake needs. Denies before the insurance
+     * debit moves any currency.
+     */
+    private boolean ensureInsuranceCovered(Player player, UUID playerId, double stake) {
+        org.nc.nccasino.budget.DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null) {
+            return true;
+        }
+        org.nc.nccasino.budget.Exposure exposure =
+            org.nc.nccasino.games.Blackjack.BlackjackLiability.insurance(stake);
+        budgetRoundCounter++;
+        Material material = plugin.getCurrency(internalName);
+        org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
+            currencyMode, material == null ? null : material.name(), currencyName);
+        org.nc.nccasino.budget.Commitment result = budget.reserve(
+            internalName, playerId, "Blackjack",
+            budgetSessionId + "-insurance-" + budgetRoundCounter, currency, exposure);
+        if (!result.isAccepted()) {
+            switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                case STANDARD, VERBOSE -> player.sendMessage(text(player, "blackjack.dealer-cannot-cover"));
+                case NONE -> {
+                }
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            return false;
+        }
+        insuranceBudgetCommitments.put(playerId, result);
+        return true;
+    }
+
+    /** Settles one hand's reservation and drops it, exactly once. */
+    private void settleHandBudget(BlackjackHand hand, java.math.BigDecimal payout) {
+        org.nc.nccasino.budget.DealerBudgetService budget = plugin.getDealerBudgetService();
+        org.nc.nccasino.budget.Commitment commitment = handBudgetCommitments.remove(hand.getHandId());
+        if (budget == null || commitment == null) {
+            return;
+        }
+        budget.settle(internalName, commitment, payout);
+    }
+
+    /** Settles one player's insurance reservation and drops it, exactly once. */
+    private void settleInsuranceBudget(UUID playerId, java.math.BigDecimal payout) {
+        org.nc.nccasino.budget.DealerBudgetService budget = plugin.getDealerBudgetService();
+        org.nc.nccasino.budget.Commitment commitment = insuranceBudgetCommitments.remove(playerId);
+        if (budget == null || commitment == null) {
+            return;
+        }
+        budget.settle(internalName, commitment, payout);
+    }
+
+    /**
+     * Releases every open reservation {@code playerId} still holds --
+     * every hand (however many splits deep) and any open insurance --
+     * for an abandoned round. {@code refund} true pays each one its own
+     * stake back; false (a forfeit) pays nothing, leaving the stake with
+     * the dealer. Must be called while {@code playerHands} still holds
+     * this player's hands -- i.e. before {@code removePlayerData} or
+     * {@code resetGame} clears them.
+     */
+    private void releaseAllBudgetCommitments(UUID playerId, boolean refund) {
+        if (pendingOpeningBudgetCommitment.containsKey(playerId)) {
+            releasePendingOpeningBudgetCommitment(playerId, refund ? totalBet(playerId) : 0.0);
+        }
+        List<BlackjackHand> hands = playerHands.get(playerId);
+        if (hands != null) {
+            for (BlackjackHand hand : hands) {
+                settleHandBudget(hand, refund
+                    ? org.nc.nccasino.budget.Money.of(hand.getWager())
+                    : org.nc.nccasino.budget.Money.ZERO);
+            }
+        }
+        if (insuranceBudgetCommitments.containsKey(playerId)) {
+            double insuranceStake = insuranceStakes.getOrDefault(playerId, 0.0);
+            settleInsuranceBudget(playerId, refund
+                ? org.nc.nccasino.budget.Money.of(insuranceStake)
+                : org.nc.nccasino.budget.Money.ZERO);
+        }
+    }
+
+    /**
      * The active {@link BlackjackHand} for {@code playerId}, creating one
      * (seeded with their currently committed wager) on first use -- so
      * dealing the very first card lazily establishes the hand rather than
@@ -775,6 +1035,7 @@ private void registerListener() {
         List<BlackjackHand> hands = playerHands.computeIfAbsent(playerId, k -> new ArrayList<>());
         if (hands.isEmpty()) {
             hands.add(new BlackjackHand(totalBet(playerId)));
+            claimPendingOpeningCommitment(playerId, hands.get(0));
             activeHandIndex.put(playerId, 0);
         }
         int idx = activeHandIndex.getOrDefault(playerId, 0);
@@ -2293,6 +2554,11 @@ private void registerListener() {
      * cursor-drag branch, which calls commitWagerFundsAlreadyRemoved directly.
      */
     private WagerCommitResult commitWager(Player player, UUID playerId, int betSpotSlot, double amount) {
+        double newTotalWager = BlackjackWagerLedger.total(
+            pregameWagerIncrements.getOrDefault(playerId, new java.util.ArrayDeque<>())) + amount;
+        if (!ensureOpeningWagerCovered(player, playerId, newTotalWager)) {
+            return WagerCommitResult.TRANSACTION_FAILED;
+        }
         if (!tryRemoveWager(player, amount)) {
             // Nothing was debited -- never touch the ledger, playerBets,
             // lastBetAmounts, or start the countdown as though a wager was
@@ -4817,6 +5083,13 @@ private void handleDoubleDown(Player player) {
             return;
         }
 
+        if (!ensureDoubleCovered(player, playerId, hand, currentBet)) {
+            playerTurnActive.put(playerId, true);
+            repaintActionsForCurrentPlayer();
+            resumeTurnTimerAfterFailedAction(playerId);
+            return;
+        }
+
         // Remove exactly one additional wager (this hand's own, not the
         // player's whole playerBets ledger -- per-hand doubling must debit
         // exactly one more wager for that specific hand only, independent
@@ -5259,6 +5532,13 @@ private void handleDoubleDown(Player player) {
 
             boolean wasResplit = hand.isFromSplit();
 
+            if (!ensureSplitHandCovered(player, playerId, hand.getWager())) {
+                playerTurnActive.put(playerId, true);
+                repaintActionsForCurrentPlayer();
+                resumeTurnTimerAfterFailedAction(playerId);
+                return;
+            }
+
             // Exactly one additional matching wager, debited once. The
             // transaction itself is authoritative -- splitEligibleForHand's
             // own affordability check above was only a pre-filter; a Vault
@@ -5266,6 +5546,16 @@ private void handleDoubleDown(Player player) {
             // queue, cards, shoe, or animation may change unless this
             // actually succeeds.
             if (!tryRemoveWager(player, hand.getWager())) {
+                // The reservation opened above belongs to a sibling hand
+                // that will now never exist -- release it rather than
+                // leaking an open promise with nothing to settle it later.
+                if (pendingSplitBudgetCommitment != null) {
+                    org.nc.nccasino.budget.DealerBudgetService leakGuardBudget = plugin.getDealerBudgetService();
+                    if (leakGuardBudget != null) {
+                        leakGuardBudget.releaseLoss(internalName, pendingSplitBudgetCommitment);
+                    }
+                    pendingSplitBudgetCommitment = null;
+                }
                 switch (plugin.getPreferences(playerId).getMessageSetting()) {
                     case NONE:
                         break;
@@ -5294,6 +5584,7 @@ private void handleDoubleDown(Player player) {
             }
             hand.setFromSplit(true);
             sibling.setFromSplit(true);
+            claimPendingSplitCommitment(sibling);
 
             BlackjackSplitQueue.insertSiblingAfterCurrent(hands, currentIndex, sibling);
 
@@ -5861,6 +6152,7 @@ private void handleDoubleDown(Player player) {
     private void abortRoundAndRefund(String messageKey) {
         for (UUID playerId : new ArrayList<>(playerSeats.keySet())) {
             refundRoundDebit(playerId, totalRoundRefundForPlayer(playerId), messageKey);
+            releaseAllBudgetCommitments(playerId, true);
         }
         insuranceStakes.clear();
         insuranceOfferedCost.clear();
@@ -5998,6 +6290,10 @@ private void handleLeaveChair(Player player, boolean animateConceal) {
     // redundant, harmless) bet cleanup doesn't double-refund.
     if (!gameActive) {
         handleUndoAllBets(player);
+    } else {
+        // Active-game leave-via-own-head forfeits exactly like
+        // handleLeaveChairDuringGame -- the wager stays with the dealer.
+        releaseAllBudgetCommitments(playerId, false);
     }
 
     // Remove all the player's associated data. Must run while the player
@@ -6071,6 +6367,11 @@ private void handleLeaveChairDuringGame(Player player) {
         bumpHandToken(playerId);
         advanceTurnNow(); // Invalidates any turn-advance already scheduled for this hand's resolution
     }
+
+    // A voluntary mid-game leave forfeits exactly like a kick -- the wager
+    // stays with the dealer, so every open reservation releases with
+    // nothing paid. Must run before removePlayerData clears playerHands.
+    releaseAllBudgetCommitments(playerId, false);
 
     // Remove all the player's associated data. This must run while the
     // player is still in playerSeats -- removePlayerData looks itself up
@@ -6278,6 +6579,11 @@ private void removePlayerData(UUID playerId) {
                 return;
             }
             double amount = heldItem.getAmount();
+            double newTotalWager = BlackjackWagerLedger.total(
+                pregameWagerIncrements.getOrDefault(playerId, new java.util.ArrayDeque<>())) + amount;
+            if (!ensureOpeningWagerCovered(player, playerId, newTotalWager)) {
+                return;
+            }
             player.setItemOnCursor(null); // Removes the stack from the cursor -- this IS the debit for a cursor-drag commit
             // must NOT also call removeWagerFromInventory -- see commitWager's doc. May reject and refund (see
             // BlackjackInsuranceWagerPolicy) -- only play the success sound/start the countdown if it actually committed.
@@ -6380,6 +6686,7 @@ private void removePlayerData(UUID playerId) {
             // never queued again here.
             reportRefundDisposition(player, addWagerToInventory(
                 player, totalRefund, PayoutMessages.serverRestartRefundContext("Blackjack")));
+            releasePendingOpeningBudgetCommitment(playerId, totalRefund);
             clearPlayerBetLore(playerId);  // Clear lore for items related to this player
             pregameWagerIncrements.remove(playerId);
             playerBets.remove(playerId);
@@ -7068,12 +7375,25 @@ private void handleInsuranceDecision(Player player, boolean takeInsurance) {
             }
             return;
         }
+        if (!ensureInsuranceCovered(player, playerId, cost)) {
+            return;
+        }
         // The transaction itself is authoritative -- hasEnoughWager above
         // was only a pre-filter; a Vault economy call can still fail here.
         // Distinguish this from insufficient funds where practical: the
         // decision must stay undecided either way (still clickable, so the
         // player can retry or decline), but the feedback differs.
         if (!tryRemoveWager(player, cost)) {
+            // The reservation opened above will never be backed by an
+            // actual insurance stake now -- release it rather than leaking
+            // an open promise nothing will ever settle.
+            org.nc.nccasino.budget.Commitment leaked = insuranceBudgetCommitments.remove(playerId);
+            if (leaked != null) {
+                org.nc.nccasino.budget.DealerBudgetService leakGuardBudget = plugin.getDealerBudgetService();
+                if (leakGuardBudget != null) {
+                    leakGuardBudget.releaseLoss(internalName, leaked);
+                }
+            }
             switch (plugin.getPreferences(playerId).getMessageSetting()) {
                 case NONE:
                     break;
@@ -7215,6 +7535,9 @@ private void payInsuranceWinners() {
         UUID playerId = entry.getKey();
         double stake = entry.getValue();
         double payout = BlackjackInsuranceRules.payoutTotal(stake);
+        // The dealer's books close here, before delivery -- delivery may
+        // still bank or queue the amount, but the dealer has already paid it.
+        settleInsuranceBudget(playerId, org.nc.nccasino.budget.Money.of(payout));
         Player player = Bukkit.getPlayer(playerId);
         boolean online = player != null && player.isOnline();
         if (!online) {
@@ -7246,6 +7569,9 @@ private void payInsuranceWinners() {
 /** Messaging only -- the stake was already debited when insurance was taken, so "forfeiting" it just means not paying it back. */
 private void forfeitInsuranceStakes() {
     for (UUID playerId : insuranceStakes.keySet()) {
+        // The dealer keeps the stake it already holds; release the
+        // reservation with nothing paid, regardless of online state.
+        settleInsuranceBudget(playerId, org.nc.nccasino.budget.Money.ZERO);
         Player player = Bukkit.getPlayer(playerId);
         if (player == null) {
             continue;
@@ -7998,6 +8324,11 @@ private void sendSplitRoundSummary(UUID playerId, List<HandOutcomeSummary> summa
 private double settleHandOutcome(UUID playerId, BlackjackHand hand, BlackjackOutcome outcome, boolean sendMessage) {
     Player player = Bukkit.getPlayer(playerId);
     boolean online = player != null && player.isOnline();
+    // The dealer's books close here, at the moment this hand's outcome is
+    // known -- before delivery, which may still bank or queue the amount.
+    // getMultiplier() already covers every case correctly: 2.5x/2x for a
+    // win, 1x for a push (the wager back), 0x for a loss/bust.
+    settleHandBudget(hand, org.nc.nccasino.budget.Money.of(hand.getWager() * outcome.getMultiplier()));
     switch (outcome) {
         case BLACKJACK: {
             if (online) {
@@ -9157,6 +9488,7 @@ public void delete() {
                 bumpHandToken(playerId);
                 advanceTurnNow();
             }
+            releaseAllBudgetCommitments(playerId, false);
             removePlayerData(playerId);
         } else if (action == org.nc.nccasino.session.TerminationAction.REFUND) {
             // Reached only when nothing is actually at stake yet (no
@@ -9165,6 +9497,7 @@ public void delete() {
             // a spectator who never bet. Also reached unconditionally on
             // PLUGIN_DISABLE, which can never ride through a restart.
             refundPendingBets(playerId, reason);
+            releaseAllBudgetCommitments(playerId, true);
             removePlayerData(playerId);
         } else if (action == org.nc.nccasino.session.TerminationAction.RIDE_TO_RESULT) {
             // Either the deal has begun, or a wager is already committed
