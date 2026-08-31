@@ -278,6 +278,15 @@ public class RockPaperScissorsServer extends Server {
         private Player chairTwoOccupant;
         /** Long, not int -- a PvP pot doubles two accepted stakes together, which can exceed Integer.MAX_VALUE even though neither individual stake does. */
         private long betAmount;
+        /**
+         * The single dealer-budget promise covering this PvE chain,
+         * reserved on the first throw and grown before each further
+         * round. Never opened for PvP. Null between chains and after
+         * settlement.
+         */
+        private org.nc.nccasino.budget.Commitment budgetCommitment;
+        private final String budgetSessionId = java.util.UUID.randomUUID().toString();
+        private long budgetRoundCounter = 0;
         /** The player's own stake before the house/opponent match, captured once per accepted bet -- used to report true profit even after a chain has compounded the pot past a simple double. */
         private long originalWager;
         /** PvE-only: consecutive chain wins since the bet was accepted. Never incremented by a tie. */
@@ -487,6 +496,63 @@ public class RockPaperScissorsServer extends Server {
          * value -- compound() itself never actually needs to clamp along
          * this path.
          */
+        /**
+         * Checks and, if covered, atomically opens or grows this chain's
+         * single dealer-budget reservation to the pot that would exist if
+         * the next round is a win. Denies before the dealer's own throw
+         * is generated -- the random result for this round.
+         */
+        private boolean ensureBudgetCoversNextRound() {
+            org.nc.nccasino.budget.DealerBudgetService budget = plugin.getDealerBudgetService();
+            if (budget == null) {
+                return true;
+            }
+            org.nc.nccasino.budget.Exposure updatedExposure =
+                org.nc.nccasino.budget.ProgressiveLiability.chainExposureAfterNextRound(
+                    originalWager, betAmount, CHAIN_MULTIPLIER);
+
+            org.nc.nccasino.budget.Commitment result;
+            if (budgetCommitment == null) {
+                budgetRoundCounter++;
+                Material material = plugin.getCurrency(internalName);
+                org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
+                    currencyMode, material == null ? null : material.name(), currencyName);
+                result = budget.reserve(
+                    internalName, owningPlayerId, "Rock Paper Scissors",
+                    budgetSessionId + "-chain-" + budgetRoundCounter, currency, updatedExposure);
+            } else {
+                result = budget.increase(
+                    internalName, budgetCommitment, updatedExposure, org.nc.nccasino.budget.Money.ZERO);
+            }
+
+            if (!result.isAccepted()) {
+                Player denied = Bukkit.getPlayer(owningPlayerId);
+                if (denied != null && denied.isOnline()) {
+                    switch (plugin.getPreferences(owningPlayerId).getMessageSetting()) {
+                        case STANDARD, VERBOSE ->
+                            denied.sendMessage(plugin.getLocalization().text(
+                                denied, "rock-paper-scissors.dealer-cannot-cover"));
+                        case NONE -> {
+                        }
+                    }
+                }
+                return false;
+            }
+            budgetCommitment = result;
+            return true;
+        }
+
+        /** Pays the chain's result and releases its reservation, exactly once. */
+        private void settleBudget(java.math.BigDecimal payout) {
+            org.nc.nccasino.budget.DealerBudgetService budget = plugin.getDealerBudgetService();
+            if (budget == null || budgetCommitment == null) {
+                budgetCommitment = null;
+                return;
+            }
+            budget.settle(internalName, budgetCommitment, payout);
+            budgetCommitment = null;
+        }
+
         private boolean chainCapped() {
             int cap = plugin.getRpsMaxChainRounds(internalName);
             if (cap > 0 && chainWins >= cap) {
@@ -511,6 +577,10 @@ public class RockPaperScissorsServer extends Server {
                 // The house only ever throws in direct response to the
                 // player's own pick -- never ahead of time -- so there's
                 // nothing to notify and no opponent client to look up.
+                if (!ensureBudgetCoversNextRound()) {
+                    picks.remove(chooserId);
+                    return;
+                }
                 picks.put(DEALER_ID, randomThrow());
             } else {
                 UUID opponentId = opponentOf(chooserId);
@@ -729,6 +799,7 @@ public class RockPaperScissorsServer extends Server {
             send("ANIMATION_FINISHED", 0);
             long wager = originalWager;
             long payout = betAmount;
+            settleBudget(org.nc.nccasino.budget.Money.of(payout));
             gameActive = false;
             revealInProgress = false;
             committedWinner = null;
@@ -789,6 +860,9 @@ public class RockPaperScissorsServer extends Server {
             Player payoutOne = chairOneOccupant;
             Player payoutTwo = chairTwoOccupant;
             long payout = betAmount;
+            if (isPve()) {
+                settleBudget(org.nc.nccasino.budget.Money.of(cappedWin ? payout : 0L));
+            }
             long wager = originalWager;
             gameActive = false;
             revealInProgress = false;
@@ -983,6 +1057,10 @@ public class RockPaperScissorsServer extends Server {
                 // apply that same multiplier itself, or the saved payout is
                 // short by 1.98x.
                 boolean pveWin = isPve() && winner == 0;
+                if (isPve()) {
+                    settleBudget(org.nc.nccasino.budget.Money.of(
+                        pveWin ? RpsPayoutMath.compound(payout, CHAIN_MULTIPLIER) : 0L));
+                }
                 long winnerPayout = pveWin ? RpsPayoutMath.compound(payout, CHAIN_MULTIPLIER) : payout;
                 Player winningPlayer = winner == 0 ? payoutOne : payoutTwo;
                 if (winningPlayer != null && winnerPayout > 0
@@ -1019,6 +1097,9 @@ public class RockPaperScissorsServer extends Server {
                     }
                 }
             } else {
+                if (isPve()) {
+                    settleBudget(org.nc.nccasino.budget.Money.of(stake));
+                }
                 if (payoutOne != null && stake > 0 && !forfeited.contains(payoutOne.getUniqueId())) {
                     queuePendingPayout(payoutOne.getUniqueId(), stake, PayoutMessages.serverRestartRefundContext("Rock Paper Scissors"));
                 }
@@ -1054,6 +1135,9 @@ public class RockPaperScissorsServer extends Server {
         private void forfeitPlayer(UUID playerId) {
             clearRidingSession(playerId);
             if (gameActive) {
+                if (isPve()) {
+                    settleBudget(org.nc.nccasino.budget.Money.ZERO);
+                }
                 forfeited.add(playerId);
                 if (isPve() && owningPlayerId.equals(playerId)) {
                     // A kick still forfeits, but it must also make the private

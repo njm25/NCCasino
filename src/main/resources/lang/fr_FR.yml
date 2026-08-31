@@ -182,6 +182,7 @@ rock-paper-scissors:
   sit-other-chair: "&oVeuillez vous asseoir sur l’autre siège"
   player-two-turn: "&oAu tour du joueur 2"
   insufficient-currency: "&cPas assez de monnaie pour placer le pari."
+  dealer-cannot-cover: "&cCe croupier ne peut pas couvrir un gain de série aussi élevé pour le moment. Encaissez ou réessayez plus tard."
   time-to-choose: "&e&oChoisissez ! Temps restant : {seconds}s"
   submit-bet: "&oValider le pari"
   click-submit-bet: "&oCliquez pour valider votre pari"

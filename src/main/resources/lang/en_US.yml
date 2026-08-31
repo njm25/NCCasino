@@ -182,6 +182,7 @@ rock-paper-scissors:
   sit-other-chair: "&oPlease sit in other chair"
   player-two-turn: "&oPlayer 2's turn"
   insufficient-currency: "&cNot enough currency to place bet."
+  dealer-cannot-cover: "&cThis dealer cannot cover a chain win that large right now. Cash out or try again later."
   time-to-choose: "&e&oChoose! Time Left: {seconds}s"
   submit-bet: "&oSubmit bet"
   click-submit-bet: "&oClick to submit your bet"

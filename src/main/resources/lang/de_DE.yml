@@ -182,6 +182,7 @@ rock-paper-scissors:
   sit-other-chair: "&oBitte auf den anderen Stuhl setzen"
   player-two-turn: "&oSpieler 2 ist am Zug"
   insufficient-currency: "&cNicht genug Währung für diesen Einsatz."
+  dealer-cannot-cover: "&cDieser Dealer kann einen so hohen Kettengewinn gerade nicht decken. Zahle aus oder versuche es später erneut."
   time-to-choose: "&e&oWähle! Verbleibende Zeit: {seconds}s"
   submit-bet: "&oEinsatz abgeben"
   click-submit-bet: "&oKlicken, um den Einsatz abzugeben"
