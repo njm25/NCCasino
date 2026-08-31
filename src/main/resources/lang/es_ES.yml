@@ -139,6 +139,7 @@ coin-flip:
   sit-other-chair: "&oSiéntate en la otra silla"
   player-two-turn: "&oTurno del jugador 2"
   insufficient-currency: "&cNo hay suficiente moneda para realizar la apuesta."
+  dealer-cannot-cover: "&cEste crupier no puede cubrir una ganancia en cadena tan grande ahora mismo. Cobra o inténtalo más tarde."
   time-left: "&e&oTiempo restante: {seconds}s"
   submit-bet: "&oEnviar apuesta"
   click-submit-bet: "&oHaz clic para enviar tu apuesta"
