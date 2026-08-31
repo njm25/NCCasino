@@ -177,3 +177,39 @@ would still pay the cost of every reservation, settlement and disk write, and
 would eventually overflow or drift. Instead every entry point checks the mode
 first and returns immediately, so an unlimited dealer costs one string read
 per call and touches no economic state at all.
+
+## Slots variance backend
+
+`dealers.<name>.slots-variance` selects one of `STEADY`, `LOW`, `BALANCED`
+(default), `HIGH`, `HIGH_ROLLER` (`SlotsVariance`). House edge and variance
+are independent: variance redistributes *how* the configured return-to-player
+arrives (frequent smaller payouts vs. rarer larger ones); it never changes the
+configured edge itself.
+
+Each level fixes two things:
+
+- **Sampling weights** (`SlotsVariance.weights()`) — the actual per-reel
+  symbol frequencies, consumed by `SlotsSpinGenerator` for every committed
+  spin. This is what makes hit frequency real: a rarer-hitting level really
+  samples blanks more often, it does not just display a paytable that claims
+  it does.
+- **Length base** (`SlotsVariance.lengthBase()`) — how much more valuable
+  each additional matched reel is. Raising it concentrates payout into
+  full-width runs.
+
+`SlotsPaytable.forConfig(columns, houseEdge, variance)` renormalizes whatever
+raw shape those two parameters produce back down to exactly
+`1 - houseEdge`, for any variance and any supported width — this is the same
+renormalization step the original fixed-shape paytable always used, so RTP
+preservation is structural, not level-specific. `SlotsVariance.BALANCED`
+reuses `SlotsSymbol`'s own historical weights and the original length base of
+6.0, so it reproduces the machine's pre-variance behavior exactly; every
+2-argument `SlotsPaytable`/`SlotsSpinGenerator` overload defaults to it.
+
+An unrecognized `slots-variance` value falls back to `BALANCED` with a logged
+warning and never rewrites the stored config value.
+
+**Not done in this pass:** no Slots GUI shows variance, a preview, or a
+per-level comparison — `SlotsVarianceStats` exists as ready-to-render data for
+that, but adding it to `SlotsInventory` or the admin settings menu is a GUI
+change requiring separate approval per the design's GUI-approval rule.

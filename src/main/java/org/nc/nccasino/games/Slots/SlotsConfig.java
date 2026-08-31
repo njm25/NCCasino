@@ -16,6 +16,7 @@ public final class SlotsConfig {
     public static final String KEY_COLUMNS = "slots-columns";
     public static final String KEY_LINES = "slots-lines";
     public static final String KEY_HOUSE_EDGE = "slots-house-edge";
+    public static final String KEY_VARIANCE = "slots-variance";
 
     public static final int DEFAULT_COLUMNS = 5;
     public static final int DEFAULT_LINES = 5;
@@ -23,13 +24,15 @@ public final class SlotsConfig {
     private final int columns;
     private final int activeLines;
     private final double houseEdge;
+    private final SlotsVariance variance;
     private final SlotsPaytable paytable;
 
-    private SlotsConfig(int columns, int activeLines, double houseEdge) {
+    private SlotsConfig(int columns, int activeLines, double houseEdge, SlotsVariance variance) {
         this.columns = columns;
         this.activeLines = activeLines;
         this.houseEdge = houseEdge;
-        this.paytable = SlotsPaytable.forConfig(columns, houseEdge);
+        this.variance = variance;
+        this.paytable = SlotsPaytable.forConfig(columns, houseEdge, variance);
     }
 
     public static SlotsConfig load(Nccasino plugin, String internalName) {
@@ -37,15 +40,31 @@ public final class SlotsConfig {
         int rawLines = plugin.getConfig().getInt(path(internalName, KEY_LINES), DEFAULT_LINES);
         double rawEdge = plugin.getConfig().getDouble(
             path(internalName, KEY_HOUSE_EDGE), SlotsPaytable.DEFAULT_HOUSE_EDGE);
-        return of(rawColumns, rawLines, rawEdge);
+        String rawVariance = plugin.getConfig().getString(path(internalName, KEY_VARIANCE));
+        SlotsVariance variance = SlotsVariance.parse(rawVariance, null);
+        if (variance == null) {
+            if (rawVariance != null && !rawVariance.isBlank()) {
+                plugin.getLogger().warning("[NCCasino] Dealer '" + internalName + "' slots-variance '"
+                    + rawVariance + "' is not a recognized level; using BALANCED. The stored"
+                    + " configuration value was left unchanged.");
+            }
+            variance = SlotsVariance.BALANCED;
+        }
+        return of(rawColumns, rawLines, rawEdge, variance);
+    }
+
+    /** {@link #of(int, int, double, SlotsVariance)} at {@link SlotsVariance#BALANCED}. */
+    public static SlotsConfig of(int columns, int activeLines, double houseEdge) {
+        return of(columns, activeLines, houseEdge, SlotsVariance.BALANCED);
     }
 
     /** Normalizing factory, usable without a live plugin instance (tests, previews). */
-    public static SlotsConfig of(int columns, int activeLines, double houseEdge) {
+    public static SlotsConfig of(int columns, int activeLines, double houseEdge, SlotsVariance variance) {
         int normalizedColumns = SlotsGeometry.normalizeColumnCount(columns);
         int normalizedLines = SlotsPayline.normalizeLineCount(activeLines);
         double normalizedEdge = SlotsPaytable.normalizeHouseEdge(houseEdge);
-        return new SlotsConfig(normalizedColumns, normalizedLines, normalizedEdge);
+        SlotsVariance normalizedVariance = variance == null ? SlotsVariance.BALANCED : variance;
+        return new SlotsConfig(normalizedColumns, normalizedLines, normalizedEdge, normalizedVariance);
     }
 
     /** Writes defaults for any key this dealer does not have yet. Returns true if anything changed. */
@@ -78,6 +97,12 @@ public final class SlotsConfig {
         plugin.getConfig().set(path(internalName, KEY_HOUSE_EDGE), SlotsPaytable.normalizeHouseEdge(houseEdge));
     }
 
+    /** Administrative only -- never called from a config-load/validation path. */
+    public static void setVariance(Nccasino plugin, String internalName, SlotsVariance variance) {
+        plugin.getConfig().set(
+            path(internalName, KEY_VARIANCE), (variance == null ? SlotsVariance.BALANCED : variance).name());
+    }
+
     private static String path(String internalName, String key) {
         return "dealers." + internalName + "." + key;
     }
@@ -96,12 +121,16 @@ public final class SlotsConfig {
         return houseEdge;
     }
 
+    public SlotsVariance variance() {
+        return variance;
+    }
+
     public SlotsPaytable paytable() {
         return paytable;
     }
 
     /** A copy of this config with a different active-line count, for in-session line toggling. */
     public SlotsConfig withActiveLines(int lines) {
-        return new SlotsConfig(columns, SlotsPayline.normalizeLineCount(lines), houseEdge);
+        return new SlotsConfig(columns, SlotsPayline.normalizeLineCount(lines), houseEdge, variance);
     }
 }

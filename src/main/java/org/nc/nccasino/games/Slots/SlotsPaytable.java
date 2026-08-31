@@ -46,21 +46,18 @@ public final class SlotsPaytable {
     public static final double MAX_HOUSE_EDGE = 0.06;
     public static final double DEFAULT_HOUSE_EDGE = 0.03;
 
-    /**
-     * How much each additional matched reel multiplies a win. Chosen so the
-     * top symbol at full width is a genuine jackpot without the short runs
-     * becoming worthless.
-     */
-    private static final double LENGTH_BASE = 6.0;
-
     private final int columns;
     private final double houseEdge;
+    private final SlotsVariance variance;
     private final Map<SlotsSymbol, double[]> multipliers;
     private final double theoreticalRtp;
 
-    private SlotsPaytable(int columns, double houseEdge, Map<SlotsSymbol, double[]> multipliers, double theoreticalRtp) {
+    private SlotsPaytable(
+        int columns, double houseEdge, SlotsVariance variance,
+        Map<SlotsSymbol, double[]> multipliers, double theoreticalRtp) {
         this.columns = columns;
         this.houseEdge = houseEdge;
+        this.variance = variance;
         this.multipliers = multipliers;
         this.theoreticalRtp = theoreticalRtp;
     }
@@ -73,8 +70,20 @@ public final class SlotsPaytable {
         return Math.max(MIN_HOUSE_EDGE, Math.min(MAX_HOUSE_EDGE, houseEdge));
     }
 
+    /** {@link #forConfig(int, double, SlotsVariance)} at {@link SlotsVariance#BALANCED}. */
     public static SlotsPaytable forConfig(int columns, double houseEdge) {
+        return forConfig(columns, houseEdge, SlotsVariance.BALANCED);
+    }
+
+    /**
+     * Derives a paytable for one variance level. Renormalization (the
+     * {@code scale} step below) makes this land on exactly {@code targetRtp}
+     * for any variance's weights and length base -- variance changes shape,
+     * never the configured house edge.
+     */
+    public static SlotsPaytable forConfig(int columns, double houseEdge, SlotsVariance variance) {
         SlotsGeometry.requireSupportedColumnCount(columns);
+        SlotsVariance effectiveVariance = variance == null ? SlotsVariance.BALANCED : variance;
         double edge = normalizeHouseEdge(houseEdge);
         double targetRtp = 1.0 - edge;
 
@@ -84,11 +93,13 @@ public final class SlotsPaytable {
                 continue;
             }
             for (int run = symbol.minimumRun(); run <= columns; run++) {
-                rawRtp += runProbability(symbol, run, columns) * shape(symbol, run);
+                rawRtp += runProbability(symbol, run, columns, effectiveVariance) * shape(symbol, run, effectiveVariance);
             }
         }
         if (rawRtp <= 0.0) {
-            throw new IllegalStateException("Paytable shape yields a zero-return machine; check SlotsSymbol pay weights.");
+            throw new IllegalStateException(
+                "Paytable shape yields a zero-return machine for variance " + effectiveVariance
+                    + "; check its weights and length base.");
         }
 
         double scale = targetRtp / rawRtp;
@@ -97,38 +108,44 @@ public final class SlotsPaytable {
             double[] byRun = new double[columns + 1];
             if (symbol.pays()) {
                 for (int run = symbol.minimumRun(); run <= columns; run++) {
-                    byRun[run] = scale * shape(symbol, run);
+                    byRun[run] = scale * shape(symbol, run, effectiveVariance);
                 }
             }
             table.put(symbol, byRun);
         }
 
-        return new SlotsPaytable(columns, edge, table, targetRtp);
+        return new SlotsPaytable(columns, edge, effectiveVariance, table, targetRtp);
     }
 
-    /** Relative (unscaled) worth of one symbol at one run length. */
-    private static double shape(SlotsSymbol symbol, int run) {
-        return symbol.payWeight() * lengthFactor(run);
+    /** Relative (unscaled) worth of one symbol at one run length, under one variance. */
+    private static double shape(SlotsSymbol symbol, int run, SlotsVariance variance) {
+        return symbol.payWeight() * lengthFactor(run, variance);
     }
 
-    /** Each extra matched reel is worth {@link #LENGTH_BASE} times the last. */
-    private static double lengthFactor(int run) {
-        return Math.pow(LENGTH_BASE, run - SlotsSymbol.GLOBAL_MIN_RUN);
+    /** Each extra matched reel is worth {@code variance.lengthBase()} times the last. */
+    private static double lengthFactor(int run, SlotsVariance variance) {
+        return Math.pow(variance.lengthBase(), run - SlotsSymbol.GLOBAL_MIN_RUN);
+    }
+
+    /** {@link #runProbability(SlotsSymbol, int, int, SlotsVariance)} at {@link SlotsVariance#BALANCED}. */
+    public static double runProbability(SlotsSymbol symbol, int run, int columns) {
+        return runProbability(symbol, run, columns, SlotsVariance.BALANCED);
     }
 
     /**
      * Probability that a single payline shows a maximal left-to-right run of
-     * <em>exactly</em> {@code run} copies of {@code symbol}.
+     * <em>exactly</em> {@code run} copies of {@code symbol}, under one
+     * variance's sampling weights.
      *
      * <p>A run shorter than the full width must be terminated by a different
      * symbol in the next column; a full-width run has nothing to terminate it.
      */
-    public static double runProbability(SlotsSymbol symbol, int run, int columns) {
+    public static double runProbability(SlotsSymbol symbol, int run, int columns, SlotsVariance variance) {
         SlotsGeometry.requireSupportedColumnCount(columns);
         if (run < 1 || run > columns) {
             return 0.0;
         }
-        double p = symbol.probability();
+        double p = (variance == null ? SlotsVariance.BALANCED : variance).probability(symbol);
         double matched = Math.pow(p, run);
         return (run == columns) ? matched : matched * (1.0 - p);
     }
@@ -161,10 +178,16 @@ public final class SlotsPaytable {
      * paying symbols.
      */
     public static double lineHitProbability() {
+        return lineHitProbability(SlotsVariance.BALANCED);
+    }
+
+    /** {@link #lineHitProbability()} under one variance's sampling weights. */
+    public static double lineHitProbability(SlotsVariance variance) {
+        SlotsVariance effective = variance == null ? SlotsVariance.BALANCED : variance;
         double total = 0.0;
         for (SlotsSymbol symbol : SlotsSymbol.values()) {
             if (symbol.pays()) {
-                total += Math.pow(symbol.probability(), symbol.minimumRun());
+                total += Math.pow(effective.probability(symbol), symbol.minimumRun());
             }
         }
         return total;
@@ -176,6 +199,10 @@ public final class SlotsPaytable {
 
     public double houseEdge() {
         return houseEdge;
+    }
+
+    public SlotsVariance variance() {
+        return variance;
     }
 
     /** Exactly {@code 1 - houseEdge} by construction; asserted in tests against a full enumeration. */

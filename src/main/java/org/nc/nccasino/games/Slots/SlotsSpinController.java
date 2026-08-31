@@ -221,7 +221,7 @@ public final class SlotsSpinController {
         commitment = accepted;
         state = SlotsStateMachine.transition(state, SlotsSessionState.DEBIT_ACCEPTED);
         generation++;
-        SlotsOutcome outcome = SlotsSpinGenerator.generate(columns, rng);
+        SlotsOutcome outcome = SlotsSpinGenerator.generate(columns, rng, paytable.variance());
         currentOutcome = outcome;
         state = SlotsStateMachine.transition(state, SlotsSessionState.RESULT_COMMITTED);
         pendingPayoutAmount = SlotsMath.totalPayout(outcome, activeLines, denomUnits, paytable);

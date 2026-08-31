@@ -57,3 +57,18 @@ payouts:
 # persistent economic data in data/dealer-budgets.yml, documented in
 # docs/DEALER_BUDGET_SCHEMA.md. Editing this block never moves money, and a
 # balance change never rewrites this file.
+
+# Slots variance (Phase 2). Per-dealer, under dealers.<internal-name> directly
+# (alongside slots-columns/slots-lines/slots-house-edge, not under budget:).
+# Independent of house edge: variance changes how a machine's return arrives
+# (frequent smaller payouts vs. rarer larger ones), never the edge itself.
+#
+# Example (do not uncomment -- copy into a real Slots dealer's own config):
+#
+# dealers:
+#   <internal-name>:
+#     slots-variance: BALANCED   # STEADY | LOW | BALANCED | HIGH | HIGH_ROLLER
+#                                # Default: BALANCED (the original fixed shape).
+#                                # An unrecognized value falls back to BALANCED
+#                                # with a logged warning; the stored value is
+#                                # never rewritten.

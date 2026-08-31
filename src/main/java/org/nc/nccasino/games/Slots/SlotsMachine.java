@@ -837,7 +837,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     }
 
     private SlotsSymbol randomCosmeticSymbol(int col) {
-        return SlotsSpinGenerator.sampleSymbol(col, bound -> ThreadLocalRandom.current().nextInt(bound));
+        return SlotsSpinGenerator.sampleSymbol(col, bound -> ThreadLocalRandom.current().nextInt(bound), config.variance());
     }
 
     private void paintReel(int col) {
