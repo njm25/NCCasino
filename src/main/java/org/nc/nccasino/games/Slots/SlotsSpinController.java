@@ -286,11 +286,16 @@ public final class SlotsSpinController {
 
     /**
      * Closes the dealer's books for a round being abandoned at shutdown or
-     * disconnect, where the payout is preserved rather than replayed. Safe to
-     * call when nothing is open.
+     * disconnect. Safe to call when nothing is open.
+     *
+     * @param preservingResult whether the committed result is being honored
+     *     (a disconnect or shutdown that still queues the real win) or
+     *     forfeited outright (a kick, which per policy keeps the stake and
+     *     never delivers a pending win -- so the dealer must not be debited
+     *     for a payout the player will never actually receive)
      */
-    public void settleBudgetOnTermination(SlotsUnderwriting underwriting) {
-        settleBudget(underwriting, pendingPayoutAmount);
+    public void settleBudgetOnTermination(SlotsUnderwriting underwriting, boolean preservingResult) {
+        settleBudget(underwriting, preservingResult ? pendingPayoutAmount : 0L);
     }
 
     /**

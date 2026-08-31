@@ -1119,14 +1119,18 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
                 ? PayoutMessages.committedResultContext("Slots")
                 : PayoutMessages.disconnectedMidGameContext("Slots");
             // The result stands and the payout is preserved, so the dealer's
-            // books close here too. Idempotent: if the round had already
-            // settled normally, there is no open commitment left to settle.
-            controller.settleBudgetOnTermination(underwriting);
+            // books close here too, for the real amount. Idempotent: if the
+            // round had already settled normally, there is no open
+            // commitment left to settle.
+            controller.settleBudgetOnTermination(underwriting, true);
             queuePayoutDurableOnly(controller.pendingPayoutAmount(), context);
         } else {
-            // Nothing is owed -- a pregame exit, an already-resolved round, or
-            // a forfeit. Release any promise so the funds are not stranded.
-            controller.settleBudgetOnTermination(underwriting);
+            // Nothing is owed to the player -- a pregame exit, an
+            // already-resolved round, or a kick that forfeits even a
+            // pending win outright (see FORFEIT below). Release any open
+            // promise with nothing paid, so the dealer is never debited for
+            // a win that will never actually be delivered.
+            controller.settleBudgetOnTermination(underwriting, false);
         }
         // FORFEIT (kicked): the debited stake stays with the house, nothing to give back.
         // NO_ACTION: nothing was owed (pregame) or it was already resolved through normal play.

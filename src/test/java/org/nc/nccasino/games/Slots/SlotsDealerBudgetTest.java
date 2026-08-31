@@ -217,9 +217,9 @@ class SlotsDealerBudgetTest {
         RecordingUnderwriting underwriting = new RecordingUnderwriting(acceptedCommitment());
         spin(controller, underwriting, true);
 
-        controller.settleBudgetOnTermination(underwriting);
-        controller.settleBudgetOnTermination(underwriting);
-        controller.settleBudgetOnTermination(underwriting);
+        controller.settleBudgetOnTermination(underwriting, true);
+        controller.settleBudgetOnTermination(underwriting, true);
+        controller.settleBudgetOnTermination(underwriting, true);
 
         assertEquals(1, underwriting.settlements.get(),
             "a duplicated termination must not debit the dealer again");
@@ -232,9 +232,46 @@ class SlotsDealerBudgetTest {
         spin(controller, underwriting, true);
 
         controller.settle(owed -> 0L, amount -> true, underwriting);
-        controller.settleBudgetOnTermination(underwriting);
+        controller.settleBudgetOnTermination(underwriting, true);
 
         assertEquals(1, underwriting.settlements.get());
+    }
+
+    /** A fixed roll landing on SEVEN's cumulative-weight bucket at every reel, guaranteeing a full-width win. */
+    private static final SlotsRandomSource GUARANTEED_WIN_RNG = bound -> 95;
+
+    @Test
+    void aKickThatForfeitsAPendingWinMustNotDebitTheDealerForIt() {
+        // A kick forfeits even an already-committed win outright -- the
+        // player never receives it, so the dealer must not be charged as if
+        // it had been paid. Settling with the full pendingPayoutAmount here
+        // would silently debit the dealer's budget for money nobody ever
+        // actually received.
+        SlotsSpinController controller = new SlotsSpinController();
+        RecordingUnderwriting underwriting = new RecordingUnderwriting(acceptedCommitment());
+        controller.trySpin(10L, COLUMNS, LINES, true, PAYTABLE, GUARANTEED_WIN_RNG, underwriting, bet -> true);
+        long committedWin = controller.pendingPayoutAmount();
+        assertTrue(committedWin > 0, "test setup must actually commit a positive win");
+
+        controller.settleBudgetOnTermination(underwriting, false);
+
+        assertEquals(1, underwriting.settlements.get());
+        assertEquals(0L, underwriting.settledAmount.get(),
+            "a forfeited termination must settle for zero, never the pending win");
+    }
+
+    @Test
+    void aPreservedResultOnTerminationSettlesForTheRealPendingWin() {
+        SlotsSpinController controller = new SlotsSpinController();
+        RecordingUnderwriting underwriting = new RecordingUnderwriting(acceptedCommitment());
+        controller.trySpin(10L, COLUMNS, LINES, true, PAYTABLE, GUARANTEED_WIN_RNG, underwriting, bet -> true);
+        long committedWin = controller.pendingPayoutAmount();
+        assertTrue(committedWin > 0, "test setup must actually commit a positive win");
+
+        controller.settleBudgetOnTermination(underwriting, true);
+
+        assertEquals(committedWin, underwriting.settledAmount.get(),
+            "a disconnect/shutdown that preserves the result must settle the real amount");
     }
 
     // ---- unlimited dealers behave exactly as before ------------------------
