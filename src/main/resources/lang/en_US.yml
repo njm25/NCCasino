@@ -259,6 +259,7 @@ dragon-descent:
   got-you: "&4The Dragon got you!"
   invalid-action: "&cInvalid action."
   invalid-action-capitalized: "&cInvalid Action."
+  dealer-cannot-cover: "&cThis descent cannot cover a pot that large right now. Try again later, or lower your wager."
   no-bet: "&cNo bet placed."
   zone-unavailable: "&cYou cannot select this zone!"
   oof: "&cOof."

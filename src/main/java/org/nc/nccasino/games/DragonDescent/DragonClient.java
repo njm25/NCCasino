@@ -43,6 +43,14 @@ public class DragonClient extends Client implements TerminableSession {
     private boolean playerLost = false;
     private int displayOffset = 0;
     private int floorsCleared = 0;
+    /**
+     * The single dealer-budget promise covering this descent, reserved when
+     * the floor grid is generated and grown before each floor's reveal.
+     * Null between rounds and after settlement.
+     */
+    private org.nc.nccasino.budget.Commitment budgetCommitment;
+    private final String budgetSessionId = java.util.UUID.randomUUID().toString();
+    private long budgetRoundCounter = 0;
     private boolean cashOutTriggered = false;
     private boolean shiftlock = false;
     // Set synchronously the instant a floor click is accepted, cleared once
@@ -174,6 +182,61 @@ public class DragonClient extends Client implements TerminableSession {
         setupTopRow();
         setupGameBoard();
         //updatePlayerHead();
+    }
+
+    /**
+     * Checks and, if covered, atomically opens or grows this descent's
+     * single dealer-budget reservation to the pot that would exist after one
+     * more cleared floor. Denies before the floor's reveal.
+     */
+    private boolean ensureBudgetCoversNextFloor(int floorsSoFar) {
+        org.nc.nccasino.budget.DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null) {
+            return true;
+        }
+        double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
+        org.nc.nccasino.budget.Exposure updatedExposure =
+            org.nc.nccasino.budget.ProgressiveLiability.dragonExposureAfterNextFloor(
+                totalBet, numSafeSpots, numColumns, floorsSoFar);
+
+        org.nc.nccasino.budget.Commitment result;
+        if (budgetCommitment == null) {
+            budgetRoundCounter++;
+            Material material = plugin.getCurrency(internalName);
+            org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
+                currencyMode, material == null ? null : material.name(), currencyName);
+            result = budget.reserve(
+                internalName, player.getUniqueId(), "Dragon Descent",
+                budgetSessionId + "-round-" + budgetRoundCounter, currency, updatedExposure);
+        } else {
+            result = budget.increase(
+                internalName, budgetCommitment, updatedExposure, org.nc.nccasino.budget.Money.ZERO);
+        }
+
+        if (!result.isAccepted()) {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD, VERBOSE -> player.sendMessage(text("dragon-descent.dealer-cannot-cover"));
+                case NONE -> {
+                }
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            return false;
+        }
+        budgetCommitment = result;
+        return true;
+    }
+
+    /** Pays the round's result and releases the descent's reservation, exactly once. */
+    private void settleBudget(java.math.BigDecimal payout) {
+        org.nc.nccasino.budget.DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null || budgetCommitment == null) {
+            budgetCommitment = null;
+            return;
+        }
+        budget.settle(internalName, budgetCommitment, payout);
+        budgetCommitment = null;
     }
 
      private void generateGameGrid() {
@@ -442,6 +505,7 @@ public class DragonClient extends Client implements TerminableSession {
     
         gameOverTriggered = true;
         moveLocked = true;
+        settleBudget(org.nc.nccasino.budget.Money.ZERO);
     
         // Cancel all scheduled tasks
         for (int taskID : taskIDs) {
@@ -470,6 +534,9 @@ public class DragonClient extends Client implements TerminableSession {
                 if(!betStack.isEmpty()){
                     if (SoundHelper.getSoundSafely("entity.ender_dragon.ambient", player) != null)
                         player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_AMBIENT, SoundCategory.MASTER, 0.6f, 1.0f);
+                    if (!ensureBudgetCoversNextFloor(0)) {
+                        return;
+                    }
                     setupGame();
                 }
                 else {
@@ -551,6 +618,13 @@ public class DragonClient extends Client implements TerminableSession {
         final int safeGridCol = gridCol; // Create a final copy
 
         if (floor == (currentFloor - displayOffset)) { 
+            // The grid was fixed when the descent started, but the reveal is
+            // the player-visible moment a result becomes known. Deny here,
+            // before that reveal, if the dealer could not cover the pot
+            // clearing this floor would create.
+            if (!ensureBudgetCoversNextFloor(floorsCleared)) {
+                return;
+            }
             moveLocked = true;
             revealRow(floor);
             if(this.inventory == null||gameGrid==null) return;
@@ -774,6 +848,8 @@ public class DragonClient extends Client implements TerminableSession {
         moveLocked = true;
         double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
         double payoutMultiplier = calculatePayoutMultiplier();
+        // The dealer's books close here, before delivery.
+        settleBudget(org.nc.nccasino.budget.Money.of(totalBet * payoutMultiplier));
 		CurrencyProvider provider = (plugin.getCurrencyManager() != null) ? plugin.getCurrencyManager().getProvider(internalName) : null;
 		boolean isVault = provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider;
 
@@ -921,6 +997,11 @@ public class DragonClient extends Client implements TerminableSession {
         // KICKED: forfeit unconditionally regardless of phase — no refund,
         // no cash-out.
 
+        // Safety net: releases any reservation a path above did not already
+        // settle. A no-op wherever the round already settled explicitly,
+        // since settleBudget clears the commitment the first time it runs.
+        settleBudget(org.nc.nccasino.budget.Money.ZERO);
+
         betStack.clear();
 
         for (int taskId : taskIDs) {
@@ -948,6 +1029,7 @@ public class DragonClient extends Client implements TerminableSession {
 
         double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
         double winnings = totalBet * calculatePayoutMultiplier();
+        settleBudget(org.nc.nccasino.budget.Money.of(Math.max(0.0, winnings)));
         if (winnings <= 0) {
             return;
         }

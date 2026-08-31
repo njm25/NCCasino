@@ -259,6 +259,7 @@ dragon-descent:
   got-you: "&4¡El dragón te atrapó!"
   invalid-action: "&cAcción no válida."
   invalid-action-capitalized: "&cAcción no válida."
+  dealer-cannot-cover: "&cEste descenso no puede cubrir un premio tan grande ahora mismo. Inténtalo más tarde o reduce tu apuesta."
   no-bet: "&cNo se ha realizado ninguna apuesta."
   zone-unavailable: "&c¡No puedes seleccionar esta zona!"
   oof: "&cUf."
