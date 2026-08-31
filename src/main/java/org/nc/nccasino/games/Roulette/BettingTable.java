@@ -1142,6 +1142,27 @@ private boolean isValidSlotPage2(int slot) {
         budget.refund(internalName, budgetCommitment, stake);
         budgetCommitment = null;
     }
+
+    /**
+     * Releases this table's portfolio reservation from outside the normal
+     * spin-result/undo-bet paths -- required because {@link org.nc.nccasino.games.Roulette.RouletteInventory}'s
+     * own {@code forfeitBet}/{@code refundForShutdown} resolve a departing
+     * player's money independently of this class, and without this call
+     * would leave the reservation open forever with nothing left able to
+     * settle it.
+     *
+     * @param stake the actual amount being returned to the player, or
+     *     {@code 0} for a forfeit where the dealer keeps everything --
+     *     never the reservation's own gross-payout ceiling, which is a
+     *     different, larger number
+     */
+    void releasePortfolioForExternalResolution(long stake) {
+        if (stake > 0) {
+            refundPortfolio(java.math.BigDecimal.valueOf(stake));
+        } else {
+            settlePortfolio(java.math.BigDecimal.ZERO);
+        }
+    }
     /**
      * Handles both small single-bet refunds/undoes and a round's full
      * winnings ({@code totalPayoutFinal} in processSpinResult), so

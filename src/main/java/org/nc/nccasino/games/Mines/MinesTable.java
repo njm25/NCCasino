@@ -1822,6 +1822,20 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     
 
     void endGame() {
+        // Safety net for a mid-game exit (e.g. the Exit door clicked while
+        // GameState.PLAYING): a round already resolved via cashOut()/a mine
+        // hit already settled and cleared this, making the call below a
+        // harmless no-op; an abandoned live round forfeits here with
+        // nothing paid, exactly like a voluntary mid-round leave elsewhere.
+        // Never while a real cash-out's own delayed delivery is already
+        // in flight (cashOutDepositPending) -- that win is committed and
+        // its own scheduled task will settle the true amount when it runs;
+        // forfeiting here first would zero out the reservation before that
+        // task's settle call ever sees it, leaving the dealer's ledger
+        // silently short by exactly what it just paid out.
+        if (!cashOutDepositPending) {
+            settleBudget(Money.ZERO);
+        }
         if (player != null) {
             if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
                 refundAllBets(player);  // Refund any remaining bets

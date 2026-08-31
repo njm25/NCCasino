@@ -2093,6 +2093,14 @@ private void fillDecorativeSlots(int[] slots, Material material) {
             return;
         }
 
+        BettingTable bt = Tables.get(playerId);
+        if (bt != null) {
+            // The stake is being returned, not paid as a win -- release the
+            // portfolio reservation for exactly that amount, or it would sit
+            // open forever with no round resolution left to close it.
+            bt.releasePortfolioForExternalResolution((long) total);
+        }
+
         Material currencyMaterial = plugin.getCurrency(internalName);
         PendingPayout payout = PendingPayout.create(
             playerId,
@@ -2117,6 +2125,10 @@ private void fillDecorativeSlots(int[] slots, Material material) {
 
         BettingTable bt = Tables.remove(playerId);
         if (bt != null) {
+            // A kick keeps the stake with the dealer -- release the
+            // portfolio reservation with nothing paid, or it would sit open
+            // forever with no round resolution left to close it.
+            bt.releasePortfolioForExternalResolution(0);
             bt.cleanupListener();
         }
     }
