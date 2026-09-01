@@ -12,6 +12,7 @@ import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -47,7 +48,7 @@ public class DeleteCommand implements CasinoCommand {
         Player player = (Player) sender;
 
         List<String> occupations = AdminMenu.playerOccupations(player.getUniqueId());
-        List<Mob> mobs = AdminMenu.getOccupiedDealers(player.getUniqueId())
+        List<LivingEntity> mobs = AdminMenu.getOccupiedDealers(player.getUniqueId())
             .stream()
             .filter(v -> v != null && !v.isDead() && v.isValid()) // Ensure valid mobs
             .toList();
@@ -61,7 +62,7 @@ public class DeleteCommand implements CasinoCommand {
                     break; // Prevent index mismatch
                 }
                 String occupation = plugin.getLocalization().text(player, occupations.get(i));
-                Mob mob = mobs.get(i);
+                LivingEntity mob = mobs.get(i);
                 
                 String mobName = (mob != null) ? Dealer.getInternalName(mob) : "unknown mob";
                 player.sendMessage(plugin.getLocalization().text(

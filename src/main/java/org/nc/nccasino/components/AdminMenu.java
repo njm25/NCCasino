@@ -28,6 +28,7 @@ import org.bukkit.entity.Fox;
 import org.bukkit.entity.Frog;
 import org.bukkit.entity.Horse;
 import org.bukkit.entity.Llama;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.MagmaCube;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.MushroomCow;
@@ -54,6 +55,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.integrations.CitizensDealerSupport;
 import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.entities.Menu;
@@ -69,22 +71,22 @@ public class AdminMenu extends Menu {
      * We store a reference to the "owner" Player's UUID so we know
      * which player maps we must remove references from in cleanup().
      */
-    private Mob dealer;
+    private LivingEntity dealer;
     // Track click state per player
     private int chipIndex=1;
     // Static maps referencing AdminInventory or the player's editing states
-    private static final Map<UUID, Mob> moveMode = new HashMap<>();
-    private static final Map<UUID, Mob> nameEditMode = new HashMap<>();
-    public static final Map<UUID, Mob> timerEditMode = new HashMap<>();
-    public static final Map<UUID, Mob> standOn17Mode = new HashMap<>();
-    public static final Map<UUID, Mob> editMinesMode = new HashMap<>();
-    private static final Map<UUID, Mob> amsgEditMode = new HashMap<>();
-    private static final Map<UUID, Mob> chipEditMode = new HashMap<>();
-    private static final Map<UUID, Mob> currencyEditMode = new HashMap<>();
-    public static final Map<UUID, Mob> decksEditMode = new HashMap<>();
-    public static final Map<UUID, Mob> dragonEditMode = new HashMap<>();
-    public static final Map<UUID, Mob> editRpsChainMode = new HashMap<>();
-    public static final Map<UUID, Mob> editCoinFlipChainMode = new HashMap<>();
+    private static final Map<UUID, LivingEntity> moveMode = new HashMap<>();
+    private static final Map<UUID, LivingEntity> nameEditMode = new HashMap<>();
+    public static final Map<UUID, LivingEntity> timerEditMode = new HashMap<>();
+    public static final Map<UUID, LivingEntity> standOn17Mode = new HashMap<>();
+    public static final Map<UUID, LivingEntity> editMinesMode = new HashMap<>();
+    private static final Map<UUID, LivingEntity> amsgEditMode = new HashMap<>();
+    private static final Map<UUID, LivingEntity> chipEditMode = new HashMap<>();
+    private static final Map<UUID, LivingEntity> currencyEditMode = new HashMap<>();
+    public static final Map<UUID, LivingEntity> decksEditMode = new HashMap<>();
+    public static final Map<UUID, LivingEntity> dragonEditMode = new HashMap<>();
+    public static final Map<UUID, LivingEntity> editRpsChainMode = new HashMap<>();
+    public static final Map<UUID, LivingEntity> editCoinFlipChainMode = new HashMap<>();
 
     /** Which chat-prompt field {@link #blackjackFieldEditMode} is currently open for. */
     public enum BlackjackEditField { MAX_HANDS, INSURANCE_TIMEOUT, TURN_TIMER_TIMEOUT }
@@ -92,13 +94,13 @@ public class AdminMenu extends Menu {
     // beyond the pre-existing timer/standOn17/decks maps above -- a typed
     // "which field" companion map instead of one more single-purpose
     // Map<UUID, Mob> per field.
-    public static final Map<UUID, Mob> blackjackFieldEditMode = new HashMap<>();
+    public static final Map<UUID, LivingEntity> blackjackFieldEditMode = new HashMap<>();
     public static final Map<UUID, BlackjackEditField> blackjackFieldEditTarget = new HashMap<>();
 
     // All active AdminInventories by player ID
     public static final Map<UUID, AdminMenu> adminInventories = new HashMap<>();
     // Tracks which dealer is being edited by which player
-    public static final Map<UUID, Mob> localMob = new HashMap<>();
+    public static final Map<UUID, LivingEntity> localMob = new HashMap<>();
     private final Map<UUID, Boolean> movingDealers = new HashMap<>();
 
 
@@ -163,6 +165,7 @@ public class AdminMenu extends Menu {
     slotMapping.put(SlotOption.CHIP_SIZE5, 24);
     slotMapping.put(SlotOption.MOB_SETTINGS, 4);
     slotMapping.put(SlotOption.JOCKEY_MENU, 13);
+    slotMapping.put(SlotOption.CITIZENS_BIND, 5);
    }
 
 
@@ -264,9 +267,23 @@ public class AdminMenu extends Menu {
         updateCurrencyButtons();
         Material mobEgg = MobSelectionMenu.getSpawnEggFor(dealer.getType());
 
-        // Now display that egg item in the slot
-        List<String> lore = getMobSelectionLore(dealer);
+        // Cosmetic variant/jockey lore is a plain-mob-dealer feature; a
+        // Citizens-backed dealer gets a simpler summary instead.
+        List<String> lore = (dealer instanceof Mob mobDealer)
+            ? getMobSelectionLore(mobDealer)
+            : List.of(text("admin.citizens-npc-lore"));
         addItemAndLore(mobEgg, 1, text("admin.edit-mob-settings"), slotMapping.get(SlotOption.MOB_SETTINGS), lore.toArray(new String[0]));
+
+        if (CitizensDealerSupport.isAvailable()) {
+            boolean isCitizens = Dealer.getBackend(dealer) == Dealer.Backend.CITIZENS;
+            addItemAndLore(
+                Material.PLAYER_HEAD,
+                1,
+                text(isCitizens ? "admin.rebind-citizens-npc" : "admin.bind-citizens-npc"),
+                slotMapping.get(SlotOption.CITIZENS_BIND),
+                text(isCitizens ? "admin.citizens-npc-lore" : "admin.bind-citizens-npc-lore")
+            );
+        }
 
     }
     
@@ -356,7 +373,7 @@ public class AdminMenu extends Menu {
      * Returns whether the player is currently editing something else (rename, timer, etc.).
      */
     public static boolean isPlayerOccupied(UUID playerId) {
-        Mob mob = nameEditMode.get(playerId);
+        LivingEntity mob = nameEditMode.get(playerId);
         return (mob != null)
             || (standOn17Mode.get(playerId) != null)
             || (editMinesMode.get(playerId) != null)
@@ -406,10 +423,10 @@ public class AdminMenu extends Menu {
         }
         return occupations;
     }
-    public static List<Mob> getOccupiedDealers(UUID playerId) {
-        List<Mob> mobs = new ArrayList<>();
-    
-        Mob mob;
+    public static List<LivingEntity> getOccupiedDealers(UUID playerId) {
+        List<LivingEntity> mobs = new ArrayList<>();
+
+        LivingEntity mob;
     
         if ((mob = nameEditMode.get(playerId)) != null) {
             mobs.add(mob);
@@ -521,6 +538,10 @@ public class AdminMenu extends Menu {
                 handleDealerSettings(player);
                 playDefaultSound(player);
                 break;
+            case CITIZENS_BIND:
+                handleCitizensBind(player);
+                playDefaultSound(player);
+                break;
             case TEST_MENU:
                 handleTestMenu(player);
                 playDefaultSound(player);
@@ -555,6 +576,14 @@ public class AdminMenu extends Menu {
             return;
         }
 
+        if (!(dealer instanceof Mob)) {
+            // Cosmetic variant/jockey settings are a plain-mob-dealer
+            // feature; a Citizens-backed dealer is managed via Citizens'
+            // own tools instead.
+            player.sendMessage(text("admin.citizens-npc-lore"));
+            return;
+        }
+
         MobSettingsMenu mobSettingsMenu = new MobSettingsMenu(
             dealerId,
             player,
@@ -571,6 +600,16 @@ public class AdminMenu extends Menu {
             text("admin.title", "dealer", Dealer.getInternalName(dealer))
         );
         player.openInventory(mobSettingsMenu.getInventory());
+    }
+
+    private void handleCitizensBind(Player player) {
+        if (!CitizensDealerSupport.isAvailable()) {
+            return;
+        }
+        String internalName = Dealer.getInternalName(dealer);
+        player.closeInventory();
+        CitizensDealerSupport.beginBindFlow(plugin, player, internalName);
+        cleanup();
     }
 
     private void handlePlayerMenu(Player player) {
@@ -1251,12 +1290,14 @@ public class AdminMenu extends Menu {
                 plugin.getConfig().set("dealers." + internalName + ".display-name", newName);
                 plugin.saveConfig();
                 dealer.setCustomNameVisible(true);
-                
-                // Update all jockey names in the stack
-                JockeyManager jockeyManager = new JockeyManager(dealer);
-                for (JockeyNode jockey : jockeyManager.getJockeys()) {
-                    if (jockey.getPosition() > 0) { // Skip dealer (position 0)
-                        jockey.setCustomName(newName);
+
+                // Update all jockey names in the stack (mob dealers only)
+                if (dealer instanceof Mob mobDealer) {
+                    JockeyManager jockeyManager = new JockeyManager(mobDealer);
+                    for (JockeyNode jockey : jockeyManager.getJockeys()) {
+                        if (jockey.getPosition() > 0) { // Skip dealer (position 0)
+                            jockey.setCustomName(newName);
+                        }
                     }
                 }
                 
@@ -1491,76 +1532,82 @@ public class AdminMenu extends Menu {
         // Successful teleport
         if (chunk.isLoaded() && dealer != null && dealer.getUniqueId().equals(dealerId)) {
             DealerEventListener.allowAdminTeleport(dealer.getUniqueId()); // Allow this teleport
-            
-            // Find the bottom-most vehicle in the stack
-            Mob bottomMob = dealer;
-            while (bottomMob.getVehicle() instanceof Mob) {
-                bottomMob = (Mob) bottomMob.getVehicle();
-            }
-            
-            // Store all mobs in the stack from bottom to top
-            List<Mob> stackMobs = new ArrayList<>();
-            Mob current = bottomMob;
-            while (current != null) {
-                stackMobs.add(current);
-                if (!current.getPassengers().isEmpty() && current.getPassengers().get(0) instanceof Mob) {
-                    current = (Mob) current.getPassengers().get(0);
-                } else {
-                    current = null;
+
+            if (dealer instanceof Mob mobDealer) {
+                // Find the bottom-most vehicle in the stack
+                Mob bottomMob = mobDealer;
+                while (bottomMob.getVehicle() instanceof Mob) {
+                    bottomMob = (Mob) bottomMob.getVehicle();
                 }
-            }
-            
-            // Store armor stand info if present
-            ArmorStand armorStand = null;
-            String armorStandName = null;
-            for (Entity passenger : dealer.getPassengers()) {
-                if (passenger instanceof ArmorStand) {
-                    armorStand = (ArmorStand) passenger;
-                    armorStandName = armorStand.getCustomName();
-                    break;
+
+                // Store all mobs in the stack from bottom to top
+                List<Mob> stackMobs = new ArrayList<>();
+                Mob current = bottomMob;
+                while (current != null) {
+                    stackMobs.add(current);
+                    if (!current.getPassengers().isEmpty() && current.getPassengers().get(0) instanceof Mob) {
+                        current = (Mob) current.getPassengers().get(0);
+                    } else {
+                        current = null;
+                    }
                 }
-            }
-            
-            // Temporarily unmount everything
-            for (Mob mob : stackMobs) {
-                if (mob.getVehicle() != null) {
-                    mob.getVehicle().removePassenger(mob);
+
+                // Store armor stand info if present
+                ArmorStand armorStand = null;
+                String armorStandName = null;
+                for (Entity passenger : mobDealer.getPassengers()) {
+                    if (passenger instanceof ArmorStand) {
+                        armorStand = (ArmorStand) passenger;
+                        armorStandName = armorStand.getCustomName();
+                        break;
+                    }
                 }
-                for (Entity passenger : new ArrayList<>(mob.getPassengers())) {
-                    mob.removePassenger(passenger);
+
+                // Temporarily unmount everything
+                for (Mob mob : stackMobs) {
+                    if (mob.getVehicle() != null) {
+                        mob.getVehicle().removePassenger(mob);
+                    }
+                    for (Entity passenger : new ArrayList<>(mob.getPassengers())) {
+                        mob.removePassenger(passenger);
+                    }
                 }
+
+                // Teleport the bottom mob first
+                bottomMob.setAI(true);
+                bottomMob.teleport(newLocation);
+                bottomMob.setAI(false);
+
+                // Remount everything in order from bottom to top
+                for (int i = 0; i < stackMobs.size() - 1; i++) {
+                    Mob currentMob = stackMobs.get(i);
+                    Mob nextMob = stackMobs.get(i + 1);
+                    currentMob.addPassenger(nextMob);
+                }
+
+                // Respawn armor stand if it existed
+                if (armorStand != null) {
+                    // Remove old armor stand
+                    armorStand.remove();
+
+                    // Spawn new armor stand at dealer location
+                    ArmorStand newArmorStand = (ArmorStand) mobDealer.getWorld().spawnEntity(newLocation, EntityType.ARMOR_STAND);
+                    newArmorStand.setVisible(false);
+                    newArmorStand.setGravity(false);
+                    newArmorStand.setSmall(true);
+                    newArmorStand.setMarker(true);
+                    newArmorStand.setCustomName(armorStandName);
+                    newArmorStand.setCustomNameVisible(true);
+
+                    // Add armor stand as passenger to dealer
+                    mobDealer.addPassenger(newArmorStand);
+                }
+            } else {
+                // Citizens-backed dealer: no jockey stack to carry along,
+                // just move the bound NPC's entity itself.
+                dealer.teleport(newLocation);
             }
-            
-            // Teleport the bottom mob first
-            bottomMob.setAI(true);
-            bottomMob.teleport(newLocation);
-            bottomMob.setAI(false);
-            
-            // Remount everything in order from bottom to top
-            for (int i = 0; i < stackMobs.size() - 1; i++) {
-                Mob currentMob = stackMobs.get(i);
-                Mob nextMob = stackMobs.get(i + 1);
-                currentMob.addPassenger(nextMob);
-            }
-            
-            // Respawn armor stand if it existed
-            if (armorStand != null) {
-                // Remove old armor stand
-                armorStand.remove();
-                
-                // Spawn new armor stand at dealer location
-                ArmorStand newArmorStand = (ArmorStand) dealer.getWorld().spawnEntity(newLocation, EntityType.ARMOR_STAND);
-                newArmorStand.setVisible(false);
-                newArmorStand.setGravity(false);
-                newArmorStand.setSmall(true);
-                newArmorStand.setMarker(true);
-                newArmorStand.setCustomName(armorStandName);
-                newArmorStand.setCustomNameVisible(true);
-                
-                // Add armor stand as passenger to dealer
-                dealer.addPassenger(newArmorStand);
-            }
-            
+
             // Save the new location
             saveDealerLocation(newLocation);
             
@@ -1766,7 +1813,7 @@ public class AdminMenu extends Menu {
         }
     }
 
-    public static void clearAllEditModes(Mob mob) {
+    public static void clearAllEditModes(LivingEntity mob) {
         nameEditMode.values().removeIf(mob::equals);
         timerEditMode.values().removeIf(mob::equals);
         amsgEditMode.values().removeIf(mob::equals);

@@ -13,6 +13,7 @@ import org.nc.nccasino.components.AdminMenu;
 import org.nc.nccasino.components.GameOptionsMenu;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 
 public class CreateCommand implements CasinoCommand {
@@ -32,7 +33,7 @@ public class CreateCommand implements CasinoCommand {
         Player player = (Player) sender;
                 
         List<String> occupations = AdminMenu.playerOccupations(player.getUniqueId());
-        List<Mob> mobs = AdminMenu.getOccupiedDealers(player.getUniqueId())
+        List<LivingEntity> mobs = AdminMenu.getOccupiedDealers(player.getUniqueId())
             .stream()
             .filter(v -> v != null && !v.isDead() && v.isValid()) // Ensure valid mob
             .toList();
@@ -46,7 +47,7 @@ public class CreateCommand implements CasinoCommand {
                     break; // Prevent index mismatch
                 }
                 String occupation = plugin.getLocalization().text(player, occupations.get(i));
-                Mob mob = mobs.get(i);
+                LivingEntity mob = mobs.get(i);
                 
                 String mobName = (mob != null) ? Dealer.getInternalName(mob) : "unknown dealer";
                 player.sendMessage(plugin.getLocalization().text(

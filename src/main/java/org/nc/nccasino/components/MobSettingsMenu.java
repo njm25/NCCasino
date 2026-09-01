@@ -47,8 +47,10 @@ public class MobSettingsMenu extends Menu {
         this.plugin = plugin;
         this.returnName = returnName;
         this.slotToJockeyMap = new HashMap<>();
-        this.dealer = Dealer.findDealer(dealerId, player.getLocation());
-        
+        // This menu is mob-only (jockey stacking); the admin UI only opens
+        // it for a Backend.MOB dealer.
+        this.dealer = (Mob) Dealer.findDealer(dealerId, player.getLocation());
+
         // Create a fresh JockeyManager to ensure we have the current state
         this.jockeyManager = new JockeyManager(dealer);
         

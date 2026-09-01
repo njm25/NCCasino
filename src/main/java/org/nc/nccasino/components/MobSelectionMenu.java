@@ -56,6 +56,11 @@ import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
 
 public class MobSelectionMenu extends Menu {
+    // Shadows Menu.dealer (which is LivingEntity, to also cover Citizens
+    // dealers elsewhere): this menu is mob-only cosmetic variant
+    // cycling/jockey stacking, and the admin UI only ever opens it for a
+    // Backend.MOB dealer.
+    private Mob dealer;
     private int currentPage = 1;
     private static final int PAGE_SIZE = 45;
     private static final Map<Material, EntityType> spawnEggToEntity = new HashMap<>();
@@ -235,7 +240,10 @@ public class MobSelectionMenu extends Menu {
             returnName, 
             returnToAdmin
         ); 
-        this.dealer = Dealer.findDealer(dealerId, player.getLocation());
+        // This menu is mob-only (cosmetic variant cycling, jockey stacking);
+        // Citizens-backed dealers never reach it -- the admin UI only offers
+        // this action for Backend.MOB dealers.
+        this.dealer = (Mob) Dealer.findDealer(dealerId, player.getLocation());
 
         initializeMenu();
     }

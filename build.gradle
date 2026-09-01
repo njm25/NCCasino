@@ -22,6 +22,10 @@ repositories {
         name = 'jitpack'
         url = 'https://www.jitpack.io'
     }
+    maven {
+        name = 'citizens-repo'
+        url = 'https://maven.citizensnpcs.co/repo'
+    }
 }
 
 dependencies {
@@ -30,7 +34,23 @@ dependencies {
     compileOnly ('com.github.MilkBowl:VaultAPI:1.7') {
         exclude group: 'org.bukkit'
     }
-    implementation files('libs/lib-1.0-SNAPSHOT.jar')  
+    // Optional soft-dependency: Citizens NPC dealers. "2.0.+" resolves to
+    // whatever the newest 2.0.x snapshot on citizens-repo is at build time,
+    // since Citizens does not publish fixed-version GitHub releases and its
+    // exact current snapshot number couldn't be confirmed from this
+    // environment (the repo's browsable listing blocked the fetch). Pin this
+    // to a concrete version once a build against spigot-api 1.21.11 has been
+    // verified locally.
+    compileOnly("net.citizensnpcs:citizensapi:2.0.+") {
+        changing = true
+    }
+    // citizensapi only carries the Trait/NPC/event interfaces; built-in
+    // traits like LookClose ship in the main Citizens2 plugin jar instead.
+    compileOnly("net.citizensnpcs:citizens-main:2.0.+") {
+        changing = true
+        transitive = false
+    }
+    implementation files('libs/lib-1.0-SNAPSHOT.jar')
 
     testImplementation platform("org.junit:junit-bom:5.11.4")
     testImplementation "org.junit.jupiter:junit-jupiter"

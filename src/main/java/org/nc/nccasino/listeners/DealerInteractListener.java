@@ -6,6 +6,7 @@ import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -38,7 +39,7 @@ import java.util.UUID;
 public class DealerInteractListener implements Listener {
     private final Nccasino plugin;
     public static Set<Player> activeAnimations = new HashSet<>();
-    private Mob dealer;
+    private LivingEntity dealer;
     private final Map<UUID, Boolean> clickAllowed = new HashMap<>(); // Track click state per player
 
     private final Set<String> recentInteractions = new HashSet<>();
@@ -104,12 +105,20 @@ public class DealerInteractListener implements Listener {
     @EventHandler
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         Entity clickedEntity = event.getRightClicked();
-        if (!(clickedEntity instanceof Mob)) return;
+        if (!(clickedEntity instanceof LivingEntity)) return;
         Player player = event.getPlayer();
-        Mob clickedMob = (Mob) clickedEntity;
-        
-        // Find the dealer associated with this mob (either directly or through jockey stack)
-        this.dealer = findDealerFromJockey(clickedMob);
+
+        // Find the dealer associated with this entity. Plain mobs may be
+        // part of a jockey stack (vehicles/passengers); Citizens-backed
+        // dealers (including EntityType.PLAYER NPCs, which aren't a Mob)
+        // never stack, so they're only ever the clicked entity itself.
+        if (clickedEntity instanceof Mob clickedMob) {
+            this.dealer = findDealerFromJockey(clickedMob);
+        } else if (clickedEntity instanceof LivingEntity clickedLiving && Dealer.isDealer(clickedLiving)) {
+            this.dealer = clickedLiving;
+        } else {
+            this.dealer = null;
+        }
         if (this.dealer == null) return;
 
         String interactionKey = player.getUniqueId() + ":" + this.dealer.getUniqueId();
@@ -145,7 +154,7 @@ public class DealerInteractListener implements Listener {
         }
 
         List<String> occupations = AdminMenu.playerOccupations(player.getUniqueId());
-        List<Mob> mobs = AdminMenu.getOccupiedDealers(player.getUniqueId())
+        List<LivingEntity> mobs = AdminMenu.getOccupiedDealers(player.getUniqueId())
             .stream()
             .filter(v -> v != null && !v.isDead() && v.isValid()) // Ensure valid villagers
             .toList();
@@ -159,7 +168,7 @@ public class DealerInteractListener implements Listener {
                     break; // Prevent index mismatch
                 }
                 String occupation = plugin.getLocalization().text(player, occupations.get(i));
-                Mob mob = mobs.get(i);
+                LivingEntity mob = mobs.get(i);
                 
                 String mobName = (mob != null) ? Dealer.getInternalName(mob) : "unknown dealer";
                 player.sendMessage(plugin.getLocalization().text(
@@ -218,16 +227,18 @@ public class DealerInteractListener implements Listener {
     private void handleDealerInventory(Player player, UUID dealerId) {
         DealerInventory dealerInventory = DealerInventory.inventories.get(dealerId);
         if (dealerInventory == null) {
-            // Try to find the dealer by following the passenger/vehicle chain
-            Mob foundDealer = null;
+            // Try to find the dealer directly, or by following the
+            // passenger/vehicle chain (plain mob dealers only -- Citizens
+            // dealers never stack, so a direct isDealer check is enough).
+            LivingEntity foundDealer = null;
             for (Entity entity : player.getWorld().getNearbyEntities(player.getLocation(), 5, 5, 5)) {
+                if (entity instanceof LivingEntity livingEntity &&
+                    Dealer.isDealer(livingEntity) &&
+                    Dealer.getUniqueId(livingEntity).equals(dealerId)) {
+                    foundDealer = livingEntity;
+                    break;
+                }
                 if (entity instanceof Mob mob) {
-                    // Check if this mob is a dealer
-                    if (Dealer.isDealer(mob) && Dealer.getUniqueId(mob).equals(dealerId)) {
-                        foundDealer = mob;
-                        break;
-                    }
-                    
                     // Check passengers
                     for (Entity passenger : mob.getPassengers()) {
                         if (passenger instanceof Mob passengerMob && 
@@ -278,7 +289,10 @@ public class DealerInteractListener implements Listener {
 
             // Restore dealer inventory
             Dealer.updateGameType(foundDealer, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
-            Dealer.startLookingAtPlayers(foundDealer);
+            // Citizens dealers use the LookClose trait (set once at bind time) instead.
+            if (foundDealer instanceof Mob foundMob) {
+                Dealer.startLookingAtPlayers(foundMob);
+            }
 
             dealerInventory = DealerInventory.getInventory(dealerId);
 
@@ -314,7 +328,7 @@ public class DealerInteractListener implements Listener {
                plugin.getConfig().contains("dealers." + Dealer.getInternalName(dealer) + ".animation-message");
     }
 
-    private void startAnimation(Mob dealer, Player player, DealerInventory dealerInventory, UUID dealerId) {
+    private void startAnimation(LivingEntity dealer, Player player, DealerInventory dealerInventory, UUID dealerId) {
         String animationMessage = plugin.getConfig().getString("dealers." + Dealer.getInternalName(dealer) + ".animation-message");
         activeAnimations.add(player);
 

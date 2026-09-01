@@ -721,8 +721,9 @@ private void openBettingTable(Player player) {
     switchingPlayers.add(player.getUniqueId()); // Mark the player as switching inventories
 
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        Mob dealer = Dealer.findDealer(dealerId, player.getLocation());
-        if (dealer != null) {
+        // BettingTable's visuals are mob-specific; a Citizens dealer using
+        // EntityType.PLAYER (not a Mob) can't open this view yet.
+        if (Dealer.findDealer(dealerId, player.getLocation()) instanceof Mob dealer) {
             Stack<Pair<String, Integer>> bets = getPlayerBets(player.getUniqueId());
             String internalName = Dealer.getInternalName(dealer);
             BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets, internalName, this, globalCountdown);

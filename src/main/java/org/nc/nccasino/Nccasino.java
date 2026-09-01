@@ -27,6 +27,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.ArmorStand;
@@ -47,6 +48,7 @@ import org.nc.nccasino.games.Roulette.BettingTable;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.integrations.CitizensDealerSupport;
 import org.nc.nccasino.helpers.Metrics;
 import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.listeners.DealerDeathHandler;
@@ -129,6 +131,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new DealerEventListener(), this);
         getServer().getPluginManager().registerEvents(new DealerInitializeListener(this), this); // Register the chunk listener
         getServer().getPluginManager().registerEvents(new PlayerSessionListener(this), this);
+
+        // Optional: Citizens NPC dealers. No-op if Citizens isn't installed.
+        CitizensDealerSupport.register(this);
 
 
         // Register the command executor
@@ -491,7 +496,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         });
     }
 
-    public void reloadDealer(Mob mob) {
+    public void reloadDealer(LivingEntity mob) {
         if (!Dealer.isDealer(mob)) {
             return;
         }
@@ -520,7 +525,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
         String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
         
         Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
-        new JockeyManager(mob);
+        // Jockey stacking is a plain-mob-dealer feature only.
+        if (mob instanceof Mob mobEntity) {
+            new JockeyManager(mobEntity);
+        }
     }
     
     private void reloadDealers() {
@@ -533,7 +541,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         });
     }
         
-    public void deleteAssociatedInventories(Mob mob) {
+    public void deleteAssociatedInventories(LivingEntity mob) {
         UUID dealerId = Dealer.getUniqueId(mob);
     
         DealerInventory inv = DealerInventory.getInventory(dealerId);
@@ -831,7 +839,14 @@ public final class Nccasino extends JavaPlugin implements Listener {
                     if (internalName.equals(storedInternalName)) {
                         UUID dealerId = Dealer.getUniqueId(mob);
                         if (dealerId != null) {
-                            return Dealer.findDealer(dealerId, mob.getLocation());
+                            // This method only iterates Mob entities to begin
+                            // with (see the loop above), so a match here is
+                            // always Mob-compatible; Citizens Player-type NPC
+                            // dealers aren't reachable through this bulk/chunk
+                            // lookup path and are managed via the Citizens
+                            // admin binding menu instead.
+                            LivingEntity found = Dealer.findDealer(dealerId, mob.getLocation());
+                            return (found instanceof Mob foundMob) ? foundMob : mob;
                         }
                         return mob;
                     }
