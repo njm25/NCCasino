@@ -785,7 +785,7 @@ public class BettingTable extends DealerInventory {
             String betType = canonicalBetType(pageNum, slot, itemName);
             // Check if the player is holding the currency item
             ItemStack heldItem = player.getItemOnCursor();
-            double wagerAmount = 0;
+            long wagerAmount = 0;
             boolean usedHeldItem = false;
         
             if (heldItem != null) {
@@ -795,10 +795,10 @@ public class BettingTable extends DealerInventory {
                     wagerAmount = heldItem.getAmount();
                     usedHeldItem = true;
                 } else {
-                    wagerAmount = selectedWager;
+                    wagerAmount = (long) selectedWager;
                 }
             } else {
-                wagerAmount = selectedWager;
+                wagerAmount = (long) selectedWager;
             }
         
             // Ensure the player has selected a valid wager
@@ -824,6 +824,19 @@ public class BettingTable extends DealerInventory {
                         player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
                     return;
                 }
+                if (usedHeldItem) {
+                    // A cursor-dragged stack IS the debit: clearing it is irreversible,
+                    // so this gate must run before any dealer mutation (the portfolio
+                    // reservation below). Inventory wagers are gated by their own
+                    // INVENTORY debit instead -- running both would trigger two
+                    // automatic claim attempts per wager. If this gate rejects the
+                    // wager, no reservation/stake credit has happened yet, so there is
+                    // nothing to undo: cursor items, dealer balance, reservations, and
+                    // the bet stack are all left exactly as they were.
+                    if (!WagerGate.allowsWager(plugin, player, WagerFunding.CURSOR)) {
+                        return;
+                    }
+                }
                 if (!ensurePortfolioCovered(player, betType, (int) wagerAmount)) {
                     return;
                 }
@@ -831,13 +844,6 @@ public class BettingTable extends DealerInventory {
 
                 if (canBet) {
                     if (usedHeldItem) {
-                        // A cursor-dragged stack IS the debit: clearing it is irreversible,
-                        // so the gate runs here, inside the cursor branch only. Inventory
-                        // wagers are gated by their own INVENTORY debit instead -- running
-                        // both would trigger two automatic claim attempts per wager.
-                        if (!WagerGate.allowsWager(plugin, player, WagerFunding.CURSOR)) {
-                            return;
-                        }
                         player.setItemOnCursor(null); // Remove the held stack
                     } else {
 						boolean removed = removeWagerFromInventory(player, wagerAmount);
@@ -1110,7 +1116,19 @@ private boolean isValidSlotPage2(int slot) {
                 internalName, playerId, "Roulette",
                 budgetSessionId + "-round-" + budgetRoundCounter, currency, updatedExposure);
         } else {
-            result = budget.increase(internalName, budgetCommitment, updatedExposure, Money.of(wagerAmount));
+            // A stable identity for this specific bet-placement attempt --
+            // the number of bets already committed to the table before this
+            // one is added. Two genuinely different bets are never placed at
+            // the same betStack size (a successful placement always grows
+            // it), so only a truly duplicated click (the same attempt fired
+            // twice before either succeeds) reuses this id. This lets a
+            // legitimate additional bet whose own worst case does not raise
+            // the portfolio's existing maximum still credit its stake
+            // exactly once, instead of newAmount-equality alone silently
+            // treating it as an already-applied replay.
+            String operationId = budgetSessionId + "-bet-" + betStack.size();
+            result = budget.increase(
+                internalName, budgetCommitment, updatedExposure, Money.of(wagerAmount), operationId);
         }
 
         if (!result.isAccepted()) {

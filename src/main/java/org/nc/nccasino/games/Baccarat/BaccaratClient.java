@@ -775,7 +775,15 @@ public class BaccaratClient extends Client implements TerminableSession {
         for (Map.Entry<BetOption, Deque<Double>> entry : betStacks.entrySet()) {
             current.put(entry.getKey(), entry.getValue().stream().mapToDouble(Double::doubleValue).sum());
         }
-        Exposure updatedExposure = BaccaratLiability.exposureAfterAdding(current, option, additional);
+        Exposure rawExposure = BaccaratLiability.exposureAfterAdding(current, option, additional);
+        // Item-mode payouts round up probabilistically to the next whole
+        // item at settlement (see BaccaratServer.applyProbabilisticRoundingIfDiscrete);
+        // the reservation must cover that ceiling, not just the raw
+        // fractional worst case, or a legitimate rounded-up payout would
+        // exceed its own reservation. Vault keeps exact fractional accounting.
+        Exposure updatedExposure = Exposure.of(
+            rawExposure.stake(),
+            org.nc.nccasino.currency.MoneyHelper.reservationCeilingForMode(rawExposure.maxGrossPayout(), currencyMode));
         Material material = plugin.getCurrency(internalName);
         org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
             currencyMode, material == null ? null : material.name(), currencyName);
@@ -787,7 +795,17 @@ public class BaccaratClient extends Client implements TerminableSession {
                 internalName, player.getUniqueId(), "Baccarat",
                 budgetSessionId + "-round-" + budgetRoundCounter, currency, updatedExposure);
         } else {
-            result = budget.increase(internalName, budgetCommitment, updatedExposure, Money.of(additional));
+            // A stable identity for this specific bet-placement attempt: the
+            // number of bets already committed before this one is added. A
+            // legitimate additional bet whose own worst case does not raise
+            // the portfolio's existing maximum must still credit its stake
+            // exactly once -- which newAmount-only replay detection cannot
+            // tell apart from a truly duplicated click. Only a genuinely
+            // duplicated attempt (fired before either succeeds) reuses this
+            // id, since a successful placement always grows betHistory.
+            String operationId = budgetSessionId + "-bet-" + betHistory.size();
+            result = budget.increase(
+                internalName, budgetCommitment, updatedExposure, Money.of(additional), operationId);
         }
 
         if (!result.isAccepted()) {
@@ -847,10 +865,14 @@ public class BaccaratClient extends Client implements TerminableSession {
             org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
                 currencyMode, material == null ? null : material.name(), currencyName);
             budgetRoundCounter++;
+            Exposure reopenRaw = BaccaratLiability.exposureOf(remaining);
+            Exposure reopenExposure = Exposure.of(
+                reopenRaw.stake(),
+                org.nc.nccasino.currency.MoneyHelper.reservationCeilingForMode(reopenRaw.maxGrossPayout(), currencyMode));
             Commitment reopened = budget.reserve(
                 internalName, player.getUniqueId(), "Baccarat",
                 budgetSessionId + "-round-" + budgetRoundCounter, currency,
-                BaccaratLiability.exposureOf(remaining));
+                reopenExposure);
             if (reopened.isAccepted()) {
                 budgetCommitment = reopened;
             }
@@ -972,10 +994,14 @@ public class BaccaratClient extends Client implements TerminableSession {
             org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
                 currencyMode, material == null ? null : material.name(), currencyName);
             budgetRoundCounter++;
+            Exposure rebetRaw = BaccaratLiability.exposureOf(hypothetical);
+            Exposure rebetExposure = Exposure.of(
+                rebetRaw.stake(),
+                org.nc.nccasino.currency.MoneyHelper.reservationCeilingForMode(rebetRaw.maxGrossPayout(), currencyMode));
             commitment = budget.reserve(
                 internalName, player.getUniqueId(), "Baccarat",
                 budgetSessionId + "-round-" + budgetRoundCounter, currency,
-                BaccaratLiability.exposureOf(hypothetical));
+                rebetExposure);
             if (!commitment.isAccepted()) {
                 denyPortfolioBet();
                 return;

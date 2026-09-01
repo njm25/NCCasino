@@ -56,11 +56,12 @@ configuration path, and never damage stored balances:
 ## `data/dealer-budgets.yml`
 
 ```yaml
-version: 1
+version: 2
 dealers:
   highroller:
     live-balance: "1000.000000"
     refill-boundary: 1735689600
+    baseline-initialized: 1735689600
     reservations:
     - id: "highroller|<player-uuid>|spin-7"
       player: "<player-uuid>"
@@ -70,7 +71,21 @@ dealers:
       currency-mode: STANDARD
       currency-material: EMERALD
       currency-name: "Casino Token"
+    settled:
+    - id: "highroller|<player-uuid>|spin-6"
+      settled-at: 1735689650
+    shortfalls:
+    - reservation-id: "highroller|<player-uuid>|spin-9"
+      amount: "499.000000"
+      recorded-at: 1735689700
 ```
+
+`settled` is the bounded tombstone list (see Idempotency, below): commitment
+ids that have already been settled and must never be recreated as a fresh
+reservation. `shortfalls` is new in version 2 (see below). A version-1 file
+(no `settled`/`shortfalls` keys) loads unchanged, with both lists starting
+empty -- both additions are purely additive and never invalidate an older
+file.
 
 ### Why amounts are strings
 
@@ -88,10 +103,43 @@ Reservation ids contain `|` and may contain `.`, both of which a Bukkit
 configuration path would split. Storing them as a list avoids escaping
 entirely.
 
+### `baseline-initialized` is not `refill-boundary`
+
+These are deliberately two separate fields, gating two unrelated things.
+
+`baseline-initialized` answers exactly one question: *has this LIMITED
+dealer's one-time underwriting-baseline seed ever been applied?* Nothing
+else sets it, and nothing else reads it. `refill-boundary` (below) answers a
+different question -- *what is the last ADD/RESET period this dealer has
+been credited for?* -- and can become positive from ordinary refill activity
+that has nothing to do with the baseline seed.
+
+Earlier code used `refill-boundary > 0` as a stand-in for "already seeded,"
+reasoning that `ensureInitialFunding` itself sets the boundary at seed time.
+That reasoning breaks on migration: a `dealer-budgets.yml` written before
+`ensureInitialFunding` existed (or a file from a dealer that was manually
+funded and then refilled) can have a positive `refill-boundary` while never
+having received the baseline floor. Under the old conflated check, such a
+dealer would be permanently, silently denied its one-time seed. A file
+without a `baseline-initialized` key loads it as `0` ("never seeded")
+regardless of what `refill-boundary` says, and `ensureInitialFunding` re-runs
+against it exactly once. Because it only ever raises the balance with
+`max(liveBalance, baseline)`, applying it to an already-healthy dealer during
+migration is a safe no-op, never a double-mint; applying it to a dealer that
+happens to be under baseline gives it the one-time floor the design always
+intended it to have. Once applied (during migration or otherwise), the
+marker is set and blocks every future call, exactly as before.
+
+Seeding still starts the refill clock (`refill-boundary`) the first time it
+runs -- but only when that clock has genuinely never been touched
+(`<= 0`). An already-running ADD/RESET clock picked up during migration is
+never reset back to "now", which would otherwise discard legitimately
+accrued refill periods.
+
 ### `refill-boundary`
 
-Epoch seconds of the last *applied* refill period. It advances by whole
-periods only, never to "now". Two consequences:
+Epoch seconds of the last *applied* ADD/RESET refill period. It advances by
+whole periods only, never to "now". Two consequences:
 
 - A restart cannot re-apply a period that was already applied.
 - Frequent access cannot drift the schedule forward and starve a refill. A
@@ -109,6 +157,52 @@ One line, from which everything else follows:
 No double payment, no negative dealer, and no reservation leak are not
 separate mechanisms — they are consequences of maintaining this on every
 operation, including operations that fail partway.
+
+### Settling one commitment never weakens another's backing
+
+`settle` never debits more than what is left of `liveBalance` once every
+*other* still-active reservation is left fully covered — never the whole
+`liveBalance`. Concretely, if a dealer holds 500 live with reservation A at
+300 and reservation B at 200, and A is settled for a (buggy, oversized)
+payout of 999, at most 300 can be paid out of the dealer's economy: B's 200
+remains fully backed afterward, live balance ends at 200, and the invariant
+above holds throughout. The player is still paid the full 999 by the
+game/delivery layer regardless — `Settlement.paid()` is never reduced — but
+699 of that payout had no backing in the dealer's economy. That gap is
+recorded as a **shortfall** (see below) rather than silently absorbed by
+starving another player's reservation or by flooring the whole dealer to
+zero. This is what stops a single oversized settlement from ever producing
+`reservedTotal > liveBalance`.
+
+## Shortfalls
+
+A shortfall record (`Settlement.insolvent() == true`) means a settlement's
+full payout could not be covered without consuming money already promised to
+another active reservation. It is written to the `shortfalls` list, keyed by
+the settled reservation id, in the same persisted mutation as the settlement
+itself, so it can never be lost or recorded without the settlement that
+caused it.
+
+Unlike the `settled` tombstone list, `shortfalls` is **never bounded and
+never evicts** an unresolved record: a shortfall is unresolved economic debt,
+and a bounded, oldest-evicted-first cap (appropriate for tombstones, which
+exist purely as replay guards and accumulate on every ordinary settlement)
+would silently destroy the exact information an administrator needs to
+reconcile the dealer's books. Since a reservation id is tombstoned the
+instant it settles and can never be recreated, at most one shortfall can ever
+exist per id, so unbounded growth here tracks real, rare anomalies rather
+than routine traffic.
+
+A shortfall is cleared only by an explicit `DealerBudgetStore#resolveShortfall`
+call once an administrator has actually restored the missing backing (e.g.
+via a manual deposit) — never automatically, and never merely because time
+has passed. Like `staleReservations`, this is a durable, honest signal for an
+administrator to act on, never something the system resolves on its own or
+hides by reporting the dealer's books as healthy when they are not.
+`resolveShortfall` is idempotent (resolving an already-resolved or
+never-recorded id is a harmless no-op) and persists atomically: if the write
+fails, the shortfall record is restored exactly as it was, so a caller can
+never believe a shortfall is resolved when it is not durably so.
 
 ## Durability
 

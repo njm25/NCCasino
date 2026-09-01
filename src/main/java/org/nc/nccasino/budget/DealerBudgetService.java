@@ -249,6 +249,35 @@ public class DealerBudgetService {
         Exposure totalExposureAfterIncrease,
         BigDecimal additionalStake
     ) {
+        return increase(dealerInternalName, open, totalExposureAfterIncrease, additionalStake, null);
+    }
+
+    /**
+     * {@link #increase(String, Commitment, Exposure, BigDecimal)}, guarded by
+     * an explicit {@code operationId} identifying this specific action (one
+     * bet-placement click, one split, one double) rather than inferring
+     * replay-safety from the resulting exposure alone.
+     *
+     * <p>Prefer this overload for any action where the same resulting
+     * worst-case payout can legitimately arise from two different real
+     * actions (for example, a Roulette or Baccarat portfolio taking another
+     * bet whose own worst case does not exceed the portfolio's existing
+     * maximum) -- {@code newAmount}-only idempotency would silently refuse to
+     * credit that bet's stake a second time it is in fact owed for the first
+     * time. Pass {@code null} only when every legitimate increase for this
+     * commitment always changes the resulting exposure (e.g. Blackjack's
+     * double, which always raises the hand's ceiling).
+     *
+     * @param operationId a stable identity for this specific attempt, or
+     *     {@code null} to fall back to the legacy exposure-only guard
+     */
+    public Commitment increase(
+        String dealerInternalName,
+        Commitment open,
+        Exposure totalExposureAfterIncrease,
+        BigDecimal additionalStake,
+        String operationId
+    ) {
         if (open == null) {
             return Commitment.refused(AdmissionDecision.CONFIGURATION_INVALID);
         }
@@ -275,11 +304,18 @@ public class DealerBudgetService {
         if (!decision.isAdmitted()) {
             return Commitment.refused(decision);
         }
-        Reservation updated = store.adjustReservation(
-            dealerInternalName,
-            existing.id(),
-            totalExposureAfterIncrease.maxGrossPayout(),
-            additionalStake);
+        Reservation updated = operationId == null
+            ? store.adjustReservation(
+                dealerInternalName,
+                existing.id(),
+                totalExposureAfterIncrease.maxGrossPayout(),
+                additionalStake)
+            : store.adjustReservation(
+                dealerInternalName,
+                existing.id(),
+                operationId,
+                totalExposureAfterIncrease.maxGrossPayout(),
+                additionalStake);
         return updated == null
             ? Commitment.refused(AdmissionDecision.PERSISTENCE_FAILED)
             : Commitment.accepted(updated);

@@ -23,14 +23,18 @@ import java.util.logging.Level;
 /**
  * Durable dealer balances and reservations, in {@code data/dealer-budgets.yml}.
  *
- * <h2>Stored schema (version 1)</h2>
+ * <h2>Stored schema (version 2)</h2>
  *
  * <pre>
- * version: 1
+ * version: 2
  * dealers:
  *   &lt;internal-name&gt;:
  *     live-balance: "1000.000000"   # exact decimal, plain string
- *     refill-boundary: 1735689600   # epoch seconds of the last applied period
+ *     refill-boundary: 1735689600   # epoch seconds of the last applied ADD/RESET period
+ *     baseline-initialized: 1735689600  # epoch seconds the one-time LIMITED
+ *                                    # baseline seed was applied, or 0/absent
+ *                                    # if never. Deliberately separate from
+ *                                    # refill-boundary -- see ensureInitialFunding.
  *     reservations:                 # a LIST, not a map: ids contain '.' and
  *       - id: "dealer|uuid|spin-7"  # '|', which YAML paths would split
  *         player: "…-uuid-…"
@@ -40,7 +44,17 @@ import java.util.logging.Level;
  *         currency-mode: STANDARD
  *         currency-material: EMERALD
  *         currency-name: "Casino Token"
+ *     settled:                      # tombstones: ids that can never be recreated
+ *       - id: "dealer|uuid|spin-6"
+ *         settled-at: 1735689650
+ *     shortfalls:                   # settlements that could not be fully backed
+ *       - reservation-id: "dealer|uuid|spin-9"
+ *         amount: "499.000000"      # exact unbacked remainder, player already paid
+ *         recorded-at: 1735689700
  * </pre>
+ *
+ * <p>Version 1 (no {@code shortfalls} key) loads unchanged with an empty
+ * shortfall list -- the field is purely additive.</p>
  *
  * <p>Amounts are stored as plain decimal strings rather than YAML numbers so a
  * value round-trips exactly: a YAML double would reintroduce the binary
@@ -67,7 +81,15 @@ import java.util.logging.Level;
  */
 public class DealerBudgetStore {
 
-    public static final int SCHEMA_VERSION = 1;
+    /**
+     * Version 2 adds the {@code shortfalls} list (see {@link
+     * DealerBudgetState.Shortfall}), recording any settlement that could not
+     * be fully backed without consuming another active reservation's
+     * protected balance. Additive: a version-1 file (no {@code shortfalls}
+     * key) loads with an empty shortfall list, since no such record could
+     * exist before this fix.
+     */
+    public static final int SCHEMA_VERSION = 2;
 
     private final Nccasino plugin;
     private final File file;
@@ -117,11 +139,21 @@ public class DealerBudgetStore {
             }
             DealerBudgetState state = new DealerBudgetState(
                 dealer, balance, section.getLong("refill-boundary", 0L));
+            // Absent in a file written before this marker existed -- defaults
+            // to 0 ("never seeded"), which is always the safe migration
+            // choice (see ensureInitialFunding's javadoc): the seed only ever
+            // raises the balance to a floor, so applying it once more on an
+            // already-healthy dealer changes nothing.
+            state.restoreBaselineInitialized(section.getLong("baseline-initialized", 0L));
 
             for (Map<?, ?> raw : section.getMapList("reservations")) {
                 Reservation reservation = readReservation(dealer, raw);
                 if (reservation != null) {
                     state.putReservation(reservation);
+                    BigDecimal creditedStake = Money.parse(string(raw, "credited-stake"));
+                    if (creditedStake != null) {
+                        state.restoreCreditedStake(reservation.id(), creditedStake);
+                    }
                 }
             }
 
@@ -130,6 +162,16 @@ public class DealerBudgetStore {
                 Object settledAtRaw = raw.get("settled-at");
                 if (id != null && !id.isBlank() && settledAtRaw instanceof Number number) {
                     state.restoreTombstone(id, number.longValue());
+                }
+            }
+
+            for (Map<?, ?> raw : section.getMapList("shortfalls")) {
+                String reservationId = string(raw, "reservation-id");
+                BigDecimal amount = Money.parse(string(raw, "amount"));
+                Object recordedAtRaw = raw.get("recorded-at");
+                if (reservationId != null && !reservationId.isBlank() && amount != null
+                    && recordedAtRaw instanceof Number number) {
+                    state.restoreShortfall(reservationId, amount, number.longValue());
                 }
             }
 
@@ -204,6 +246,7 @@ public class DealerBudgetStore {
             String base = "dealers." + state.dealerInternalName();
             config.set(base + ".live-balance", Money.store(state.liveBalance()));
             config.set(base + ".refill-boundary", state.refillBoundaryEpochSeconds());
+            config.set(base + ".baseline-initialized", state.baselineInitializedAtEpochSeconds());
 
             List<Map<String, Object>> serialized = new ArrayList<>();
             for (Reservation reservation : state.reservations()) {
@@ -217,6 +260,10 @@ public class DealerBudgetStore {
                 entry.put("currency-mode", currency == null ? null : currency.mode().name());
                 entry.put("currency-material", currency == null ? null : currency.material());
                 entry.put("currency-name", currency == null ? null : currency.name());
+                BigDecimal creditedStake = state.creditedStake(reservation.id());
+                if (creditedStake != null) {
+                    entry.put("credited-stake", Money.store(creditedStake));
+                }
                 serialized.add(entry);
             }
             config.set(base + ".reservations", serialized);
@@ -229,6 +276,16 @@ public class DealerBudgetStore {
                 settled.add(entry);
             }
             config.set(base + ".settled", settled);
+
+            List<Map<String, Object>> shortfalls = new ArrayList<>();
+            for (DealerBudgetState.Shortfall shortfall : state.shortfalls()) {
+                Map<String, Object> entry = new LinkedHashMap<>();
+                entry.put("reservation-id", shortfall.reservationId());
+                entry.put("amount", Money.store(shortfall.amount()));
+                entry.put("recorded-at", shortfall.recordedAtEpochSeconds());
+                shortfalls.add(entry);
+            }
+            config.set(base + ".shortfalls", shortfalls);
         }
         return writeAtomically(config);
     }
@@ -358,24 +415,36 @@ public class DealerBudgetStore {
     /**
      * One-time funding bootstrap for a freshly created LIMITED dealer: seeds
      * {@code live-balance} to the underwriting baseline exactly once, marked
-     * by starting the refill clock in the same persisted step so a reload or
-     * restart can never repeat it.
+     * by a dedicated, explicit {@code baseline-initialized} marker persisted
+     * in the same step so a reload or restart can never repeat it.
      *
-     * <p>Reuses the refill boundary's existing "never touched" marker
-     * ({@code refillBoundaryEpochSeconds() <= 0}) as the one-time gate --
-     * that marker already means exactly "this dealer has never been funded",
-     * so no second marker is needed. Setting the boundary to {@code now} here
-     * also means a subsequent {@code ADD}/{@code RESET} refill no longer sees
-     * "first contact": it starts accruing/resetting from this seed moment
-     * forward instead of granting a second, overlapping bootstrap.
+     * <p>Deliberately <strong>not</strong> gated on {@code refillBoundaryEpochSeconds}:
+     * that field can become positive for reasons unrelated to this seed ever
+     * having run (an ADD/RESET refill applying against a dealer that
+     * predates this seed feature, or a dealer that was manually funded and
+     * later refilled) -- treating it as proof of seeding is not
+     * migration-safe, since a file written before this method existed can
+     * have a positive refill boundary while never having received the
+     * baseline floor. This method uses its own marker instead, which starts
+     * at {@code 0} ("never seeded") for every file written before it
+     * existed, regardless of the refill boundary's value. Because the
+     * balance is only ever raised with {@code max(liveBalance, baseline)},
+     * running this once during migration on an already-healthy, long-lived
+     * dealer is a safe no-op, never a double-mint.
+     *
+     * <p>The refill boundary itself is still started here (unchanged
+     * behavior) -- but only if it has genuinely never been touched
+     * ({@code <= 0}); an already-running ADD/RESET clock is never reset back
+     * to "now" merely because this seed is (re)considered during migration,
+     * which would otherwise discard legitimately accrued refill periods.
      *
      * <p>A later change to the configured baseline never moves already-seeded
-     * money -- this method only ever runs once per dealer, gated by the
-     * boundary, regardless of how many times the baseline is edited
-     * afterward.
+     * money -- this method only ever applies its floor once per dealer,
+     * gated by the baseline-initialized marker, regardless of how many times
+     * the baseline is edited afterward.
      *
      * @return whether the seed was actually applied. {@code false} for a
-     *     dealer that has ever been touched before, one with nothing to seed
+     *     dealer that has ever been seeded before, one with nothing to seed
      *     ({@code baseline <= 0}), or a write failure.
      */
     public synchronized boolean ensureInitialFunding(String dealer, BigDecimal baseline, long nowEpochSeconds) {
@@ -383,17 +452,20 @@ public class DealerBudgetStore {
             return false;
         }
         DealerBudgetState current = state(dealer);
-        if (current.refillBoundaryEpochSeconds() > 0L) {
+        if (current.isBaselineInitialized()) {
             return false;
         }
         Boolean applied = mutate(dealer, state -> {
-            if (state.refillBoundaryEpochSeconds() > 0L) {
+            if (state.isBaselineInitialized()) {
                 // Lost a race with another caller between the check above
                 // and this mutation; the other caller already seeded it.
                 return null;
             }
             state.setLiveBalance(Money.max(state.liveBalance(), baseline));
-            state.setRefillBoundary(nowEpochSeconds);
+            state.markBaselineInitialized(nowEpochSeconds);
+            if (state.refillBoundaryEpochSeconds() <= 0L) {
+                state.setRefillBoundary(nowEpochSeconds);
+            }
             return Boolean.TRUE;
         });
         return Boolean.TRUE.equals(applied);
@@ -469,9 +541,19 @@ public class DealerBudgetStore {
                     + " refusing rather than mixing two commitments under one id.");
                 return null;
             }
-            // Same commitment, replayed. The stake is already credited and the
-            // payout already promised; doing either again would be the
-            // duplicate-payment bug this id exists to prevent.
+            BigDecimal creditedStake = existingState.creditedStake(reservation.id());
+            if (creditedStake != null && creditedStake.compareTo(Money.of(stake)) != 0) {
+                warn("Commitment '" + reservation.id() + "' on dealer '" + dealer
+                    + "' was replayed with a different stake (" + Money.store(stake)
+                    + " vs. the originally credited " + Money.store(creditedStake)
+                    + "); refusing rather than silently treating a mismatched replay as the"
+                    + " original request.");
+                return null;
+            }
+            // Same commitment, replayed with the same stake. The stake is
+            // already credited and the payout already promised; doing either
+            // again would be the duplicate-payment bug this id exists to
+            // prevent.
             return existing;
         }
         if (existingState.isTombstoned(reservation.id())) {
@@ -489,6 +571,7 @@ public class DealerBudgetStore {
             }
             state.setLiveBalance(balanceAfterStake);
             state.putReservation(reservation);
+            state.recordCreditedStake(reservation.id(), stake);
             return reservation;
         });
     }
@@ -505,11 +588,18 @@ public class DealerBudgetStore {
      * Grows or shrinks an existing reservation in place -- a Roulette
      * portfolio taking another bet, a Blackjack hand doubling.
      *
-     * <p>Idempotent when replayed with the exact same {@code newAmount}: if
-     * the reservation is already at that size, the call is treated as a
-     * no-op rather than crediting {@code additionalStake} a second time for
-     * one real deposit -- which is exactly what a duplicated Bukkit event or
-     * a retried increase would otherwise do.
+     * <p><strong>Legacy, exposure-only idempotency.</strong> Prefer {@link
+     * #adjustReservation(String, String, String, BigDecimal, BigDecimal)},
+     * which distinguishes a true replay from a different, legitimate
+     * operation that happens to land on the same resulting exposure. This
+     * overload cannot make that distinction: it treats the reservation
+     * already being at {@code newAmount} as proof of a replay, which is
+     * wrong whenever a portfolio's <em>worst-case</em> payout does not
+     * change even though a real, distinct additional stake was just placed
+     * (e.g. a new Roulette bet whose own worst case does not exceed the
+     * portfolio's existing maximum) -- that stake would be silently never
+     * credited. Kept only for callers not yet migrated to an explicit
+     * operation id.
      *
      * @param additionalStake stake posted alongside the increase, credited in
      *     the same persisted step
@@ -544,6 +634,76 @@ public class DealerBudgetStore {
             Reservation updated = existing.withAmount(newAmount);
             state.setLiveBalance(balanceAfter);
             state.putReservation(updated);
+            return updated;
+        });
+    }
+
+    /**
+     * Grows or shrinks an existing reservation in place, guarded by an
+     * explicit, caller-supplied {@code operationId} identifying this
+     * specific economic action (e.g. one Roulette bet-placement click, one
+     * Blackjack split) -- distinct from {@code reservationId}, which
+     * identifies the whole commitment being adjusted.
+     *
+     * <p>Idempotent on {@code operationId}, not on {@code newAmount}: a
+     * replay of the exact same operation (the same duplicated Bukkit event
+     * firing twice) is a no-op, but a <em>different</em> legitimate
+     * operation that happens to leave the reservation's worst-case payout
+     * unchanged still credits its {@code additionalStake} exactly once --
+     * which {@link #adjustReservation(String, String, BigDecimal, BigDecimal)}
+     * cannot do, since it can only see the resulting amount, not the
+     * operation that produced it.
+     *
+     * <p>The operation-identity guard is session-local (in-memory only, see
+     * {@link DealerBudgetState}) -- it protects against a duplicated event
+     * within one live session, not a cross-restart replay. Cross-restart
+     * safety for the reservation itself is unaffected: it still comes from
+     * {@code reservationId} being stable and derived from commitment
+     * identity, exactly as before.
+     *
+     * @param operationId a stable identity for this specific attempt -- the
+     *     same value on every retry of the *same* real action, and a
+     *     different value for every genuinely distinct action, even if two
+     *     distinct actions happen to produce the same {@code newAmount}
+     * @param additionalStake stake posted alongside the increase, credited in
+     *     the same persisted step
+     * @return the updated reservation, or {@code null} if it cannot be
+     *     covered, {@code operationId} is missing, or the write failed, in
+     *     which case nothing changed
+     */
+    public synchronized Reservation adjustReservation(
+        String dealer, String reservationId, String operationId, BigDecimal newAmount, BigDecimal additionalStake) {
+
+        if (operationId == null || operationId.isBlank()
+            || !Money.isSafe(newAmount) || !Money.isSafe(additionalStake)) {
+            return null;
+        }
+        DealerBudgetState currentState = state(dealer);
+        Reservation current = currentState.reservation(reservationId);
+        if (current == null) {
+            return null;
+        }
+        if (currentState.isSameOperation(reservationId, operationId)) {
+            // A true replay of this exact action: the stake was already
+            // credited and the exposure already updated. Applying either
+            // again would double-count a real deposit.
+            return current;
+        }
+        return mutate(dealer, state -> {
+            Reservation existing = state.reservation(reservationId);
+            if (existing == null) {
+                return null;
+            }
+            BigDecimal balanceAfter = Money.min(Money.add(state.liveBalance(), additionalStake), Money.MAX);
+            BigDecimal reservedAfter = Money.add(
+                Money.subtract(state.reservedTotal(), existing.amount()), newAmount);
+            if (!Money.atLeast(balanceAfter, reservedAfter)) {
+                return null;
+            }
+            Reservation updated = existing.withAmount(newAmount);
+            state.setLiveBalance(balanceAfter);
+            state.putReservation(updated);
+            state.recordOperation(reservationId, operationId);
             return updated;
         });
     }
@@ -592,9 +752,26 @@ public class DealerBudgetStore {
                 return null;
             }
             state.tombstone(reservationId);
-            BigDecimal debit = Money.min(normalizedPayout, state.liveBalance());
+            // Other active reservations' backing must never be consumed to
+            // cover this settlement: bound the debit to what remains of the
+            // live balance once every *other* still-active reservation is
+            // left fully covered. reservedTotal() here already excludes the
+            // reservation just removed above, so it is exactly "everyone
+            // else's" promise.
+            BigDecimal otherReserved = state.reservedTotal();
+            BigDecimal availableForThis = Money.clampNonNegative(
+                Money.subtract(state.liveBalance(), otherReserved));
+            BigDecimal debit = Money.min(normalizedPayout, availableForThis);
             boolean insolvent = debit.compareTo(normalizedPayout) < 0;
             state.setLiveBalance(Money.subtract(state.liveBalance(), debit));
+            if (insolvent) {
+                // The player is still paid the full payout by the game/
+                // delivery layer; this is the durable record of the part
+                // that left the dealer's economy with no backing, so an
+                // administrator can reconcile it exactly instead of the
+                // dealer's books silently claiming to be healthy.
+                state.recordShortfall(reservationId, Money.subtract(normalizedPayout, debit));
+            }
             return Settlement.settled(normalizedPayout, exposureViolation, insolvent);
         });
         return result == null ? Settlement.failed() : result;
@@ -614,6 +791,38 @@ public class DealerBudgetStore {
      */
     public synchronized Settlement refund(String dealer, String reservationId, BigDecimal stake) {
         return settle(dealer, reservationId, stake);
+    }
+
+    /**
+     * Outstanding shortfall records for a dealer, for administrative
+     * reconciliation. Never auto-cleared -- an operator resolves them
+     * deliberately (e.g. by depositing the missing amount), the same way
+     * {@link #staleReservations} are reported, never auto-released.
+     */
+    public synchronized List<DealerBudgetState.Shortfall> shortfalls(String dealer) {
+        return state(dealer).shortfalls();
+    }
+
+    /**
+     * Marks a shortfall resolved once an administrator has restored the
+     * missing backing (e.g. via {@link #deposit}) -- a deliberate, explicit
+     * operator action, mirroring the design's rule that a stale reservation
+     * is reported, never auto-released. Persisted atomically: if the write
+     * fails, the shortfall record is restored exactly as it was, so a caller
+     * can never believe a shortfall is resolved when it is not durably so.
+     *
+     * <p>Idempotent: resolving an id with no outstanding shortfall (already
+     * resolved, or never recorded) returns {@code false} and changes nothing
+     * -- it is a harmless no-op, not an error.
+     *
+     * @return whether a shortfall was actually present and durably cleared
+     */
+    public synchronized boolean resolveShortfall(String dealer, String reservationId) {
+        if (reservationId == null || !state(dealer).hasShortfall(reservationId)) {
+            return false;
+        }
+        Boolean resolved = mutate(dealer, state -> state.resolveShortfall(reservationId) ? Boolean.TRUE : null);
+        return Boolean.TRUE.equals(resolved);
     }
 
     /** Reservations older than {@code olderThanSeconds}, for administrative review. */
