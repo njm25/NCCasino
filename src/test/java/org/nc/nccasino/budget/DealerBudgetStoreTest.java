@@ -140,6 +140,24 @@ class DealerBudgetStoreTest {
     }
 
     @Test
+    void reusingACommitmentIdWithADifferentStakeIsRejectedRatherThanSilentlyAccepted() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("1000"));
+
+        Reservation first = store.creditAndReserve(reservation("hand-7", "300"), money("100"));
+        assertNotNull(first);
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("1100")));
+
+        Reservation mismatched = store.creditAndReserve(reservation("hand-7", "300"), money("250"));
+
+        assertNull(mismatched, "a reused id with a different stake must be refused, not silently accepted");
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("1100")),
+            "the mismatched replay must not move any money");
+        assertEquals(0, store.reservedTotal(DEALER).compareTo(money("300")));
+        assertInvariant(store);
+    }
+
+    @Test
     void aReservationBeyondTheAvailableFundsIsRefusedAndChangesNothing() {
         DealerBudgetStore store = store();
         store.deposit(DEALER, money("100"));
@@ -256,6 +274,95 @@ class DealerBudgetStoreTest {
         assertEquals(0, store.liveBalance(DEALER).compareTo(Money.ZERO),
             "the balance floors at zero rather than going negative");
         assertFalse(Money.isNegative(store.liveBalance(DEALER)));
+    }
+
+    @Test
+    void anOversizedSettlementNeverConsumesAnotherActiveReservationsBacking() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("500"));
+        store.creditAndReserve(reservation("spin-A", "300"), Money.ZERO);
+        store.creditAndReserve(reservation("spin-B", "200"), Money.ZERO);
+
+        Settlement result = store.settle(DEALER, reservation("spin-A", "300").id(), money("999"));
+
+        assertEquals(Settlement.Status.SETTLED, result.status());
+        assertTrue(result.exposureViolation());
+        assertTrue(result.insolvent(), "the dealer's full balance could not cover this payout");
+        assertEquals(0, result.paid().compareTo(money("999")),
+            "the player's full awarded result must never be reduced");
+        // Only the 300 not already promised to spin-B could be paid from the
+        // dealer's economy without eating into spin-B's backing.
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("200")),
+            "spin-B's 200 must remain fully backed");
+        assertEquals(0, store.reservedTotal(DEALER).compareTo(money("200")),
+            "spin-B's reservation must be untouched");
+        assertInvariant(store);
+
+        List<DealerBudgetState.Shortfall> shortfalls = store.shortfalls(DEALER);
+        assertEquals(1, shortfalls.size());
+        assertEquals(0, shortfalls.get(0).amount().compareTo(money("699")),
+            "the exact unbacked remainder must be durably recorded for reconciliation");
+    }
+
+    @Test
+    void aShortfallSurvivesAReloadExactly() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("500"));
+        store.creditAndReserve(reservation("spin-A", "300"), Money.ZERO);
+        store.creditAndReserve(reservation("spin-B", "200"), Money.ZERO);
+        store.settle(DEALER, reservation("spin-A", "300").id(), money("999"));
+
+        DealerBudgetStore reloaded = store();
+        List<DealerBudgetState.Shortfall> shortfalls = reloaded.shortfalls(DEALER);
+        assertEquals(1, shortfalls.size(), "the shortfall record must survive a restart exactly");
+        assertEquals(reservation("spin-A", "300").id(), shortfalls.get(0).reservationId());
+        assertEquals(0, shortfalls.get(0).amount().compareTo(money("699")));
+        assertEquals(0, reloaded.liveBalance(DEALER).compareTo(money("200")));
+        assertEquals(0, reloaded.reservedTotal(DEALER).compareTo(money("200")));
+        assertInvariant(reloaded);
+    }
+
+    @Test
+    void resolvingAShortfallClearsItExactlyOnce() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("500"));
+        store.creditAndReserve(reservation("spin-A", "300"), Money.ZERO);
+        store.creditAndReserve(reservation("spin-B", "200"), Money.ZERO);
+        store.settle(DEALER, reservation("spin-A", "300").id(), money("999"));
+        String shortfallId = reservation("spin-A", "300").id();
+
+        assertTrue(store.resolveShortfall(DEALER, shortfallId),
+            "an outstanding shortfall must actually be resolved");
+        assertTrue(store.shortfalls(DEALER).isEmpty());
+
+        assertFalse(store.resolveShortfall(DEALER, shortfallId),
+            "resolving an already-resolved shortfall must be a harmless no-op, not an error");
+        assertFalse(store.resolveShortfall(DEALER, "never-existed"),
+            "resolving an id that never had a shortfall must be a harmless no-op");
+
+        DealerBudgetStore reloaded = store();
+        assertTrue(reloaded.shortfalls(DEALER).isEmpty(),
+            "the resolution must be durably persisted, not just in-memory");
+    }
+
+    @Test
+    void distinctReservationsBothInShortfallAreEachRecordedExactly() {
+        // Two independent settlements can each go insolvent without one
+        // clobbering or duplicating the other's record.
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("300"));
+        store.creditAndReserve(reservation("spin-A", "300"), Money.ZERO);
+        store.settle(DEALER, reservation("spin-A", "300").id(), money("999"));
+        assertEquals(0, store.liveBalance(DEALER).compareTo(Money.ZERO));
+
+        store.deposit(DEALER, money("50"));
+        store.creditAndReserve(reservation("spin-B", "50"), Money.ZERO);
+        store.settle(DEALER, reservation("spin-B", "50").id(), money("999"));
+
+        List<DealerBudgetState.Shortfall> shortfalls = store.shortfalls(DEALER);
+        assertEquals(2, shortfalls.size(), "each insolvent settlement must produce its own record");
+        assertTrue(shortfalls.stream().anyMatch(s -> s.reservationId().equals(reservation("spin-A", "300").id())));
+        assertTrue(shortfalls.stream().anyMatch(s -> s.reservationId().equals(reservation("spin-B", "50").id())));
     }
 
     @Test
@@ -416,8 +523,97 @@ class DealerBudgetStoreTest {
 
         DealerBudgetStore reloaded = store();
         assertFalse(reloaded.ensureInitialFunding(DEALER, money("5000"), 1_700_200_000L),
-            "the persisted refill boundary must prevent re-seeding after a restart");
+            "the persisted baseline-initialized marker must prevent re-seeding after a restart");
         assertEquals(0, reloaded.liveBalance(DEALER).compareTo(money("5000")));
+    }
+
+    // ---- migration: baseline-initialized is a marker of its own, not refill-boundary ----
+
+    private void writeLegacyFile(String liveBalance, long refillBoundary, boolean withBaselineMarker) throws Exception {
+        Path data = tempDir.resolve("data");
+        Files.createDirectories(data);
+        StringBuilder yaml = new StringBuilder();
+        yaml.append("version: 2\n");
+        yaml.append("dealers:\n");
+        yaml.append("  ").append(DEALER).append(":\n");
+        yaml.append("    live-balance: \"").append(liveBalance).append("\"\n");
+        yaml.append("    refill-boundary: ").append(refillBoundary).append("\n");
+        if (withBaselineMarker) {
+            yaml.append("    baseline-initialized: ").append(refillBoundary).append("\n");
+        }
+        yaml.append("    reservations: []\n");
+        Files.writeString(data.resolve("dealer-budgets.yml"), yaml.toString());
+    }
+
+    @Test
+    void aFreshLimitedDealerWithNoFileAtAllIsEligibleForSeeding() {
+        // No file on disk yet -- the plain "brand new dealer" case.
+        DealerBudgetStore store = store();
+        assertTrue(store.ensureInitialFunding(DEALER, money("5000"), 1_700_000_000L));
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("5000")));
+    }
+
+    @Test
+    void anExistingNoneDealerWithBoundaryZeroIsStillEligibleForSeeding() throws Exception {
+        // refill-mode NONE never touches refill-boundary, so a dealer that
+        // has only ever received wagers (never admitted through the seed
+        // path) legitimately has boundary 0 and no baseline-initialized key.
+        writeLegacyFile("300", 0L, false);
+        DealerBudgetStore store = store();
+
+        assertTrue(store.ensureInitialFunding(DEALER, money("5000"), 1_700_000_000L));
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("5000")),
+            "an unseeded dealer must still receive its one-time floor regardless of prior balance");
+    }
+
+    @Test
+    void anExistingAddOrResetDealerWithAnAlreadyRunningRefillClockIsMigratedSafely() throws Exception {
+        // This is the exact migration hazard: a file from before the
+        // baseline-initialized marker existed, where refill-boundary is
+        // already positive purely because ADD/RESET refills have been
+        // running -- NOT because the baseline was ever seeded. The old
+        // (buggy) gate on refill-boundary > 0 would have falsely treated
+        // this dealer as already-seeded and permanently denied it the floor.
+        long longRunningBoundary = 1_650_000_000L;
+        writeLegacyFile("8000", longRunningBoundary, false);
+        DealerBudgetStore store = store();
+
+        assertTrue(store.ensureInitialFunding(DEALER, money("5000"), 1_700_000_000L),
+            "an old file with no baseline-initialized marker must still be seeded once,"
+                + " even though its refill boundary is already positive");
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("8000")),
+            "the dealer was already above baseline, so the floor is a no-op, not a top-up");
+        assertEquals(longRunningBoundary, store.state(DEALER).refillBoundaryEpochSeconds(),
+            "an already-running refill clock must never be reset back to \"now\" by migration seeding");
+
+        boolean reseeded = store.ensureInitialFunding(DEALER, money("5000"), 1_700_500_000L);
+        assertFalse(reseeded, "the marker set during migration must prevent a second seed");
+    }
+
+    @Test
+    void anExistingManuallyFundedBalanceBelowBaselineIsToppedUpExactlyOnce() throws Exception {
+        writeLegacyFile("1000", 0L, false);
+        DealerBudgetStore store = store();
+
+        assertTrue(store.ensureInitialFunding(DEALER, money("5000"), 1_700_000_000L));
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("5000")),
+            "a manually-funded balance below the baseline still receives the one-time floor");
+
+        DealerBudgetStore reloaded = store();
+        assertFalse(reloaded.ensureInitialFunding(DEALER, money("5000"), 1_700_600_000L),
+            "the marker must survive a restart and block a second seed");
+        assertEquals(0, reloaded.liveBalance(DEALER).compareTo(money("5000")));
+    }
+
+    @Test
+    void aDealerAlreadyCarryingTheMarkerIsNeverReseededByMigration() throws Exception {
+        writeLegacyFile("5000", 1_700_000_000L, true);
+        DealerBudgetStore store = store();
+
+        assertFalse(store.ensureInitialFunding(DEALER, money("50000"), 1_700_900_000L),
+            "a dealer that explicitly carries the marker must never be seeded again,"
+                + " even against a much larger later baseline");
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("5000")));
     }
 
     @Test

@@ -815,8 +815,18 @@ private void registerListener() {
                 internalName, playerId, "Blackjack",
                 budgetSessionId + "-open-" + budgetRoundCounter, currency, updatedExposure);
         } else {
+            // A stable identity for this specific chip-add attempt: how many
+            // chips have already been committed to this seat's opening wager
+            // before this one. A successful commit always grows
+            // pregameWagerIncrements (see commitWager/commitWagerFundsAlreadyRemoved),
+            // so only a truly duplicated event (fired before either
+            // succeeds) reuses this id -- a legitimate additional chip whose
+            // own worst-case ceiling does not exceed the pending wager's
+            // existing maximum must still credit its stake exactly once.
+            int chipsSoFar = pregameWagerIncrements.getOrDefault(playerId, new java.util.ArrayDeque<>()).size();
+            String operationId = budgetSessionId + "-open-chip-" + chipsSoFar;
             result = budget.increase(
-                internalName, existing, updatedExposure, org.nc.nccasino.budget.Money.of(additionalStake));
+                internalName, existing, updatedExposure, org.nc.nccasino.budget.Money.of(additionalStake), operationId);
         }
 
         if (!result.isAccepted()) {
@@ -931,8 +941,16 @@ private void registerListener() {
         }
         org.nc.nccasino.budget.Exposure totalExposure =
             org.nc.nccasino.games.Blackjack.BlackjackLiability.doubledHand(hand.getWager() + additionalStake);
+        // A hand can be doubled at most once (a doubled hand is fixed at
+        // three cards), so hand id + "double" is already a unique, stable
+        // identity for this exact action -- this guards a duplicated event
+        // the same way the legacy exposure-only path already did here (a
+        // double always changes the hand's ceiling, so there is no
+        // legitimate second call that could collide on newAmount), making
+        // this belt-and-suspenders rather than a behavior change.
+        String operationId = hand.getHandId() + "-double";
         org.nc.nccasino.budget.Commitment result = budget.increase(
-            internalName, existing, totalExposure, org.nc.nccasino.budget.Money.of(additionalStake));
+            internalName, existing, totalExposure, org.nc.nccasino.budget.Money.of(additionalStake), operationId);
         if (!result.isAccepted()) {
             switch (plugin.getPreferences(playerId).getMessageSetting()) {
                 case STANDARD, VERBOSE -> player.sendMessage(text(player, "blackjack.dealer-cannot-cover"));

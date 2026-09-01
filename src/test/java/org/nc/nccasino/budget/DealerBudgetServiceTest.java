@@ -255,6 +255,56 @@ class DealerBudgetServiceTest {
         assertEquals(0, store.liveBalance(DEALER).compareTo(money("1200")));
     }
 
+    @Test
+    void aDifferentOperationWithTheSameResultingExposureStillCreditsItsStakeOnce() {
+        // A portfolio's worst-case payout can legitimately stay the same
+        // across two distinct additional bets (the new bet's own worst case
+        // does not exceed the existing maximum) -- newAmount-only replay
+        // detection must not treat the second bet as a replay of the first
+        // and silently refuse to ever credit its stake.
+        makeLimited("10000", 1);
+        store.deposit(DEALER, money("1000"));
+        // The open reservation itself credits its stake (100), landing the
+        // dealer at 1100 with 600 reserved.
+        Commitment open = reserve("portfolio-1", Exposure.of(money("100"), money("600")));
+        assertTrue(open.isAccepted());
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("1100")));
+
+        Commitment afterFirstBet = service.increase(
+            DEALER, open, Exposure.of(money("150"), money("600")), money("50"), "bet-1");
+        assertTrue(afterFirstBet.isAccepted());
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("1150")),
+            "the first additional bet's stake must be credited");
+
+        Commitment afterSecondBet = service.increase(
+            DEALER, afterFirstBet, Exposure.of(money("200"), money("600")), money("50"), "bet-2");
+
+        assertTrue(afterSecondBet.isAccepted());
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("1200")),
+            "a second, distinct bet must credit its own stake even though the portfolio's"
+                + " worst case is unchanged from the first increase");
+        assertEquals(0, store.reservedTotal(DEALER).compareTo(money("600")));
+    }
+
+    @Test
+    void replayingTheSameOperationIdDoesNotCreditTheStakeTwice() {
+        makeLimited("10000", 1);
+        store.deposit(DEALER, money("1000"));
+        Commitment open = reserve("portfolio-1", Exposure.of(money("100"), money("600")));
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("1100")));
+
+        Commitment first = service.increase(
+            DEALER, open, Exposure.of(money("150"), money("700")), money("50"), "bet-1");
+        Commitment replay = service.increase(
+            DEALER, first, Exposure.of(money("150"), money("700")), money("50"), "bet-1");
+
+        assertTrue(first.isAccepted());
+        assertTrue(replay.isAccepted());
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("1150")),
+            "a duplicated event for the same bet-placement attempt must credit its stake once");
+        assertEquals(0, store.reservedTotal(DEALER).compareTo(money("700")));
+    }
+
     // ---- configuration ---------------------------------------------------
 
     @Test
