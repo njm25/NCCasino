@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * One limited dealer's live economic state: what it holds, what it has already
@@ -24,11 +25,31 @@ import java.util.Map;
  */
 public final class DealerBudgetState {
 
+    /**
+     * How many settled commitment ids one dealer retains as tombstones, so a
+     * settled commitment cannot be recreated. Bounded so a very long-lived
+     * dealer's memory/file does not grow without limit; oldest-settled ids
+     * are evicted first once the cap is reached. Recreating an id that has
+     * aged out of this bound is the one residual gap this leaves -- accepted
+     * because retaining every settlement ever made is not proportionate, and
+     * 5,000 outstanding ids is already far more than any real game keeps a
+     * commitment key "hot" for.
+     */
+    static final int MAX_TOMBSTONES = 5_000;
+
     private final String dealerInternalName;
     private BigDecimal liveBalance;
     private long refillBoundaryEpochSeconds;
     /** Reservation id -> reservation. Insertion-ordered so the file is stable. */
     private final Map<String, Reservation> reservations = new LinkedHashMap<>();
+    /**
+     * Settled reservation ids -> when they were settled (epoch seconds), so a
+     * settled commitment cannot be recreated via {@link
+     * DealerBudgetStore#creditAndReserve}. Insertion-ordered so the oldest
+     * entry is always first, which is what {@link #tombstone} evicts once
+     * {@link #MAX_TOMBSTONES} is exceeded.
+     */
+    private final Map<String, Long> settledTombstones = new LinkedHashMap<>();
 
     public DealerBudgetState(String dealerInternalName) {
         this(dealerInternalName, Money.ZERO, 0L);
@@ -99,11 +120,46 @@ public final class DealerBudgetState {
         return id == null ? null : reservations.remove(id);
     }
 
+    /**
+     * Marks a commitment id as settled so it can never be recreated as a
+     * fresh reservation. Evicts the oldest tombstone once {@link
+     * #MAX_TOMBSTONES} is exceeded.
+     */
+    void tombstone(String id) {
+        if (id == null) {
+            return;
+        }
+        settledTombstones.remove(id);
+        settledTombstones.put(id, System.currentTimeMillis() / 1000L);
+        while (settledTombstones.size() > MAX_TOMBSTONES) {
+            String oldest = settledTombstones.keySet().iterator().next();
+            settledTombstones.remove(oldest);
+        }
+    }
+
+    /** Test/load seam: restores a tombstone with its original settled-at time. */
+    void restoreTombstone(String id, long settledAtEpochSeconds) {
+        if (id == null) {
+            return;
+        }
+        settledTombstones.put(id, settledAtEpochSeconds);
+    }
+
+    boolean isTombstoned(String id) {
+        return id != null && settledTombstones.containsKey(id);
+    }
+
+    /** Settled commitment ids with their settled-at time, for persistence. */
+    Set<Map.Entry<String, Long>> tombstoneEntries() {
+        return settledTombstones.entrySet();
+    }
+
     /** A deep-enough copy to restore this state after a failed persist. */
     DealerBudgetState copy() {
         DealerBudgetState copy = new DealerBudgetState(
             dealerInternalName, liveBalance, refillBoundaryEpochSeconds);
         copy.reservations.putAll(reservations);
+        copy.settledTombstones.putAll(settledTombstones);
         return copy;
     }
 
@@ -113,6 +169,8 @@ public final class DealerBudgetState {
         this.refillBoundaryEpochSeconds = snapshot.refillBoundaryEpochSeconds;
         this.reservations.clear();
         this.reservations.putAll(snapshot.reservations);
+        this.settledTombstones.clear();
+        this.settledTombstones.putAll(snapshot.settledTombstones);
     }
 
     /**

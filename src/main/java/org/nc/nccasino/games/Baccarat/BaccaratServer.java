@@ -755,6 +755,15 @@ public class BaccaratServer extends Server {
     			}
     		}
 
+			// Decide the final item-currency payout exactly once, before the
+			// dealer settles -- applyProbabilisticRoundingIfDiscrete no-ops for
+			// VAULT (fractional payouts pass through unchanged), so this is
+			// safe to apply unconditionally here. Settlement, delivery,
+			// pending-payout queuing and the player-facing message all now
+			// share this one rounded value instead of the ledger settling on
+			// the raw fractional amount while delivery independently re-rounds.
+			payout = applyProbabilisticRoundingIfDiscrete(payout);
+
     		// The dealer's books close here, at the moment the result is known --
     		// before delivery, which may still queue the amount if the player is
     		// offline. Whether the player is online only changes how the payout
@@ -773,41 +782,50 @@ public class BaccaratServer extends Server {
 				java.math.BigDecimal displayProfit = MoneyHelper.roundDisplay(payoutBD.subtract(betAmount));
 
 				if (online) {
+					boolean delivered = true;
 					if (payoutBD.compareTo(java.math.BigDecimal.ZERO) > 0) {
-						((VaultCurrencyProvider) provider).deposit(player, internalName, payoutBD);
+						// deposit()'s boolean return exists specifically so a
+						// committed, already-settled payout must not be
+						// treated as paid when it wasn't -- queue it durably
+						// instead of silently vanishing the money and still
+						// telling the player they were paid.
+						delivered = ((VaultCurrencyProvider) provider).deposit(player, internalName, payoutBD);
+						if (!delivered) {
+							queuePendingPayout(playerId, payoutBD.doubleValue());
+						}
 					}
 
-		    		switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-		    			case STANDARD:{
-							player.sendMessage(text(
-                                player,
-                                "payout.paid",
-                                "amount",
-                                plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue())
-                            ));
-		    				break;}
-		    			case VERBOSE:{
-							player.sendMessage(text(
-                                player,
-                                "payout.paid-with-profit",
-                                "amount",
-                                plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()),
-                                "profit",
-                                plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue())
-                            ));
-		    				break;
-		    			}
-		    				case NONE:{
-		    				break;
-		    			}
-		    		}
+					if (delivered) {
+						switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
+							case STANDARD:{
+								player.sendMessage(text(
+									player,
+									"payout.paid",
+									"amount",
+									plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue())
+								));
+								break;}
+							case VERBOSE:{
+								player.sendMessage(text(
+									player,
+									"payout.paid-with-profit",
+									"amount",
+									plugin.formatWagerDisplay(currencyMode, currencyName, displayPayout.doubleValue()),
+									"profit",
+									plugin.formatWagerDisplay(currencyMode, currencyName, displayProfit.doubleValue())
+								));
+								break;
+							}
+								case NONE:{
+								break;
+							}
+						}
+					}
 				} else if (payoutBD.compareTo(java.math.BigDecimal.ZERO) > 0) {
 					queuePendingPayout(playerId, payoutBD.doubleValue());
 				}
 			} else {
-	    		// Apply probabilistic rounding only for discrete (item-based) currencies
-	    		payout = applyProbabilisticRoundingIfDiscrete(payout);
-
+				// payout was already rounded once, above, before settlement.
 				if (online) {
 		    		if (payout > 0) {
 		    			creditPlayer(player, payout);

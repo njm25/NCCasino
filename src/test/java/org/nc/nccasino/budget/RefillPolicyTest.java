@@ -158,6 +158,39 @@ class RefillPolicyTest {
     }
 
     @Test
+    void catchUpBeyondTheCapCreditsOnlyTheCappedPeriodsAndLeavesTheRestClaimableLater() {
+        // A period short enough that a realistic downtime can plausibly
+        // exceed MAX_CATCHUP_PERIODS, so this exercises the exact scenario
+        // the cap exists for rather than an unreachable one.
+        DealerBudgetSettings settings = DealerBudgetSettings.parse(
+            "LIMITED", "10000", "1", "ADD", "1", "60s", null, null);
+        long period = 60L;
+        long hugeElapsedPeriods = DealerBudgetSettings.MAX_CATCHUP_PERIODS + 50_000L;
+        long now = T0 + hugeElapsedPeriods * period;
+
+        RefillPolicy.Result result = RefillPolicy.apply(settings, money("0"), Money.ZERO, T0, now);
+
+        assertEquals(DealerBudgetSettings.MAX_CATCHUP_PERIODS, result.periodsElapsed(),
+            "one lazy catch-up must not credit more than the cap");
+        assertEquals(0, result.liveBalance().compareTo(
+            money(String.valueOf(DealerBudgetSettings.MAX_CATCHUP_PERIODS))));
+        long expectedBoundary = T0 + DealerBudgetSettings.MAX_CATCHUP_PERIODS * period;
+        assertEquals(expectedBoundary, result.boundaryEpochSeconds(),
+            "the boundary must only advance by the periods actually credited,"
+                + " not the full elapsed count -- otherwise the remainder is forfeited forever");
+
+        // A later access must still be able to claim the periods that were
+        // left uncredited, rather than having permanently lost them because
+        // the boundary had already moved past them.
+        RefillPolicy.Result second = RefillPolicy.apply(
+            settings, result.liveBalance(), Money.ZERO, result.boundaryEpochSeconds(), now);
+        assertEquals(50_000L, second.periodsElapsed(), "the remaining periods are still claimable");
+        assertEquals(0, second.liveBalance().compareTo(
+            money(String.valueOf(DealerBudgetSettings.MAX_CATCHUP_PERIODS + 50_000L))));
+        assertEquals(now, second.boundaryEpochSeconds());
+    }
+
+    @Test
     void anInvalidAddAmountDisablesRefillWithoutDamagingTheBalance() {
         DealerBudgetSettings broken = add("not-a-number", null);
         assertFalse(broken.problems().isEmpty(), "an actionable diagnostic must be produced");

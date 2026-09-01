@@ -223,7 +223,7 @@ class DealerBudgetStoreTest {
     }
 
     @Test
-    void aPayoutLargerThanItsReservationIsClampedRatherThanOverdrawingTheDealer() {
+    void aPayoutLargerThanItsReservationIsPaidInFullAndFlaggedAsAnExposureViolation() {
         DealerBudgetStore store = store();
         store.deposit(DEALER, money("1000"));
         store.creditAndReserve(reservation("spin-1", "300"), Money.ZERO);
@@ -231,9 +231,31 @@ class DealerBudgetStoreTest {
         Settlement result = store.settle(DEALER, reservation("spin-1", "300").id(), money("999"));
 
         assertEquals(Settlement.Status.SETTLED, result.status());
-        assertTrue(result.clamped(), "an over-large payout signals an exposure-calculation bug");
-        assertEquals(0, result.paid().compareTo(money("300")));
+        assertTrue(result.exposureViolation(), "an over-large payout signals an exposure-calculation bug");
+        assertFalse(result.insolvent(), "the dealer's full balance can still cover this payout");
+        assertEquals(0, result.paid().compareTo(money("999")),
+            "the player's full awarded result must never be reduced");
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("1")),
+            "the ledger debits the full payout, not just the reservation");
         assertInvariant(store);
+    }
+
+    @Test
+    void aPayoutExceedingEvenTheFullBalanceFloorsAtZeroRatherThanGoingNegative() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("500"));
+        store.creditAndReserve(reservation("spin-1", "300"), Money.ZERO);
+
+        Settlement result = store.settle(DEALER, reservation("spin-1", "300").id(), money("999"));
+
+        assertEquals(Settlement.Status.SETTLED, result.status());
+        assertTrue(result.exposureViolation());
+        assertTrue(result.insolvent(), "even the dealer's full balance could not cover this payout");
+        assertEquals(0, result.paid().compareTo(money("999")),
+            "the player's full awarded result must never be reduced, even when the dealer is insolvent");
+        assertEquals(0, store.liveBalance(DEALER).compareTo(Money.ZERO),
+            "the balance floors at zero rather than going negative");
+        assertFalse(Money.isNegative(store.liveBalance(DEALER)));
     }
 
     @Test
@@ -245,6 +267,44 @@ class DealerBudgetStoreTest {
 
         assertEquals(Settlement.Status.ALREADY_SETTLED, result.status());
         assertEquals(0, store.liveBalance(DEALER).compareTo(money("1000")));
+    }
+
+    @Test
+    void aSettledCommitmentCannotBeRecreatedByReplayingCreditAndReserve() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("1000"));
+        Reservation original = store.creditAndReserve(reservation("spin-1", "300"), money("50"));
+        assertNotNull(original);
+        store.settle(DEALER, original.id(), money("100"));
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("950")));
+
+        Reservation recreated = store.creditAndReserve(reservation("spin-1", "300"), money("50"));
+
+        assertNull(recreated, "a settled commitment id must never be recreated as a fresh reservation");
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("950")),
+            "no stake may be credited for a recreation attempt");
+        assertEquals(0, store.reservedTotal(DEALER).compareTo(Money.ZERO));
+        assertInvariant(store);
+    }
+
+    @Test
+    void reusingACommitmentIdWithADifferentPayloadIsRefused() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("1000"));
+        Reservation original = store.creditAndReserve(reservation("spin-1", "300"), money("50"));
+        assertNotNull(original);
+
+        Reservation differentGame = new Reservation(
+            original.id(), DEALER, original.playerId(), "Roulette",
+            EMERALDS, money("300"), original.createdAtEpochSeconds());
+        Reservation conflict = store.creditAndReserve(differentGame, money("50"));
+
+        assertNull(conflict, "a reused id with a different game/player/currency/exposure must be refused");
+        assertEquals(0, store.reservedTotal(DEALER).compareTo(money("300")),
+            "the original reservation must be untouched");
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("1050")),
+            "no second stake may be credited for the rejected payload");
+        assertInvariant(store);
     }
 
     // ---- adjusting an open commitment ------------------------------------
@@ -276,6 +336,25 @@ class DealerBudgetStoreTest {
         assertEquals(0, store.liveBalance(DEALER).compareTo(money("350")),
             "a refused increase must not take the additional stake");
         assertEquals(0, store.reservedTotal(DEALER).compareTo(money("200")));
+        assertInvariant(store);
+    }
+
+    @Test
+    void replayingTheSameIncreaseDoesNotCreditTheAdditionalStakeTwice() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("1000"));
+        Reservation open = store.creditAndReserve(reservation("table-1", "200"), money("50"));
+        assertNotNull(open);
+
+        Reservation first = store.adjustReservation(DEALER, open.id(), money("500"), money("50"));
+        Reservation replay = store.adjustReservation(DEALER, open.id(), money("500"), money("50"));
+
+        assertNotNull(first);
+        assertNotNull(replay);
+        assertEquals(0, replay.amount().compareTo(money("500")));
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("1100")),
+            "a replayed increase for one real deposit must not credit the stake twice");
+        assertEquals(0, store.reservedTotal(DEALER).compareTo(money("500")));
         assertInvariant(store);
     }
 
@@ -312,6 +391,54 @@ class DealerBudgetStoreTest {
         assertEquals(0, store.liveBalance(DEALER).compareTo(money("600")),
             "a promise outranks an administrative adjustment");
         assertInvariant(store);
+    }
+
+    // ---- one-time LIMITED funding seed ------------------------------------
+
+    @Test
+    void aFreshDealerIsSeededToTheBaselineExactlyOnce() {
+        DealerBudgetStore store = store();
+
+        assertTrue(store.ensureInitialFunding(DEALER, money("5000"), 1_700_000_000L));
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("5000")));
+
+        boolean seededAgain = store.ensureInitialFunding(DEALER, money("5000"), 1_700_100_000L);
+
+        assertFalse(seededAgain, "a dealer that has ever been touched before must not be re-seeded");
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("5000")),
+            "a second seed attempt must not mint additional money");
+    }
+
+    @Test
+    void theSeedSurvivesAReloadAndIsNeverRepeated() {
+        DealerBudgetStore store = store();
+        assertTrue(store.ensureInitialFunding(DEALER, money("5000"), 1_700_000_000L));
+
+        DealerBudgetStore reloaded = store();
+        assertFalse(reloaded.ensureInitialFunding(DEALER, money("5000"), 1_700_200_000L),
+            "the persisted refill boundary must prevent re-seeding after a restart");
+        assertEquals(0, reloaded.liveBalance(DEALER).compareTo(money("5000")));
+    }
+
+    @Test
+    void aLaterBaselineChangeNeverMovesAlreadySeededMoney() {
+        DealerBudgetStore store = store();
+        assertTrue(store.ensureInitialFunding(DEALER, money("5000"), 1_700_000_000L));
+
+        // An administrator raises the configured baseline afterward; this
+        // must never be re-applied to a dealer that was already seeded.
+        boolean reseeded = store.ensureInitialFunding(DEALER, money("50000"), 1_700_300_000L);
+
+        assertFalse(reseeded);
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("5000")),
+            "live money must not move because the configured baseline changed");
+    }
+
+    @Test
+    void aDealerWithNoBaselineIsNeverSeeded() {
+        DealerBudgetStore store = store();
+        assertFalse(store.ensureInitialFunding(DEALER, Money.ZERO, 1_700_000_000L));
+        assertEquals(0, store.liveBalance(DEALER).compareTo(Money.ZERO));
     }
 
     // ---- recovery --------------------------------------------------------

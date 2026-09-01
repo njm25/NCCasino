@@ -848,8 +848,6 @@ public class DragonClient extends Client implements TerminableSession {
         moveLocked = true;
         double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
         double payoutMultiplier = calculatePayoutMultiplier();
-        // The dealer's books close here, before delivery.
-        settleBudget(org.nc.nccasino.budget.Money.of(totalBet * payoutMultiplier));
 		CurrencyProvider provider = (plugin.getCurrencyManager() != null) ? plugin.getCurrencyManager().getProvider(internalName) : null;
 		boolean isVault = provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider;
 
@@ -857,18 +855,52 @@ public class DragonClient extends Client implements TerminableSession {
 			java.math.BigDecimal betAmount = MoneyHelper.clampNonNegative(MoneyHelper.bd(totalBet));
 			java.math.BigDecimal winningsBD = betAmount.multiply(MoneyHelper.bd(payoutMultiplier));
 
+			// The dealer's books close here, before delivery, on the exact
+			// amount that will actually be deposited -- Vault's fractional
+			// currency has no separate rounding step to disagree with.
+			settleBudget(org.nc.nccasino.budget.Money.of(winningsBD));
+
 			double winningsDouble = MoneyHelper.toVaultDouble(winningsBD);
 			double profitDouble = MoneyHelper.toVaultDouble(winningsBD.subtract(betAmount));
 
 			server.sendPayoutMessage(player, winningsDouble, true, profitDouble);
 
 			if (winningsBD.compareTo(java.math.BigDecimal.ZERO) > 0) {
-				((VaultCurrencyProvider) provider).deposit(player, internalName, winningsBD);
-				server.applyWinEffects(player);
+				// The dealer's books already closed above (settleBudget) --
+				// deposit()'s boolean return must not be ignored, or a failed
+				// delivery here would leave the dealer settled while the
+				// player received nothing and no durable obligation exists.
+				boolean delivered = ((VaultCurrencyProvider) provider).deposit(player, internalName, winningsBD);
+				if (delivered) {
+					server.applyWinEffects(player);
+				} else {
+					Material currencyMaterial = plugin.getCurrency(internalName);
+					PendingPayout pending = PendingPayout.create(
+						player.getUniqueId(),
+						"Dragon Descent",
+						internalName,
+						currencyMode,
+						currencyMaterial != null ? currencyMaterial.name() : null,
+						currencyName,
+						winningsDouble,
+						PayoutMessages.committedResultContext("Dragon Descent")
+					);
+					boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(pending);
+					if (!persisted) {
+						plugin.getLogger().severe("[NCCasino] Dragon Descent payout of " + winningsDouble
+							+ " for " + player.getUniqueId() + " failed to deliver AND failed to persist"
+							+ " as a pending payout -- money genuinely lost.");
+					}
+				}
 			}
 		} else {
-			double winnings = totalBet * payoutMultiplier;
-			winnings = applyProbabilisticRounding(winnings, player);
+			// Decide the final item-currency payout exactly once, before the
+			// dealer settles, so settlement, delivery and the player-facing
+			// message all share the same rounded amount instead of the
+			// ledger settling on the raw fractional value while delivery
+			// independently re-rounds.
+			double winnings = applyProbabilisticRounding(totalBet * payoutMultiplier, player);
+			settleBudget(org.nc.nccasino.budget.Money.of(winnings));
 			// Notify the player
 			server.sendPayoutMessage(player, winnings, true, (winnings - totalBet));
 		

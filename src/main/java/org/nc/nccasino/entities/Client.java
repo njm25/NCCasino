@@ -514,7 +514,14 @@ public abstract class Client extends DealerInventory {
 				if (payout.compareTo(java.math.BigDecimal.ZERO) <= 0) {
 					return;
 				}
-				vaultProvider.deposit(player, internalName, payout);
+				// deposit()'s boolean return exists specifically so a caller
+				// that owes this amount unconditionally must not treat a
+				// false return as success -- queue it durably instead of
+				// letting a failed Vault deposit silently vanish the money.
+				boolean delivered = vaultProvider.deposit(player, internalName, payout);
+				if (!delivered) {
+					queueFailedDepositPayout(player.getUniqueId(), amount, currencyMaterial);
+				}
 				return;
 			}
 		}
@@ -564,7 +571,10 @@ public abstract class Client extends DealerInventory {
 			}
 
 			// CUSTOM (or any non-STANDARD except VAULT): rely solely on the provider.
-			provider.deposit(player, internalName, toGive);
+			boolean delivered = provider.deposit(player, internalName, toGive);
+			if (!delivered) {
+				queueFailedDepositPayout(player.getUniqueId(), toGive, currencyMaterial);
+			}
 			return;
 		}
 
@@ -660,6 +670,43 @@ public abstract class Client extends DealerInventory {
     private String resolveGameType() {
         String configured = plugin.getConfig().getString("dealers." + internalName + ".game");
         return configured == null ? "NCCasino" : configured;
+    }
+
+    /**
+     * Durably queues a payout this player was owed but a live Vault/CUSTOM
+     * provider deposit failed to deliver. Unlike {@link #retainUnsettledPayout}
+     * (item currency, whole units only), this keeps the amount as a
+     * fractional double -- Vault currency can be fractional, and truncating
+     * it here would silently lose cents. The dealer must never be treated as
+     * having settled this money while the player received nothing and no
+     * durable obligation exists.
+     */
+    private void queueFailedDepositPayout(UUID playerId, double amount, Material currencyMaterial) {
+        if (amount <= 0) {
+            return;
+        }
+        if (plugin.getPendingPayoutStore() == null) {
+            plugin.getLogger().severe("[NCCasino] " + resolveGameType() + " payout of " + amount
+                + " for " + playerId + " failed to deliver and could not be durably retained"
+                + " -- money genuinely lost.");
+            return;
+        }
+        org.nc.nccasino.payout.PendingPayout payout = org.nc.nccasino.payout.PendingPayout.create(
+            playerId,
+            resolveGameType(),
+            internalName,
+            currencyMode,
+            currencyMaterial.name(),
+            currencyName,
+            amount,
+            org.nc.nccasino.payout.PayoutMessages.committedResultContext(resolveGameType())
+        );
+        boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
+        if (!persisted) {
+            plugin.getLogger().severe("[NCCasino] " + resolveGameType() + " payout of " + amount
+                + " for " + playerId + " failed to deliver AND failed to persist as a pending payout"
+                + " -- money genuinely lost.");
+        }
     }
 
 
@@ -794,7 +841,13 @@ public abstract class Client extends DealerInventory {
         if (provider != null) {
 			// Non-item currencies (VAULT/CUSTOM): refunds are balance credits, not ItemStacks.
 			if (provider.getMode() != org.nc.nccasino.currency.CurrencyMode.STANDARD) {
-				provider.deposit(player, internalName, amount);
+				boolean delivered = provider.deposit(player, internalName, amount);
+				if (!delivered) {
+					Material currencyMaterial = plugin.getCurrency(internalName);
+					if (currencyMaterial != null) {
+						queueFailedDepositPayout(player.getUniqueId(), amount, currencyMaterial);
+					}
+				}
 				return;
 			}
 

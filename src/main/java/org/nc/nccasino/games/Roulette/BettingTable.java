@@ -842,6 +842,12 @@ public class BettingTable extends DealerInventory {
                     } else {
 						boolean removed = removeWagerFromInventory(player, wagerAmount);
 						if (!removed) {
+							// The reservation already grew to cover this bet
+							// (a banked balance blocking the wager, a race
+							// with another withdrawal). Undo that growth
+							// rather than leaving a fictional credit and an
+							// oversized reservation behind.
+							reconcilePortfolioReservation(wagerAmount);
 							return;
 						}
                     }
@@ -877,6 +883,10 @@ public class BettingTable extends DealerInventory {
                     }
         
                 } else {
+                    // The reservation already grew to cover this bet before
+                    // the funds check ran; since it was refused, undo that
+                    // growth rather than leaving an oversized reservation.
+                    reconcilePortfolioReservation(wagerAmount);
                     switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                         case STANDARD:
                             player.sendMessage(text("roulette.invalid-action"));
@@ -966,6 +976,7 @@ public class BettingTable extends DealerInventory {
                     }
                 } 
                 Pair<String, Integer> lastBet = betStack.pop();
+                reconcilePortfolioReservation(lastBet.getSecond());
                 refundWagerToInventory(player, lastBet.getSecond());
                 updateAllLore();
                  if (SoundHelper.getSoundSafely("UI.TOAST.IN", player) != null)player.playSound(player.getLocation(), Sound.UI_TOAST_IN,SoundCategory.MASTER, 3f, 1.0f);
@@ -1108,6 +1119,57 @@ private boolean isValidSlotPage2(int slot) {
         }
         budgetCommitment = result;
         return true;
+    }
+
+    /**
+     * Reconciles the portfolio reservation to what {@code betStack} reflects
+     * right now, after currency amounting to {@code removedStake} has been
+     * (or is about to be) returned to the player -- an undo, or a rollback of
+     * a bet that was denied or whose debit failed after {@link
+     * #ensurePortfolioCovered} had already grown the reservation to cover it.
+     *
+     * <p>The reservation currently reflects {@code totalStake(betStack) +
+     * removedStake} credited into the dealer's live balance (everything
+     * legitimately staked, plus the amount now being given back or never
+     * actually taken). There is no primitive for "debit only part of what a
+     * reservation holds without releasing it" -- so this refunds the whole
+     * amount credited so far, fully releasing the reservation, and then, if
+     * anything is still legitimately staked, immediately re-reserves fresh
+     * for exactly that remaining total. The net effect on the dealer's
+     * balance leaves the still-legitimate portion exactly as it was and
+     * removes only {@code removedStake}.
+     */
+    private void reconcilePortfolioReservation(long removedStake) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null || budgetCommitment == null || budgetCommitment.unlimited()) {
+            budgetCommitment = null;
+            return;
+        }
+        long remainingStake = RouletteLiability.totalStake(betStack);
+        java.math.BigDecimal fullyCredited = Money.add(Money.of(remainingStake), Money.of(removedStake));
+
+        budget.refund(internalName, budgetCommitment, fullyCredited);
+        budgetCommitment = null;
+
+        if (!betStack.isEmpty() && remainingStake > 0) {
+            Material material = plugin.getCurrency(internalName);
+            org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
+                currencyMode, material == null ? null : material.name(), currencyName);
+            budgetRoundCounter++;
+            Commitment reopened = budget.reserve(
+                internalName, playerId, "Roulette",
+                budgetSessionId + "-round-" + budgetRoundCounter, currency,
+                RouletteLiability.exposureOf(betStack));
+            if (reopened.isAccepted()) {
+                budgetCommitment = reopened;
+            }
+            // If re-reserving the already-legitimate total is somehow
+            // refused (it should not be -- it was already covered a moment
+            // ago), the portfolio is left without a live reservation; the
+            // next successful bet's ensurePortfolioCovered call opens a
+            // fresh one from scratch, and settling a null commitment is
+            // already a safe no-op.
+        }
     }
 
     private void denyPortfolioBet(Player player) {

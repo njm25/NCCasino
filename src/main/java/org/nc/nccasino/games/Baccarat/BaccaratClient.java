@@ -570,6 +570,7 @@ public class BaccaratClient extends Client implements TerminableSession {
                 return;
             }
             double totalRefund = betStacks.values().stream().flatMap(Collection::stream).mapToDouble(Double::doubleValue).sum();
+            shrinkPortfolioReservationTo(java.util.Collections.emptyMap(), totalRefund);
             betHistory.clear();
             betStacks.clear();
             creditPlayer(player, totalRefund);
@@ -640,6 +641,12 @@ public class BaccaratClient extends Client implements TerminableSession {
             if (stack.isEmpty()) {
                 betStacks.remove(lastBetType);
             }
+
+            Map<BetOption, Double> remaining = new java.util.EnumMap<>(BetOption.class);
+            for (Map.Entry<BetOption, Deque<Double>> entry : betStacks.entrySet()) {
+                remaining.put(entry.getKey(), entry.getValue().stream().mapToDouble(Double::doubleValue).sum());
+            }
+            shrinkPortfolioReservationTo(remaining, lastBetAmount);
 
             creditPlayer(player, lastBetAmount);
             sendUpdateToServer("UNDO_BET", new BetData(lastBetType, lastBetAmount));
@@ -712,12 +719,12 @@ public class BaccaratClient extends Client implements TerminableSession {
         BetOption betType = betMapping.get(slot);
 
 
-        // The cursor gate has to run BEFORE the bet is recorded below:
-        // Baccarat pushes onto betHistory/betStacks first and clears the
-        // cursor afterwards, so refusing any later would leave a recorded bet
-        // that was never paid for. Gated only for cursor wagers -- inventory
-        // wagers are gated by removeWagerFromInventory's own INVENTORY debit,
-        // and running both would mean two automatic claim attempts per bet.
+        // The cursor gate has to run BEFORE anything else: clearing the
+        // cursor is irreversible, so it must be checked before the
+        // reservation grows or the bet is recorded. Inventory wagers are
+        // instead gated by tryRemoveWagerFromInventory's own INVENTORY debit
+        // below -- whose result is now actually checked, rather than merely
+        // assumed to have gated the wager the way it silently didn't before.
         if (isDraggingCurrency && !WagerGate.allowsWager(plugin, player, WagerFunding.CURSOR)) {
             return;
         }
@@ -725,19 +732,25 @@ public class BaccaratClient extends Client implements TerminableSession {
             return;
         }
 
+        if (isDraggingCurrency) {
+            player.setItemOnCursor(null); // Remove held stack
+        } else if (!tryRemoveWagerFromInventory(player, betAmount)) {
+            // The debit failed after the reservation already grew to cover
+            // it (a banked balance blocking the wager, a race with another
+            // withdrawal). Undo that growth and refuse the bet rather than
+            // recording and sending one nobody actually paid for.
+            rollbackPortfolioGrowth(betAmount);
+            denyPortfolioBet();
+            return;
+        }
+
         betHistory.add(new BetData(betType, betAmount)); // Maintain exact bet order
         betStacks.putIfAbsent(betType, new ArrayDeque<>());
         betStacks.get(betType).push(betAmount);
 
-        if (isDraggingCurrency) {
-        player.setItemOnCursor(null); // Remove held stack
-        } else {
-        removeWagerFromInventory(player, betAmount);
-         }
-
         // Send bet to server
         sendUpdateToServer("PLACE_BET", new BetData(betType, betAmount));
-        
+
         // Update all slots of the same bet type
         updateBetDisplay(betType,((BaccaratServer) server).getTotalBetForType(betType));
     }
@@ -783,6 +796,71 @@ public class BaccaratClient extends Client implements TerminableSession {
         }
         budgetCommitment = result;
         return true;
+    }
+
+    /**
+     * Undoes the hypothetical growth {@link #ensurePortfolioCovered} applied
+     * for a bet whose debit then failed: shrinks the reservation back down to
+     * exactly what {@code betStacks} still reflects (the failed bet was never
+     * added to it).
+     */
+    private void rollbackPortfolioGrowth(double failedAmount) {
+        Map<BetOption, Double> current = new java.util.EnumMap<>(BetOption.class);
+        for (Map.Entry<BetOption, Deque<Double>> entry : betStacks.entrySet()) {
+            current.put(entry.getKey(), entry.getValue().stream().mapToDouble(Double::doubleValue).sum());
+        }
+        shrinkPortfolioReservationTo(current, failedAmount);
+    }
+
+    /**
+     * Reconciles the portfolio reservation to {@code remaining} after
+     * currency amounting to {@code removedStake} has been (or is about to
+     * be) returned to the player -- an undo, a rollback of a bet whose debit
+     * failed, or any other case where less is now staked than the
+     * reservation currently reflects.
+     *
+     * <p>The reservation currently reflects {@code totalStake(remaining) +
+     * removedStake} credited into the dealer's live balance (everything
+     * legitimately staked, plus the amount now being given back). There is
+     * no primitive for "debit only part of what a reservation holds without
+     * releasing it" -- so this refunds the <em>whole</em> amount credited so
+     * far, fully releasing the reservation, and then, if anything is still
+     * legitimately staked, immediately re-reserves fresh for exactly that
+     * remaining total. The net effect on the dealer's balance leaves the
+     * still-legitimate portion exactly as it was and removes only {@code
+     * removedStake}.
+     */
+    private void shrinkPortfolioReservationTo(Map<BetOption, Double> remaining, double removedStake) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null || budgetCommitment == null || budgetCommitment.unlimited()) {
+            budgetCommitment = null;
+            return;
+        }
+        java.math.BigDecimal remainingStake = BaccaratLiability.totalStake(remaining);
+        java.math.BigDecimal fullyCredited = Money.add(remainingStake, Money.of(removedStake));
+
+        budget.refund(internalName, budgetCommitment, fullyCredited);
+        budgetCommitment = null;
+
+        if (!remaining.isEmpty() && Money.isPositive(remainingStake)) {
+            Material material = plugin.getCurrency(internalName);
+            org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
+                currencyMode, material == null ? null : material.name(), currencyName);
+            budgetRoundCounter++;
+            Commitment reopened = budget.reserve(
+                internalName, player.getUniqueId(), "Baccarat",
+                budgetSessionId + "-round-" + budgetRoundCounter, currency,
+                BaccaratLiability.exposureOf(remaining));
+            if (reopened.isAccepted()) {
+                budgetCommitment = reopened;
+            }
+            // If re-reserving the already-legitimate total is somehow
+            // refused (it should not be -- it was already covered a moment
+            // ago), the portfolio is left without a live reservation; the
+            // next successful bet's ensurePortfolioCovered call opens a
+            // fresh one from scratch, and settling a null commitment is
+            // already a safe no-op.
+        }
     }
 
     private void denyPortfolioBet() {
@@ -853,11 +931,11 @@ public class BaccaratClient extends Client implements TerminableSession {
 
     public void reapplyPreviousBets() {
         if (!rebetEnabled) return;
-        
+
         double totalRequired = previousBets.stream()
             .mapToDouble(bet -> bet.amount)
             .sum();
-    
+
         if (!hasEnoughWager(player, totalRequired)) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
@@ -873,15 +951,70 @@ public class BaccaratClient extends Client implements TerminableSession {
             previousBets.clear();
             return;
         }
-    
-        betHistory.clear(); // Clear before reapplying
 
+        // A rebet must be exactly as safe as placing every one of its bets
+        // fresh: bank-gated, dealer-admitted for the whole portfolio before
+        // anything is taken, and atomic -- either every bet is admitted,
+        // debited and recorded, or none of it is.
+        if (!WagerGate.allowsWager(plugin, player)) {
+            return;
+        }
+
+        Map<BetOption, Double> hypothetical = new java.util.EnumMap<>(BetOption.class);
+        for (BetData bet : previousBets) {
+            hypothetical.merge(bet.betType, bet.amount, Double::sum);
+        }
+
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        Commitment commitment = Commitment.forUnlimitedDealer();
+        if (budget != null) {
+            Material material = plugin.getCurrency(internalName);
+            org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
+                currencyMode, material == null ? null : material.name(), currencyName);
+            budgetRoundCounter++;
+            commitment = budget.reserve(
+                internalName, player.getUniqueId(), "Baccarat",
+                budgetSessionId + "-round-" + budgetRoundCounter, currency,
+                BaccaratLiability.exposureOf(hypothetical));
+            if (!commitment.isAccepted()) {
+                denyPortfolioBet();
+                return;
+            }
+        }
+        budgetCommitment = commitment;
+
+        List<BetData> debited = new ArrayList<>();
+        boolean allDebited = true;
+        for (BetData bet : previousBets) {
+            if (tryRemoveWagerFromInventory(player, bet.amount)) {
+                debited.add(bet);
+            } else {
+                allDebited = false;
+                break;
+            }
+        }
+
+        if (!allDebited) {
+            // Undo whatever was actually taken and release the reservation
+            // -- nothing here was ever really funded, so it is returned,
+            // never treated as a forfeited loss -- rather than partially
+            // applying the rebet.
+            for (BetData bet : debited) {
+                refundCurrency(player, (int) bet.amount);
+            }
+            if (budget != null && budgetCommitment != null) {
+                budget.refund(internalName, budgetCommitment, BaccaratLiability.totalStake(hypothetical));
+            }
+            budgetCommitment = null;
+            return;
+        }
+
+        betHistory.clear(); // Clear before reapplying
+        betStacks.clear();
         for (BetData bet : previousBets) {
             betHistory.add(bet); // Maintain order
             betStacks.putIfAbsent(bet.betType, new ArrayDeque<>());
             betStacks.get(bet.betType).addLast(bet.amount); // Add LAST to preserve order
-
-            removeWagerFromInventory(player, bet.amount);
             sendUpdateToServer("PLACE_BET", bet);
         }
         }

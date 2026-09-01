@@ -107,23 +107,40 @@ public final class RefillPolicy {
             return unchanged(live, boundaryEpochSeconds);
         }
 
+        // ADD caps how many periods one lazy catch-up credits (see
+        // DealerBudgetSettings.MAX_CATCHUP_PERIODS); the boundary must only
+        // advance by that same capped count, not the full elapsed count, or
+        // the periods beyond the cap are silently forfeited forever -- the
+        // boundary would already be past them with nothing left to credit
+        // them on a later access. RESET and NONE are not a per-period
+        // accrual, so they consume every elapsed period outright.
+        long periodsToApply = settings.refillMode() == RefillMode.ADD
+            ? Math.min(periods, DealerBudgetSettings.MAX_CATCHUP_PERIODS)
+            : periods;
+
         // Whole periods only, so the schedule keeps its phase and a period can
         // never be applied twice.
-        long newBoundary = boundaryEpochSeconds + periods * period;
+        long newBoundary = boundaryEpochSeconds + periodsToApply * period;
 
         BigDecimal updated = switch (settings.refillMode()) {
-            case ADD -> applyAdd(settings, live, periods);
+            case ADD -> applyAdd(settings, live, periodsToApply);
             case RESET -> applyReset(settings, live, Money.clampNonNegative(reservedTotal));
             case NONE -> live;
         };
 
-        return new Result(updated, newBoundary, true, periods);
+        return new Result(updated, newBoundary, true, periodsToApply);
     }
 
     /**
      * Adds {@code amount} per elapsed period in one multiplication rather than
      * a loop, so a dealer untouched for a very long time costs the same as one
      * touched every hour.
+     *
+     * @param periods already capped at {@link DealerBudgetSettings#MAX_CATCHUP_PERIODS}
+     *     by the caller, which also advances the boundary by exactly this
+     *     many periods -- so any periods beyond the cap remain uncredited
+     *     with the boundary left behind them, ready to be caught up on a
+     *     later access instead of being permanently lost.
      */
     private static BigDecimal applyAdd(DealerBudgetSettings settings, BigDecimal live, long periods) {
         BigDecimal amount = Money.clampNonNegative(settings.refillAmount());
@@ -138,8 +155,7 @@ public final class RefillPolicy {
             return live;
         }
 
-        long effectivePeriods = Math.min(periods, DealerBudgetSettings.MAX_CATCHUP_PERIODS);
-        BigDecimal added = Money.multiply(amount, Money.of(effectivePeriods));
+        BigDecimal added = Money.multiply(amount, Money.of(periods));
         BigDecimal grown = Money.min(Money.add(live, added), Money.MAX);
         return cap == null ? grown : Money.min(grown, Money.max(cap, live));
     }

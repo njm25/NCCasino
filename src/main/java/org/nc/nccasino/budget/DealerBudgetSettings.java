@@ -96,13 +96,28 @@ public record DealerBudgetSettings(
     ) {
         List<String> problems = new ArrayList<>();
 
+        if (rawMode == null || rawMode.isBlank()) {
+            // Never configured at all: exactly pre-Phase-2 behavior.
+            return new DealerBudgetSettings(
+                DealerBudgetMode.UNLIMITED, Money.ZERO, DEFAULT_GUARANTEED_ROUNDS,
+                RefillMode.NONE, Money.ZERO, DEFAULT_REFILL_PERIOD_SECONDS, null, Money.ZERO,
+                problems);
+        }
+
         DealerBudgetMode mode = DealerBudgetMode.parse(rawMode, null);
         if (mode == null) {
-            if (rawMode != null && !rawMode.isBlank()) {
-                problems.add(PATH_MODE + ": '" + rawMode
-                    + "' is not UNLIMITED or LIMITED; treating this dealer as UNLIMITED.");
-            }
-            mode = DealerBudgetMode.UNLIMITED;
+            // Present but unrecognized -- a typo like "LIMTED" must never be
+            // silently indistinguishable from "never configured". Fail closed
+            // by reusing the same path a LIMITED dealer with no usable
+            // baseline already takes: isUsable() is false, so every
+            // commitment refuses with CONFIGURATION_INVALID rather than this
+            // dealer quietly becoming risk-free-unlimited.
+            problems.add(PATH_MODE + ": '" + rawMode
+                + "' is not UNLIMITED or LIMITED; this dealer will refuse every wager until fixed.");
+            return new DealerBudgetSettings(
+                DealerBudgetMode.LIMITED, Money.ZERO, DEFAULT_GUARANTEED_ROUNDS,
+                RefillMode.NONE, Money.ZERO, DEFAULT_REFILL_PERIOD_SECONDS, null, Money.ZERO,
+                problems);
         }
 
         if (mode == DealerBudgetMode.UNLIMITED) {

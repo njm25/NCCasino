@@ -104,12 +104,75 @@ public final class SlotsMath {
     }
 
     /**
+     * Precision the probabilistic-rounding draw in {@link #totalPayout(SlotsOutcome,
+     * int, long, SlotsPaytable, SlotsRandomSource)} is made at. {@link
+     * SlotsRandomSource} only exposes {@code nextInt(bound)}, so the
+     * fractional remainder is compared against a draw from this many equally
+     * likely buckets rather than a native {@code [0,1)} draw -- one part in a
+     * million is far finer than the smallest fractional remainder this
+     * matters for.
+     */
+    private static final int ROUNDING_DRAW_PRECISION = 1_000_000;
+
+    /**
      * Total credit for the whole spin: {@code perLineWager} multiplied by the
      * summed multiplier of every winning active line, rounded down to whole
      * currency units. Multipliers are total returns -- the stake is never
      * separately returned on top of this.
+     *
+     * <p>Deterministic floor, kept exactly as before for pure-math testing and
+     * any caller that is not settling a real spin. Real gameplay must use
+     * {@link #totalPayout(SlotsOutcome, int, long, SlotsPaytable, SlotsRandomSource)}
+     * instead -- see that overload for why.
      */
     public static long totalPayout(SlotsOutcome outcome, int activeLines, long perLineWager, SlotsPaytable paytable) {
+        double raw = rawPayout(outcome, activeLines, perLineWager, paytable);
+        if (raw <= 0.0) {
+            return 0L;
+        }
+        return (long) Math.floor(raw);
+    }
+
+    /**
+     * Total credit for the whole spin, exactly like the deterministic
+     * overload, except the final floor/ceiling choice is made
+     * probabilistically: rounds up with probability equal to the fractional
+     * remainder, and down otherwise, using {@code rng} rather than a fresh,
+     * unaccountable {@link java.util.Random}.
+     *
+     * <p>A deterministic floor here is a real, structural bias, not a
+     * rounding nicety: {@link SlotsPaytable} normalizes its multipliers
+     * against the theoretical (pre-floor) return, so always rounding down
+     * makes every spin's expected value strictly below the configured
+     * house edge target -- worst at denomination 1, where the floored unit is
+     * a large fraction of the average payout. Rounding up with probability
+     * equal to the fractional part makes this floor unbiased in expectation
+     * (its long-run average recovers exactly the configured return), without
+     * changing the paytable shown to players or the numbers configured by an
+     * administrator.
+     *
+     * @param rng the spin's own random source -- reusing it (rather than a
+     *     second, independent source) keeps every random decision in one
+     *     spin attributable to the same auditable draw sequence
+     */
+    public static long totalPayout(
+        SlotsOutcome outcome, int activeLines, long perLineWager, SlotsPaytable paytable, SlotsRandomSource rng) {
+
+        double raw = rawPayout(outcome, activeLines, perLineWager, paytable);
+        if (raw <= 0.0) {
+            return 0L;
+        }
+        long floor = (long) Math.floor(raw);
+        double fractional = raw - (double) floor;
+        if (fractional <= 0.0 || rng == null) {
+            return floor;
+        }
+        int draw = rng.nextInt(ROUNDING_DRAW_PRECISION);
+        return draw < fractional * ROUNDING_DRAW_PRECISION ? floor + 1 : floor;
+    }
+
+    /** The exact (unrounded) payout a spin's winning lines produce, shared by both {@code totalPayout} overloads. */
+    private static double rawPayout(SlotsOutcome outcome, int activeLines, long perLineWager, SlotsPaytable paytable) {
         if (perLineWager < 0) {
             throw new IllegalArgumentException("perLineWager must not be negative");
         }
@@ -120,13 +183,13 @@ public final class SlotsMath {
             }
         }
         if (multiplierSum <= 0.0) {
-            return 0L;
+            return 0.0;
         }
         double raw = (double) perLineWager * multiplierSum;
         if (raw > (double) Long.MAX_VALUE) {
             throw new ArithmeticException("Slots payout overflows a long: " + raw);
         }
-        return (long) Math.floor(raw);
+        return raw;
     }
 
     /** Total debit for the spin: every active line stakes {@code perLineWager}. */

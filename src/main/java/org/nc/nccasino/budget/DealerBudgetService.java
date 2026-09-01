@@ -122,8 +122,23 @@ public class DealerBudgetService {
         if (!settings.mode().isLimited()) {
             return AdmissionDecision.ADMITTED;
         }
+        seedInitialFunding(dealerInternalName, settings);
         refreshFunding(dealerInternalName, settings);
         return AdmissionPolicy.admit(settings, store.available(dealerInternalName), exposure);
+    }
+
+    /**
+     * A LIMITED dealer's one-time funding bootstrap: see {@link
+     * DealerBudgetStore#ensureInitialFunding}. Safe to call on every
+     * admission check -- it is a no-op the moment the dealer has ever been
+     * touched before.
+     */
+    private void seedInitialFunding(String dealerInternalName, DealerBudgetSettings settings) {
+        if (!settings.isUsable()) {
+            return;
+        }
+        store.ensureInitialFunding(
+            dealerInternalName, settings.underwritingBaseline(), Instant.now().getEpochSecond());
     }
 
     /** Applies any elapsed refill periods. Cheap and idempotent within a period. */
@@ -156,6 +171,7 @@ public class DealerBudgetService {
         if (!settings.mode().isLimited()) {
             return new ArrayList<>(denominations);
         }
+        seedInitialFunding(dealerInternalName, settings);
         refreshFunding(dealerInternalName, settings);
         BigDecimal available = store.available(dealerInternalName);
         for (BigDecimal denomination : denominations) {
@@ -306,12 +322,22 @@ public class DealerBudgetService {
     private void logSettlementAnomaly(
         String dealer, Reservation reservation, BigDecimal payout, Settlement result) {
 
-        if (result.clamped()) {
+        if (result.exposureViolation()) {
             plugin.getLogger().severe("[NCCasino] Dealer '" + dealer + "' was asked to pay "
-                + Money.store(payout) + " against a reservation of "
+                + Money.store(payout) + " against a reservation of only "
                 + Money.store(reservation.amount()) + " (commitment " + reservation.id()
-                + "). The payout was clamped to the reservation. This means the game's"
-                + " pre-commitment exposure calculation is wrong and must be fixed.");
+                + "). The player was paid in full, but this means the game's pre-commitment"
+                + " exposure calculation is wrong and must be fixed -- the dealer's live"
+                + " balance no longer accurately reflects what it can safely underwrite.");
+        }
+        if (result.insolvent()) {
+            plugin.getLogger().severe("[NCCasino] Dealer '" + dealer
+                + "' did not hold enough live balance to cover the full payout of "
+                + Money.store(payout) + " for commitment " + reservation.id()
+                + ". Its balance was floored at zero rather than driven negative, but real"
+                + " money left this dealer's economy with no backing. This requires manual"
+                + " reconciliation and almost certainly means an earlier exposure-calculation"
+                + " bug already let this dealer take on more risk than it could afford.");
         }
         if (result.status() == Settlement.Status.FAILED) {
             plugin.getLogger().severe("[NCCasino] Dealer '" + dealer

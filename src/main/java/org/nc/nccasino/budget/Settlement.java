@@ -13,13 +13,23 @@ import java.math.BigDecimal;
  * no money and say so plainly, rather than to fail loudly or, far worse, pay
  * again.
  *
- * @param paid what actually left the dealer, which is zero for a release and
- *     for a replay
- * @param clamped whether the requested payout exceeded the reservation and was
- *     reduced to it. Always indicates a bug in the pre-commitment exposure
- *     calculation and is worth logging wherever it appears.
+ * @param paid what the player is legitimately owed and what actually left
+ *     the dealer's <em>economy</em> -- always the full requested payout on a
+ *     {@link Status#SETTLED} result, never reduced. Zero for a release and
+ *     for a replay.
+ * @param exposureViolation whether the requested payout exceeded the
+ *     reservation that was set aside for it. Always indicates a bug in the
+ *     pre-commitment exposure calculation and is worth logging wherever it
+ *     appears -- the player is still paid in full; only the dealer's stored
+ *     {@code live-balance} is at risk of under-reflecting what really left it
+ *     (see {@code insolvent}).
+ * @param insolvent whether the dealer's live balance was insufficient to
+ *     cover the full payout even after accounting for the reservation --
+ *     i.e. money left the dealer's economy that was never truly backed. This
+ *     can only happen alongside {@code exposureViolation} and means the
+ *     stored balance was floored at zero rather than driven negative.
  */
-public record Settlement(Status status, BigDecimal paid, boolean clamped) {
+public record Settlement(Status status, BigDecimal paid, boolean exposureViolation, boolean insolvent) {
 
     public enum Status {
         /** Money moved and the reservation was released. */
@@ -32,20 +42,20 @@ public record Settlement(Status status, BigDecimal paid, boolean clamped) {
         NUMERIC_LIMIT
     }
 
-    public static Settlement settled(BigDecimal paid, boolean clamped) {
-        return new Settlement(Status.SETTLED, Money.of(paid), clamped);
+    public static Settlement settled(BigDecimal paid, boolean exposureViolation, boolean insolvent) {
+        return new Settlement(Status.SETTLED, Money.of(paid), exposureViolation, insolvent);
     }
 
     public static Settlement alreadySettled() {
-        return new Settlement(Status.ALREADY_SETTLED, Money.ZERO, false);
+        return new Settlement(Status.ALREADY_SETTLED, Money.ZERO, false, false);
     }
 
     public static Settlement failed() {
-        return new Settlement(Status.FAILED, Money.ZERO, false);
+        return new Settlement(Status.FAILED, Money.ZERO, false, false);
     }
 
     public static Settlement numericLimit() {
-        return new Settlement(Status.NUMERIC_LIMIT, Money.ZERO, false);
+        return new Settlement(Status.NUMERIC_LIMIT, Money.ZERO, false, false);
     }
 
     /**

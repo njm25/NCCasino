@@ -12,7 +12,7 @@ commands:
 permissions:
   nccasino.use:
     description: Allows use of the /ncc and /nccasino commands
-    default: op
+    default: true
 
   nccasino.commands:
     description: Grants access to all NCCasino commands

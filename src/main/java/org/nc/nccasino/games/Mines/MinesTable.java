@@ -1310,12 +1310,21 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 double payoutMultiplier = calculatePayoutMultiplier(safePicks);
                 winnings = totalBet * payoutMultiplier;
             }
-            // The dealer's books close here, before delivery -- delivery may
-            // still bank or queue the amount, but the dealer has already
-            // paid it either way.
-            settleBudget(Money.of(winnings));
 			CurrencyProvider provider = getCurrencyProvider();
 			boolean isVault = provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider;
+
+			// Decide the final item-currency payout exactly once, before the
+			// dealer settles -- Vault's fractional currency has no separate
+			// rounding step to disagree with, so only the item-mode branch
+			// needs to round before this settles. Either way, settlement,
+			// delivery and the player-facing message now share one value.
+			if (!isVault) {
+				winnings = applyProbabilisticRounding(winnings, player);
+			}
+			// The dealer's books close here, before delivery -- delivery may
+			// still bank or queue the amount, but the dealer has already
+			// paid it either way.
+			settleBudget(Money.of(winnings));
 
 			if (isVault) {
 				java.math.BigDecimal betBD = MoneyHelper.clampNonNegative(MoneyHelper.bd(totalBet));
@@ -1323,10 +1332,20 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 				java.math.BigDecimal displayWinnings = MoneyHelper.roundDisplay(winningsBD);
 				java.math.BigDecimal displayProfit = MoneyHelper.roundDisplay(winningsBD.subtract(betBD));
 
+				boolean delivered = true;
 				if (winningsBD.compareTo(java.math.BigDecimal.ZERO) > 0) {
-					((VaultCurrencyProvider) provider).deposit(player, internalName, winningsBD);
+					// The dealer's books already closed above (settleBudget)
+					// -- deposit()'s boolean return must not be ignored, or a
+					// failed delivery here would leave the dealer settled
+					// while the player received nothing and no durable
+					// obligation exists.
+					delivered = ((VaultCurrencyProvider) provider).deposit(player, internalName, winningsBD);
+					if (!delivered) {
+						queueFailedVaultPayout(player.getUniqueId(), winningsBD.doubleValue());
+					}
 				}
 
+				if (delivered)
 				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 					case STANDARD:{
 						player.sendMessage(text(
@@ -1350,7 +1369,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 					}
 				}
 			} else {
-				winnings = applyProbabilisticRounding(winnings,player); 
+				// winnings was already rounded once, above, before settlement.
 				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 					case STANDARD:{
 						player.sendMessage(text(
@@ -1419,12 +1438,21 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 double payoutMultiplier = calculatePayoutMultiplier(safePicks);
                 winnings = totalBet * payoutMultiplier;
             }
-            // The dealer's books close here, before delivery -- delivery may
-            // still bank or queue the amount, but the dealer has already
-            // paid it either way.
-            settleBudget(Money.of(winnings));
 			CurrencyProvider provider = getCurrencyProvider();
 			boolean isVault = provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider;
+
+			// Decide the final item-currency payout exactly once, before the
+			// dealer settles -- Vault's fractional currency has no separate
+			// rounding step to disagree with, so only the item-mode branch
+			// needs to round before this settles. Either way, settlement,
+			// delivery and the player-facing message now share one value.
+			if (!isVault) {
+				winnings = applyProbabilisticRounding(winnings, player);
+			}
+			// The dealer's books close here, before delivery -- delivery may
+			// still bank or queue the amount, but the dealer has already
+			// paid it either way.
+			settleBudget(Money.of(winnings));
 
 			if (isVault) {
 				java.math.BigDecimal betBD = MoneyHelper.clampNonNegative(MoneyHelper.bd(totalBet));
@@ -1432,10 +1460,20 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 				java.math.BigDecimal displayWinnings = MoneyHelper.roundDisplay(winningsBD);
 				java.math.BigDecimal displayProfit = MoneyHelper.roundDisplay(winningsBD.subtract(betBD));
 
+				boolean delivered = true;
 				if (winningsBD.compareTo(java.math.BigDecimal.ZERO) > 0) {
-					((VaultCurrencyProvider) provider).deposit(player, internalName, winningsBD);
+					// The dealer's books already closed above (settleBudget)
+					// -- deposit()'s boolean return must not be ignored, or a
+					// failed delivery here would leave the dealer settled
+					// while the player received nothing and no durable
+					// obligation exists.
+					delivered = ((VaultCurrencyProvider) provider).deposit(player, internalName, winningsBD);
+					if (!delivered) {
+						queueFailedVaultPayout(player.getUniqueId(), winningsBD.doubleValue());
+					}
 				}
 
+				if (delivered)
 				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 					case STANDARD:{
 						player.sendMessage(text(
@@ -1459,7 +1497,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 					}
 				}
 			} else {
-				winnings = applyProbabilisticRounding(winnings,player); 
+				// winnings was already rounded once, above, before settlement.
 				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 					case STANDARD:{
 						player.sendMessage(text(
@@ -1720,10 +1758,13 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 		CurrencyProvider provider = getCurrencyProvider();
 		if (provider != null && provider.getMode() != org.nc.nccasino.currency.CurrencyMode.STANDARD) {
 			// VAULT/CUSTOM: refund is a balance credit.
-			provider.deposit(player, internalName, amount);
+			boolean delivered = provider.deposit(player, internalName, amount);
+			if (!delivered) {
+				queueFailedVaultPayout(player.getUniqueId(), amount);
+			}
 			return;
 		}
-    
+
         deliverCurrencyItems(player, amount);
     }
 
@@ -1784,7 +1825,10 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 		if (provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider vaultProvider) {
 			java.math.BigDecimal payout = MoneyHelper.clampNonNegative(MoneyHelper.bd(amount));
 			if (payout.compareTo(java.math.BigDecimal.ZERO) > 0) {
-				vaultProvider.deposit(player, internalName, payout);
+				boolean delivered = vaultProvider.deposit(player, internalName, payout);
+				if (!delivered) {
+					queueFailedVaultPayout(player.getUniqueId(), payout.doubleValue());
+				}
 			}
 			return;
 		}
@@ -1994,6 +2038,35 @@ public class MinesTable extends DealerInventory implements TerminableSession {
      * exchange for slightly faster delivery in the ambiguous cases is not
      * an acceptable trade.
      */
+    /**
+     * Durably queues a payout this player was owed but a live Vault deposit
+     * failed to deliver -- the dealer's books have already closed by the
+     * time either win-path Vault branch calls this, so the money must not
+     * simply vanish while the player receives nothing and no durable
+     * obligation exists.
+     */
+    private void queueFailedVaultPayout(UUID playerId, double amount) {
+        if (amount <= 0) {
+            return;
+        }
+        Material currencyMaterial = plugin.getCurrency(internalName);
+        PendingPayout payout = PendingPayout.create(
+            playerId,
+            "Mines",
+            internalName,
+            currencyMode,
+            currencyMaterial != null ? currencyMaterial.name() : null,
+            currencyName,
+            amount,
+            PayoutMessages.committedResultContext("Mines")
+        );
+        boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
+        if (!persisted) {
+            plugin.getLogger().severe("[NCCasino] Mines payout of " + amount + " for " + playerId
+                + " failed to deliver AND failed to persist as a pending payout -- money genuinely lost.");
+        }
+    }
+
     private void resolveMidGameDisconnect(UUID terminatedPlayerId) {
         double totalBet = 0;
         for (double t : betStack) {

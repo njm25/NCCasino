@@ -125,6 +125,14 @@ public class DealerBudgetStore {
                 }
             }
 
+            for (Map<?, ?> raw : section.getMapList("settled")) {
+                String id = string(raw, "id");
+                Object settledAtRaw = raw.get("settled-at");
+                if (id != null && !id.isBlank() && settledAtRaw instanceof Number number) {
+                    state.restoreTombstone(id, number.longValue());
+                }
+            }
+
             reconcileOnLoad(state);
             states.put(dealer, state);
         }
@@ -212,6 +220,15 @@ public class DealerBudgetStore {
                 serialized.add(entry);
             }
             config.set(base + ".reservations", serialized);
+
+            List<Map<String, Object>> settled = new ArrayList<>();
+            for (Map.Entry<String, Long> tombstone : state.tombstoneEntries()) {
+                Map<String, Object> entry = new LinkedHashMap<>();
+                entry.put("id", tombstone.getKey());
+                entry.put("settled-at", tombstone.getValue());
+                settled.add(entry);
+            }
+            config.set(base + ".settled", settled);
         }
         return writeAtomically(config);
     }
@@ -338,6 +355,50 @@ public class DealerBudgetStore {
         }) != null;
     }
 
+    /**
+     * One-time funding bootstrap for a freshly created LIMITED dealer: seeds
+     * {@code live-balance} to the underwriting baseline exactly once, marked
+     * by starting the refill clock in the same persisted step so a reload or
+     * restart can never repeat it.
+     *
+     * <p>Reuses the refill boundary's existing "never touched" marker
+     * ({@code refillBoundaryEpochSeconds() <= 0}) as the one-time gate --
+     * that marker already means exactly "this dealer has never been funded",
+     * so no second marker is needed. Setting the boundary to {@code now} here
+     * also means a subsequent {@code ADD}/{@code RESET} refill no longer sees
+     * "first contact": it starts accruing/resetting from this seed moment
+     * forward instead of granting a second, overlapping bootstrap.
+     *
+     * <p>A later change to the configured baseline never moves already-seeded
+     * money -- this method only ever runs once per dealer, gated by the
+     * boundary, regardless of how many times the baseline is edited
+     * afterward.
+     *
+     * @return whether the seed was actually applied. {@code false} for a
+     *     dealer that has ever been touched before, one with nothing to seed
+     *     ({@code baseline <= 0}), or a write failure.
+     */
+    public synchronized boolean ensureInitialFunding(String dealer, BigDecimal baseline, long nowEpochSeconds) {
+        if (!Money.isSafe(baseline) || !Money.isPositive(baseline)) {
+            return false;
+        }
+        DealerBudgetState current = state(dealer);
+        if (current.refillBoundaryEpochSeconds() > 0L) {
+            return false;
+        }
+        Boolean applied = mutate(dealer, state -> {
+            if (state.refillBoundaryEpochSeconds() > 0L) {
+                // Lost a race with another caller between the check above
+                // and this mutation; the other caller already seeded it.
+                return null;
+            }
+            state.setLiveBalance(Money.max(state.liveBalance(), baseline));
+            state.setRefillBoundary(nowEpochSeconds);
+            return Boolean.TRUE;
+        });
+        return Boolean.TRUE.equals(applied);
+    }
+
     // ---- refills ------------------------------------------------------
 
     /**
@@ -380,11 +441,19 @@ public class DealerBudgetStore {
      * otherwise leave a dealer holding a stake it never promised to cover, or
      * promising money it never received. Idempotent on
      * {@link Reservation#id()} -- a repeated call for the same commitment
-     * returns the existing reservation and credits nothing a second time.
+     * returns the existing reservation and credits nothing a second time,
+     * <em>provided</em> the replayed payload actually matches: a reused id
+     * carrying a different player, game, currency or exposure is refused
+     * rather than silently treated as the original commitment, since that
+     * would mix two unrelated commitments under one identity. A commitment id
+     * that was already settled (see {@link DealerBudgetState#tombstone}) is
+     * refused rather than recreated as a brand-new reservation, which would
+     * otherwise double-pay/double-reserve it.
      *
-     * @return the reservation, or {@code null} if the funds are unavailable or
-     *     the write failed. A {@code null} return means nothing changed and
-     *     the caller must not take the wager.
+     * @return the reservation, or {@code null} if the funds are unavailable,
+     *     the payload does not match a live commitment under the same id, the
+     *     id was already settled, or the write failed. A {@code null} return
+     *     means nothing changed and the caller must not take the wager.
      */
     public synchronized Reservation creditAndReserve(Reservation reservation, BigDecimal stake) {
         if (reservation == null || !Money.isSafe(reservation.amount()) || !Money.isSafe(stake)) {
@@ -394,10 +463,21 @@ public class DealerBudgetStore {
         DealerBudgetState existingState = state(dealer);
         Reservation existing = existingState.reservation(reservation.id());
         if (existing != null) {
+            if (!samePayload(existing, reservation)) {
+                warn("Commitment '" + reservation.id() + "' on dealer '" + dealer
+                    + "' was reused with different player/game/currency/exposure data;"
+                    + " refusing rather than mixing two commitments under one id.");
+                return null;
+            }
             // Same commitment, replayed. The stake is already credited and the
             // payout already promised; doing either again would be the
             // duplicate-payment bug this id exists to prevent.
             return existing;
+        }
+        if (existingState.isTombstoned(reservation.id())) {
+            warn("Commitment '" + reservation.id() + "' on dealer '" + dealer
+                + "' was already settled and cannot be recreated; refusing.");
+            return null;
         }
 
         return mutate(dealer, state -> {
@@ -413,9 +493,23 @@ public class DealerBudgetStore {
         });
     }
 
+    /** Whether an existing reservation and a fresh replayed payload describe the same commitment. */
+    private static boolean samePayload(Reservation existing, Reservation incoming) {
+        return java.util.Objects.equals(existing.playerId(), incoming.playerId())
+            && java.util.Objects.equals(existing.gameType(), incoming.gameType())
+            && java.util.Objects.equals(existing.currency(), incoming.currency())
+            && existing.amount().compareTo(incoming.amount()) == 0;
+    }
+
     /**
      * Grows or shrinks an existing reservation in place -- a Roulette
      * portfolio taking another bet, a Blackjack hand doubling.
+     *
+     * <p>Idempotent when replayed with the exact same {@code newAmount}: if
+     * the reservation is already at that size, the call is treated as a
+     * no-op rather than crediting {@code additionalStake} a second time for
+     * one real deposit -- which is exactly what a duplicated Bukkit event or
+     * a retried increase would otherwise do.
      *
      * @param additionalStake stake posted alongside the increase, credited in
      *     the same persisted step
@@ -427,6 +521,14 @@ public class DealerBudgetStore {
 
         if (!Money.isSafe(newAmount) || !Money.isSafe(additionalStake)) {
             return null;
+        }
+        DealerBudgetState currentState = state(dealer);
+        Reservation current = currentState.reservation(reservationId);
+        if (current != null && current.amount().compareTo(Money.of(newAmount)) == 0) {
+            // Already at the requested exposure: either nothing to do, or a
+            // replay of an increase that already applied. Crediting
+            // additionalStake again would double-count a real deposit.
+            return current;
         }
         return mutate(dealer, state -> {
             Reservation existing = state.reservation(reservationId);
@@ -454,12 +556,22 @@ public class DealerBudgetStore {
      * settling, so a replayed settlement finds nothing and reports
      * {@link Settlement.Status#ALREADY_SETTLED} without moving money. That is
      * what makes a duplicated event, a reconnect, or a retried payout delivery
-     * safe.
+     * safe. The commitment id is also retained afterward (see
+     * {@link DealerBudgetState#tombstone}) so a later call cannot recreate it
+     * as a brand-new reservation.
      *
-     * <p>A payout larger than the reservation is clamped to what was actually
-     * promised and reported, rather than being allowed to overdraw the dealer:
-     * an overdraw would mean the pre-commitment check had a bug, and paying it
-     * anyway would push the dealer negative.
+     * <p>A player's awarded result is never reduced here: {@link
+     * Settlement#paid()} is always the full requested {@code payout} on a
+     * {@link Settlement.Status#SETTLED} result. A payout larger than the
+     * reservation set aside for it ({@link Settlement#exposureViolation()})
+     * always means the pre-commitment exposure calculation had a bug, and is
+     * logged loudly by {@link DealerBudgetService} -- but that is a signal to
+     * fix, not permission to underpay the player. The dealer's stored {@code
+     * live-balance} is debited by the full payout, floored at zero rather
+     * than driven negative ({@link Settlement#insolvent()} reports when that
+     * floor was actually hit) -- an untracked negative balance is exactly the
+     * corrupt state this floor exists to prevent, and the loud logging is
+     * what keeps the shortfall from being silently lost.
      */
     public synchronized Settlement settle(String dealer, String reservationId, BigDecimal payout) {
         if (!Money.isSafe(payout)) {
@@ -471,22 +583,19 @@ public class DealerBudgetStore {
         }
 
         Reservation reservation = current.reservation(reservationId);
-        boolean clamped = payout.compareTo(reservation.amount()) > 0;
-        BigDecimal owed = clamped ? reservation.amount() : payout;
+        BigDecimal normalizedPayout = Money.of(payout);
+        boolean exposureViolation = normalizedPayout.compareTo(reservation.amount()) > 0;
 
         Settlement result = mutate(dealer, state -> {
             Reservation removed = state.removeReservation(reservationId);
             if (removed == null) {
                 return null;
             }
-            BigDecimal remaining = Money.subtract(state.liveBalance(), owed);
-            if (Money.isNegative(remaining)) {
-                // Unreachable while the invariant holds; refuse rather than
-                // let a dealer go negative.
-                return null;
-            }
-            state.setLiveBalance(remaining);
-            return Settlement.settled(owed, clamped);
+            state.tombstone(reservationId);
+            BigDecimal debit = Money.min(normalizedPayout, state.liveBalance());
+            boolean insolvent = debit.compareTo(normalizedPayout) < 0;
+            state.setLiveBalance(Money.subtract(state.liveBalance(), debit));
+            return Settlement.settled(normalizedPayout, exposureViolation, insolvent);
         });
         return result == null ? Settlement.failed() : result;
     }
