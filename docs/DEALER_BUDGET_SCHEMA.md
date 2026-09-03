@@ -67,6 +67,11 @@ dealers:
       player: "<player-uuid>"
       game: "Slots"
       amount: "250.000000"
+      credited-stake: "25.000000"
+      applied-operations:
+      - "session-7-operation-1"
+      - "session-7-reduce-2"
+      settlement-payout: "125.000000" # only while an awarded result awaits settlement
       created: 1735689600
       currency-mode: STANDARD
       currency-material: EMERALD
@@ -102,6 +107,26 @@ notation reaches the file.
 Reservation ids contain `|` and may contain `.`, both of which a Bukkit
 configuration path would split. Storing them as a list avoids escaping
 entirely.
+
+Each active reservation also carries its total `credited-stake` and the
+`applied-operations` identities already used to grow or reduce it. These
+fields make partial rollback and adjustment replay-safe across reloads. They
+leave the file with the reservation when it settles.
+
+`settlement-payout` is a two-phase recovery marker. It is absent during an
+ordinary open wager. Once a result is awarded, the exact payout is persisted
+there before the balance debit/removal write. If that second write fails or
+the process stops between writes, the reservation and known result both
+survive; the service retries them before accepting new exposure. A mismatched
+retry amount is refused rather than replacing the first awarded result.
+
+If even the marker's first write fails, `DealerBudgetService` retains the
+reservation and exact payout in a server-lifetime fallback and retries it
+before that dealer accepts another wager. This covers game/session teardown
+while the server remains alive. No design can make an unwritable disk
+crash-proof: if the process also dies before any first write succeeds, only
+the still-present reservation survives and an administrator must reconcile
+it as stale.
 
 ### `baseline-initialized` is not `refill-boundary`
 
@@ -213,9 +238,19 @@ a truncated one.
 
 Every mutation persists **before** it is reported successful. If the write
 fails, the in-memory state is rolled back to its exact prior value, so a
-caller can never act on a reservation that is not on disk. A failed
-settlement leaves the reservation held and is logged for reconciliation —
-never reported as paid.
+caller can never act on a reservation that is not on disk. A failed final
+settlement write leaves both the reservation and its durable
+`settlement-payout` intent held and is logged for reconciliation — never
+reported as a completed ledger settlement. The exact awarded result is
+therefore recoverable after a restart rather than existing only in a game's
+temporary state.
+
+Portfolio undo and failed-debit rollback use one `reduceReservation`
+mutation. It removes only the returned/fictional stake, replaces the exposure
+with the amount still legitimately wagered, and preserves the original
+commitment identity. The old release-then-reopen sequence is forbidden:
+failure between those two writes could leave real remaining bets with no
+reservation.
 
 ## Idempotency
 
@@ -225,6 +260,9 @@ makes the system safe against duplicate money follows from that:
 
 - `creditAndReserve` with an existing id returns the existing reservation and
   credits the stake **once**.
+- Every explicit increase/reduction operation id is stored with the active
+  reservation. Replaying an older operation after a newer one, including
+  after a restart, moves neither stake nor exposure.
 - `settle` removes the reservation as part of settling, so a replayed
   settlement finds nothing and reports `ALREADY_SETTLED` — a success that
   moves no money.
@@ -237,7 +275,7 @@ per *attempt* rather than per *commitment* defeats it entirely.
 
 | Situation | Behavior |
 | --- | --- |
-| File absent | Every dealer starts at zero balance with no reservations. |
+| File absent | No economic state exists yet. A LIMITED dealer receives its one-time configured baseline seed on first access; an UNLIMITED dealer records nothing. |
 | Unreadable `live-balance` | Treated as 0 and logged; reservations are still honored. |
 | Malformed individual reservation | Skipped with a warning; the rest of the file loads. |
 | `reservedTotal > liveBalance` | **The reservations win.** The balance is raised to cover them and the discrepancy is logged. |

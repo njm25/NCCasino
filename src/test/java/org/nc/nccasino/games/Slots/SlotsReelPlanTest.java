@@ -146,4 +146,44 @@ class SlotsReelPlanTest {
             assertTrue(worst < 600L, "worst-case spin at width " + columns + " was " + worst + " ticks");
         }
     }
+
+    // ---- redesign: anticipation must stay geometry-safe at every height ----
+
+    private static SlotsOutcome uniform(SlotsSymbol symbol, int columns, int rows) {
+        SlotsSymbol[][] grid = new SlotsSymbol[rows][columns];
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < columns; col++) {
+                grid[row][col] = symbol;
+            }
+        }
+        return new SlotsOutcome(grid);
+    }
+
+    @Test
+    @DisplayName("anticipation never throws or misbehaves at height 1 or 5")
+    void anticipationIsSafeAtEveryHeight() {
+        for (int columns : SlotsGeometry.supportedColumnCounts()) {
+            for (int rows : SlotsGeometry.supportedRowCounts()) {
+                // A genuine near-miss: every reel but the last shows SEVEN.
+                SlotsSymbol[][] grid = new SlotsSymbol[rows][columns];
+                for (int row = 0; row < rows; row++) {
+                    for (int col = 0; col < columns; col++) {
+                        grid[row][col] = (col < columns - 1) ? SlotsSymbol.SEVEN : SlotsSymbol.BLANK;
+                    }
+                }
+                SlotsOutcome outcome = new SlotsOutcome(grid);
+                int lines = SlotsPaylineCatalog.lineCount(rows);
+                assertTrue(SlotsReelPlan.shouldAnticipate(outcome, lines),
+                    "columns=" + columns + " rows=" + rows + ": a full near-miss must earn a pause");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("a height-1 all-blank outcome never anticipates")
+    void heightOneAllBlankNeverAnticipates() {
+        for (int columns : SlotsGeometry.supportedColumnCounts()) {
+            assertFalse(SlotsReelPlan.shouldAnticipate(uniform(SlotsSymbol.BLANK, columns, 1), 1));
+        }
+    }
 }

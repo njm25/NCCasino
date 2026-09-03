@@ -42,17 +42,26 @@ class SlotsSpinControllerTest {
     }
 
     /**
-     * Cumulative weight boundaries are BLANK[0,30) CHERRY[30,52) LEMON[52,70)
-     * BELL[70,84) DIAMOND[84,94) SEVEN[94,100), so these two fixtures pin the
-     * extremes: a full grid of sevens (every line wins at full width) and a
-     * full grid of blanks (nothing can pay, since BLANK never pays).
+     * The controller now draws real reel-strip stops (one per reel), not a
+     * raw weight-bucket roll per cell -- and no symbol's spacing on a real
+     * strip (see {@link SlotsReelStrip}) ever produces three identical
+     * consecutive stops, so "every visible cell is the same symbol" is not
+     * achievable at all, by design (a real machine cannot show SSS/SSS/SSS
+     * either). These two fixtures instead give exact per-reel stop triples,
+     * verified once by direct outcome evaluation, that land a guaranteed
+     * positive multi-symbol win (a SEVEN centred on the "middle" payline at
+     * every reel) and a guaranteed total loss (no active line matches)
+     * respectively, at this class's fixed COLUMNS=3/LINES=5.
      */
     private static SlotsRandomSource allSevens() {
-        return constantRoll(95);
+        // A 4th value covers the probabilistic-rounding draw the same rng is
+        // reused for once the payout is known positive -- unlike allBlanks(),
+        // which returns 0 before ever reaching that draw.
+        return sequence(42, 42, 43, 0);
     }
 
     private static SlotsRandomSource allBlanks() {
-        return constantRoll(0);
+        return sequence(85, 88, 47);
     }
 
     /** A fixed sequence of rolls, one per cell, crafted so no payline matches (see class javadoc math in the test body). */
@@ -298,6 +307,52 @@ class SlotsSpinControllerTest {
         assertEquals(List.of(owed), creditedAmounts, "the retry must credit the retained amount exactly once");
         assertEquals(SlotsSessionState.RESOLVED, controller.state());
         assertEquals(0, controller.pendingPayoutAmount());
+    }
+
+    @Test
+    void partialDeliveryThenQueueFailureRetainsRemainderWhileLastWinAmountKeepsTheFullAward() {
+        // Pins the win-meter UI fix's controller-side contract: a partial
+        // live delivery reduces pendingPayoutAmount() (what is still owed
+        // and what a retry must resolve) but must never touch
+        // lastWinAmount() (what the spin actually won, and what Last Win
+        // must display).
+        SlotsSpinController controller = new SlotsSpinController();
+        SlotsSpinController.SpinAttempt attempt =
+            controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allSevens(), amount -> true);
+        long fullAward = ((SlotsSpinController.SpinAttempt.Accepted) attempt).payout();
+        assertTrue(fullAward > 1, "test needs a payout large enough to split into a genuine partial delivery");
+
+        long delivered = fullAward / 2;
+        long remainder = fullAward - delivered;
+
+        // Partial live delivery (only part of the award reaches the player),
+        // then the durable queue also fails -- landing in SETTLEMENT_FAILED
+        // with only the remainder retained.
+        SlotsSettlementResult result = controller.settle(owed -> owed - delivered, amount -> false);
+
+        assertEquals(SlotsSettlementResult.FAILED, result);
+        assertEquals(SlotsSessionState.SETTLEMENT_FAILED, controller.state());
+        assertEquals(remainder, controller.pendingPayoutAmount(),
+            "pendingPayoutAmount must be reduced to exactly the outstanding remainder after a partial delivery");
+        assertEquals(fullAward, controller.lastWinAmount(),
+            "lastWinAmount must retain the FULL awarded payout, never the post-partial-delivery remainder");
+
+        List<Long> creditedAmounts = new java.util.ArrayList<>();
+        SlotsSettlementResult retried = controller.retrySettlement(
+            amount -> {
+                creditedAmounts.add(amount);
+                return 0L;
+            },
+            amount -> {
+                throw new AssertionError("queue must not be tried once live delivery succeeds on retry");
+            });
+
+        assertEquals(SlotsSettlementResult.DELIVERED, retried);
+        assertEquals(List.of(remainder), creditedAmounts,
+            "the retry must resolve exactly the outstanding remainder, exactly once -- never the full award again");
+        assertEquals(0, controller.pendingPayoutAmount());
+        assertEquals(fullAward, controller.lastWinAmount(),
+            "lastWinAmount must still be the full award after the retry resolves the remainder");
     }
 
     @Test

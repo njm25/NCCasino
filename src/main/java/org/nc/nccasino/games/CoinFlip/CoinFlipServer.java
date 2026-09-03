@@ -513,8 +513,11 @@ public class CoinFlipServer extends Server {
                 budgetCommitment = null;
                 return;
             }
-            budget.settle(internalName, budgetCommitment, payout);
-            budgetCommitment = null;
+            org.nc.nccasino.budget.Settlement result =
+                budget.settle(internalName, budgetCommitment, payout);
+            if (result.status() != org.nc.nccasino.budget.Settlement.Status.FAILED) {
+                budgetCommitment = null;
+            }
         }
 
         private boolean chainCapped() {

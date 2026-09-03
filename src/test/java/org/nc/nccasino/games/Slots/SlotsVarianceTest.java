@@ -160,35 +160,36 @@ class SlotsVarianceTest {
         assertEquals(SlotsVariance.BALANCED, SlotsVariance.parse("", SlotsVariance.BALANCED));
     }
 
-    // ---- the generator actually samples with the requested weights ------
+    // ---- the strip-based generator actually samples with the requested weights ------
 
     @Test
-    void theSpinGeneratorSamplesWithTheVariancesOwnWeightsNotSlotsSymbolsFixedOnes() {
-        // HIGH_ROLLER weights BLANK far higher than BALANCED. A roll that
-        // would land on BLANK under HIGH_ROLLER's cumulative thresholds but
-        // on a paying symbol under BALANCED's proves the generator is really
-        // consulting the passed-in variance, not SlotsSymbol's own weight().
-        int rollJustAboveHighRollerBlank = SlotsVariance.HIGH_ROLLER.weight(SlotsSymbol.BLANK) - 1;
-        SlotsSymbol underHighRoller = SlotsSpinGenerator.sampleSymbol(
-            0, bound -> rollJustAboveHighRollerBlank, SlotsVariance.HIGH_ROLLER);
-        SlotsSymbol underBalanced = SlotsSpinGenerator.sampleSymbol(
-            0, bound -> rollJustAboveHighRollerBlank, SlotsVariance.BALANCED);
-
-        assertEquals(SlotsSymbol.BLANK, underHighRoller);
-        assertNotNull(underBalanced);
-        // BALANCED's BLANK weight (30) is lower than HIGH_ROLLER's (45), so
-        // the same roll index lands past BALANCED's BLANK bucket already.
-        assertTrue(rollJustAboveHighRollerBlank >= SlotsVariance.BALANCED.weight(SlotsSymbol.BLANK));
+    void theReelStripReallyReflectsTheRequestedVarianceNotSlotsSymbolsFixedWeights() {
+        // HIGH_ROLLER weights BLANK far higher than BALANCED. If both reels'
+        // strips agreed everywhere, generation would not really be
+        // consulting the passed-in variance -- some stop must land on a
+        // different symbol between the two.
+        SlotsReelStrip highRoller = SlotsReelStrip.forReel(SlotsVariance.HIGH_ROLLER, 0);
+        SlotsReelStrip balanced = SlotsReelStrip.forReel(SlotsVariance.BALANCED, 0);
+        boolean sawDivergence = false;
+        for (int stop = 0; stop < SlotsReelStrip.SIZE; stop++) {
+            if (highRoller.symbolAt(stop) != balanced.symbolAt(stop)) {
+                sawDivergence = true;
+                break;
+            }
+        }
+        assertTrue(sawDivergence, "different variances must produce different strip compositions");
+        assertEquals(SlotsVariance.HIGH_ROLLER.weight(SlotsSymbol.BLANK), highRoller.countOf(SlotsSymbol.BLANK));
+        assertEquals(SlotsVariance.BALANCED.weight(SlotsSymbol.BLANK), balanced.countOf(SlotsSymbol.BLANK));
     }
 
     @Test
-    void theDefaultGenerateOverloadUsesBalanced() {
+    void theDefaultGenerateFromStripsOverloadUsesBalancedWhenVarianceIsNull() {
         SlotsRandomSource fixed = bound -> 0;
-        SlotsOutcome viaDefault = SlotsSpinGenerator.generate(5, fixed);
-        SlotsOutcome viaExplicitBalanced = SlotsSpinGenerator.generate(5, fixed, SlotsVariance.BALANCED);
-        for (int row = 0; row < SlotsGeometry.ROWS; row++) {
+        SlotsOutcome viaNull = SlotsSpinGenerator.generateFromStrips(5, 3, fixed, null).outcome();
+        SlotsOutcome viaExplicitBalanced = SlotsSpinGenerator.generateFromStrips(5, 3, fixed, SlotsVariance.BALANCED).outcome();
+        for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 5; col++) {
-                assertEquals(viaDefault.symbolAt(row, col), viaExplicitBalanced.symbolAt(row, col));
+                assertEquals(viaNull.symbolAt(row, col), viaExplicitBalanced.symbolAt(row, col));
             }
         }
     }

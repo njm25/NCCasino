@@ -68,6 +68,8 @@ import org.nc.nccasino.payout.OverflowBankStore;
 import org.nc.nccasino.budget.DealerBudgetService;
 import org.nc.nccasino.budget.DealerBudgetStore;
 import org.nc.nccasino.payout.PendingPayoutStore;
+import org.nc.nccasino.games.Slots.SlotsChatPromptService;
+import org.nc.nccasino.games.Slots.SlotsProfileStore;
 import org.nc.nccasino.localization.LanguageMode;
 import org.nc.nccasino.localization.LocalizationService;
 import org.nc.nccasino.session.ExitReason;
@@ -92,6 +94,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
     private OverflowBankReminder overflowBankReminder;
     private DealerBudgetStore dealerBudgetStore;
     private DealerBudgetService dealerBudgetService;
+    private SlotsProfileStore slotsProfileStore;
+    private SlotsChatPromptService slotsChatPromptService;
     private LocalizationService localizationService;
 
     /**
@@ -107,6 +111,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
         // tasks that would otherwise resolve in-flight rounds get
         // cancelled along with everything else the plugin owns.
         SessionRegistry.terminateAll(ExitReason.PLUGIN_DISABLE);
+        // After every session has resolved, so a machine tearing itself down
+        // still finds its own prompt to release; anything left here is a
+        // prompt whose session was already gone.
+        if (slotsChatPromptService != null) {
+            slotsChatPromptService.shutdown();
+        }
         if (overflowBankReminder != null) {
             overflowBankReminder.stop();
         }
@@ -148,6 +158,13 @@ public final class Nccasino extends JavaPlugin implements Listener {
         // dealer into LIMITED mode; the store simply loads an empty file.
         dealerBudgetStore = new DealerBudgetStore(this);
         dealerBudgetService = new DealerBudgetService(this, dealerBudgetStore);
+
+        // Globally portable per-player Slots profiles, plus the single chat
+        // prompt engine every Slots prompt shares. Both are constructed
+        // before any listener so a machine can never be opened before the
+        // store it reads from exists.
+        slotsProfileStore = new SlotsProfileStore(this);
+        slotsChatPromptService = new SlotsChatPromptService(this);
 
         // Register event listeners
         getServer().getPluginManager().registerEvents(new DealerInteractListener(this), this);
@@ -511,6 +528,19 @@ public final class Nccasino extends JavaPlugin implements Listener {
      */
     public DealerBudgetService getDealerBudgetService() {
         return dealerBudgetService;
+    }
+
+    /**
+     * Durable per-player Slots profiles. Global by design: a profile saved at
+     * one Slots dealer is loadable at every other one.
+     */
+    public SlotsProfileStore getSlotsProfileStore() {
+        return slotsProfileStore;
+    }
+
+    /** The single chat-prompt engine shared by profile naming and every Auto Spin setting. */
+    public SlotsChatPromptService getSlotsChatPromptService() {
+        return slotsChatPromptService;
     }
 
     private void reinitializeDealers() {

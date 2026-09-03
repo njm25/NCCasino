@@ -2,6 +2,7 @@ package org.nc.nccasino.budget;
 
 import java.math.BigDecimal;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +76,12 @@ public final class DealerBudgetState {
      */
     private final Map<String, BigDecimal> creditedStakes = new LinkedHashMap<>();
     /**
+     * Active reservation id -> awarded payout awaiting a durable ledger
+     * settlement. Written before the reservation is removed, so a failed
+     * second write or restart retains the exact known result to retry.
+     */
+    private final Map<String, BigDecimal> settlementIntents = new LinkedHashMap<>();
+    /**
      * Settled reservation ids -> when they were settled (epoch seconds), so a
      * settled commitment cannot be recreated via {@link
      * DealerBudgetStore#creditAndReserve}. Insertion-ordered so the oldest
@@ -114,7 +121,7 @@ public final class DealerBudgetState {
     private final Map<String, Shortfall> shortfalls = new LinkedHashMap<>();
 
     /**
-     * Reservation id -> the last {@code operationId} applied by {@link
+     * Reservation id -> every {@code operationId} applied by {@link
      * DealerBudgetStore#adjustReservation(String, String, String, BigDecimal, BigDecimal)}.
      * Lets a caller distinguish "the same increase attempt, replayed" (same
      * operation id -- a no-op) from "a different increase that happens to
@@ -123,16 +130,13 @@ public final class DealerBudgetState {
      * additional bet can leave a portfolio's worst-case payout unchanged even
      * though it must still add real stake exactly once.
      *
-     * <p>Deliberately in-memory only, not persisted: the threat this guards
-     * against is a duplicated event within one live session (a double-fired
-     * Bukkit click handler), not a replay across a restart -- cross-restart
-     * safety already comes from the reservation id itself being stable and
-     * derived from commitment identity. Not persisting this also means no
-     * schema growth for a purely same-session concern. Cleaned up
-     * automatically when the reservation is removed, so it never outlives
-     * what it guards.
+     * <p>Persisted with the active reservation. Keeping only the most recent
+     * operation is insufficient: replaying operation A after operation B
+     * would otherwise credit A twice, including after a restart. The history
+     * is naturally bounded by the lifetime of the live reservation and is
+     * deleted when that reservation settles.
      */
-    private final Map<String, String> lastOperationByReservation = new LinkedHashMap<>();
+    private final Map<String, LinkedHashSet<String>> operationsByReservation = new LinkedHashMap<>();
 
     public DealerBudgetState(String dealerInternalName) {
         this(dealerInternalName, Money.ZERO, 0L);
@@ -226,6 +230,14 @@ public final class DealerBudgetState {
         creditedStakes.putIfAbsent(reservationId, Money.of(stake));
     }
 
+    /** Replaces the total stake credited to an active reservation. */
+    void setCreditedStake(String reservationId, BigDecimal stake) {
+        if (reservationId == null || stake == null) {
+            return;
+        }
+        creditedStakes.put(reservationId, Money.clampNonNegative(stake));
+    }
+
     /** Load seam: restores a credited-stake record read from disk. */
     void restoreCreditedStake(String reservationId, BigDecimal stake) {
         recordCreditedStake(reservationId, stake);
@@ -240,14 +252,16 @@ public final class DealerBudgetState {
         if (id == null) {
             return null;
         }
-        lastOperationByReservation.remove(id);
+        operationsByReservation.remove(id);
         creditedStakes.remove(id);
+        settlementIntents.remove(id);
         return reservations.remove(id);
     }
 
-    /** Whether {@code operationId} is the same one last applied to this reservation. */
+    /** Whether this exact economic operation was already applied. */
     boolean isSameOperation(String reservationId, String operationId) {
-        return operationId != null && operationId.equals(lastOperationByReservation.get(reservationId));
+        Set<String> operations = operationsByReservation.get(reservationId);
+        return operationId != null && operations != null && operations.contains(operationId);
     }
 
     /** Records the operation id that was just applied to this reservation. */
@@ -255,7 +269,38 @@ public final class DealerBudgetState {
         if (reservationId == null || operationId == null) {
             return;
         }
-        lastOperationByReservation.put(reservationId, operationId);
+        operationsByReservation
+            .computeIfAbsent(reservationId, ignored -> new LinkedHashSet<>())
+            .add(operationId);
+    }
+
+    /** Load seam for an operation id stored with an active reservation. */
+    void restoreOperation(String reservationId, String operationId) {
+        recordOperation(reservationId, operationId);
+    }
+
+    /** Applied operation ids for persistence. */
+    Set<String> operations(String reservationId) {
+        Set<String> operations = operationsByReservation.get(reservationId);
+        return operations == null ? Set.of() : Set.copyOf(operations);
+    }
+
+    void recordSettlementIntent(String reservationId, BigDecimal payout) {
+        if (reservationId != null && payout != null) {
+            settlementIntents.putIfAbsent(reservationId, Money.of(payout));
+        }
+    }
+
+    void restoreSettlementIntent(String reservationId, BigDecimal payout) {
+        recordSettlementIntent(reservationId, payout);
+    }
+
+    BigDecimal settlementIntent(String reservationId) {
+        return reservationId == null ? null : settlementIntents.get(reservationId);
+    }
+
+    Set<Map.Entry<String, BigDecimal>> settlementIntentEntries() {
+        return Set.copyOf(settlementIntents.entrySet());
     }
 
     /**
@@ -347,8 +392,11 @@ public final class DealerBudgetState {
         copy.reservations.putAll(reservations);
         copy.settledTombstones.putAll(settledTombstones);
         copy.shortfalls.putAll(shortfalls);
-        copy.lastOperationByReservation.putAll(lastOperationByReservation);
+        for (Map.Entry<String, LinkedHashSet<String>> entry : operationsByReservation.entrySet()) {
+            copy.operationsByReservation.put(entry.getKey(), new LinkedHashSet<>(entry.getValue()));
+        }
         copy.creditedStakes.putAll(creditedStakes);
+        copy.settlementIntents.putAll(settlementIntents);
         copy.baselineInitializedAtEpochSeconds = baselineInitializedAtEpochSeconds;
         return copy;
     }
@@ -363,10 +411,14 @@ public final class DealerBudgetState {
         this.settledTombstones.putAll(snapshot.settledTombstones);
         this.shortfalls.clear();
         this.shortfalls.putAll(snapshot.shortfalls);
-        this.lastOperationByReservation.clear();
-        this.lastOperationByReservation.putAll(snapshot.lastOperationByReservation);
+        this.operationsByReservation.clear();
+        for (Map.Entry<String, LinkedHashSet<String>> entry : snapshot.operationsByReservation.entrySet()) {
+            this.operationsByReservation.put(entry.getKey(), new LinkedHashSet<>(entry.getValue()));
+        }
         this.creditedStakes.clear();
         this.creditedStakes.putAll(snapshot.creditedStakes);
+        this.settlementIntents.clear();
+        this.settlementIntents.putAll(snapshot.settlementIntents);
         this.baselineInitializedAtEpochSeconds = snapshot.baselineInitializedAtEpochSeconds;
     }
 

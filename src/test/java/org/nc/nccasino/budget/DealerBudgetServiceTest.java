@@ -11,6 +11,7 @@ import org.nc.nccasino.payout.BankedCurrency;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -66,6 +67,13 @@ class DealerBudgetServiceTest {
         config.set("dealers." + DEALER + ".budget.mode", "LIMITED");
         config.set("dealers." + DEALER + ".budget.underwriting-baseline", baseline);
         config.set("dealers." + DEALER + ".budget.guaranteed-worst-case-rounds", String.valueOf(rounds));
+        // Most lifecycle tests below exercise reserve/increase/settle rather
+        // than the independently-covered one-time seed. Mark this fixture as
+        // already initialized, then start it at zero so each test's explicit
+        // deposit remains its complete opening balance.
+        store.ensureInitialFunding(
+            DEALER, money("1"), java.time.Instant.now().getEpochSecond());
+        store.setBalance(DEALER, Money.ZERO);
     }
 
     private Commitment reserve(String key, Exposure exposure) {
@@ -167,6 +175,31 @@ class DealerBudgetServiceTest {
         service.settle(DEALER, commitment, money("600"));   // delivery retried
 
         assertEquals(0, store.liveBalance(DEALER).compareTo(afterAward));
+    }
+
+    @Test
+    void aFirstWriteSettlementFailureRetainsTheKnownResultUntilStorageRecovers() throws Exception {
+        store.deposit(DEALER, money("1000"));
+        Reservation reservation = new Reservation(
+            Reservation.forCommitment(DEALER, PLAYER, "spin-recovery"),
+            DEALER, PLAYER, "Slots", EMERALDS, money("600"), 1L);
+        assertNotNull(store.creditAndReserve(reservation, money("100")));
+        Commitment commitment = Commitment.accepted(reservation);
+
+        Path data = tempDir.resolve("data");
+        Path backup = tempDir.resolve("data-backup");
+        Files.move(data, backup);
+        Files.writeString(data, "blocks the data directory");
+        Settlement failed = service.settle(DEALER, commitment, money("600"));
+        assertEquals(Settlement.Status.FAILED, failed.status());
+        assertEquals(0, store.reservedTotal(DEALER).compareTo(money("600")));
+
+        Files.delete(data);
+        Files.move(backup, data);
+        assertTrue(service.admit(DEALER, Exposure.none()).isAdmitted(),
+            "the next dealer access must retry the retained exact result");
+        assertEquals(0, store.reservedTotal(DEALER).compareTo(Money.ZERO));
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("500")));
     }
 
     @Test
@@ -321,10 +354,12 @@ class DealerBudgetServiceTest {
     }
 
     @Test
-    void anUnreadableModeFallsBackToUnlimitedRatherThanBlockingTheDealer() {
+    void anExplicitUnreadableModeFailsClosedRatherThanMakingTheDealerUnlimited() {
         config.set("dealers." + DEALER + ".budget.mode", "SOMEWHAT_LIMITED");
-        assertTrue(service.isUnlimited(DEALER));
-        assertTrue(reserve("spin-1", Exposure.of(money("1"), money("99999"))).isAccepted());
+        assertFalse(service.isUnlimited(DEALER));
+        Commitment refused = reserve("spin-1", Exposure.of(money("1"), money("99999")));
+        assertFalse(refused.isAccepted());
+        assertEquals(AdmissionDecision.CONFIGURATION_INVALID, refused.decision());
     }
 
     // ---- refills ---------------------------------------------------------
@@ -336,14 +371,14 @@ class DealerBudgetServiceTest {
         config.set("dealers." + DEALER + ".budget.refill-amount", "500");
         config.set("dealers." + DEALER + ".budget.refill-period", "1h");
 
-        // First touch starts the clock and grants nothing.
+        // The fixture's explicit initialized marker starts the clock and
+        // grants nothing beyond what this test funds itself.
         service.admit(DEALER, Exposure.of(money("1"), money("2")));
         assertEquals(0, store.liveBalance(DEALER).compareTo(Money.ZERO));
 
         // Back-date the boundary by two hours and touch it again.
-        DealerBudgetSettings settings = service.settingsFor(DEALER);
         long twoHoursAgo = java.time.Instant.now().getEpochSecond() - 2 * 3600L;
-        store.applyRefill(DEALER, settings, twoHoursAgo);      // re-anchors backwards
+        store.state(DEALER).setRefillBoundary(twoHoursAgo);
         service.admit(DEALER, Exposure.of(money("1"), money("2")));
 
         assertEquals(0, store.liveBalance(DEALER).compareTo(money("1000")),

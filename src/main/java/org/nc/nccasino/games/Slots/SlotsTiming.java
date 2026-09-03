@@ -72,6 +72,27 @@ public final class SlotsTiming {
     /** Pause on a losing spin before controls unlock -- short, so a dead spin does not drag. */
     public static final long LOSS_SETTLE_TICKS = 8L;
 
+    // ---- opening animation -------------------------------------------
+    //
+    // Dedicated to the once-per-session opening animation only -- never
+    // reused for a paid or demo spin's own timing above, and never reused
+    // by it, so retuning one can never silently retune the other.
+
+    /** Ticks between one inventory column's opening animation starting and the next column's, left to right. */
+    public static final long OPENING_COLUMN_STAGGER_TICKS = 2L;
+
+    /** Ticks between one downward shift and the next within a single opening-animation column -- fast and uniform, no deceleration. */
+    public static final long OPENING_STEP_TICKS = 1L;
+
+    // ---- auto spin ---------------------------------------------------
+
+    /**
+     * Gap between one automatic spin's settlement finishing and the next
+     * automatic spin starting -- never zero, so the player can always see
+     * one spin's result land before the next wager is placed.
+     */
+    public static final long AUTO_SPIN_GAP_TICKS = 10L;
+
     // ---- idle / attract --------------------------------------------------
 
     /** How often the idle attract shimmer advances while the machine sits unplayed. */

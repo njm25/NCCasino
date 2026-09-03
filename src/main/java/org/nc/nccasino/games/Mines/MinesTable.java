@@ -971,6 +971,9 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
         Exposure updatedExposure = MinesLiability.exposureAfterNextSafePick(
             totalBet, totalTiles, minesCount, picksSoFar);
+        updatedExposure = Exposure.of(
+            updatedExposure.stake(),
+            MoneyHelper.reservationCeilingForMode(updatedExposure.maxGrossPayout(), currencyMode));
 
         Commitment result;
         if (budgetCommitment == null) {
@@ -1007,8 +1010,11 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             budgetCommitment = null;
             return;
         }
-        budget.settle(internalName, budgetCommitment, payout);
-        budgetCommitment = null;
+        org.nc.nccasino.budget.Settlement result =
+            budget.settle(internalName, budgetCommitment, payout);
+        if (result.status() != org.nc.nccasino.budget.Settlement.Status.FAILED) {
+            budgetCommitment = null;
+        }
     }
 
     private void placeMines() {
@@ -1405,15 +1411,8 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     }
     
     private double applyProbabilisticRounding(double value,Player  player) {
-        int integerPart = (int) value;
-
-        double fractionalPart = value - integerPart;
-
-        Random random = new Random();
-        if (random.nextDouble() <= fractionalPart) {
-            return integerPart + 1; // Round up based on probability
-        }
-        return integerPart; // Otherwise, keep it rounded down
+        return MoneyHelper.probabilisticItemAmount(
+            value, java.util.concurrent.ThreadLocalRandom.current().nextDouble());
     }
     
 

@@ -217,4 +217,151 @@ public final class SlotsMath {
         }
         return (long) Math.ceil(raw);
     }
+
+    // ---- redesign: geometry-aware evaluation (variable visible height) ----
+
+    /**
+     * One geometry-catalog line's result -- the height-aware counterpart of
+     * {@link LineResult}, evaluated against an exact {@link
+     * SlotsPaylineCatalog.Line} row path instead of the legacy fixed-3-row
+     * {@link SlotsPayline} function. Height never changes a line's multiplier
+     * (see {@link SlotsPaytable}); it only changes which row path the catalog
+     * hands back for a given line number.
+     */
+    public record CatalogLineResult(
+        SlotsPaylineCatalog.Line line,
+        boolean winning,
+        SlotsSymbol symbol,
+        int runLength,
+        double multiplier
+    ) {
+        public static CatalogLineResult losing(SlotsPaylineCatalog.Line line) {
+            return new CatalogLineResult(line, false, null, 0, 0.0);
+        }
+    }
+
+    /** {@link #evaluateLine(SlotsOutcome, SlotsPayline, SlotsPaytable)}, generalized to any supported height. */
+    public static CatalogLineResult evaluateLine(
+        SlotsOutcome outcome, SlotsPaylineCatalog.Line line, SlotsPaytable paytable) {
+
+        int columns = outcome.columns();
+        int[] rows = line.rows();
+        if (rows.length != columns) {
+            throw new IllegalArgumentException("line has " + rows.length + " reels but outcome has " + columns);
+        }
+        SlotsSymbol first = outcome.symbolAt(rows[0], 0);
+        if (first == null || !first.pays()) {
+            return CatalogLineResult.losing(line);
+        }
+
+        int run = 1;
+        for (int col = 1; col < columns; col++) {
+            if (outcome.symbolAt(rows[col], col) != first) {
+                break;
+            }
+            run++;
+        }
+
+        if (run < first.minimumRun()) {
+            return CatalogLineResult.losing(line);
+        }
+        double multiplier = paytable.multiplier(first, run);
+        if (multiplier <= 0.0) {
+            return CatalogLineResult.losing(line);
+        }
+        return new CatalogLineResult(line, true, first, run, multiplier);
+    }
+
+    /** Evaluates the active prefix of {@code outcome}'s geometry catalog. */
+    public static List<CatalogLineResult> evaluateActiveCatalogLines(SlotsOutcome outcome, int activeLines, SlotsPaytable paytable) {
+        List<SlotsPaylineCatalog.Line> lines =
+            SlotsPaylineCatalog.active(outcome.columns(), outcome.rows(), activeLines);
+        List<CatalogLineResult> results = new ArrayList<>(lines.size());
+        for (SlotsPaylineCatalog.Line line : lines) {
+            results.add(evaluateLine(outcome, line, paytable));
+        }
+        return results;
+    }
+
+    /** The exact (unrounded) payout for a height-aware outcome, mirroring {@link #rawPayout}. */
+    private static double rawPayoutForGeometry(SlotsOutcome outcome, int activeLines, long perLineWager, SlotsPaytable paytable) {
+        if (perLineWager < 0) {
+            throw new IllegalArgumentException("perLineWager must not be negative");
+        }
+        double multiplierSum = 0.0;
+        for (CatalogLineResult result : evaluateActiveCatalogLines(outcome, activeLines, paytable)) {
+            if (result.winning()) {
+                multiplierSum += result.multiplier();
+            }
+        }
+        if (multiplierSum <= 0.0) {
+            return 0.0;
+        }
+        double raw = (double) perLineWager * multiplierSum;
+        if (raw > (double) Long.MAX_VALUE) {
+            throw new ArithmeticException("Slots payout overflows a long: " + raw);
+        }
+        return raw;
+    }
+
+    /** {@link #totalPayout(SlotsOutcome, int, long, SlotsPaytable)}, generalized to any supported height. */
+    public static long totalPayoutForGeometry(SlotsOutcome outcome, int activeLines, long perLineWager, SlotsPaytable paytable) {
+        double raw = rawPayoutForGeometry(outcome, activeLines, perLineWager, paytable);
+        if (raw <= 0.0) {
+            return 0L;
+        }
+        return (long) Math.floor(raw);
+    }
+
+    /**
+     * {@link #totalPayout(SlotsOutcome, int, long, SlotsPaytable, SlotsRandomSource)},
+     * generalized to any supported height. Real gameplay at any height must
+     * use this overload, exactly as the legacy fixed-3-row path must use its
+     * probabilistic-rounding overload -- see that method's documentation for
+     * why a deterministic floor is a structural RTP bias, not a rounding
+     * nicety.
+     */
+    public static long totalPayoutForGeometry(
+        SlotsOutcome outcome, int activeLines, long perLineWager, SlotsPaytable paytable, SlotsRandomSource rng) {
+
+        double raw = rawPayoutForGeometry(outcome, activeLines, perLineWager, paytable);
+        if (raw <= 0.0) {
+            return 0L;
+        }
+        long floor = (long) Math.floor(raw);
+        double fractional = raw - (double) floor;
+        if (fractional <= 0.0 || rng == null) {
+            return floor;
+        }
+        int draw = rng.nextInt(ROUNDING_DRAW_PRECISION);
+        return draw < fractional * ROUNDING_DRAW_PRECISION ? floor + 1 : floor;
+    }
+
+    /** {@link #totalBet(long, int)}, generalized to a machine's actual visible height. */
+    public static long totalBetForGeometry(long perLineWager, int visibleRows, int activeLines) {
+        if (perLineWager < 0) {
+            throw new IllegalArgumentException("perLineWager must not be negative");
+        }
+        int lines = SlotsPaylineCatalog.normalizeLineCount(visibleRows, activeLines);
+        return Math.multiplyExact(perLineWager, (long) lines);
+    }
+
+    /**
+     * {@link #maxPossiblePayout(long, int, SlotsPaytable)}, generalized to a
+     * machine's actual visible height -- height never lowers the realizable
+     * all-top-symbol ceiling below what the line count and paytable allow.
+     */
+    public static long maxPossiblePayoutForGeometry(
+        long perLineWager, int visibleRows, int activeLines, SlotsPaytable paytable) {
+
+        if (perLineWager < 0) {
+            throw new IllegalArgumentException("perLineWager must not be negative");
+        }
+        int lines = SlotsPaylineCatalog.normalizeLineCount(visibleRows, activeLines);
+        double raw = (double) perLineWager * paytable.maxLineMultiplier() * lines;
+        if (raw > (double) Long.MAX_VALUE) {
+            throw new ArithmeticException("Slots worst-case payout overflows a long: " + raw);
+        }
+        return (long) Math.ceil(raw);
+    }
 }

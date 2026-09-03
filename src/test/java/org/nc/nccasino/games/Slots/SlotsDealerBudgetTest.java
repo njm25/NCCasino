@@ -237,8 +237,20 @@ class SlotsDealerBudgetTest {
         assertEquals(1, underwriting.settlements.get());
     }
 
-    /** A fixed roll landing on SEVEN's cumulative-weight bucket at every reel, guaranteeing a full-width win. */
-    private static final SlotsRandomSource GUARANTEED_WIN_RNG = bound -> 95;
+    /**
+     * A fresh scripted stop sequence each call (one stop per reel, plus the
+     * probabilistic-rounding draw) verified once, by direct outcome
+     * evaluation, to commit a positive win at this class's fixed
+     * COLUMNS=3/LINES=1 -- no symbol's spacing on a real strip (see
+     * {@link SlotsReelStrip}) ever produces three identical consecutive
+     * stops, so "every reel shows the same roll" is not achievable at all
+     * under the redesigned strip-based generator. Must be a fresh instance
+     * per call (not a shared field) since each is a single-use queue.
+     */
+    private static SlotsRandomSource guaranteedWinRng() {
+        java.util.Deque<Integer> queue = new java.util.ArrayDeque<>(java.util.List.of(42, 42, 43, 0));
+        return bound -> queue.poll();
+    }
 
     @Test
     void aKickThatForfeitsAPendingWinMustNotDebitTheDealerForIt() {
@@ -249,7 +261,7 @@ class SlotsDealerBudgetTest {
         // actually received.
         SlotsSpinController controller = new SlotsSpinController();
         RecordingUnderwriting underwriting = new RecordingUnderwriting(acceptedCommitment());
-        controller.trySpin(10L, COLUMNS, LINES, true, PAYTABLE, GUARANTEED_WIN_RNG, underwriting, bet -> true);
+        controller.trySpin(10L, COLUMNS, LINES, true, PAYTABLE, guaranteedWinRng(), underwriting, bet -> true);
         long committedWin = controller.pendingPayoutAmount();
         assertTrue(committedWin > 0, "test setup must actually commit a positive win");
 
@@ -264,7 +276,7 @@ class SlotsDealerBudgetTest {
     void aPreservedResultOnTerminationSettlesForTheRealPendingWin() {
         SlotsSpinController controller = new SlotsSpinController();
         RecordingUnderwriting underwriting = new RecordingUnderwriting(acceptedCommitment());
-        controller.trySpin(10L, COLUMNS, LINES, true, PAYTABLE, GUARANTEED_WIN_RNG, underwriting, bet -> true);
+        controller.trySpin(10L, COLUMNS, LINES, true, PAYTABLE, guaranteedWinRng(), underwriting, bet -> true);
         long committedWin = controller.pendingPayoutAmount();
         assertTrue(committedWin > 0, "test setup must actually commit a positive win");
 

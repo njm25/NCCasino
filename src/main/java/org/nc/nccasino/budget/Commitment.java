@@ -34,6 +34,11 @@ public record Commitment(AdmissionDecision decision, Reservation reservation, bo
         return new Commitment(AdmissionDecision.ADMITTED, reservation, false);
     }
 
+    /** A limited-dealer commitment that was durably closed by an adjustment. */
+    public static Commitment released() {
+        return new Commitment(AdmissionDecision.ADMITTED, null, false);
+    }
+
     public static Commitment refused(AdmissionDecision decision) {
         return new Commitment(decision, null, false);
     }

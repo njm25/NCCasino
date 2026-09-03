@@ -100,6 +100,27 @@ class DealerBudgetStoreTest {
     }
 
     @Test
+    void anAwardedSettlementIntentSurvivesReloadAndCompletesExactlyOnce() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("1000"));
+        Reservation open = store.creditAndReserve(reservation("spin-1", "600"), money("100"));
+        // Model the durable midpoint between settle's intent write and its
+        // final debit write, then force that state through persistence.
+        store.state(DEALER).recordSettlementIntent(open.id(), money("600"));
+        assertTrue(store.deposit(DEALER, money("1")));
+
+        DealerBudgetStore reloaded = store();
+        assertEquals(0, reloaded.settlementIntents(DEALER).get(open.id()).compareTo(money("600")));
+        assertEquals(Settlement.Status.SETTLED,
+            reloaded.settle(DEALER, open.id(), money("600")).status());
+        assertTrue(reloaded.settlementIntents(DEALER).isEmpty());
+        assertEquals(Settlement.Status.ALREADY_SETTLED,
+            reloaded.settle(DEALER, open.id(), money("600")).status());
+        assertEquals(0, reloaded.liveBalance(DEALER).compareTo(money("501")));
+        assertInvariant(reloaded);
+    }
+
+    @Test
     void anExactFractionalBalanceRoundTripsWithoutBinaryDrift() {
         DealerBudgetStore store = store();
         // Values a double cannot hold exactly. Ten deposits of 0.1 must be
@@ -471,6 +492,90 @@ class DealerBudgetStoreTest {
         store.deposit(DEALER, money("1000"));
         assertNull(store.adjustReservation(DEALER, "nope", money("10"), money("10")));
         assertEquals(0, store.liveBalance(DEALER).compareTo(money("1000")));
+    }
+
+    @Test
+    void reducingAReservationRemovesOnlyTheReturnedStakeAndKeepsItsIdentity() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("1000"));
+        Reservation open = store.creditAndReserve(reservation("table-1", "200"), money("50"));
+        Reservation grown = store.adjustReservation(
+            DEALER, open.id(), "bet-2", money("500"), money("50"));
+        assertNotNull(grown);
+
+        ReservationAdjustment reduced = store.reduceReservation(
+            DEALER, open.id(), "undo-2", money("200"), money("50"));
+
+        assertTrue(reduced.success());
+        assertNotNull(reduced.reservation());
+        assertEquals(open.id(), reduced.reservation().id(),
+            "an undo must preserve the original commitment identity");
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("1050")));
+        assertEquals(0, store.reservedTotal(DEALER).compareTo(money("200")));
+        assertInvariant(store);
+
+        DealerBudgetStore reloaded = store();
+        assertEquals(0, reloaded.liveBalance(DEALER).compareTo(money("1050")));
+        assertEquals(0, reloaded.reservedTotal(DEALER).compareTo(money("200")));
+    }
+
+    @Test
+    void replayingTheSameReductionDoesNotRemoveTheStakeTwice() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("1000"));
+        Reservation open = store.creditAndReserve(reservation("table-1", "500"), money("100"));
+
+        ReservationAdjustment first = store.reduceReservation(
+            DEALER, open.id(), "undo-1", money("200"), money("50"));
+        ReservationAdjustment replay = store.reduceReservation(
+            DEALER, open.id(), "undo-1", money("200"), money("50"));
+
+        assertTrue(first.success());
+        assertTrue(replay.success());
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("1050")));
+        assertEquals(0, store.reservedTotal(DEALER).compareTo(money("200")));
+        assertInvariant(store);
+    }
+
+    @Test
+    void anOlderAdjustmentReplayStaysHarmlessAfterANewerOperationAndReload() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("1000"));
+        Reservation open = store.creditAndReserve(reservation("table-1", "200"), money("50"));
+
+        assertNotNull(store.adjustReservation(
+            DEALER, open.id(), "bet-A", money("300"), money("25")));
+        assertNotNull(store.adjustReservation(
+            DEALER, open.id(), "bet-B", money("400"), money("25")));
+
+        DealerBudgetStore reloaded = store();
+        Reservation replay = reloaded.adjustReservation(
+            DEALER, open.id(), "bet-A", money("300"), money("25"));
+
+        assertNotNull(replay);
+        assertEquals(0, replay.amount().compareTo(money("400")),
+            "replaying an older operation must not roll exposure backward");
+        assertEquals(0, reloaded.liveBalance(DEALER).compareTo(money("1100")),
+            "the older operation's stake must not be credited twice");
+        assertInvariant(reloaded);
+    }
+
+    @Test
+    void reducingTheLastStakeClosesAndTombstonesTheCommitmentAtomically() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("1000"));
+        Reservation open = store.creditAndReserve(reservation("table-1", "200"), money("50"));
+
+        ReservationAdjustment closed = store.reduceReservation(
+            DEALER, open.id(), "undo-last", Money.ZERO, money("50"));
+
+        assertTrue(closed.success());
+        assertNull(closed.reservation());
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("1000")));
+        assertEquals(0, store.reservedTotal(DEALER).compareTo(Money.ZERO));
+        assertNull(store.creditAndReserve(reservation("table-1", "200"), money("50")),
+            "the closed commitment id must not be recreated");
+        assertInvariant(store);
     }
 
     // ---- withdrawal never touches promised money -------------------------

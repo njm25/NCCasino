@@ -154,6 +154,18 @@ public class DealerBudgetStore {
                     if (creditedStake != null) {
                         state.restoreCreditedStake(reservation.id(), creditedStake);
                     }
+                    BigDecimal settlementPayout = Money.parse(string(raw, "settlement-payout"));
+                    if (settlementPayout != null) {
+                        state.restoreSettlementIntent(reservation.id(), settlementPayout);
+                    }
+                    Object operationsRaw = raw.get("applied-operations");
+                    if (operationsRaw instanceof Iterable<?> operations) {
+                        for (Object operation : operations) {
+                            if (operation != null && !String.valueOf(operation).isBlank()) {
+                                state.restoreOperation(reservation.id(), String.valueOf(operation));
+                            }
+                        }
+                    }
                 }
             }
 
@@ -263,6 +275,13 @@ public class DealerBudgetStore {
                 BigDecimal creditedStake = state.creditedStake(reservation.id());
                 if (creditedStake != null) {
                     entry.put("credited-stake", Money.store(creditedStake));
+                }
+                BigDecimal settlementPayout = state.settlementIntent(reservation.id());
+                if (settlementPayout != null) {
+                    entry.put("settlement-payout", Money.store(settlementPayout));
+                }
+                if (!state.operations(reservation.id()).isEmpty()) {
+                    entry.put("applied-operations", new ArrayList<>(state.operations(reservation.id())));
                 }
                 serialized.add(entry);
             }
@@ -634,6 +653,10 @@ public class DealerBudgetStore {
             Reservation updated = existing.withAmount(newAmount);
             state.setLiveBalance(balanceAfter);
             state.putReservation(updated);
+            BigDecimal credited = state.creditedStake(reservationId);
+            if (credited != null) {
+                state.setCreditedStake(reservationId, Money.add(credited, additionalStake));
+            }
             return updated;
         });
     }
@@ -654,12 +677,9 @@ public class DealerBudgetStore {
      * cannot do, since it can only see the resulting amount, not the
      * operation that produced it.
      *
-     * <p>The operation-identity guard is session-local (in-memory only, see
-     * {@link DealerBudgetState}) -- it protects against a duplicated event
-     * within one live session, not a cross-restart replay. Cross-restart
-     * safety for the reservation itself is unaffected: it still comes from
-     * {@code reservationId} being stable and derived from commitment
-     * identity, exactly as before.
+     * <p>The operation-identity guard is persisted with the active
+     * reservation, so an older operation replayed after a newer one, or after
+     * a restart, remains a no-op.
      *
      * @param operationId a stable identity for this specific attempt -- the
      *     same value on every retry of the *same* real action, and a
@@ -703,9 +723,77 @@ public class DealerBudgetStore {
             Reservation updated = existing.withAmount(newAmount);
             state.setLiveBalance(balanceAfter);
             state.putReservation(updated);
+            BigDecimal credited = state.creditedStake(reservationId);
+            if (credited != null) {
+                state.setCreditedStake(reservationId, Money.add(credited, additionalStake));
+            }
             state.recordOperation(reservationId, operationId);
             return updated;
         });
+    }
+
+    /**
+     * Atomically removes a returned/failed stake from an open commitment and
+     * replaces its exposure with the amount still legitimately wagered.
+     */
+    public synchronized ReservationAdjustment reduceReservation(
+        String dealer,
+        String reservationId,
+        String operationId,
+        BigDecimal newAmount,
+        BigDecimal stakeToRemove
+    ) {
+        if (reservationId == null || operationId == null || operationId.isBlank()
+            || !Money.isSafe(newAmount) || !Money.isSafe(stakeToRemove)) {
+            return ReservationAdjustment.failed();
+        }
+        DealerBudgetState current = state(dealer);
+        Reservation existing = current.reservation(reservationId);
+        if (existing == null) {
+            return current.isTombstoned(reservationId)
+                ? ReservationAdjustment.closed()
+                : ReservationAdjustment.failed();
+        }
+        if (current.isSameOperation(reservationId, operationId)) {
+            return ReservationAdjustment.updated(existing);
+        }
+
+        ReservationAdjustment result = mutate(dealer, state -> {
+            Reservation active = state.reservation(reservationId);
+            if (active == null) {
+                return null;
+            }
+            BigDecimal normalizedRemoval = Money.of(stakeToRemove);
+            BigDecimal balanceAfter = Money.subtract(state.liveBalance(), normalizedRemoval);
+            if (Money.isNegative(balanceAfter)) {
+                return null;
+            }
+            BigDecimal otherReserved = Money.subtract(state.reservedTotal(), active.amount());
+            BigDecimal reservedAfter = Money.add(otherReserved, newAmount);
+            if (!Money.atLeast(balanceAfter, reservedAfter)) {
+                return null;
+            }
+
+            BigDecimal credited = state.creditedStake(reservationId);
+            if (credited != null && credited.compareTo(normalizedRemoval) < 0) {
+                return null;
+            }
+            state.setLiveBalance(balanceAfter);
+            if (!Money.isPositive(newAmount)) {
+                state.removeReservation(reservationId);
+                state.tombstone(reservationId);
+                return ReservationAdjustment.closed();
+            }
+
+            Reservation updated = active.withAmount(newAmount);
+            state.putReservation(updated);
+            if (credited != null) {
+                state.setCreditedStake(reservationId, Money.subtract(credited, normalizedRemoval));
+            }
+            state.recordOperation(reservationId, operationId);
+            return ReservationAdjustment.updated(updated);
+        });
+        return result == null ? ReservationAdjustment.failed() : result;
     }
 
     /**
@@ -744,6 +832,28 @@ public class DealerBudgetStore {
 
         Reservation reservation = current.reservation(reservationId);
         BigDecimal normalizedPayout = Money.of(payout);
+        BigDecimal existingIntent = current.settlementIntent(reservationId);
+        if (existingIntent != null && existingIntent.compareTo(normalizedPayout) != 0) {
+            warn("Commitment '" + reservationId + "' on dealer '" + dealer
+                + "' was retried with payout " + Money.store(normalizedPayout)
+                + " but its durable settlement intent is " + Money.store(existingIntent)
+                + "; refusing the mismatched retry.");
+            return Settlement.failed();
+        }
+        if (existingIntent == null) {
+            Boolean recorded = mutate(dealer, state -> {
+                if (!state.hasReservation(reservationId)) {
+                    return null;
+                }
+                state.recordSettlementIntent(reservationId, normalizedPayout);
+                return Boolean.TRUE;
+            });
+            if (!Boolean.TRUE.equals(recorded)) {
+                return Settlement.failed();
+            }
+            current = state(dealer);
+            reservation = current.reservation(reservationId);
+        }
         boolean exposureViolation = normalizedPayout.compareTo(reservation.amount()) > 0;
 
         Settlement result = mutate(dealer, state -> {
@@ -775,6 +885,15 @@ public class DealerBudgetStore {
             return Settlement.settled(normalizedPayout, exposureViolation, insolvent);
         });
         return result == null ? Settlement.failed() : result;
+    }
+
+    /** Durable awarded results still waiting for their ledger debit. */
+    public synchronized Map<String, BigDecimal> settlementIntents(String dealer) {
+        Map<String, BigDecimal> copy = new LinkedHashMap<>();
+        for (Map.Entry<String, BigDecimal> entry : state(dealer).settlementIntentEntries()) {
+            copy.put(entry.getKey(), entry.getValue());
+        }
+        return Map.copyOf(copy);
     }
 
     /**

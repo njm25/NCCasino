@@ -198,6 +198,9 @@ public class DragonClient extends Client implements TerminableSession {
         org.nc.nccasino.budget.Exposure updatedExposure =
             org.nc.nccasino.budget.ProgressiveLiability.dragonExposureAfterNextFloor(
                 totalBet, numSafeSpots, numColumns, floorsSoFar);
+        updatedExposure = org.nc.nccasino.budget.Exposure.of(
+            updatedExposure.stake(),
+            MoneyHelper.reservationCeilingForMode(updatedExposure.maxGrossPayout(), currencyMode));
 
         org.nc.nccasino.budget.Commitment result;
         if (budgetCommitment == null) {
@@ -235,8 +238,11 @@ public class DragonClient extends Client implements TerminableSession {
             budgetCommitment = null;
             return;
         }
-        budget.settle(internalName, budgetCommitment, payout);
-        budgetCommitment = null;
+        org.nc.nccasino.budget.Settlement result =
+            budget.settle(internalName, budgetCommitment, payout);
+        if (result.status() != org.nc.nccasino.budget.Settlement.Status.FAILED) {
+            budgetCommitment = null;
+        }
     }
 
      private void generateGameGrid() {
@@ -681,11 +687,8 @@ public class DragonClient extends Client implements TerminableSession {
     
     
     private double applyProbabilisticRounding(double value, Player player) {
-        int integerPart = (int) value;
-        double fractionalPart = value - integerPart;
-    
-        Random random = new Random();
-        return (random.nextDouble() <= fractionalPart) ? integerPart + 1 : integerPart;
+        return MoneyHelper.probabilisticItemAmount(
+            value, java.util.concurrent.ThreadLocalRandom.current().nextDouble());
     }
     private void setNextClickableRow(int nextFloor) {
         if (nextFloor > numRows) return; // Prevent out-of-bounds

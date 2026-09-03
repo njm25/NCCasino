@@ -13,6 +13,8 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.EventHandler;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
+import org.nc.nccasino.games.Slots.SlotsAdminSettingsTransitions;
+import org.nc.nccasino.games.Slots.SlotsClickClassifier;
 import org.nc.nccasino.games.Slots.SlotsConfig;
 import org.nc.nccasino.games.Slots.SlotsGeometry;
 import org.nc.nccasino.games.Slots.SlotsPayline;
@@ -42,9 +44,14 @@ public class SlotsMenu extends Menu {
     /** Selectable house edges, as whole percentage points across the supported band. */
     private static final double[] EDGE_STEPS = {0.01, 0.02, 0.03, 0.04, 0.05, 0.06};
 
-    private static final int HOUSE_EDGE_SLOT = 2;
-    private static final int COLUMNS_SLOT = 4;
-    private static final int LINES_SLOT = 6;
+    // Repacked without gaps (rather than the old every-other-slot spacing) so
+    // the new Height control fits alongside House Edge, Reels, Lines, Return
+    // and Exit in this menu's single 9-slot row -- see the redesign's admin
+    // settings section for why a new menu was avoided here.
+    private static final int HOUSE_EDGE_SLOT = 1;
+    private static final int COLUMNS_SLOT = 2;
+    private static final int ROWS_SLOT = 3;
+    private static final int LINES_SLOT = 4;
 
     public SlotsMenu(UUID dealerId, Player player, String title, Consumer<Player> ret, Nccasino plugin, String returnName, String internalName) {
         super(player, plugin, dealerId, title, 9, title, ret);
@@ -57,6 +64,7 @@ public class SlotsMenu extends Menu {
         slotMapping.put(SlotOption.RETURN, 0);
         slotMapping.put(SlotOption.SLOTS_HOUSE_EDGE, HOUSE_EDGE_SLOT);
         slotMapping.put(SlotOption.SLOTS_DEFAULT_COLUMNS, COLUMNS_SLOT);
+        slotMapping.put(SlotOption.SLOTS_DEFAULT_ROWS, ROWS_SLOT);
         slotMapping.put(SlotOption.SLOTS_DEFAULT_LINES, LINES_SLOT);
 
         SlotsConfig.ensureDefaults(plugin, internalName);
@@ -103,12 +111,23 @@ public class SlotsMenu extends Menu {
             text("slots-settings.default-columns-hint"));
 
         addItemAndLore(
-            Material.ITEM_FRAME,
+            Material.LADDER,
             1,
-            text("slots-settings.default-lines"),
+            text("slots-settings.default-rows"),
+            ROWS_SLOT,
+            text("slots-settings.default-rows-current", "rows", config.visibleRows()),
+            text("slots-settings.default-rows-hint"));
+
+        boolean linesInert = config.visibleRows() == 1;
+        addItemAndLore(
+            linesInert ? Material.GRAY_DYE : Material.ITEM_FRAME,
+            1,
+            linesInert ? text("slots-settings.default-lines-inert") : text("slots-settings.default-lines"),
             LINES_SLOT,
             text("slots-settings.default-lines-current", "lines", config.activeLines()),
-            text("slots-settings.default-lines-hint", "max", SlotsPayline.MAX_LINES));
+            linesInert
+                ? text("slots-settings.default-lines-inert-hint")
+                : text("slots-settings.default-lines-hint", "max", SlotsPayline.MAX_LINES));
 
         addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, text("common.return-to", "menu", returnName), slotMapping.get(SlotOption.RETURN));
         addItemAndLore(Material.SPRUCE_DOOR, 1, text("common.exit"), slotMapping.get(SlotOption.EXIT));
@@ -116,10 +135,19 @@ public class SlotsMenu extends Menu {
 
     @Override
     protected void handleCustomClick(SlotOption option, Player player, InventoryClickEvent event) {
+        // Unsupported click types (shift, double, middle, number-key, drop,
+        // border) are safe no-ops here too -- never cycle a setting on an
+        // inferred "not right, so must be left" guess (Section 6 of the
+        // redesign audit applies to this admin menu as well).
+        if (!SlotsClickClassifier.isOrdinaryClick(event.getClick())) {
+            return;
+        }
+        int direction = SlotsClickClassifier.cycleDirection(event.getClick());
         switch (option) {
-            case SLOTS_HOUSE_EDGE -> cycleHouseEdge(player);
-            case SLOTS_DEFAULT_COLUMNS -> cycleColumns(player);
-            case SLOTS_DEFAULT_LINES -> cycleLines(player);
+            case SLOTS_HOUSE_EDGE -> cycleHouseEdge(player, direction);
+            case SLOTS_DEFAULT_COLUMNS -> cycleColumns(player, direction);
+            case SLOTS_DEFAULT_ROWS -> cycleRows(player, direction);
+            case SLOTS_DEFAULT_LINES -> cycleLines(player, direction);
             default -> {
                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                     case STANDARD -> player.sendMessage(text("slots-settings.invalid-option"));
@@ -131,9 +159,9 @@ public class SlotsMenu extends Menu {
         }
     }
 
-    private void cycleHouseEdge(Player player) {
+    private void cycleHouseEdge(Player player, int direction) {
         SlotsConfig config = SlotsConfig.load(plugin, internalName);
-        double next = EDGE_STEPS[(nearestEdgeIndex(config.houseEdge()) + 1) % EDGE_STEPS.length];
+        double next = EDGE_STEPS[Math.floorMod(nearestEdgeIndex(config.houseEdge()) + direction, EDGE_STEPS.length)];
         SlotsConfig.setHouseEdge(plugin, internalName, next);
         plugin.saveConfig();
 
@@ -158,17 +186,11 @@ public class SlotsMenu extends Menu {
         return best;
     }
 
-    private void cycleColumns(Player player) {
+    private void cycleColumns(Player player, int direction) {
         SlotsConfig config = SlotsConfig.load(plugin, internalName);
         int[] supported = SlotsGeometry.supportedColumnCounts();
-        int index = 0;
-        for (int i = 0; i < supported.length; i++) {
-            if (supported[i] == config.columns()) {
-                index = i;
-                break;
-            }
-        }
-        int next = supported[(index + 1) % supported.length];
+        int index = indexOf(supported, config.columns());
+        int next = supported[Math.floorMod(index + direction, supported.length)];
         SlotsConfig.setColumns(plugin, internalName, next);
         plugin.saveConfig();
 
@@ -176,9 +198,43 @@ public class SlotsMenu extends Menu {
         refresh(player);
     }
 
-    private void cycleLines(Player player) {
+    private static int indexOf(int[] values, int target) {
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == target) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    private void cycleRows(Player player, int direction) {
         SlotsConfig config = SlotsConfig.load(plugin, internalName);
-        int next = config.activeLines() >= SlotsPayline.MAX_LINES ? 1 : config.activeLines() + 1;
+        // One atomic transition covering both ends -- leaving height 1 forces
+        // the persisted line count back to 1 just as surely as entering it
+        // does, so a stale raw value (hand-edited config, or left over from
+        // before this rule existed) can never resurface. Always persisted,
+        // even when unchanged, so slots-rows and slots-lines never drift
+        // apart from what this method just decided.
+        SlotsAdminSettingsTransitions.RowsTransition transition =
+            SlotsAdminSettingsTransitions.rowsTransition(config.visibleRows(), config.activeLines(), direction);
+        SlotsConfig.setRows(plugin, internalName, transition.nextRows());
+        SlotsConfig.setLines(plugin, internalName, transition.nextPersistedLines());
+        plugin.saveConfig();
+
+        announce(player, text("slots-settings.default-rows-updated", "rows", transition.nextRows()));
+        refresh(player);
+    }
+
+    private void cycleLines(Player player, int direction) {
+        SlotsConfig config = SlotsConfig.load(plugin, internalName);
+        int next = SlotsAdminSettingsTransitions.nextLinesOrInert(config.visibleRows(), config.activeLines(), direction);
+        if (next == SlotsAdminSettingsTransitions.INERT) {
+            // Height 1 supports exactly one default payline -- never store
+            // or announce a value the very next refresh would clamp away.
+            announce(player, text("slots-settings.default-lines-inert-hint"));
+            playDefaultSound(player);
+            return;
+        }
         SlotsConfig.setLines(plugin, internalName, next);
         plugin.saveConfig();
 

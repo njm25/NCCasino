@@ -44,6 +44,10 @@ class BlackjackDealerBudgetIntegrationTest {
         h.plugin.getConfig().set("dealers." + h.internalName + ".budget.underwriting-baseline", baseline);
         h.plugin.getConfig().set(
             "dealers." + h.internalName + ".budget.guaranteed-worst-case-rounds", String.valueOf(guaranteedRounds));
+        // This fixture controls dealerFunding explicitly; one-time baseline
+        // seeding is covered by the budget-store/service tests.
+        store.ensureInitialFunding(h.internalName, Money.of(1L), 1L);
+        store.setBalance(h.internalName, Money.ZERO);
         if (dealerFunding > 0) {
             store.deposit(h.internalName, Money.of(dealerFunding));
         }
@@ -112,6 +116,104 @@ class BlackjackDealerBudgetIntegrationTest {
             // the refund settlement.
             assertEquals(0, service.store().liveBalance(h.internalName).compareTo(Money.of(100L)),
                 "an undone wager must leave the dealer exactly where it started");
+        }
+    }
+
+    // ---- stable opening-wager action identity ----------------------------
+
+    @Test
+    void replayingTheSameOpeningWagerActionIdAppliesExactlyOnce() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            DealerBudgetService service = attachLimitedBudget(h, "1000", 1, 100L);
+            h.currencyProvider.setBalance(1000);
+
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]);
+
+            h.inventory.commitWagerForTest(alice, 10.0, "explicit-open-action-1");
+            h.inventory.commitWagerForTest(alice, 10.0, "explicit-open-action-1");
+
+            assertEquals(1, h.currencyProvider.withdrawAttempts.size(),
+                "a replayed action id must attempt the debit exactly once");
+            assertEquals(990, h.currencyProvider.getBalance(alice, h.internalName),
+                "the player must be debited exactly once");
+            assertEquals(10.0, h.inventory.totalRoundRefundForPlayerForTest(alice.getUniqueId()),
+                "the wager ledger must record exactly one 10-stake increment");
+            assertEquals(0, service.store().reservedTotal(h.internalName).compareTo(Money.of(25L)),
+                "the reservation must reflect one 10 stake (2.5x ceiling), not two");
+            assertEquals(0, service.store().liveBalance(h.internalName).compareTo(Money.of(110L)),
+                "the dealer must be credited the 10 stake exactly once");
+        }
+    }
+
+    @Test
+    void twoDistinctOpeningWagerActionIdsOfTheSameDenominationBothApply() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            DealerBudgetService service = attachLimitedBudget(h, "1000", 1, 100L);
+            h.currencyProvider.setBalance(1000);
+
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]);
+
+            h.inventory.commitWagerForTest(alice, 10.0, "explicit-open-action-a");
+            h.inventory.commitWagerForTest(alice, 10.0, "explicit-open-action-b");
+
+            assertEquals(2, h.currencyProvider.withdrawAttempts.size(),
+                "two distinct real chips of the same denomination must both debit");
+            assertEquals(980, h.currencyProvider.getBalance(alice, h.internalName));
+            assertEquals(20.0, h.inventory.totalRoundRefundForPlayerForTest(alice.getUniqueId()),
+                "both chips must be recorded in the wager ledger");
+            assertEquals(0, service.store().reservedTotal(h.internalName).compareTo(Money.of(50L)),
+                "the reservation must cover the combined 20 stake (2.5x ceiling)");
+        }
+    }
+
+    @Test
+    void aFailedSecondChipDebitRollsBackOnlyThatGrowthAndPreservesTheFirstWager() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            DealerBudgetService service = attachLimitedBudget(h, "1000", 1, 100L);
+            h.currencyProvider.setBalance(1000);
+
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]);
+
+            h.inventory.commitWagerForTest(alice, 10.0, "explicit-open-action-first");
+            assertEquals(0, service.store().reservedTotal(h.internalName).compareTo(Money.of(25L)));
+
+            h.currencyProvider.setNextWithdrawSucceeds(false);
+            h.inventory.commitWagerForTest(alice, 5.0, "explicit-open-action-second");
+
+            assertEquals(10.0, h.inventory.totalRoundRefundForPlayerForTest(alice.getUniqueId()),
+                "the failed second chip must never join the wager ledger");
+            assertEquals(0, service.store().reservedTotal(h.internalName).compareTo(Money.of(25L)),
+                "the reservation must be rolled back to exactly the first, legitimate wager");
+            assertEquals(0, service.store().liveBalance(h.internalName).compareTo(Money.of(110L)),
+                "the dealer must retain only the first wager's real stake");
+        }
+    }
+
+    @Test
+    void undoAfterMultipleChipsReconcilesTheDealerBalanceAndReservation() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            DealerBudgetService service = attachLimitedBudget(h, "1000", 1, 100L);
+            h.currencyProvider.setBalance(1000);
+
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]);
+
+            h.inventory.commitWagerForTest(alice, 10.0, "explicit-open-action-undo-1");
+            h.inventory.commitWagerForTest(alice, 5.0, "explicit-open-action-undo-2");
+            assertTrue(service.store().reservedTotal(h.internalName).compareTo(Money.of(25L)) > 0,
+                "sanity: the second chip must have grown the reservation beyond the first chip alone");
+
+            h.click(alice, BlackjackSlotLayout.UNDO_ALL_SLOT);
+
+            assertEquals(0, service.store().reservedTotal(h.internalName).compareTo(Money.ZERO),
+                "undo-all must release the entire pending opening reservation");
+            assertEquals(0, service.store().liveBalance(h.internalName).compareTo(Money.of(100L)),
+                "undo-all must leave the dealer exactly where it started");
+            assertEquals(1000, h.currencyProvider.getBalance(alice, h.internalName),
+                "undo-all must return every committed chip to the player");
         }
     }
 }
