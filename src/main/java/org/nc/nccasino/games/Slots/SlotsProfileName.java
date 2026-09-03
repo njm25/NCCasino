@@ -1,5 +1,7 @@
 package org.nc.nccasino.games.Slots;
 
+import java.text.Normalizer;
+
 /**
  * The profile-name rules, as a pure validator so the chat prompt and the
  * store can never disagree about what a legal name is.
@@ -13,6 +15,20 @@ package org.nc.nccasino.games.Slots;
  * the same way: they are not letters under Unicode's own classification
  * either, so nothing about accepting every script also opens the door to
  * pictographic names.
+ *
+ * <p>Every name is folded to Unicode Normalization Form C ({@link Normalizer.Form#NFC})
+ * before anything else looks at it. Some input paths (certain IMEs and
+ * keyboard layouts, particularly for languages built on combining marks --
+ * Vietnamese chief among them) can hand this class an accented letter as two
+ * code points, a base letter plus a separate combining mark, rather than one
+ * precomposed character. A bare combining mark is not a letter on its own
+ * ({@link Character#isLetter(int)} correctly says so), so without this
+ * normalization a perfectly ordinary accented name typed on some keyboards
+ * would be rejected while the same name typed on another keyboard would not
+ * -- an inconsistency with no visible cause from the player's side. NFC is
+ * also what makes {@link #uniquenessKey} reliable: two visually identical
+ * names must fold to the same key regardless of which composed form either
+ * one arrived in.
  *
  * <p>Uniqueness is case-insensitive: "High Roller" and "high roller" are the
  * same profile, and saving the second offers to overwrite the first rather
@@ -45,7 +61,7 @@ public final class SlotsProfileName {
         if (raw == null) {
             return Rejection.EMPTY;
         }
-        String trimmed = raw.trim();
+        String trimmed = Normalizer.normalize(raw.trim(), Normalizer.Form.NFC);
         if (trimmed.length() < MIN_LENGTH) {
             return Rejection.EMPTY;
         }
@@ -76,15 +92,15 @@ public final class SlotsProfileName {
     }
 
     /**
-     * The canonical stored form of a legal name: trimmed, with runs of inner
-     * spaces collapsed so two names that are visually identical cannot both
-     * exist.
+     * The canonical stored form of a legal name: NFC-folded, trimmed, with
+     * runs of inner spaces collapsed so two names that are visually identical
+     * cannot both exist.
      */
     public static String normalize(String raw) {
         if (raw == null) {
             return null;
         }
-        return raw.trim().replaceAll(" {2,}", " ");
+        return Normalizer.normalize(raw.trim(), Normalizer.Form.NFC).replaceAll(" {2,}", " ");
     }
 
     /** The case-insensitive key two names must share to be considered the same profile. */

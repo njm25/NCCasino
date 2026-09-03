@@ -48,6 +48,28 @@ class SlotsProfileNameTest {
     }
 
     @Test
+    void aDecomposedAccentedLetterIsAcceptedJustLikeItsPrecomposedForm() {
+        // Some keyboards/IMEs (Vietnamese input methods in particular) can
+        // hand this class an accented letter as a base letter plus a separate
+        // combining mark rather than one precomposed character. The bare
+        // combining mark alone is not a letter, so without NFC folding this
+        // would be wrongly rejected.
+        String precomposed = "Café"; // "Café", the 'é' as one code point (U+00E9)
+        String decomposed = java.text.Normalizer.normalize(precomposed, java.text.Normalizer.Form.NFD);
+        assertNotEquals(precomposed, decomposed, "the two forms must actually differ at the code-point level");
+        assertNull(SlotsProfileName.validate(decomposed), "a decomposed accented name must still be legal");
+        assertEquals(precomposed, SlotsProfileName.normalize(decomposed),
+            "the stored form must be the precomposed one regardless of which form was typed");
+    }
+
+    @Test
+    void uniquenessKeyMatchesRegardlessOfWhichComposedFormWasTyped() {
+        String precomposed = "Café";
+        String decomposed = java.text.Normalizer.normalize(precomposed, java.text.Normalizer.Form.NFD);
+        assertEquals(SlotsProfileName.uniquenessKey(precomposed), SlotsProfileName.uniquenessKey(decomposed));
+    }
+
+    @Test
     void aSupplementaryPlaneLetterIsClassifiedAsOneLetterNotTwoIllegalSurrogates() {
         // U+20000 (CJK Extension B, a real ideograph) is encoded as a
         // surrogate pair. Walking by char instead of by code point would
