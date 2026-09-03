@@ -9,8 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The profile-name rules: 1-24 characters of letters, digits, spaces, hyphens
- * and underscores, and case-insensitive uniqueness.
+ * The profile-name rules: 1-24 characters of letters (any script), digits,
+ * spaces, hyphens and underscores, and case-insensitive uniqueness.
  *
  * <p>Rejecting the section sign and ampersand is a safety rule, not a style
  * one -- a saved name is rendered as an item display name, so a formatting
@@ -30,6 +30,31 @@ class SlotsProfileNameTest {
             assertNull(SlotsProfileName.validate(name), name + " must be a legal name");
             assertTrue(SlotsProfileName.isValid(name));
         }
+    }
+
+    @Test
+    void namesInAnyScriptAreAccepted() {
+        // Chinese, Japanese, Korean, Russian, and accented Latin -- the exact
+        // set an ASCII-only check used to block outright, across every
+        // non-English locale this plugin ships, not just zh_CN.
+        String[] accepted = {
+            "高倍率", "ハイローラー", "하이롤러", "Высокий риск", "Étoiles", "Größe", "Añejo",
+            "日本語 123", "Ελληνικά", "Türkçe İsim",
+        };
+        for (String name : accepted) {
+            assertNull(SlotsProfileName.validate(name), name + " must be a legal name");
+            assertTrue(SlotsProfileName.isValid(name));
+        }
+    }
+
+    @Test
+    void aSupplementaryPlaneLetterIsClassifiedAsOneLetterNotTwoIllegalSurrogates() {
+        // U+20000 (CJK Extension B, a real ideograph) is encoded as a
+        // surrogate pair. Walking by char instead of by code point would
+        // check each half against Character.isLetter(char) separately and
+        // wrongly reject both.
+        String name = new String(Character.toChars(0x20000));
+        assertNull(SlotsProfileName.validate(name), "a supplementary-plane letter must be accepted whole");
     }
 
     @Test
@@ -96,5 +121,12 @@ class SlotsProfileNameTest {
     void uniquenessAlsoIgnoresSurroundingAndRepeatedSpaces() {
         assertEquals(SlotsProfileName.uniquenessKey("High Roller"),
             SlotsProfileName.uniquenessKey("  high    roller "));
+    }
+
+    @Test
+    void uniquenessIsCaseInsensitiveInOtherScriptsToo() {
+        assertEquals(SlotsProfileName.uniquenessKey("Größe"), SlotsProfileName.uniquenessKey("GRÖßE"));
+        assertEquals(SlotsProfileName.uniquenessKey("Étoiles"), SlotsProfileName.uniquenessKey("étoiles"));
+        assertEquals(SlotsProfileName.uniquenessKey("Высокий"), SlotsProfileName.uniquenessKey("высокий"));
     }
 }
