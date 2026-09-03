@@ -31,15 +31,15 @@ class SlotsSymbolTest {
     }
 
     @Test
-    @DisplayName("only BLANK is non-paying, and it is the most common symbol")
-    void blankIsTheOnlyNonPayingSymbol() {
-        assertFalse(SlotsSymbol.BLANK.pays());
-        assertEquals(0, SlotsSymbol.BLANK.minimumRun());
+    @DisplayName("only SEEDS is non-paying, and it is the most common symbol")
+    void seedsIsTheOnlyNonPayingSymbol() {
+        assertFalse(SlotsSymbol.SEEDS.pays());
+        assertEquals(0, SlotsSymbol.SEEDS.minimumRun());
         for (SlotsSymbol symbol : SlotsSymbol.payingSymbols()) {
             assertTrue(symbol.pays(), symbol + " must pay");
             assertTrue(symbol.minimumRun() >= 2, symbol + " must need at least a pair");
-            assertTrue(symbol.weight() < SlotsSymbol.BLANK.weight(),
-                "BLANK must be more common than " + symbol + " so runs actually break");
+            assertTrue(symbol.weight() < SlotsSymbol.SEEDS.weight(),
+                "SEEDS must be more common than " + symbol + " so runs actually break");
         }
     }
 

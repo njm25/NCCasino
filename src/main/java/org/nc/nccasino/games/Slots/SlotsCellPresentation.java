@@ -8,10 +8,10 @@ package org.nc.nccasino.games.Slots;
  * <ul>
  *   <li>{@link #NEUTRAL} -- the pregame/reset placeholder ({@code symbol ==
  *   null}). Never evaluated as an outcome, never demo-labelled (there is
- *   nothing to disclaim), never a rolled BLANK.
+ *   nothing to disclaim), never a rolled SEEDS.
  *   <li>{@link #DEMO} -- a real rolled symbol shown while a Demo Spin is
  *   animating or displaying its result. Must always carry the demo/no-currency
- *   disclaimer, on every cell including BLANK and including matched winning
+ *   disclaimer, on every cell including SEEDS and including matched winning
  *   cells -- Section 1/12 of the redesign audit require this to be
  *   unmistakable everywhere, not only in the end-of-spin chat message.
  *   <li>{@link #PAID} -- a real rolled symbol from an actual paid spin (or the

@@ -75,7 +75,7 @@ class SlotsPaytableTest {
         SlotsSymbol[][] grid = new SlotsSymbol[SlotsGeometry.ROWS][columns];
         for (int row = 0; row < SlotsGeometry.ROWS; row++) {
             for (int col = 0; col < columns; col++) {
-                grid[row][col] = SlotsSymbol.BLANK;
+                grid[row][col] = SlotsSymbol.SEEDS;
             }
         }
         System.arraycopy(line, 0, grid[1], 0, columns);
@@ -87,7 +87,7 @@ class SlotsPaytableTest {
     /**
      * Ties the fast enumeration above to the real evaluator. Run at width 5
      * only (7,776 sequences), which is cheap enough to materialise a grid for
-     * every one and still covers short runs, full-width runs, blank breaks,
+     * every one and still covers short runs, full-width runs, Seeds breaks,
      * and the cherry pair rule.
      */
     @Test
@@ -162,12 +162,12 @@ class SlotsPaytableTest {
     }
 
     @Test
-    @DisplayName("blanks never pay and cherries pay from two")
+    @DisplayName("seeds never pay and cherries pay from two")
     void payingRulesHold() {
         SlotsPaytable paytable = SlotsPaytable.forConfig(5, 0.03);
         for (int run = 1; run <= 5; run++) {
-            assertEquals(0.0, paytable.multiplier(SlotsSymbol.BLANK, run),
-                "BLANK must never pay (run=" + run + ")");
+            assertEquals(0.0, paytable.multiplier(SlotsSymbol.SEEDS, run),
+                "SEEDS must never pay (run=" + run + ")");
         }
         assertEquals(0.0, paytable.multiplier(SlotsSymbol.CHERRY, 1));
         assertTrue(paytable.multiplier(SlotsSymbol.CHERRY, 2) > 0.0, "cherries pay from a run of two");

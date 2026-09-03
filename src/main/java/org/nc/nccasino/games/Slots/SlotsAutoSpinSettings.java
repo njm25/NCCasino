@@ -1,6 +1,8 @@
 package org.nc.nccasino.games.Slots;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * One player's Auto Spin configuration: an immutable value object, so a
@@ -126,6 +128,62 @@ public final class SlotsAutoSpinSettings {
 
     public SlotsAutoSpinSettings toggleStopOnAnyWin() {
         return withStopOnAnyWin(!stopOnAnyWin);
+    }
+
+    /** Every field a batch's settings can carry, in the fixed order they are always presented. */
+    public enum Field { SPIN_LIMIT, STOP_ON_ANY_WIN, BIG_WIN_MULTIPLIER, PROFIT_TARGET, LOSS_LIMIT }
+
+    /**
+     * Every field that differs from {@code other}, in {@link Field}'s fixed
+     * order -- the exact set the Auto Spin Settings Reset button previews as
+     * {@code current -> default} before the player clicks it. Extracted as
+     * pure data (not formatted text) so the comparison itself -- which
+     * fields actually changed -- is unit-testable without a live inventory;
+     * {@link SlotsMachine} owns turning each entry into a localized line.
+     */
+    public List<Field> changedFieldsFrom(SlotsAutoSpinSettings other) {
+        List<Field> changed = new ArrayList<>();
+        if (spinLimit != other.spinLimit) {
+            changed.add(Field.SPIN_LIMIT);
+        }
+        if (stopOnAnyWin != other.stopOnAnyWin) {
+            changed.add(Field.STOP_ON_ANY_WIN);
+        }
+        if (bigWinMultiplier != other.bigWinMultiplier) {
+            changed.add(Field.BIG_WIN_MULTIPLIER);
+        }
+        if (profitTarget != other.profitTarget) {
+            changed.add(Field.PROFIT_TARGET);
+        }
+        if (lossLimit != other.lossLimit) {
+            changed.add(Field.LOSS_LIMIT);
+        }
+        return changed;
+    }
+
+    /**
+     * Every stop rule (everything but {@link Field#SPIN_LIMIT}, which is not
+     * a stop condition but a hard cap) that is actually switched on, in
+     * {@link Field}'s fixed order -- empty when the batch would only ever
+     * stop on the spin limit. The one list that feeds every "what will this
+     * batch do" surface: the main Clock's lore, a saved profile's
+     * description, and the Paytable's information rail.
+     */
+    public List<Field> activeStopRules() {
+        List<Field> active = new ArrayList<>();
+        if (stopOnAnyWin) {
+            active.add(Field.STOP_ON_ANY_WIN);
+        }
+        if (hasBigWinMultiplier()) {
+            active.add(Field.BIG_WIN_MULTIPLIER);
+        }
+        if (hasProfitTarget()) {
+            active.add(Field.PROFIT_TARGET);
+        }
+        if (hasLossLimit()) {
+            active.add(Field.LOSS_LIMIT);
+        }
+        return active;
     }
 
     /** {@link #profitTarget()} as an exact decimal, for comparison against a long batch ledger. */

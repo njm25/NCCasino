@@ -7,9 +7,10 @@ package org.nc.nccasino.games.Slots;
  * <p>The alignment is the whole point, so it is derived rather than
  * hand-listed: rail slot {@code n} is always exactly nine slots above
  * control slot {@code n + 9}. The rail exists only in the Paytable view, is
- * rendered in one neutral material
- * ({@link SlotsControlPresentation.Role#INFO_RAIL}) so it cannot be mistaken
- * for a second row of controls, and every click on it is cancelled.
+ * rendered in one material
+ * ({@link SlotsControlPresentation.Role#INFO_RAIL} -- a hopper, whose funnel
+ * narrows downward toward the control it explains) that is not one of this
+ * UI's clickable materials, and every click on it is cancelled.
  */
 public final class SlotsInfoRail {
 

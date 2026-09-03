@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Pins the exact PLAY-vs-Demo cell presentation decision (redesign audit
  * Section 1): the self-audit's demo-cell fix must remain, and this is what
  * proves PLAY and Demo choose different presentations for the same symbol,
- * including BLANK, without needing a live Bukkit inventory.
+ * including SEEDS, without needing a live Bukkit inventory.
  */
 class SlotsCellPresentationTest {
 
@@ -32,10 +32,10 @@ class SlotsCellPresentationTest {
     }
 
     @Test
-    void blankIsDemoLabelledInADemoJustLikeAnyOtherSymbol() {
-        // BLANK must not be special-cased out of the demo disclaimer.
-        assertTrue(SlotsCellPresentation.of(SlotsSymbol.BLANK, true).isDemoLabelled());
-        assertFalse(SlotsCellPresentation.of(SlotsSymbol.BLANK, false).isDemoLabelled());
+    void seedsIsDemoLabelledInADemoJustLikeAnyOtherSymbol() {
+        // SEEDS must not be special-cased out of the demo disclaimer.
+        assertTrue(SlotsCellPresentation.of(SlotsSymbol.SEEDS, true).isDemoLabelled());
+        assertFalse(SlotsCellPresentation.of(SlotsSymbol.SEEDS, false).isDemoLabelled());
     }
 
     @Test

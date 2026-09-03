@@ -4,7 +4,9 @@ import org.bukkit.event.inventory.ClickType;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The whole click-routing matrix for the redesigned control row: every slot,
@@ -60,35 +62,43 @@ class SlotsControlLayoutRoutingTest {
     }
 
     @Test
-    void shiftRightClickOnTheClockOpensAutoSpinSettingsFromGameAndPaytable() {
+    void shiftLeftClickOnTheClockOpensAutoSpinSettingsFromGameAndPaytable() {
         assertEquals(SlotsControlLayout.Target.AUTO_SETTINGS,
-            target(SlotsUiView.GAME, 50, ClickType.SHIFT_RIGHT));
+            target(SlotsUiView.GAME, 50, ClickType.SHIFT_LEFT));
         assertEquals(SlotsControlLayout.Target.AUTO_SETTINGS,
-            target(SlotsUiView.PAYTABLE, 50, ClickType.SHIFT_RIGHT));
+            target(SlotsUiView.PAYTABLE, 50, ClickType.SHIFT_LEFT));
     }
 
     @Test
-    void shiftRightClickIsRecognizedAheadOfTheOrdinaryClickGate() {
-        // SHIFT_RIGHT is not an ordinary click, so the gate would drop it if
+    void shiftLeftClickIsRecognizedAheadOfTheOrdinaryClickGate() {
+        // SHIFT_LEFT is not an ordinary click, so the gate would drop it if
         // the Clock's own case were checked second.
-        assertEquals(SlotsControlLayout.Target.NONE, target(SlotsUiView.GAME, 49, ClickType.SHIFT_RIGHT));
-        assertNotEquals(SlotsControlLayout.Target.NONE, target(SlotsUiView.GAME, 50, ClickType.SHIFT_RIGHT));
+        assertEquals(SlotsControlLayout.Target.NONE, target(SlotsUiView.GAME, 49, ClickType.SHIFT_LEFT));
+        assertNotEquals(SlotsControlLayout.Target.NONE, target(SlotsUiView.GAME, 50, ClickType.SHIFT_LEFT));
     }
 
     @Test
-    void shiftRightClickDoesNothingInsideAModalEditor() {
-        // The Auto Spin Settings menu is already open in one of them, and the
-        // other two must not be openable straight into a third menu.
+    void shiftLeftClickOnTheMenusOwnClockGoesBackToTheGame() {
+        // The gesture is symmetric: the same shift-left that opened the menu
+        // closes it again from the Clock the menu carries on its canvas.
+        assertEquals(SlotsControlLayout.Target.BACK_TO_GAME,
+            target(SlotsUiView.AUTO_SETTINGS, SlotsAutoSettingsLayout.CLOCK_SLOT, ClickType.SHIFT_LEFT));
+    }
+
+    @Test
+    void shiftLeftClickDoesNotOpenAThirdMenuFromInsideAModalEditor() {
+        // Auto Spin Settings is already open in one of them; Profiles must not
+        // be openable straight into another menu.
+        assertEquals(SlotsControlLayout.Target.BACK_TO_GAME,
+            target(SlotsUiView.AUTO_SETTINGS, 50, ClickType.SHIFT_LEFT));
         assertEquals(SlotsControlLayout.Target.NONE,
-            target(SlotsUiView.AUTO_SETTINGS, 50, ClickType.SHIFT_RIGHT));
-        assertEquals(SlotsControlLayout.Target.NONE,
-            target(SlotsUiView.PROFILES, 50, ClickType.SHIFT_RIGHT));
+            target(SlotsUiView.PROFILES, 50, ClickType.SHIFT_LEFT));
     }
 
     @Test
     void everyNonOrdinaryClickTypeIsASafeNoOpOnEveryControl() {
         ClickType[] rejected = {
-            ClickType.SHIFT_LEFT, ClickType.MIDDLE, ClickType.DOUBLE_CLICK, ClickType.DROP,
+            ClickType.SHIFT_RIGHT, ClickType.MIDDLE, ClickType.DOUBLE_CLICK, ClickType.DROP,
             ClickType.CONTROL_DROP, ClickType.NUMBER_KEY, ClickType.SWAP_OFFHAND,
             ClickType.WINDOW_BORDER_LEFT, ClickType.WINDOW_BORDER_RIGHT, ClickType.CREATIVE,
             ClickType.UNKNOWN
@@ -143,20 +153,52 @@ class SlotsControlLayoutRoutingTest {
     }
 
     @Test
-    void aModalEditorMakesEveryBottomControlExceptExitInert() {
-        for (SlotsUiView view : new SlotsUiView[] {SlotsUiView.PROFILES, SlotsUiView.AUTO_SETTINGS}) {
-            for (int slot = 45; slot <= 53; slot++) {
-                SlotsControlLayout.Target actual = target(view, slot, ClickType.LEFT);
-                if (slot == 45) {
-                    assertEquals(SlotsControlLayout.Target.EXIT, actual, "Exit must keep working in " + view);
-                } else if (slot == view.backToGameSlot()) {
-                    assertEquals(SlotsControlLayout.Target.BACK_TO_GAME, actual);
-                } else {
-                    assertEquals(SlotsControlLayout.Target.MODAL_LOCKED, actual,
-                        view + " slot " + slot + " must not change the game behind the menu");
-                }
+    void theProfilesListMakesEveryBottomControlExceptExitInert() {
+        SlotsUiView view = SlotsUiView.PROFILES;
+        for (int slot = 45; slot <= 53; slot++) {
+            SlotsControlLayout.Target actual = target(view, slot, ClickType.LEFT);
+            if (slot == 45) {
+                assertEquals(SlotsControlLayout.Target.EXIT, actual, "Exit must keep working in " + view);
+            } else if (slot == view.backToGameSlot()) {
+                assertEquals(SlotsControlLayout.Target.BACK_TO_GAME, actual);
+            } else {
+                assertEquals(SlotsControlLayout.Target.MODAL_LOCKED, actual,
+                    view + " slot " + slot + " must not change the game behind the menu");
             }
         }
+    }
+
+    @Test
+    void autoSpinSettingsKeepsEveryBottomControlLiveExceptTheSpinLever() {
+        // The settings menu is the one modal view a player is expected to
+        // reach past: the configuration controls apply and hand them back to
+        // the reels, and Paytable/Profiles open directly. Only the Spin lever
+        // stays inert, because it commits a real wager.
+        SlotsUiView view = SlotsUiView.AUTO_SETTINGS;
+        for (int slot = 45; slot <= 53; slot++) {
+            SlotsControlLayout.Target actual = target(view, slot, ClickType.LEFT);
+            if (slot == view.backToGameSlot()) {
+                assertEquals(SlotsControlLayout.Target.BACK_TO_GAME, actual);
+            } else if (slot == 49) {
+                assertEquals(SlotsControlLayout.Target.MODAL_LOCKED, actual,
+                    "the Spin lever must never commit a wager from inside the menu");
+            } else {
+                assertEquals(SlotsControlLayout.controlAt(slot), actual,
+                    "slot " + slot + " must stay live inside Auto Spin Settings");
+            }
+        }
+    }
+
+    @Test
+    void inertnessIsAskedPerSlotRatherThanPerView() {
+        // What the renderer dims must be exactly what the router refuses.
+        assertTrue(SlotsControlLayout.isInertIn(SlotsUiView.AUTO_SETTINGS, 49));
+        assertFalse(SlotsControlLayout.isInertIn(SlotsUiView.AUTO_SETTINGS, 46));
+        assertFalse(SlotsControlLayout.isInertIn(SlotsUiView.AUTO_SETTINGS, 48));
+        assertFalse(SlotsControlLayout.isInertIn(SlotsUiView.AUTO_SETTINGS, 53));
+        assertTrue(SlotsControlLayout.isInertIn(SlotsUiView.PROFILES, 46));
+        assertFalse(SlotsControlLayout.isInertIn(SlotsUiView.GAME, 49));
+        assertFalse(SlotsControlLayout.isInertIn(SlotsUiView.PAYTABLE, 46));
     }
 
     @Test
@@ -187,6 +229,6 @@ class SlotsControlLayoutRoutingTest {
     @Test
     void aNullViewIsTreatedAsGameRatherThanThrowing() {
         assertEquals(SlotsControlLayout.Target.SPIN, target(null, 49, ClickType.LEFT));
-        assertEquals(SlotsControlLayout.Target.AUTO_SETTINGS, target(null, 50, ClickType.SHIFT_RIGHT));
+        assertEquals(SlotsControlLayout.Target.AUTO_SETTINGS, target(null, 50, ClickType.SHIFT_LEFT));
     }
 }

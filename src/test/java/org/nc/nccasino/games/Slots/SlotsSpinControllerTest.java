@@ -55,12 +55,12 @@ class SlotsSpinControllerTest {
      */
     private static SlotsRandomSource allSevens() {
         // A 4th value covers the probabilistic-rounding draw the same rng is
-        // reused for once the payout is known positive -- unlike allBlanks(),
+        // reused for once the payout is known positive -- unlike allSeeds(),
         // which returns 0 before ever reaching that draw.
         return sequence(42, 42, 43, 0);
     }
 
-    private static SlotsRandomSource allBlanks() {
+    private static SlotsRandomSource allSeeds() {
         return sequence(85, 88, 47);
     }
 
@@ -264,9 +264,9 @@ class SlotsSpinControllerTest {
     @Test
     void zeroPayoutIsACompletedLossAndNeverInvokesDeliveryOrQueue() {
         SlotsSpinController controller = new SlotsSpinController();
-        // A full grid of BLANK cannot pay on any line at any width, since
-        // BLANK is the one symbol with no payout at all.
-        SlotsSpinController.SpinAttempt attempt = controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allBlanks(), amount -> true);
+        // A full grid of SEEDS cannot pay on any line at any width, since
+        // SEEDS is the one symbol with no payout at all.
+        SlotsSpinController.SpinAttempt attempt = controller.trySpin(10, COLUMNS, LINES, false, PAYTABLE, allSeeds(), amount -> true);
         assertInstanceOf(SlotsSpinController.SpinAttempt.Accepted.class, attempt);
         assertEquals(0, ((SlotsSpinController.SpinAttempt.Accepted) attempt).payout());
 

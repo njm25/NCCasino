@@ -9,3 +9,5 @@ locales:
     name: "Deutsch"
   fr_FR:
     name: "Français"
+  zh_CN:
+    name: "简体中文"

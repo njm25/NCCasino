@@ -99,32 +99,117 @@ class SlotsOpeningColumnMotionTest {
     @Test
     void staggerLeavesEachColumnInactiveBeforeItsOwnStart() {
         int entryCount = 15;
-        long stagger = 2L;
-        assertEquals(-1, SlotsOpeningColumnMotion.localEntryIndexAt(3, stagger, 5L, entryCount),
-            "column 3 (starts at tick 6) must not be active yet at tick 5");
-        assertEquals(0, SlotsOpeningColumnMotion.localEntryIndexAt(3, stagger, 6L, entryCount));
-        assertEquals(1, SlotsOpeningColumnMotion.localEntryIndexAt(3, stagger, 7L, entryCount));
+        long start = SlotsOpeningColumnMotion.columnStartTick(3);
+        assertEquals(-1, SlotsOpeningColumnMotion.localEntryIndexAt(3, start - 1, entryCount),
+            "a column must feed nothing on the tick before its own start");
+        assertEquals(0, SlotsOpeningColumnMotion.localEntryIndexAt(3, start, entryCount));
+        assertEquals(1, SlotsOpeningColumnMotion.localEntryIndexAt(3, start + SlotsTiming.OPENING_STEP_TICKS, entryCount));
     }
 
     @Test
     void staggerLeavesEachColumnInactiveAfterItsSequenceEnds() {
         int entryCount = 15;
-        long stagger = 2L;
-        long lastActiveTick = 0L + entryCount - 1;
-        assertEquals(entryCount - 1, SlotsOpeningColumnMotion.localEntryIndexAt(0, stagger, lastActiveTick, entryCount));
-        assertEquals(-1, SlotsOpeningColumnMotion.localEntryIndexAt(0, stagger, lastActiveTick + 1, entryCount));
+        long lastActiveTick = SlotsOpeningColumnMotion.localTickOfEntry(entryCount - 1, entryCount);
+        assertEquals(entryCount - 1, SlotsOpeningColumnMotion.localEntryIndexAt(0, lastActiveTick, entryCount));
+        assertEquals(-1, SlotsOpeningColumnMotion.localEntryIndexAt(0, lastActiveTick + 1, entryCount));
     }
 
     @Test
     void columnsOverlapRatherThanRunningOneAfterAnother() {
-        // With a 2-tick stagger and a run far longer than the stagger,
-        // columns 0 and 1 must both be simultaneously active well before
-        // column 0 finishes -- proving overlap, not strict sequencing.
+        // Column 1 has started well before column 0 has finished, so the two
+        // genuinely overlap in time rather than running one after the other.
         int entryCount = 15;
-        long stagger = 2L;
-        long midTick = 6L;
-        assertTrue(SlotsOpeningColumnMotion.localEntryIndexAt(0, stagger, midTick, entryCount) >= 0);
-        assertTrue(SlotsOpeningColumnMotion.localEntryIndexAt(1, stagger, midTick, entryCount) >= 0);
+        long columnOneStart = SlotsOpeningColumnMotion.columnStartTick(1);
+        long columnZeroEnd = SlotsOpeningColumnMotion.localTickOfEntry(entryCount - 1, entryCount);
+        assertTrue(columnOneStart < columnZeroEnd,
+            "column 1 must start before column 0 lands its last entry");
+    }
+
+    @Test
+    void columnsStartInStrictLeftToRightOrderOnAnUnevenCadence() {
+        long previous = -1L;
+        java.util.Set<Long> gaps = new java.util.HashSet<>();
+        for (int column = 0; column < SlotsGeometry.INVENTORY_WIDTH; column++) {
+            long start = SlotsOpeningColumnMotion.columnStartTick(column);
+            if (previous >= 0) {
+                assertTrue(start > previous,
+                    "column " + column + " must start strictly after the column to its left");
+                gaps.add(start - previous);
+            }
+            previous = start;
+        }
+        assertEquals(0L, SlotsOpeningColumnMotion.columnStartTick(0), "the leftmost column starts immediately");
+        assertTrue(gaps.size() > 1,
+            "the stagger must not be one flat interval -- that is what read as a metronome");
+    }
+
+    @Test
+    void everyColumnStartsOnTheSameTicksEveryRun() {
+        for (int column = 0; column < SlotsGeometry.INVENTORY_WIDTH; column++) {
+            assertEquals(SlotsOpeningColumnMotion.columnStartTick(column),
+                SlotsOpeningColumnMotion.columnStartTick(column),
+                "the stagger is fixed, never randomized");
+        }
+    }
+
+    @Test
+    void aColumnRunsAtFullSpeedThenDeceleratesIntoItsLanding() {
+        int entryCount = 30;
+        // Everything before the deceleration tail advances one step per tick.
+        int firstSlowIndex = entryCount - SlotsTiming.OPENING_DECELERATION_STEPS;
+        for (int index = 1; index < firstSlowIndex; index++) {
+            assertEquals(SlotsTiming.OPENING_STEP_TICKS,
+                SlotsOpeningColumnMotion.stepTicksBefore(index, entryCount),
+                "entry " + index + " must still be at full speed");
+        }
+        // The tail waits strictly longer at every successive step.
+        long previous = SlotsTiming.OPENING_STEP_TICKS;
+        for (int index = firstSlowIndex; index < entryCount; index++) {
+            long step = SlotsOpeningColumnMotion.stepTicksBefore(index, entryCount);
+            assertTrue(step > previous,
+                "entry " + index + " must wait longer than the one before it");
+            previous = step;
+        }
+    }
+
+    @Test
+    void theFirstEntryLandsOnTheColumnsOwnStartTick() {
+        assertEquals(0L, SlotsOpeningColumnMotion.stepTicksBefore(0, 30));
+        assertEquals(0L, SlotsOpeningColumnMotion.localTickOfEntry(0, 30));
+    }
+
+    @Test
+    void aDeceleratingColumnFeedsNothingOnItsWaitingTicks() {
+        int entryCount = 30;
+        long lastTick = SlotsOpeningColumnMotion.localTickOfEntry(entryCount - 1, entryCount);
+        long secondLastTick = SlotsOpeningColumnMotion.localTickOfEntry(entryCount - 2, entryCount);
+        assertTrue(lastTick - secondLastTick > 1L, "the final step must span more than one tick");
+        // Every tick strictly between the two is a deliberate no-op.
+        for (long tick = secondLastTick + 1; tick < lastTick; tick++) {
+            assertEquals(-1, SlotsOpeningColumnMotion.localEntryIndexAt(0, tick, entryCount),
+                "tick " + tick + " falls mid-wait and must feed nothing");
+        }
+        assertEquals(entryCount - 1, SlotsOpeningColumnMotion.localEntryIndexAt(0, lastTick, entryCount));
+    }
+
+    @Test
+    void everyEntryStillFiresExactlyOnceAcrossTheWholeRun() {
+        int entryCount = 30;
+        long finalTick = SlotsOpeningColumnMotion.finalTick(SlotsGeometry.INVENTORY_WIDTH, entryCount);
+        for (int column = 0; column < SlotsGeometry.INVENTORY_WIDTH; column++) {
+            boolean[] seen = new boolean[entryCount];
+            for (long tick = 0; tick <= finalTick; tick++) {
+                int index = SlotsOpeningColumnMotion.localEntryIndexAt(column, tick, entryCount);
+                if (index < 0) {
+                    continue;
+                }
+                assertTrue(!seen[index], "entry " + index + " fired twice in column " + column);
+                seen[index] = true;
+            }
+            for (int index = 0; index < entryCount; index++) {
+                assertTrue(seen[index], "entry " + index + " never fired in column " + column);
+            }
+        }
     }
 
     @Test
@@ -204,11 +289,15 @@ class SlotsOpeningColumnMotionTest {
     }
 
     @Test
-    void finalTickAccountsForTheLastColumnsStaggerDelay() {
-        int columnCount = 9;
-        long stagger = 2L;
+    void finalTickAccountsForTheLastColumnsStaggerDelayAndItsDeceleration() {
+        int columnCount = SlotsGeometry.INVENTORY_WIDTH;
         int entryCount = 15;
-        long expected = (columnCount - 1) * stagger + entryCount - 1;
-        assertEquals(expected, SlotsOpeningColumnMotion.finalTick(columnCount, stagger, entryCount));
+        long expected = SlotsOpeningColumnMotion.columnStartTick(columnCount - 1)
+            + SlotsOpeningColumnMotion.localTickOfEntry(entryCount - 1, entryCount);
+        assertEquals(expected, SlotsOpeningColumnMotion.finalTick(columnCount, entryCount));
+        // The deceleration tail means the run outlasts a flat one-tick-per-entry
+        // schedule; nothing may land after finalTick.
+        assertTrue(expected > SlotsOpeningColumnMotion.columnStartTick(columnCount - 1) + entryCount - 1);
+        assertEquals(-1, SlotsOpeningColumnMotion.localEntryIndexAt(columnCount - 1, expected + 1, entryCount));
     }
 }

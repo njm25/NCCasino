@@ -103,8 +103,11 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     private static final int SPIN_SLOT = SlotsControlLayout.SPIN_SLOT;
     /**
      * Auto Spin (left-click), Spin Speed (right-click) and Auto Spin Settings
-     * (shift-right-click) -- all three combined on one Clock control. Becomes
-     * Back to Game in the Auto Spin Settings view.
+     * (shift-left-click) -- all three combined on one Clock control. Becomes
+     * Back to Game in the Auto Spin Settings view; the same Clock, with the
+     * same three actions, is also carried into that view's own canvas (see
+     * {@link SlotsAutoSettingsLayout#CLOCK_SLOT}), where shift-left-click
+     * closes the menu instead of opening it.
      */
     private static final int CLOCK_SLOT = SlotsControlLayout.CLOCK_SLOT;
     /** Green Stained Glass Pane -- the active payline count. */
@@ -350,8 +353,11 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
      * actually lands and stays, rather than the column insta-stopping the
      * instant it first reads correctly. The completed column reads
      * top-to-bottom exactly as {@code finalItems} already has it. Columns
-     * start on a left-to-right stagger ({@link SlotsTiming#OPENING_COLUMN_STAGGER_TICKS})
-     * and overlap in time rather than running one after another.
+     * start on a fixed but deliberately uneven left-to-right stagger
+     * ({@link SlotsTiming#OPENING_COLUMN_STAGGER_GAPS}) and overlap in time
+     * rather than running one after another, and each column decelerates
+     * into its landing ({@link SlotsTiming#OPENING_DECELERATION_STEPS})
+     * rather than stopping dead.
      *
      * <p>Guarded by {@link #openingGeneration} exactly like {@link #demoGeneration}
      * guards Demo Spin: a stale scheduled frame from a cancelled or
@@ -380,8 +386,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             entryCounts[col] = entries.get(col).size();
             maxEntryCount = Math.max(maxEntryCount, entryCounts[col]);
         }
-        final long finalTick = SlotsOpeningColumnMotion.finalTick(
-            columnCount, SlotsTiming.OPENING_COLUMN_STAGGER_TICKS, maxEntryCount);
+        final long finalTick = SlotsOpeningColumnMotion.finalTick(columnCount, maxEntryCount);
         final ItemStack[][] columnState = new ItemStack[columnCount][SlotsOpeningColumnMotion.ROWS];
         final long[] elapsed = {0L};
 
@@ -396,7 +401,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
                 long tick = elapsed[0];
                 for (int col = 0; col < columnCount; col++) {
                     int localIndex = SlotsOpeningColumnMotion.localEntryIndexAt(
-                        col, SlotsTiming.OPENING_COLUMN_STAGGER_TICKS, tick, entryCounts[col]);
+                        col, tick, entryCounts[col]);
                     if (localIndex < 0) {
                         continue;
                     }
@@ -640,7 +645,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         addItemAndLore(symbol.material(), 1, text(symbolKey(symbol)), slot, lore.toArray(new String[0]));
     }
 
-    /** The narrow left-hand explanatory column: runs, pricing, the Blank symbol, and reels/volatility. */
+    /** The narrow left-hand explanatory column: runs, pricing, the Seeds symbol, and reels/volatility. */
     private void renderPaytableInfoColumn(SlotsPaytable paytable) {
         int[] slots = SlotsPaytableLayout.infoColumnSlots();
 
@@ -655,12 +660,12 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             text("slots.guide-pricing-longest"),
             text("slots.guide-pricing-total-return"));
 
-        // BLANK is a real, weighted, non-paying strip symbol -- its
+        // SEEDS is a real, weighted, non-paying strip symbol -- its
         // payWeight() is 0 and it has no minimum run, so it can never appear
         // on a card above, and it ends any run it lands in.
-        addItemAndLore(SlotsSymbol.BLANK.material(), 1, text("slots.guide-blank-title"), slots[2],
-            text("slots.guide-blank-never-pays"),
-            text("slots.guide-blank-ends-run"));
+        addItemAndLore(SlotsSymbol.SEEDS.material(), 1, text("slots.guide-seeds-title"), slots[2],
+            text("slots.guide-seeds-never-pays"),
+            text("slots.guide-seeds-ends-run"));
 
         addItemAndLore(SlotsControlPresentation.Role.GUIDE_BOOK.material(), 1,
             text("slots.guide-volatility-title"), slots[3],
@@ -701,9 +706,9 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     /**
      * The Paytable-only informational rail: canvas slots 36-44, each sitting
      * directly above the bottom-row control it explains (see
-     * {@link SlotsInfoRail}). Rendered in one neutral material so it can
-     * never be mistaken for a second row of controls, and every click on it
-     * is cancelled.
+     * {@link SlotsInfoRail}). Rendered as hoppers, whose downward funnel
+     * points at the control each cell explains, and which are still not one of
+     * this UI's clickable materials -- every click on the rail is cancelled.
      */
     private void renderInformationalRail(double denomination) {
         Material rail = SlotsControlPresentation.Role.INFO_RAIL.material();
@@ -736,10 +741,13 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             lastResultLoreLine(),
             text("slots.rail-spin-controls"));
 
+        List<String> clockRail = new ArrayList<>();
+        clockRail.add(text("slots.rail-clock-speed", "speed", text(spinSpeed.labelKey())));
+        clockRail.add(autoSpinSummaryLine());
+        clockRail.addAll(autoSettingsRuleLines(autoSettings));
+        clockRail.add(text("slots.rail-clock-controls"));
         addItemAndLore(rail, 1, text("slots.rail-clock"), SlotsInfoRail.railSlotFor(CLOCK_SLOT),
-            text("slots.rail-clock-speed", "speed", text(spinSpeed.labelKey())),
-            autoSpinSummaryLine(),
-            text("slots.rail-clock-controls"));
+            clockRail.toArray(new String[0]));
 
         addItemAndLore(rail, 1, text("slots.rail-paylines"), SlotsInfoRail.railSlotFor(LINES_SLOT),
             text("slots.rail-paylines-current", "lines", config.activeLines()),
@@ -775,16 +783,24 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     // ---- profiles view -------------------------------------------------
 
     /**
-     * The Profiles view owns the upper 45 slots outright: the rainbow
-     * housing, the white reel bay and every other decorative canvas item are
-     * cleared away first, so the canvas contains nothing but this player's
-     * actual saved profiles -- one inventory slot each, packed row-major from
-     * slot 0, with every unused position left genuinely empty.
+     * The Profiles view owns the upper 45 slots outright: the white reel bay
+     * and every other decorative canvas item are cleared away first, so the
+     * canvas contains nothing but this player's actual saved profiles -- one
+     * inventory slot each, packed row-major from slot 0 -- over the machine's
+     * ordinary rainbow housing, which fills every position no profile
+     * occupies.
      */
     private void renderProfilesCanvas() {
         clearCanvas();
         List<SlotsProfile> saved = savedProfiles();
-        for (int index = 0; index < saved.size() && index < SlotsProfileStore.MAX_PROFILES_PER_PLAYER; index++) {
+        int entries = Math.min(saved.size(), SlotsProfileStore.MAX_PROFILES_PER_PLAYER);
+        // The machine's own rainbow housing fills every position no profile
+        // occupies. Left genuinely empty, the list read as a broken or
+        // half-loaded screen rather than as a short list in a full cabinet.
+        for (int slot = entries; slot < SlotsGeometry.INVENTORY_WIDTH * SlotsGeometry.CANVAS_ROWS; slot++) {
+            addItemAndLore(SlotsRainbowHousing.materialForSlot(slot), 1, " ", slot);
+        }
+        for (int index = 0; index < entries; index++) {
             SlotsProfile profile = saved.get(index);
             addItemAndLore(SlotsControlPresentation.Role.PROFILE_ENTRY.material(), 1,
                 profile.name(), index, profileEntryLore(profile));
@@ -799,7 +815,8 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         lore.add(text("slots.profile-entry-wager", "amount",
             plugin.formatWagerDisplay(currencyMode, currencyName, profile.wagerPerLine())));
         lore.add(text("slots.profile-entry-speed", "speed", text(profile.spinSpeed().labelKey())));
-        lore.add(text("slots.profile-entry-auto", "summary", autoSettingsSummary(profile.autoSettings())));
+        lore.add(text("slots.profile-entry-auto"));
+        lore.addAll(autoSettingsRuleLines(profile.autoSettings()));
         lore.add("");
         lore.add(text("slots.profile-entry-load"));
         lore.add(text("slots.profile-entry-delete"));
@@ -810,24 +827,21 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
 
     /**
      * The Auto Spin Settings menu. Every canvas slot is repainted -- the
-     * eight entries on their symmetric cross ({@link SlotsAutoSettingsLayout})
-     * and a blank backdrop everywhere else -- so no stale reel symbol can
-     * ever show through behind the settings.
+     * seven entries on their symmetric cross ({@link SlotsAutoSettingsLayout})
+     * and the machine's own rainbow housing everywhere else -- so no stale
+     * reel symbol can ever show through behind the settings, and the menu
+     * still reads as part of the same cabinet rather than as a grey sheet
+     * dropped over it.
      */
     private void renderAutoSettingsCanvas() {
         clearCanvas();
-        Material backdrop = SlotsControlPresentation.Role.AUTO_SETTINGS_BACKDROP.material();
         for (int slot = 0; slot < SlotsGeometry.INVENTORY_WIDTH * SlotsGeometry.CANVAS_ROWS; slot++) {
             if (SlotsAutoSettingsLayout.isBackdrop(slot)) {
-                addItemAndLore(backdrop, 1, " ", slot);
+                addItemAndLore(SlotsRainbowHousing.materialForSlot(slot), 1, " ", slot);
             }
         }
 
-        addItemAndLore(SlotsControlPresentation.Role.AUTO_SETTINGS_OVERVIEW.material(), 1,
-            text("slots.auto-settings-title"), SlotsAutoSettingsLayout.OVERVIEW_SLOT,
-            text("slots.auto-settings-intro"),
-            text("slots.auto-settings-speed-note", "speed", text(spinSpeed.labelKey())),
-            text("slots.auto-settings-summary", "summary", autoSettingsSummary(autoSettings)));
+        renderAutoSpinClock(SlotsAutoSettingsLayout.CLOCK_SLOT);
 
         addItemAndLore(SlotsControlPresentation.Role.AUTO_SETTINGS_SPIN_LIMIT.material(),
             SlotsStackSize.forSpinLimit(autoSettings.spinLimit()),
@@ -852,11 +866,8 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
                     formatMultiplier(autoSettings.bigWinMultiplier()))
                 : text("slots.auto-state-off"),
             text("slots.auto-big-win-description"),
-            text("slots.auto-big-win-hint"));
-
-        addItemAndLore(SlotsControlPresentation.Role.AUTO_SETTINGS_START.material(), 1,
-            text("slots.auto-settings-start"), SlotsAutoSettingsLayout.START_SLOT,
-            text("slots.auto-settings-start-hint"));
+            text("slots.auto-big-win-hint"),
+            text("slots.auto-right-click-off"));
 
         addItemAndLore(toggleMaterial(autoSettings.hasProfitTarget(),
                 SlotsControlPresentation.Role.AUTO_SETTINGS_PROFIT_ON), 1,
@@ -866,7 +877,8 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
                     plugin.formatWagerDisplay(currencyMode, currencyName, autoSettings.profitTarget()))
                 : text("slots.auto-state-off"),
             text("slots.auto-profit-target-description"),
-            text("slots.auto-profit-target-hint"));
+            text("slots.auto-profit-target-hint"),
+            text("slots.auto-right-click-off"));
 
         addItemAndLore(toggleMaterial(autoSettings.hasLossLimit(),
                 SlotsControlPresentation.Role.AUTO_SETTINGS_LOSS_ON), 1,
@@ -876,33 +888,120 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
                     plugin.formatWagerDisplay(currencyMode, currencyName, autoSettings.lossLimit()))
                 : text("slots.auto-state-off"),
             text("slots.auto-loss-limit-description"),
-            text("slots.auto-loss-limit-hint"));
+            text("slots.auto-loss-limit-hint"),
+            text("slots.auto-right-click-off"));
 
+        List<String> resetLore = new ArrayList<>();
+        resetLore.add(text("slots.auto-settings-reset-hint"));
+        resetLore.add(text("slots.auto-settings-reset-keeps-speed"));
+        resetLore.addAll(autoSettingsResetPreviewLines());
         addItemAndLore(SlotsControlPresentation.Role.AUTO_SETTINGS_RESET.material(), 1,
             text("slots.auto-settings-reset"), SlotsAutoSettingsLayout.RESET_SLOT,
-            text("slots.auto-settings-reset-hint"),
-            text("slots.auto-settings-reset-keeps-speed"));
+            resetLore.toArray(new String[0]));
     }
 
     private static Material toggleMaterial(boolean on, SlotsControlPresentation.Role onRole) {
         return on ? onRole.material() : SlotsControlPresentation.Role.AUTO_SETTINGS_OFF.material();
     }
 
-    /** A one-line human summary of an Auto Spin configuration, used in lore everywhere it is shown. */
-    private String autoSettingsSummary(SlotsAutoSpinSettings settings) {
-        String limit = settings.hasSpinLimit()
+    /**
+     * What Reset would actually do, spelled out on the Reset button itself as
+     * one {@code setting: current -> default} line per Auto Spin setting that
+     * is not already at its default -- so the consequence is readable
+     * <em>before</em> the click rather than reported after it. A setting
+     * already at its default contributes no line; when none of them differ the
+     * button says exactly that instead, and clicking it changes nothing.
+     *
+     * <p>The gameplay spin speed is deliberately absent: it is shared with
+     * manual spinning and Reset has never touched it.
+     */
+    private List<String> autoSettingsResetPreviewLines() {
+        SlotsAutoSpinSettings defaults = SlotsAutoSpinSettings.defaults();
+        List<String> lines = new ArrayList<>();
+        for (SlotsAutoSpinSettings.Field field : autoSettings.changedFieldsFrom(defaults)) {
+            lines.add(text("slots.auto-reset-change", "setting", fieldLabel(field),
+                "from", fieldDisplay(field, autoSettings), "to", fieldDisplay(field, defaults)));
+        }
+        if (lines.isEmpty()) {
+            lines.add(text("slots.auto-reset-already-default"));
+        }
+        return lines;
+    }
+
+    private String fieldLabel(SlotsAutoSpinSettings.Field field) {
+        return switch (field) {
+            case SPIN_LIMIT -> text("slots.auto-spin-limit");
+            case STOP_ON_ANY_WIN -> text("slots.auto-any-win");
+            case BIG_WIN_MULTIPLIER -> text("slots.auto-big-win");
+            case PROFIT_TARGET -> text("slots.auto-profit-target");
+            case LOSS_LIMIT -> text("slots.auto-loss-limit");
+        };
+    }
+
+    private String fieldDisplay(SlotsAutoSpinSettings.Field field, SlotsAutoSpinSettings settings) {
+        return switch (field) {
+            case SPIN_LIMIT -> spinLimitDisplay(settings);
+            case STOP_ON_ANY_WIN -> onOffDisplay(settings.stopOnAnyWin());
+            case BIG_WIN_MULTIPLIER -> multiplierDisplay(settings);
+            case PROFIT_TARGET -> amountDisplay(settings.hasProfitTarget(), settings.profitTarget());
+            case LOSS_LIMIT -> amountDisplay(settings.hasLossLimit(), settings.lossLimit());
+        };
+    }
+
+    private String spinLimitDisplay(SlotsAutoSpinSettings settings) {
+        return settings.hasSpinLimit()
             ? String.valueOf(settings.spinLimit())
             : text("slots.auto-summary-unlimited");
-        String stops = settings.stopOnAnyWin() || settings.hasBigWinMultiplier()
-            || settings.hasProfitTarget() || settings.hasLossLimit()
-            ? text("slots.auto-summary-stops-on")
-            : text("slots.auto-summary-stops-none");
-        return text("slots.auto-summary", "spins", limit, "stops", stops);
+    }
+
+    private String multiplierDisplay(SlotsAutoSpinSettings settings) {
+        return settings.hasBigWinMultiplier()
+            ? formatMultiplier(settings.bigWinMultiplier())
+            : text("slots.auto-state-off-value");
+    }
+
+    private String amountDisplay(boolean on, double amount) {
+        return on
+            ? plugin.formatWagerDisplay(currencyMode, currencyName, amount)
+            : text("slots.auto-state-off-value");
+    }
+
+    private String onOffDisplay(boolean on) {
+        return on ? text("slots.auto-state-on-value") : text("slots.auto-state-off-value");
+    }
+
+    /**
+     * Every Auto Spin stop rule that is actually switched on, one readable
+     * line each, rather than the single "some stop rules apply" summary this
+     * replaced. The same list feeds the Clock's own lore and a saved profile's
+     * description, so a player can always see exactly what a configuration
+     * will do without having to open the settings menu to find out.
+     */
+    private List<String> autoSettingsRuleLines(SlotsAutoSpinSettings settings) {
+        List<String> lines = new ArrayList<>();
+        lines.add(text("slots.auto-rule-spins", "spins", spinLimitDisplay(settings)));
+        List<SlotsAutoSpinSettings.Field> active = settings.activeStopRules();
+        for (SlotsAutoSpinSettings.Field field : active) {
+            lines.add(switch (field) {
+                case STOP_ON_ANY_WIN -> text("slots.auto-rule-any-win");
+                case BIG_WIN_MULTIPLIER -> text("slots.auto-rule-big-win", "multiplier",
+                    formatMultiplier(settings.bigWinMultiplier()));
+                case PROFIT_TARGET -> text("slots.auto-rule-profit", "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, settings.profitTarget()));
+                case LOSS_LIMIT -> text("slots.auto-rule-loss", "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, settings.lossLimit()));
+                case SPIN_LIMIT -> throw new IllegalStateException("SPIN_LIMIT is never a stop rule");
+            });
+        }
+        if (active.isEmpty()) {
+            lines.add(text("slots.auto-rule-none"));
+        }
+        return lines;
     }
 
     private String autoSpinSummaryLine() {
         return text(autoSpinActive ? "slots.rail-clock-auto-active" : "slots.rail-clock-auto-stopped",
-            "summary", autoSettingsSummary(autoSettings));
+            "spins", spinLimitDisplay(autoSettings));
     }
 
     private String varianceKey(SlotsVariance variance) {
@@ -915,7 +1014,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
 
     /**
      * The pregame/reset "not yet spun" state, left as {@code null} cells
-     * rather than {@link SlotsSymbol#BLANK} -- a rolled BLANK is a real
+     * rather than {@link SlotsSymbol#SEEDS} -- a rolled SEEDS is a real
      * strip stop and must never look identical to "nothing has been rolled
      * here yet". {@link #paintReel} renders a {@code null} cell as a
      * distinct neutral placeholder, never as an evaluated outcome.
@@ -943,10 +1042,13 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         boolean locked = !controller.isReadyForSpin() || demoActive;
         boolean blocked = controller.state() == SlotsSessionState.SETTLEMENT_FAILED;
         boolean heightOne = config.visibleRows() == 1;
-        // Profiles and Auto Spin Settings are modal editors: their bottom-row
-        // controls stay visible for orientation but must never change the
-        // machine out from under the menu.
-        boolean inert = !uiView.allowsConfigurationChanges();
+        // Profiles is a modal editor whose bottom-row controls stay visible
+        // for orientation but must never change the machine out from under
+        // the open list. Auto Spin Settings deliberately keeps its
+        // configuration controls live -- they apply and hand the player back
+        // to the game view -- so inertness is asked per slot rather than
+        // assumed for every modal view at once.
+        boolean inert = SlotsControlLayout.isInertIn(uiView, REELS_SLOT);
         double denomination = chipValues[denominationIndex];
 
         addItemAndLore(SlotsControlPresentation.Role.EXIT_CONTROL.material(), 1,
@@ -1028,19 +1130,53 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         if (renderBackToGameIfOwned(CLOCK_SLOT)) {
             return;
         }
-        String titleKey = autoSpinActive ? "slots.auto-spin-title-active" : "slots.auto-spin-title-stopped";
-        String statusKey = autoSpinActive ? "slots.auto-spin-status-active" : "slots.auto-spin-status-stopped";
-        String startStopKey = autoSpinActive ? "slots.auto-spin-left-click-stop" : "slots.auto-spin-left-click-start";
-        addItemAndLore(SlotsControlPresentation.Role.AUTO_SPIN_CONTROL.material(), 1, text(titleKey), CLOCK_SLOT,
-            text(statusKey),
-            text("slots.auto-spin-speed", "speed", text(spinSpeed.labelKey())),
-            text("slots.auto-spin-settings-summary", "summary", autoSettingsSummary(autoSettings)),
-            text(startStopKey),
-            text("slots.auto-spin-right-click-speed"),
-            text("slots.auto-spin-shift-right-settings"));
-        if (!uiView.allowsConfigurationChanges()) {
+        renderAutoSpinClock(CLOCK_SLOT);
+        if (SlotsControlLayout.isInertIn(uiView, CLOCK_SLOT)) {
             dimSlot(CLOCK_SLOT);
         }
+    }
+
+    /**
+     * The Clock, painted identically wherever it appears: bottom-row slot 50
+     * in every view that still owns it, and the Auto Spin Settings menu's own
+     * canvas copy at {@link SlotsAutoSettingsLayout#CLOCK_SLOT}. One renderer
+     * for both, so the two can never drift into disagreeing about what Auto
+     * Spin is currently set to do.
+     *
+     * <p>Its lore enumerates every active stop rule outright rather than
+     * summarising them away, and it glints while a batch is actually running.
+     * The status line is only meaningful on the bottom row: inside the
+     * settings menu the batch is always stopped -- {@link #handleOpenAutoSettings}
+     * stops it before the menu can open -- so printing "Stopped" there would
+     * state the only thing that could possibly be true.
+     */
+    private void renderAutoSpinClock(int slot) {
+        boolean inMenu = slot != CLOCK_SLOT;
+        String titleKey = autoSpinActive ? "slots.auto-spin-title-active" : "slots.auto-spin-title-stopped";
+        String startStopKey = autoSpinActive ? "slots.auto-spin-left-click-stop" : "slots.auto-spin-left-click-start";
+
+        List<String> lore = new ArrayList<>();
+        if (!inMenu) {
+            lore.add(text(autoSpinActive
+                ? "slots.auto-spin-status-active" : "slots.auto-spin-status-stopped"));
+        }
+        lore.add(text("slots.auto-spin-speed", "speed", text(spinSpeed.labelKey())));
+        lore.add("");
+        lore.addAll(autoSettingsRuleLines(autoSettings));
+        lore.add("");
+        lore.add(text(startStopKey));
+        lore.add(text("slots.auto-spin-right-click-speed"));
+        lore.add(text(inMenu
+            ? "slots.auto-spin-shift-left-back" : "slots.auto-spin-shift-left-settings"));
+
+        String[] loreLines = lore.toArray(new String[0]);
+        if (autoSpinActive) {
+            setGlowingItem(slot, SlotsControlPresentation.Role.AUTO_SPIN_CONTROL.material(),
+                text(titleKey), loreLines);
+            return;
+        }
+        addItemAndLore(SlotsControlPresentation.Role.AUTO_SPIN_CONTROL.material(), 1,
+            text(titleKey), slot, loreLines);
     }
 
     private void renderPaytableSlot() {
@@ -1049,7 +1185,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         }
         addItemAndLore(SlotsControlPresentation.Role.PAYTABLE_OPEN.material(), 1, text("slots.paytable"), PAYTABLE_SLOT,
             text("slots.paytable-open-hint"));
-        if (!uiView.allowsConfigurationChanges()) {
+        if (SlotsControlLayout.isInertIn(uiView, PAYTABLE_SLOT)) {
             dimSlot(PAYTABLE_SLOT);
         }
     }
@@ -1067,6 +1203,10 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         int count = profileCount();
         List<String> lore = new ArrayList<>();
         lore.add(text("slots.profiles-global"));
+        // Says outright that a profile is the whole machine, Auto Spin
+        // settings included -- the store has always saved all of it, but the
+        // lore used to call it only "this setup".
+        lore.add(text("slots.profiles-saves-what"));
         if (count > 0) {
             lore.add(text("slots.profiles-count", "count", count,
                 "max", SlotsProfileStore.MAX_PROFILES_PER_PLAYER));
@@ -1078,7 +1218,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         addItemAndLore(SlotsControlPresentation.Role.PROFILES_CONTROL.material(),
             SlotsStackSize.forProfiles(count), text("slots.profiles"), PROFILES_SLOT,
             lore.toArray(new String[0]));
-        if (!uiView.allowsConfigurationChanges()) {
+        if (SlotsControlLayout.isInertIn(uiView, PROFILES_SLOT)) {
             dimSlot(PROFILES_SLOT);
         }
     }
@@ -1102,25 +1242,26 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
                 SPIN_SLOT, text("slots.spin-active-lore"));
             return;
         }
-        if (!uiView.allowsConfigurationChanges()) {
-            // A modal editor is open: the lever is inert until the player
-            // goes back, so it must read as inert rather than as a ready,
-            // glinting Spin the click routing will simply refuse.
-            addItemAndLore(SlotsControlPresentation.Role.SPIN_LOCKED.material(), 1, text("slots.spin"),
-                SPIN_SLOT, text("slots.modal-view-locked"));
-            dimSlot(SPIN_SLOT);
-            return;
-        }
+        // While a modal editor owns the canvas the lever commits nothing --
+        // the click routing refuses it -- but it keeps its ordinary financial
+        // summary rather than being replaced by a blank locked block, because
+        // the total bet, balance and last result are exactly the figures a
+        // player is reading while configuring Auto Spin. It simply reads as
+        // the reference card it has become there: never glinting, and dimmed
+        // so it does not advertise itself as ready.
+        boolean inert = SlotsControlLayout.isInertIn(uiView, SPIN_SLOT);
 
         List<String> lore = new ArrayList<>();
-        lore.add(text("slots.spin-lore-left-click"));
+        lore.add(text(inert ? "slots.modal-view-locked" : "slots.spin-lore-left-click"));
         lore.add("");
         lore.add(text("slots.spin-lore-total", "amount",
             plugin.formatWagerDisplay(currencyMode, currencyName, currentTotalBet())));
         lore.add(text("slots.spin-lore-breakdown",
             "wager", plugin.formatWagerDisplay(currencyMode, currencyName, denomination),
             "lines", config.activeLines()));
-        lore.add(text("slots.spin-lore-right-click-demo"));
+        if (!inert) {
+            lore.add(text("slots.spin-lore-right-click-demo"));
+        }
         lore.add("");
 
         CurrencyProvider provider = getCurrencyProvider();
@@ -1134,7 +1275,14 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         lore.add("");
         lore.add(lastResultLoreLine());
 
-        setGlowingItem(SPIN_SLOT, SlotsControlPresentation.Role.SPIN_READY.material(), text("slots.spin"), lore.toArray(new String[0]));
+        String[] loreLines = lore.toArray(new String[0]);
+        if (inert) {
+            addItemAndLore(SlotsControlPresentation.Role.SPIN_READY.material(), 1, text("slots.spin"),
+                SPIN_SLOT, loreLines);
+            dimSlot(SPIN_SLOT);
+            return;
+        }
+        setGlowingItem(SPIN_SLOT, SlotsControlPresentation.Role.SPIN_READY.material(), text("slots.spin"), loreLines);
     }
 
     private String lastResultLoreLine() {
@@ -1306,7 +1454,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         }
 
         // Every accepted click, in every view, is classified in exactly one
-        // place -- including the Clock's shift-right-click, which the
+        // place -- including the Clock's shift-left-click, which the
         // ordinary-click gate would otherwise swallow, and the Back to Game
         // substitution each modal view owns. The shared listener has already
         // cancelled the underlying InventoryClickEvent, so nothing routed
@@ -1319,18 +1467,18 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             case CANVAS -> handleCanvasClick(slot, clickType);
             case BACK_TO_GAME -> handleBackToGame();
             case AUTO_SETTINGS -> handleOpenAutoSettings();
-            // Profiles and Auto Spin Settings are modal: their other bottom
-            // controls stay visible for orientation but must never change the
-            // game out from under the open menu.
+            // Profiles is modal: its other bottom controls stay visible for
+            // orientation but must never change the game out from under the
+            // open list, and the Spin lever is inert in every modal view.
             case MODAL_LOCKED -> denyAction(player, text("slots.modal-view-locked"));
             case EXIT -> handleExit();
-            case WAGER -> handleChangeDenomination(direction);
-            case REELS -> handleChangeColumns(direction);
+            case WAGER -> withConfigurationView(() -> handleChangeDenomination(direction));
+            case REELS -> withConfigurationView(() -> handleChangeColumns(direction));
             case PAYTABLE -> handleOpenPaytable();
             case SPIN -> handleSpinLeverClick(clickType);
             case CLOCK -> handleClockClick(clickType);
-            case PAYLINES -> handleChangeLines(direction);
-            case HEIGHT -> handleChangeHeight(direction);
+            case PAYLINES -> withConfigurationView(() -> handleChangeLines(direction));
+            case HEIGHT -> withConfigurationView(() -> handleChangeHeight(direction));
             case PROFILES -> handleProfilesControlClick(clickType);
         }
     }
@@ -1342,13 +1490,32 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
      */
     private void handleCanvasClick(int slot, ClickType clickType) {
         switch (uiView) {
-            case AUTO_SETTINGS -> handleAutoSettingsClick(slot);
+            case AUTO_SETTINGS -> handleAutoSettingsClick(slot, clickType);
             case PROFILES -> handleProfilesEntryClick(slot, clickType);
             // GAME's reel cells and PAYTABLE's cards/rail are informational
             // only; a click on either is a safe no-op.
             case GAME, PAYTABLE -> {
             }
         }
+    }
+
+    /**
+     * Applies one of the four configuration controls (Reels, Height,
+     * Paylines, Wager Per Line) in a view that is allowed to see the result.
+     *
+     * <p>From the Game and Paytable views that is simply the current view, and
+     * this changes nothing. From Auto Spin Settings the change is real but
+     * invisible -- the settings menu owns the whole canvas -- so the player is
+     * handed back to the Game view first and the change then lands somewhere
+     * they can actually watch it happen. That is also why the switch comes
+     * first: {@link #switchView} repaints authoritatively, so applying before
+     * it would paint the new geometry and then immediately repaint over it.
+     */
+    private void withConfigurationView(Runnable change) {
+        if (uiView == SlotsUiView.AUTO_SETTINGS) {
+            switchViewSilently(SlotsUiView.GAME);
+        }
+        change.run();
     }
 
     private void handleExit() {
@@ -1374,16 +1541,29 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
      * @param pitch the click pitch to confirm the transition with, or 0 for silence
      */
     private void switchView(SlotsUiView destination, float pitch) {
+        switchViewSilently(destination);
+        if (pitch > 0f) {
+            playClick(pitch);
+        }
+        redrawEverything();
+    }
+
+    /**
+     * The state-only half of {@link #switchView}: moves {@link #uiView},
+     * stops any running batch or line flash, and restores the play canvas
+     * when landing on {@link SlotsUiView#GAME} -- without a click sound or a
+     * repaint. For a caller whose very next step already plays its own sound
+     * and repaints (e.g. {@link #withConfigurationView}), so leaving the
+     * view mid-transition never produces a second, redundant sound and
+     * repaint on top of that step's own.
+     */
+    private void switchViewSilently(SlotsUiView destination) {
         stopAutoSpin();
         cancelLineFlashTask();
         if (destination == SlotsUiView.GAME && uiView != SlotsUiView.GAME) {
             restorePlayCanvas();
         }
         uiView = destination;
-        if (pitch > 0f) {
-            playClick(pitch);
-        }
-        redrawEverything();
     }
 
     /** Allowed only while a real spin is not in flight and no demo is currently animating. */
@@ -1523,7 +1703,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             case FLASH_SINGLE_LINE -> flashLineChange(oldLines, next);
             case ANNOUNCE_WRAP_AND_REPAINT_CANVAS -> {
                 announceLineWrap(next);
-                repaintCanvas();
+                cascadeLineWrap(oldLines, next);
             }
             case REPAINT_CANVAS -> repaintCanvas();
         }
@@ -1554,6 +1734,72 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             case STANDARD, VERBOSE -> player.sendMessage(text("slots.paylines-wrap-notice", "lines", newLines));
             case NONE -> {
             }
+        }
+    }
+
+    /**
+     * The 1&lt;-&gt;max wrap's own feedback: every affected line's exact path,
+     * flashed one quick step after another per {@link SlotsLineWrapCascade},
+     * finishing on a clean canvas. Dropping to a single line walks downward
+     * and lands on line 1 lit, so the change reads as "all of those went away,
+     * this one is what is left" rather than as an unexplained repaint.
+     *
+     * <p>Shares the ordinary flash's guard, task handle and staleness checks,
+     * so a new Paylines input supersedes a running cascade exactly as it
+     * supersedes a running blink -- {@link #supersedeLineFlash()} needs no
+     * special case for it.
+     */
+    private void cascadeLineWrap(int oldLines, int newLines) {
+        repaintCanvas();
+        List<SlotsLineWrapCascade.Step> steps = SlotsLineWrapCascade.stepsFor(oldLines, newLines);
+        if (steps.isEmpty()) {
+            return;
+        }
+        List<SlotsPaylineCatalog.Line> all =
+            SlotsPaylineCatalog.forGeometry(config.columns(), config.visibleRows());
+        scheduleLineWrapStep(lineFlashGuard.currentGeneration(), steps, 0, config, uiView, all);
+    }
+
+    private void scheduleLineWrapStep(
+        long myGeneration, List<SlotsLineWrapCascade.Step> steps, int stepIndex,
+        SlotsConfig configAtFlash, SlotsUiView viewAtFlash, List<SlotsPaylineCatalog.Line> all) {
+
+        // Every line gets the same quick step; the run's very last hop waits
+        // longer, so the line the cascade lands on is readable before the
+        // clean canvas comes back.
+        long delay = stepIndex >= steps.size()
+            ? SlotsLineWrapCascade.SETTLE_TICKS
+            : SlotsLineWrapCascade.STEP_TICKS;
+        lineFlashTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            lineFlashTask = null;
+            if (lineFlashGuard.isStale(myGeneration, closeFlag, configAtFlash, config, viewAtFlash, uiView)) {
+                return;
+            }
+            if (stepIndex >= steps.size()) {
+                repaintCanvas();
+                return;
+            }
+            SlotsLineWrapCascade.Step step = steps.get(stepIndex);
+            repaintCanvas();
+            paintWrapCascadeLine(step, all);
+            scheduleLineWrapStep(myGeneration, steps, stepIndex + 1, configAtFlash, viewAtFlash, all);
+        }, delay);
+    }
+
+    private void paintWrapCascadeLine(SlotsLineWrapCascade.Step step, List<SlotsPaylineCatalog.Line> all) {
+        if (step.lineNumber() < 1 || step.lineNumber() > all.size()) {
+            return;
+        }
+        SlotsPaylineCatalog.Line line = all.get(step.lineNumber() - 1);
+        int columns = config.columns();
+        int rows = config.visibleRows();
+        int[] path = line.rows();
+        Material material = SlotsLineFlashPlan.materialForChange(step.added());
+        String key = step.added() ? "slots.line-flash-added" : "slots.line-flash-removed";
+        for (int col = 0; col < columns; col++) {
+            addItemAndLore(material, 1, text(key), SlotsGeometry.gridSlot(columns, rows, path[col], col),
+                text("slots.line-flash-number", "line", step.lineNumber()),
+                text("slots.line-preview-shape", "shape", text(shapeKey(line))));
         }
     }
 
@@ -2025,9 +2271,10 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     // ---- auto spin ----------------------------------------------------
 
     /**
-     * The Clock's three actions. Shift-right-click is routed ahead of this in
-     * {@link #handleClick}, because the ordinary-click gate would otherwise
-     * swallow it.
+     * The Clock's three actions, shared by the bottom-row Clock and the Auto
+     * Spin Settings menu's own canvas copy of it, so both behave identically.
+     * Shift-left-click is routed ahead of this in {@link #handleClick},
+     * because the ordinary-click gate would otherwise swallow it.
      */
     private void handleClockClick(ClickType clickType) {
         if (clickType == ClickType.LEFT) {
@@ -2167,7 +2414,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     // ---- auto spin settings menu ---------------------------------------
 
     /**
-     * Shift-right-clicking the Clock. Any running Auto Spin is stopped --
+     * Shift-left-clicking the Clock. Any running Auto Spin is stopped --
      * which only prevents the <em>next</em> wager; a spin already committed
      * finishes and settles exactly as it would have.
      */
@@ -2191,29 +2438,60 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         switchView(SlotsUiView.AUTO_SETTINGS, 1.1f);
     }
 
-    private void handleAutoSettingsClick(int slot) {
+    /**
+     * A click on the Auto Spin Settings canvas.
+     *
+     * <p>The three numeric settings each accept both ordinary clicks: a left
+     * click opens the chat prompt to set a figure, and a right click switches
+     * the rule straight off. Turning a rule off was previously reachable only
+     * by opening the prompt and typing the word, which made the commonest edit
+     * in the menu the slowest one. A right click on an already-off rule is a
+     * deliberate no-op rather than a denial -- it is already in the state the
+     * click asks for.
+     */
+    private void handleAutoSettingsClick(int slot, ClickType clickType) {
         SlotsAutoSettingsLayout.Entry entry = SlotsAutoSettingsLayout.entryAt(slot);
         if (entry == null) {
             return;
         }
+        boolean disable = SlotsClickClassifier.cycleDirection(clickType) < 0;
         switch (entry) {
-            // The overview card is a label, not a control.
-            case OVERVIEW -> {
-            }
+            case CLOCK -> handleClockClick(clickType);
             case SPIN_LIMIT -> beginAutoSettingPrompt(SlotsChatPrompt.Type.SPIN_LIMIT);
             case STOP_ON_ANY_WIN -> {
                 autoSettings = autoSettings.toggleStopOnAnyWin();
                 playClick(autoSettings.stopOnAnyWin() ? 1.3f : 0.8f);
                 redrawEverything();
             }
-            case BIG_WIN_MULTIPLIER -> beginAutoSettingPrompt(SlotsChatPrompt.Type.BIG_WIN_MULTIPLIER);
-            case START -> handleStartAutoSpinFromSettings();
-            case PROFIT_TARGET -> beginAutoSettingPrompt(SlotsChatPrompt.Type.PROFIT_TARGET);
-            case LOSS_LIMIT -> beginAutoSettingPrompt(SlotsChatPrompt.Type.LOSS_LIMIT);
+            case BIG_WIN_MULTIPLIER -> {
+                if (disable) {
+                    disableAutoSetting(autoSettings.hasBigWinMultiplier(),
+                        () -> autoSettings = autoSettings.withBigWinMultiplier(0.0));
+                } else {
+                    beginAutoSettingPrompt(SlotsChatPrompt.Type.BIG_WIN_MULTIPLIER);
+                }
+            }
+            case PROFIT_TARGET -> {
+                if (disable) {
+                    disableAutoSetting(autoSettings.hasProfitTarget(),
+                        () -> autoSettings = autoSettings.withProfitTarget(0.0));
+                } else {
+                    beginAutoSettingPrompt(SlotsChatPrompt.Type.PROFIT_TARGET);
+                }
+            }
+            case LOSS_LIMIT -> {
+                if (disable) {
+                    disableAutoSetting(autoSettings.hasLossLimit(),
+                        () -> autoSettings = autoSettings.withLossLimit(0.0));
+                } else {
+                    beginAutoSettingPrompt(SlotsChatPrompt.Type.LOSS_LIMIT);
+                }
+            }
             case RESET -> {
-                // Restores exactly the Auto Spin defaults. The gameplay spin
-                // speed is not an Auto Spin setting and is deliberately
-                // untouched here.
+                // Restores exactly the Auto Spin defaults -- the same set the
+                // button's own lore has been previewing as current -> default
+                // all along. The gameplay spin speed is not an Auto Spin
+                // setting and is deliberately untouched here.
                 autoSettings = SlotsAutoSpinSettings.defaults();
                 playClick(0.9f);
                 player.sendMessage(text("slots.auto-settings-reset-done"));
@@ -2222,13 +2500,13 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         }
     }
 
-    /** Start Auto Spin returns to Game View first, so the first spin is never played behind the menu. */
-    private void handleStartAutoSpinFromSettings() {
-        if (!canOpenModalView()) {
+    private void disableAutoSetting(boolean currentlyOn, Runnable disable) {
+        if (!currentlyOn) {
             return;
         }
-        switchView(SlotsUiView.GAME, 1.2f);
-        startAutoSpinBatch();
+        disable.run();
+        playClick(0.8f);
+        redrawEverything();
     }
 
     // ---- saved profiles ------------------------------------------------
@@ -2533,7 +2811,11 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         // Captured now, before the inventory closes, so the profile stores
         // exactly what the player was looking at when they pressed save.
         pendingProfileSnapshot = snapshotProfile("pending");
-        beginPrompt(SlotsChatPrompt.Type.PROFILE_NAME, SlotsUiView.GAME, this::submitProfileName);
+        // Reopens whichever view Save was actually clicked from -- Game,
+        // Paytable, or (since Profiles survives the modal gate there) Auto
+        // Spin Settings -- rather than always dropping the player back to
+        // Game regardless of where they started.
+        beginPrompt(SlotsChatPrompt.Type.PROFILE_NAME, uiView, this::submitProfileName);
     }
 
     private SlotsChatPrompt.Outcome submitProfileName(SlotsChatPrompt prompt, String input) {

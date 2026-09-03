@@ -59,21 +59,30 @@ class SlotsGlintPolicyTest {
         for (SlotsControlPresentation.Role role : SlotsControlPresentation.Role.values()) {
             if (role.approvedToGlint()) {
                 approvedCount++;
-                assertTrue(role == SlotsControlPresentation.Role.SPIN_READY,
+                assertTrue(role == SlotsControlPresentation.Role.SPIN_READY
+                        || role == SlotsControlPresentation.Role.AUTO_SPIN_CONTROL,
                     "unexpected approved-glint fixed-material role: " + role);
             }
         }
-        assertTrue(approvedCount == 1, "expected exactly one approved-glint fixed-material role");
+        assertTrue(approvedCount == 2, "expected exactly two approved-glint fixed-material roles");
     }
 
     @Test
-    void spinActivePaytableBackAndLockedSpinAreNeverApprovedToGlint() {
+    void spinActivePaytableAndBackAreNeverApprovedToGlint() {
         assertFalse(SlotsControlPresentation.Role.SPIN_ACTIVE.approvedToGlint());
         assertFalse(SlotsControlPresentation.Role.PAYTABLE_OPEN.approvedToGlint());
         assertFalse(SlotsControlPresentation.Role.BACK_TO_GAME.approvedToGlint());
-        assertFalse(SlotsControlPresentation.Role.SPIN_LOCKED.approvedToGlint());
         assertFalse(SlotsControlPresentation.Role.PAYOUT_BLOCKED.approvedToGlint());
         assertFalse(SlotsControlPresentation.Role.NEUTRAL_CELL.approvedToGlint());
-        assertFalse(SlotsControlPresentation.Role.AUTO_SPIN_CONTROL.approvedToGlint());
+    }
+
+    @Test
+    void theClockIsApprovedToGlintOnlyBecauseARunningBatchExplicitlyGlintsIt() {
+        // The Clock is the one control that signals a live state by glinting:
+        // Auto Spin running. Its material must still be inherently glint-free,
+        // so an idle Clock does not glint on its own.
+        assertTrue(SlotsControlPresentation.Role.AUTO_SPIN_CONTROL.approvedToGlint());
+        assertFalse(SlotsGlintPolicy.hasInherentGlint(
+            SlotsControlPresentation.Role.AUTO_SPIN_CONTROL.material()));
     }
 }

@@ -39,7 +39,7 @@ class SlotsMathGeometryTest {
         for (int c = 0; c < 3; c++) {
             grid[0][c] = SlotsSymbol.SEVEN;
             for (int r = 1; r < 5; r++) {
-                grid[r][c] = SlotsSymbol.BLANK;
+                grid[r][c] = SlotsSymbol.SEEDS;
             }
         }
         SlotsOutcome outcome = new SlotsOutcome(grid);
@@ -132,7 +132,7 @@ class SlotsMathGeometryTest {
         assertTrue(fractional > 0.0, "need a fractional payout to exercise rounding");
 
         SlotsSymbol[][] grid = {
-            {SlotsSymbol.CHERRY, SlotsSymbol.CHERRY, SlotsSymbol.BLANK}
+            {SlotsSymbol.CHERRY, SlotsSymbol.CHERRY, SlotsSymbol.SEEDS}
         };
         SlotsOutcome outcome = new SlotsOutcome(grid);
 
@@ -155,7 +155,7 @@ class SlotsMathGeometryTest {
     void deterministicRngProducesExactPayoutForGeometry() {
         SlotsPaytable paytable = SlotsPaytable.forConfig(3, 0.03, SlotsVariance.BALANCED);
         SlotsSymbol[][] grid = {
-            {SlotsSymbol.CHERRY, SlotsSymbol.CHERRY, SlotsSymbol.BLANK}
+            {SlotsSymbol.CHERRY, SlotsSymbol.CHERRY, SlotsSymbol.SEEDS}
         };
         SlotsOutcome outcome = new SlotsOutcome(grid);
         double multiplier = paytable.multiplier(SlotsSymbol.CHERRY, 2);
@@ -169,10 +169,10 @@ class SlotsMathGeometryTest {
     }
 
     @Test
-    void anAllBlankOutcomePaysNothingAtEveryGeometry() {
+    void anAllSeedsOutcomePaysNothingAtEveryGeometry() {
         for (int columns : SlotsGeometry.supportedColumnCounts()) {
             for (int rows : SlotsGeometry.supportedRowCounts()) {
-                SlotsOutcome outcome = uniformOutcome(SlotsSymbol.BLANK, columns, rows);
+                SlotsOutcome outcome = uniformOutcome(SlotsSymbol.SEEDS, columns, rows);
                 SlotsPaytable paytable = SlotsPaytable.forConfig(columns, 0.03, SlotsVariance.BALANCED);
                 assertEquals(0L, SlotsMath.totalPayoutForGeometry(
                     outcome, SlotsPaylineCatalog.lineCount(rows), 5L, paytable));

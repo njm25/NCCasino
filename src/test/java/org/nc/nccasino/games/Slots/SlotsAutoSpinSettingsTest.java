@@ -124,4 +124,88 @@ class SlotsAutoSpinSettingsTest {
         assertFalse(a.equals(a.withBigWinMultiplier(6.0)));
         assertFalse(a.equals(a.withProfitTarget(101.0)));
     }
+
+    // ---- changedFieldsFrom (the Reset button's live current->default preview) ----
+
+    @Test
+    void changedFieldsFromIsEmptyWhenNothingDiffers() {
+        SlotsAutoSpinSettings defaults = SlotsAutoSpinSettings.defaults();
+        assertTrue(defaults.changedFieldsFrom(defaults).isEmpty());
+    }
+
+    @Test
+    void changedFieldsFromListsExactlyTheFieldsThatDifferInFixedOrder() {
+        SlotsAutoSpinSettings defaults = SlotsAutoSpinSettings.defaults();
+        SlotsAutoSpinSettings edited = defaults.withLossLimit(50.0).withSpinLimit(30L);
+        assertEquals(
+            java.util.List.of(SlotsAutoSpinSettings.Field.SPIN_LIMIT, SlotsAutoSpinSettings.Field.LOSS_LIMIT),
+            edited.changedFieldsFrom(defaults));
+    }
+
+    @Test
+    void changedFieldsFromDetectsEveryFieldIndependently() {
+        SlotsAutoSpinSettings defaults = SlotsAutoSpinSettings.defaults();
+        assertEquals(java.util.List.of(SlotsAutoSpinSettings.Field.SPIN_LIMIT),
+            defaults.withSpinLimit(1L).changedFieldsFrom(defaults));
+        assertEquals(java.util.List.of(SlotsAutoSpinSettings.Field.STOP_ON_ANY_WIN),
+            defaults.toggleStopOnAnyWin().changedFieldsFrom(defaults));
+        assertEquals(java.util.List.of(SlotsAutoSpinSettings.Field.BIG_WIN_MULTIPLIER),
+            defaults.withBigWinMultiplier(10.0).changedFieldsFrom(defaults));
+        assertEquals(java.util.List.of(SlotsAutoSpinSettings.Field.PROFIT_TARGET),
+            defaults.withProfitTarget(100.0).changedFieldsFrom(defaults));
+        assertEquals(java.util.List.of(SlotsAutoSpinSettings.Field.LOSS_LIMIT),
+            defaults.withLossLimit(100.0).changedFieldsFrom(defaults));
+    }
+
+    @Test
+    void changedFieldsFromIsNotSymmetricInDirectionButIsInWhichFieldsItNames() {
+        SlotsAutoSpinSettings a = SlotsAutoSpinSettings.defaults();
+        SlotsAutoSpinSettings b = a.withProfitTarget(100.0);
+        assertEquals(a.changedFieldsFrom(b), b.changedFieldsFrom(a));
+    }
+
+    // ---- activeStopRules (feeds the Clock lore, profile lore, and Paytable rail) ----
+
+    @Test
+    void activeStopRulesIsEmptyWhenOnlyTheSpinLimitWouldStopTheBatch() {
+        assertTrue(SlotsAutoSpinSettings.defaults().activeStopRules().isEmpty());
+    }
+
+    @Test
+    void activeStopRulesNeverIncludesSpinLimitEvenWhenSet() {
+        SlotsAutoSpinSettings settings = SlotsAutoSpinSettings.defaults().withSpinLimit(999L);
+        assertFalse(settings.activeStopRules().contains(SlotsAutoSpinSettings.Field.SPIN_LIMIT));
+    }
+
+    @Test
+    void activeStopRulesListsOnlyTheRulesThatAreOnInFixedOrder() {
+        SlotsAutoSpinSettings settings = SlotsAutoSpinSettings.defaults()
+            .withLossLimit(50.0)
+            .toggleStopOnAnyWin();
+        assertEquals(
+            java.util.List.of(SlotsAutoSpinSettings.Field.STOP_ON_ANY_WIN, SlotsAutoSpinSettings.Field.LOSS_LIMIT),
+            settings.activeStopRules());
+    }
+
+    @Test
+    void activeStopRulesIncludesAllFourWhenEveryRuleIsOn() {
+        SlotsAutoSpinSettings settings = SlotsAutoSpinSettings.of(10L, true, 5.0, 100.0, 50.0);
+        assertEquals(
+            java.util.List.of(
+                SlotsAutoSpinSettings.Field.STOP_ON_ANY_WIN,
+                SlotsAutoSpinSettings.Field.BIG_WIN_MULTIPLIER,
+                SlotsAutoSpinSettings.Field.PROFIT_TARGET,
+                SlotsAutoSpinSettings.Field.LOSS_LIMIT),
+            settings.activeStopRules());
+    }
+
+    @Test
+    void disablingAFieldRemovesItFromActiveStopRules() {
+        SlotsAutoSpinSettings settings = SlotsAutoSpinSettings.of(10L, false, 5.0, 100.0, 50.0);
+        assertTrue(settings.activeStopRules().contains(SlotsAutoSpinSettings.Field.BIG_WIN_MULTIPLIER));
+        // Right-click-to-disable in the settings menu does exactly this: set the value to 0.0.
+        SlotsAutoSpinSettings disabled = settings.withBigWinMultiplier(0.0);
+        assertFalse(disabled.hasBigWinMultiplier());
+        assertFalse(disabled.activeStopRules().contains(SlotsAutoSpinSettings.Field.BIG_WIN_MULTIPLIER));
+    }
 }

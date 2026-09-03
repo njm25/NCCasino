@@ -38,7 +38,7 @@ class SlotsReelMotionMathTest {
         SlotsSymbol[][] grid = new SlotsSymbol[rows][columns];
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < columns; c++) {
-                grid[r][c] = (c < columns - 1) ? SlotsSymbol.SEVEN : SlotsSymbol.BLANK;
+                grid[r][c] = (c < columns - 1) ? SlotsSymbol.SEVEN : SlotsSymbol.SEEDS;
             }
         }
         return new SlotsOutcome(grid);
@@ -70,7 +70,7 @@ class SlotsReelMotionMathTest {
         int[] representativeStops = {0, 1, 50, 98, 99};
         for (int columns : SlotsGeometry.supportedColumnCounts()) {
             for (int rows : SlotsGeometry.supportedRowCounts()) {
-                SlotsOutcome outcome = uniform(SlotsSymbol.BLANK, columns, rows);
+                SlotsOutcome outcome = uniform(SlotsSymbol.SEEDS, columns, rows);
                 int lines = SlotsPaylineCatalog.lineCount(rows);
                 SlotsReelPlan plan = SlotsReelPlan.build(outcome, lines);
 
@@ -100,7 +100,7 @@ class SlotsReelMotionMathTest {
             }
             for (int rows : SlotsGeometry.supportedRowCounts()) {
                 int lines = SlotsPaylineCatalog.lineCount(rows);
-                SlotsOutcome plain = uniform(SlotsSymbol.BLANK, columns, rows);
+                SlotsOutcome plain = uniform(SlotsSymbol.SEEDS, columns, rows);
                 SlotsOutcome anticipated = nearMiss(columns, rows);
 
                 SlotsReelPlan plainPlan = SlotsReelPlan.build(plain, lines);
@@ -121,7 +121,7 @@ class SlotsReelMotionMathTest {
         // stop near 99 whose intermediate steps must wrap forward past 99.
         int columns = 5;
         int rows = 3;
-        SlotsOutcome outcome = uniform(SlotsSymbol.BLANK, columns, rows);
+        SlotsOutcome outcome = uniform(SlotsSymbol.SEEDS, columns, rows);
         SlotsReelPlan plan = SlotsReelPlan.build(outcome, SlotsPaylineCatalog.lineCount(rows));
 
         for (int stop : new int[] {0, 2, 97, 99}) {
@@ -134,7 +134,7 @@ class SlotsReelMotionMathTest {
     @Test
     void advanceCountIsPositiveForEveryReelAtEveryWidth() {
         for (int columns : SlotsGeometry.supportedColumnCounts()) {
-            SlotsOutcome outcome = uniform(SlotsSymbol.BLANK, columns, 3);
+            SlotsOutcome outcome = uniform(SlotsSymbol.SEEDS, columns, 3);
             SlotsReelPlan plan = SlotsReelPlan.build(outcome, 1);
             for (int reel = 0; reel < columns; reel++) {
                 assertTrue(plan.advanceCount(reel) > 0, "reel " + reel + " must actually move before landing");

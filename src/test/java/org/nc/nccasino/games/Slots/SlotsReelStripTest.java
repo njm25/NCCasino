@@ -257,23 +257,23 @@ class SlotsReelStripTest {
         return switch (variance) {
             case STEADY -> switch (symbol) {
                 case CHERRY -> 1; case DIAMOND -> 9; case BELL -> 5;
-                case BLANK -> 4; case LEMON -> 3; case SEVEN -> 24;
+                case SEEDS -> 4; case LEMON -> 3; case SEVEN -> 24;
             };
             case LOW -> switch (symbol) {
                 case CHERRY -> 1; case DIAMOND -> 8; case BELL -> 6;
-                case BLANK -> 2; case LEMON -> 5; case SEVEN -> 20;
+                case SEEDS -> 2; case LEMON -> 5; case SEVEN -> 20;
             };
             case BALANCED -> switch (symbol) {
                 case CHERRY -> 3; case DIAMOND -> 9; case BELL -> 7;
-                case BLANK -> 1; case LEMON -> 5; case SEVEN -> 15;
+                case SEEDS -> 1; case LEMON -> 5; case SEVEN -> 15;
             };
             case HIGH -> switch (symbol) {
                 case CHERRY -> 3; case DIAMOND -> 8; case BELL -> 6;
-                case BLANK -> 1; case LEMON -> 4; case SEVEN -> 13;
+                case SEEDS -> 1; case LEMON -> 4; case SEVEN -> 13;
             };
             case HIGH_ROLLER -> switch (symbol) {
                 case CHERRY -> 6; case DIAMOND -> 9; case BELL -> 9;
-                case BLANK -> 1; case LEMON -> 6; case SEVEN -> 10;
+                case SEEDS -> 1; case LEMON -> 6; case SEVEN -> 10;
             };
         };
     }
@@ -292,7 +292,7 @@ class SlotsReelStripTest {
         // tighter than today) changes this number and fails here.
         //
         // Several entries below measure exactly 1 (e.g. every variance's
-        // BLANK, and CHERRY in STEADY/LOW): the even-distribution
+        // SEEDS, and CHERRY in STEADY/LOW): the even-distribution
         // construction merges every symbol's "ideal positions" in position
         // order, and for a sufficiently common symbol two of those ideal
         // positions can legitimately round into adjacent slots even well
@@ -302,8 +302,8 @@ class SlotsReelStripTest {
         // already do; it only pins today's exact value as a drift record.
         // The maximum circular run bound
         // (maximumConsecutiveSameSymbolRunNeverExceedsFour) and the exact
-        // per-variance BLANK-run bound
-        // (maximumBlankRunPerVarianceMatchesMeasuredValues) are what actually
+        // per-variance SEEDS-run bound
+        // (maximumSeedsRunPerVarianceMatchesMeasuredValues) are what actually
         // constrain those high-frequency symbols' clustering.
         for (SlotsVariance variance : SlotsVariance.values()) {
             SlotsReelStrip strip = SlotsReelStrip.forReel(variance, 0);
@@ -322,7 +322,7 @@ class SlotsReelStripTest {
     void maximumConsecutiveSameSymbolRunNeverExceedsFour() {
         // Measured maximum across every approved variance's actual pinned
         // sequence (see reel0SequenceSnapshotsAreExactlyPinnedPerVariance)
-        // is 4, on HIGH_ROLLER's BLANK symbol -- not an invented number.
+        // is 4, on HIGH_ROLLER's SEEDS symbol -- not an invented number.
         for (SlotsVariance variance : SlotsVariance.values()) {
             SlotsReelStrip strip = SlotsReelStrip.forReel(variance, 0);
             int maxRun = maxCircularRunOfAnySymbol(strip);
@@ -351,23 +351,23 @@ class SlotsReelStripTest {
     }
 
     @Test
-    void maximumBlankRunPerVarianceMatchesMeasuredValues() {
+    void maximumSeedsRunPerVarianceMatchesMeasuredValues() {
         // Exact values measured directly from each variance's pinned reel-0
-        // sequence -- not invented thresholds. BLANK's run length grows with
+        // sequence -- not invented thresholds. SEEDS's run length grows with
         // its share of the 100 stops (see SlotsVariance's weights), peaking
-        // at HIGH_ROLLER where BLANK is the large majority symbol.
-        assertEquals(1, maxCircularRunOf(SlotsReelStrip.forReel(SlotsVariance.STEADY, 0), SlotsSymbol.BLANK));
-        assertEquals(1, maxCircularRunOf(SlotsReelStrip.forReel(SlotsVariance.LOW, 0), SlotsSymbol.BLANK));
-        assertEquals(2, maxCircularRunOf(SlotsReelStrip.forReel(SlotsVariance.BALANCED, 0), SlotsSymbol.BLANK));
-        assertEquals(2, maxCircularRunOf(SlotsReelStrip.forReel(SlotsVariance.HIGH, 0), SlotsSymbol.BLANK));
-        assertEquals(4, maxCircularRunOf(SlotsReelStrip.forReel(SlotsVariance.HIGH_ROLLER, 0), SlotsSymbol.BLANK));
+        // at HIGH_ROLLER where SEEDS is the large majority symbol.
+        assertEquals(1, maxCircularRunOf(SlotsReelStrip.forReel(SlotsVariance.STEADY, 0), SlotsSymbol.SEEDS));
+        assertEquals(1, maxCircularRunOf(SlotsReelStrip.forReel(SlotsVariance.LOW, 0), SlotsSymbol.SEEDS));
+        assertEquals(2, maxCircularRunOf(SlotsReelStrip.forReel(SlotsVariance.BALANCED, 0), SlotsSymbol.SEEDS));
+        assertEquals(2, maxCircularRunOf(SlotsReelStrip.forReel(SlotsVariance.HIGH, 0), SlotsSymbol.SEEDS));
+        assertEquals(4, maxCircularRunOf(SlotsReelStrip.forReel(SlotsVariance.HIGH_ROLLER, 0), SlotsSymbol.SEEDS));
     }
 
     // ---- exact sequence snapshots (Section 14 of the redesign audit) ----
 
     private static char code(SlotsSymbol symbol) {
         return switch (symbol) {
-            case BLANK -> 'K';
+            case SEEDS -> 'K';
             case CHERRY -> 'C';
             case LEMON -> 'L';
             case BELL -> 'E';

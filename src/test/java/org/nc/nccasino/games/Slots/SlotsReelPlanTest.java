@@ -31,7 +31,7 @@ class SlotsReelPlanTest {
     @DisplayName("reels land strictly left to right")
     void reelsLandLeftToRight() {
         for (int columns : SlotsGeometry.supportedColumnCounts()) {
-            SlotsReelPlan plan = SlotsReelPlan.build(uniform(SlotsSymbol.BLANK, columns), 5);
+            SlotsReelPlan plan = SlotsReelPlan.build(uniform(SlotsSymbol.SEEDS, columns), 5);
             for (int reel = 1; reel < columns; reel++) {
                 assertTrue(plan.landingTick(reel) > plan.landingTick(reel - 1),
                     "reel " + reel + " must land after reel " + (reel - 1) + " at width " + columns);
@@ -42,7 +42,7 @@ class SlotsReelPlanTest {
     @Test
     @DisplayName("a reel counts as stopped only from its landing tick onward")
     void stoppedTracksLandingTick() {
-        SlotsReelPlan plan = SlotsReelPlan.build(uniform(SlotsSymbol.BLANK, 5), 5);
+        SlotsReelPlan plan = SlotsReelPlan.build(uniform(SlotsSymbol.SEEDS, 5), 5);
         for (int reel = 0; reel < 5; reel++) {
             long landing = plan.landingTick(reel);
             assertFalse(plan.isStopped(reel, landing - 1), "reel " + reel + " still spinning just before landing");
@@ -57,25 +57,25 @@ class SlotsReelPlanTest {
     @Test
     @DisplayName("anticipation fires only when a high symbol is one reel short")
     void anticipationFiresOnNearMissOnly() {
-        // Four sevens then a blank: the fifth reel was live for a full-width win.
+        // Four sevens then a seeds cell: the fifth reel was live for a full-width win.
         SlotsOutcome nearMiss = allRows(
-            SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.BLANK);
+            SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEEDS);
         assertTrue(SlotsReelPlan.shouldAnticipate(nearMiss, 5), "four sevens must earn an anticipation pause");
         assertTrue(SlotsReelPlan.build(nearMiss, 5).isAnticipated());
 
         // Cherries are too cheap to build tension around.
         SlotsOutcome cheapNearMiss = allRows(
-            SlotsSymbol.CHERRY, SlotsSymbol.CHERRY, SlotsSymbol.CHERRY, SlotsSymbol.CHERRY, SlotsSymbol.BLANK);
+            SlotsSymbol.CHERRY, SlotsSymbol.CHERRY, SlotsSymbol.CHERRY, SlotsSymbol.CHERRY, SlotsSymbol.SEEDS);
         assertFalse(SlotsReelPlan.shouldAnticipate(cheapNearMiss, 5),
             "a low-value symbol must not trigger anticipation, or the pause stops meaning anything");
 
         // Run already broken early -- nothing to anticipate.
         SlotsOutcome broken = allRows(
-            SlotsSymbol.SEVEN, SlotsSymbol.BLANK, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN);
+            SlotsSymbol.SEVEN, SlotsSymbol.SEEDS, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN);
         assertFalse(SlotsReelPlan.shouldAnticipate(broken, 5));
 
-        // Blanks never anticipate however many line up.
-        assertFalse(SlotsReelPlan.shouldAnticipate(uniform(SlotsSymbol.BLANK, 5), 9));
+        // Seeds never anticipate however many line up.
+        assertFalse(SlotsReelPlan.shouldAnticipate(uniform(SlotsSymbol.SEEDS, 5), 9));
     }
 
     @Test
@@ -85,7 +85,7 @@ class SlotsReelPlanTest {
         SlotsSymbol[][] grid = new SlotsSymbol[SlotsGeometry.ROWS][5];
         for (int row = 0; row < SlotsGeometry.ROWS; row++) {
             for (int col = 0; col < 5; col++) {
-                grid[row][col] = SlotsSymbol.BLANK;
+                grid[row][col] = SlotsSymbol.SEEDS;
             }
         }
         for (int col = 0; col < 4; col++) {
@@ -103,9 +103,9 @@ class SlotsReelPlanTest {
     @DisplayName("an anticipated spin genuinely delays only the final reel")
     void anticipationDelaysOnlyTheLastReel() {
         SlotsOutcome nearMiss = allRows(
-            SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.BLANK);
+            SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEEDS);
         SlotsReelPlan anticipated = SlotsReelPlan.build(nearMiss, 5);
-        SlotsReelPlan plain = SlotsReelPlan.build(uniform(SlotsSymbol.BLANK, 5), 5);
+        SlotsReelPlan plain = SlotsReelPlan.build(uniform(SlotsSymbol.SEEDS, 5), 5);
 
         for (int reel = 0; reel < 4; reel++) {
             assertTrue(anticipated.landingTick(reel) == plain.landingTick(reel),
@@ -119,7 +119,7 @@ class SlotsReelPlanTest {
     @DisplayName("every reel advances at least once and never after landing")
     void advanceScheduleIsSane() {
         for (int columns : SlotsGeometry.supportedColumnCounts()) {
-            SlotsReelPlan plan = SlotsReelPlan.build(uniform(SlotsSymbol.BLANK, columns), 5);
+            SlotsReelPlan plan = SlotsReelPlan.build(uniform(SlotsSymbol.SEEDS, columns), 5);
             for (int reel = 0; reel < columns; reel++) {
                 int advances = 0;
                 for (long tick = 0; tick <= plan.landingTick(reel); tick++) {
@@ -168,7 +168,7 @@ class SlotsReelPlanTest {
                 SlotsSymbol[][] grid = new SlotsSymbol[rows][columns];
                 for (int row = 0; row < rows; row++) {
                     for (int col = 0; col < columns; col++) {
-                        grid[row][col] = (col < columns - 1) ? SlotsSymbol.SEVEN : SlotsSymbol.BLANK;
+                        grid[row][col] = (col < columns - 1) ? SlotsSymbol.SEVEN : SlotsSymbol.SEEDS;
                     }
                 }
                 SlotsOutcome outcome = new SlotsOutcome(grid);
@@ -180,10 +180,10 @@ class SlotsReelPlanTest {
     }
 
     @Test
-    @DisplayName("a height-1 all-blank outcome never anticipates")
-    void heightOneAllBlankNeverAnticipates() {
+    @DisplayName("a height-1 all-seeds outcome never anticipates")
+    void heightOneAllSeedsNeverAnticipates() {
         for (int columns : SlotsGeometry.supportedColumnCounts()) {
-            assertFalse(SlotsReelPlan.shouldAnticipate(uniform(SlotsSymbol.BLANK, columns, 1), 1));
+            assertFalse(SlotsReelPlan.shouldAnticipate(uniform(SlotsSymbol.SEEDS, columns, 1), 1));
         }
     }
 }
