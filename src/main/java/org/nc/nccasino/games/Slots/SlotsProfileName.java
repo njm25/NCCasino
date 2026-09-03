@@ -4,15 +4,21 @@ package org.nc.nccasino.games.Slots;
  * The profile-name rules, as a pure validator so the chat prompt and the
  * store can never disagree about what a legal name is.
  *
- * <p>A name is 1-24 characters of letters, digits, spaces, hyphens and
+ * <p>A name is 1-24 characters of letters (any script -- Unicode's own
+ * letter classification, not just A-Z), digits, spaces, hyphens and
  * underscores. Everything else is rejected -- most importantly the section
  * sign and ampersand, so a saved profile can never smuggle a formatting code
  * into an item name, and a name can never be crafted to impersonate one of
- * the machine's own controls.
+ * the machine's own controls. Emoji and other symbol characters are rejected
+ * the same way: they are not letters under Unicode's own classification
+ * either, so nothing about accepting every script also opens the door to
+ * pictographic names.
  *
  * <p>Uniqueness is case-insensitive: "High Roller" and "high roller" are the
  * same profile, and saving the second offers to overwrite the first rather
- * than silently creating a confusing near-duplicate.
+ * than silently creating a confusing near-duplicate. Case-folding is
+ * script-aware ({@link String#toLowerCase(java.util.Locale)}), the same
+ * mechanism already relied on for every script this validator accepts.
  */
 public final class SlotsProfileName {
 
@@ -46,17 +52,21 @@ public final class SlotsProfileName {
         if (trimmed.length() > MAX_LENGTH) {
             return Rejection.TOO_LONG;
         }
-        for (int i = 0; i < trimmed.length(); i++) {
-            char c = trimmed.charAt(i);
-            boolean allowed = (c >= 'a' && c <= 'z')
-                || (c >= 'A' && c <= 'Z')
-                || (c >= '0' && c <= '9')
-                || c == ' '
-                || c == '-'
-                || c == '_';
+        // Walked by code point, not by char: a surrogate pair encoding one
+        // real letter (rare CJK extension ideographs, for instance) must be
+        // classified as the one letter it is, never as two lone, illegal
+        // surrogate halves.
+        for (int i = 0; i < trimmed.length(); ) {
+            int codePoint = trimmed.codePointAt(i);
+            boolean allowed = Character.isLetter(codePoint)
+                || Character.isDigit(codePoint)
+                || codePoint == ' '
+                || codePoint == '-'
+                || codePoint == '_';
             if (!allowed) {
                 return Rejection.ILLEGAL_CHARACTERS;
             }
+            i += Character.charCount(codePoint);
         }
         return null;
     }
