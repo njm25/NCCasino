@@ -49,6 +49,19 @@ class OverflowBankFailureInjectionTest {
     private static final BankedCurrency EMERALDS =
         new BankedCurrency(CurrencyMode.STANDARD, "EMERALD", "Casino Token");
 
+    /**
+     * A fresh scripted stop sequence each call (one stop per reel, plus the
+     * probabilistic-rounding draw) verified once, by direct outcome
+     * evaluation, to commit a positive win at COLUMNS=3/LINES=5 under
+     * BALANCED variance. A single constant roll cannot guarantee this under
+     * the strip-based generator: differently-rotated reels landing on the
+     * same numeric stop show different symbols.
+     */
+    private static org.nc.nccasino.games.Slots.SlotsRandomSource guaranteedWinRng() {
+        java.util.Deque<Integer> queue = new java.util.ArrayDeque<>(java.util.List.of(42, 42, 43, 0));
+        return bound -> queue.poll();
+    }
+
     @TempDir
     Path tempDir;
 
@@ -182,7 +195,7 @@ class OverflowBankFailureInjectionTest {
         controller.trySpin(10, 3, 5, false,
             org.nc.nccasino.games.Slots.SlotsPaytable.forConfig(
                 3, org.nc.nccasino.games.Slots.SlotsPaytable.DEFAULT_HOUSE_EDGE),
-            bound -> 95, amount -> true);
+            guaranteedWinRng(), amount -> true);
         long committed = controller.pendingPayoutAmount();
         assertTrue(committed > 4, "fixture needs a payout big enough to split");
 
@@ -219,7 +232,7 @@ class OverflowBankFailureInjectionTest {
         controller.trySpin(10, 3, 5, false,
             org.nc.nccasino.games.Slots.SlotsPaytable.forConfig(
                 3, org.nc.nccasino.games.Slots.SlotsPaytable.DEFAULT_HOUSE_EDGE),
-            bound -> 95, amount -> true);
+            guaranteedWinRng(), amount -> true);
         long committed = controller.pendingPayoutAmount();
         long handedOver = committed / 2;
 
@@ -244,7 +257,7 @@ class OverflowBankFailureInjectionTest {
         controller.trySpin(10, 3, 5, false,
             org.nc.nccasino.games.Slots.SlotsPaytable.forConfig(
                 3, org.nc.nccasino.games.Slots.SlotsPaytable.DEFAULT_HOUSE_EDGE),
-            bound -> 95, amount -> true);
+            guaranteedWinRng(), amount -> true);
         long committed = controller.pendingPayoutAmount();
 
         SlotsSettlementResult result = controller.settle(owed -> owed, owed -> false);

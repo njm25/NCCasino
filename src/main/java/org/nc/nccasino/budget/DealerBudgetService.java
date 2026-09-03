@@ -10,6 +10,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The one entry point games use to ask "can the dealer afford this?" and to
@@ -43,6 +44,17 @@ public class DealerBudgetService {
     private final DealerBudgetStore store;
     /** Dealers whose invalid configuration has already been reported, so the log is not spammed. */
     private final Set<String> reportedProblems = new LinkedHashSet<>();
+    /**
+     * In-memory fallback for the rare case where even the durable settlement
+     * intent's first write fails. The service outlives individual game
+     * sessions, so a GUI reset cannot discard the known payout while the
+     * server remains running.
+     */
+    private final java.util.Map<String, PendingSettlement> transientSettlementIntents =
+        new ConcurrentHashMap<>();
+
+    private record PendingSettlement(String dealer, Reservation reservation, BigDecimal payout) {
+    }
 
     public DealerBudgetService(Nccasino plugin, DealerBudgetStore store) {
         this.plugin = plugin;
@@ -119,6 +131,9 @@ public class DealerBudgetService {
      */
     public AdmissionDecision admit(String dealerInternalName, Exposure exposure) {
         DealerBudgetSettings settings = settingsFor(dealerInternalName);
+        if (!retrySettlementIntents(dealerInternalName)) {
+            return AdmissionDecision.PERSISTENCE_FAILED;
+        }
         if (!settings.mode().isLimited()) {
             return AdmissionDecision.ADMITTED;
         }
@@ -168,6 +183,9 @@ public class DealerBudgetService {
             return affordable;
         }
         DealerBudgetSettings settings = settingsFor(dealerInternalName);
+        if (!retrySettlementIntents(dealerInternalName)) {
+            return affordable;
+        }
         if (!settings.mode().isLimited()) {
             return new ArrayList<>(denominations);
         }
@@ -289,6 +307,9 @@ public class DealerBudgetService {
             return Commitment.refused(AdmissionDecision.CONFIGURATION_INVALID);
         }
         DealerBudgetSettings settings = settingsFor(dealerInternalName);
+        if (!retrySettlementIntents(dealerInternalName)) {
+            return Commitment.refused(AdmissionDecision.PERSISTENCE_FAILED);
+        }
         if (!settings.mode().isLimited()) {
             return Commitment.forUnlimitedDealer();
         }
@@ -321,6 +342,41 @@ public class DealerBudgetService {
             : Commitment.accepted(updated);
     }
 
+    /**
+     * Atomically backs out one failed or returned stake while preserving the
+     * commitment identity and every wager that remains.
+     */
+    public Commitment reduce(
+        String dealerInternalName,
+        Commitment open,
+        Exposure remainingExposure,
+        BigDecimal stakeToRemove,
+        String operationId
+    ) {
+        if (open == null || remainingExposure == null) {
+            return Commitment.refused(AdmissionDecision.CONFIGURATION_INVALID);
+        }
+        if (open.unlimited()) {
+            return open;
+        }
+        Reservation reservation = open.reservation();
+        if (reservation == null) {
+            return Commitment.released();
+        }
+        ReservationAdjustment adjusted = store.reduceReservation(
+            dealerInternalName,
+            reservation.id(),
+            operationId,
+            remainingExposure.maxGrossPayout(),
+            stakeToRemove);
+        if (!adjusted.success()) {
+            return Commitment.refused(AdmissionDecision.PERSISTENCE_FAILED);
+        }
+        return adjusted.reservation() == null
+            ? Commitment.released()
+            : Commitment.accepted(adjusted.reservation());
+    }
+
     // ---- settlement ------------------------------------------------------
 
     /**
@@ -340,7 +396,18 @@ public class DealerBudgetService {
             return Settlement.alreadySettled();
         }
         Reservation reservation = commitment.reservation();
+        PendingSettlement pending = new PendingSettlement(dealerInternalName, reservation, Money.of(payout));
+        PendingSettlement prior = transientSettlementIntents.putIfAbsent(reservation.id(), pending);
+        if (prior != null && prior.payout().compareTo(pending.payout()) != 0) {
+            plugin.getLogger().severe("[NCCasino] Settlement retry for commitment "
+                + reservation.id() + " changed from " + Money.store(prior.payout())
+                + " to " + Money.store(pending.payout()) + "; refusing the mismatched result.");
+            return Settlement.failed();
+        }
         Settlement result = store.settle(dealerInternalName, reservation.id(), payout);
+        if (result.status() != Settlement.Status.FAILED) {
+            transientSettlementIntents.remove(reservation.id());
+        }
         logSettlementAnomaly(dealerInternalName, reservation, payout, result);
         return result;
     }
@@ -381,6 +448,37 @@ public class DealerBudgetService {
                 + " for " + Money.store(payout) + ". Nothing was debited; the reservation"
                 + " is still held and requires manual reconciliation.");
         }
+    }
+
+    /**
+     * Replays awarded results whose intent reached disk but whose final
+     * settlement write did not. Called before new exposure is admitted.
+     */
+    private boolean retrySettlementIntents(String dealerInternalName) {
+        for (PendingSettlement pending : List.copyOf(transientSettlementIntents.values())) {
+            if (!dealerInternalName.equals(pending.dealer())) {
+                continue;
+            }
+            Settlement result = store.settle(
+                pending.dealer(), pending.reservation().id(), pending.payout());
+            logSettlementAnomaly(
+                pending.dealer(), pending.reservation(), pending.payout(), result);
+            if (result.status() == Settlement.Status.FAILED) {
+                return false;
+            }
+            transientSettlementIntents.remove(pending.reservation().id());
+        }
+        for (var entry : store.settlementIntents(dealerInternalName).entrySet()) {
+            Reservation reservation = store.state(dealerInternalName).reservation(entry.getKey());
+            Settlement result = store.settle(dealerInternalName, entry.getKey(), entry.getValue());
+            if (reservation != null) {
+                logSettlementAnomaly(dealerInternalName, reservation, entry.getValue(), result);
+            }
+            if (result.status() == Settlement.Status.FAILED) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // ---- diagnostics -----------------------------------------------------

@@ -95,6 +95,7 @@ public abstract class Menu extends DealerInventory {
         // Slots settings menu
         SLOTS_HOUSE_EDGE,
         SLOTS_DEFAULT_COLUMNS,
+        SLOTS_DEFAULT_ROWS,
         SLOTS_DEFAULT_LINES,
 
         YES,

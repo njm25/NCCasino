@@ -40,6 +40,8 @@ import org.nc.nccasino.budget.Commitment;
 import org.nc.nccasino.budget.DealerBudgetService;
 import org.nc.nccasino.budget.Exposure;
 import org.nc.nccasino.budget.Money;
+import org.nc.nccasino.budget.WagerActionGuard;
+import org.nc.nccasino.budget.WagerActionIds;
 
 public class BettingTable extends DealerInventory {
     public static final Set<UUID> switchingPlayers = new HashSet<>();
@@ -68,6 +70,8 @@ public class BettingTable extends DealerInventory {
     private Commitment budgetCommitment;
     private final String budgetSessionId = java.util.UUID.randomUUID().toString();
     private long budgetRoundCounter = 0;
+    private long budgetOperationCounter = 0;
+    private final WagerActionGuard wagerActionGuard = new WagerActionGuard();
     public BettingTable(Player player, Mob dealer, Nccasino plugin, Stack<Pair<String, Integer>> existingBets, String internalName,RouletteInventory rouletteInventory,int countdown) {
         super(player.getUniqueId(), 54, plugin.getLocalization().text(player, "roulette.table-title"));
         this.countdown1=countdown;
@@ -837,9 +841,10 @@ public class BettingTable extends DealerInventory {
                         return;
                     }
                 }
-                if (!ensurePortfolioCovered(player, betType, (int) wagerAmount)) {
-                    return;
-                }
+                String wagerActionId = WagerActionIds.inventoryClick(
+                    budgetSessionId, player, event, "roulette-" + betType, Money.of(wagerAmount));
+                if (!wagerActionGuard.accept(wagerActionId)
+                    || !ensurePortfolioCovered(player, betType, (int) wagerAmount, wagerActionId)) return;
                 boolean canBet = usedHeldItem || hasEnoughWager(player, wagerAmount);
 
                 if (canBet) {
@@ -853,7 +858,7 @@ public class BettingTable extends DealerInventory {
 							// with another withdrawal). Undo that growth
 							// rather than leaving a fictional credit and an
 							// oversized reservation behind.
-							reconcilePortfolioReservation(wagerAmount);
+							reconcilePortfolioReservation(wagerAmount, wagerActionId + "-rollback");
 							return;
 						}
                     }
@@ -892,7 +897,7 @@ public class BettingTable extends DealerInventory {
                     // The reservation already grew to cover this bet before
                     // the funds check ran; since it was refused, undo that
                     // growth rather than leaving an oversized reservation.
-                    reconcilePortfolioReservation(wagerAmount);
+                    reconcilePortfolioReservation(wagerAmount, wagerActionId + "-rollback");
                     switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                         case STANDARD:
                             player.sendMessage(text("roulette.invalid-action"));
@@ -1099,7 +1104,8 @@ private boolean isValidSlotPage2(int slot) {
      * {@code betType}. Denies before any currency moves -- money is only
      * ever taken from the player after this returns {@code true}.
      */
-    private boolean ensurePortfolioCovered(Player player, String betType, int wagerAmount) {
+    private boolean ensurePortfolioCovered(
+        Player player, String betType, int wagerAmount, String wagerActionId) {
         DealerBudgetService budget = plugin.getDealerBudgetService();
         if (budget == null) {
             return true;
@@ -1111,24 +1117,12 @@ private boolean isValidSlotPage2(int slot) {
 
         Commitment result;
         if (budgetCommitment == null) {
-            budgetRoundCounter++;
             result = budget.reserve(
                 internalName, playerId, "Roulette",
-                budgetSessionId + "-round-" + budgetRoundCounter, currency, updatedExposure);
+                wagerActionId + "-reservation", currency, updatedExposure);
         } else {
-            // A stable identity for this specific bet-placement attempt --
-            // the number of bets already committed to the table before this
-            // one is added. Two genuinely different bets are never placed at
-            // the same betStack size (a successful placement always grows
-            // it), so only a truly duplicated click (the same attempt fired
-            // twice before either succeeds) reuses this id. This lets a
-            // legitimate additional bet whose own worst case does not raise
-            // the portfolio's existing maximum still credit its stake
-            // exactly once, instead of newAmount-equality alone silently
-            // treating it as an already-applied replay.
-            String operationId = budgetSessionId + "-bet-" + betStack.size();
             result = budget.increase(
-                internalName, budgetCommitment, updatedExposure, Money.of(wagerAmount), operationId);
+                internalName, budgetCommitment, updatedExposure, Money.of(wagerAmount), wagerActionId);
         }
 
         if (!result.isAccepted()) {
@@ -1146,47 +1140,36 @@ private boolean isValidSlotPage2(int slot) {
      * a bet that was denied or whose debit failed after {@link
      * #ensurePortfolioCovered} had already grown the reservation to cover it.
      *
-     * <p>The reservation currently reflects {@code totalStake(betStack) +
-     * removedStake} credited into the dealer's live balance (everything
-     * legitimately staked, plus the amount now being given back or never
-     * actually taken). There is no primitive for "debit only part of what a
-     * reservation holds without releasing it" -- so this refunds the whole
-     * amount credited so far, fully releasing the reservation, and then, if
-     * anything is still legitimately staked, immediately re-reserves fresh
-     * for exactly that remaining total. The net effect on the dealer's
-     * balance leaves the still-legitimate portion exactly as it was and
-     * removes only {@code removedStake}.
+     * <p>The adjustment is one persisted kernel operation. It never releases
+     * the commitment before the remaining portfolio is safely recorded.
      */
     private void reconcilePortfolioReservation(long removedStake) {
+        reconcilePortfolioReservation(
+            removedStake,
+            budgetSessionId + "-reduce-" + (++budgetOperationCounter));
+    }
+
+    private void reconcilePortfolioReservation(long removedStake, String operationId) {
         DealerBudgetService budget = plugin.getDealerBudgetService();
         if (budget == null || budgetCommitment == null || budgetCommitment.unlimited()) {
             budgetCommitment = null;
             return;
         }
-        long remainingStake = RouletteLiability.totalStake(betStack);
-        java.math.BigDecimal fullyCredited = Money.add(Money.of(remainingStake), Money.of(removedStake));
-
-        budget.refund(internalName, budgetCommitment, fullyCredited);
-        budgetCommitment = null;
-
-        if (!betStack.isEmpty() && remainingStake > 0) {
-            Material material = plugin.getCurrency(internalName);
-            org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
-                currencyMode, material == null ? null : material.name(), currencyName);
-            budgetRoundCounter++;
-            Commitment reopened = budget.reserve(
-                internalName, playerId, "Roulette",
-                budgetSessionId + "-round-" + budgetRoundCounter, currency,
-                RouletteLiability.exposureOf(betStack));
-            if (reopened.isAccepted()) {
-                budgetCommitment = reopened;
-            }
-            // If re-reserving the already-legitimate total is somehow
-            // refused (it should not be -- it was already covered a moment
-            // ago), the portfolio is left without a live reservation; the
-            // next successful bet's ensurePortfolioCovered call opens a
-            // fresh one from scratch, and settling a null commitment is
-            // already a safe no-op.
+        Exposure remainingExposure = betStack.isEmpty()
+            ? Exposure.none()
+            : RouletteLiability.exposureOf(betStack);
+        Commitment adjusted = budget.reduce(
+            internalName,
+            budgetCommitment,
+            remainingExposure,
+            Money.of(removedStake),
+            operationId);
+        if (adjusted.isAccepted()) {
+            budgetCommitment = adjusted.requiresSettlement() ? adjusted : null;
+        } else {
+            plugin.getLogger().severe("[NCCasino] Roulette could not persist an atomic"
+                + " dealer-budget reduction for '" + internalName + "'. The original"
+                + " reservation was retained for reconciliation.");
         }
     }
 
@@ -1208,8 +1191,11 @@ private boolean isValidSlotPage2(int slot) {
             budgetCommitment = null;
             return;
         }
-        budget.settle(internalName, budgetCommitment, payout);
-        budgetCommitment = null;
+        org.nc.nccasino.budget.Settlement result =
+            budget.settle(internalName, budgetCommitment, payout);
+        if (result.status() != org.nc.nccasino.budget.Settlement.Status.FAILED) {
+            budgetCommitment = null;
+        }
     }
 
     /** Returns the stake and releases the portfolio reservation for a cancelled table. */
@@ -1219,8 +1205,11 @@ private boolean isValidSlotPage2(int slot) {
             budgetCommitment = null;
             return;
         }
-        budget.refund(internalName, budgetCommitment, stake);
-        budgetCommitment = null;
+        org.nc.nccasino.budget.Settlement result =
+            budget.refund(internalName, budgetCommitment, stake);
+        if (result.status() != org.nc.nccasino.budget.Settlement.Status.FAILED) {
+            budgetCommitment = null;
+        }
     }
 
     /**

@@ -65,7 +65,17 @@ public final class SlotsSpinController {
     }
 
     public sealed interface SpinAttempt permits SpinAttempt.Accepted, SpinAttempt.Rejected {
-        record Accepted(SlotsOutcome outcome, long totalBetUnits, long payout, long generation) implements SpinAttempt {
+        record Accepted(SlotsOutcome outcome, long totalBetUnits, long payout, long generation, int[] stops)
+            implements SpinAttempt {
+
+            public Accepted {
+                stops = stops == null ? new int[0] : stops.clone();
+            }
+
+            @Override
+            public int[] stops() {
+                return stops.clone();
+            }
         }
 
         /**
@@ -85,7 +95,15 @@ public final class SlotsSpinController {
 
     private SlotsSessionState state = SlotsSessionState.IDLE;
     private long generation = 0;
-    private SlotsOutcome currentOutcome;
+    /**
+     * The authoritative record of the last accepted spin: strip identity,
+     * stops, and geometry, from which {@link #currentOutcome()}'s grid is a
+     * cached derivation -- never the other way around. Retained across
+     * settlement (cleared only by the next accepted spin), so a later height
+     * change or a replay/audit can reconstruct the exact result without any
+     * further randomness.
+     */
+    private SlotsCommittedResult currentResult;
     private long pendingPayoutAmount = 0;
     private long lastWinAmount = -1;
     /**
@@ -104,7 +122,12 @@ public final class SlotsSpinController {
     }
 
     public SlotsOutcome currentOutcome() {
-        return currentOutcome;
+        return currentResult == null ? null : currentResult.outcome();
+    }
+
+    /** The full authoritative record backing {@link #currentOutcome()} -- see {@link SlotsCommittedResult}. */
+    public SlotsCommittedResult currentResult() {
+        return currentResult;
     }
 
     public long pendingPayoutAmount() {
@@ -221,12 +244,87 @@ public final class SlotsSpinController {
         commitment = accepted;
         state = SlotsStateMachine.transition(state, SlotsSessionState.DEBIT_ACCEPTED);
         generation++;
-        SlotsOutcome outcome = SlotsSpinGenerator.generate(columns, rng, paytable.variance());
-        currentOutcome = outcome;
+        // Delegates to the same stop-based production path as the
+        // height-aware overload below, fixed at visibleRows=3 -- there is no
+        // independent per-cell sampling left anywhere in this class.
+        SlotsSpinGenerator.StripResult stripResult =
+            SlotsSpinGenerator.generateFromStrips(columns, 3, rng, paytable.variance());
+        currentResult = SlotsCommittedResult.fromStops(
+            columns, 3, paytable.variance() == null ? SlotsVariance.BALANCED : paytable.variance(),
+            stripResult.stops());
+        SlotsOutcome outcome = currentResult.outcome();
         state = SlotsStateMachine.transition(state, SlotsSessionState.RESULT_COMMITTED);
         pendingPayoutAmount = SlotsMath.totalPayout(outcome, activeLines, denomUnits, paytable, rng);
 
-        return new SpinAttempt.Accepted(outcome, totalBetUnits, pendingPayoutAmount, generation);
+        return new SpinAttempt.Accepted(outcome, totalBetUnits, pendingPayoutAmount, generation, stripResult.stops());
+    }
+
+    /**
+     * The height-aware entry point every real machine uses: draws the
+     * outcome from {@link SlotsReelStrip}s (one stop per reel) and sizes bet
+     * and worst-case exposure off the machine's actual visible height. Every
+     * other financial invariant -- debit-before-outcome, dealer-commits-first,
+     * exactly-once generation/commitment handling -- is identical to the
+     * compatibility overload above.
+     */
+    public SpinAttempt trySpin(
+        long denomUnits,
+        int columns,
+        int visibleRows,
+        int activeLines,
+        boolean itemMode,
+        SlotsPaytable paytable,
+        SlotsRandomSource rng,
+        SlotsUnderwriting underwriting,
+        LongPredicate debit
+    ) {
+        if (!isReadyForSpin()) {
+            return new SpinAttempt.Rejected(RejectReason.NOT_READY);
+        }
+        if (denomUnits <= 0) {
+            return new SpinAttempt.Rejected(RejectReason.INVALID_DENOMINATION);
+        }
+
+        long totalBetUnits;
+        long maxPossiblePayout;
+        try {
+            totalBetUnits = SlotsMath.totalBetForGeometry(denomUnits, visibleRows, activeLines);
+            maxPossiblePayout = SlotsMath.maxPossiblePayoutForGeometry(denomUnits, visibleRows, activeLines, paytable);
+        } catch (ArithmeticException e) {
+            return new SpinAttempt.Rejected(RejectReason.WAGER_OVERFLOW);
+        }
+        if (itemMode && maxPossiblePayout > SlotsMath.MAX_ITEM_MODE_PAYOUT) {
+            return new SpinAttempt.Rejected(RejectReason.BET_TOO_LARGE_FOR_MODE);
+        }
+
+        Commitment accepted = underwriting.underwrite(totalBetUnits, maxPossiblePayout);
+        if (accepted == null || !accepted.isAccepted()) {
+            return new SpinAttempt.Rejected(
+                RejectReason.DEALER_CANNOT_COVER,
+                accepted == null ? null : accepted.decision());
+        }
+
+        if (state == SlotsSessionState.RESOLVED) {
+            state = SlotsStateMachine.transition(state, SlotsSessionState.IDLE);
+        }
+
+        if (!debit.test(totalBetUnits)) {
+            underwriting.cancel(accepted, totalBetUnits);
+            return new SpinAttempt.Rejected(RejectReason.INSUFFICIENT_FUNDS);
+        }
+
+        commitment = accepted;
+        state = SlotsStateMachine.transition(state, SlotsSessionState.DEBIT_ACCEPTED);
+        generation++;
+        SlotsSpinGenerator.StripResult stripResult = SlotsSpinGenerator.generateFromStrips(columns, visibleRows, rng, paytable.variance());
+        currentResult = SlotsCommittedResult.fromStops(
+            columns, visibleRows, paytable.variance() == null ? SlotsVariance.BALANCED : paytable.variance(),
+            stripResult.stops());
+        SlotsOutcome outcome = currentResult.outcome();
+        state = SlotsStateMachine.transition(state, SlotsSessionState.RESULT_COMMITTED);
+        pendingPayoutAmount = SlotsMath.totalPayoutForGeometry(outcome, activeLines, denomUnits, paytable, rng);
+
+        return new SpinAttempt.Accepted(outcome, totalBetUnits, pendingPayoutAmount, generation, stripResult.stops());
     }
 
     public void beginAnimating() {

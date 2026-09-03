@@ -81,14 +81,15 @@ public final class SlotsReelPlan {
         if (columns < 3) {
             return false;
         }
-        for (SlotsPayline payline : SlotsPayline.active(activeLines)) {
-            SlotsSymbol first = outcome.symbolAt(payline.rowAt(0, columns), 0);
+        for (SlotsPaylineCatalog.Line line : SlotsPaylineCatalog.active(columns, outcome.rows(), activeLines)) {
+            int[] rows = line.rows();
+            SlotsSymbol first = outcome.symbolAt(rows[0], 0);
             if (first == null || !first.pays() || first.payWeight() < ANTICIPATION_PAY_WEIGHT) {
                 continue;
             }
             boolean unbroken = true;
             for (int col = 1; col < columns - 1; col++) {
-                if (outcome.symbolAt(payline.rowAt(col, columns), col) != first) {
+                if (outcome.symbolAt(rows[col], col) != first) {
                     unbroken = false;
                     break;
                 }
@@ -112,6 +113,22 @@ public final class SlotsReelPlan {
 
     public long landingTick(int reel) {
         return landingTicks[reel];
+    }
+
+    /**
+     * How many scheduled advance events this reel has in total, from spin
+     * start through landing. Anticipation only shifts <em>when</em> the
+     * deceleration-phase advances happen (the extra hang before them), never
+     * how many advances exist -- {@code buildSchedule}'s array length is
+     * {@code fullSpeedAdvances + DECELERATION_STEPS} regardless of the hang.
+     * This is what lets a reel's cosmetic starting position be computed
+     * purely from its committed landing stop and this count: seeding at
+     * {@code floorMod(committedStop - advanceCount(reel), SIZE)} and
+     * advancing once per scheduled tick reaches the committed stop exactly
+     * on the last advance, with no separate snap needed.
+     */
+    public int advanceCount(int reel) {
+        return advanceTicks[reel].length;
     }
 
     public boolean isStopped(int reel, long elapsedTicks) {

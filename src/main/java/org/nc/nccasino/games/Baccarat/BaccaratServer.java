@@ -971,15 +971,8 @@ public class BaccaratServer extends Server {
     		return value;
     	}
 
-    	int integerPart = (int) value;
-    	double fractionalPart = value - integerPart;
-
-    	if (fractionalPart <= 0) {
-    		return value;
-    	}
-
-    	Random random = new Random();
-    	return (random.nextDouble() <= fractionalPart) ? integerPart + 1 : integerPart;
+	return MoneyHelper.probabilisticItemAmount(
+		value, java.util.concurrent.ThreadLocalRandom.current().nextDouble());
     }
 
 private void resetGame() {

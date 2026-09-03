@@ -67,13 +67,28 @@ class SlotsItemModeCeilingTest {
         assertEquals(denomination * LINES, debit.lastAmount);
     }
 
+    /**
+     * A scripted stop per reel (one SEVEN-centred stop on each of the 5
+     * reels' own strips, found once by direct search) that lands a genuine
+     * full-width SEVEN run on the middle payline -- a win large enough to
+     * exceed the old 10,000-item ceiling at this test's denomination. A
+     * single constant roll (the way {@link #allSevens()} works elsewhere in
+     * this file) cannot do this: differently-rotated reels landing on the
+     * same numeric stop show different symbols, and no symbol's spacing on
+     * a real strip produces three-in-a-row on its own anyway.
+     */
+    private static SlotsRandomSource hugeWinRng() {
+        java.util.Deque<Integer> queue = new java.util.ArrayDeque<>(java.util.List.of(9, 10, 8, 8, 9, 0));
+        return bound -> queue.poll();
+    }
+
     @Test
     void anItemModePayoutAboveTheOldCeilingIsCommittedAndSettledInFull() {
         SlotsSpinController controller = new SlotsSpinController();
         RecordingDebit debit = new RecordingDebit();
 
         SlotsSpinController.SpinAttempt attempt = controller.trySpin(
-            1_000L, COLUMNS, LINES, true, PAYTABLE, allSevens(), debit::test);
+            1_000L, COLUMNS, LINES, true, PAYTABLE, hugeWinRng(), debit::test);
 
         SlotsSpinController.SpinAttempt.Accepted accepted =
             assertInstanceOf(SlotsSpinController.SpinAttempt.Accepted.class, attempt);
@@ -100,7 +115,7 @@ class SlotsItemModeCeilingTest {
         double denomination = 1_000d;
         assertTrue(SlotsMath.maxPossiblePayout(1_000L, LINES, PAYTABLE) > OLD_ITEM_CEILING);
 
-        assertTrue(SlotsDenominationPolicy.isAllowed(denomination, LINES, true, PAYTABLE),
+        assertTrue(SlotsDenominationPolicy.isAllowed(denomination, 3, LINES, true, PAYTABLE),
             "item mode must now offer denominations the physical ceiling used to hide");
     }
 
@@ -172,6 +187,6 @@ class SlotsItemModeCeilingTest {
         double oversized = Math.floor(
             SlotsMath.MAX_ITEM_MODE_PAYOUT / (PAYTABLE.maxLineMultiplier() * LINES)) + 1;
 
-        assertFalse(SlotsDenominationPolicy.isAllowed(oversized, LINES, true, PAYTABLE));
+        assertFalse(SlotsDenominationPolicy.isAllowed(oversized, 3, LINES, true, PAYTABLE));
     }
 }

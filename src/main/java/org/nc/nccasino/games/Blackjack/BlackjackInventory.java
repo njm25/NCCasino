@@ -258,7 +258,14 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     /** One dealer-budget promise per player who currently has insurance down this round. */
     private final Map<UUID, org.nc.nccasino.budget.Commitment> insuranceBudgetCommitments = new HashMap<>();
     private final String budgetSessionId = java.util.UUID.randomUUID().toString();
-    private long budgetRoundCounter = 0;
+    /**
+     * Bounded at-most-once guard for opening-wager click actions (chip
+     * commit and cursor-drag commit). The durable budget store also rejects
+     * a replayed operation id, but this stops a duplicated event before it
+     * ever debits the player or appends to the wager ledger.
+     */
+    private final org.nc.nccasino.budget.WagerActionGuard wagerActionGuard =
+        new org.nc.nccasino.budget.WagerActionGuard();
     /** Transient handoff between ensureSplitHandCovered and claimPendingSplitCommitment for the sibling being created right now. */
     private org.nc.nccasino.budget.Commitment pendingSplitBudgetCommitment;
     /**
@@ -795,38 +802,44 @@ private void registerListener() {
      * {@link #claimPendingOpeningCommitment}, which happens once one
      * actually exists.
      */
+    /** The pregame opening-wager total already committed for {@code playerId}, before any new chip. */
+    private double pendingOpeningTotal(UUID playerId) {
+        return BlackjackWagerLedger.total(
+            pregameWagerIncrements.getOrDefault(playerId, new java.util.ArrayDeque<>()));
+    }
+
+    /** Stable action id for one opening-wager click, at the real inventory event boundary. */
+    private String openingWagerActionId(Player player, InventoryClickEvent event, String target, double amount) {
+        return org.nc.nccasino.budget.WagerActionIds.inventoryClick(
+            budgetSessionId, player, event, target, org.nc.nccasino.budget.Money.of(amount));
+    }
+
     private boolean ensureOpeningWagerCovered(
-        Player player, UUID playerId, double newTotalWager, double additionalStake) {
+        Player player, UUID playerId, double newTotalWager, double additionalStake, String wagerActionId) {
         org.nc.nccasino.budget.DealerBudgetService budget = plugin.getDealerBudgetService();
         if (budget == null) {
             return true;
         }
         org.nc.nccasino.budget.Exposure updatedExposure =
-            org.nc.nccasino.games.Blackjack.BlackjackLiability.openingHand(newTotalWager);
+            itemSafeExposure(org.nc.nccasino.games.Blackjack.BlackjackLiability.openingHand(newTotalWager));
 
         org.nc.nccasino.budget.Commitment existing = pendingOpeningBudgetCommitment.get(playerId);
         org.nc.nccasino.budget.Commitment result;
         if (existing == null) {
-            budgetRoundCounter++;
             Material material = plugin.getCurrency(internalName);
             org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
                 currencyMode, material == null ? null : material.name(), currencyName);
+            // wagerActionId is a stable identity for this exact click (table
+            // session, player, tick, slot/click semantics, target, amount) --
+            // a duplicated dispatch of the same click reproduces it, so the
+            // reservation opens exactly once no matter how many times this
+            // is called for that one real action.
             result = budget.reserve(
                 internalName, playerId, "Blackjack",
-                budgetSessionId + "-open-" + budgetRoundCounter, currency, updatedExposure);
+                wagerActionId + "-reservation", currency, updatedExposure);
         } else {
-            // A stable identity for this specific chip-add attempt: how many
-            // chips have already been committed to this seat's opening wager
-            // before this one. A successful commit always grows
-            // pregameWagerIncrements (see commitWager/commitWagerFundsAlreadyRemoved),
-            // so only a truly duplicated event (fired before either
-            // succeeds) reuses this id -- a legitimate additional chip whose
-            // own worst-case ceiling does not exceed the pending wager's
-            // existing maximum must still credit its stake exactly once.
-            int chipsSoFar = pregameWagerIncrements.getOrDefault(playerId, new java.util.ArrayDeque<>()).size();
-            String operationId = budgetSessionId + "-open-chip-" + chipsSoFar;
             result = budget.increase(
-                internalName, existing, updatedExposure, org.nc.nccasino.budget.Money.of(additionalStake), operationId);
+                internalName, existing, updatedExposure, org.nc.nccasino.budget.Money.of(additionalStake), wagerActionId);
         }
 
         if (!result.isAccepted()) {
@@ -846,7 +859,7 @@ private void registerListener() {
 
     /** Moves a fully-built opening-wager reservation onto the hand it was building toward, the moment that hand exists. */
     private void claimPendingOpeningCommitment(UUID playerId, BlackjackHand hand) {
-        org.nc.nccasino.budget.Commitment commitment = pendingOpeningBudgetCommitment.remove(playerId);
+        org.nc.nccasino.budget.Commitment commitment = pendingOpeningBudgetCommitment.get(playerId);
         if (commitment != null) {
             handBudgetCommitments.put(hand.getHandId(), commitment);
         }
@@ -863,7 +876,7 @@ private void registerListener() {
      *     different, larger number)
      */
     private void releasePendingOpeningBudgetCommitment(UUID playerId, double refundedStake) {
-        org.nc.nccasino.budget.Commitment commitment = pendingOpeningBudgetCommitment.remove(playerId);
+        org.nc.nccasino.budget.Commitment commitment = pendingOpeningBudgetCommitment.get(playerId);
         if (commitment == null) {
             return;
         }
@@ -871,7 +884,11 @@ private void registerListener() {
         if (budget == null) {
             return;
         }
-        budget.settle(internalName, commitment, org.nc.nccasino.budget.Money.of(refundedStake));
+        org.nc.nccasino.budget.Settlement result =
+            budget.settle(internalName, commitment, org.nc.nccasino.budget.Money.of(refundedStake));
+        if (result.status() != org.nc.nccasino.budget.Settlement.Status.FAILED) {
+            pendingOpeningBudgetCommitment.remove(playerId);
+        }
     }
 
     /**
@@ -885,8 +902,8 @@ private void registerListener() {
         if (budget == null) {
             return true;
         }
-        org.nc.nccasino.budget.Exposure exposure =
-            org.nc.nccasino.games.Blackjack.BlackjackLiability.splitHand(wager, split21IsBlackjack);
+        org.nc.nccasino.budget.Exposure exposure = itemSafeExposure(
+            org.nc.nccasino.games.Blackjack.BlackjackLiability.splitHand(wager, split21IsBlackjack));
         Material material = plugin.getCurrency(internalName);
         org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
             currencyMode, material == null ? null : material.name(), currencyName);
@@ -939,8 +956,8 @@ private void registerListener() {
             // budget service was absent when it was opened) -- nothing to grow.
             return true;
         }
-        org.nc.nccasino.budget.Exposure totalExposure =
-            org.nc.nccasino.games.Blackjack.BlackjackLiability.doubledHand(hand.getWager() + additionalStake);
+        org.nc.nccasino.budget.Exposure totalExposure = itemSafeExposure(
+            org.nc.nccasino.games.Blackjack.BlackjackLiability.doubledHand(hand.getWager() + additionalStake));
         // A hand can be doubled at most once (a doubled hand is fixed at
         // three cards), so hand id + "double" is already a unique, stable
         // identity for this exact action -- this guards a duplicated event
@@ -976,8 +993,8 @@ private void registerListener() {
         if (budget == null) {
             return true;
         }
-        org.nc.nccasino.budget.Exposure exposure =
-            org.nc.nccasino.games.Blackjack.BlackjackLiability.insurance(stake);
+        org.nc.nccasino.budget.Exposure exposure = itemSafeExposure(
+            org.nc.nccasino.games.Blackjack.BlackjackLiability.insurance(stake));
         Material material = plugin.getCurrency(internalName);
         org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
             currencyMode, material == null ? null : material.name(), currencyName);
@@ -1011,21 +1028,36 @@ private void registerListener() {
     /** Settles one hand's reservation and drops it, exactly once. */
     private void settleHandBudget(BlackjackHand hand, java.math.BigDecimal payout) {
         org.nc.nccasino.budget.DealerBudgetService budget = plugin.getDealerBudgetService();
-        org.nc.nccasino.budget.Commitment commitment = handBudgetCommitments.remove(hand.getHandId());
+        org.nc.nccasino.budget.Commitment commitment = handBudgetCommitments.get(hand.getHandId());
         if (budget == null || commitment == null) {
             return;
         }
-        budget.settle(internalName, commitment, payout);
+        org.nc.nccasino.budget.Settlement result = budget.settle(internalName, commitment, payout);
+        if (result.status() != org.nc.nccasino.budget.Settlement.Status.FAILED) {
+            handBudgetCommitments.remove(hand.getHandId());
+        }
     }
 
     /** Settles one player's insurance reservation and drops it, exactly once. */
     private void settleInsuranceBudget(UUID playerId, java.math.BigDecimal payout) {
         org.nc.nccasino.budget.DealerBudgetService budget = plugin.getDealerBudgetService();
-        org.nc.nccasino.budget.Commitment commitment = insuranceBudgetCommitments.remove(playerId);
+        org.nc.nccasino.budget.Commitment commitment = insuranceBudgetCommitments.get(playerId);
         if (budget == null || commitment == null) {
             return;
         }
-        budget.settle(internalName, commitment, payout);
+        org.nc.nccasino.budget.Settlement result = budget.settle(internalName, commitment, payout);
+        if (result.status() != org.nc.nccasino.budget.Settlement.Status.FAILED) {
+            insuranceBudgetCommitments.remove(playerId);
+        }
+    }
+
+    private org.nc.nccasino.budget.Exposure itemSafeExposure(
+        org.nc.nccasino.budget.Exposure raw
+    ) {
+        return org.nc.nccasino.budget.Exposure.of(
+            raw.stake(),
+            org.nc.nccasino.currency.MoneyHelper.reservationCeilingForMode(
+                raw.maxGrossPayout(), currencyMode));
     }
 
     /**
@@ -2585,10 +2617,18 @@ private void registerListener() {
      * too would debit the same amount a second time. See handleBetClick's
      * cursor-drag branch, which calls commitWagerFundsAlreadyRemoved directly.
      */
-    private WagerCommitResult commitWager(Player player, UUID playerId, int betSpotSlot, double amount) {
-        double newTotalWager = BlackjackWagerLedger.total(
-            pregameWagerIncrements.getOrDefault(playerId, new java.util.ArrayDeque<>())) + amount;
-        if (!ensureOpeningWagerCovered(player, playerId, newTotalWager, amount)) {
+    private WagerCommitResult commitWager(
+        Player player, UUID playerId, int betSpotSlot, double amount, String wagerActionId) {
+        // Gated here, not only at the inventory-click boundary, so the
+        // package-private test hook (commitWagerForTest) exercises the same
+        // at-most-once protection production traffic gets -- a replayed
+        // action id must stop before the debit, the ledger append, and the
+        // reservation growth, not just fail to double-reserve.
+        if (!wagerActionGuard.accept(wagerActionId)) {
+            return WagerCommitResult.TRANSACTION_FAILED;
+        }
+        double newTotalWager = pendingOpeningTotal(playerId) + amount;
+        if (!ensureOpeningWagerCovered(player, playerId, newTotalWager, amount, wagerActionId)) {
             return WagerCommitResult.TRANSACTION_FAILED;
         }
         if (!tryRemoveWager(player, amount)) {
@@ -2597,7 +2637,7 @@ private void registerListener() {
             // committed. The reservation above already grew to cover this
             // chip and credited its stake as if paid; undo exactly that
             // growth rather than leaving a fictional credit behind.
-            rollbackOpeningWagerGrowth(playerId, newTotalWager, amount);
+            rollbackOpeningWagerGrowth(playerId, newTotalWager, amount, wagerActionId + "-rollback");
             switch (plugin.getPreferences(playerId).getMessageSetting()) {
                 case NONE:
                     break;
@@ -2615,17 +2655,11 @@ private void registerListener() {
 
     /**
      * Undoes the hypothetical growth {@link #ensureOpeningWagerCovered}
-     * applied for a chip whose debit then failed: refunds the whole amount
-     * currently credited to the pending opening reservation ({@code
-     * newTotalWager}, which includes both whatever was legitimately staked
-     * before this chip and this chip's own fictional credit) and, if
-     * anything was legitimately staked before this chip, immediately
-     * re-reserves fresh for exactly that. See BaccaratClient's
-     * {@code shrinkPortfolioReservationTo} for the full reasoning behind this
-     * refund-then-reopen pattern -- there is no primitive for debiting only
-     * part of a reservation without releasing it.
+     * applied for a chip whose debit then failed. The remaining wager and the
+     * removed fictional credit are reconciled in one persisted transaction.
      */
-    private void rollbackOpeningWagerGrowth(UUID playerId, double newTotalWager, double failedAmount) {
+    private void rollbackOpeningWagerGrowth(
+        UUID playerId, double newTotalWager, double failedAmount, String operationId) {
         org.nc.nccasino.budget.DealerBudgetService budget = plugin.getDealerBudgetService();
         org.nc.nccasino.budget.Commitment commitment = pendingOpeningBudgetCommitment.get(playerId);
         if (budget == null || commitment == null || commitment.unlimited()) {
@@ -2634,27 +2668,29 @@ private void registerListener() {
         }
         double previousTotal = newTotalWager - failedAmount;
 
-        budget.refund(internalName, commitment, org.nc.nccasino.budget.Money.of(newTotalWager));
-        pendingOpeningBudgetCommitment.remove(playerId);
-
-        if (previousTotal > 0) {
-            org.nc.nccasino.budget.Exposure exposure =
-                org.nc.nccasino.games.Blackjack.BlackjackLiability.openingHand(previousTotal);
-            Material material = plugin.getCurrency(internalName);
-            org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
-                currencyMode, material == null ? null : material.name(), currencyName);
-            budgetRoundCounter++;
-            org.nc.nccasino.budget.Commitment reopened = budget.reserve(
-                internalName, playerId, "Blackjack",
-                budgetSessionId + "-open-" + budgetRoundCounter, currency, exposure);
-            if (reopened.isAccepted()) {
-                pendingOpeningBudgetCommitment.put(playerId, reopened);
+        org.nc.nccasino.budget.Exposure exposure = previousTotal > 0
+            ? org.nc.nccasino.games.Blackjack.BlackjackLiability.openingHand(previousTotal)
+            : org.nc.nccasino.budget.Exposure.none();
+        exposure = org.nc.nccasino.budget.Exposure.of(
+            exposure.stake(),
+            org.nc.nccasino.currency.MoneyHelper.reservationCeilingForMode(
+                exposure.maxGrossPayout(), currencyMode));
+        org.nc.nccasino.budget.Commitment adjusted = budget.reduce(
+            internalName,
+            commitment,
+            exposure,
+            org.nc.nccasino.budget.Money.of(failedAmount),
+            operationId);
+        if (adjusted.isAccepted()) {
+            if (adjusted.requiresSettlement()) {
+                pendingOpeningBudgetCommitment.put(playerId, adjusted);
+            } else {
+                pendingOpeningBudgetCommitment.remove(playerId);
             }
-            // If re-reserving the already-legitimate total is somehow
-            // refused (it should not be -- it was already covered a moment
-            // ago), the pending commitment is left absent; the next
-            // successful chip's ensureOpeningWagerCovered call opens a fresh
-            // one from scratch.
+        } else {
+            plugin.getLogger().severe("[NCCasino] Blackjack could not persist an atomic"
+                + " dealer-budget reduction for '" + internalName + "'. The original"
+                + " reservation was retained for reconciliation.");
         }
     }
 
@@ -6663,9 +6699,10 @@ private void removePlayerData(UUID playerId) {
                 return;
             }
             double amount = heldItem.getAmount();
-            double newTotalWager = BlackjackWagerLedger.total(
-                pregameWagerIncrements.getOrDefault(playerId, new java.util.ArrayDeque<>())) + amount;
-            if (!ensureOpeningWagerCovered(player, playerId, newTotalWager, amount)) {
+            double newTotalWager = pendingOpeningTotal(playerId) + amount;
+            String wagerActionId = openingWagerActionId(player, event, "blackjack-open-cursor", amount);
+            if (!wagerActionGuard.accept(wagerActionId)
+                || !ensureOpeningWagerCovered(player, playerId, newTotalWager, amount, wagerActionId)) {
                 return;
             }
             player.setItemOnCursor(null); // Removes the stack from the cursor -- this IS the debit for a cursor-drag commit
@@ -6692,7 +6729,8 @@ private void removePlayerData(UUID playerId) {
         // resolveSelectionAmount/BlackjackWagerSelection's own doc).
         double resolvedAmount = selection == null ? 0.0 : resolveSelectionAmount(player, selection);
         if (selection != null && resolvedAmount > 0 && hasEnoughWager(player, resolvedAmount)) {
-            WagerCommitResult result = commitWager(player, playerId, betSpotSlot, resolvedAmount);
+            String wagerActionId = openingWagerActionId(player, event, "blackjack-open", resolvedAmount);
+            WagerCommitResult result = commitWager(player, playerId, betSpotSlot, resolvedAmount, wagerActionId);
             // The selection itself is a persistent tool, per the table
             // redesign plan: neither a successful commit, a transaction
             // failure, nor an insurance-incompatible rejection ever
@@ -6837,7 +6875,9 @@ private void removePlayerData(UUID playerId) {
             // refund-then-reopen reconciliation a failed chip debit uses,
             // since the math is identical: everything currently credited is
             // refunded, then re-reserved for exactly what is still staked).
-            rollbackOpeningWagerGrowth(playerId, BlackjackWagerLedger.total(increments) + lastBet, lastBet);
+            rollbackOpeningWagerGrowth(
+                playerId, BlackjackWagerLedger.total(increments) + lastBet, lastBet,
+                budgetSessionId + "-undo-last-" + java.util.UUID.randomUUID());
 
              if (SoundHelper.getSoundSafely("ui.toast.in", player) != null)player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
              if (SoundHelper.getSoundSafely("ui.toast.out", player) != null)player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
@@ -8755,13 +8795,8 @@ private double payOut(
 }
 
 private int applyProbabilisticRounding(double value) {
-    int integerPart = (int) value;
-    double fractionalPart = value - integerPart;
-    Random random = new Random();
-    if (random.nextDouble() <= fractionalPart) {
-        return integerPart + 1; // Round up based on probability
-    }
-    return integerPart; // Otherwise, keep it rounded down
+    return org.nc.nccasino.currency.MoneyHelper.probabilisticItemAmount(
+        value, java.util.concurrent.ThreadLocalRandom.current().nextDouble());
 }
 
 private RoundEndSnapshot captureRoundEndSnapshot() {
@@ -9876,13 +9911,24 @@ public void delete() {
 
     /** Commits {@code amount} as {@code player}'s pregame wager via the real commitWager path -- test setup only; {@code player} must already be seated. */
     WagerCommitResult commitWagerForTest(Player player, double amount) {
+        return commitWagerForTest(player, amount, java.util.UUID.randomUUID().toString());
+    }
+
+    /**
+     * Same as {@link #commitWagerForTest(Player, double)} but with an
+     * explicit action id, so a test can call this twice with the same id to
+     * exercise replay-safety directly -- production paths never call this
+     * overload; they generate their id from the real inventory click event
+     * (see {@link #handleBetClick}).
+     */
+    WagerCommitResult commitWagerForTest(Player player, double amount, String explicitWagerActionId) {
         UUID playerId = player.getUniqueId();
         Integer seatSlot = playerSeats.get(playerId);
         if (seatSlot == null) {
             throw new IllegalStateException("commitWagerForTest requires an already-seated player");
         }
         int betSpotSlot = BlackjackSlotLayout.betSlipSlot(seatSlot);
-        return commitWager(player, playerId, betSpotSlot, amount);
+        return commitWager(player, playerId, betSpotSlot, amount, explicitWagerActionId);
     }
 
     void beginStartTransitionForTest() {

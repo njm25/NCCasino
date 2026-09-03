@@ -1,84 +1,99 @@
 package org.nc.nccasino.games.Slots;
 
 /**
- * Produces the immutable final result of a spin. Each cell is sampled
- * independently from its reel's weight table.
+ * Produces the immutable, authoritative result of a spin: exactly one
+ * uniformly random stop drawn per reel from that reel's circular
+ * {@link SlotsReelStrip}, never independent per-cell sampling.
  *
- * <p>Weights are looked up per <em>column</em>, which is what makes the
- * machine's return exactly derivable: every payline visits every column once,
- * so every line shares one run-length distribution and the configured house
- * edge holds for any line count or machine width. It also leaves room for a
- * future per-reel weighting pass (making the rightmost reel stingier is the
- * classic tension lever) without disturbing that property -- only the numbers
- * in {@link #reelWeight} would change.
- *
- * <p>Sampling weights come from a {@link SlotsVariance}, never from
- * {@link SlotsSymbol} directly, so the symbols actually rolled always match
- * the probabilities {@link SlotsPaytable} priced the payout table against --
- * a machine set to a rarer-hitting variance really does hit less often, not
- * just display a paytable that claims it does.
+ * <p>A uniformly selected stop on a circular strip gives every fixed vertical
+ * offset the strip's marginal symbol distribution. With independent stops per
+ * reel and identical symbol counts per reel, every fixed payline still has the
+ * same left-to-right run-length distribution regardless of its shape or the
+ * machine's visible height -- which is what makes the configured house edge
+ * ({@link SlotsPaytable}) hold for any line count, shape, or height. There is
+ * exactly one production path to a paid outcome: this one. No code in this
+ * package independently samples a grid cell by cell.
  */
 public final class SlotsSpinGenerator {
 
     private SlotsSpinGenerator() {
     }
 
-    /** {@link #generate(int, SlotsRandomSource, SlotsVariance)} at {@link SlotsVariance#BALANCED}. */
-    public static SlotsOutcome generate(int columns, SlotsRandomSource random) {
-        return generate(columns, random, SlotsVariance.BALANCED);
+    /**
+     * The redesigned generation model: one uniform stop drawn per reel from
+     * that reel's {@link SlotsReelStrip}, rather than sampling every visible
+     * cell independently. Retains the exact stops alongside the derived
+     * outcome, since the committed stop -- not the derived grid -- is the
+     * authoritative record a replay/audit must reconstruct from.
+     */
+    public record StripResult(int[] stops, SlotsOutcome outcome) {
+        public StripResult {
+            stops = stops.clone();
+        }
+
+        @Override
+        public int[] stops() {
+            return stops.clone();
+        }
     }
 
-    public static SlotsOutcome generate(int columns, SlotsRandomSource random, SlotsVariance variance) {
+    /**
+     * Draws exactly one stop per reel (columns draws total) and derives the
+     * visible grid from each reel's strip window centred on that stop.
+     */
+    public static StripResult generateFromStrips(
+        int columns, int visibleRows, SlotsRandomSource random, SlotsVariance variance) {
+
         SlotsGeometry.requireSupportedColumnCount(columns);
+        SlotsGeometry.requireSupportedRowCount(visibleRows);
         if (random == null) {
             throw new IllegalArgumentException("random must not be null");
         }
         SlotsVariance effective = variance == null ? SlotsVariance.BALANCED : variance;
-        SlotsSymbol[][] grid = new SlotsSymbol[SlotsGeometry.ROWS][columns];
-        for (int row = 0; row < SlotsGeometry.ROWS; row++) {
-            for (int col = 0; col < columns; col++) {
-                grid[row][col] = sampleSymbol(col, random, effective);
+
+        int[] stops = new int[columns];
+        for (int col = 0; col < columns; col++) {
+            stops[col] = random.nextInt(SlotsReelStrip.SIZE);
+        }
+        return new StripResult(stops, outcomeFromStops(stops, visibleRows, effective));
+    }
+
+    /**
+     * Rebuilds the exact visible outcome for already-committed stops, without
+     * drawing any new randomness -- the reconstruction path a replay/audit or
+     * a reconnecting client uses.
+     *
+     * @throws IllegalArgumentException if {@code stops} is null/empty, the
+     *     geometry is unsupported, or any stop is outside
+     *     {@code [0, SlotsReelStrip.SIZE)} -- reconstruction is a strict
+     *     boundary: an invalid committed stop must never be silently wrapped
+     *     by {@link SlotsReelStrip#symbolAt}'s circular indexing, which
+     *     remains deliberately permissive for its own normal (in-bounds)
+     *     circular use
+     */
+    public static SlotsOutcome outcomeFromStops(int[] stops, int visibleRows, SlotsVariance variance) {
+        if (stops == null || stops.length == 0) {
+            throw new IllegalArgumentException("stops must not be empty");
+        }
+        int columns = stops.length;
+        SlotsGeometry.requireSupportedColumnCount(columns);
+        SlotsGeometry.requireSupportedRowCount(visibleRows);
+        for (int stop : stops) {
+            if (stop < 0 || stop >= SlotsReelStrip.SIZE) {
+                throw new IllegalArgumentException(
+                    "stop must be in [0, " + SlotsReelStrip.SIZE + "); got " + stop);
+            }
+        }
+        SlotsVariance effective = variance == null ? SlotsVariance.BALANCED : variance;
+
+        SlotsSymbol[][] grid = new SlotsSymbol[visibleRows][columns];
+        for (int col = 0; col < columns; col++) {
+            SlotsReelStrip strip = SlotsReelStrip.forReel(effective, col);
+            SlotsSymbol[] window = strip.window(stops[col], visibleRows);
+            for (int row = 0; row < visibleRows; row++) {
+                grid[row][col] = window[row];
             }
         }
         return new SlotsOutcome(grid);
-    }
-
-    /**
-     * This reel's weight for a symbol under one variance. Currently uniform
-     * across reels; kept as a seam so per-reel weighting is a one-method
-     * change rather than a restructure.
-     */
-    static int reelWeight(SlotsSymbol symbol, int col) {
-        return reelWeight(symbol, col, SlotsVariance.BALANCED);
-    }
-
-    static int reelWeight(SlotsSymbol symbol, int col, SlotsVariance variance) {
-        return variance.weight(symbol);
-    }
-
-    /**
-     * Weighted single-symbol sample via cumulative-weight bucketing over a
-     * uniform draw in {@code [0, TOTAL_WEIGHT)}. Boundary values (the exact
-     * cumulative thresholds) are covered explicitly in
-     * {@code SlotsSpinGeneratorTest} to pin down which symbol owns each edge.
-     */
-    static SlotsSymbol sampleSymbol(int col, SlotsRandomSource random) {
-        return sampleSymbol(col, random, SlotsVariance.BALANCED);
-    }
-
-    static SlotsSymbol sampleSymbol(int col, SlotsRandomSource random, SlotsVariance variance) {
-        int roll = random.nextInt(SlotsSymbol.TOTAL_WEIGHT);
-        int cumulative = 0;
-        for (SlotsSymbol symbol : SlotsSymbol.values()) {
-            cumulative += reelWeight(symbol, col, variance);
-            if (roll < cumulative) {
-                return symbol;
-            }
-        }
-        // Unreachable while a variance's weights sum to TOTAL_WEIGHT (enforced
-        // in SlotsVariance's static initializer); guards against future drift
-        // instead of returning null.
-        SlotsSymbol[] values = SlotsSymbol.values();
-        return values[values.length - 1];
     }
 }
