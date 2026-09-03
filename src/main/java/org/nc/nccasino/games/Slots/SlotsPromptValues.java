@@ -7,11 +7,13 @@ import java.util.Locale;
  * The pure parsers behind every Slots chat prompt, so the accepted syntax is
  * one testable definition rather than a per-prompt regex.
  *
- * <p>Every prompt shares the literal keywords {@code cancel} (abandon the
- * prompt) and, where meaningful, {@code unlimited} or {@code off}. They are
- * matched case-insensitively and are always checked before the numeric
- * parse, so a locale that renders numbers unusually can never make
- * {@code cancel} unreachable.
+ * <p>Every prompt shares the literal keyword {@code cancel} (abandon the
+ * prompt, changing nothing) and, where meaningful, the {@code -1} unbounded
+ * sentinel or the literal {@code off}. They are matched case-insensitively
+ * and are always checked before the numeric parse, so a locale that renders
+ * numbers unusually can never make {@code cancel} unreachable -- and so
+ * {@code -1} is read as the sentinel rather than falling through to the
+ * numeric parse, which rejects non-positive values.
  *
  * <p>Numbers are parsed defensively rather than with a bare
  * {@code Long.parseLong}/{@code Double.parseDouble}: input is length-capped
@@ -23,8 +25,15 @@ public final class SlotsPromptValues {
 
     /** Abandons any prompt. */
     public static final String CANCEL = "cancel";
-    /** Spin Limit only: no cap on how many spins one batch may commit. */
-    public static final String UNLIMITED = "unlimited";
+    /**
+     * Spin Limit only: no cap on how many spins one batch may commit. This is
+     * the {@code -1} sentinel the rest of the plugin already prompts for --
+     * Blackjack's max hands and the Rock Paper Scissors / Coin Flip max chain
+     * all read the same way -- so an unbounded figure is typed identically
+     * everywhere rather than being a word here and a number there. The value
+     * is still displayed as "Unlimited"; only the input is the sentinel.
+     */
+    public static final String UNLIMITED = "-1";
     /** Big-Win Multiplier, Profit Target, Loss Limit: switch the stop condition off. */
     public static final String OFF = "off";
     /** Profile naming only: replace the existing profile with the same name. */
@@ -75,9 +84,9 @@ public final class SlotsPromptValues {
     }
 
     /**
-     * Spin Limit: any positive whole number, {@code unlimited}, or
-     * {@code cancel}. There is deliberately no small UI maximum -- only the
-     * storage range itself bounds the value.
+     * Spin Limit: any positive whole number, the {@code -1} unbounded
+     * sentinel, or {@code cancel}. There is deliberately no small UI
+     * maximum -- only the storage range itself bounds the value.
      */
     public static SpinLimit parseSpinLimit(String input) {
         if (input == null) {

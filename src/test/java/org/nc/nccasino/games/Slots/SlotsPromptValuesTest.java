@@ -51,10 +51,19 @@ class SlotsPromptValuesTest {
     }
 
     @Test
-    void spinLimitAcceptsTheUnlimitedKeyword() {
-        SlotsPromptValues.SpinLimit parsed = SlotsPromptValues.parseSpinLimit("Unlimited");
+    void spinLimitAcceptsTheMinusOneUnboundedSentinel() {
+        // The same sentinel Blackjack max hands and the RPS/Coin Flip max
+        // chain already prompt for, so an unbounded figure is typed the same
+        // way everywhere in the plugin.
+        SlotsPromptValues.SpinLimit parsed = SlotsPromptValues.parseSpinLimit("-1");
         assertEquals(SlotsPromptValues.Kind.UNLIMITED, parsed.kind());
         assertEquals(SlotsAutoSpinSettings.UNLIMITED_SPINS, parsed.value());
+        assertEquals(SlotsPromptValues.Kind.UNLIMITED, SlotsPromptValues.parseSpinLimit("  -1  ").kind());
+    }
+
+    @Test
+    void spinLimitNoLongerAcceptsTheOldUnlimitedWord() {
+        assertEquals(SlotsPromptValues.Kind.INVALID, SlotsPromptValues.parseSpinLimit("unlimited").kind());
     }
 
     @Test
@@ -140,7 +149,7 @@ class SlotsPromptValuesTest {
     @Test
     void theSharedKeywordsAreExactlyTheOnesTheInstructionsAdvertise() {
         assertEquals("cancel", SlotsPromptValues.CANCEL);
-        assertEquals("unlimited", SlotsPromptValues.UNLIMITED);
+        assertEquals("-1", SlotsPromptValues.UNLIMITED);
         assertEquals("off", SlotsPromptValues.OFF);
         assertEquals("overwrite", SlotsPromptValues.OVERWRITE);
     }

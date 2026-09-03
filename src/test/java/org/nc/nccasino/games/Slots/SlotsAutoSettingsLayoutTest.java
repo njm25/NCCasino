@@ -23,11 +23,10 @@ class SlotsAutoSettingsLayoutTest {
 
     @Test
     void everyEntrySitsOnItsRequiredSlot() {
-        assertEquals(4, SlotsAutoSettingsLayout.OVERVIEW_SLOT);
+        assertEquals(4, SlotsAutoSettingsLayout.CLOCK_SLOT);
         assertEquals(11, SlotsAutoSettingsLayout.SPIN_LIMIT_SLOT);
         assertEquals(13, SlotsAutoSettingsLayout.STOP_ON_ANY_WIN_SLOT);
         assertEquals(15, SlotsAutoSettingsLayout.BIG_WIN_SLOT);
-        assertEquals(22, SlotsAutoSettingsLayout.START_SLOT);
         assertEquals(29, SlotsAutoSettingsLayout.PROFIT_TARGET_SLOT);
         assertEquals(31, SlotsAutoSettingsLayout.LOSS_LIMIT_SLOT);
         assertEquals(33, SlotsAutoSettingsLayout.RESET_SLOT);
@@ -35,11 +34,11 @@ class SlotsAutoSettingsLayoutTest {
 
     @Test
     void everySlotResolvesBackToItsOwnEntry() {
-        assertEquals(SlotsAutoSettingsLayout.Entry.OVERVIEW, SlotsAutoSettingsLayout.entryAt(4));
+        assertEquals(SlotsAutoSettingsLayout.Entry.CLOCK, SlotsAutoSettingsLayout.entryAt(4));
         assertEquals(SlotsAutoSettingsLayout.Entry.SPIN_LIMIT, SlotsAutoSettingsLayout.entryAt(11));
         assertEquals(SlotsAutoSettingsLayout.Entry.STOP_ON_ANY_WIN, SlotsAutoSettingsLayout.entryAt(13));
         assertEquals(SlotsAutoSettingsLayout.Entry.BIG_WIN_MULTIPLIER, SlotsAutoSettingsLayout.entryAt(15));
-        assertEquals(SlotsAutoSettingsLayout.Entry.START, SlotsAutoSettingsLayout.entryAt(22));
+        assertNull(SlotsAutoSettingsLayout.entryAt(22), "the standalone Start lever is gone");
         assertEquals(SlotsAutoSettingsLayout.Entry.PROFIT_TARGET, SlotsAutoSettingsLayout.entryAt(29));
         assertEquals(SlotsAutoSettingsLayout.Entry.LOSS_LIMIT, SlotsAutoSettingsLayout.entryAt(31));
         assertEquals(SlotsAutoSettingsLayout.Entry.RESET, SlotsAutoSettingsLayout.entryAt(33));
@@ -55,7 +54,7 @@ class SlotsAutoSettingsLayoutTest {
             assertTrue(entries.add(entry), entry + " is placed twice");
         }
         assertEquals(SlotsAutoSettingsLayout.Entry.values().length, entries.size());
-        assertEquals(8, slots.size());
+        assertEquals(7, slots.size());
     }
 
     @Test
@@ -71,10 +70,9 @@ class SlotsAutoSettingsLayoutTest {
     void theLayoutIsSymmetricAboutTheCanvasCentreColumn() {
         int width = SlotsGeometry.INVENTORY_WIDTH;
         int centreColumn = width / 2;
-        // Overview and Start are centred; the six editable entries mirror in
-        // pairs about the same column.
-        assertEquals(centreColumn, SlotsAutoSettingsLayout.OVERVIEW_SLOT % width);
-        assertEquals(centreColumn, SlotsAutoSettingsLayout.START_SLOT % width);
+        // The Clock is centred; the six editable entries mirror in pairs
+        // about the same column.
+        assertEquals(centreColumn, SlotsAutoSettingsLayout.CLOCK_SLOT % width);
         assertEquals(centreColumn, SlotsAutoSettingsLayout.STOP_ON_ANY_WIN_SLOT % width);
         assertEquals(centreColumn, SlotsAutoSettingsLayout.LOSS_LIMIT_SLOT % width);
 
@@ -83,14 +81,14 @@ class SlotsAutoSettingsLayoutTest {
         assertEquals(width - 1 - (SlotsAutoSettingsLayout.PROFIT_TARGET_SLOT % width),
             SlotsAutoSettingsLayout.RESET_SLOT % width);
 
-        // The three-entry rows share a row each, and Start sits between them.
+        // The three-entry rows share a row each, below the Clock.
         assertEquals(SlotsAutoSettingsLayout.SPIN_LIMIT_SLOT / width,
             SlotsAutoSettingsLayout.BIG_WIN_SLOT / width);
         assertEquals(SlotsAutoSettingsLayout.PROFIT_TARGET_SLOT / width,
             SlotsAutoSettingsLayout.RESET_SLOT / width);
+        assertTrue(SlotsAutoSettingsLayout.CLOCK_SLOT / width
+            < SlotsAutoSettingsLayout.SPIN_LIMIT_SLOT / width);
         assertTrue(SlotsAutoSettingsLayout.SPIN_LIMIT_SLOT / width
-            < SlotsAutoSettingsLayout.START_SLOT / width);
-        assertTrue(SlotsAutoSettingsLayout.START_SLOT / width
             < SlotsAutoSettingsLayout.PROFIT_TARGET_SLOT / width);
     }
 
@@ -109,7 +107,7 @@ class SlotsAutoSettingsLayoutTest {
             }
         }
         assertEquals(CANVAS_SLOTS - entrySlots.size(), backdrops);
-        assertEquals(37, backdrops);
+        assertEquals(38, backdrops);
     }
 
     @Test
@@ -121,14 +119,20 @@ class SlotsAutoSettingsLayoutTest {
     }
 
     @Test
-    void theBackdropIsNeverAReelCellMaterial() {
-        // A backdrop that happened to be the reel bay's own material would
-        // read as an empty reel window rather than as a menu background.
-        assertNotEquals(SlotsControlPresentation.Role.NEUTRAL_CELL.material(),
-            SlotsControlPresentation.Role.AUTO_SETTINGS_BACKDROP.material());
-        for (SlotsSymbol symbol : SlotsSymbol.values()) {
-            assertNotEquals(symbol.material(),
-                SlotsControlPresentation.Role.AUTO_SETTINGS_BACKDROP.material());
+    void theBackdropIsTheMachinesOwnRainbowHousingAndNeverAReelCell() {
+        // The menu is painted over the cabinet's rainbow rather than a flat
+        // grey sheet, but a backdrop cell must still never be mistakable for
+        // the reel bay or for a rolled symbol.
+        for (int slot = 0; slot < CANVAS_SLOTS; slot++) {
+            if (!SlotsAutoSettingsLayout.isBackdrop(slot)) {
+                continue;
+            }
+            Material backdrop = SlotsRainbowHousing.materialForSlot(slot);
+            assertNotEquals(SlotsControlPresentation.Role.NEUTRAL_CELL.material(), backdrop,
+                "slot " + slot + " would read as an empty reel window");
+            for (SlotsSymbol symbol : SlotsSymbol.values()) {
+                assertNotEquals(symbol.material(), backdrop, "slot " + slot);
+            }
         }
     }
 

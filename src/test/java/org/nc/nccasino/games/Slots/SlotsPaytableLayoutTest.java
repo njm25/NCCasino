@@ -206,20 +206,20 @@ class SlotsPaytableLayoutTest {
     }
 
     @Test
-    void theBlankSymbolNeverAppearsOnACardAtAnyRunLength() {
-        // The Paytable explains Blank in its own explanatory card instead --
+    void theSeedsSymbolNeverAppearsOnACardAtAnyRunLength() {
+        // The Paytable explains Seeds in its own explanatory card instead --
         // it is a real weighted strip symbol that pays nothing and ends any
         // run it lands in.
-        assertEquals(0.0, SlotsSymbol.BLANK.payWeight(), 1e-12);
-        assertEquals(0, SlotsSymbol.BLANK.minimumRun());
+        assertEquals(0.0, SlotsSymbol.SEEDS.payWeight(), 1e-12);
+        assertEquals(0, SlotsSymbol.SEEDS.minimumRun());
         for (SlotsSymbol symbol : SlotsSymbol.payingSymbols()) {
-            assertFalse(symbol == SlotsSymbol.BLANK, "Blank must never be a paying symbol");
+            assertFalse(symbol == SlotsSymbol.SEEDS, "Seeds must never be a paying symbol");
         }
         for (int columns : SlotsGeometry.supportedColumnCounts()) {
             SlotsPaytable paytable =
                 SlotsPaytable.forConfig(columns, SlotsPaytable.DEFAULT_HOUSE_EDGE, SlotsVariance.BALANCED);
             for (int run = 1; run <= columns; run++) {
-                assertEquals(0.0, paytable.multiplier(SlotsSymbol.BLANK, run), 1e-12);
+                assertEquals(0.0, paytable.multiplier(SlotsSymbol.SEEDS, run), 1e-12);
             }
         }
     }

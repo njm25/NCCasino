@@ -15,7 +15,7 @@ import java.util.Map;
  * <ul>
  *   <li>{@link #weights()} -- each symbol's sampling weight, which sets hit
  *       frequency directly. A level with more weight on paying symbols and
- *       less on {@link SlotsSymbol#BLANK} hits more often.
+ *       less on {@link SlotsSymbol#SEEDS} hits more often.
  *   <li>{@link #lengthBase()} -- how much more valuable each additional
  *       matched reel is (the paytable's own {@code shape()} exponent base).
  *       A higher value concentrates return into full-width runs, which
@@ -54,12 +54,12 @@ public enum SlotsVariance {
         this.weights = weights;
     }
 
-    /** In {@link SlotsSymbol} declaration order: BLANK, CHERRY, LEMON, BELL, DIAMOND, SEVEN. */
+    /** In {@link SlotsSymbol} declaration order: SEEDS, CHERRY, LEMON, BELL, DIAMOND, SEVEN. */
     private static Map<SlotsSymbol, Integer> weights(
-        int blank, int cherry, int lemon, int bell, int diamond, int seven) {
+        int seeds, int cherry, int lemon, int bell, int diamond, int seven) {
 
         Map<SlotsSymbol, Integer> map = new EnumMap<>(SlotsSymbol.class);
-        map.put(SlotsSymbol.BLANK, blank);
+        map.put(SlotsSymbol.SEEDS, seeds);
         map.put(SlotsSymbol.CHERRY, cherry);
         map.put(SlotsSymbol.LEMON, lemon);
         map.put(SlotsSymbol.BELL, bell);

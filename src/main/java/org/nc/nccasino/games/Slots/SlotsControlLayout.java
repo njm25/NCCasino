@@ -26,15 +26,18 @@ import org.bukkit.event.inventory.ClickType;
  * of the contract:
  *
  * <ol>
- *   <li>the Clock's shift-right-click is recognized <em>before</em> the
+ *   <li>the Clock's shift-left-click is recognized <em>before</em> the
  *   ordinary-click gate, because that gate would otherwise swallow the only
- *   shift-modified action the UI has;
+ *   shift-modified action the UI has -- both on the bottom row, where it
+ *   opens Auto Spin Settings, and on that menu's own canvas Clock, where the
+ *   same gesture closes it again;
  *   <li>anything that is not an ordinary left/right click is then dropped;
  *   <li>Back to Game owns its slot outright in whichever modal view is open,
  *   ahead of that slot's ordinary Game View behaviour;
  *   <li>canvas clicks are handed to the open view;
- *   <li>in a modal editor every bottom control except Exit is inert, so a
- *   stray click can never change the game behind the open menu.
+ *   <li>in a modal editor the bottom controls are inert except where
+ *   {@link #survivesModal} says otherwise, so a stray click can never change
+ *   the game behind the open menu.
  * </ol>
  */
 public final class SlotsControlLayout {
@@ -67,7 +70,7 @@ public final class SlotsControlLayout {
         CANVAS,
         /** The Back to Game substitution the open modal view owns. */
         BACK_TO_GAME,
-        /** Shift-right-click on the Clock: open Auto Spin Settings. */
+        /** Shift-left-click on the Clock: open Auto Spin Settings. */
         AUTO_SETTINGS,
         /** A bottom control that is deliberately inert while a modal editor is open. */
         MODAL_LOCKED,
@@ -113,9 +116,21 @@ public final class SlotsControlLayout {
         SlotsUiView effective = view == null ? SlotsUiView.GAME : view;
 
         if (slot == CLOCK_SLOT
-            && clickType == ClickType.SHIFT_RIGHT
+            && clickType == ClickType.SHIFT_LEFT
             && effective.allowsConfigurationChanges()) {
             return new Route(Target.AUTO_SETTINGS, 0);
+        }
+        // Inside Auto Spin Settings the same shift-left closes the menu again,
+        // so the gesture is a symmetric toggle rather than something the
+        // player has to unlearn once inside. It works on either Clock -- the
+        // menu's own canvas copy, and the bottom-row slot the menu has turned
+        // into Back to Game -- because both read as "the Clock" to the player,
+        // and a gesture that opened the menu should never dead-end on one of
+        // the two places it plainly applies.
+        if (effective == SlotsUiView.AUTO_SETTINGS
+            && clickType == ClickType.SHIFT_LEFT
+            && (slot == SlotsAutoSettingsLayout.CLOCK_SLOT || slot == CLOCK_SLOT)) {
+            return new Route(Target.BACK_TO_GAME, 0);
         }
         if (!SlotsClickClassifier.isOrdinaryClick(clickType)) {
             return NO_ACTION;
@@ -133,9 +148,42 @@ public final class SlotsControlLayout {
         if (target == Target.NONE) {
             return NO_ACTION;
         }
-        if (!effective.allowsConfigurationChanges() && slot != EXIT_SLOT) {
+        if (!effective.allowsConfigurationChanges() && !survivesModal(effective, target)) {
             return new Route(Target.MODAL_LOCKED, 0);
         }
         return new Route(target, SlotsClickClassifier.cycleDirection(clickType));
+    }
+
+    /**
+     * Whether {@code target} stays live while the modal {@code view} owns the
+     * canvas. Exit always does, from anywhere.
+     *
+     * <p>Auto Spin Settings additionally keeps every bottom control but the
+     * Spin lever: the four configuration controls apply their change and hand
+     * the player straight back to the game view, and Paytable/Profiles open
+     * their own view directly, so nothing has to be backed out of first. The
+     * Spin lever alone stays inert -- it commits a real wager, which is
+     * exactly the accident a modal editor must not permit -- while still
+     * rendering its ordinary financial summary, so it reads as the reference
+     * card it has become in that view rather than as a dead control.
+     *
+     * <p>Profiles stays strict: it is a list of destructive load/delete
+     * actions, and nothing about it invites reaching past it.
+     */
+    private static boolean survivesModal(SlotsUiView view, Target target) {
+        if (target == Target.EXIT) {
+            return true;
+        }
+        return view == SlotsUiView.AUTO_SETTINGS && target != Target.SPIN;
+    }
+
+    /**
+     * Whether an ordinary click on {@code slot} is a deliberate no-op in
+     * {@code view} -- the one predicate the renderer dims by, resolved through
+     * {@link #route} itself so what looks inert and what behaves inert can
+     * never drift apart.
+     */
+    public static boolean isInertIn(SlotsUiView view, int slot) {
+        return route(view, slot, ClickType.LEFT).target() == Target.MODAL_LOCKED;
     }
 }

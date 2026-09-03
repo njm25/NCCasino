@@ -164,7 +164,7 @@ class SlotsVarianceTest {
 
     @Test
     void theReelStripReallyReflectsTheRequestedVarianceNotSlotsSymbolsFixedWeights() {
-        // HIGH_ROLLER weights BLANK far higher than BALANCED. If both reels'
+        // HIGH_ROLLER weights SEEDS far higher than BALANCED. If both reels'
         // strips agreed everywhere, generation would not really be
         // consulting the passed-in variance -- some stop must land on a
         // different symbol between the two.
@@ -178,8 +178,8 @@ class SlotsVarianceTest {
             }
         }
         assertTrue(sawDivergence, "different variances must produce different strip compositions");
-        assertEquals(SlotsVariance.HIGH_ROLLER.weight(SlotsSymbol.BLANK), highRoller.countOf(SlotsSymbol.BLANK));
-        assertEquals(SlotsVariance.BALANCED.weight(SlotsSymbol.BLANK), balanced.countOf(SlotsSymbol.BLANK));
+        assertEquals(SlotsVariance.HIGH_ROLLER.weight(SlotsSymbol.SEEDS), highRoller.countOf(SlotsSymbol.SEEDS));
+        assertEquals(SlotsVariance.BALANCED.weight(SlotsSymbol.SEEDS), balanced.countOf(SlotsSymbol.SEEDS));
     }
 
     @Test

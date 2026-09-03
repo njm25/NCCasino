@@ -78,11 +78,40 @@ public final class SlotsTiming {
     // reused for a paid or demo spin's own timing above, and never reused
     // by it, so retuning one can never silently retune the other.
 
-    /** Ticks between one inventory column's opening animation starting and the next column's, left to right. */
-    public static final long OPENING_COLUMN_STAGGER_TICKS = 2L;
+    /**
+     * The gap, in ticks, between each opening-animation column starting and
+     * the next one to its right -- one entry per gap, so nine columns need
+     * eight gaps. Deliberately uneven rather than a single flat interval:
+     * a constant stagger reads as nine identical machines deploying on a
+     * metronome, while varied gaps read as one machine waking up. Every gap
+     * is still strictly positive, so the columns always start in strict
+     * left-to-right order.
+     *
+     * <p>Fixed, not random: the same nine columns start on the same ticks
+     * every open, exactly as the fixed rainbow itself does, so the whole
+     * intro stays reproducible and pinnable by a plain unit test.
+     */
+    public static final long[] OPENING_COLUMN_STAGGER_GAPS = {2L, 3L, 1L, 3L, 2L, 1L, 3L, 2L};
 
-    /** Ticks between one downward shift and the next within a single opening-animation column -- fast and uniform, no deceleration. */
+    /** Ticks between one downward shift and the next while an opening-animation column is at full speed. */
     public static final long OPENING_STEP_TICKS = 1L;
+
+    /**
+     * How many progressively-slower shifts an opening-animation column makes
+     * as it settles, mirroring {@link #DECELERATION_STEPS} for a real reel.
+     * Without this the intro ran at a flat {@link #OPENING_STEP_TICKS} and
+     * then stopped dead, which reads as a texture swap rather than as a reel
+     * with mass coming to rest.
+     */
+    public static final int OPENING_DECELERATION_STEPS = 4;
+
+    /**
+     * Each opening-animation deceleration step waits this many ticks longer
+     * than the one before it. Gentler than a real spin's
+     * {@link #DECELERATION_GROWTH_TICKS}, because the intro plays on every
+     * open and must not feel like it is dragging.
+     */
+    public static final long OPENING_DECELERATION_GROWTH_TICKS = 2L;
 
     // ---- auto spin ---------------------------------------------------
 

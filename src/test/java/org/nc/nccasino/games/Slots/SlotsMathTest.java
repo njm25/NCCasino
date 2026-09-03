@@ -15,12 +15,12 @@ class SlotsMathTest {
     private static final SlotsPaytable PAYTABLE_3 = SlotsPaytable.forConfig(3, 0.03);
     private static final SlotsPaytable PAYTABLE_5 = SlotsPaytable.forConfig(5, 0.03);
 
-    /** Builds a grid whose middle row is the given line and whose other rows are blanks. */
+    /** Builds a grid whose middle row is the given line and whose other rows are Seeds. */
     private static SlotsOutcome middleRow(SlotsSymbol... line) {
         SlotsSymbol[][] grid = new SlotsSymbol[SlotsGeometry.ROWS][line.length];
         for (int row = 0; row < SlotsGeometry.ROWS; row++) {
             for (int col = 0; col < line.length; col++) {
-                grid[row][col] = SlotsSymbol.BLANK;
+                grid[row][col] = SlotsSymbol.SEEDS;
             }
         }
         System.arraycopy(line, 0, grid[1], 0, line.length);
@@ -44,12 +44,12 @@ class SlotsMathTest {
     void runsAreLeftAnchored() {
         // Three bells, but not starting at column 0 -- not a win on a real machine.
         SlotsOutcome offset = middleRow(
-            SlotsSymbol.BLANK, SlotsSymbol.BELL, SlotsSymbol.BELL, SlotsSymbol.BELL, SlotsSymbol.BLANK);
+            SlotsSymbol.SEEDS, SlotsSymbol.BELL, SlotsSymbol.BELL, SlotsSymbol.BELL, SlotsSymbol.SEEDS);
         assertFalse(SlotsMath.evaluateLine(offset, SlotsPayline.MIDDLE, PAYTABLE_5).winning(),
             "a matching trio away from the left edge must not pay");
 
         SlotsOutcome anchored = middleRow(
-            SlotsSymbol.BELL, SlotsSymbol.BELL, SlotsSymbol.BELL, SlotsSymbol.BLANK, SlotsSymbol.BLANK);
+            SlotsSymbol.BELL, SlotsSymbol.BELL, SlotsSymbol.BELL, SlotsSymbol.SEEDS, SlotsSymbol.SEEDS);
         SlotsMath.LineResult result = SlotsMath.evaluateLine(anchored, SlotsPayline.MIDDLE, PAYTABLE_5);
         assertTrue(result.winning());
         assertEquals(3, result.runLength());
@@ -57,29 +57,29 @@ class SlotsMathTest {
     }
 
     @Test
-    @DisplayName("blanks never pay and always break a run")
-    void blanksNeverPay() {
-        SlotsOutcome allBlank = uniform(SlotsSymbol.BLANK, 5);
-        assertFalse(SlotsMath.evaluateLine(allBlank, SlotsPayline.MIDDLE, PAYTABLE_5).winning());
-        assertEquals(0L, SlotsMath.totalPayout(allBlank, 9, 100L, PAYTABLE_5));
+    @DisplayName("seeds never pay and always break a run")
+    void seedsNeverPay() {
+        SlotsOutcome allSeeds = uniform(SlotsSymbol.SEEDS, 5);
+        assertFalse(SlotsMath.evaluateLine(allSeeds, SlotsPayline.MIDDLE, PAYTABLE_5).winning());
+        assertEquals(0L, SlotsMath.totalPayout(allSeeds, 9, 100L, PAYTABLE_5));
 
         SlotsOutcome broken = middleRow(
-            SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.BLANK, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN);
+            SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEEDS, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN);
         assertFalse(SlotsMath.evaluateLine(broken, SlotsPayline.MIDDLE, PAYTABLE_5).winning(),
-            "a blank in column 2 must cut the run below SEVEN's minimum of three");
+            "a Seeds cell in column 2 must cut the run below SEVEN's minimum of three");
     }
 
     @Test
     @DisplayName("cherries pay from two, every other symbol needs three")
     void minimumRunsAreEnforced() {
         SlotsOutcome twoCherries = middleRow(
-            SlotsSymbol.CHERRY, SlotsSymbol.CHERRY, SlotsSymbol.BLANK, SlotsSymbol.BLANK, SlotsSymbol.BLANK);
+            SlotsSymbol.CHERRY, SlotsSymbol.CHERRY, SlotsSymbol.SEEDS, SlotsSymbol.SEEDS, SlotsSymbol.SEEDS);
         SlotsMath.LineResult cherryResult = SlotsMath.evaluateLine(twoCherries, SlotsPayline.MIDDLE, PAYTABLE_5);
         assertTrue(cherryResult.winning(), "two cherries pay");
         assertEquals(2, cherryResult.runLength());
 
         SlotsOutcome twoLemons = middleRow(
-            SlotsSymbol.LEMON, SlotsSymbol.LEMON, SlotsSymbol.BLANK, SlotsSymbol.BLANK, SlotsSymbol.BLANK);
+            SlotsSymbol.LEMON, SlotsSymbol.LEMON, SlotsSymbol.SEEDS, SlotsSymbol.SEEDS, SlotsSymbol.SEEDS);
         assertFalse(SlotsMath.evaluateLine(twoLemons, SlotsPayline.MIDDLE, PAYTABLE_5).winning(),
             "two lemons must not pay");
     }
@@ -88,7 +88,7 @@ class SlotsMathTest {
     @DisplayName("a longer run pays strictly more than a shorter one")
     void longerRunsPayMore() {
         SlotsOutcome three = middleRow(
-            SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.BLANK, SlotsSymbol.BLANK);
+            SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEEDS, SlotsSymbol.SEEDS);
         SlotsOutcome five = middleRow(
             SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN, SlotsSymbol.SEVEN);
 

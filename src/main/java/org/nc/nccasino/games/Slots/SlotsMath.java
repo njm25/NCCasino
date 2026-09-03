@@ -65,7 +65,7 @@ public final class SlotsMath {
 
     /**
      * Measures the leftmost consecutive run on a line and prices it.
-     * {@link SlotsSymbol#BLANK} never pays, so a blank in the first column is
+     * {@link SlotsSymbol#SEEDS} never pays, so a Seeds cell in the first column is
      * an immediate loss for that line.
      */
     public static LineResult evaluateLine(SlotsOutcome outcome, SlotsPayline payline, SlotsPaytable paytable) {

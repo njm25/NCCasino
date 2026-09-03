@@ -14,15 +14,20 @@ import org.bukkit.Material;
  * to a cherry); the scale that makes the whole machine land on its configured
  * RTP is computed, never hand-tuned.
  *
- * <p>{@link #BLANK} is a real, weighted, non-paying symbol. It is what lets a
- * run break mid-line, which is what makes a near-miss ("seven, seven, blank")
- * possible at all -- the previous paytable had no blank, so every cell always
+ * <p>{@link #SEEDS} is a real, weighted, non-paying symbol. It is what lets a
+ * run break mid-line, which is what makes a near-miss ("seven, seven, seeds")
+ * possible at all -- the previous paytable had no such symbol, so every cell always
  * showed a paying symbol and the grid never read as a machine with a payline
  * running through it.
+ *
+ * <p>It is drawn as an actual reel symbol rather than as a grey pane, because
+ * a pane read as a hole in the machine -- as if the cell had failed to render.
+ * Seeds is a thing that landed and is worth nothing, which is exactly what
+ * this symbol means.
  */
 public enum SlotsSymbol {
     /** Non-paying filler. Breaks runs and creates near-misses. */
-    BLANK(30, 0.0, 0, Material.GRAY_STAINED_GLASS_PANE),
+    SEEDS(30, 0.0, 0, Material.WHEAT_SEEDS),
     /**
      * Pays from a run of two, the way a real fruit machine pays two cherries.
      * This single exception is what keeps hit frequency in real-slot territory

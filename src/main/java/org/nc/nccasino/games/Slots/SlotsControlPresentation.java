@@ -31,7 +31,6 @@ public final class SlotsControlPresentation {
         SPIN_READY(Material.LEVER, true),
         /** The lever while a paid or Demo Spin presentation is running -- an ordinary left-click fast-forwards it. */
         SPIN_ACTIVE(Material.LEVER, false),
-        SPIN_LOCKED(Material.REDSTONE_BLOCK, false),
         PAYOUT_BLOCKED(Material.REDSTONE_BLOCK, false),
         GUIDE_BOOK(Material.BOOK, false),
         /** Slot 48 in Game View: opens the Paytable. */
@@ -49,22 +48,29 @@ public final class SlotsControlPresentation {
         PAYLINES_CONTROL(Material.GREEN_STAINED_GLASS_PANE, false),
         WAGER_CONTROL(Material.BLACK_STAINED_GLASS_PANE, false),
         EXIT_CONTROL(Material.SPRUCE_DOOR, false),
-        /** Slot 50, every Auto Spin state -- the material stays CLOCK; only name/lore distinguishes them. */
-        AUTO_SPIN_CONTROL(Material.CLOCK, false),
+        /**
+         * The Clock -- bottom-row slot 50, and the Auto Spin Settings menu's
+         * own canvas copy of it. The material stays CLOCK in every Auto Spin
+         * state; name and lore carry the difference, plus an explicit glint
+         * while a batch is actually running, which is the one at-a-glance
+         * signal that the machine is spinning itself.
+         */
+        AUTO_SPIN_CONTROL(Material.CLOCK, true),
         /** Slot 53 in Game View: saves, and opens, this player's globally-portable Slots profiles. */
         PROFILES_CONTROL(Material.ENDER_CHEST, false),
         /** One saved profile in Profiles View -- a named, loadable configuration. */
         PROFILE_ENTRY(Material.NAME_TAG, false),
-        /** The deliberately un-control-like material of the Paytable's slot 36-44 information rail. */
-        INFO_RAIL(Material.LIGHT_GRAY_STAINED_GLASS_PANE, false),
-        /** The Auto Spin Settings menu's blank backdrop -- never a reel cell, never clickable. */
-        AUTO_SETTINGS_BACKDROP(Material.LIGHT_GRAY_STAINED_GLASS_PANE, false),
-        /** Auto Spin Settings slot 4: the menu's own title/instructions card. */
-        AUTO_SETTINGS_OVERVIEW(Material.CLOCK, false),
+        /**
+         * The Paytable's slot 36-44 information rail. A hopper rather than a
+         * pane: its funnel visibly narrows downward, so each rail cell reads
+         * as pointing at the control it explains one row below it. A flat
+         * grey pane carried no direction at all and read as dead space.
+         * Still deliberately un-control-like -- a hopper is not one of this
+         * UI's clickable materials, and every rail click is cancelled.
+         */
+        INFO_RAIL(Material.HOPPER, false),
         /** Auto Spin Settings slot 11: how many spins one Auto Spin batch may commit. */
         AUTO_SETTINGS_SPIN_LIMIT(Material.REPEATER, false),
-        /** Auto Spin Settings slot 22: commit the settings, return to Game, and start the batch. */
-        AUTO_SETTINGS_START(Material.LEVER, false),
         /** Auto Spin Settings slot 33: restore every Auto Spin default (never the gameplay speed). */
         AUTO_SETTINGS_RESET(Material.BARRIER, false),
         /** Auto Spin Settings slot 13 while Stop on Any Win is on. */
