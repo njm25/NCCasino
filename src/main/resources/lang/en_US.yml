@@ -885,6 +885,7 @@ blackjack:
   shoe-exhausted-refunded: "&eThe shoe ran out mid-round -- refunded {amount}."
   start-transition-failed-refunded: "&eThe round couldn't start -- refunded {amount}."
   table-reset-refunded: "&eThe table was reset by an admin -- refunded {amount}."
+  round-error-refunded: "&eSomething went wrong mid-round -- refunded {amount}."
 
 dragon-settings:
   title: "{dealer}'s Dragon Descent Settings"

@@ -885,6 +885,7 @@ blackjack:
   shoe-exhausted-refunded: "&eO baralho acabou no meio da rodada -- {amount} reembolsado."
   start-transition-failed-refunded: "&eA rodada não pôde começar -- {amount} reembolsado."
   table-reset-refunded: "&eA mesa foi reiniciada por um administrador -- {amount} reembolsado."
+  round-error-refunded: "&eAlgo deu errado no meio da rodada -- {amount} reembolsado."
 
 dragon-settings:
   title: "Configurações de Descida do Dragão de {dealer}"

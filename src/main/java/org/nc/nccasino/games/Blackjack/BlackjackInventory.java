@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.logging.Level;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
@@ -6253,6 +6254,31 @@ private void handleDoubleDown(Player player) {
      * {@link #abortRoundAndRefund}. Never pays out or settles hands -- the
      * round simply never happened.
      */
+    /**
+     * Safety net for the three main-thread repeating tasks that drive an
+     * active round (pregame countdown, insurance countdown, turn timer):
+     * Bukkit silently cancels a scheduleSyncRepeatingTask the instant its
+     * run() throws, with only a console stack trace and no callback -- so
+     * an uncaught exception here previously left the table permanently
+     * stuck mid-round (bets locked in, nothing ever advancing the turn)
+     * until a server restart. Every tick body is wrapped to route through
+     * this instead: log loudly, then fail safe by aborting and refunding
+     * the round exactly like a shoe-exhaustion abort, so the table always
+     * recovers into a playable state rather than hanging forever.
+     */
+    private void recoverFromTickTaskFailure(String taskName, Throwable error) {
+        plugin.getLogger().log(Level.SEVERE,
+                "[NCCasino] Blackjack " + taskName + " task threw an uncaught exception -- aborting and refunding the round for dealer '"
+                        + internalName + "' to avoid leaving the table stuck.", error);
+        try {
+            abortRoundAndRefund("blackjack.round-error-refunded");
+        } catch (Throwable recoveryError) {
+            plugin.getLogger().log(Level.SEVERE,
+                    "[NCCasino] Blackjack round-error recovery itself failed for dealer '"
+                            + internalName + "' -- table may remain stuck until reset/restart.", recoveryError);
+        }
+    }
+
     private void abortRoundForShoeExhaustion() {
         abortRoundAndRefund("blackjack.shoe-exhausted-refunded");
     }
@@ -7164,21 +7190,29 @@ private void removePlayerData(UUID playerId) {
             int countdown =  plugin.getTimer(internalName);
             @Override
             public void run() {
-                if (countdown > 0) {
-                    countdownSecondsRemaining = countdown;
-                    renderPregameCountdownToOwners(countdown);
-                    if (countdown <=3 ){
-                        for (UUID uuid : playerSeats.keySet()) {
-                            Player player = Bukkit.getPlayer(uuid);
-                            if (player != null && player.isOnline()) {
-                                 if (SoundHelper.getSoundSafely("block.note_block.hat", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, SoundCategory.MASTER, 1.0f, 1.0f);
+                try {
+                    if (countdown > 0) {
+                        countdownSecondsRemaining = countdown;
+                        renderPregameCountdownToOwners(countdown);
+                        if (countdown <=3 ){
+                            for (UUID uuid : playerSeats.keySet()) {
+                                Player player = Bukkit.getPlayer(uuid);
+                                if (player != null && player.isOnline()) {
+                                     if (SoundHelper.getSoundSafely("block.note_block.hat", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, SoundCategory.MASTER, 1.0f, 1.0f);
+                                }
                             }
                         }
+                        countdown--;
+                    } else {
+                        Bukkit.getScheduler().cancelTask(countdownTaskId);
+                        beginStartTransition();
                     }
-                    countdown--;
-                } else {
-                    Bukkit.getScheduler().cancelTask(countdownTaskId);
-                    beginStartTransition();
+                } catch (Throwable t) {
+                    if (countdownTaskId != -1) {
+                        Bukkit.getScheduler().cancelTask(countdownTaskId);
+                        countdownTaskId = -1;
+                    }
+                    recoverFromTickTaskFailure("pregame countdown", t);
                 }
             }
         }, 0L, 20L); // Run every second
@@ -7401,26 +7435,34 @@ private void beginInsurancePhase(long myGeneration) {
 
         @Override
         public void run() {
-            if (roundGeneration != myGeneration || !insurancePhaseActive) {
+            try {
+                if (roundGeneration != myGeneration || !insurancePhaseActive) {
+                    if (insuranceTaskId != -1) {
+                        Bukkit.getScheduler().cancelTask(insuranceTaskId);
+                        insuranceTaskId = -1;
+                    }
+                    return;
+                }
+                if (secondsLeft <= 0) {
+                    Bukkit.getScheduler().cancelTask(insuranceTaskId);
+                    insuranceTaskId = -1;
+                    resolveInsuranceTimeouts(myGeneration);
+                    return;
+                }
+                insuranceSecondsRemaining = secondsLeft;
+                for (UUID playerId : insuranceEligiblePlayers) {
+                    if (playerSeats.containsKey(playerId) && !insuranceDecided.contains(playerId)) {
+                        renderInsuranceCountdownForPlayer(playerId, secondsLeft);
+                    }
+                }
+                secondsLeft--;
+            } catch (Throwable t) {
                 if (insuranceTaskId != -1) {
                     Bukkit.getScheduler().cancelTask(insuranceTaskId);
                     insuranceTaskId = -1;
                 }
-                return;
+                recoverFromTickTaskFailure("insurance countdown", t);
             }
-            if (secondsLeft <= 0) {
-                Bukkit.getScheduler().cancelTask(insuranceTaskId);
-                insuranceTaskId = -1;
-                resolveInsuranceTimeouts(myGeneration);
-                return;
-            }
-            insuranceSecondsRemaining = secondsLeft;
-            for (UUID playerId : insuranceEligiblePlayers) {
-                if (playerSeats.containsKey(playerId) && !insuranceDecided.contains(playerId)) {
-                    renderInsuranceCountdownForPlayer(playerId, secondsLeft);
-                }
-            }
-            secondsLeft--;
         }
     }, 0L, 20L);
 }
@@ -7833,25 +7875,33 @@ private void runTurnTimerTask() {
     turnTimerTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
         @Override
         public void run() {
-            if (isStaleHandCallback(playerId, myGeneration, myHandToken)
-                || resolveExpectedHand(playerId, myGeneration, handId, expectedHandGeneration, BlackjackHandCallbackGuard.ExpectedHandState.ACTIONABLE) == null) {
-                // The hand this deadline belonged to has already moved on
-                // (Stand/Double/leave/reset/completion) -- stop silently,
-                // whatever superseded it owns slot 46 now.
+            try {
+                if (isStaleHandCallback(playerId, myGeneration, myHandToken)
+                    || resolveExpectedHand(playerId, myGeneration, handId, expectedHandGeneration, BlackjackHandCallbackGuard.ExpectedHandState.ACTIONABLE) == null) {
+                    // The hand this deadline belonged to has already moved on
+                    // (Stand/Double/leave/reset/completion) -- stop silently,
+                    // whatever superseded it owns slot 46 now.
+                    if (turnTimerTaskId != -1) {
+                        Bukkit.getScheduler().cancelTask(turnTimerTaskId);
+                        turnTimerTaskId = -1;
+                    }
+                    return;
+                }
+                if (turnTimerSecondsRemaining <= 0) {
+                    Bukkit.getScheduler().cancelTask(turnTimerTaskId);
+                    turnTimerTaskId = -1;
+                    autoStandOnTurnTimeout(playerId, myGeneration, myHandToken, handId, expectedHandGeneration);
+                    return;
+                }
+                renderTurnTimerToAllViews(turnTimerSecondsRemaining);
+                turnTimerSecondsRemaining--;
+            } catch (Throwable t) {
                 if (turnTimerTaskId != -1) {
                     Bukkit.getScheduler().cancelTask(turnTimerTaskId);
                     turnTimerTaskId = -1;
                 }
-                return;
+                recoverFromTickTaskFailure("turn timer", t);
             }
-            if (turnTimerSecondsRemaining <= 0) {
-                Bukkit.getScheduler().cancelTask(turnTimerTaskId);
-                turnTimerTaskId = -1;
-                autoStandOnTurnTimeout(playerId, myGeneration, myHandToken, handId, expectedHandGeneration);
-                return;
-            }
-            renderTurnTimerToAllViews(turnTimerSecondsRemaining);
-            turnTimerSecondsRemaining--;
         }
     }, 0L, 20L);
 }
