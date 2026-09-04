@@ -885,6 +885,7 @@ blackjack:
   shoe-exhausted-refunded: "&eLe sabot était vide en pleine manche -- {amount} remboursé."
   start-transition-failed-refunded: "&eLa manche n'a pas pu commencer -- {amount} remboursé."
   table-reset-refunded: "&eLa table a été réinitialisée par un administrateur -- {amount} remboursé."
+  round-error-refunded: "&eUn problème est survenu en pleine manche -- {amount} remboursé."
 
 dragon-settings:
   title: "Paramètres de Descente du Dragon de {dealer}"
