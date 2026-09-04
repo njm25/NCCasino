@@ -3,14 +3,24 @@ package org.nc.nccasino.integrations;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.components.AdminMenu;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.entities.JockeyManager;
+import org.nc.nccasino.entities.JockeyNode;
+import org.nc.nccasino.listeners.DealerEventListener;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -64,6 +74,16 @@ public final class CitizensDealerSupport {
     /** Admins currently being asked to right-click an NPC, keyed by player id. */
     private static final Map<UUID, String> pendingBinds = new HashMap<>();
 
+    /**
+     * The Bukkit entity each bound NPC was last seen wearing, keyed by NPC id.
+     *
+     * <p>Citizens builds a brand-new entity -- with a brand-new UUID -- every
+     * time an NPC respawns, and {@link Dealer}'s live-instance map is keyed by
+     * entity UUID. Without this, every respawn would add an entry that nothing
+     * ever removes, pinning a dead entity in memory for the life of the server.
+     */
+    private static final Map<UUID, UUID> lastKnownBody = new HashMap<>();
+
     private CitizensDealerSupport() {
     }
 
@@ -102,6 +122,7 @@ public final class CitizensDealerSupport {
         }
         npc.data().remove(META_DEALER_ID);
         npc.data().remove(META_INTERNAL_NAME);
+        lastKnownBody.remove(npcId);
         Entity entity = npc.getEntity();
         if (entity instanceof LivingEntity living) {
             Dealer.clearCitizensTags(living);
@@ -201,9 +222,13 @@ public final class CitizensDealerSupport {
         npc.data().setPersistent(META_INTERNAL_NAME, internalName);
 
         Dealer.tagCitizensDealer(living, dealerId, internalName, displayName, gameType, npc.getUniqueId());
-        new Dealer(living);
+        adoptBody(npc, living);
         Dealer.updateGameType(living, gameType, timer, animationMessage, displayName,
             chipSizes, currencyMaterial, currencyName);
+        // The dealer now lives wherever the NPC stands. data/dealers.yaml drives
+        // the chunk-loading that '/ncc delete *' and startup rely on, so it has
+        // to follow the dealer to its new body.
+        saveDealerLocation(internalName, living.getLocation());
 
         admin.sendMessage(plugin.getLocalization().text(
             admin, "admin.citizens-bind-success", "dealer", internalName, "npc", npc.getName()));
@@ -232,7 +257,7 @@ public final class CitizensDealerSupport {
                 releaseNpc(previousNpcId);
             }
         } else {
-            existing.remove();
+            removeMobBody(existing);
         }
         if (dealerId != null) {
             Dealer.removeDealerFromMap(dealerId);
@@ -278,30 +303,112 @@ public final class CitizensDealerSupport {
         String currencyName = plugin.getConfig().getString(path + ".currency.name", "Emerald");
 
         Dealer.tagCitizensDealer(living, dealerId, internalName, displayName, gameType, npc.getUniqueId());
-        new Dealer(living);
+        adoptBody(npc, living);
         Dealer.updateGameType(living, gameType, timer, animationMessage, displayName,
             readChipSizes(path), currencyMaterial, currencyName);
     }
 
     /**
-     * Drops NCCasino's record of a dealer whose NPC an admin deleted through
-     * Citizens, so no stale dealer or inventory is left behind.
+     * Registers {@code living} as the dealer's live body, retiring whatever
+     * entity the NPC was wearing before.
+     *
+     * <p>Citizens hands out a new entity UUID on every respawn, so without the
+     * eviction here {@link Dealer}'s instance map would accumulate one dead
+     * entry per respawn for as long as the server runs.
+     */
+    private static void adoptBody(NPC npc, LivingEntity living) {
+        UUID previous = lastKnownBody.put(npc.getUniqueId(), living.getUniqueId());
+        if (previous != null && !previous.equals(living.getUniqueId())) {
+            Dealer.removeDealerFromMap(previous);
+        }
+        new Dealer(living);
+    }
+
+    /**
+     * Records where a dealer now stands in {@code data/dealers.yaml}, which is
+     * kept separate from the main config and is what the plugin uses to find and
+     * load a dealer's chunk.
+     */
+    private static void saveDealerLocation(String internalName, Location location) {
+        File dealersFile = new File(plugin.getDataFolder(), "data/dealers.yaml");
+        if (!dealersFile.getParentFile().exists()) {
+            dealersFile.getParentFile().mkdirs();
+        }
+        FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
+        String path = "dealers." + internalName;
+        dealersConfig.set(path + ".world", location.getWorld().getName());
+        dealersConfig.set(path + ".X", location.getX());
+        dealersConfig.set(path + ".Y", location.getY());
+        dealersConfig.set(path + ".Z", location.getZ());
+        try {
+            dealersConfig.save(dealersFile);
+        } catch (IOException e) {
+            plugin.getLogger().severe("Failed to save dealer location to " + dealersFile.getPath());
+        }
+    }
+
+    /**
+     * Unbinds a dealer whose NPC an admin deleted through Citizens, so no stale
+     * body or open inventory is left behind.
+     *
+     * <p>Deliberately keeps the dealer's configuration. {@code /npc remove} is
+     * Citizens' command, not ours, and an admin running it -- or
+     * {@code /npc remove --all} -- is saying something about their NPCs, not
+     * asking NCCasino to destroy a casino's worth of game settings, chip sizes
+     * and currency. The configured dealer survives, ready to be bound to another
+     * NPC; removing it for good is still {@code /ncc delete <name>}.
      */
     static void forgetRemovedNpc(NPC npc) {
         String internalName = readNpcString(npc, META_INTERNAL_NAME);
         if (internalName == null) {
             return;
         }
+        npc.data().remove(META_DEALER_ID);
+        npc.data().remove(META_INTERNAL_NAME);
+
+        UUID lastBody = lastKnownBody.remove(npc.getUniqueId());
         Entity entity = npc.getEntity();
         if (entity instanceof LivingEntity living && Dealer.isDealer(living)) {
-            // Deletes the dealer and its config; the NPC is already going away,
-            // and removeDealer's Citizens branch will not try to delete it again.
-            Dealer.removeDealer(living);
-            return;
+            UUID dealerId = Dealer.getUniqueId(living);
+            AdminMenu.clearAllEditModes(living);
+            plugin.deleteAssociatedInventories(living);
+            Dealer.clearCitizensTags(living);
+            if (dealerId != null) {
+                Dealer.removeDealerFromMap(dealerId);
+            }
         }
-        // Despawned NPC: no entity to read tags from, so clear config directly.
-        plugin.getConfig().set("dealers." + internalName, null);
-        plugin.saveConfig();
+        if (lastBody != null) {
+            Dealer.removeDealerFromMap(lastBody);
+        }
+    }
+
+    /**
+     * Removes a vanilla mob dealer along with the jockey stack and name-tag
+     * armor stand riding it.
+     *
+     * <p>Removing only the dealer would strand those extra entities in the world
+     * with nothing left referencing them; this mirrors what {@code /ncc delete}
+     * does.
+     */
+    private static void removeMobBody(LivingEntity existing) {
+        if (existing instanceof Mob mobEntity) {
+            JockeyManager jockeyManager = new JockeyManager(mobEntity);
+            jockeyManager.cleanup();
+
+            List<JockeyNode> jockeys = jockeyManager.getJockeys();
+            for (int i = jockeys.size() - 1; i > 0; i--) {
+                JockeyNode jockey = jockeys.get(i);
+                jockey.unmount();
+                jockey.getMob().remove();
+            }
+            for (Entity passenger : new ArrayList<>(mobEntity.getPassengers())) {
+                if (passenger instanceof ArmorStand) {
+                    passenger.remove();
+                }
+            }
+            DealerEventListener.clearJockeyManagerCache(mobEntity.getUniqueId());
+        }
+        existing.remove();
     }
 
     private static List<Integer> readChipSizes(String path) {
