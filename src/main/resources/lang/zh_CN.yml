@@ -885,6 +885,7 @@ blackjack:
   shoe-exhausted-refunded: "&e牌靴在本局中途用完了 —— 已退还{amount}。"
   start-transition-failed-refunded: "&e本局无法开始 —— 已退还{amount}。"
   table-reset-refunded: "&e牌桌被管理员重置了 —— 已退还{amount}。"
+  round-error-refunded: "&e本局中途出现异常 —— 已退还{amount}。"
 
 dragon-settings:
   title: "{dealer} 的巨龙下潜设置"
