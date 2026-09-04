@@ -103,12 +103,29 @@ public final class SlotsReelPlan {
 
     /** Whether this reel advances a cosmetic symbol on the given elapsed tick. */
     public boolean advancesAt(int reel, long elapsedTicks) {
-        for (long tick : advanceTicks[reel]) {
-            if (tick == elapsedTicks) {
-                return true;
+        return advanceIndex(reel, elapsedTicks) >= 0;
+    }
+
+    /** This reel's position in its own advance schedule at {@code elapsedTicks}, or -1 if it does not advance then. */
+    public int advanceIndex(int reel, long elapsedTicks) {
+        long[] ticks = advanceTicks[reel];
+        for (int index = 0; index < ticks.length; index++) {
+            if (ticks[index] == elapsedTicks) {
+                return index;
             }
         }
-        return false;
+        return -1;
+    }
+
+    /**
+     * Whether the advance at {@code elapsedTicks} (if any) is one of this
+     * reel's final {@link SlotsTiming#DECELERATION_STEPS} steps -- the
+     * audibly-slowing tail end of the spin, as opposed to the full-speed blur
+     * before it.
+     */
+    public boolean isDeceleratingAdvance(int reel, long elapsedTicks) {
+        int index = advanceIndex(reel, elapsedTicks);
+        return index >= 0 && index >= advanceTicks[reel].length - SlotsTiming.DECELERATION_STEPS;
     }
 
     public long landingTick(int reel) {
