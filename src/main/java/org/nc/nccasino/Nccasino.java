@@ -562,7 +562,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
     private void reinitializeDealers() {
         Bukkit.getWorlds().forEach(world -> {
             for (Entity entity : world.getEntities()) {
-                if (entity instanceof Mob mob) {
+                // LivingEntity rather than Mob: a Citizens player-type NPC
+                // dealer is not a Mob, and skipping it here would leave it
+                // running stale settings after a reload.
+                if (entity instanceof LivingEntity mob) {
                     if (Dealer.isDealer(mob)) {
                         String internalName = Dealer.getInternalName(mob);
 
@@ -628,7 +631,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
     private void reloadDealers() {
         Bukkit.getWorlds().forEach(world -> {
             for (Entity entity : world.getEntities()) {
-                if (entity instanceof Mob mob) {
+                // See reinitializeDealers: Citizens NPC dealers are living
+                // entities but not mobs, and must reload with everything else.
+                if (entity instanceof LivingEntity mob) {
                     reloadDealer(mob); // Now calls the refactored function
                 }
             }
