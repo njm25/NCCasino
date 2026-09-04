@@ -33,6 +33,7 @@ public class MobSettingsMenu extends Menu {
     private UUID dealerId;
     private final Nccasino plugin;
     private final String returnName;
+    /** Mob-typed view of the inherited dealer: jockey stacks are mob-only. */
     private Mob dealer;
     private JockeyManager jockeyManager;
     public static final Map<UUID, MobSettingsMenu> jockeyInventories = new HashMap<>();
@@ -47,7 +48,7 @@ public class MobSettingsMenu extends Menu {
         this.plugin = plugin;
         this.returnName = returnName;
         this.slotToJockeyMap = new HashMap<>();
-        this.dealer = Dealer.findDealer(dealerId, player.getLocation());
+        this.dealer = (Dealer.findDealer(dealerId, player.getLocation()) instanceof Mob mobDealer) ? mobDealer : null;
         
         // Create a fresh JockeyManager to ensure we have the current state
         this.jockeyManager = new JockeyManager(dealer);

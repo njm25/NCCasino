@@ -5,6 +5,7 @@ import org.bukkit.Location;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.MagmaCube;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Panda;
@@ -30,6 +31,7 @@ import org.nc.nccasino.games.Roulette.RouletteInventory;
 import org.nc.nccasino.games.Slots.SlotsInventory;
 import org.nc.nccasino.games.TestGame.TestServer;
 import org.nc.nccasino.helpers.AttributeHelper;
+import org.nc.nccasino.integrations.CitizensDealerSupport;
 
 import java.util.HashMap;
 import java.util.List;
@@ -38,6 +40,21 @@ import java.util.Random;
 import java.util.UUID;
 
 public class Dealer {
+    /**
+     * Which system owns the entity a dealer is attached to.
+     *
+     * <p>{@link #MOB} dealers are spawned and owned by NCCasino: we control
+     * their AI, invulnerability, name and jockey stack, and deleting the
+     * dealer deletes the entity.
+     *
+     * <p>{@link #CITIZENS} dealers are attached to an NPC that an admin
+     * created and owns through the Citizens plugin. NCCasino only borrows the
+     * entity to host a game on it, so cosmetic state (name, skin, equipment,
+     * look-at behaviour, position) is deliberately left to Citizens, and
+     * removing the dealer only detaches the game -- it never deletes the NPC.
+     */
+    public enum Backend { MOB, CITIZENS }
+
     // Static map of Dealer references
     public static final Map<UUID, Dealer> dealers = new HashMap<>();
     private static final Map<UUID, BukkitTask> lookAtTasks = new HashMap<>();
@@ -54,6 +71,10 @@ public class Dealer {
         new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "internal_name");
     private static final NamespacedKey ANIMATION_MESSAGE_KEY =
         new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "animation_message");
+    private static final NamespacedKey BACKEND_KEY =
+        new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "dealer_backend");
+    private static final NamespacedKey CITIZENS_NPC_ID_KEY =
+        new NamespacedKey(JavaPlugin.getProvidingPlugin(Dealer.class), "dealer_citizens_npc_id");
 
 
     /**
@@ -248,7 +269,7 @@ public class Dealer {
             .orElse(null);
     }
     
-    public static void initializeInventory(Mob mob, UUID uniqueId, String name, Nccasino plugin) {
+    public static void initializeInventory(LivingEntity mob, UUID uniqueId, String name, Nccasino plugin) {
         PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
         String gameType = dataContainer.get(GAME_TYPE_KEY, PersistentDataType.STRING);
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
@@ -332,39 +353,107 @@ public class Dealer {
         setName(mob, name);
     }
 
-    public static boolean isDealer(Mob mob) {
+    public static boolean isDealer(LivingEntity mob) {
         PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
         return dataContainer.has(DEALER_KEY, PersistentDataType.BYTE);
     }
 
-    public static UUID getUniqueId(Mob mob) {
+    public static UUID getUniqueId(LivingEntity mob) {
         PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
         String uuidString = dataContainer.get(UNIQUE_ID_KEY, PersistentDataType.STRING);
         return (uuidString != null) ? UUID.fromString(uuidString) : null;
     }
 
-    public static String getName(Mob mob) {
+    public static String getName(LivingEntity mob) {
         return mob.getPersistentDataContainer().get(NAME_KEY, PersistentDataType.STRING);
     }
 
-    public static void setName(Mob mob, String name) {
-        mob.setCustomName(name);
+    /**
+     * Records the dealer's display name.
+     *
+     * <p>For a Citizens-backed dealer the entity's custom name is left alone:
+     * the NPC's name belongs to the admin who created it, and on a player-type
+     * NPC the name is also what Citizens resolves the default skin from, so
+     * overwriting it here would visibly change an NPC the admin had already
+     * styled. The name is still stored in our own container and config so
+     * menus and messages read the same as they do for mob dealers.
+     */
+    public static void setName(LivingEntity mob, String name) {
+        if (getBackend(mob) != Backend.CITIZENS) {
+            mob.setCustomName(name);
+        }
         mob.getPersistentDataContainer().set(NAME_KEY, PersistentDataType.STRING, name);
     }
 
-    public static String getInternalName(Mob mob) {
+    public static String getInternalName(LivingEntity mob) {
         return mob.getPersistentDataContainer().get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
     }
 
-    public static String getAnimationMessage(Mob mob) {
+    public static String getAnimationMessage(LivingEntity mob) {
         return mob.getPersistentDataContainer().get(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING);
     }
 
-    public static void setAnimationMessage(Mob mob, String animationMessage) {
+    public static void setAnimationMessage(LivingEntity mob, String animationMessage) {
         mob.getPersistentDataContainer().set(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING, animationMessage);
     }
 
-    public static void openDealerInventory(Mob mob, Player player) {
+    /**
+     * Which system owns this dealer's entity. Untagged entities -- every
+     * dealer that existed before Citizens support was added -- read back as
+     * {@link Backend#MOB}, so existing worlds keep working unchanged.
+     */
+    public static Backend getBackend(LivingEntity entity) {
+        String raw = entity.getPersistentDataContainer().get(BACKEND_KEY, PersistentDataType.STRING);
+        if (raw == null) return Backend.MOB;
+        try {
+            return Backend.valueOf(raw);
+        } catch (IllegalArgumentException e) {
+            return Backend.MOB;
+        }
+    }
+
+    /** The UUID of the Citizens NPC hosting this dealer, or null for mob dealers. */
+    public static UUID getCitizensNpcId(LivingEntity entity) {
+        String raw = entity.getPersistentDataContainer().get(CITIZENS_NPC_ID_KEY, PersistentDataType.STRING);
+        if (raw == null) return null;
+        try {
+            return UUID.fromString(raw);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Marks {@code entity} as the live body of a Citizens-backed dealer.
+     *
+     * <p>Citizens re-creates the Bukkit entity every time an NPC respawns, so
+     * these tags are written fresh on each spawn from the values Citizens
+     * persists on the NPC itself. Everything here is deliberately limited to
+     * our own persistent-data keys: no AI, invulnerability, gravity, name or
+     * equipment changes, because that state belongs to Citizens.
+     */
+    public static void tagCitizensDealer(LivingEntity entity, UUID dealerId, String internalName,
+                                         String displayName, String gameType, UUID citizensNpcId) {
+        PersistentDataContainer container = entity.getPersistentDataContainer();
+        container.set(DEALER_KEY, PersistentDataType.BYTE, (byte) 1);
+        container.set(UNIQUE_ID_KEY, PersistentDataType.STRING, dealerId.toString());
+        container.set(INTERNAL_NAME_KEY, PersistentDataType.STRING, internalName);
+        container.set(NAME_KEY, PersistentDataType.STRING, displayName);
+        container.set(GAME_TYPE_KEY, PersistentDataType.STRING, gameType);
+        container.set(ANIMATION_MESSAGE_KEY, PersistentDataType.STRING, "NCCasino - " + gameType);
+        container.set(BACKEND_KEY, PersistentDataType.STRING, Backend.CITIZENS.name());
+        container.set(CITIZENS_NPC_ID_KEY, PersistentDataType.STRING, citizensNpcId.toString());
+    }
+
+    /**
+     * Strips every NCCasino tag from a Citizens NPC's entity, leaving the NPC
+     * itself untouched and fully usable for whatever else the admin wants.
+     */
+    public static void clearCitizensTags(LivingEntity entity) {
+        deleteAllPersistentData(entity.getPersistentDataContainer());
+    }
+
+    public static void openDealerInventory(LivingEntity mob, Player player) {
         UUID dealerId = getUniqueId(mob);
         if (dealerId != null) {
             DealerInventory dealerInventory = DealerInventory.getOrCreateInventory(dealerId);
@@ -372,7 +461,7 @@ public class Dealer {
         }
     }
 
-    public static void switchGame(Mob mob, String gameName, Player player, Boolean resetToDefault) {
+    public static void switchGame(LivingEntity mob, String gameName, Player player, Boolean resetToDefault) {
         UUID dealerId = getUniqueId(mob);
         if (dealerId == null) return;
 
@@ -479,12 +568,16 @@ public class Dealer {
 
             setAnimationMessage(mob, gameName);
             setName(mob, newName);
-            
-            // Update names of all mobs in the stack
-            JockeyManager jockeyManager = new JockeyManager(mob);
-            for (JockeyNode jockey : jockeyManager.getJockeys()) {
-                if (jockey.getPosition() > 0) { // Skip dealer (position 0)
-                    jockey.setCustomName(newName);
+
+            // Jockey stacks are a mob-dealer feature only -- a Citizens NPC
+            // has no NCCasino-managed stack to rename.
+            if (mob instanceof Mob mobEntity) {
+                // Update names of all mobs in the stack
+                JockeyManager jockeyManager = new JockeyManager(mobEntity);
+                for (JockeyNode jockey : jockeyManager.getJockeys()) {
+                    if (jockey.getPosition() > 0) { // Skip dealer (position 0)
+                        jockey.setCustomName(newName);
+                    }
                 }
             }
         }
@@ -532,7 +625,7 @@ public class Dealer {
         };
     }
 
-    public static void updateGameType(Mob mob, String gameName, int timer, String anmsg, String newName, List<Integer> chipSizes, String currencyMaterial, String currencyName) {
+    public static void updateGameType(LivingEntity mob, String gameName, int timer, String anmsg, String newName, List<Integer> chipSizes, String currencyMaterial, String currencyName) {
         UUID dealerId = getUniqueId(mob);
         if (dealerId == null) return;
 
@@ -596,10 +689,14 @@ public class Dealer {
  
     }
 
-    public static Boolean removeDealer(Mob mob) {
+    public static Boolean removeDealer(LivingEntity mob) {
         PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
         UUID dealerId = getUniqueId(mob);
         if (dealerId == null) return false;
+
+        // Read before the container is wiped below.
+        Backend backend = getBackend(mob);
+        UUID citizensNpcId = getCitizensNpcId(mob);
 
         String internalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
 
@@ -624,9 +721,19 @@ public class Dealer {
         }
 
     
-        // Remove the persistent data & the entity itself
+        // Remove the persistent data, then dispose of the body.
         deleteAllPersistentData(dataContainer);
-        mob.remove();
+        if (backend == Backend.CITIZENS) {
+            // The NPC belongs to the admin, not to us. Deleting the dealer
+            // only detaches the game -- Citizens keeps the NPC, its skin and
+            // any other traits it carries. Clearing the NPC-side bookkeeping
+            // also stops the next respawn from re-tagging it as a dealer.
+            if (citizensNpcId != null) {
+                CitizensDealerSupport.releaseNpc(citizensNpcId);
+            }
+        } else {
+            mob.remove();
+        }
 
         // Finally remove from Dealer map
         removeDealerFromMap(dealerId);
@@ -655,20 +762,39 @@ public class Dealer {
         dealers.clear();
     }
 
-    private final Mob mob;
+    private final LivingEntity mob;
 
-    public Dealer(Mob mob) {
+    public Dealer(LivingEntity mob) {
         this.mob = mob;
         dealers.put(mob.getUniqueId(), this);
     }
 
-    public Mob getMob() {
+    public LivingEntity getMob() {
         return mob;
     }
 
-    public static Mob getMobFromId(UUID dealerId) {
+    public static LivingEntity getMobFromId(UUID dealerId) {
         Dealer dealer = dealers.get(dealerId);
         return (dealer != null) ? dealer.getMob() : null;
+    }
+
+    /**
+     * Finds the live entity of the dealer configured under {@code internalName},
+     * scanning loaded entities in every world.
+     *
+     * <p>Used by the Citizens bind flow, which knows which configured dealer
+     * the admin is re-binding but not where its current body is.
+     */
+    public static LivingEntity findDealerByInternalName(String internalName) {
+        if (internalName == null) return null;
+        for (org.bukkit.World world : org.bukkit.Bukkit.getWorlds()) {
+            for (LivingEntity entity : world.getLivingEntities()) {
+                if (isDealer(entity) && internalName.equals(getInternalName(entity))) {
+                    return entity;
+                }
+            }
+        }
+        return null;
     }
 
     /**
@@ -679,23 +805,28 @@ public class Dealer {
      * @param dealerId The UUID of the dealer to find
      * @param location The location to search from (for radius search)
      * @param radius The radius to search within (defaults to 20 if not specified)
-     * @return The found dealer Mob, or null if not found
+     * @return The found dealer entity, or null if not found
      */
-    public static Mob findDealer(UUID dealerId, Location location, int radius) {
+    public static LivingEntity findDealer(UUID dealerId, Location location, int radius) {
         // First try direct lookup
-        Mob dealer = getMobFromId(dealerId);
+        LivingEntity dealer = getMobFromId(dealerId);
         if (dealer != null && dealer.isValid() && !dealer.isDead()) {
             return dealer;
         }
 
         // Then try radius search with stack traversal
         for (Entity entity : location.getWorld().getNearbyEntities(location, radius, radius, radius)) {
-            if (!(entity instanceof Mob mob)) continue;
-
-            // Check if this mob is the dealer
-            if (Dealer.isDealer(mob) && Dealer.getUniqueId(mob).equals(dealerId)) {
-                return mob;
+            // Checked before the Mob narrowing below: a Citizens player-type
+            // NPC is a LivingEntity but never a Mob, so a Mob-only scan would
+            // walk straight past it.
+            if (entity instanceof LivingEntity living
+                && Dealer.isDealer(living)
+                && dealerId.equals(Dealer.getUniqueId(living))) {
+                return living;
             }
+
+            // Jockey stacks below this point are mob-only by construction.
+            if (!(entity instanceof Mob mob)) continue;
 
             // Check passengers
             for (Entity passenger : mob.getPassengers()) {
@@ -724,7 +855,7 @@ public class Dealer {
     /**
      * Overloaded version of findDealer that uses default radius of 20
      */
-    public static Mob findDealer(UUID dealerId, Location location) {
+    public static LivingEntity findDealer(UUID dealerId, Location location) {
         return findDealer(dealerId, location, 20);
     }
 }

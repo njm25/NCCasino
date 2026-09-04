@@ -12,6 +12,7 @@ import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -47,7 +48,7 @@ public class DeleteCommand implements CasinoCommand {
         Player player = (Player) sender;
 
         List<String> occupations = AdminMenu.playerOccupations(player.getUniqueId());
-        List<Mob> mobs = AdminMenu.getOccupiedDealers(player.getUniqueId())
+        List<LivingEntity> mobs = AdminMenu.getOccupiedDealers(player.getUniqueId())
             .stream()
             .filter(v -> v != null && !v.isDead() && v.isValid()) // Ensure valid mobs
             .toList();
@@ -61,7 +62,7 @@ public class DeleteCommand implements CasinoCommand {
                     break; // Prevent index mismatch
                 }
                 String occupation = plugin.getLocalization().text(player, occupations.get(i));
-                Mob mob = mobs.get(i);
+                LivingEntity mob = mobs.get(i);
                 
                 String mobName = (mob != null) ? Dealer.getInternalName(mob) : "unknown mob";
                 player.sendMessage(plugin.getLocalization().text(
@@ -85,7 +86,7 @@ public class DeleteCommand implements CasinoCommand {
         
 
         plugin.executeOnDealer(internalName, () -> {
-            Mob mob = plugin.getDealerByInternalName(internalName);
+            LivingEntity mob = plugin.getDealerByInternalName(internalName);
             if (mob == null) {
                 sender.sendMessage(plugin.getLocalization().text(
                     sender,
@@ -101,29 +102,33 @@ public class DeleteCommand implements CasinoCommand {
                 plugin.deleteAssociatedInventories(mob);
 
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    // Create a JockeyManager to handle stack cleanup
-                    JockeyManager jockeyManager = new JockeyManager(mob);
-                    
-                    // Clean up all jockeys in the stack
-                    jockeyManager.cleanup();
-                    
-                    // Remove all jockeys and vehicles
-                    List<JockeyNode> jockeys = jockeyManager.getJockeys();
-                    for (int i = jockeys.size() - 1; i > 0; i--) {
-                        JockeyNode jockey = jockeys.get(i);
-                        // First unmount to prevent any issues
-                        jockey.unmount();
-                        // Then remove the physical entity
-                        jockey.getMob().remove();
-                    }
-                    
-                    // Check for and remove any armor stand passengers
-                    for (Entity passenger : mob.getPassengers()) {
-                        if (passenger instanceof ArmorStand) {
-                            passenger.remove();
+                    // Jockey stacks and armor-stand riders only exist on mob
+                    // dealers; a Citizens-backed dealer has neither.
+                    if (mob instanceof Mob mobEntity) {
+                        // Create a JockeyManager to handle stack cleanup
+                        JockeyManager jockeyManager = new JockeyManager(mobEntity);
+
+                        // Clean up all jockeys in the stack
+                        jockeyManager.cleanup();
+
+                        // Remove all jockeys and vehicles
+                        List<JockeyNode> jockeys = jockeyManager.getJockeys();
+                        for (int i = jockeys.size() - 1; i > 0; i--) {
+                            JockeyNode jockey = jockeys.get(i);
+                            // First unmount to prevent any issues
+                            jockey.unmount();
+                            // Then remove the physical entity
+                            jockey.getMob().remove();
+                        }
+
+                        // Check for and remove any armor stand passengers
+                        for (Entity passenger : mobEntity.getPassengers()) {
+                            if (passenger instanceof ArmorStand) {
+                                passenger.remove();
+                            }
                         }
                     }
-                    
+
                     // Remove the dealer and all its data
                     Dealer.removeDealer(mob);
                     DealerInventory.unregisterAllListeners(mob);

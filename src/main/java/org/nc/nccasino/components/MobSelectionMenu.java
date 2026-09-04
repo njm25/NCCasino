@@ -31,6 +31,7 @@ import org.bukkit.entity.Frog;
 import org.bukkit.entity.Horse;
 import org.bukkit.entity.Llama;
 import org.bukkit.entity.MagmaCube;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.MushroomCow;
 import org.bukkit.entity.Panda;
@@ -56,6 +57,11 @@ import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
 
 public class MobSelectionMenu extends Menu {
+    /**
+     * Mob-typed view of the inherited {@link Menu#dealer}. This menu rebuilds
+     * mob stacks and swaps entity types, none of which apply to a Citizens NPC.
+     */
+    private Mob dealer;
     private int currentPage = 1;
     private static final int PAGE_SIZE = 45;
     private static final Map<Material, EntityType> spawnEggToEntity = new HashMap<>();
@@ -234,10 +240,23 @@ public class MobSelectionMenu extends Menu {
             54, 
             returnName, 
             returnToAdmin
-        ); 
-        this.dealer = Dealer.findDealer(dealerId, player.getLocation());
+        );
+        this.dealer = asMobDealer(Dealer.findDealer(dealerId, player.getLocation()));
 
         initializeMenu();
+    }
+
+    /**
+     * Narrows a dealer to the {@code Mob} this menu needs.
+     *
+     * <p>Everything here -- swapping the dealer's species, cycling variants,
+     * rebuilding the jockey stack -- only means anything for a mob NCCasino
+     * spawned and owns. A Citizens NPC's appearance belongs to Citizens, so the
+     * admin menu never offers this menu for one; returning null keeps that a
+     * blank menu rather than a ClassCastException if it ever is reached.
+     */
+    private static Mob asMobDealer(LivingEntity found) {
+        return (found instanceof Mob mob) ? mob : null;
     }
 
     @Override

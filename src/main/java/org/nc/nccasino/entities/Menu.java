@@ -2,7 +2,7 @@ package org.nc.nccasino.entities;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.entity.Mob;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
@@ -127,6 +127,8 @@ public abstract class Menu extends DealerInventory {
         MOB_SELECTION,
         MOB_SETTINGS,
         JOCKEY_MENU,
+        /** Attach this dealer to a Citizens NPC. Only shown when Citizens is installed. */
+        CITIZENS_BIND,
 
         // Test buttons
         TEST_MENU,
@@ -146,7 +148,13 @@ public abstract class Menu extends DealerInventory {
     protected Consumer<Player> returnCallback;
     protected final String returnMessage;
     protected final Player player;
-    public Mob dealer;
+    /**
+     * The entity hosting this menu's dealer. Typed as {@link LivingEntity}
+     * rather than {@code Mob} because a Citizens player-type NPC is a valid
+     * dealer body and is not a {@code Mob}. Menus that genuinely need mob-only
+     * behaviour narrow this themselves.
+     */
+    public LivingEntity dealer;
 
     /**
      * Constructor for a menu component.
@@ -284,7 +292,7 @@ public abstract class Menu extends DealerInventory {
             }
 
             if (player.getOpenInventory().getTopInventory().getHolder() instanceof Menu menu) {
-                Mob dealer = Dealer.findDealer(menu.dealerId, player.getLocation());
+                LivingEntity dealer = Dealer.findDealer(menu.dealerId, player.getLocation());
                 if (Dealer.getUniqueId(dealer).equals(dealerId) || dealer.getUniqueId().equals(dealerId)) {
                     players.add(player);
                 }

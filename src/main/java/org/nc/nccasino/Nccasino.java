@@ -27,6 +27,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.ArmorStand;
@@ -54,6 +55,7 @@ import org.nc.nccasino.listeners.DealerEventListener;
 import org.nc.nccasino.listeners.DealerInitializeListener;
 import org.nc.nccasino.listeners.DealerInteractListener;
 import org.nc.nccasino.listeners.PlayerSessionListener;
+import org.nc.nccasino.integrations.CitizensDealerSupport;
 import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.economy.VaultHook;
@@ -96,6 +98,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
     private DealerBudgetService dealerBudgetService;
     private SlotsProfileStore slotsProfileStore;
     private SlotsChatPromptService slotsChatPromptService;
+    private DealerInteractListener dealerInteractListener;
     private LocalizationService localizationService;
 
     /**
@@ -167,12 +170,16 @@ public final class Nccasino extends JavaPlugin implements Listener {
         slotsChatPromptService = new SlotsChatPromptService(this);
 
         // Register event listeners
-        getServer().getPluginManager().registerEvents(new DealerInteractListener(this), this);
+        dealerInteractListener = new DealerInteractListener(this);
+        getServer().getPluginManager().registerEvents(dealerInteractListener, this);
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new DealerDeathHandler(this), this);
         getServer().getPluginManager().registerEvents(new DealerEventListener(), this);
         getServer().getPluginManager().registerEvents(new DealerInitializeListener(this), this); // Register the chunk listener
         getServer().getPluginManager().registerEvents(new PlayerSessionListener(this), this);
+
+        // Optional Citizens integration. No-op when Citizens is not installed.
+        CitizensDealerSupport.register(this);
 
 
         // Register the command executor
@@ -465,6 +472,15 @@ public final class Nccasino extends JavaPlugin implements Listener {
         }
     }
 
+    /**
+     * The listener that turns a right-click on a dealer into an open menu.
+     * Exposed so the Citizens bridge can route Citizens' own click event into
+     * exactly the same path a vanilla mob dealer takes.
+     */
+    public DealerInteractListener getDealerInteractListener() {
+        return dealerInteractListener;
+    }
+
     public LocalizationService getLocalization() {
         return localizationService;
     }
@@ -574,7 +590,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         });
     }
 
-    public void reloadDealer(Mob mob) {
+    public void reloadDealer(LivingEntity mob) {
         if (!Dealer.isDealer(mob)) {
             return;
         }
@@ -603,7 +619,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
         String currencyName = getConfig().getString("dealers." + internalName + ".currency.name");
         
         Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
-        new JockeyManager(mob);
+        // Citizens NPCs have no NCCasino-managed jockey stack to rebuild.
+        if (mob instanceof Mob mobEntity) {
+            new JockeyManager(mobEntity);
+        }
     }
     
     private void reloadDealers() {
@@ -616,7 +635,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         });
     }
         
-    public void deleteAssociatedInventories(Mob mob) {
+    public void deleteAssociatedInventories(LivingEntity mob) {
         UUID dealerId = Dealer.getUniqueId(mob);
     
         DealerInventory inv = DealerInventory.getInventory(dealerId);
@@ -905,18 +924,20 @@ public final class Nccasino extends JavaPlugin implements Listener {
         player.sendMessage("§c" + msg);
     }
 
-    public Mob getDealerByInternalName(String internalName) {
+    public LivingEntity getDealerByInternalName(String internalName) {
         for (var world : Bukkit.getWorlds()) {
             for (Entity entity : world.getEntities()) {
-                if (entity instanceof Mob mob) {
-                    PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
+                // LivingEntity rather than Mob so Citizens player-type NPC
+                // dealers are found here too.
+                if (entity instanceof LivingEntity living) {
+                    PersistentDataContainer dataContainer = living.getPersistentDataContainer();
                     String storedInternalName = dataContainer.get(INTERNAL_NAME_KEY, PersistentDataType.STRING);
                     if (internalName.equals(storedInternalName)) {
-                        UUID dealerId = Dealer.getUniqueId(mob);
+                        UUID dealerId = Dealer.getUniqueId(living);
                         if (dealerId != null) {
-                            return Dealer.findDealer(dealerId, mob.getLocation());
+                            return Dealer.findDealer(dealerId, living.getLocation());
                         }
-                        return mob;
+                        return living;
                     }
                 }
             }
@@ -1012,7 +1033,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         
             Bukkit.getScheduler().runTaskLater(this, () -> {
                 if (world.isChunkLoaded(chunkX, chunkZ)) {
-                    Mob mob = getDealerByInternalName(internalName);
+                    LivingEntity mob = getDealerByInternalName(internalName);
                     if (mob != null) {
                         action.run();
                     } else {
@@ -1027,7 +1048,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 } else {
                     Bukkit.getScheduler().runTaskLater(this, () -> {
                         if (world.isChunkLoaded(chunkX, chunkZ)) {
-                            Mob mob = getDealerByInternalName(internalName);
+                            LivingEntity mob = getDealerByInternalName(internalName);
                             if (mob != null) {
                                 action.run();
                             } else {
@@ -1110,37 +1131,41 @@ public final class Nccasino extends JavaPlugin implements Listener {
     
     private void deleteDealersInChunk(World world, int chunkX, int chunkZ, List<String> internalNames, CommandSender sender, int totalChunks, int[] processedChunks, boolean sendMessageOnCompletion, int[] totalDeleted) {
         for (String internalName : internalNames) {
-            Mob mob = getDealerByInternalName(internalName);
+            LivingEntity mob = getDealerByInternalName(internalName);
             if (mob != null) {
                 // First clean up all associated inventories
                 deleteAssociatedInventories(mob);
 
-                // Create a JockeyManager to handle stack cleanup
-                JockeyManager jockeyManager = new JockeyManager(mob);
-                
-                // Clean up all jockeys in the stack
-                jockeyManager.cleanup();
-                
-                // First check and remove any armor stand passengers from ALL mobs in the stack
-                List<JockeyNode> jockeys = jockeyManager.getJockeys();
-                for (JockeyNode jockey : jockeys) {
-                    Mob currentMob = jockey.getMob();
-                    for (Entity passenger : new ArrayList<>(currentMob.getPassengers())) {
-                        if (passenger instanceof ArmorStand) {
-                            passenger.remove();
+                // Jockey stacks only exist on mob dealers we spawned; a
+                // Citizens-backed dealer has nothing here to tear down.
+                if (mob instanceof Mob mobEntity) {
+                    // Create a JockeyManager to handle stack cleanup
+                    JockeyManager jockeyManager = new JockeyManager(mobEntity);
+
+                    // Clean up all jockeys in the stack
+                    jockeyManager.cleanup();
+
+                    // First check and remove any armor stand passengers from ALL mobs in the stack
+                    List<JockeyNode> jockeys = jockeyManager.getJockeys();
+                    for (JockeyNode jockey : jockeys) {
+                        Mob currentMob = jockey.getMob();
+                        for (Entity passenger : new ArrayList<>(currentMob.getPassengers())) {
+                            if (passenger instanceof ArmorStand) {
+                                passenger.remove();
+                            }
                         }
                     }
+
+                    // Now remove all jockeys and vehicles from top down
+                    for (int i = jockeys.size() - 1; i > 0; i--) {
+                        JockeyNode jockey = jockeys.get(i);
+                        // First unmount to prevent any issues
+                        jockey.unmount();
+                        // Then remove the physical entity
+                        jockey.getMob().remove();
+                    }
                 }
-                
-                // Now remove all jockeys and vehicles from top down
-                for (int i = jockeys.size() - 1; i > 0; i--) {
-                    JockeyNode jockey = jockeys.get(i);
-                    // First unmount to prevent any issues
-                    jockey.unmount();
-                    // Then remove the physical entity
-                    jockey.getMob().remove();
-                }
-                
+
                 // Remove the dealer and all its data
                 if (Dealer.removeDealer(mob)) {
                     DealerInventory.unregisterAllListeners(mob);

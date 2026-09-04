@@ -3,6 +3,7 @@ package org.nc.nccasino.components;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -23,7 +24,7 @@ public class GameOptionsMenu extends Menu {
     private final Nccasino plugin;
     private final String internalName;
     private final Boolean editing;
-    private final Mob dealer;
+    private final LivingEntity dealer;
 
     public GameOptionsMenu(Player player, Nccasino plugin, String internalName) {
         super(
@@ -51,7 +52,7 @@ public class GameOptionsMenu extends Menu {
         initializeMenu();
     }
 
-    public GameOptionsMenu(UUID dealerId, Player player, Nccasino plugin, Mob dealer, Consumer<Player> ret) {
+    public GameOptionsMenu(UUID dealerId, Player player, Nccasino plugin, LivingEntity dealer, Consumer<Player> ret) {
         super(
             player,
             plugin,
