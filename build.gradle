@@ -22,6 +22,10 @@ repositories {
         name = 'jitpack'
         url = 'https://www.jitpack.io'
     }
+    maven {
+        name = 'citizens-repo'
+        url = 'https://maven.citizensnpcs.co/repo'
+    }
 }
 
 dependencies {
@@ -30,7 +34,19 @@ dependencies {
     compileOnly ('com.github.MilkBowl:VaultAPI:1.7') {
         exclude group: 'org.bukkit'
     }
-    implementation files('libs/lib-1.0-SNAPSHOT.jar')  
+    // Citizens is an optional soft-dependency (see plugin.yml). Only the public
+    // API artifact is required; citizens-main is pulled in non-transitively for
+    // the LookClose trait, which lives in the plugin rather than the API jar.
+    // Pinned to a concrete release line rather than a floating '2.0.+' so a
+    // published Citizens build cannot silently change what we compile against.
+    compileOnly('net.citizensnpcs:citizensapi:2.0.43-SNAPSHOT') {
+        exclude group: 'org.bukkit'
+        exclude group: 'org.spigotmc'
+    }
+    compileOnly('net.citizensnpcs:citizens-main:2.0.43-SNAPSHOT') {
+        transitive = false
+    }
+    implementation files('libs/lib-1.0-SNAPSHOT.jar')
 
     testImplementation platform("org.junit:junit-bom:5.11.4")
     testImplementation "org.junit.jupiter:junit-jupiter"

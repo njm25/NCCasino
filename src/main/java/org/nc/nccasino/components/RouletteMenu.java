@@ -10,6 +10,7 @@ import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -26,7 +27,7 @@ public class RouletteMenu extends Menu {
     private UUID dealerId;
     private Nccasino plugin;
     private String returnName;
-    private Mob dealer;
+    private LivingEntity dealer;
     public static final Map<UUID, RouletteMenu> RAInventories = new HashMap<>();
 
     public RouletteMenu(UUID dealerId, Player player, String title, Consumer<Player> ret, Nccasino plugin, String returnName) {

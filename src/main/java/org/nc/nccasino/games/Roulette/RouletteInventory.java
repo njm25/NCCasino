@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.UUID;
 
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -721,7 +722,7 @@ private void openBettingTable(Player player) {
     switchingPlayers.add(player.getUniqueId()); // Mark the player as switching inventories
 
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        Mob dealer = Dealer.findDealer(dealerId, player.getLocation());
+        LivingEntity dealer = Dealer.findDealer(dealerId, player.getLocation());
         if (dealer != null) {
             Stack<Pair<String, Integer>> bets = getPlayerBets(player.getUniqueId());
             String internalName = Dealer.getInternalName(dealer);

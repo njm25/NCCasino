@@ -28,6 +28,7 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fox;
 import org.bukkit.entity.Frog;
 import org.bukkit.entity.Horse;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Llama;
 import org.bukkit.entity.MagmaCube;
 import org.bukkit.entity.Mob;
@@ -55,6 +56,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.integrations.CitizensDealerSupport;
 import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.entities.Menu;
@@ -71,36 +73,36 @@ public class AdminMenu extends Menu {
      * We store a reference to the "owner" Player's UUID so we know
      * which player maps we must remove references from in cleanup().
      */
-    private Mob dealer;
+    private LivingEntity dealer;
     // Track click state per player
     private int chipIndex=1;
     // Static maps referencing AdminInventory or the player's editing states
-    private static final Map<UUID, Mob> moveMode = new HashMap<>();
-    private static final Map<UUID, Mob> nameEditMode = new HashMap<>();
-    public static final Map<UUID, Mob> timerEditMode = new HashMap<>();
-    public static final Map<UUID, Mob> standOn17Mode = new HashMap<>();
-    public static final Map<UUID, Mob> editMinesMode = new HashMap<>();
-    private static final Map<UUID, Mob> amsgEditMode = new HashMap<>();
-    private static final Map<UUID, Mob> chipEditMode = new HashMap<>();
-    private static final Map<UUID, Mob> currencyEditMode = new HashMap<>();
-    public static final Map<UUID, Mob> decksEditMode = new HashMap<>();
-    public static final Map<UUID, Mob> dragonEditMode = new HashMap<>();
-    public static final Map<UUID, Mob> editRpsChainMode = new HashMap<>();
-    public static final Map<UUID, Mob> editCoinFlipChainMode = new HashMap<>();
+    private static final Map<UUID, LivingEntity> moveMode = new HashMap<>();
+    private static final Map<UUID, LivingEntity> nameEditMode = new HashMap<>();
+    public static final Map<UUID, LivingEntity> timerEditMode = new HashMap<>();
+    public static final Map<UUID, LivingEntity> standOn17Mode = new HashMap<>();
+    public static final Map<UUID, LivingEntity> editMinesMode = new HashMap<>();
+    private static final Map<UUID, LivingEntity> amsgEditMode = new HashMap<>();
+    private static final Map<UUID, LivingEntity> chipEditMode = new HashMap<>();
+    private static final Map<UUID, LivingEntity> currencyEditMode = new HashMap<>();
+    public static final Map<UUID, LivingEntity> decksEditMode = new HashMap<>();
+    public static final Map<UUID, LivingEntity> dragonEditMode = new HashMap<>();
+    public static final Map<UUID, LivingEntity> editRpsChainMode = new HashMap<>();
+    public static final Map<UUID, LivingEntity> editCoinFlipChainMode = new HashMap<>();
 
     /** Which chat-prompt field {@link #blackjackFieldEditMode} is currently open for. */
     public enum BlackjackEditField { MAX_HANDS, INSURANCE_TIMEOUT, TURN_TIMER_TIMEOUT }
     // One consolidated pair covers every BlackjackMenu numeric chat prompt
     // beyond the pre-existing timer/standOn17/decks maps above -- a typed
     // "which field" companion map instead of one more single-purpose
-    // Map<UUID, Mob> per field.
-    public static final Map<UUID, Mob> blackjackFieldEditMode = new HashMap<>();
+    // Map<UUID, LivingEntity> per field.
+    public static final Map<UUID, LivingEntity> blackjackFieldEditMode = new HashMap<>();
     public static final Map<UUID, BlackjackEditField> blackjackFieldEditTarget = new HashMap<>();
 
     // All active AdminInventories by player ID
     public static final Map<UUID, AdminMenu> adminInventories = new HashMap<>();
     // Tracks which dealer is being edited by which player
-    public static final Map<UUID, Mob> localMob = new HashMap<>();
+    public static final Map<UUID, LivingEntity> localMob = new HashMap<>();
     private final Map<UUID, Boolean> movingDealers = new HashMap<>();
 
 
@@ -165,6 +167,7 @@ public class AdminMenu extends Menu {
     slotMapping.put(SlotOption.CHIP_SIZE5, 24);
     slotMapping.put(SlotOption.MOB_SETTINGS, 4);
     slotMapping.put(SlotOption.JOCKEY_MENU, 13);
+    slotMapping.put(SlotOption.CITIZENS_BIND, 5);
    }
 
 
@@ -254,6 +257,13 @@ public class AdminMenu extends Menu {
 
        /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
         addItemAndLore(Material.COMPASS, 1, text("admin.move-dealer"), slotMapping.get(SlotOption.MOVE_DEALER));
+        if (CitizensDealerSupport.isAvailable()) {
+            boolean bound = dealer != null && Dealer.getBackend(dealer) == Dealer.Backend.CITIZENS;
+            addItemAndLore(Material.PLAYER_HEAD, 1,
+                text(bound ? "admin.rebind-citizens-npc" : "admin.bind-citizens-npc"),
+                slotMapping.get(SlotOption.CITIZENS_BIND),
+                text("admin.bind-citizens-npc-lore"));
+        }
         addItemAndLore(Material.BARRIER, 1, text("admin.delete-dealer"), slotMapping.get(SlotOption.DELETE_DEALER));
         addItemAndLore(Material.SPRUCE_DOOR, 1, text("admin.exit"), slotMapping.get(SlotOption.EXIT));
 
@@ -268,12 +278,22 @@ public class AdminMenu extends Menu {
 
         addItem(head,slotMapping.get(SlotOption.PM) );
         updateCurrencyButtons();
-        Material mobEgg = MobSelectionMenu.getSpawnEggFor(dealer.getType());
 
-        // Now display that egg item in the slot
-        List<String> lore = getMobSelectionLore(dealer);
-        addItemAndLore(mobEgg, 1, text("admin.edit-mob-settings"), slotMapping.get(SlotOption.MOB_SETTINGS), lore.toArray(new String[0]));
+        if (dealer instanceof Mob mobDealer) {
+            Material mobEgg = MobSelectionMenu.getSpawnEggFor(mobDealer.getType());
 
+            // Now display that egg item in the slot
+            List<String> lore = getMobSelectionLore(mobDealer);
+            addItemAndLore(mobEgg, 1, text("admin.edit-mob-settings"), slotMapping.get(SlotOption.MOB_SETTINGS), lore.toArray(new String[0]));
+        } else {
+            // A Citizens NPC's body -- its type, skin, equipment and position --
+            // is configured through Citizens' own commands, so offering our mob
+            // editor here would be misleading. Show what the dealer is bound to
+            // instead, and point the admin at the right tool.
+            addItemAndLore(Material.PLAYER_HEAD, 1, text("admin.citizens-npc"),
+                slotMapping.get(SlotOption.MOB_SETTINGS),
+                text("admin.citizens-npc-lore"));
+        }
     }
     
     private List<String> getGameSettingsLore(FileConfiguration config, String internalName, String gameType) {
@@ -370,7 +390,7 @@ public class AdminMenu extends Menu {
      * Returns whether the player is currently editing something else (rename, timer, etc.).
      */
     public static boolean isPlayerOccupied(UUID playerId) {
-        Mob mob = nameEditMode.get(playerId);
+        LivingEntity mob = nameEditMode.get(playerId);
         return (mob != null)
             || (standOn17Mode.get(playerId) != null)
             || (editMinesMode.get(playerId) != null)
@@ -420,10 +440,10 @@ public class AdminMenu extends Menu {
         }
         return occupations;
     }
-    public static List<Mob> getOccupiedDealers(UUID playerId) {
-        List<Mob> mobs = new ArrayList<>();
+    public static List<LivingEntity> getOccupiedDealers(UUID playerId) {
+        List<LivingEntity> mobs = new ArrayList<>();
     
-        Mob mob;
+        LivingEntity mob;
     
         if ((mob = nameEditMode.get(playerId)) != null) {
             mobs.add(mob);
@@ -481,6 +501,10 @@ public class AdminMenu extends Menu {
                 break;
             case MOVE_DEALER:
                 handleMoveDealer(player);
+                playDefaultSound(player);
+                break;
+            case CITIZENS_BIND:
+                handleCitizensBind(player);
                 playDefaultSound(player);
                 break;
             case DELETE_DEALER:
@@ -558,6 +582,24 @@ public class AdminMenu extends Menu {
 
     }
 
+    /**
+     * Starts the "right-click the NPC you want" flow for this dealer.
+     */
+    private void handleCitizensBind(Player player) {
+        if (!CitizensDealerSupport.isAvailable()) {
+            return;
+        }
+        if (dealer == null) {
+            dealer = Dealer.findDealer(dealerId, player.getLocation());
+        }
+        String internalName = (dealer != null) ? Dealer.getInternalName(dealer) : null;
+        if (internalName == null) {
+            player.sendMessage(text("admin.dealer-not-found"));
+            return;
+        }
+        CitizensDealerSupport.beginBindFlow(player, internalName);
+    }
+
     private void handleDealerSettings(Player player) {
         // Ensure we have a valid dealer reference
         if (dealer == null) {
@@ -566,6 +608,14 @@ public class AdminMenu extends Menu {
 
         if (dealer == null) {
             player.sendMessage(text("admin.dealer-not-found"));
+            return;
+        }
+
+        // Species, variant and jockey editing are all mob-only. A Citizens NPC's
+        // appearance is Citizens' to manage, so send the admin there instead of
+        // opening a menu whose every button would be a no-op.
+        if (!(dealer instanceof Mob)) {
+            player.sendMessage(text("admin.citizens-npc-lore"));
             return;
         }
 
@@ -1285,16 +1335,23 @@ public class AdminMenu extends Menu {
                 String internalName = Dealer.getInternalName(dealer);
                 plugin.getConfig().set("dealers." + internalName + ".display-name", newName);
                 plugin.saveConfig();
-                dealer.setCustomNameVisible(true);
-                
-                // Update all jockey names in the stack
-                JockeyManager jockeyManager = new JockeyManager(dealer);
-                for (JockeyNode jockey : jockeyManager.getJockeys()) {
-                    if (jockey.getPosition() > 0) { // Skip dealer (position 0)
-                        jockey.setCustomName(newName);
+
+                // Name tag and jockey stack are ours to change only on a mob we
+                // spawned. On a Citizens NPC the rename still applies to the
+                // dealer's configured display name, while the NPC keeps the
+                // name and skin its owner gave it.
+                if (dealer instanceof Mob mobDealer) {
+                    mobDealer.setCustomNameVisible(true);
+
+                    // Update all jockey names in the stack
+                    JockeyManager jockeyManager = new JockeyManager(mobDealer);
+                    for (JockeyNode jockey : jockeyManager.getJockeys()) {
+                        if (jockey.getPosition() > 0) { // Skip dealer (position 0)
+                            jockey.setCustomName(newName);
+                        }
                     }
                 }
-                
+
                 plugin.reloadDealer(dealer);
                 
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
@@ -1524,11 +1581,11 @@ public class AdminMenu extends Menu {
         }
     
         // Successful teleport
-        if (chunk.isLoaded() && dealer != null && dealer.getUniqueId().equals(dealerId)) {
+        if (chunk.isLoaded() && dealer instanceof Mob mobDealer && dealer.getUniqueId().equals(dealerId)) {
             DealerEventListener.allowAdminTeleport(dealer.getUniqueId()); // Allow this teleport
-            
+
             // Find the bottom-most vehicle in the stack
-            Mob bottomMob = dealer;
+            Mob bottomMob = mobDealer;
             while (bottomMob.getVehicle() instanceof Mob) {
                 bottomMob = (Mob) bottomMob.getVehicle();
             }
@@ -1801,7 +1858,7 @@ public class AdminMenu extends Menu {
         }
     }
 
-    public static void clearAllEditModes(Mob mob) {
+    public static void clearAllEditModes(LivingEntity mob) {
         nameEditMode.values().removeIf(mob::equals);
         timerEditMode.values().removeIf(mob::equals);
         amsgEditMode.values().removeIf(mob::equals);
