@@ -207,15 +207,14 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     private long demoHypotheticalPayout;
 
     /**
-     * Temporary paytable sound-lab selection. Non-null only for the demo
-     * spin launched by one of the 27 audition buttons; paid and ordinary
-     * lever demo spins always use the production suite.
+     * This spin's randomly-chosen starting note for {@link #playReelStop}'s musical pattern
+     * (3-reel major triad, 5-reel Egyptian pentatonic, 7-reel blues-to-octave run) -- picked
+     * fresh in {@link #startAnimation} and {@link #startDemoAnimation} from each pattern's
+     * verified-safe range, one per spin so every reel of that spin shares the same starting
+     * note. Null for any other reel count, which sends {@link #playReelStop} back to the plain
+     * pitch ramp.
      */
-    private SoundDemoPreset activeSoundDemoPreset;
-    /** Selected chromatic starting note for every lower-grid ending arrangement. */
-    private int selectedSoundDemoRoot = 4;
-    /** Sends a sound-lab-launched demo back to the lab when its finale hold ends. */
-    private boolean returnToSoundLabAfterDemo = false;
+    private double[] activeSpinReelScale;
 
     /** Session-local; always resets to {@link SlotsSpinSpeed#NORMAL} on a new session, and only ever loaded from a profile. */
     private SlotsSpinSpeed spinSpeed = SlotsSpinSpeed.NORMAL;
@@ -622,48 +621,24 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
      */
     private void renderPaytableCanvas() {
         clearCanvas();
+        SlotsPaytable paytable = config.paytable();
         double denomination = chipValues[denominationIndex];
 
         for (int slot : SlotsPaytableLayout.paytableCanvasSlots()) {
             addItemAndLore(Material.BLACK_STAINED_GLASS_PANE, 1, " ", slot);
         }
 
-        // Temporary sound lab: the top row selects the starting note and the
-        // 9x3 body selects one of nine ending arrangements for 3/5/7 reels.
-        // Height is deliberately absent because it never changes the audio.
-        renderSoundDemoRootRow();
-        renderSoundDemoGrid();
+        renderPaytableInfoColumn(paytable);
+        renderPaytableLegend();
+        renderCurrentMachineCard(paytable, denomination);
+
+        SlotsSymbol[] symbols = SlotsSymbol.payingSymbols();
+        int[] cardSlots = SlotsPaytableLayout.symbolCardSlots(symbols.length);
+        for (int i = 0; i < symbols.length; i++) {
+            renderSymbolCard(symbols[i], cardSlots[i], paytable, denomination);
+        }
 
         renderInformationalRail(denomination);
-    }
-
-    private void renderSoundDemoRootRow() {
-        for (int slot = 0; slot < SlotsGeometry.INVENTORY_WIDTH; slot++) {
-            String name = (slot == selectedSoundDemoRoot ? ChatColor.GREEN : ChatColor.AQUA)
-                + "♪ " + (slot + 1);
-            if (slot == selectedSoundDemoRoot) {
-                setGlowingItem(slot, Material.NOTE_BLOCK, name);
-            } else {
-                addItemAndLore(Material.NOTE_BLOCK, 1, name, slot);
-            }
-        }
-    }
-
-    private void renderSoundDemoGrid() {
-        Material[] variantMaterials = {
-            Material.BELL, Material.NOTE_BLOCK, Material.AMETHYST_SHARD,
-            Material.GOLD_NUGGET, Material.END_ROD, Material.QUARTZ,
-            Material.FIREWORK_STAR, Material.REPEATER, Material.COMPASS
-        };
-        int[] reelCounts = SlotsGeometry.supportedColumnCounts();
-        for (int reelIndex = 0; reelIndex < reelCounts.length; reelIndex++) {
-            for (int variant = 0; variant < 9; variant++) {
-                int slot = 9 + (reelIndex * 9) + variant;
-                addItemAndLore(variantMaterials[variant], 1,
-                    ChatColor.AQUA + "♫ " + (variant + 1), slot,
-                    text("slots.reels-current", "columns", reelCounts[reelIndex]));
-            }
-        }
     }
 
     /**
@@ -1544,31 +1519,11 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         switch (uiView) {
             case AUTO_SETTINGS -> handleAutoSettingsClick(slot, clickType);
             case PROFILES -> handleProfilesEntryClick(slot, clickType);
-            case PAYTABLE -> handleSoundDemoClick(slot);
-            // GAME's reel cells are informational only.
-            case GAME -> {
+            // GAME's reel cells and PAYTABLE's cards/rail are informational
+            // only; a click on either is a safe no-op.
+            case GAME, PAYTABLE -> {
             }
         }
-    }
-
-    private void handleSoundDemoClick(int slot) {
-        if (slot >= 0 && slot < SlotsGeometry.INVENTORY_WIDTH) {
-            selectedSoundDemoRoot = slot;
-            play("block.note_block.bell", Sound.BLOCK_NOTE_BLOCK_BELL,
-                0.75f, soundDemoRootPitch(slot));
-            renderSoundDemoRootRow();
-            return;
-        }
-        SoundDemoPreset preset = SoundDemoPreset.atPaytableSlot(slot, selectedSoundDemoRoot);
-        if (preset == null || !controller.isReadyForSpin() || demoActive) {
-            return;
-        }
-        config = config.withColumns(preset.columns());
-        onGeometryChanged();
-        activeSoundDemoPreset = preset;
-        returnToSoundLabAfterDemo = true;
-        switchViewSilently(SlotsUiView.GAME);
-        handleDemoSpin();
     }
 
     /**
@@ -1590,8 +1545,9 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         change.run();
     }
 
+    /** The exit door's own close sound, matching Roulette/Mines/Coin Flip/RPS -- not the generic click every other button uses. */
     private void handleExit() {
-        playDefaultSound(player);
+        play("block.wooden_door.close", Sound.BLOCK_WOODEN_DOOR_CLOSE, 1.0f, 1.0f);
         player.closeInventory();
     }
 
@@ -1646,8 +1602,17 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         switchView(SlotsUiView.PAYTABLE, 1.0f);
     }
 
+    /** One shared control (BACK_TO_GAME) for every modal view, so the sound has to be picked from whichever one is actually being left. */
     private void handleBackToGame() {
-        switchView(SlotsUiView.GAME, 0.9f);
+        SlotsUiView leaving = uiView;
+        switchViewSilently(SlotsUiView.GAME);
+        switch (leaving) {
+            case PROFILES -> playProfilesClose();
+            case AUTO_SETTINGS -> playAutoSettingsClose();
+            case PAYTABLE -> playPaytableClose();
+            default -> playViewTransition(0.9f);
+        }
+        redrawEverything();
     }
 
     /**
@@ -2038,8 +2003,6 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             returnToGameViewForAction();
             handleSpin(false);
         } else {
-            activeSoundDemoPreset = null;
-            returnToSoundLabAfterDemo = false;
             returnToGameViewForAction();
             handleDemoSpin();
         }
@@ -2195,6 +2158,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         SlotsReelPlan plan = SlotsReelPlan.build(outcome, config.activeLines());
         int columns = outcome.columns();
         int rows = outcome.rows();
+        activeSpinReelScale = randomReelStopScale(columns);
         SlotsVariance variance = config.variance();
         SlotsReelStrip[] strips = new SlotsReelStrip[columns];
         for (int col = 0; col < columns; col++) {
@@ -2267,19 +2231,11 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             return;
         }
         demoActive = false;
-        boolean reopenSoundLab = returnToSoundLabAfterDemo;
-        activeSoundDemoPreset = null;
-        returnToSoundLabAfterDemo = false;
         String key = hypotheticalPayout > 0 ? "slots.demo-result-win" : "slots.demo-result-loss";
         player.sendMessage(text(key,
             "bet", plugin.formatWagerDisplay(currencyMode, currencyName, hypotheticalBet),
             "amount", plugin.formatWagerDisplay(currencyMode, currencyName, hypotheticalPayout)));
-        if (reopenSoundLab) {
-            switchViewSilently(SlotsUiView.PAYTABLE);
-            redrawEverything();
-        } else {
-            renderControls();
-        }
+        renderControls();
     }
 
     /** Cancels only the running demo animation task, without bumping the generation -- see {@link #cancelDemoTask}. */
@@ -2516,7 +2472,9 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             }
             return;
         }
-        switchView(SlotsUiView.AUTO_SETTINGS, 1.1f);
+        switchViewSilently(SlotsUiView.AUTO_SETTINGS);
+        playAutoSettingsOpen();
+        redrawEverything();
     }
 
     /**
@@ -2636,7 +2594,9 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         if (!canOpenModalView()) {
             return;
         }
-        switchView(SlotsUiView.PROFILES, 1.1f);
+        switchViewSilently(SlotsUiView.PROFILES);
+        playProfilesOpen();
+        redrawEverything();
     }
 
     private void handleProfilesEntryClick(int slot, ClickType clickType) {
@@ -3137,6 +3097,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         final SlotsReelPlan plan = SlotsReelPlan.build(outcome, config.activeLines());
         final int columns = outcome.columns();
         final int rows = outcome.rows();
+        activeSpinReelScale = randomReelStopScale(columns);
         final SlotsVariance variance = config.variance();
         final SlotsReelStrip[] strips = new SlotsReelStrip[columns];
         for (int col = 0; col < columns; col++) {
@@ -3405,24 +3366,45 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
      * has -- the ear tracks the rising sequence and anticipates the last one.
      */
     private void playReelStop(int reel, int columns) {
-        SoundDemoPreset preset = activeSoundDemoPreset;
-        if (preset != null) {
-            int semitones = preset.stopSemitones()[reel];
-            // The seven-reel major-scale experiment intentionally omits its
-            // penultimate musical note, but retains a quiet physical landing
-            // so the reel never sounds broken or visually disconnected.
-            if (semitones != SoundDemoPreset.REST) {
-                play(preset.stopKey(), preset.stopSound(), 0.75f,
-                    semitonePitch(preset.stopBasePitch(), semitones));
-            }
-            play("block.wooden_button.click_on", Sound.BLOCK_WOODEN_BUTTON_CLICK_ON,
-                0.32f, semitonePitch(preset.stopBasePitch(), Math.max(0, semitones)));
+        double[] scale = activeSpinReelScale;
+        if (scale != null && reel < scale.length) {
+            float pitch = semitonePitch(REEL_STOP_SCALE_BASE_PITCH, scale[reel]);
+            play("block.note_block.bass", Sound.BLOCK_NOTE_BLOCK_BASS, 0.9f, pitch);
+            play("block.wooden_button.click_on", Sound.BLOCK_WOODEN_BUTTON_CLICK_ON, 0.5f, pitch);
             return;
         }
         float progress = columns <= 1 ? 0f : (float) reel / (columns - 1);
         float pitch = 0.8f + (progress * 0.9f);
         play("block.note_block.bass", Sound.BLOCK_NOTE_BLOCK_BASS, 0.9f, pitch);
         play("block.wooden_button.click_on", Sound.BLOCK_WOODEN_BUTTON_CLICK_ON, 0.5f, pitch);
+    }
+
+    private static final float REEL_STOP_SCALE_BASE_PITCH = 0.55f;
+
+    /**
+     * Picks this spin's starting note at random from each pattern's verified-safe range -- -1
+     * to +7 for the 3-reel major triad, -1 to +4 for the 5-reel Egyptian pentatonic, -1 to +2
+     * for the 7-reel blues-to-octave run, each precisely checked (not estimated) against the
+     * pitch floor/ceiling this base pitch leaves for every value in the range -- or null for
+     * any other reel count, which sends {@link #playReelStop} back to the plain pitch ramp.
+     */
+    private double[] randomReelStopScale(int columns) {
+        if (columns == 3) {
+            int transpose = java.util.concurrent.ThreadLocalRandom.current().nextInt(-1, 8);
+            return new double[] {transpose, transpose + 4, transpose + 7};
+        }
+        if (columns == 5) {
+            int transpose = java.util.concurrent.ThreadLocalRandom.current().nextInt(-1, 5);
+            return new double[] {transpose, transpose + 2, transpose + 5, transpose + 7, transpose + 10};
+        }
+        if (columns == 7) {
+            int transpose = java.util.concurrent.ThreadLocalRandom.current().nextInt(-1, 3);
+            return new double[] {
+                transpose, transpose + 3, transpose + 5, transpose + 6,
+                transpose + 7, transpose + 10, transpose + 12
+            };
+        }
+        return null;
     }
 
     /**
@@ -3517,11 +3499,6 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         return (float) (basePitch * Math.pow(2.0, semitones / 12.0));
     }
 
-    /** Nine chromatic roots from a low, unclipped register; every arrangement remains below pitch 2.0. */
-    private static float soundDemoRootPitch(int rootIndex) {
-        return semitonePitch(0.55f, Math.floorMod(rootIndex, 9));
-    }
-
     // ---- audio: menu and control identity ---------------------------------
     //
     // Every non-reel control used to share one Sound (UI_BUTTON_CLICK) and
@@ -3530,9 +3507,34 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     // gets its own timbre instead; pitch still carries direction/magnitude
     // within a family.
 
-    /** Opening a different view (Paytable, Profiles, Auto Spin Settings) or returning to Game. */
+    /** Opening the Paytable -- returning to Game from it uses {@link #playPaytableClose} instead. */
     private void playViewTransition(float pitch) {
         play("item.book.page_turn", Sound.ITEM_BOOK_PAGE_TURN, 0.6f, pitch);
+    }
+
+    /** Returning to Game from the Paytable. */
+    private void playPaytableClose() {
+        play("ui.toast.out", Sound.UI_TOAST_OUT, 0.6f, 1.0f);
+    }
+
+    /** Opening Profiles: the same Ender Chest the control itself is. */
+    private void playProfilesOpen() {
+        play("block.ender_chest.open", Sound.BLOCK_ENDER_CHEST_OPEN, 0.6f, 1.0f);
+    }
+
+    /** Returning to Game from Profiles. */
+    private void playProfilesClose() {
+        play("block.ender_chest.close", Sound.BLOCK_ENDER_CHEST_CLOSE, 0.6f, 1.0f);
+    }
+
+    /** Opening Auto Spin Settings: activating the automation, not a literal clock tick. */
+    private void playAutoSettingsOpen() {
+        play("block.beacon.activate", Sound.BLOCK_BEACON_ACTIVATE, 0.6f, 1.0f);
+    }
+
+    /** Returning to Game from Auto Spin Settings. */
+    private void playAutoSettingsClose() {
+        play("block.beacon.deactivate", Sound.BLOCK_BEACON_DEACTIVATE, 0.6f, 1.0f);
     }
 
     /** Cycling a numeric control (Height, Reels, Paylines, Wager). Direction picks the button's on/off half. */
@@ -3573,83 +3575,6 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     /** A chat-prompt value was accepted -- distinctly quieter/lower than {@link #playFinale} so it can't read as a win. */
     private void playPromptAccepted() {
         play("block.note_block.chime", Sound.BLOCK_NOTE_BLOCK_CHIME, 0.5f, 1.1f);
-    }
-
-    /** One lower-grid ending arrangement paired with the chosen #8 piston cadence. */
-    private record SoundDemoPreset(
-        int columns,
-        Sound stopSound,
-        String stopKey,
-        float stopBasePitch,
-        int[] stopSemitones) {
-
-        private static final int REST = -99;
-
-        private static SoundDemoPreset atPaytableSlot(int slot, int rootIndex) {
-            if (slot < 9 || slot > 35) {
-                return null;
-            }
-            int index = slot - 9;
-            int reelIndex = index / 9;
-            int variant = index % 9;
-            int columns = new int[] {3, 5, 7}[reelIndex];
-            Sound stopSound = switch (variant % 3) {
-                case 0 -> Sound.BLOCK_NOTE_BLOCK_BELL;
-                case 1 -> Sound.BLOCK_NOTE_BLOCK_XYLOPHONE;
-                default -> Sound.BLOCK_NOTE_BLOCK_PLING;
-            };
-            String stopKey = switch (variant % 3) {
-                case 0 -> "block.note_block.bell";
-                case 1 -> "block.note_block.xylophone";
-                default -> "block.note_block.pling";
-            };
-            int[] scale = stopScale(columns, variant);
-            return new SoundDemoPreset(
-                columns, stopSound, stopKey, soundDemoRootPitch(rootIndex), scale);
-        }
-
-        private static int[] stopScale(int columns, int variant) {
-            if (columns == 3) {
-                return switch (variant) {
-                    case 0 -> new int[] {0, 4, 7};
-                    case 1 -> new int[] {0, 3, 7};
-                    case 2 -> new int[] {0, 5, 7};
-                    case 3 -> new int[] {0, 4, 10};
-                    case 4 -> new int[] {0, 4, 8};
-                    case 5 -> new int[] {0, 3, 6};
-                    case 6 -> new int[] {0, 7, 12};
-                    case 7 -> new int[] {0, REST, 12};
-                    default -> new int[] {0, 10, 7};
-                };
-            }
-            if (columns == 5) {
-                return switch (variant) {
-                    case 0 -> new int[] {0, 2, 4, 7, 9};
-                    case 1 -> new int[] {0, 3, 5, 7, 10};
-                    case 2 -> new int[] {0, 2, 5, 7, 12};
-                    case 3 -> new int[] {0, 4, 7, 10, 14};
-                    case 4 -> new int[] {0, 2, 4, 6, 8};
-                    case 5 -> new int[] {0, 3, 5, 6, 10};
-                    case 6 -> new int[] {0, 4, 7, 9, 12};
-                    case 7 -> new int[] {0, 2, 4, REST, 12};
-                    default -> new int[] {0, 7, 10, 4, 12};
-                };
-            }
-            return switch (variant) {
-                case 0 -> new int[] {0, 2, 4, 5, 7, 9, 12};
-                case 1 -> new int[] {0, 2, 3, 5, 7, 10, 12};
-                case 2 -> new int[] {0, 2, 5, 7, 9, 10, 12};
-                // Dedicated jazz/minor-blues family.
-                case 3 -> new int[] {0, 3, 5, 6, 7, 10, 12};
-                case 4 -> new int[] {0, 2, 4, 6, 8, 10, 12};
-                case 5 -> new int[] {0, 1, 3, 4, 6, 10, 12};
-                case 6 -> new int[] {0, 4, 5, 7, 9, 11, 12};
-                // Friend-suggested major climb: omit the penultimate note,
-                // then resolve firmly to the octave on reel seven.
-                case 7 -> new int[] {0, 2, 4, 5, 7, REST, 12};
-                default -> new int[] {0, 4, 7, 10, 7, 11, 12};
-            };
-        }
     }
 
     // ---- audio: opening animation ------------------------------------------
