@@ -548,6 +548,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             openingAnimationTask.cancel();
             openingAnimationTask = null;
         }
+        mce.stopSong("SlotsIntro", "OpeningIntro");
     }
 
     // ---- rendering -----------------------------------------------------

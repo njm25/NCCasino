@@ -30,9 +30,14 @@ final class SlotsSongs {
     private static final float A4 = pitchForMidiNote(69);
     private static final float B4 = pitchForMidiNote(71);
     private static final float CS5 = pitchForMidiNote(73);
-    // The transcription's real next treble note past 2.803s, at 3.038s: the guitar's move into the
-    // next chord. Pitch 1.0 exactly (F#4 is this whole file's tuning reference).
+    // The transcription's real final chord at 3.038s: a full four-note strum (F#4+D4+F#3+D3), the
+    // guitar's actual move into the next chord -- not just the single treble note used before.
+    // Pitch 1.0 exactly (F#4 is this whole file's tuning reference). D3 (MIDI 50) is dropped: shifted
+    // up an octave to stay above the pitch floor, it becomes D4 -- already present in the chord, so
+    // it would just double a note already there rather than add anything.
     private static final float FS4 = pitchForMidiNote(66);
+    private static final float D4 = pitchForMidiNote(62);
+    private static final float FS3 = pitchForMidiNote(54);
 
     /** 20 ticks = 1 real second (confirmed: VSE's tempo field is never read at playback; every tick is exactly 1/20s). */
     private static final int TICKS_PER_SECOND = 20;
@@ -64,32 +69,31 @@ final class SlotsSongs {
      * (128 BPM). Every timestamp below is that guitar track's real note
      * onset, in seconds from the riff's first downbeat, converted straight
      * to ticks -- no invented rhythm, no rounding to a theoretical grid.
-     * Runs past the phrase's resting point (2.340s) all the way to the
-     * transcription's real next treble note (3.038s, the guitar's own move
-     * into the next chord -- {@link #FS4}), and the whole thing is delayed
-     * by {@link #SHIFT_TICKS} -- see its doc for why. Two earlier picks for
-     * this closing note both landed wrong: the 2.803s bass strum that's
-     * chronologically next in the transcription is a low, non-melodic note
-     * that read as inaudible clutter, and a hand-picked A4 substitute read
-     * as an accidental repeat of the double-stop one beat earlier (2.575s),
-     * which is also an A4. {@link #FS4} is a real transcribed pitch,
-     * distinct from every note in the two beats before it, so it can't read
-     * as either. Its real onset also lands 5 ticks past
-     * {@link SlotsOpeningColumnMotion#finalTick} rather than the earlier
-     * hand-picked +2 -- both hand-picked offsets read as too early, so this
-     * uses the transcription's own real timing instead of a third guess.
-     * Nothing else is scheduled anywhere near that tick (the reel-tick's
-     * own piston click is suppressed at finalTick, and the separate ready
-     * chime is gone), so this one note gets to be the entire "ready"
-     * moment.
+     * Runs past the phrase's resting point (2.340s) all the way through the
+     * transcription's real final chord (3.038s, the guitar's own move into
+     * the next chord), and the whole thing is delayed by
+     * {@link #SHIFT_TICKS} -- see its doc for why.
+     *
+     * <p>The close is the real final chord alone ({@link #FS4}/{@link #D4}/
+     * {@link #FS3}, a genuine four-voice strum rather than one isolated
+     * note) -- an earlier attempt to also land a bass strum exactly on
+     * {@link SlotsOpeningColumnMotion#finalTick} was tried and rejected, so
+     * that tick is quiet again. Nothing else is scheduled at the closing
+     * tick (the reel-tick's own piston click is suppressed at finalTick,
+     * and the separate ready chime is gone), so this chord is the entire
+     * ending.
      */
     static Song getOpeningIntro() {
         Song song = new Song("SlotsOpeningIntro", 20);
 
-        // 0.000s: the opening chord -- all four notes struck together.
+        // 0.000s: the opening chord. The real transcription strikes A3+E4+A4+C#5 together, but
+        // every other bass moment in this piece is exactly one clean BASS voice at a time (the
+        // walking thumb alternation from 0.934s on) -- two simultaneous BASS hits only ever happens
+        // here, and it's what made the opening read as muddy against that otherwise-consistent
+        // texture. Dropping E4 keeps a real, in-key A major voicing (root in the bass, root+third
+        // on top) without being the one spot that breaks the single-bass-voice rule.
         int chord = atSeconds(0.000);
         song.addNote(new Note(BASS, chord, chord, A3, 0.55f));
-        song.addNote(new Note(BASS, chord, chord, E4, 0.5f));
         song.addNote(new Note(HARP, chord, chord, A4, 0.45f));
         song.addNote(new Note(HARP, chord, chord, CS5, 0.45f));
 
@@ -133,10 +137,12 @@ final class SlotsSongs {
         song.addNote(new Note(HARP, t11, t11, A4, 0.42f));
         song.addNote(new Note(BASS, t11, t11, E4, 0.4f));
 
-        // The finale: the transcription's real next treble note (3.038s) -- see the class doc for
-        // why this replaced both the literal 2.803s bass strum and a hand-picked A4 substitute.
+        // The finale: the transcription's real final chord (3.038s), a genuine four-voice strum
+        // rather than one isolated note -- see the class doc for the two picks this replaced.
         int t12 = atSeconds(3.038);
         song.addNote(new Note(HARP, t12, t12, FS4, 0.75f));
+        song.addNote(new Note(HARP, t12, t12, D4, 0.55f));
+        song.addNote(new Note(BASS, t12, t12, FS3, 0.5f));
 
         return song;
     }
