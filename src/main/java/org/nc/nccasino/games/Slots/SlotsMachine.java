@@ -22,6 +22,7 @@ import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.currency.VaultCurrencyProvider;
 import org.nc.nccasino.currency.WagerTransaction;
 import org.nc.nccasino.entities.DealerInventory;
+import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.payout.BankedCurrency;
 import org.nc.nccasino.payout.ItemDeliveryOutcome;
@@ -33,6 +34,7 @@ import org.nc.nccasino.session.GameTerminationPolicy;
 import org.nc.nccasino.session.SessionRegistry;
 import org.nc.nccasino.session.TerminableSession;
 import org.nc.nccasino.session.TerminationAction;
+import org.nc.VSE.MultiChannelEngine;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -128,6 +130,8 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     private final String currencyName;
     private final SlotsInventory slotsInventory;
     private final double[] chipValues;
+    /** Plays the opening-animation intro song; a fresh engine per machine, mirroring Roulette's per-inventory instance. */
+    private final MultiChannelEngine mce;
 
     private SlotsConfig config;
     private final SlotsSpinController controller = new SlotsSpinController();
@@ -274,6 +278,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         this.currencyMode = plugin.getCurrencyMode(internalName);
         this.currencyName = plugin.getCurrencyName(internalName);
         this.slotsInventory = slotsInventory;
+        this.mce = new MultiChannelEngine(plugin);
         this.chipValues = loadChipValues();
         this.config = SlotsConfig.load(plugin, internalName);
         this.reelDisplay = neutralGrid(config.columns(), config.visibleRows());
@@ -405,6 +410,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
                 maxEntryCount - SlotsTiming.OPENING_DECELERATION_STEPS, maxEntryCount);
 
         playOpeningPowerOn();
+        playOpeningIntroSong();
 
         BukkitRunnable runnable = new BukkitRunnable() {
             @Override
@@ -425,11 +431,8 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
                     advancedAnyColumn = true;
                     SlotsOpeningColumnMotion.shiftDownAndInsert(columnState[col], entries.get(col).get(localIndex));
                     paintOpeningColumn(col, columnState[col]);
-                    if (localIndex == entryCounts[col] - 1) {
-                        playOpeningColumnLand(col, columnCount);
-                    }
                 }
-                if (advancedAnyColumn) {
+                if (advancedAnyColumn && tick != finalTick) {
                     playOpeningReelTick(tick, openingSoundDecelerationStartTick, finalTick);
                 }
                 if (tick >= finalTick) {
@@ -464,7 +467,6 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             return;
         }
         openingActive = false;
-        playOpeningReady();
         redrawEverything();
     }
 
@@ -3657,20 +3659,18 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     }
 
     /**
-     * One column landing its final item. Xylophone rather than the reel-stop
-     * bass/button pair, so the intro never sounds like an actual spin
-     * settling -- and a pitch ladder across the nine columns, same idiom as
-     * {@link #playReelStop}'s ladder across real reels.
+     * Replaces the old per-column landing click with {@link SlotsSongs#getOpeningIntro()},
+     * a verified transcription of the real intro riff whose closing note lands on the
+     * same tick the last column lands its last item -- see that method's doc for the
+     * full derivation. Respects the same sound preference {@link #play} gates on -- the
+     * VSE engine bypasses that helper, so the check is done here instead.
      */
-    private void playOpeningColumnLand(int column, int columnCount) {
-        float progress = columnCount <= 1 ? 0f : (float) column / (columnCount - 1);
-        float pitch = 0.7f + (progress * 0.6f);
-        play("block.note_block.xylophone", Sound.BLOCK_NOTE_BLOCK_XYLOPHONE, 0.22f, pitch);
-    }
-
-    /** The whole intro has settled and the machine is now playable. */
-    private void playOpeningReady() {
-        play("block.note_block.chime", Sound.BLOCK_NOTE_BLOCK_CHIME, 0.4f, 1.0f);
+    private void playOpeningIntroSong() {
+        if (plugin.getPreferences(playerId).getSoundSetting() != Preferences.SoundSetting.ON) {
+            return;
+        }
+        mce.addPlayerToChannel("SlotsIntro", player);
+        mce.playSong("SlotsIntro", SlotsSongs.getOpeningIntro(), false, "OpeningIntro");
     }
 
     // ---- audio: payline 1<->max wrap cascade -------------------------------
@@ -3888,6 +3888,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         closeFlag = true;
         promptSuspended = false;
         pendingProfileSnapshot = null;
+        mce.removePlayerFromAllChannels(player);
         // Release any chat prompt this machine still owns -- a disconnect,
         // a dealer removal, or a plugin shutdown must never leave the shared
         // service holding a prompt for a session that no longer exists. Scoped
