@@ -15,6 +15,9 @@ the linked task guides for specialized workflows.
 - Search for the nearest existing implementation before inventing a new
   convention. Player-visible text belongs in the localization catalogs, not in
   hardcoded Java strings.
+- For Slots music composition or VSE audition work, read
+  [docs/music-composition/COMPOSITION_GUIDE.md](docs/music-composition/COMPOSITION_GUIDE.md), including its
+  **NEW SONG HANDOFF**, before researching or implementing a new score.
 
 ## Editing and Git safety
 

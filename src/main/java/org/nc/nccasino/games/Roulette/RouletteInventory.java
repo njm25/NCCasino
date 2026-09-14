@@ -313,9 +313,13 @@ public class RouletteInventory extends DealerInventory implements TerminableSess
 
         // Also clear any data references if you like
         Bets.clear();
+        for (BettingTable bettingTable : new ArrayList<>(Tables.values())) {
+            bettingTable.cleanupListener();
+        }
         Tables.clear();
         playersWithBets.clear();
         newtry.clear();
+        mce.shutdown();
         unregisterListener();
 
     }
@@ -729,9 +733,10 @@ private void openBettingTable(Player player) {
             Tables.put(player.getUniqueId(), bettingTable);
             player.openInventory(bettingTable.getInventory());
              if (SoundHelper.getSoundSafely("item.book.page_turn", player) != null)player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, SoundCategory.MASTER, 5.0f, 1.0f);
-             if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
+            if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
             mce.addPlayerToChannel("BettingTable", player);
-            mce.removePlayerFromChannel("RouletteWheel", player);}
+            mce.removePlayerFromChannel("RouletteWheel", player);
+            bettingTable.startBettingMusic(player);}
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
                     break;}
@@ -964,13 +969,6 @@ private void startBettingTimer() {
                     bettingTable.updateCountdown(countdown, betsClosed);
                 }
 
-                if(countdown==5){
-                    mce.playSong("Master", RouletteSongs.getDynamicFastTick(), false, "DynamicFastTick");
-
-                }
-                if (countdown < bettingTimeSeconds&&countdown>5) { // Avoid double-playing on first tick
-                    mce.playSong("Master", RouletteSongs.getTimerTick(), false, "TimerTick");
-                }
                 // Update the timer item in the appropriate slot based on the current quadrant
                 int countdownSlot = getCountdownSlotForQuadrant(currentQuadrant);
                 renderLocalizedToAllInventories(countdownSlot, Material.CLOCK, countdown, "roulette.bets-close-in", "seconds", countdown);

@@ -28,6 +28,7 @@ import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.helpers.Preferences;
+import org.nc.nccasino.games.Slots.CasinoSongs;
 import org.nc.nccasino.payout.PayoutMessages;
 import org.nc.nccasino.payout.PendingPayout;
 import java.util.*;
@@ -385,6 +386,7 @@ public class BettingTable extends DealerInventory {
 
         this.betsClosed = betsClosed; // Update the betsClosed flag
         if(betsClosed&&!countflag){
+            stopBettingMusic();
             countflag=true;
          // Mimic a screen going over the whole betting table
               Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -1434,6 +1436,7 @@ private boolean isValidSlotPage2(int slot) {
     public void handleInventoryClose(InventoryCloseEvent event) {
         if (event.getInventory().getHolder() != this) return;
         Player player = (Player) event.getPlayer();
+        stopBettingMusic();
 
         if (switchingPlayers.contains(playerId)) {
 
@@ -1465,7 +1468,32 @@ private boolean isValidSlotPage2(int slot) {
     }
 
     void cleanupListener() {
+        stopBettingMusic();
         HandlerList.unregisterAll(this);
+    }
+
+    void startBettingMusic(Player player) {
+        if (player == null || betsClosed
+            || plugin.getPreferences(playerId).getSoundSetting() != Preferences.SoundSetting.ON) {
+            return;
+        }
+        String channel = bettingMusicChannel();
+        rouletteInventory.getMCE().stopSong(channel, "DayTripper");
+        rouletteInventory.getMCE().addPlayerToChannel(channel, player);
+        rouletteInventory.getMCE().playSong(channel, CasinoSongs.dayTripperLoop(), true, "DayTripper");
+    }
+
+    private void stopBettingMusic() {
+        String channel = bettingMusicChannel();
+        rouletteInventory.getMCE().stopSong(channel, "DayTripper");
+        Player player = Bukkit.getPlayer(playerId);
+        if (player != null) {
+            rouletteInventory.getMCE().removePlayerFromChannel(channel, player);
+        }
+    }
+
+    private String bettingMusicChannel() {
+        return "RouletteBettingMusic:" + playerId;
     }
 
     private void updateItemLore(int slot, int totalBet) {

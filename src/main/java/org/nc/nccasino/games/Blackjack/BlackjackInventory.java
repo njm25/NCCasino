@@ -59,6 +59,9 @@ import org.nc.nccasino.payout.OverflowBankService;
 import org.nc.nccasino.payout.WagerFunding;
 import org.nc.nccasino.payout.UnsettledPayouts;
 import org.nc.nccasino.payout.PayoutDisposition;
+import org.nc.nccasino.games.Slots.CasinoSongs;
+import org.nc.nccasino.helpers.Preferences;
+import org.nc.VSE.MultiChannelEngine;
 
 public class BlackjackInventory extends DealerInventory implements TerminableSession {
 
@@ -72,6 +75,8 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     private final String internalName; // Internal name for config lookup
     private final CurrencyMode currencyMode;
     private final String currencyName;
+    private final MultiChannelEngine mce;
+    private final Set<UUID> blackjackMusicPlayers = new HashSet<>();
     /** Seated players whose bet-spot glow is transiently forced off mid hand-to-hand transition (see {@link #runHandTransitionCollapse}/{@link #runHandTransitionReveal}) -- otherwise {@link #buildBetSpotItemForViewer} derives glow purely from "is it this player's turn," which stays true the whole time and would leave the bet spot glowing while the transitioning hand itself briefly isn't. */
     private final Set<UUID> betSpotGlowSuppressed = new HashSet<>();
     /** Viewers currently watching their own private "dealer builds the table" entrance animation -- see {@link #startTableEntrance}. Gates handleClick (every transit slot is presentation-only while this is set) and the table-wide repaint helpers (initializeGameMenu et al. must never paint over an in-flight entrance). */
@@ -462,6 +467,7 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
         this.internalName = internalName; // Store the internal name
         this.currencyMode = plugin.getCurrencyMode(internalName);
         this.currencyName = plugin.getCurrencyName(internalName);
+        this.mce = new MultiChannelEngine(plugin);
         this.gameActive = false; // Initialize game active flag
         this.playerSeats = new HashMap<>(); // Initialize player seats storage
         this.playerBets = new HashMap<>(); // Initialize player bets storage
@@ -1764,6 +1770,7 @@ private void registerListener() {
             countdownTaskId = -1;
         }
         clearPregameCountdownFromAllViews();
+        stopAllBlackjackMusic();
 
         // A view can still be midway through its private build when the
         // shared countdown reaches zero. Hand it back to the complete
@@ -3295,6 +3302,7 @@ private void registerListener() {
         BlackjackView view = views.get(playerId);
         if (view != null) {
             bootstrapView(view, false);
+            startBlackjackMusic(playerId);
         }
         privateAnimationRuns.remove(playerId);
         resumePrivateAnimationForView(playerId);
@@ -3310,6 +3318,45 @@ private void registerListener() {
      */
     private void abortTableEntrance(UUID playerId) {
         finishTableEntrance(playerId);
+    }
+
+    // ---- pre-deal music ----------------------------------------------------
+
+    private String blackjackMusicChannel(UUID playerId) {
+        return "BlackjackMusic:" + playerId;
+    }
+
+    /** Starts after the private table entrance and repeats only if a long configured timer needs it. */
+    private void startBlackjackMusic(UUID playerId) {
+        if (blackjackMusicPlayers.contains(playerId) || tableEntranceActive.contains(playerId)
+            || startTransitionActive || gameActive) {
+            return;
+        }
+        Player listener = Bukkit.getPlayer(playerId);
+        if (listener == null || !listener.isOnline()
+            || plugin.getPreferences(playerId).getSoundSetting() != Preferences.SoundSetting.ON) {
+            return;
+        }
+        String channel = blackjackMusicChannel(playerId);
+        mce.addPlayerToChannel(channel, listener);
+        mce.playSong(channel, CasinoSongs.iFeelFine(), true, "IFeelFine");
+        blackjackMusicPlayers.add(playerId);
+    }
+
+    private void stopBlackjackMusic(UUID playerId) {
+        String channel = blackjackMusicChannel(playerId);
+        mce.stopSong(channel, "IFeelFine");
+        Player listener = Bukkit.getPlayer(playerId);
+        if (listener != null) {
+            mce.removePlayerFromChannel(channel, listener);
+        }
+        blackjackMusicPlayers.remove(playerId);
+    }
+
+    private void stopAllBlackjackMusic() {
+        for (UUID playerId : new HashSet<>(blackjackMusicPlayers)) {
+            stopBlackjackMusic(playerId);
+        }
     }
 
     private ItemStack withWagerLore(ItemStack item, double wager, Player viewer) {
@@ -3695,6 +3742,7 @@ private void registerListener() {
     void onViewClosed(Player player, BlackjackView view) {
         views.remove(player.getUniqueId(), view);
         view.cleanupListener();
+        stopBlackjackMusic(player.getUniqueId());
         // Private animations (chair guide, wager guide, bet-spot blink,
         // door reveal/conceal, action guide) belong to this one viewer --
         // stop unconditionally on their own close, regardless of why they
@@ -7159,6 +7207,9 @@ private void removePlayerData(UUID playerId) {
 
     // Start the countdown timer and display it with a stack of clocks
     private void startCountdownTimer() {
+        for (UUID playerId : playerSeats.keySet()) {
+            startBlackjackMusic(playerId);
+        }
         countdownTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
 
             int countdown =  plugin.getTimer(internalName);
@@ -9484,6 +9535,7 @@ public void delete() {
         }
     }
     views.clear();
+    mce.shutdown();
 
     // Unregister events related to this inventory
     HandlerList.unregisterAll(this);
@@ -9499,6 +9551,7 @@ public void delete() {
 
     // Cancel the game and reset the board with all items and options
     private void cancelGame() {
+        stopAllBlackjackMusic();
         // Same reasoning as resetGame()'s identical capture -- a table
         // emptying out mid-round (the last seated player leaves/is kicked)
         // can still have real cards on the board, and they deserve the same

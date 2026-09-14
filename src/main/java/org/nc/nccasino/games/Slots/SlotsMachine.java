@@ -1511,17 +1511,19 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     }
 
     /**
-     * A click inside the upper 45-slot canvas. Only the two menu views act on
-     * one: the reel canvas, the Paytable's symbol cards, and its
-     * informational rail are all deliberately inert.
+     * A click inside the upper 45-slot canvas. Rainbow housing in the live
+     * game view is the Golden Slumbers jukebox; paytable content is inert.
      */
     private void handleCanvasClick(int slot, ClickType clickType) {
         switch (uiView) {
             case AUTO_SETTINGS -> handleAutoSettingsClick(slot, clickType);
             case PROFILES -> handleProfilesEntryClick(slot, clickType);
-            // GAME's reel cells and PAYTABLE's cards/rail are informational
-            // only; a click on either is a safe no-op.
-            case GAME, PAYTABLE -> {
+            case GAME -> {
+                if (!SlotsGeometry.isGridSlot(config.columns(), config.visibleRows(), slot)) {
+                    playGoldenSlumbers();
+                }
+            }
+            case PAYTABLE -> {
             }
         }
     }
@@ -1586,6 +1588,9 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
      * repaint on top of that step's own.
      */
     private void switchViewSilently(SlotsUiView destination) {
+        if (uiView == SlotsUiView.GAME && destination != SlotsUiView.GAME) {
+            stopGoldenSlumbers();
+        }
         stopAutoSpin();
         cancelLineFlashTask();
         if (destination == SlotsUiView.GAME && uiView != SlotsUiView.GAME) {
@@ -1641,6 +1646,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
      */
     private void returnToGameViewForAction() {
         if (uiView != SlotsUiView.GAME) {
+            stopGoldenSlumbers();
             uiView = SlotsUiView.GAME;
             restorePlayCanvas();
             redrawEverything();
@@ -2766,6 +2772,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         // Set before the inventory closes, so the close is already recognized
         // as a suspension rather than an exit.
         promptSuspended = true;
+        stopGoldenSlumbers();
         stopAutoSpin();
         cancelLineFlashTask();
         service.begin(prompt);
@@ -3577,6 +3584,28 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         play("block.note_block.chime", Sound.BLOCK_NOTE_BLOCK_CHIME, 0.5f, 1.1f);
     }
 
+    // ---- audio: rainbow-housing jukebox ------------------------------------
+
+    private void playGoldenSlumbers() {
+        // Every housing click restarts the score from its opening attack.
+        stopGoldenSlumbers();
+        if (closeFlag || plugin.getPreferences(playerId).getSoundSetting() != Preferences.SoundSetting.ON) {
+            return;
+        }
+        // The opening score's final chord may still be queued after the columns land.
+        mce.stopSong("SlotsIntro", "OpeningIntro");
+        mce.removePlayerFromChannel("SlotsIntro", player);
+        mce.addPlayerToChannel("SlotsMusic", player);
+        mce.playSong("SlotsMusic", CasinoSongs.goldenSlumbers(), false, "GoldenSlumbers");
+    }
+
+    private void stopGoldenSlumbers() {
+        mce.stopSong("SlotsMusic", "GoldenSlumbers");
+        // Removing the channel itself can stop VSE's ticker permanently.
+        // Remove its listener instead; VSE retains a reusable empty channel.
+        mce.removePlayerFromChannel("SlotsMusic", player);
+    }
+
     // ---- audio: opening animation ------------------------------------------
 
     /** Once, when the falling-panes intro begins -- the cabinet waking up. */
@@ -3815,6 +3844,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         promptSuspended = false;
         pendingProfileSnapshot = null;
         mce.removePlayerFromAllChannels(player);
+        mce.shutdown();
         // Release any chat prompt this machine still owns -- a disconnect,
         // a dealer removal, or a plugin shutdown must never leave the shared
         // service holding a prompt for a session that no longer exists. Scoped
