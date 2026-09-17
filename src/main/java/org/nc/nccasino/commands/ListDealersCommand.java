@@ -82,6 +82,7 @@ public class ListDealersCommand implements CasinoCommand {
             case "Coin Flip" -> plugin.getLocalization().text(sender, "game-options.coin-flip");
             case "Rock Paper Scissors" -> plugin.getLocalization().text(sender, "game-options.rock-paper-scissors");
             case "Dragon Descent" -> plugin.getLocalization().text(sender, "game-options.dragon-descent");
+            case "Slots" -> plugin.getLocalization().text(sender, "game-options.slots");
             case "Test Game" -> plugin.getLocalization().text(sender, "game-options.test-game");
             default -> gameType;
         };

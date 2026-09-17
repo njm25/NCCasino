@@ -27,6 +27,7 @@ import org.nc.nccasino.games.RockPaperScissors.RockPaperScissorsServer;
 import org.nc.nccasino.games.DragonDescent.DragonServer;
 import org.nc.nccasino.games.Mines.MinesInventory;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
+import org.nc.nccasino.games.Slots.SlotsInventory;
 import org.nc.nccasino.games.TestGame.TestServer;
 import org.nc.nccasino.helpers.AttributeHelper;
 
@@ -302,6 +303,10 @@ public class Dealer {
                 inventory = new DragonServer(uniqueId, plugin, internalName);
                 name = "Dragon Descent Dealer";
                 break;
+            case "Slots":
+                inventory = new SlotsInventory(uniqueId, plugin, internalName);
+                name = "Slots Dealer";
+                break;
             default:
                 defaultTimer = 10;
                 inventory = new BlackjackInventory(uniqueId, plugin, internalName);
@@ -428,6 +433,10 @@ public class Dealer {
                 newInventory = new DragonServer(dealerId, plugin, internalName);
                 newName = "Dragon Descent Dealer";
                 break;
+            case "Slots":
+                newInventory = new SlotsInventory(dealerId, plugin, internalName);
+                newName = "Slots Dealer";
+                break;
             default:
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);
                 newName = "Blackjack Dealer";
@@ -517,6 +526,7 @@ public class Dealer {
             case "Coin Flip" -> plugin.getLocalization().text(player, "game-options.coin-flip");
             case "Rock Paper Scissors" -> plugin.getLocalization().text(player, "game-options.rock-paper-scissors");
             case "Dragon Descent" -> plugin.getLocalization().text(player, "game-options.dragon-descent");
+            case "Slots" -> plugin.getLocalization().text(player, "game-options.slots");
             case "Test Game" -> plugin.getLocalization().text(player, "game-options.test-game");
             default -> gameType;
         };
@@ -573,6 +583,9 @@ public class Dealer {
                 break;
             case "Dragon Descent":
                 newInventory = new DragonServer(dealerId, plugin, internalName);
+                break;
+            case "Slots":
+                newInventory = new SlotsInventory(dealerId, plugin, internalName);
                 break;
             default:
                 newInventory = new BlackjackInventory(dealerId, plugin, internalName);

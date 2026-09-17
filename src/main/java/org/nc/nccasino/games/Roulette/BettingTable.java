@@ -21,6 +21,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.scheduler.BukkitTask;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.currency.ChipSlots;
 import org.nc.nccasino.currency.CurrencyMode;
@@ -28,9 +29,21 @@ import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.helpers.Preferences;
+import org.nc.nccasino.games.Slots.CasinoSongs;
 import org.nc.nccasino.payout.PayoutMessages;
 import org.nc.nccasino.payout.PendingPayout;
 import java.util.*;
+import org.nc.nccasino.payout.BankedCurrency;
+import org.nc.nccasino.payout.OverflowBankService;
+import org.nc.nccasino.payout.WagerGate;
+import org.nc.nccasino.payout.WagerFunding;
+import org.nc.nccasino.payout.ItemDeliveryOutcome;
+import org.nc.nccasino.budget.Commitment;
+import org.nc.nccasino.budget.DealerBudgetService;
+import org.nc.nccasino.budget.Exposure;
+import org.nc.nccasino.budget.Money;
+import org.nc.nccasino.budget.WagerActionGuard;
+import org.nc.nccasino.budget.WagerActionIds;
 
 public class BettingTable extends DealerInventory {
     public static final Set<UUID> switchingPlayers = new HashSet<>();
@@ -50,6 +63,18 @@ public class BettingTable extends DealerInventory {
     private Stack<Pair<String, Integer>> testStack;
     private boolean betsClosed=false;
     private int countdown1=30;
+    /**
+     * The single dealer-budget promise covering this player's whole table,
+     * updated atomically as bets are added -- Roulette bets are not
+     * independent (several can win on one number), so the shared budget must
+     * reason about the entire portfolio, never one bet at a time.
+     */
+    private Commitment budgetCommitment;
+    private final String budgetSessionId = java.util.UUID.randomUUID().toString();
+    private long budgetRoundCounter = 0;
+    private long budgetOperationCounter = 0;
+    private BukkitTask bettingMusicHandoffTask;
+    private final WagerActionGuard wagerActionGuard = new WagerActionGuard();
     public BettingTable(Player player, Mob dealer, Nccasino plugin, Stack<Pair<String, Integer>> existingBets, String internalName,RouletteInventory rouletteInventory,int countdown) {
         super(player.getUniqueId(), 54, plugin.getLocalization().text(player, "roulette.table-title"));
         this.countdown1=countdown;
@@ -363,6 +388,7 @@ public class BettingTable extends DealerInventory {
 
         this.betsClosed = betsClosed; // Update the betsClosed flag
         if(betsClosed&&!countflag){
+            stopBettingMusic();
             countflag=true;
          // Mimic a screen going over the whole betting table
               Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -439,6 +465,11 @@ public class BettingTable extends DealerInventory {
         long totalPayout = evaluation.totalPayout;
 
         final long totalPayoutFinal = totalPayout;
+        // The dealer's books close here, at the moment the result is known --
+        // before delivery, which may still bank or queue the amount. Whether
+        // the player is online only changes how the payout is delivered, not
+        // whether the dealer has already paid it.
+        settlePortfolio(Money.of(totalPayoutFinal));
         Player player = Bukkit.getPlayer(playerId);
 
         if (player != null && player.isOnline()) {
@@ -762,7 +793,7 @@ public class BettingTable extends DealerInventory {
             String betType = canonicalBetType(pageNum, slot, itemName);
             // Check if the player is holding the currency item
             ItemStack heldItem = player.getItemOnCursor();
-            double wagerAmount = 0;
+            long wagerAmount = 0;
             boolean usedHeldItem = false;
         
             if (heldItem != null) {
@@ -772,10 +803,10 @@ public class BettingTable extends DealerInventory {
                     wagerAmount = heldItem.getAmount();
                     usedHeldItem = true;
                 } else {
-                    wagerAmount = selectedWager;
+                    wagerAmount = (long) selectedWager;
                 }
             } else {
-                wagerAmount = selectedWager;
+                wagerAmount = (long) selectedWager;
             }
         
             // Ensure the player has selected a valid wager
@@ -801,6 +832,23 @@ public class BettingTable extends DealerInventory {
                         player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
                     return;
                 }
+                if (usedHeldItem) {
+                    // A cursor-dragged stack IS the debit: clearing it is irreversible,
+                    // so this gate must run before any dealer mutation (the portfolio
+                    // reservation below). Inventory wagers are gated by their own
+                    // INVENTORY debit instead -- running both would trigger two
+                    // automatic claim attempts per wager. If this gate rejects the
+                    // wager, no reservation/stake credit has happened yet, so there is
+                    // nothing to undo: cursor items, dealer balance, reservations, and
+                    // the bet stack are all left exactly as they were.
+                    if (!WagerGate.allowsWager(plugin, player, WagerFunding.CURSOR)) {
+                        return;
+                    }
+                }
+                String wagerActionId = WagerActionIds.inventoryClick(
+                    budgetSessionId, player, event, "roulette-" + betType, Money.of(wagerAmount));
+                if (!wagerActionGuard.accept(wagerActionId)
+                    || !ensurePortfolioCovered(player, betType, (int) wagerAmount, wagerActionId)) return;
                 boolean canBet = usedHeldItem || hasEnoughWager(player, wagerAmount);
 
                 if (canBet) {
@@ -809,6 +857,12 @@ public class BettingTable extends DealerInventory {
                     } else {
 						boolean removed = removeWagerFromInventory(player, wagerAmount);
 						if (!removed) {
+							// The reservation already grew to cover this bet
+							// (a banked balance blocking the wager, a race
+							// with another withdrawal). Undo that growth
+							// rather than leaving a fictional credit and an
+							// oversized reservation behind.
+							reconcilePortfolioReservation(wagerAmount, wagerActionId + "-rollback");
 							return;
 						}
                     }
@@ -844,6 +898,10 @@ public class BettingTable extends DealerInventory {
                     }
         
                 } else {
+                    // The reservation already grew to cover this bet before
+                    // the funds check ran; since it was refused, undo that
+                    // growth rather than leaving an oversized reservation.
+                    reconcilePortfolioReservation(wagerAmount, wagerActionId + "-rollback");
                     switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                         case STANDARD:
                             player.sendMessage(text("roulette.invalid-action"));
@@ -933,6 +991,7 @@ public class BettingTable extends DealerInventory {
                     }
                 } 
                 Pair<String, Integer> lastBet = betStack.pop();
+                reconcilePortfolioReservation(lastBet.getSecond());
                 refundWagerToInventory(player, lastBet.getSecond());
                 updateAllLore();
                  if (SoundHelper.getSoundSafely("UI.TOAST.IN", player) != null)player.playSound(player.getLocation(), Sound.UI_TOAST_IN,SoundCategory.MASTER, 3f, 1.0f);
@@ -1038,8 +1097,144 @@ private boolean isValidSlotPage2(int slot) {
 
     public void clearAllBetsAndRefund(Player player) {
         long totalRefund = betStack.stream().mapToLong(Pair::getSecond).sum();
+        refundPortfolio(Money.of(totalRefund));
         refundWagerToInventory(player, totalRefund);
         betStack.clear();
+    }
+
+    /**
+     * Checks and, if covered, atomically grows the single portfolio
+     * reservation to include a hypothetical bet of {@code wagerAmount} on
+     * {@code betType}. Denies before any currency moves -- money is only
+     * ever taken from the player after this returns {@code true}.
+     */
+    private boolean ensurePortfolioCovered(
+        Player player, String betType, int wagerAmount, String wagerActionId) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null) {
+            return true;
+        }
+        Exposure updatedExposure = RouletteLiability.exposureAfterAdding(betStack, betType, wagerAmount);
+        Material material = plugin.getCurrency(internalName);
+        org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
+            currencyMode, material == null ? null : material.name(), currencyName);
+
+        Commitment result;
+        if (budgetCommitment == null) {
+            result = budget.reserve(
+                internalName, playerId, "Roulette",
+                wagerActionId + "-reservation", currency, updatedExposure);
+        } else {
+            result = budget.increase(
+                internalName, budgetCommitment, updatedExposure, Money.of(wagerAmount), wagerActionId);
+        }
+
+        if (!result.isAccepted()) {
+            denyPortfolioBet(player);
+            return false;
+        }
+        budgetCommitment = result;
+        return true;
+    }
+
+    /**
+     * Reconciles the portfolio reservation to what {@code betStack} reflects
+     * right now, after currency amounting to {@code removedStake} has been
+     * (or is about to be) returned to the player -- an undo, or a rollback of
+     * a bet that was denied or whose debit failed after {@link
+     * #ensurePortfolioCovered} had already grown the reservation to cover it.
+     *
+     * <p>The adjustment is one persisted kernel operation. It never releases
+     * the commitment before the remaining portfolio is safely recorded.
+     */
+    private void reconcilePortfolioReservation(long removedStake) {
+        reconcilePortfolioReservation(
+            removedStake,
+            budgetSessionId + "-reduce-" + (++budgetOperationCounter));
+    }
+
+    private void reconcilePortfolioReservation(long removedStake, String operationId) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null || budgetCommitment == null || budgetCommitment.unlimited()) {
+            budgetCommitment = null;
+            return;
+        }
+        Exposure remainingExposure = betStack.isEmpty()
+            ? Exposure.none()
+            : RouletteLiability.exposureOf(betStack);
+        Commitment adjusted = budget.reduce(
+            internalName,
+            budgetCommitment,
+            remainingExposure,
+            Money.of(removedStake),
+            operationId);
+        if (adjusted.isAccepted()) {
+            budgetCommitment = adjusted.requiresSettlement() ? adjusted : null;
+        } else {
+            plugin.getLogger().severe("[NCCasino] Roulette could not persist an atomic"
+                + " dealer-budget reduction for '" + internalName + "'. The original"
+                + " reservation was retained for reconciliation.");
+        }
+    }
+
+    private void denyPortfolioBet(Player player) {
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case STANDARD, VERBOSE -> player.sendMessage(text("roulette.dealer-cannot-cover"));
+            case NONE -> {
+            }
+        }
+        if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+        }
+    }
+
+    /** Pays the round's result and releases the portfolio reservation, exactly once. */
+    private void settlePortfolio(java.math.BigDecimal payout) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null || budgetCommitment == null) {
+            budgetCommitment = null;
+            return;
+        }
+        org.nc.nccasino.budget.Settlement result =
+            budget.settle(internalName, budgetCommitment, payout);
+        if (result.status() != org.nc.nccasino.budget.Settlement.Status.FAILED) {
+            budgetCommitment = null;
+        }
+    }
+
+    /** Returns the stake and releases the portfolio reservation for a cancelled table. */
+    private void refundPortfolio(java.math.BigDecimal stake) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null || budgetCommitment == null) {
+            budgetCommitment = null;
+            return;
+        }
+        org.nc.nccasino.budget.Settlement result =
+            budget.refund(internalName, budgetCommitment, stake);
+        if (result.status() != org.nc.nccasino.budget.Settlement.Status.FAILED) {
+            budgetCommitment = null;
+        }
+    }
+
+    /**
+     * Releases this table's portfolio reservation from outside the normal
+     * spin-result/undo-bet paths -- required because {@link org.nc.nccasino.games.Roulette.RouletteInventory}'s
+     * own {@code forfeitBet}/{@code refundForShutdown} resolve a departing
+     * player's money independently of this class, and without this call
+     * would leave the reservation open forever with nothing left able to
+     * settle it.
+     *
+     * @param stake the actual amount being returned to the player, or
+     *     {@code 0} for a forfeit where the dealer keeps everything --
+     *     never the reservation's own gross-payout ceiling, which is a
+     *     different, larger number
+     */
+    void releasePortfolioForExternalResolution(long stake) {
+        if (stake > 0) {
+            refundPortfolio(java.math.BigDecimal.valueOf(stake));
+        } else {
+            settlePortfolio(java.math.BigDecimal.ZERO);
+        }
     }
     /**
      * Handles both small single-bet refunds/undoes and a round's full
@@ -1100,25 +1295,44 @@ private boolean isValidSlotPage2(int slot) {
 			return;
 		}
 
-		// STANDARD / no provider: item-stack based, delivered through
-		// giveItemChunk's synchronous 64-item ItemStack loop on the main
-		// thread. This is safe to do in one call, unchunked, because
-		// item-mode bet placement rejects any wager whose worst-case
-		// payout would exceed MAX_ITEM_MODE_PAYOUT before it's ever
-		// withdrawn -- see wouldExceedItemModePayoutCeiling and its call
-		// site in handleClick. amount here can therefore never approach a
-		// size that would need looping or queuing. The clamp below is a
-		// last-resort guard against that invariant somehow being violated
-		// (a bug elsewhere, not an expected path) -- if it ever fires, it
-		// logs loudly rather than silently under- or over-delivering.
-		if (amount > DEFENSIVE_ITEM_DELIVERY_CEILING) {
-			plugin.getLogger().severe("[NCCasino] Roulette item-mode payout of " + amount
-				+ " for " + player.getUniqueId() + " exceeds the pre-acceptance exposure cap -- "
-				+ "delivering only " + DEFENSIVE_ITEM_DELIVERY_CEILING + " and dropping the rest. "
-				+ "This should be unreachable; the bet-placement exposure check has a bug.");
-			amount = DEFENSIVE_ITEM_DELIVERY_CEILING;
+		// STANDARD / no provider: the whole long-valued payout goes through
+		// the shared overflow service, which is long-native. It fills the
+		// inventory, applies the Bank/Drop preference within the configured
+		// drop cap, and durably banks the rest.
+		//
+		// This previously clamped anything above a "defensive" 1,000,000 and
+		// delivered only the clamped amount -- the log claimed the remainder
+		// was dropped, but it was simply lost. A committed payout is now never
+		// clamped: whatever the bank cannot record is retained as a pending
+		// payout and retried instead.
+		OverflowBankService bank = plugin.getOverflowBankService();
+		if (bank == null) {
+			queueFailedDepositPayout(player.getUniqueId(), amount, currencyMaterial);
+			return;
 		}
-		giveItemChunk(player, provider, currencyMaterial, (int) amount);
+		ItemDeliveryOutcome outcome = bank.deliver(
+			player, new BankedCurrency(currencyMode, currencyMaterial.name(), currencyName), amount);
+
+		// Preserve the existing "some of this did not fit" notice, now covering
+		// what was banked or capped-dropped rather than scattered on the floor.
+		long didNotFit = outcome.dropped() + outcome.banked();
+		if (didNotFit > 0) {
+			switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+				case STANDARD:
+				case VERBOSE:
+					player.sendMessage(text(
+						"roulette.inventory-full",
+						"amount",
+						plugin.formatWagerDisplay(currencyMode, currencyName, didNotFit)));
+					break;
+				case NONE:
+					break;
+			}
+		}
+
+		if (!outcome.settled()) {
+			queueFailedDepositPayout(player.getUniqueId(), outcome.unsettled(), currencyMaterial);
+		}
     }
 
     /**
@@ -1148,22 +1362,31 @@ private boolean isValidSlotPage2(int slot) {
     }
 
     /**
-     * Worst-case total payout (across every possible spin result, 0-36)
-     * that STANDARD/item-mode bet placement will allow the current table
-     * to expose a player to. Chosen so a single {@code giveItemChunk} call
-     * for exactly this amount needs at most a few hundred synchronous
-     * {@code addItem} calls (this / 64) -- comfortably instant, and even a
-     * completely full inventory would only need to drop that same handful
-     * of item stacks, not thousands.
+     * The largest single-spin payout item-mode bet placement will let a table
+     * expose a player to, in whole currency units.
+     *
+     * <p>This is now a <em>representation</em> ceiling rather than a physical
+     * one. It was 10,000 because overflow used to fall on the ground, so a
+     * payout bigger than an inventory meant losing winnings to despawn or
+     * theft; bets were refused up front instead. Roulette's delivery now runs
+     * through {@code OverflowBankService}, which banks whatever will not fit,
+     * so inventory size no longer constrains a bet.
+     *
+     * <p>The delivery path is now long-native and pays whatever it accepts
+     * in full, so this is purely a pre-wager numeric bound. It stays at
+     * {@link Integer#MAX_VALUE}: comfortably inside the exact-integer range
+     * of the {@code double}-typed {@link org.nc.nccasino.payout.PendingPayout}
+     * a failed delivery is retained in, and far above any exposure reachable
+     * from Roulette's {@code int}-typed stakes. Nothing accepted here can
+     * exceed what settlement can pay.
      */
-    static final long MAX_ITEM_MODE_PAYOUT = 10_000L;
+    static final long MAX_ITEM_MODE_PAYOUT = Integer.MAX_VALUE;
 
-    /**
-     * Belt-and-suspenders ceiling for the actual item-giving loop in
-     * {@link #refundWagerToInventory}, independent of and well above
-     * MAX_ITEM_MODE_PAYOUT -- see the comment there.
-     */
-    private static final long DEFENSIVE_ITEM_DELIVERY_CEILING = 1_000_000L;
+    /** Whether this dealer's currency ultimately settles as physical items rather than a Vault/CUSTOM balance -- the only mode MAX_ITEM_MODE_PAYOUT applies to. */
+    private boolean isItemMode() {
+        CurrencyProvider provider = getCurrencyProvider();
+        return provider == null || provider.getMode() == org.nc.nccasino.currency.CurrencyMode.STANDARD;
+    }
 
     /**
      * Whether adding a hypothetical bet of {@code wagerAmount} on
@@ -1184,83 +1407,6 @@ private boolean isValidSlotPage2(int slot) {
         return false;
     }
 
-    /** Whether this dealer's currency ultimately settles as physical items rather than a Vault/CUSTOM balance -- the only mode MAX_ITEM_MODE_PAYOUT applies to. */
-    private boolean isItemMode() {
-        CurrencyProvider provider = getCurrencyProvider();
-        return provider == null || provider.getMode() == org.nc.nccasino.currency.CurrencyMode.STANDARD;
-    }
-
-    private void giveItemChunk(Player player, CurrencyProvider provider, Material currencyMaterial, int amountToGive) {
-        int fullStacks = amountToGive / 64;
-        int remainder = amountToGive % 64;
-        int totalLeftoverAmount = 0;
-        HashMap<Integer, ItemStack> leftover;
-
-        // Try adding full stacks
-        for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = null;
-            if (provider != null) {
-                stack = provider.createCurrencyStack(internalName, 64);
-            }
-            if (stack == null || stack.getType() == Material.AIR) {
-                stack = new ItemStack(currencyMaterial, 64);
-            }
-            leftover = player.getInventory().addItem(stack);
-            if (!leftover.isEmpty()) {
-                totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-            }
-        }
-
-        // Try adding remainder
-        if (remainder > 0) {
-            ItemStack remainderStack = null;
-            if (provider != null) {
-                remainderStack = provider.createCurrencyStack(internalName, remainder);
-            }
-            if (remainderStack == null || remainderStack.getType() == Material.AIR) {
-                remainderStack = new ItemStack(currencyMaterial, remainder);
-            }
-            leftover = player.getInventory().addItem(remainderStack);
-            if (!leftover.isEmpty()) {
-                totalLeftoverAmount += leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-            }
-        }
-
-
-        if (totalLeftoverAmount > 0) {
-            switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-                case STANDARD:{
-                    player.sendMessage(text(
-                        "roulette.inventory-full",
-                        "amount",
-                        plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount)
-                    ));
-
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage(text(
-                        "roulette.inventory-full",
-                        "amount",
-                        plugin.formatWagerDisplay(currencyMode, currencyName, totalLeftoverAmount)
-                    ));
-                    break;
-                }
-                    case NONE:{
-                    break;
-                }
-            }
-            dropExcessItems(player, totalLeftoverAmount, currencyMaterial);
-        }
-    }
-    
-    // Drops all excess winnings in one batch
-    private void dropExcessItems(Player player, int amount, Material currencyMaterial) {
-        while (amount > 0) {
-            int dropAmount = Math.min(amount, 64);
-            player.getWorld().dropItemNaturally(player.getLocation(), new ItemStack(currencyMaterial, dropAmount));
-            amount -= dropAmount;
-        }
-    }
 
     // CurrencyProvider helper for this dealer/game
     private CurrencyProvider getCurrencyProvider() {
@@ -1292,6 +1438,7 @@ private boolean isValidSlotPage2(int slot) {
     public void handleInventoryClose(InventoryCloseEvent event) {
         if (event.getInventory().getHolder() != this) return;
         Player player = (Player) event.getPlayer();
+        stopBettingMusic();
 
         if (switchingPlayers.contains(playerId)) {
 
@@ -1323,7 +1470,54 @@ private boolean isValidSlotPage2(int slot) {
     }
 
     void cleanupListener() {
+        stopBettingMusic();
         HandlerList.unregisterAll(this);
+    }
+
+    void startBettingMusic(Player player) {
+        if (player == null || betsClosed
+            || plugin.getPreferences(playerId).getSoundSetting() != Preferences.SoundSetting.ON) {
+            return;
+        }
+        stopBettingMusic();
+        String channel = bettingMusicChannel();
+        rouletteInventory.getMCE().addPlayerToChannel(channel, player);
+        rouletteInventory.getMCE().playSong(channel, CasinoSongs.dayTripper(), false, "DayTripperIntro");
+        bettingMusicHandoffTask = Bukkit.getScheduler().runTaskLater(plugin,
+            this::startBackedBettingMusicLoop, CasinoSongs.dayTripperIntroDurationTicks());
+    }
+
+    private void startBackedBettingMusicLoop() {
+        bettingMusicHandoffTask = null;
+        Player player = Bukkit.getPlayer(playerId);
+        if (player == null || !player.isOnline() || betsClosed
+            || plugin.getPreferences(playerId).getSoundSetting() != Preferences.SoundSetting.ON) {
+            stopBettingMusic();
+            return;
+        }
+        String channel = bettingMusicChannel();
+        rouletteInventory.getMCE().stopSong(channel, "DayTripperIntro");
+        rouletteInventory.getMCE().addPlayerToChannel(channel, player);
+        rouletteInventory.getMCE().playSong(
+            channel, CasinoSongs.dayTripperBackedLoop(), true, "DayTripperBackedLoop");
+    }
+
+    private void stopBettingMusic() {
+        if (bettingMusicHandoffTask != null) {
+            bettingMusicHandoffTask.cancel();
+            bettingMusicHandoffTask = null;
+        }
+        String channel = bettingMusicChannel();
+        rouletteInventory.getMCE().stopSong(channel, "DayTripperIntro");
+        rouletteInventory.getMCE().stopSong(channel, "DayTripperBackedLoop");
+        Player player = Bukkit.getPlayer(playerId);
+        if (player != null) {
+            rouletteInventory.getMCE().removePlayerFromChannel(channel, player);
+        }
+    }
+
+    private String bettingMusicChannel() {
+        return "RouletteBettingMusic:" + playerId;
     }
 
     private void updateItemLore(int slot, int totalBet) {
@@ -1381,6 +1575,12 @@ private boolean isValidSlotPage2(int slot) {
 
 	// Removes wager currency; returns true if removal succeeded.
 	private boolean removeWagerFromInventory(Player player, double amount) {
+        // Universal overflow-bank gate: any banked balance, in any currency,
+        // blocks every new wager. Checked here -- the single point money
+        // actually leaves the player -- so no betting path can bypass it.
+        if (!WagerGate.allowsWager(plugin, player)) {
+            return false;
+        }
 		int requiredAmount = org.nc.nccasino.currency.MoneyHelper.toWagerUnits(amount);
 		if (requiredAmount > 0) {
 			CurrencyProvider provider = getCurrencyProvider();

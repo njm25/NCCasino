@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -57,6 +58,7 @@ import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.entities.Menu;
+import org.nc.nccasino.games.Slots.SlotsConfig;
 import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.listeners.DealerEventListener;
@@ -225,6 +227,10 @@ public class AdminMenu extends Menu {
                 addItemAndLore(Material.DRAGON_HEAD, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
                 break;
             }
+            case "Slots":{
+                addItemAndLore(Material.REDSTONE_BLOCK, 1, text("admin.edit-game-type"), slotMapping.get(SlotOption.EDIT_GAME_TYPE), text("admin.current", "value", localizedGameName(currentGame)));
+                break;
+            }
             default:
             break;
         }
@@ -343,6 +349,14 @@ public class AdminMenu extends Menu {
                 lore.add(text("admin.default-columns-lore", "value", defaultColumns));
                 lore.add(text("admin.default-vines-lore", "value", defaultVines));
                 lore.add(text("admin.default-floors-lore", "value", defaultFloors));
+                break;
+            case "Slots":
+                SlotsConfig slotsConfig = SlotsConfig.load(plugin, internalName);
+                String slotsRtp = String.format(
+                    Locale.ROOT,
+                    "%.2f%%",
+                    slotsConfig.paytable().theoreticalRtp() * 100.0);
+                lore.add(text("admin.slots-rtp-lore", "rtp", slotsRtp));
                 break;
             default:
                 lore.add(text("admin.no-settings"));
@@ -786,12 +800,33 @@ public class AdminMenu extends Menu {
                 player.openInventory(dragonAdminInventory.getInventory());
                 break;
             }
+            case "Slots":{
+                SlotsMenu slotsAdminInventory = new SlotsMenu(
+                    dealerId,
+                    player,
+                    text("slots-settings.title", "dealer", Dealer.getInternalName(dealer)),
+                    (uuid) -> {
+                        // Cancel action: re-open the AdminInventory
+                        if (AdminMenu.adminInventories.containsKey(player.getUniqueId())) {
+                            AdminMenu adminInventory = AdminMenu.adminInventories.get(player.getUniqueId());
+                            player.openInventory(adminInventory.getInventory());
+                        } else {
+                            AdminMenu adminInventory = new AdminMenu(dealerId, player, plugin);
+                            player.openInventory(adminInventory.getInventory());
+                        }
+                    },
+                    plugin, text("admin.title", "dealer", Dealer.getInternalName(dealer)),
+                    Dealer.getInternalName(dealer)
+                );
+                player.openInventory(slotsAdminInventory.getInventory());
+                break;
+            }
             default:{
                 break;}
             }
 
         }
-    
+
     /** Load dealer's currency mode from config so the menu displays the current selection (VAULT/VANILLA/CUSTOM). */
     private CurrencyMode loadCurrencyModeFromConfig() {
         if (dealer == null) return CurrencyMode.VANILLA;
@@ -1921,6 +1956,7 @@ public class AdminMenu extends Menu {
             case "Coin Flip" -> text("game-options.coin-flip");
             case "Rock Paper Scissors" -> text("game-options.rock-paper-scissors");
             case "Dragon Descent" -> text("game-options.dragon-descent");
+            case "Slots" -> text("game-options.slots");
             case "Test Game" -> text("game-options.test-game");
             default -> gameName;
         };

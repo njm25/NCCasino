@@ -21,6 +21,10 @@ import org.nc.nccasino.currency.CurrencyProvider;
 import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.currency.VaultCurrencyProvider;
 import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.payout.BankedCurrency;
+import org.nc.nccasino.payout.OverflowBankService;
+import org.nc.nccasino.payout.ItemDeliveryOutcome;
+import org.nc.nccasino.payout.UnsettledPayouts;
 
 public abstract class Server extends DealerInventory {
 
@@ -251,6 +255,7 @@ public abstract class Server extends DealerInventory {
             case "Coin Flip" -> plugin.getLocalization().text(player, "game-options.coin-flip");
             case "Rock Paper Scissors" -> plugin.getLocalization().text(player, "game-options.rock-paper-scissors");
             case "Dragon Descent" -> plugin.getLocalization().text(player, "game-options.dragon-descent");
+            case "Slots" -> plugin.getLocalization().text(player, "game-options.slots");
             case "Test Game" -> plugin.getLocalization().text(player, "game-options.test-game");
             default -> gameType;
         };
@@ -327,7 +332,14 @@ public abstract class Server extends DealerInventory {
 				if (payout.compareTo(java.math.BigDecimal.ZERO) <= 0) {
 					return;
 				}
-				vaultProvider.deposit(player, internalName, payout);
+				// deposit()'s boolean return exists specifically so a caller
+				// that owes this amount unconditionally must not treat a
+				// false return as success -- queue it durably instead of
+				// letting a failed Vault deposit silently vanish the money.
+				boolean delivered = vaultProvider.deposit(player, internalName, payout);
+				if (!delivered) {
+					queueFailedDepositPayout(player.getUniqueId(), amount, currencyMaterial);
+				}
 				return;
 			}
 		}
@@ -377,7 +389,10 @@ public abstract class Server extends DealerInventory {
 			}
 
 			// CUSTOM (or any non-STANDARD except VAULT): rely solely on the provider, no item fallback.
-			provider.deposit(player, internalName, toGive);
+			boolean delivered = provider.deposit(player, internalName, toGive);
+			if (!delivered) {
+				queueFailedDepositPayout(player.getUniqueId(), toGive, currencyMaterial);
+			}
 			return;
 		}
 
@@ -434,10 +449,81 @@ public abstract class Server extends DealerInventory {
     }
 
     protected void dropExcessItems(Player player, int amount, Material currencyMaterial) {
-        while (amount > 0) {
-            int dropAmount = Math.min(amount, 64);
-            player.getWorld().dropItemNaturally(player.getLocation(), new ItemStack(currencyMaterial, dropAmount));
-            amount -= dropAmount;
+        if (amount <= 0 || currencyMaterial == null) {
+            return;
+        }
+        OverflowBankService bank = plugin.getOverflowBankService();
+        if (bank == null) {
+            retainUnsettledPayout(player, amount, currencyMaterial);
+            return;
+        }
+        // Deliver what fits, drop only within the configured cap, bank the
+        // rest. Anything the bank could not record becomes a durable pending
+        // payout -- never an uncapped drop, and never merely a log line.
+        ItemDeliveryOutcome outcome = bank.deliver(
+            player, new BankedCurrency(currencyMode, currencyMaterial.name(), currencyName), amount);
+        if (!outcome.settled()) {
+            retainUnsettledPayout(player, outcome.unsettled(), currencyMaterial);
+        }
+    }
+
+    /**
+     * Records a remainder that reached neither the player nor the bank as a
+     * retryable obligation. The amount is by construction undelivered, so
+     * retaining it cannot double-pay.
+     */
+    private void retainUnsettledPayout(Player player, long amount, Material currencyMaterial) {
+        UnsettledPayouts.retain(
+            plugin,
+            player.getUniqueId(),
+            resolveGameType(),
+            internalName,
+            currencyMode,
+            currencyMaterial.name(),
+            currencyName,
+            amount);
+    }
+
+    /** The dealer's configured game, used to label a retained obligation. */
+    private String resolveGameType() {
+        String configured = plugin.getConfig().getString("dealers." + internalName + ".game");
+        return configured == null ? "NCCasino" : configured;
+    }
+
+    /**
+     * Durably queues a payout this player was owed but a live Vault/CUSTOM
+     * provider deposit failed to deliver. Unlike {@link #retainUnsettledPayout}
+     * (item currency, whole units only), this keeps the amount as a
+     * fractional double -- Vault currency can be fractional, and truncating
+     * it here would silently lose cents. The dealer must never be treated as
+     * having settled this money while the player received nothing and no
+     * durable obligation exists.
+     */
+    private void queueFailedDepositPayout(java.util.UUID playerId, double amount, Material currencyMaterial) {
+        if (amount <= 0) {
+            return;
+        }
+        if (plugin.getPendingPayoutStore() == null) {
+            plugin.getLogger().severe("[NCCasino] " + resolveGameType() + " payout of " + amount
+                + " for " + playerId + " failed to deliver and could not be durably retained"
+                + " -- money genuinely lost.");
+            return;
+        }
+        org.nc.nccasino.payout.PendingPayout payout = org.nc.nccasino.payout.PendingPayout.create(
+            playerId,
+            resolveGameType(),
+            internalName,
+            currencyMode,
+            currencyMaterial.name(),
+            currencyName,
+            amount,
+            org.nc.nccasino.payout.PayoutMessages.committedResultContext(resolveGameType())
+        );
+        boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
+        if (!persisted) {
+            plugin.getLogger().severe("[NCCasino] " + resolveGameType() + " payout of " + amount
+                + " for " + playerId + " failed to deliver AND failed to persist as a pending payout"
+                + " -- money genuinely lost.");
         }
     }
 

@@ -78,4 +78,35 @@ public final class MoneyHelper {
 		double fraction = amount - whole;
 		return roll < fraction ? whole + 1 : whole;
 	}
+
+	/**
+	 * The reservation ceiling that must actually be promised for a fractional
+	 * item-currency worst-case payout, given that probabilistic rounding (see
+	 * {@link #probabilisticItemAmount}) can round the eventually realized
+	 * payout <em>up</em> to the next whole item.
+	 *
+	 * <p>A reservation built from the raw fractional worst case (e.g. 300.5)
+	 * does not cover the whole-item amount rounding can actually deliver for
+	 * that same outcome (301) -- settling for 301 against a 300.5 reservation
+	 * is an avoidable {@code exposureViolation}, not a genuine bug in the
+	 * exposure math, purely because the reservation never accounted for the
+	 * ceiling rounding can reach. Discrete currency modes (STANDARD, CUSTOM)
+	 * must reserve {@code ceil(rawMaxPayout)}; VAULT and any other continuous
+	 * mode must keep the exact fractional value, since Vault accounting stays
+	 * exact and is never probabilistically rounded.
+	 *
+	 * @param rawMaxPayout the worst-case payout as computed by liability math,
+	 *     before any rounding
+	 * @param mode the currency mode the wager/payout is denominated in
+	 * @return the amount that must actually be reserved
+	 */
+	public static BigDecimal reservationCeilingForMode(BigDecimal rawMaxPayout, CurrencyMode mode) {
+		if (rawMaxPayout == null) {
+			return BigDecimal.ZERO;
+		}
+		if (mode != CurrencyMode.STANDARD && mode != CurrencyMode.CUSTOM) {
+			return rawMaxPayout;
+		}
+		return rawMaxPayout.setScale(0, RoundingMode.CEILING);
+	}
 }

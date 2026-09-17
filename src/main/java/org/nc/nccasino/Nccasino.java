@@ -62,7 +62,14 @@ import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.CurrencyDisplay;
 import org.nc.nccasino.currency.DealerCurrencySettings;
 import org.nc.nccasino.currency.MoneyHelper;
+import org.nc.nccasino.payout.OverflowBankReminder;
+import org.nc.nccasino.payout.OverflowBankService;
+import org.nc.nccasino.payout.OverflowBankStore;
+import org.nc.nccasino.budget.DealerBudgetService;
+import org.nc.nccasino.budget.DealerBudgetStore;
 import org.nc.nccasino.payout.PendingPayoutStore;
+import org.nc.nccasino.games.Slots.SlotsChatPromptService;
+import org.nc.nccasino.games.Slots.SlotsProfileStore;
 import org.nc.nccasino.localization.LanguageMode;
 import org.nc.nccasino.localization.LocalizationService;
 import org.nc.nccasino.session.ExitReason;
@@ -82,6 +89,13 @@ public final class Nccasino extends JavaPlugin implements Listener {
     private VaultHook vaultHook;
     private CurrencyManager currencyManager;
     private PendingPayoutStore pendingPayoutStore;
+    private OverflowBankStore overflowBankStore;
+    private OverflowBankService overflowBankService;
+    private OverflowBankReminder overflowBankReminder;
+    private DealerBudgetStore dealerBudgetStore;
+    private DealerBudgetService dealerBudgetService;
+    private SlotsProfileStore slotsProfileStore;
+    private SlotsChatPromptService slotsChatPromptService;
     private LocalizationService localizationService;
 
     /**
@@ -97,6 +111,15 @@ public final class Nccasino extends JavaPlugin implements Listener {
         // tasks that would otherwise resolve in-flight rounds get
         // cancelled along with everything else the plugin owns.
         SessionRegistry.terminateAll(ExitReason.PLUGIN_DISABLE);
+        // After every session has resolved, so a machine tearing itself down
+        // still finds its own prompt to release; anything left here is a
+        // prompt whose session was already gone.
+        if (slotsChatPromptService != null) {
+            slotsChatPromptService.shutdown();
+        }
+        if (overflowBankReminder != null) {
+            overflowBankReminder.stop();
+        }
         savePreferences();
     }
 
@@ -121,6 +144,27 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
         // Durable pending-payout storage (delivered on join once wired up)
         pendingPayoutStore = new PendingPayoutStore(this);
+
+        // Overflow banking: already-won item money waiting only for physical
+        // space. Constructed before any listener so nothing can pay out
+        // before there is somewhere safe for the remainder to go.
+        overflowBankStore = new OverflowBankStore(this);
+        overflowBankService = new OverflowBankService(this, overflowBankStore);
+        overflowBankReminder = new OverflowBankReminder(this, overflowBankStore);
+        overflowBankReminder.start();
+
+        // Dealer token inventories. Every existing dealer is UNLIMITED, so
+        // constructing this changes no behavior until an administrator opts a
+        // dealer into LIMITED mode; the store simply loads an empty file.
+        dealerBudgetStore = new DealerBudgetStore(this);
+        dealerBudgetService = new DealerBudgetService(this, dealerBudgetStore);
+
+        // Globally portable per-player Slots profiles, plus the single chat
+        // prompt engine every Slots prompt shares. Both are constructed
+        // before any listener so a machine can never be opened before the
+        // store it reads from exists.
+        slotsProfileStore = new SlotsProfileStore(this);
+        slotsChatPromptService = new SlotsChatPromptService(this);
 
         // Register event listeners
         getServer().getPluginManager().registerEvents(new DealerInteractListener(this), this);
@@ -205,6 +249,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
             preferences.loadLanguage(
                 languageMode,
                 preferencesConfig.getString(key + ".language")
+            );
+            preferences.loadOverflowPreference(
+                preferencesConfig.getString(key + ".overflow-preference", null)
             );
             preferences.loadBlackjackGuidanceSeen(
                 preferencesConfig.getBoolean(key + ".blackjack-chair-guidance-seen", false),
@@ -391,6 +438,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
                     ? preferences.getExplicitLanguage()
                     : null
             );
+            preferencesConfig.set(
+                entry.getKey() + ".overflow-preference",
+                preferences.getOverflowPreference() == null ? null : preferences.getOverflowPreference().name());
             preferencesConfig.set(entry.getKey() + ".blackjack-chair-guidance-seen", preferences.hasSeenBlackjackChairGuidance());
             preferencesConfig.set(entry.getKey() + ".blackjack-wager-guidance-seen", preferences.hasSeenBlackjackWagerGuidance());
         }
@@ -456,8 +506,41 @@ public final class Nccasino extends JavaPlugin implements Listener {
         return currencyManager;
     }
 
+    public OverflowBankStore getOverflowBankStore() {
+        return overflowBankStore;
+    }
+
+    public OverflowBankService getOverflowBankService() {
+        return overflowBankService;
+    }
+
     public PendingPayoutStore getPendingPayoutStore() {
         return pendingPayoutStore;
+    }
+
+    public DealerBudgetStore getDealerBudgetStore() {
+        return dealerBudgetStore;
+    }
+
+    /**
+     * The shared dealer-budget gate. Games ask this before taking a wager or
+     * increasing exposure; it answers immediately for an UNLIMITED dealer.
+     */
+    public DealerBudgetService getDealerBudgetService() {
+        return dealerBudgetService;
+    }
+
+    /**
+     * Durable per-player Slots profiles. Global by design: a profile saved at
+     * one Slots dealer is loadable at every other one.
+     */
+    public SlotsProfileStore getSlotsProfileStore() {
+        return slotsProfileStore;
+    }
+
+    /** The single chat-prompt engine shared by profile naming and every Auto Spin setting. */
+    public SlotsChatPromptService getSlotsChatPromptService() {
+        return slotsChatPromptService;
     }
 
     private void reinitializeDealers() {

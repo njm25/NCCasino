@@ -1,0 +1,154 @@
+package org.nc.nccasino.games.Slots;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * The profile-name rules: 1-24 characters of letters (any script), digits,
+ * spaces, hyphens and underscores, and case-insensitive uniqueness.
+ *
+ * <p>Rejecting the section sign and ampersand is a safety rule, not a style
+ * one -- a saved name is rendered as an item display name, so a formatting
+ * code smuggled into one could impersonate one of the machine's own controls.
+ */
+class SlotsProfileNameTest {
+
+    @Test
+    void theLengthBoundsAreOneThroughTwentyFour() {
+        assertEquals(1, SlotsProfileName.MIN_LENGTH);
+        assertEquals(24, SlotsProfileName.MAX_LENGTH);
+    }
+
+    @Test
+    void ordinaryNamesAreAccepted() {
+        for (String name : new String[] {"a", "High Roller", "wide-5x5", "my_profile_2", "Test 123"}) {
+            assertNull(SlotsProfileName.validate(name), name + " must be a legal name");
+            assertTrue(SlotsProfileName.isValid(name));
+        }
+    }
+
+    @Test
+    void namesInAnyScriptAreAccepted() {
+        // Chinese, Japanese, Korean, Russian, and accented Latin -- the exact
+        // set an ASCII-only check used to block outright, across every
+        // non-English locale this plugin ships, not just zh_CN.
+        String[] accepted = {
+            "高倍率", "ハイローラー", "하이롤러", "Высокий риск", "Étoiles", "Größe", "Añejo",
+            "日本語 123", "Ελληνικά", "Türkçe İsim",
+        };
+        for (String name : accepted) {
+            assertNull(SlotsProfileName.validate(name), name + " must be a legal name");
+            assertTrue(SlotsProfileName.isValid(name));
+        }
+    }
+
+    @Test
+    void aDecomposedAccentedLetterIsAcceptedJustLikeItsPrecomposedForm() {
+        // Some keyboards/IMEs (Vietnamese input methods in particular) can
+        // hand this class an accented letter as a base letter plus a separate
+        // combining mark rather than one precomposed character. The bare
+        // combining mark alone is not a letter, so without NFC folding this
+        // would be wrongly rejected.
+        String precomposed = "Café"; // "Café", the 'é' as one code point (U+00E9)
+        String decomposed = java.text.Normalizer.normalize(precomposed, java.text.Normalizer.Form.NFD);
+        assertNotEquals(precomposed, decomposed, "the two forms must actually differ at the code-point level");
+        assertNull(SlotsProfileName.validate(decomposed), "a decomposed accented name must still be legal");
+        assertEquals(precomposed, SlotsProfileName.normalize(decomposed),
+            "the stored form must be the precomposed one regardless of which form was typed");
+    }
+
+    @Test
+    void uniquenessKeyMatchesRegardlessOfWhichComposedFormWasTyped() {
+        String precomposed = "Café";
+        String decomposed = java.text.Normalizer.normalize(precomposed, java.text.Normalizer.Form.NFD);
+        assertEquals(SlotsProfileName.uniquenessKey(precomposed), SlotsProfileName.uniquenessKey(decomposed));
+    }
+
+    @Test
+    void aSupplementaryPlaneLetterIsClassifiedAsOneLetterNotTwoIllegalSurrogates() {
+        // U+20000 (CJK Extension B, a real ideograph) is encoded as a
+        // surrogate pair. Walking by char instead of by code point would
+        // check each half against Character.isLetter(char) separately and
+        // wrongly reject both.
+        String name = new String(Character.toChars(0x20000));
+        assertNull(SlotsProfileName.validate(name), "a supplementary-plane letter must be accepted whole");
+    }
+
+    @Test
+    void aNameOfExactlyTwentyFourCharactersIsAcceptedAndTwentyFiveIsNot() {
+        assertNull(SlotsProfileName.validate("a".repeat(24)));
+        assertEquals(SlotsProfileName.Rejection.TOO_LONG, SlotsProfileName.validate("a".repeat(25)));
+    }
+
+    @Test
+    void anEmptyOrWhitespaceOnlyNameIsRejected() {
+        assertEquals(SlotsProfileName.Rejection.EMPTY, SlotsProfileName.validate(""));
+        assertEquals(SlotsProfileName.Rejection.EMPTY, SlotsProfileName.validate("   "));
+        assertEquals(SlotsProfileName.Rejection.EMPTY, SlotsProfileName.validate(null));
+    }
+
+    @Test
+    void formattingCodesAndOtherPunctuationAreRejected() {
+        String[] rejected = {
+            "&aGold", "§cRed", "name!", "a.b", "50%", "quote\"", "back\\slash", "tab\there",
+            "new\nline", "emoji 🎰", "co:lon", "semi;colon", "sla/sh", "brace{}"
+        };
+        for (String name : rejected) {
+            assertEquals(SlotsProfileName.Rejection.ILLEGAL_CHARACTERS, SlotsProfileName.validate(name),
+                "must reject " + name);
+            assertFalse(SlotsProfileName.isValid(name));
+        }
+    }
+
+    @Test
+    void everyRejectionHasItsOwnLocalizationKey() {
+        assertEquals("slots.profile-name-empty", SlotsProfileName.Rejection.EMPTY.messageKey());
+        assertEquals("slots.profile-name-too-long", SlotsProfileName.Rejection.TOO_LONG.messageKey());
+        assertEquals("slots.profile-name-illegal-characters",
+            SlotsProfileName.Rejection.ILLEGAL_CHARACTERS.messageKey());
+    }
+
+    @Test
+    void normalizeTrimsAndCollapsesInnerSpacesSoTwoVisuallyIdenticalNamesCannotBothExist() {
+        assertEquals("High Roller", SlotsProfileName.normalize("  High   Roller  "));
+        assertEquals("a b", SlotsProfileName.normalize("a     b"));
+        assertEquals("solo", SlotsProfileName.normalize("solo"));
+        assertNull(SlotsProfileName.normalize(null));
+    }
+
+    @Test
+    void lengthIsValidatedAgainstTheTrimmedName() {
+        assertNull(SlotsProfileName.validate("   ok   "));
+        assertEquals(SlotsProfileName.Rejection.TOO_LONG,
+            SlotsProfileName.validate("  " + "a".repeat(25) + "  "));
+    }
+
+    @Test
+    void uniquenessIsCaseInsensitive() {
+        assertEquals(SlotsProfileName.uniquenessKey("High Roller"),
+            SlotsProfileName.uniquenessKey("high roller"));
+        assertEquals(SlotsProfileName.uniquenessKey("HIGH ROLLER"),
+            SlotsProfileName.uniquenessKey("hIgH rOlLeR"));
+        assertNotEquals(SlotsProfileName.uniquenessKey("High Roller"),
+            SlotsProfileName.uniquenessKey("High Rollers"));
+        assertNull(SlotsProfileName.uniquenessKey(null));
+    }
+
+    @Test
+    void uniquenessAlsoIgnoresSurroundingAndRepeatedSpaces() {
+        assertEquals(SlotsProfileName.uniquenessKey("High Roller"),
+            SlotsProfileName.uniquenessKey("  high    roller "));
+    }
+
+    @Test
+    void uniquenessIsCaseInsensitiveInOtherScriptsToo() {
+        assertEquals(SlotsProfileName.uniquenessKey("Größe"), SlotsProfileName.uniquenessKey("GRÖßE"));
+        assertEquals(SlotsProfileName.uniquenessKey("Étoiles"), SlotsProfileName.uniquenessKey("étoiles"));
+        assertEquals(SlotsProfileName.uniquenessKey("Высокий"), SlotsProfileName.uniquenessKey("высокий"));
+    }
+}

@@ -33,6 +33,9 @@ class GameTerminationPolicyTest {
         assertEquals(FORFEIT, GameTerminationPolicy.coinFlip(ExitReason.KICKED, true));
         assertEquals(FORFEIT, GameTerminationPolicy.rockPaperScissors(ExitReason.KICKED, false));
         assertEquals(FORFEIT, GameTerminationPolicy.rockPaperScissors(ExitReason.KICKED, true));
+        for (GameTerminationPolicy.SlotsPhase phase : GameTerminationPolicy.SlotsPhase.values()) {
+            assertEquals(FORFEIT, GameTerminationPolicy.slots(ExitReason.KICKED, phase));
+        }
     }
 
     @Test
@@ -149,6 +152,19 @@ class GameTerminationPolicyTest {
             GameTerminationPolicy.rockPaperScissors(ExitReason.GAME_COMPLETED, false));
         assertEquals(NO_ACTION,
             GameTerminationPolicy.rockPaperScissors(ExitReason.GAME_COMPLETED, true));
+    }
+
+    @Test
+    void slotsNeverRefundsAndAlwaysQueuesTheKnownPayoutOnceCommitted() {
+        for (ExitReason reason : nonKickReasons()) {
+            assertEquals(NO_ACTION, GameTerminationPolicy.slots(reason, GameTerminationPolicy.SlotsPhase.PREGAME));
+            assertEquals(QUEUE_KNOWN_PAYOUT,
+                GameTerminationPolicy.slots(reason, GameTerminationPolicy.SlotsPhase.RESULT_COMMITTED));
+            assertEquals(NO_ACTION, GameTerminationPolicy.slots(reason, GameTerminationPolicy.SlotsPhase.RESOLVED));
+        }
+        for (GameTerminationPolicy.SlotsPhase phase : GameTerminationPolicy.SlotsPhase.values()) {
+            assertEquals(NO_ACTION, GameTerminationPolicy.slots(ExitReason.GAME_COMPLETED, phase));
+        }
     }
 
     private static ExitReason[] nonKickReasons() {

@@ -23,6 +23,20 @@ public final class GameTerminationPolicy {
         RESOLVED
     }
 
+    /**
+     * Slots resolves a spin's debit, outcome, and payout amount entirely
+     * synchronously before any animation ever runs, so there is no
+     * meaningful window between "debit accepted" and "result committed" --
+     * both collapse into {@link #RESULT_COMMITTED}, which also covers the
+     * purely cosmetic animating/settling window since the payout is already
+     * fixed by then.
+     */
+    public enum SlotsPhase {
+        PREGAME,
+        RESULT_COMMITTED,
+        RESOLVED
+    }
+
     private GameTerminationPolicy() {
     }
 
@@ -135,6 +149,27 @@ public final class GameTerminationPolicy {
      * marks the current reveal terminal so a tie or chain win cashes out
      * instead of reopening an untimed match without its owner.
      */
+    /**
+     * A committed spin's outcome and payout are immutable and already known
+     * -- unlike coinFlip/rockPaperScissors there is nothing left to "ride
+     * to a result", so a disconnect or shutdown after commitment always
+     * durably queues the exact known payout (zero included, as a valid
+     * completed-loss record) rather than refunding or replaying anything.
+     */
+    public static TerminationAction slots(ExitReason reason, SlotsPhase phase) {
+        if (reason == ExitReason.GAME_COMPLETED) {
+            return NO_ACTION;
+        }
+        if (reason == ExitReason.KICKED) {
+            return FORFEIT;
+        }
+        return switch (phase) {
+            case PREGAME -> NO_ACTION;
+            case RESULT_COMMITTED -> QUEUE_KNOWN_PAYOUT;
+            case RESOLVED -> NO_ACTION;
+        };
+    }
+
     public static TerminationAction rockPaperScissors(ExitReason reason, boolean gameActive) {
         if (reason == ExitReason.GAME_COMPLETED) {
             return NO_ACTION;

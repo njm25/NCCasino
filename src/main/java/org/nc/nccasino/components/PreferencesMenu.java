@@ -11,6 +11,9 @@ import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.localization.LanguageMode;
 import org.nc.nccasino.localization.LocalizationService;
+import org.nc.nccasino.payout.OverflowPreference;
+import org.nc.nccasino.payout.OverflowPreferenceToggle;
+import org.nc.nccasino.payout.OverflowSettings;
 
 public class PreferencesMenu extends Menu {
     public PreferencesMenu(
@@ -33,6 +36,7 @@ public class PreferencesMenu extends Menu {
         slotMapping.put(SlotOption.SOUNDS, 1);
         slotMapping.put(SlotOption.MESSAGES, 2);
         slotMapping.put(SlotOption.LANGUAGE, 3);
+        slotMapping.put(SlotOption.OVERFLOW, 4);
         initializeMenu();
     }
 
@@ -81,6 +85,7 @@ public class PreferencesMenu extends Menu {
             ),
             language.text(ownerId, "common.click-choose")
         );
+        addOverflowItem(language, preferences);
         addItemAndLore(
             Material.MAGENTA_GLAZED_TERRACOTTA,
             1,
@@ -92,6 +97,50 @@ public class PreferencesMenu extends Menu {
             1,
             language.text(ownerId, "common.exit"),
             slotMapping.get(SlotOption.EXIT)
+        );
+    }
+
+    /**
+     * The Bank/Drop choice for winnings that do not fit in the player's
+     * inventory.
+     *
+     * <p>When the server forces a mode, the item shows the forced value and
+     * says the server controls it -- the player's own saved choice is kept
+     * untouched and reappears the moment the server returns to player choice,
+     * so this is shown as an override rather than as their setting.
+     */
+    private void addOverflowItem(LocalizationService language, Preferences preferences) {
+        OverflowSettings settings = OverflowSettings.load(plugin);
+        boolean forced = OverflowPreferenceToggle.isForced(settings);
+        OverflowPreference effective = settings.effectivePreference(preferences.getOverflowPreference());
+
+        String effectiveLabel = language.text(ownerId, effective == OverflowPreference.BANK
+            ? "preferences.overflow.bank"
+            : "preferences.overflow.drop");
+
+        if (forced) {
+            addItemAndLore(
+                Material.HOPPER,
+                1,
+                language.text(ownerId, "preferences.overflow.title"),
+                slotMapping.get(SlotOption.OVERFLOW),
+                language.text(ownerId, "common.current", "value", effectiveLabel),
+                language.text(ownerId, "preferences.overflow.bank-explained"),
+                language.text(ownerId, "preferences.overflow.drop-explained"),
+                language.text(ownerId, "preferences.overflow.server-controlled")
+            );
+            return;
+        }
+
+        addItemAndLore(
+            Material.HOPPER,
+            1,
+            language.text(ownerId, "preferences.overflow.title"),
+            slotMapping.get(SlotOption.OVERFLOW),
+            language.text(ownerId, "common.current", "value", effectiveLabel),
+            language.text(ownerId, "preferences.overflow.bank-explained"),
+            language.text(ownerId, "preferences.overflow.drop-explained"),
+            language.text(ownerId, "common.click-toggle")
         );
     }
 
@@ -110,6 +159,25 @@ public class PreferencesMenu extends Menu {
             }
             case MESSAGES -> {
                 preferences.cycleMessageSetting();
+                refresh();
+                playDefaultSound(player);
+            }
+            case OVERFLOW -> {
+                OverflowSettings settings = OverflowSettings.load(plugin);
+                OverflowPreferenceToggle.Result result =
+                    OverflowPreferenceToggle.toggle(settings, preferences.getOverflowPreference());
+                if (!result.accepted()) {
+                    // Forced by the server: clicking must not change the
+                    // effective behavior, and the stored personal choice is
+                    // left exactly as it is rather than being overwritten.
+                    if (preferences.getMessageSetting() != Preferences.MessageSetting.NONE) {
+                        player.sendMessage(plugin.getLocalization().text(
+                            player, "preferences.overflow.server-controlled-notice"));
+                    }
+                    playDefaultSound(player);
+                    return;
+                }
+                preferences.setOverflowPreference(result.storedChoice());
                 refresh();
                 playDefaultSound(player);
             }
