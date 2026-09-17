@@ -3381,8 +3381,9 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         int slot = SlotsGeometry.gridSlot(columns, rows, row, col);
         switch (SlotsCellPresentation.of(symbol, demo)) {
             // A clean white reel bay/shutter, not a repeated textual
-            // placeholder -- blank name, no lore (the localization keys stay
-            // registered but unused here; see slots.neutral-cell(-lore)).
+            // placeholder -- blank name, no lore. The old slots.neutral-cell
+            // keys this used to leave registered have been removed with the
+            // rest of the pre-overhaul vocabulary.
             case NEUTRAL -> addItemAndLore(SlotsControlPresentation.Role.NEUTRAL_CELL.material(), 1, " ", slot);
             case DEMO -> addItemAndLore(symbol.material(), 1, text(symbolKey(symbol)),
                 ChatColor.WHITE, ChatColor.YELLOW, slot, text("slots.demo-cell-note"));
