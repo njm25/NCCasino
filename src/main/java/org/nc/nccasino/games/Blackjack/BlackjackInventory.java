@@ -3326,7 +3326,7 @@ private void registerListener() {
         return "BlackjackMusic:" + playerId;
     }
 
-    /** Starts after the private table entrance and repeats only if a long configured timer needs it. */
+    /** Starts in the pregame lobby after entrance or round settlement and repeats until the next deal begins. */
     private void startBlackjackMusic(UUID playerId) {
         if (blackjackMusicPlayers.contains(playerId) || tableEntranceActive.contains(playerId)
             || startTransitionActive || gameActive) {
@@ -8929,6 +8929,13 @@ private void resetGame() {
     startTransitionSeatedSnapshot.clear();
     stopInsurancePhaseBookkeeping();
     playerTurnActive.clear();
+
+    // Gameplay stopped the pre-deal score at the dealer transition. Resume it
+    // as soon as this round settles so the return-to-lobby animation and the
+    // next betting window share the same continuous per-viewer loop.
+    for (UUID playerId : playerSeats.keySet()) {
+        startBlackjackMusic(playerId);
+    }
 
     // Cancel any ongoing countdown
     if (countdownTaskId != -1) {

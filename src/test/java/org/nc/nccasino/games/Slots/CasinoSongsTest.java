@@ -15,6 +15,9 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class CasinoSongsTest {
+    // The Slots payout cue family (the transcription of the supplied ringing
+    // reference and the three cues derived from it) lives in SlotsPayoutCueTest.
+
     @Test
     void preservesSyncopatedTwoBarPhraseAndInstrumentRegisters() {
         List<Note> notes = CasinoSongs.dayTripper().getNotes();
@@ -34,7 +37,7 @@ class CasinoSongsTest {
     }
 
     @Test
-    void bundledVsePlaysEveryNoteIncludingFinalChordWithoutCuttingSampleTails() {
+    void bundledVsePlaysProgressiveDayTripperIntroWithoutAnAudibleFinalChord() {
         Player player = mock(Player.class);
         Location location = new Location(null, 0, 0, 0);
         when(player.getLocation()).thenReturn(location);
@@ -45,8 +48,13 @@ class CasinoSongsTest {
         }
         assertFalse(playback.tick(List.of(player)));
         assertTrue(playback.isStopped());
-        assertEquals(84, score.getNotes().size());
-        verify(player, times(84)).playSound(eq(location), anyString(), anyFloat(), anyFloat());
+        assertEquals(80, score.getNotes().size());
+        assertEquals(79, score.getNotes().stream().filter(note -> note.getVolume() > 0.0f).count());
+        assertTrue(score.getNotes().stream().anyMatch(note -> note.getStartTick() == 209
+            && note.getVolume() == 0.0f));
+        assertFalse(score.getNotes().stream().anyMatch(note -> note.getStartTick() == 209
+            && note.getVolume() > 0.0f));
+        verify(player, times(80)).playSound(eq(location), anyString(), anyFloat(), anyFloat());
         verify(player, never()).stopSound(anyString(), any(SoundCategory.class));
         clearInvocations(player);
         assertFalse(playback.tick(List.of(player)));
@@ -76,7 +84,7 @@ class CasinoSongsTest {
     }
 
     @Test
-    void bundledVseCompletesIFeelFineAfterTheFinalChordWithoutLooping() {
+    void bundledVsePreservesIFeelFineLoopBoundaryWithoutAnAudibleFinalChord() {
         Player player = mock(Player.class);
         Location location = new Location(null, 0, 0, 0);
         when(player.getLocation()).thenReturn(location);
@@ -87,8 +95,15 @@ class CasinoSongsTest {
         }
         assertFalse(playback.tick(List.of(player)));
         assertTrue(playback.isStopped());
-        assertEquals(157, score.getNotes().size());
-        verify(player, times(157)).playSound(eq(location), anyString(), anyFloat(), anyFloat());
+        assertEquals(153, score.getNotes().size());
+        Note marker = score.getNotes().stream()
+            .filter(note -> note.getStartTick() == 427 && note.getVolume() == 0.0f)
+            .findFirst().orElseThrow();
+        assertEquals(marker.getStartTick(), marker.getEndTick());
+        assertEquals(152, score.getNotes().stream().filter(note -> note.getVolume() > 0.0f).count());
+        assertEquals(0, score.getNotes().stream()
+            .filter(note -> note.getStartTick() == 427 && note.getVolume() > 0.0f).count());
+        verify(player, times(153)).playSound(eq(location), anyString(), anyFloat(), anyFloat());
         verify(player, never()).stopSound(anyString(), any(SoundCategory.class));
         clearInvocations(player);
         assertFalse(playback.tick(List.of(player)));
@@ -96,12 +111,21 @@ class CasinoSongsTest {
     }
 
     @Test
-    void rouletteLoopAddsAnInaudibleOneSecondTailAfterDayTripperEnding() {
-        List<Note> notes = CasinoSongs.dayTripperLoop().getNotes();
-        assertEquals(85, notes.size());
-        Note marker = notes.stream().filter(note -> note.getStartTick() == 229).findFirst().orElseThrow();
+    void rouletteBackedLoopOmitsTheNakedIntroAndFinalityChord() {
+        List<Note> notes = CasinoSongs.dayTripperBackedLoop().getNotes();
+        assertEquals(93, notes.size());
+        assertTrue(notes.stream().anyMatch(note -> note.getStartTick() == 0
+            && note.getInstr().endsWith(".bass") && note.getVolume() > 0.0f));
+        assertTrue(notes.stream().anyMatch(note -> note.getStartTick() == 0
+            && note.getInstr().endsWith(".basedrum") && note.getVolume() > 0.0f));
+        assertTrue(notes.stream().anyMatch(note -> note.getStartTick() == 70
+            && note.getInstr().endsWith(".basedrum") && note.getVolume() > 0.0f));
+        Note marker = notes.stream().filter(note -> note.getStartTick() == 138).findFirst().orElseThrow();
         assertEquals(0.0f, marker.getVolume());
-        assertEquals(229, notes.stream().mapToInt(Note::getEndTick).max().orElseThrow());
+        assertEquals(138, notes.stream().mapToInt(Note::getEndTick).max().orElseThrow());
+        assertFalse(notes.stream().anyMatch(note -> note.getStartTick() == 138
+            && note.getVolume() > 0.0f));
+        assertEquals(208, CasinoSongs.dayTripperIntroDurationTicks());
     }
 
     @Test
@@ -148,10 +172,18 @@ class CasinoSongsTest {
     void goldenSlumbersCompleteScoreIsFinitePlayableAndStopsBeforeCarryThatWeight() {
         Song score = CasinoSongs.goldenSlumbers();
         List<Note> notes = score.getNotes();
-        assertEquals(911, notes.size());
-        assertEquals(1853, notes.stream().mapToInt(Note::getStartTick).max().orElseThrow());
-        assertTrue(notes.stream().allMatch(n -> n.getStartTick()
-            < CasinoSongs.GOLDEN_SLUMBERS_CARRY_THAT_WEIGHT_BOUNDARY_TICK));
+        assertEquals(916, notes.size());
+        assertEquals(CasinoSongs.GOLDEN_SLUMBERS_LOOP_END_TICK,
+            notes.stream().mapToInt(Note::getStartTick).max().orElseThrow());
+        assertEquals(CasinoSongs.GOLDEN_SLUMBERS_FINAL_AUDIBLE_TICK,
+            notes.stream().filter(n -> n.getVolume() > 0.0f
+                    && !n.getInstr().endsWith(".hat"))
+                .mapToInt(Note::getStartTick).max().orElseThrow());
+        assertArrayEquals(CasinoSongs.GOLDEN_SLUMBERS_LOOP_CLICK_TICKS,
+            notes.stream().filter(n -> n.getStartTick()
+                    >= CasinoSongs.GOLDEN_SLUMBERS_CARRY_THAT_WEIGHT_BOUNDARY_TICK)
+                .filter(n -> n.getVolume() > 0.0f)
+                .mapToInt(Note::getStartTick).toArray());
         assertEquals(0, notes.stream().mapToInt(Note::getStartTick).min().orElseThrow());
         for (String instrument : List.of(".flute", ".harp", ".guitar", ".bass", ".chime",
                 ".didgeridoo", ".basedrum", ".snare", ".hat")) {
@@ -182,7 +214,7 @@ class CasinoSongsTest {
         when(player.getLocation()).thenReturn(location);
         Song score = CasinoSongs.goldenSlumbers();
         ActiveSong playback = new ActiveSong("audition", score, false);
-        for (int tick = 0; tick < 1853; tick++) {
+        for (int tick = 0; tick < CasinoSongs.GOLDEN_SLUMBERS_LOOP_END_TICK; tick++) {
             assertTrue(playback.tick(List.of(player)), "Ended prematurely at tick " + tick);
         }
         assertFalse(playback.tick(List.of(player)));
@@ -193,6 +225,33 @@ class CasinoSongsTest {
         clearInvocations(player);
         assertFalse(playback.tick(List.of(player)));
         verifyNoInteractions(player);
+    }
+
+    @Test
+    void bundledVseLoopsGoldenSlumbersAfterFourBeatBreak() {
+        Player player = mock(Player.class);
+        Location location = new Location(null, 0, 0, 0);
+        when(player.getLocation()).thenReturn(location);
+        Song score = CasinoSongs.goldenSlumbers();
+        ActiveSong playback = new ActiveSong("jukebox", score, true);
+        int openingAttacks = (int) score.getNotes().stream()
+            .filter(note -> note.getStartTick() == 0).count();
+
+        for (int tick = 0; tick <= CasinoSongs.GOLDEN_SLUMBERS_FINAL_AUDIBLE_TICK; tick++) {
+            assertTrue(playback.tick(List.of(player)), "Loop stopped at tick " + tick);
+        }
+        verify(player, times(911)).playSound(eq(location), anyString(), anyFloat(), anyFloat());
+
+        for (int tick = CasinoSongs.GOLDEN_SLUMBERS_FINAL_AUDIBLE_TICK + 1;
+                tick <= CasinoSongs.GOLDEN_SLUMBERS_LOOP_END_TICK; tick++) {
+            assertTrue(playback.tick(List.of(player)), "Loop stopped during pause at tick " + tick);
+        }
+        verify(player, times(916)).playSound(eq(location), anyString(), anyFloat(), anyFloat());
+
+        assertTrue(playback.tick(List.of(player)));
+        verify(player, times(916 + openingAttacks))
+            .playSound(eq(location), anyString(), anyFloat(), anyFloat());
+        assertFalse(playback.isStopped());
     }
 
 }

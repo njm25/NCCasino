@@ -97,6 +97,7 @@ public abstract class Menu extends DealerInventory {
         SLOTS_DEFAULT_COLUMNS,
         SLOTS_DEFAULT_ROWS,
         SLOTS_DEFAULT_LINES,
+        SLOTS_VARIANCE,
 
         YES,
         NO,

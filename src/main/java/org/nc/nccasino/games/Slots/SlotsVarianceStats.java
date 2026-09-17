@@ -14,6 +14,8 @@ package org.nc.nccasino.games.Slots;
  *
  * @param variance which level this describes
  * @param columns the machine width the preview is for
+ * @param visibleRows the normalized default cabinet height
+ * @param activeLines the normalized default active-line count
  * @param lineHitProbability chance a single active line pays anything at all
  * @param maxLineMultiplier the largest single-line return this level can pay
  * @param theoreticalRtp the exact return-to-player this level reproduces --
@@ -26,6 +28,8 @@ package org.nc.nccasino.games.Slots;
 public record SlotsVarianceStats(
     SlotsVariance variance,
     int columns,
+    int visibleRows,
+    int activeLines,
     double lineHitProbability,
     double maxLineMultiplier,
     double theoreticalRtp,
@@ -40,11 +44,24 @@ public record SlotsVarianceStats(
     public static SlotsVarianceStats forConfig(
         int columns, double houseEdge, SlotsVariance variance, long perLineWager, int activeLines) {
 
+        return forConfig(columns, SlotsGeometry.ROWS, houseEdge, variance, perLineWager, activeLines);
+    }
+
+    /** Height-aware variant used by the administrator settings preview. */
+    public static SlotsVarianceStats forConfig(
+        int columns, int visibleRows, double houseEdge, SlotsVariance variance,
+        long perLineWager, int activeLines) {
+
         SlotsPaytable paytable = SlotsPaytable.forConfig(columns, houseEdge, variance);
-        long maxPayout = SlotsMath.maxPossiblePayout(perLineWager, activeLines, paytable);
+        int normalizedRows = SlotsGeometry.normalizeRowCount(visibleRows);
+        int normalizedLines = SlotsPaylineCatalog.normalizeLineCount(normalizedRows, activeLines);
+        long maxPayout = SlotsMath.maxPossiblePayoutForGeometry(
+            perLineWager, normalizedRows, normalizedLines, paytable);
         return new SlotsVarianceStats(
             variance,
             columns,
+            normalizedRows,
+            normalizedLines,
             SlotsPaytable.lineHitProbability(variance),
             paytable.maxLineMultiplier(),
             paytable.theoreticalRtp(),

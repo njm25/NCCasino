@@ -68,6 +68,8 @@ class SlotsChatPromptTest {
 
     @Test
     void everyPromptTypeHasItsOwnInstructionKey() {
+        assertEquals("slots-settings.house-edge-prompt",
+            prompt(SlotsChatPrompt.Type.HOUSE_EDGE, SlotsUiView.GAME, 0L).instructionKey());
         assertEquals("slots.prompt-profile-name",
             prompt(SlotsChatPrompt.Type.PROFILE_NAME, SlotsUiView.GAME, 0L).instructionKey());
         assertEquals("slots.prompt-spin-limit",
@@ -85,7 +87,7 @@ class SlotsChatPromptTest {
         List<String> seen = new ArrayList<>();
         for (SlotsChatPrompt.Type type : SlotsChatPrompt.Type.values()) {
             String key = prompt(type, SlotsUiView.GAME, 0L).instructionKey();
-            assertTrue(key.startsWith("slots.prompt-"), key);
+            assertTrue(key.startsWith("slots.prompt-") || key.equals("slots-settings.house-edge-prompt"), key);
             assertFalse(key.contains("_"), key);
             assertFalse(seen.contains(key), "duplicate instruction key " + key);
             seen.add(key);

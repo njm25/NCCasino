@@ -2,6 +2,7 @@ package org.nc.nccasino.games.Slots;
 
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Derives the machine's actual payout multipliers from a configured house
@@ -51,6 +52,8 @@ public final class SlotsPaytable {
     private final SlotsVariance variance;
     private final Map<SlotsSymbol, double[]> multipliers;
     private final double theoreticalRtp;
+    /** Geometry-specific liability ceilings, computed once per immutable paytable. */
+    private final Map<Integer, Double> reachableCeilings = new ConcurrentHashMap<>();
 
     private SlotsPaytable(
         int columns, double houseEdge, SlotsVariance variance,
@@ -170,6 +173,13 @@ public final class SlotsPaytable {
             best = Math.max(best, multiplier(symbol, columns));
         }
         return best;
+    }
+
+    double maximumReachableMultiplier(int visibleRows, int activeLines) {
+        int normalizedLines = SlotsPaylineCatalog.normalizeLineCount(visibleRows, activeLines);
+        int key = (visibleRows << 8) | normalizedLines;
+        return reachableCeilings.computeIfAbsent(key,
+            ignored -> SlotsReachablePayoutCeiling.maximumMultiplier(visibleRows, normalizedLines, this));
     }
 
     /**

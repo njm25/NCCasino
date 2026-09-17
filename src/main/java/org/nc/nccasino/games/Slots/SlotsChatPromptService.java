@@ -23,10 +23,11 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * The one and only chat-prompt engine for Slots.
  *
- * <p>Profile naming and every Auto Spin Settings value share this single
- * {@code AsyncPlayerChatEvent} listener and one prompt-state map, rather than
- * each growing its own loosely-coordinated listener. That is what makes the
- * shared rules actually shared and enforceable:
+ * <p>Profile naming, every Auto Spin Settings value, and the administrator's
+ * house-edge entry share this single {@code AsyncPlayerChatEvent} listener
+ * and one prompt-state map, rather than each growing its own
+ * loosely-coordinated listener. That is what makes the shared rules actually
+ * shared and enforceable:
  *
  * <ul>
  *   <li>at most one prompt per player at a time -- a newer prompt supersedes

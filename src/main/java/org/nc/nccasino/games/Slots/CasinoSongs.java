@@ -3,7 +3,7 @@ package org.nc.nccasino.games.Slots;
 import org.nc.VSE.Note;
 import org.nc.VSE.Song;
 
-/** The three accepted note-block arrangements used by NCCasino games. */
+/** Accepted note-block arrangements used by NCCasino games. */
 public final class CasinoSongs {
     private static final int DAY_TRIPPER_BPM = 138;
     private static final int I_FEEL_FINE_BPM = 180;
@@ -11,6 +11,9 @@ public final class CasinoSongs {
     static final int GOLDEN_SLUMBERS_ACCEPTED_END_TICK = 985;
     static final int GOLDEN_SLUMBERS_EXTENSION_START_TICK = 986;
     static final int GOLDEN_SLUMBERS_CARRY_THAT_WEIGHT_BOUNDARY_TICK = 1860;
+    static final int GOLDEN_SLUMBERS_FINAL_AUDIBLE_TICK = 1853;
+    static final int[] GOLDEN_SLUMBERS_LOOP_CLICK_TICKS = {1860, 1875, 1890, 1905};
+    static final int GOLDEN_SLUMBERS_LOOP_END_TICK = 1918;
     private static final double GOLDEN_SLUMBERS_EXTENSION_SOURCE_BEAT = 71.0;
     private static final int GOLDEN_SLUMBERS_TRANSPOSE = 4; // C major -> E major for full flute range.
     private static final String GUITAR = "minecraft:block.note_block.guitar";
@@ -22,59 +25,342 @@ public final class CasinoSongs {
     private CasinoSongs() {
     }
 
+    // ---- Slots payout cue family -----------------------------------------
+    //
+    // All four profitable Slots payout cues are built from ONE transcribed
+    // motif so they escalate as a family instead of as unrelated jingles.
+    //
+    // SOURCE. The user-supplied reference recording ("Video Project 2.m4a",
+    // 17.3 s, audible 6.40-16.78 s) is a slot-machine payout wash: a broadband
+    // metallic coin jingle with a high pitched loop ringing through it. Only
+    // the pitched loop is transcribed here; the coin wash is deliberately
+    // omitted because vanilla has no comparable sample and the brief asked for
+    // the identifiable figure.
+    //
+    // DERIVATION. The loop was recovered by spectral analysis rather than by
+    // ear: a 48 kHz mono decode, an STFT (4096-point Hann window, 1 ms hop,
+    // 11.7 Hz bins) and per-semitone band envelopes. Autocorrelation of the
+    // summed high-band energy over 7.0-16.8 s fixes the loop period at
+    // 0.768 s, confirmed independently by the twelve successive cell downbeats
+    // measured at 7.194 s through 16.406 s. Folding all twelve cycles onto
+    // that period and reading each semitone band's peak yields ten onsets
+    // whose spacing is a constant 64 ms -- exactly 0.768 / 12, so the cell is
+    // twelve equal units long.
+    //
+    // PITCH. Narrowband peaks sit at 799.6, 892, 1067, 1348 and 1497.5 Hz.
+    // Those are 30 cents sharp of A440 but land within 5 cents of equal
+    // temperament against A4 = 448 Hz, so the source device simply runs about
+    // a third of a semitone sharp. The sounding set is G5 A5 C6 (D6) E6 F#6 --
+    // an A-Dorian collection. The arrangement is written at concert pitch: a
+    // uniform +30 cent offset is a tuning artefact of the source device, not
+    // part of the figure's identity, and the guide's rule is not to add
+    // fractional-MIDI pitches without a reason the sample supports.
+    //
+    // CONFIDENCE. Every one of the ten transcribed onsets is present in all
+    // twelve cycles individually, not merely in the average, and each sits
+    // clearly above the energy measured at the cell's two rest units. Least
+    // certain: a faint D6 band (about a fifth of the lead's level) that tracks
+    // units 1 and 11 in some cycles. It is omitted -- it may be a partial of
+    // the coin wash, and adding it thickened the figure without helping it.
+    //
+    // 20 TPS LIMIT. A 64 ms unit is 1.28 server ticks, so the grid cannot be
+    // reproduced exactly. Onsets are rounded from ABSOLUTE unit indices, which
+    // keeps the 0.768 s loop period and the overall tempo correct at the cost
+    // of up to 24 ms of per-onset jitter (adjacent units land 1 or 2 ticks
+    // apart, averaging 1.28). This is the single largest fidelity compromise
+    // and is audible as a slightly uneven trill; preserving the true period
+    // was judged more important than an even but wrong-tempo grid.
+
+    // ---- following the reels' key ----------------------------------------
+    //
+    // Every payout cue is shifted by the same whole number of semitones the
+    // spin's reel-stop ladder was randomly transposed by, so a win answers in
+    // the key the reels just spent the whole spin establishing rather than
+    // always in a fixed one. The rule is deliberately the crudest possible
+    // one -- the ladder's transpose integer applied verbatim -- because that
+    // needs no key analysis and keeps every interval of the transcription
+    // exactly as measured.
+    //
+    // Headroom. Every sample can only play 0.5..2.0, and the reel ladder can
+    // roll -1..+7 (3 reels), -1..+4 (5) or -1..+2 (7). The chime motif spans
+    // G5..F#6 inside chime's F#5..F#7, which leaves -1..+12 -- the whole range
+    // fits with the -1 roll landing exactly on chime's floor. The jackpot's
+    // extra voices did NOT fit and were revoiced for this: its harp and bass
+    // each dropped an octave, and its bell stopped doubling F#6 (which reached
+    // F#7, the sample's literal ceiling, capping the entire cue at +0). After
+    // revoicing the jackpot clears -1..+9. SlotsPayoutCueTest walks every reel
+    // count against every roll it can make and asserts the bounds hold.
+
+    /** The transcribed loop's unit grid: 12 units of 64 ms = 0.768 s. */
+    static final int PAYOUT_CELL_UNITS = 12;
+    private static final double PAYOUT_UNIT_TICKS = 0.064 * 20.0; // 1.28
+
     /**
-     * Day Tripper's two-bar ostinato, three times with an arranged ending.
+     * The chime and bell samples sound F#6 at pitch 1.0 (their note-block
+     * range is F#5..F#7), so those pitches are expressed against MIDI 90.
+     */
+    private static final int CHIME_REFERENCE_MIDI = 90;
+    private static final int BELL_REFERENCE_MIDI = 90;
+    private static final int HARP_REFERENCE_MIDI = 66;
+    private static final int BASS_REFERENCE_MIDI = 42;
+    private static final String BELL = "minecraft:block.note_block.bell";
+
+    // The folded cell. Columns: unit, MIDI, volume in hundredths. The lead is
+    // the figure's upper ringing line; the under-voice is the quieter second
+    // strand sounding with it at units 2, 4, 8, 9 and 11. Volumes are the
+    // folded STFT peak amplitudes normalised to 0.90 at the loop's downbeat
+    // and softened with a 0.8 exponent, preserving the measured ~10 dB spread.
+    private static final int[][] PAYOUT_CELL_LEAD = {
+        {0, 84, 90}, {1, 81, 78}, {2, 84, 79}, {3, 81, 70},
+        {6, 88, 39}, {8, 88, 39}, {9, 90, 57}, {10, 84, 35}, {11, 90, 45},
+    };
+    private static final int[][] PAYOUT_CELL_UNDER = {
+        {2, 79, 42}, {4, 79, 39}, {8, 84, 35}, {9, 81, 35}, {11, 81, 34},
+    };
+
+    /**
+     * 1-3x: the smallest profitable return. Only the motif's first three
+     * attacks (C6 A5 C6) at a little over half the big win's level, so the
+     * family is recognisable from the first cue without ever sounding
+     * celebratory. No under-voice, no repetition, no ending gesture.
+     */
+    public static Song slotsPayoutSmall(int transpose) {
+        Song song = new Song("SlotsPayoutSmall", 120);
+        // Pinned to Minecraft's 1.0 ceiling on every attack, by explicit
+        // request, because three short chime hits read as far quieter than
+        // their numbers suggest and the measured balance left the smallest win
+        // inaudible in play. Two deliberate consequences: the C6 downbeat no
+        // longer stands out from the two notes after it (the reference's
+        // accent shape is gone), and this is now the loudest cue in the
+        // family -- louder than the jackpot. Volumes above 1.0 would NOT be
+        // louder still; in Minecraft they only widen the audible radius, and
+        // these play at the player's own location.
+        for (int[] note : new int[][] {{0, 84, 100}, {1, 81, 100}, {2, 84, 100}}) {
+            payoutChime(song, note[0], note[1] + transpose, note[2] / 100.0f);
+        }
+        return song;
+    }
+
+    /**
+     * 3-10x: one complete statement of the cell -- both strands, no repeat --
+     * at 80% of the big win's level, closed by the loop's own downbeat C6 at
+     * unit 12. Clearly bigger than the small return because it is the whole
+     * figure rather than its head, and clearly smaller than the big win
+     * because it states the figure once instead of ringing.
+     */
+    public static Song slotsPayoutMedium(int transpose) {
+        Song song = new Song("SlotsPayoutMedium", 120);
+        // Lifted from 0.80 to 0.92 only to stay above the raised 1-3x peak --
+        // a medium win must never read as quieter than a small one. The two
+        // are now within a third of a decibel, so the step between them is
+        // carried by content (fifteen attacks against three) rather than gain,
+        // which is how the rest of this family escalates anyway.
+        addPayoutCell(song, 0, 0.92f, transpose);
+        payoutChime(song, PAYOUT_CELL_UNITS, 84 + transpose, 0.71f);
+        return song;
+    }
+
+    /**
+     * 10-25x: the faithful transcription. Four complete cells of the reference
+     * loop at full level plus the fifth cell's downbeat as a landing, which is
+     * the note the loop itself plays there. 3.05 s -- long enough that the
+     * repetition reads as the reference's ringing, short enough for a spin
+     * finale. The reference simply keeps looping; stopping on a downbeat
+     * rather than mid-cell is the one arrangement decision here.
+     */
+    public static Song slotsPayoutBig(int transpose) {
+        Song song = new Song("SlotsPayoutBig", 120);
+        for (int cell = 0; cell < 4; cell++) {
+            addPayoutCell(song, cell * PAYOUT_CELL_UNITS, 1.0f, transpose);
+        }
+        payoutChime(song, 4 * PAYOUT_CELL_UNITS, 84 + transpose, 0.90f);
+        return song;
+    }
+
+    /**
+     * 25x+: the same loop made bigger by voice count and register width
+     * rather than by gain -- the guide's rule for a drop. Five cells of the
+     * identical chime figure; a bass foundation on every cell (A2 under the
+     * first half, D3 under the second, the A-Dorian implication of the
+     * figure's own pitch set); a spread harp dyad entering at cell 1; a bell
+     * doubling the motif an octave up on the strong units of the last two
+     * cells; then a four-note rise out of the cell's own scale onto a tonic
+     * A6 with the whole ensemble. Nothing here uses a sound the family does
+     * not already own, and no layer is a unison reinforcement of another.
+     */
+    public static Song slotsPayoutJackpot(int transpose) {
+        Song song = new Song("SlotsPayoutJackpot", 120);
+        for (int cell = 0; cell < 5; cell++) {
+            int base = cell * PAYOUT_CELL_UNITS;
+            addPayoutCell(song, base, 1.0f, transpose);
+            // Bass from the first cell: the figure's implied Am -> D, voiced
+            // in the sample's bottom octave so the whole cue still transposes.
+            payoutNote(song, BASS, BASS_REFERENCE_MIDI, base, 33 + transpose, 0.40f);
+            payoutNote(song, BASS, BASS_REFERENCE_MIDI, base + 6, 38 + transpose, 0.40f);
+            if (cell >= 1) {
+                // Harp is the second layer in, voiced as spread dyads rather
+                // than doubling the lead, so it adds body without masking it.
+                payoutNote(song, HARP, HARP_REFERENCE_MIDI, base, 57 + transpose, 0.26f);
+                payoutNote(song, HARP, HARP_REFERENCE_MIDI, base, 64 + transpose, 0.26f);
+                payoutNote(song, HARP, HARP_REFERENCE_MIDI, base + 6, 62 + transpose, 0.26f);
+                payoutNote(song, HARP, HARP_REFERENCE_MIDI, base + 6, 66 + transpose, 0.26f);
+            }
+            if (cell >= 3) {
+                // Bell is the third layer: the motif's A an octave up, pinging
+                // on the trill's two A5 attacks and the two answering ones.
+                // It deliberately no longer doubles F#6 -- that reached F#7,
+                // the sample's absolute ceiling, which left the whole jackpot
+                // unable to transpose by even one semitone.
+                payoutNote(song, BELL, BELL_REFERENCE_MIDI, base + 1, 93 + transpose, 0.24f);
+                payoutNote(song, BELL, BELL_REFERENCE_MIDI, base + 3, 93 + transpose, 0.24f);
+                payoutNote(song, BELL, BELL_REFERENCE_MIDI, base + 9, 93 + transpose, 0.24f);
+                payoutNote(song, BELL, BELL_REFERENCE_MIDI, base + 11, 93 + transpose, 0.24f);
+            }
+        }
+        int rise = 5 * PAYOUT_CELL_UNITS;
+        payoutChime(song, rise, 84 + transpose, 0.70f);
+        payoutChime(song, rise + 1, 88 + transpose, 0.76f);
+        payoutChime(song, rise + 2, 90 + transpose, 0.82f);
+        payoutChime(song, rise + 3, 93 + transpose, 0.90f);
+        payoutNote(song, BELL, BELL_REFERENCE_MIDI, rise + 3, 93 + transpose, 0.35f);
+        payoutNote(song, HARP, HARP_REFERENCE_MIDI, rise + 3, 57 + transpose, 0.30f);
+        payoutNote(song, HARP, HARP_REFERENCE_MIDI, rise + 3, 60 + transpose, 0.30f);
+        payoutNote(song, HARP, HARP_REFERENCE_MIDI, rise + 3, 64 + transpose, 0.30f);
+        payoutNote(song, BASS, BASS_REFERENCE_MIDI, rise + 3, 33 + transpose, 0.44f);
+        return song;
+    }
+
+    /** How far the losing cue sits below the motif: four octaves. */
+    private static final int PAYOUT_LOSS_DROP = 48;
+
+    /** The motif's opening attack -- the note every payout cue begins on. */
+    static int payoutMotifStartMidi() {
+        return PAYOUT_CELL_LEAD[0][1];
+    }
+
+    /**
+     * The losing cue resolves to the payout motif's own starting note instead
+     * of an arbitrary low thud, so a loss reads as the bottom of the same
+     * tonal world the wins live in rather than an unrelated sound.
+     *
+     * <p>It is that note dropped four octaves onto the bass sample -- the
+     * lowest octave of it the sample can still reach, since another octave
+     * down would fall below bass's F#1 floor. With the motif starting on C6
+     * this is C2, and because C6 sits six semitones below chime's F#6
+     * reference exactly as C2 sits six below bass's F#2, the two share the
+     * identical 0.70711 multiplier: the same note, four octaves apart.
+     *
+     * <p>Derived rather than hard-coded, so retuning the motif's first note
+     * automatically retunes the loss with it.
+     */
+    static float payoutLossBassPitch() {
+        int midi = payoutMotifStartMidi() - PAYOUT_LOSS_DROP;
+        float pitch = (float) Math.pow(2.0, (midi - BASS_REFERENCE_MIDI) / 12.0);
+        if (pitch < 0.5f || pitch > 2.0f) {
+            throw new IllegalStateException(
+                "losing cue note outside the vanilla bass range: " + midi);
+        }
+        return pitch;
+    }
+
+    /** One complete cell of the transcribed loop, both strands, scaled and transposed. */
+    private static void addPayoutCell(Song song, int baseUnit, float scale, int transpose) {
+        for (int[] note : PAYOUT_CELL_LEAD) {
+            payoutChime(song, baseUnit + note[0], note[1] + transpose, scale * note[2] / 100.0f);
+        }
+        for (int[] note : PAYOUT_CELL_UNDER) {
+            payoutChime(song, baseUnit + note[0], note[1] + transpose, scale * note[2] / 100.0f);
+        }
+    }
+
+    private static void payoutChime(Song song, int unit, int midi, float volume) {
+        payoutNote(song, CHIME, CHIME_REFERENCE_MIDI, unit, midi, volume);
+    }
+
+    /**
+     * One one-shot attack on the payout grid. The unit index is absolute, so
+     * rounding never accumulates across the loop's repetitions.
+     */
+    private static void payoutNote(Song song, String sound, int referenceMidi,
+                                   int unit, int midi, float volume) {
+        float pitch = (float) Math.pow(2.0, (midi - referenceMidi) / 12.0);
+        if (pitch < 0.5f || pitch > 2.0f) {
+            throw new IllegalArgumentException("Note outside vanilla instrument range: " + midi);
+        }
+        int onset = payoutTick(unit);
+        song.addNote(new Note(sound, onset, onset, pitch, volume));
+    }
+
+    /** Absolute 64 ms unit index to server tick. */
+    static int payoutTick(int unit) {
+        return (int) Math.round(unit * PAYOUT_UNIT_TICKS);
+    }
+
+    /**
+     * Day Tripper's two-bar ostinato, three times as a progressive Roulette intro.
      * Pitch/rhythm reference: Alan W. Pollack's Notes on Day Tripper (DT.1),
      * corroborated by Ethan Hein's Musical simples: Day Tripper.
-     * The tempo, orchestration, repeat count and final chord are audition choices.
+     * The tempo, orchestration and repeat count are audition choices.
      */
     public static Song dayTripper() {
         Song song = new Song("DayTripper", DAY_TRIPPER_BPM);
+        addDayTripperPhrase(song, 0.0, false, false);
+        addDayTripperPhrase(song, 8.0, true, false);
+        addDayTripperPhrase(song, 16.0, true, true);
+        addSilentMarker(song, tick(24.0));
+        return song;
+    }
+
+    /** The backed second half used after Roulette's one-time progressive intro. */
+    public static Song dayTripperBackedLoop() {
+        Song song = new Song("DayTripperBackedLoop", DAY_TRIPPER_BPM);
+        addDayTripperPhrase(song, 0.0, true, true);
+        addDayTripperPhrase(song, 8.0, true, true);
+        // ActiveSong resets only after processing its maximum tick. Ending
+        // one tick before beat 16 makes the next engine tick the downbeat.
+        addSilentMarker(song, tick(16.0) - 1);
+        return song;
+    }
+
+    /** Scheduler delay for handing the progressive intro to {@link #dayTripperBackedLoop()}. */
+    public static int dayTripperIntroDurationTicks() {
+        // The newly-started backed song emits tick zero on the following VSE
+        // update, so hand it off one tick before the intended downbeat.
+        return tick(24.0) - 1;
+    }
+
+    private static void addDayTripperPhrase(Song song, double start, boolean withBass, boolean withDrums) {
         // E3 G3 G#3 B3 E4 D4 B3 F#4 B3 D4 E4.
         // Positions are eighth-note indices in TWO 4/4 bars, not tab spacing.
         int[] pitches = {52, 55, 56, 59, 64, 62, 59, 66, 59, 62, 64};
         int[] eighths = {0, 3, 4, 5, 6, 7, 10, 11, 13, 14, 15};
-        for (int repeat = 0; repeat < 3; repeat++) {
-            double start = repeat * 8.0;
-            for (int i = 0; i < pitches.length; i++) {
-                double beat = start + eighths[i] / 2.0;
-                float accent = i == 0 || i == 5 || i == 7 ? 0.65f : 0.52f;
-                pluck(song, GUITAR, 54, pitches[i], beat, accent);
-                if (repeat >= 1) {
-                    // Actual sounding bass, one octave below the guitar.
-                    pluck(song, BASS, 42, pitches[i] - 12, beat, 0.42f);
-                }
-            }
-            if (repeat == 2) {
-                for (int eighth = 0; eighth < 16; eighth++) {
-                    hit(song, "minecraft:block.note_block.hat", start + eighth / 2.0,
-                        eighth % 2 == 0 ? 0.12f : 0.08f);
-                }
-                for (int beat = 0; beat < 8; beat++) {
-                    hit(song, beat % 2 == 0 ? "minecraft:block.note_block.basedrum"
-                        : "minecraft:block.note_block.snare", start + beat, 0.22f);
-                }
+        for (int i = 0; i < pitches.length; i++) {
+            double beat = start + eighths[i] / 2.0;
+            float accent = i == 0 || i == 5 || i == 7 ? 0.65f : 0.52f;
+            pluck(song, GUITAR, 54, pitches[i], beat, accent);
+            if (withBass) {
+                pluck(song, BASS, 42, pitches[i] - 12, beat, 0.42f);
             }
         }
-        // A deliberate E-major button ending instead of an abrupt truncated loop.
-        pluck(song, BASS, 42, 40, 24, 0.48f);
-        pluck(song, GUITAR, 54, 52, 24, 0.50f);
-        pluck(song, GUITAR, 54, 59, 24, 0.38f);
-        pluck(song, GUITAR, 54, 64, 24, 0.42f);
-        pluck(song, "minecraft:block.note_block.harp", 66, 68, 24, 0.24f);
-        return song;
+        if (withDrums) {
+            for (int eighth = 0; eighth < 16; eighth++) {
+                hit(song, "minecraft:block.note_block.hat", start + eighth / 2.0,
+                    eighth % 2 == 0 ? 0.12f : 0.08f);
+            }
+            for (int beat = 0; beat < 8; beat++) {
+                hit(song, beat % 2 == 0 ? "minecraft:block.note_block.basedrum"
+                    : "minecraft:block.note_block.snare", start + beat, 0.22f);
+            }
+        }
     }
 
-    /** Roulette loop variant with one quiet second after the ending attack before restart. */
-    public static Song dayTripperLoop() {
-        Song song = dayTripper();
-        song.addNote(new Note(GUITAR, 229, 229, 1.0f, 0.0f));
-        return song;
+    private static void addSilentMarker(Song song, int boundaryTick) {
+        song.addNote(new Note(GUITAR, boundaryTick, boundaryTick, 1.0f, 0.0f));
     }
 
     /**
      * I Feel Fine's eight-bar opening riff, repeated once with an arranged
-     * rhythm-section entrance and a finite ending. The source riff moves
+     * rhythm-section entrance and a seamless loop boundary. The source riff moves
      * D7-C7-G7-G7; this version is coherently transposed down one semitone so
      * its complete two-octave span fits the vanilla guitar sample.
      *
@@ -82,7 +368,7 @@ public final class CasinoSongs {
      * preview (quarter note = 180, swung eighths) and Howard Wright's
      * independent fret transcription. Alan W. Pollack corroborates the key,
      * meter and opening dominant-chain harmony. The second repeat, bass,
-     * percussion and final chord are audition arrangement choices.
+     * and percussion are audition arrangement choices.
      */
     public static Song iFeelFine() {
         Song song = new Song("IFeelFine", I_FEEL_FINE_BPM);
@@ -133,12 +419,11 @@ public final class CasinoSongs {
             }
         }
 
-        // Deliberate F#-major button ending after the second complete cycle.
-        pluck(song, BASS, 42, 30, 64, 0.42f, I_FEEL_FINE_BPM);
-        pluck(song, GUITAR, 54, 42, 64, 0.50f, I_FEEL_FINE_BPM);
-        pluck(song, GUITAR, 54, 49, 64, 0.40f, I_FEEL_FINE_BPM);
-        pluck(song, GUITAR, 54, 54, 64, 0.44f, I_FEEL_FINE_BPM);
-        pluck(song, "minecraft:block.note_block.harp", 66, 58, 64, 0.24f, I_FEEL_FINE_BPM);
+        // VSE derives song length from the last event. Preserve the beat-64
+        // boundary without an audible cadence so looping returns naturally
+        // to the opening riff instead of sounding like a finished song restart.
+        int loopBoundary = tick(64.0, I_FEEL_FINE_BPM);
+        song.addNote(new Note(GUITAR, loopBoundary, loopBoundary, 1.0f, 0.0f));
         return song;
     }
 
@@ -171,6 +456,16 @@ public final class CasinoSongs {
         addGoldenSlumbersChorusClose(song);
         addGoldenSlumbersHomewardReturn(song);
         addGoldenSlumbersFinalLullabyAndTransition(song);
+
+        // Preserve the 81-BPM quarter-note grid after the asymmetric final fill.
+        // These four restrained clicks occupy one empty 4/4 measure; VSE loops
+        // after the silent marker so the opening lands on the next downbeat.
+        for (int onset : GOLDEN_SLUMBERS_LOOP_CLICK_TICKS) {
+            song.addNote(new Note("minecraft:block.note_block.hat", onset, onset,
+                1.0f, 0.14f));
+        }
+        song.addNote(new Note(HARP, GOLDEN_SLUMBERS_LOOP_END_TICK,
+            GOLDEN_SLUMBERS_LOOP_END_TICK, 1.0f, 0.0f));
         return song;
     }
 

@@ -72,6 +72,21 @@ public final class SlotsTiming {
     /** Pause on a losing spin before controls unlock -- short, so a dead spin does not drag. */
     public static final long LOSS_SETTLE_TICKS = 8L;
 
+    /**
+     * Beat of suspense held before a non-winning spin's cue actually sounds, so
+     * the verdict does not land on top of the last reel stop. Shared by a total
+     * loss and by a partial return, which are both "you did not beat the
+     * stake" outcomes and so should be paced identically.
+     *
+     * <p>This is ON TOP OF {@link #PRE_REVEAL_PAUSE_TICKS}, which already
+     * separates the last reel landing from the whole win presentation -- the
+     * finale fires at {@code SlotsReelPlan.revealStartTick()}, not when the
+     * reels stop. What a player actually hears after the final reel is the sum
+     * of the two, so tune this against 6 + this, not against zero. At 4 the
+     * total is 10 ticks, half a second.
+     */
+    public static final long RESULT_CUE_DELAY_TICKS = 4L;
+
     // ---- opening animation -------------------------------------------
     //
     // Dedicated to the once-per-session opening animation only -- never

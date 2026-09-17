@@ -38,7 +38,7 @@ public enum SlotsSymbol {
     LEMON(18, 1.9, 3, Material.YELLOW_DYE),
     BELL(14, 3.6, 3, Material.BELL),
     DIAMOND(10, 8.0, 3, Material.DIAMOND),
-    SEVEN(6, 22.0, 3, Material.REDSTONE_BLOCK);
+    SEVEN(6, 22.0, 3, Material.RED_DYE);
 
     /** Sampling weights sum to this on every reel. */
     public static final int TOTAL_WEIGHT = 100;

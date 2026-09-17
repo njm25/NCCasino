@@ -99,12 +99,14 @@ class SlotsMathGeometryTest {
                 for (int lines = 1; lines <= SlotsPaylineCatalog.lineCount(rows); lines++) {
                     long worstCase = SlotsMath.maxPossiblePayoutForGeometry(10L, rows, lines, paytable);
 
-                    // The literal worst outcome: every cell showing the top symbol.
-                    SlotsOutcome allSeven = uniformOutcome(SlotsSymbol.SEVEN, columns, rows);
-                    long actual = SlotsMath.totalPayoutForGeometry(allSeven, lines, 10L, paytable);
-                    assertTrue(actual <= worstCase,
-                        "columns=" + columns + " rows=" + rows + " lines=" + lines
-                            + ": actual " + actual + " exceeded worst-case " + worstCase);
+                    long oldImpossibleBound = (long) Math.ceil(
+                        10L * paytable.maxLineMultiplier() * SlotsPaylineCatalog.normalizeLineCount(rows, lines));
+                    assertTrue(worstCase <= oldImpossibleBound,
+                        "the reachable ceiling can never exceed the old independent-lines estimate");
+                    if (lines == 1) {
+                        assertEquals((long) Math.ceil(10L * paytable.maxLineMultiplier()), worstCase,
+                            "one line can independently land its full-width Seven run");
+                    }
                 }
             }
         }

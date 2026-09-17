@@ -139,7 +139,7 @@ class SlotsDealerBudgetTest {
         assertEquals(
             SlotsMath.maxPossiblePayout(10L, LINES, PAYTABLE),
             underwriting.lastMaxPayout.get(),
-            "exposure must be every active line at the top symbol, full width");
+            "underwriting must receive the exact reachable payout ceiling");
     }
 
     // ---- unwinding when the player cannot pay -----------------------------
@@ -335,23 +335,21 @@ class SlotsDealerBudgetTest {
     }
 
     @Test
-    void moreActiveLinesRaiseExposureProportionally() {
+    void moreActiveLinesRaiseOnlyReachableExposure() {
         Exposure one = exposureFor(100L, 1);
         Exposure three = exposureFor(100L, 3);
 
-        // Each active line carries its own stake and its own top prize, so
-        // three lines cost and risk three times as much.
+        // Each active line carries its own stake.
         assertEquals(0,
             Money.multiply(one.stake(), Money.of(3L)).compareTo(three.stake()),
             "three lines stake exactly three times one line");
 
-        // The payout ceiling rounds up per call, so three lines can land a
-        // whisker under 3x a single ceiled line rather than exactly on it.
+        // Additional lines raise risk, but shared reel windows mean their
+        // jackpots cannot all occur simultaneously. The exact ceiling must
+        // therefore be lower than the old line-count multiplication.
         BigDecimal tripled = Money.multiply(one.maxGrossPayout(), Money.of(3L));
-        assertTrue(three.maxGrossPayout().compareTo(tripled) <= 0,
-            "exposure must not exceed three single lines");
-        assertTrue(Money.subtract(tripled, three.maxGrossPayout()).compareTo(Money.of(3L)) < 0,
-            "and must be within rounding of it: " + tripled + " vs " + three.maxGrossPayout());
+        assertTrue(three.maxGrossPayout().compareTo(tripled) < 0,
+            "shared reel windows must rule out three simultaneous top-line jackpots");
         assertTrue(three.maxGrossPayout().compareTo(one.maxGrossPayout()) > 0);
     }
 

@@ -201,21 +201,9 @@ public final class SlotsMath {
         return Math.multiplyExact(perLineWager, (long) lines);
     }
 
-    /**
-     * Worst-case payout a spin could produce, used to probe exposure before a
-     * wager is accepted. Every active line hitting the top symbol at full
-     * width is the ceiling.
-     */
+    /** Exact reachable payout ceiling for the legacy three-row geometry. */
     public static long maxPossiblePayout(long perLineWager, int activeLines, SlotsPaytable paytable) {
-        if (perLineWager < 0) {
-            throw new IllegalArgumentException("perLineWager must not be negative");
-        }
-        int lines = SlotsPayline.normalizeLineCount(activeLines);
-        double raw = (double) perLineWager * paytable.maxLineMultiplier() * lines;
-        if (raw > (double) Long.MAX_VALUE) {
-            throw new ArithmeticException("Slots worst-case payout overflows a long: " + raw);
-        }
-        return (long) Math.ceil(raw);
+        return maxPossiblePayoutForGeometry(perLineWager, SlotsGeometry.ROWS, activeLines, paytable);
     }
 
     // ---- redesign: geometry-aware evaluation (variable visible height) ----
@@ -347,9 +335,9 @@ public final class SlotsMath {
     }
 
     /**
-     * {@link #maxPossiblePayout(long, int, SlotsPaytable)}, generalized to a
-     * machine's actual visible height -- height never lowers the realizable
-     * all-top-symbol ceiling below what the line count and paytable allow.
+     * Exact largest payout reachable from the configured reel strips for the
+     * machine's actual height and active payline prefix. This is used for both
+     * dealer underwriting and the item-mode numeric-precision gate.
      */
     public static long maxPossiblePayoutForGeometry(
         long perLineWager, int visibleRows, int activeLines, SlotsPaytable paytable) {
@@ -357,8 +345,8 @@ public final class SlotsMath {
         if (perLineWager < 0) {
             throw new IllegalArgumentException("perLineWager must not be negative");
         }
-        int lines = SlotsPaylineCatalog.normalizeLineCount(visibleRows, activeLines);
-        double raw = (double) perLineWager * paytable.maxLineMultiplier() * lines;
+        double maximumMultiplier = paytable.maximumReachableMultiplier(visibleRows, activeLines);
+        double raw = (double) perLineWager * maximumMultiplier;
         if (raw > (double) Long.MAX_VALUE) {
             throw new ArithmeticException("Slots worst-case payout overflows a long: " + raw);
         }

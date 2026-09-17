@@ -1,5 +1,6 @@
 package org.nc.nccasino.games.Slots;
 
+import org.bukkit.Material;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -12,234 +13,149 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Where the condensed Paytable view puts each of its pieces, and the
- * arithmetic behind one symbol card's rows.
- *
- * <p>The card block is derived from the authoritative paying-symbol count,
- * never from a hand-written slot table, so the layout is asserted as a
- * property (packed, centred, inside its own block, clear of the rail) for
- * every count it can be asked to place -- not just for today's five symbols.
- */
+/** Layout and payout invariants behind the compact Slots paytable. */
 class SlotsPaytableLayoutTest {
 
     private static final int WIDTH = SlotsGeometry.INVENTORY_WIDTH;
 
-    // ---- fixed pieces ----------------------------------------------------
-
     @Test
-    void thePaytableOwnsTheFirstFourCanvasRowsAndNothingOnTheRailRow() {
-        assertEquals(SlotsGeometry.CANVAS_ROWS - 1, SlotsPaytableLayout.PAYTABLE_ROWS);
+    void paytableOwnsFourRowsAndLeavesTheHopperRailAlone() {
         int[] owned = SlotsPaytableLayout.paytableCanvasSlots();
         assertEquals(36, owned.length);
         assertEquals(0, owned[0]);
         assertEquals(35, owned[owned.length - 1]);
         for (int slot : owned) {
-            assertFalse(SlotsInfoRail.isRailSlot(slot),
-                "slot " + slot + " belongs to the informational rail, not the paytable");
+            assertFalse(SlotsInfoRail.isRailSlot(slot));
         }
     }
 
     @Test
-    void theLegendIsCentredOnTheTopRowAndTheMachineCardBalancesIt() {
-        assertEquals(4, SlotsPaytableLayout.LEGEND_SLOT);
-        assertEquals(WIDTH / 2, SlotsPaytableLayout.LEGEND_SLOT % WIDTH, "the Legend is a single centred card");
-        assertEquals(0, SlotsPaytableLayout.LEGEND_SLOT / WIDTH);
-        assertEquals(8, SlotsPaytableLayout.MACHINE_SLOT);
-        assertEquals(0, SlotsPaytableLayout.MACHINE_SLOT / WIDTH);
-    }
-
-    @Test
-    void theExplanatoryColumnIsTheNarrowLeftEdge() {
-        int[] column = SlotsPaytableLayout.infoColumnSlots();
-        assertEquals(4, column.length);
-        for (int i = 0; i < column.length; i++) {
-            assertEquals(0, column[i] % WIDTH, "the info column is column 0");
-            assertEquals(i, column[i] / WIDTH, "the info column runs straight down rows 0-3");
+    void rainbowMarqueeIsExactlyTheTopAndBottomPaytableRows() {
+        for (int slot : SlotsPaytableLayout.paytableCanvasSlots()) {
+            int row = slot / WIDTH;
+            assertEquals(row == 0 || row == 3,
+                SlotsPaytableLayout.isRainbowFrameSlot(slot), "slot " + slot);
         }
+        assertFalse(SlotsPaytableLayout.isRainbowFrameSlot(-1));
+        assertFalse(SlotsPaytableLayout.isRainbowFrameSlot(36));
     }
 
     @Test
-    void theInfoColumnIsACopySoACallerCannotRewriteTheLayout() {
-        int[] first = SlotsPaytableLayout.infoColumnSlots();
-        first[0] = 999;
-        assertEquals(0, SlotsPaytableLayout.infoColumnSlots()[0]);
+    void headerAndSupportCardsAreBalancedAroundTheCentre() {
+        assertEquals(4, SlotsPaytableLayout.MACHINE_SLOT);
+        assertEquals(20, SlotsPaytableLayout.SEEDS_SLOT);
+        assertEquals(22, SlotsPaytableLayout.LEGEND_SLOT);
+        assertEquals(24, SlotsPaytableLayout.VOLATILITY_SLOT);
+        assertEquals(WIDTH / 2, SlotsPaytableLayout.MACHINE_SLOT % WIDTH);
+        assertEquals(WIDTH / 2, SlotsPaytableLayout.LEGEND_SLOT % WIDTH);
+        assertEquals(2,
+            (SlotsPaytableLayout.LEGEND_SLOT % WIDTH) - (SlotsPaytableLayout.SEEDS_SLOT % WIDTH));
+        assertEquals(2,
+            (SlotsPaytableLayout.VOLATILITY_SLOT % WIDTH) - (SlotsPaytableLayout.LEGEND_SLOT % WIDTH));
     }
 
-    // ---- symbol cards ----------------------------------------------------
-
     @Test
-    void theCardBlockIsTheThreeByEightAreaBesideTheInfoColumn() {
-        assertEquals(24, SlotsPaytableLayout.cardCapacity());
+    void thePaytableHeaderPanesAreOrdinaryRainbowFrame() {
+        // They briefly carried the Sound Lab's audition tiles. With the Lab
+        // gone they are decoration again, and the centred machine card is the
+        // only thing that interrupts the top row.
+        for (int slot : new int[] {1, 2, 3, 5, 6, 7}) {
+            assertTrue(SlotsPaytableLayout.isRainbowFrameSlot(slot),
+                "slot " + slot + " is part of the marquee frame");
+        }
+        assertEquals(4, SlotsPaytableLayout.MACHINE_SLOT);
+        assertTrue(SlotsPaytableLayout.isRainbowFrameSlot(SlotsPaytableLayout.MACHINE_SLOT));
     }
 
     @Test
-    void todaysFivePayingSymbolsBecomeOneCentredBandThroughTheCanvasCentre() {
+    void todaysFiveSymbolsFormOneCentredUnbrokenBand() {
         int[] slots = SlotsPaytableLayout.symbolCardSlots(SlotsSymbol.payingSymbols().length);
-        assertEquals(5, slots.length);
-        assertArrayContentEquals(new int[] {20, 21, 22, 23, 24}, slots);
-        assertTrue(contains(slots, 22), "an odd card count must run through the canvas's true centre");
+        assertArrayContentEquals(new int[] {11, 12, 13, 14, 15}, slots);
+        assertTrue(contains(slots, 13));
     }
 
     @Test
-    void everyPlaceableCountStaysInsideTheCardBlockAndNeverCollidesWithAnythingElse() {
-        Set<Integer> reserved = new HashSet<>();
-        for (int slot : SlotsPaytableLayout.infoColumnSlots()) {
-            reserved.add(slot);
-        }
-        reserved.add(SlotsPaytableLayout.LEGEND_SLOT);
-        reserved.add(SlotsPaytableLayout.MACHINE_SLOT);
+    void everySupportedCardCountStaysCentredInTheSymbolRow() {
+        Set<Integer> support = Set.of(
+            SlotsPaytableLayout.MACHINE_SLOT,
+            SlotsPaytableLayout.SEEDS_SLOT,
+            SlotsPaytableLayout.LEGEND_SLOT,
+            SlotsPaytableLayout.VOLATILITY_SLOT);
 
         for (int count = 0; count <= SlotsPaytableLayout.cardCapacity(); count++) {
             int[] slots = SlotsPaytableLayout.symbolCardSlots(count);
-            assertEquals(count, slots.length, "count " + count);
+            assertEquals(count, slots.length);
             Set<Integer> seen = new HashSet<>();
             for (int slot : slots) {
-                assertTrue(seen.add(slot), "count " + count + " placed two cards on slot " + slot);
-                assertFalse(reserved.contains(slot),
-                    "count " + count + " placed a card on reserved slot " + slot);
-                assertFalse(SlotsInfoRail.isRailSlot(slot),
-                    "count " + count + " placed a card on the rail at slot " + slot);
-                int row = slot / WIDTH;
-                int column = slot % WIDTH;
-                assertTrue(row >= 1 && row <= 3, "count " + count + " left the card block: row " + row);
-                assertTrue(column >= 1, "count " + count + " intruded on the info column");
+                assertEquals(1, slot / WIDTH);
+                assertTrue(seen.add(slot));
+                assertFalse(support.contains(slot));
+                assertFalse(SlotsInfoRail.isRailSlot(slot));
             }
-        }
-    }
-
-    @Test
-    void everyRowOfCardsIsHorizontallyCentredInTheAvailableColumns() {
-        for (int count = 1; count <= SlotsPaytableLayout.cardCapacity(); count++) {
-            int[] slots = SlotsPaytableLayout.symbolCardSlots(count);
-            for (List<Integer> row : rows(slots)) {
-                int first = row.get(0) % WIDTH;
-                int last = row.get(row.size() - 1) % WIDTH;
-                // Column 0 is the info column, so the usable band is 1..8.
-                // An odd amount of slack cannot split evenly, so a row is
-                // centred to within one column, never piled into a corner.
-                assertTrue(Math.abs((first - 1) - ((WIDTH - 1) - last)) <= 1,
-                    "count " + count + " row " + row + " is not centred");
-                // Contiguous, in order.
-                for (int i = 1; i < row.size(); i++) {
-                    assertEquals(row.get(i - 1) + 1, row.get(i).intValue(), "count " + count + " row " + row);
+            if (count > 0) {
+                int leftSpace = slots[0] % WIDTH;
+                int rightSpace = WIDTH - 1 - slots[slots.length - 1] % WIDTH;
+                assertTrue(Math.abs(leftSpace - rightSpace) <= 1);
+                for (int i = 1; i < slots.length; i++) {
+                    assertEquals(slots[i - 1] + 1, slots[i]);
                 }
             }
         }
     }
 
     @Test
-    void theRowsUsedAreVerticallyCentredAndNoRowIsLeftLopsided() {
-        for (int count = 1; count <= SlotsPaytableLayout.cardCapacity(); count++) {
-            int[] slots = SlotsPaytableLayout.symbolCardSlots(count);
-            List<List<Integer>> rows = rows(slots);
-            int topRow = rows.get(0).get(0) / WIDTH;
-            int bottomRow = rows.get(rows.size() - 1).get(0) / WIDTH;
-            // Rows 1..3 are available. An even number of used rows leaves an
-            // odd amount of slack that cannot split evenly, so -- exactly as
-            // with the horizontal centring -- a block is centred to within one
-            // row rather than pushed to the top or bottom of the band.
-            assertTrue(Math.abs((topRow - 1) - (3 - bottomRow)) <= 1,
-                "count " + count + " is not vertically centred");
-            int biggest = 0;
-            int smallest = Integer.MAX_VALUE;
-            for (List<Integer> row : rows) {
-                biggest = Math.max(biggest, row.size());
-                smallest = Math.min(smallest, row.size());
-            }
-            assertTrue(biggest - smallest <= 1,
-                "count " + count + " spread unevenly across rows: " + rows);
-        }
-    }
-
-    @Test
-    void cardsAreEmittedInTheOrderTheSymbolsWereGiven() {
-        int[] slots = SlotsPaytableLayout.symbolCardSlots(10);
-        for (int i = 1; i < slots.length; i++) {
-            assertTrue(slots[i] > slots[i - 1], "cards must be emitted in ascending slot order");
-        }
-    }
-
-    @Test
-    void askingForMoreCardsThanFitFailsLoudlyRatherThanDroppingAPayingSymbol() {
+    void invalidCardCountsFailInsteadOfDroppingSymbols() {
         assertThrows(IllegalArgumentException.class,
             () -> SlotsPaytableLayout.symbolCardSlots(SlotsPaytableLayout.cardCapacity() + 1));
-        assertThrows(IllegalArgumentException.class, () -> SlotsPaytableLayout.symbolCardSlots(-1));
-    }
-
-    @Test
-    void everyPayingSymbolAlwaysFits() {
+        assertThrows(IllegalArgumentException.class,
+            () -> SlotsPaytableLayout.symbolCardSlots(-1));
         assertTrue(SlotsSymbol.payingSymbols().length <= SlotsPaytableLayout.cardCapacity());
     }
 
-    // ---- what one card actually says -------------------------------------
+    @Test
+    void sevenUsesACompactRedIconRatherThanARedstoneBlock() {
+        assertEquals(Material.RED_DYE, SlotsSymbol.SEVEN.material());
+    }
 
     @Test
-    void aCardListsExactlyTheRunsAchievableAtTheCurrentReelCount() {
+    void cardsListExactlyTheRunsAvailableAtEachReelCount() {
         for (int columns : SlotsGeometry.supportedColumnCounts()) {
             SlotsPaytable paytable =
                 SlotsPaytable.forConfig(columns, SlotsPaytable.DEFAULT_HOUSE_EDGE, SlotsVariance.BALANCED);
             for (SlotsSymbol symbol : SlotsSymbol.payingSymbols()) {
                 List<Integer> runs = achievableRuns(symbol, columns, paytable);
                 assertFalse(runs.isEmpty(), symbol + " must pay at " + columns + " reels");
-                assertEquals(symbol.minimumRun(), runs.get(0).intValue(),
-                    symbol + " must start at its own minimum run");
-                assertEquals(columns, runs.get(runs.size() - 1).intValue(),
-                    symbol + " must run out at the reel count, never past it");
+                assertEquals(symbol.minimumRun(), runs.get(0));
+                assertEquals(columns, runs.get(runs.size() - 1));
                 assertEquals(columns - symbol.minimumRun() + 1, runs.size());
             }
         }
     }
 
     @Test
-    void noCardEverAdvertisesARunLongerThanTheMachineHasReels() {
+    void noCardAdvertisesARunLongerThanTheMachine() {
         for (int columns : SlotsGeometry.supportedColumnCounts()) {
             SlotsPaytable paytable =
                 SlotsPaytable.forConfig(columns, SlotsPaytable.DEFAULT_HOUSE_EDGE, SlotsVariance.BALANCED);
             for (SlotsSymbol symbol : SlotsSymbol.values()) {
                 for (int run = columns + 1; run <= columns + 4; run++) {
-                    assertEquals(0.0, paytable.multiplier(symbol, run), 1e-12,
-                        symbol + " must not pay a run of " + run + " on " + columns + " reels");
+                    assertEquals(0.0, paytable.multiplier(symbol, run), 1e-12);
                 }
             }
         }
     }
 
     @Test
-    void theSeedsSymbolNeverAppearsOnACardAtAnyRunLength() {
-        // The Paytable explains Seeds in its own explanatory card instead --
-        // it is a real weighted strip symbol that pays nothing and ends any
-        // run it lands in.
+    void seedsNeverAppearsAmongPayingSymbols() {
         assertEquals(0.0, SlotsSymbol.SEEDS.payWeight(), 1e-12);
         assertEquals(0, SlotsSymbol.SEEDS.minimumRun());
         for (SlotsSymbol symbol : SlotsSymbol.payingSymbols()) {
-            assertFalse(symbol == SlotsSymbol.SEEDS, "Seeds must never be a paying symbol");
-        }
-        for (int columns : SlotsGeometry.supportedColumnCounts()) {
-            SlotsPaytable paytable =
-                SlotsPaytable.forConfig(columns, SlotsPaytable.DEFAULT_HOUSE_EDGE, SlotsVariance.BALANCED);
-            for (int run = 1; run <= columns; run++) {
-                assertEquals(0.0, paytable.multiplier(SlotsSymbol.SEEDS, run), 1e-12);
-            }
+            assertFalse(symbol == SlotsSymbol.SEEDS);
         }
     }
 
     @Test
-    void aCardsReturnIsTheMultiplierTimesThePerLineWagerAndTracksAWagerChange() {
-        // "Return" is the total returned payout for one line at the current
-        // wager, not profit on top of the stake -- and it must move the
-        // instant the wager does.
-        SlotsPaytable paytable =
-            SlotsPaytable.forConfig(5, SlotsPaytable.DEFAULT_HOUSE_EDGE, SlotsVariance.BALANCED);
-        double multiplier = paytable.multiplier(SlotsSymbol.SEVEN, 5);
-        assertTrue(multiplier > 0.0);
-        assertEquals(multiplier * 10.0, multiplier * 10.0, 1e-9);
-        assertEquals(multiplier * 25.0, 2.5 * (multiplier * 10.0), 1e-6,
-            "a 2.5x wager must produce a 2.5x return on the same run");
-    }
-
-    @Test
-    void aLongerRunNeverReturnsLessThanAShorterOneOfTheSameSymbol() {
+    void longerRunsNeverReturnLessForTheSameSymbol() {
         for (int columns : SlotsGeometry.supportedColumnCounts()) {
             SlotsPaytable paytable =
                 SlotsPaytable.forConfig(columns, SlotsPaytable.DEFAULT_HOUSE_EDGE, SlotsVariance.BALANCED);
@@ -247,17 +163,15 @@ class SlotsPaytableLayoutTest {
                 double previous = -1.0;
                 for (int run = symbol.minimumRun(); run <= columns; run++) {
                     double multiplier = paytable.multiplier(symbol, run);
-                    assertTrue(multiplier >= previous,
-                        symbol + " run " + run + " pays less than run " + (run - 1));
+                    assertTrue(multiplier >= previous);
                     previous = multiplier;
                 }
             }
         }
     }
 
-    // ---- helpers ---------------------------------------------------------
-
-    private static List<Integer> achievableRuns(SlotsSymbol symbol, int columns, SlotsPaytable paytable) {
+    private static List<Integer> achievableRuns(
+            SlotsSymbol symbol, int columns, SlotsPaytable paytable) {
         List<Integer> runs = new ArrayList<>();
         for (int run = Math.max(1, symbol.minimumRun()); run <= columns; run++) {
             if (paytable.multiplier(symbol, run) > 0.0) {
@@ -265,28 +179,6 @@ class SlotsPaytableLayoutTest {
             }
         }
         return runs;
-    }
-
-    /** Groups placed card slots by inventory row, preserving order. */
-    private static List<List<Integer>> rows(int[] slots) {
-        List<List<Integer>> rows = new ArrayList<>();
-        List<Integer> current = new ArrayList<>();
-        int currentRow = -1;
-        for (int slot : slots) {
-            int row = slot / WIDTH;
-            if (row != currentRow) {
-                if (!current.isEmpty()) {
-                    rows.add(current);
-                }
-                current = new ArrayList<>();
-                currentRow = row;
-            }
-            current.add(slot);
-        }
-        if (!current.isEmpty()) {
-            rows.add(current);
-        }
-        return rows;
     }
 
     private static boolean contains(int[] values, int target) {

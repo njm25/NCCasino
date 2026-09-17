@@ -21,6 +21,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.scheduler.BukkitTask;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.currency.ChipSlots;
 import org.nc.nccasino.currency.CurrencyMode;
@@ -72,6 +73,7 @@ public class BettingTable extends DealerInventory {
     private final String budgetSessionId = java.util.UUID.randomUUID().toString();
     private long budgetRoundCounter = 0;
     private long budgetOperationCounter = 0;
+    private BukkitTask bettingMusicHandoffTask;
     private final WagerActionGuard wagerActionGuard = new WagerActionGuard();
     public BettingTable(Player player, Mob dealer, Nccasino plugin, Stack<Pair<String, Integer>> existingBets, String internalName,RouletteInventory rouletteInventory,int countdown) {
         super(player.getUniqueId(), 54, plugin.getLocalization().text(player, "roulette.table-title"));
@@ -1477,15 +1479,37 @@ private boolean isValidSlotPage2(int slot) {
             || plugin.getPreferences(playerId).getSoundSetting() != Preferences.SoundSetting.ON) {
             return;
         }
+        stopBettingMusic();
         String channel = bettingMusicChannel();
-        rouletteInventory.getMCE().stopSong(channel, "DayTripper");
         rouletteInventory.getMCE().addPlayerToChannel(channel, player);
-        rouletteInventory.getMCE().playSong(channel, CasinoSongs.dayTripperLoop(), true, "DayTripper");
+        rouletteInventory.getMCE().playSong(channel, CasinoSongs.dayTripper(), false, "DayTripperIntro");
+        bettingMusicHandoffTask = Bukkit.getScheduler().runTaskLater(plugin,
+            this::startBackedBettingMusicLoop, CasinoSongs.dayTripperIntroDurationTicks());
+    }
+
+    private void startBackedBettingMusicLoop() {
+        bettingMusicHandoffTask = null;
+        Player player = Bukkit.getPlayer(playerId);
+        if (player == null || !player.isOnline() || betsClosed
+            || plugin.getPreferences(playerId).getSoundSetting() != Preferences.SoundSetting.ON) {
+            stopBettingMusic();
+            return;
+        }
+        String channel = bettingMusicChannel();
+        rouletteInventory.getMCE().stopSong(channel, "DayTripperIntro");
+        rouletteInventory.getMCE().addPlayerToChannel(channel, player);
+        rouletteInventory.getMCE().playSong(
+            channel, CasinoSongs.dayTripperBackedLoop(), true, "DayTripperBackedLoop");
     }
 
     private void stopBettingMusic() {
+        if (bettingMusicHandoffTask != null) {
+            bettingMusicHandoffTask.cancel();
+            bettingMusicHandoffTask = null;
+        }
         String channel = bettingMusicChannel();
-        rouletteInventory.getMCE().stopSong(channel, "DayTripper");
+        rouletteInventory.getMCE().stopSong(channel, "DayTripperIntro");
+        rouletteInventory.getMCE().stopSong(channel, "DayTripperBackedLoop");
         Player player = Bukkit.getPlayer(playerId);
         if (player != null) {
             rouletteInventory.getMCE().removePlayerFromChannel(channel, player);
