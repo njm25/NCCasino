@@ -29,6 +29,12 @@ import org.nc.nccasino.session.GameTerminationPolicy;
 import org.nc.nccasino.session.TerminationAction;
 import org.nc.nccasino.session.SessionRegistry;
 import org.nc.nccasino.session.TerminableSession;
+import org.nc.nccasino.payout.WagerFunding;
+import org.nc.nccasino.payout.WagerGate;
+import org.nc.nccasino.budget.Commitment;
+import org.nc.nccasino.budget.DealerBudgetService;
+import org.nc.nccasino.budget.Exposure;
+import org.nc.nccasino.budget.Money;
 
 public class BaccaratClient extends Client implements TerminableSession {
     private final int[] playerCardSlots = {10,11,12};  // Left to right
@@ -38,6 +44,17 @@ public class BaccaratClient extends Client implements TerminableSession {
     private int taskId=-1;
     protected final List<BetData> previousBets = new ArrayList<>();
     protected final Map<BetOption, Deque<Double>> betStacks = new HashMap<>();
+    /**
+     * The single dealer-budget promise covering this player's whole Player/
+     * Banker/Tie/pair portfolio, updated atomically as bets are added -- a
+     * pair can pay alongside the main result, so the shared budget must
+     * reason about the entire portfolio at once, never one bet at a time.
+     */
+    private Commitment budgetCommitment;
+    private final String budgetSessionId = java.util.UUID.randomUUID().toString();
+    private long budgetRoundCounter = 0;
+    private final org.nc.nccasino.budget.WagerActionGuard wagerActionGuard =
+        new org.nc.nccasino.budget.WagerActionGuard();
     private boolean catchingUp=false;
     protected final List<BetData> betHistory = new ArrayList<>();
      private final Map<Integer, UUID> seatMap = new HashMap<>();
@@ -555,6 +572,12 @@ public class BaccaratClient extends Client implements TerminableSession {
                 return;
             }
             double totalRefund = betStacks.values().stream().flatMap(Collection::stream).mapToDouble(Double::doubleValue).sum();
+            String undoAllActionId = org.nc.nccasino.budget.WagerActionIds.inventoryClick(
+                budgetSessionId, player, event, "baccarat-undo-all", Money.of(totalRefund));
+            if (!wagerActionGuard.accept(undoAllActionId)) {
+                return;
+            }
+            shrinkPortfolioReservationTo(java.util.Collections.emptyMap(), totalRefund, undoAllActionId);
             betHistory.clear();
             betStacks.clear();
             creditPlayer(player, totalRefund);
@@ -590,9 +613,16 @@ public class BaccaratClient extends Client implements TerminableSession {
                 return;
             }
 
-            BetData lastBet = betHistory.remove(betHistory.size() - 1);
+            BetData lastBet = betHistory.get(betHistory.size() - 1);
             BetOption lastBetType = lastBet.betType;
             double lastBetAmount = lastBet.amount;
+
+            String undoLastActionId = org.nc.nccasino.budget.WagerActionIds.inventoryClick(
+                budgetSessionId, player, event, "baccarat-undo-last", Money.of(lastBetAmount));
+            if (!wagerActionGuard.accept(undoLastActionId)) {
+                return;
+            }
+            betHistory.remove(betHistory.size() - 1);
 
             if (!betStacks.containsKey(lastBetType) || betStacks.get(lastBetType).isEmpty()) {
                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
@@ -625,6 +655,12 @@ public class BaccaratClient extends Client implements TerminableSession {
             if (stack.isEmpty()) {
                 betStacks.remove(lastBetType);
             }
+
+            Map<BetOption, Double> remaining = new java.util.EnumMap<>(BetOption.class);
+            for (Map.Entry<BetOption, Deque<Double>> entry : betStacks.entrySet()) {
+                remaining.put(entry.getKey(), entry.getValue().stream().mapToDouble(Double::doubleValue).sum());
+            }
+            shrinkPortfolioReservationTo(remaining, lastBetAmount, undoLastActionId);
 
             creditPlayer(player, lastBetAmount);
             sendUpdateToServer("UNDO_BET", new BetData(lastBetType, lastBetAmount));
@@ -697,21 +733,43 @@ public class BaccaratClient extends Client implements TerminableSession {
         BetOption betType = betMapping.get(slot);
 
 
+        // The cursor gate has to run BEFORE anything else: clearing the
+        // cursor is irreversible, so it must be checked before the
+        // reservation grows or the bet is recorded. Inventory wagers are
+        // instead gated by tryRemoveWagerFromInventory's own INVENTORY debit
+        // below -- whose result is now actually checked, rather than merely
+        // assumed to have gated the wager the way it silently didn't before.
+        if (isDraggingCurrency && !WagerGate.allowsWager(plugin, player, WagerFunding.CURSOR)) {
+            return;
+        }
+        String wagerActionId = org.nc.nccasino.budget.WagerActionIds.inventoryClick(
+            budgetSessionId, player, event, "baccarat-" + betType.name(), Money.of(betAmount));
+        if (!wagerActionGuard.accept(wagerActionId)) {
+            return;
+        }
+        if (!ensurePortfolioCovered(betType, betAmount, wagerActionId)) {
+            return;
+        }
+
+        if (isDraggingCurrency) {
+            player.setItemOnCursor(null); // Remove held stack
+        } else if (!tryRemoveWagerFromInventory(player, betAmount)) {
+            // The debit failed after the reservation already grew to cover
+            // it (a banked balance blocking the wager, a race with another
+            // withdrawal). Undo that growth and refuse the bet rather than
+            // recording and sending one nobody actually paid for.
+            rollbackPortfolioGrowth(betAmount, wagerActionId);
+            denyPortfolioBet();
+            return;
+        }
+
         betHistory.add(new BetData(betType, betAmount)); // Maintain exact bet order
         betStacks.putIfAbsent(betType, new ArrayDeque<>());
         betStacks.get(betType).push(betAmount);
 
-
-
-        if (isDraggingCurrency) {
-        player.setItemOnCursor(null); // Remove held stack
-        } else {
-        removeWagerFromInventory(player, betAmount);
-         }
-
         // Send bet to server
         sendUpdateToServer("PLACE_BET", new BetData(betType, betAmount));
-        
+
         // Update all slots of the same bet type
         updateBetDisplay(betType,((BaccaratServer) server).getTotalBetForType(betType));
     }
@@ -719,6 +777,146 @@ public class BaccaratClient extends Client implements TerminableSession {
     private void refreshAllBetDisplays() {
         for (BetOption betType : betStacks.keySet()) {
             updateBetDisplay(betType,((BaccaratServer) server).getTotalBetForType(betType));
+        }
+    }
+
+    /**
+     * Checks and, if covered, atomically grows the single portfolio
+     * reservation to include a hypothetical {@code additional} staked on
+     * {@code option}. Denies before any currency moves.
+     */
+    private boolean ensurePortfolioCovered(BetOption option, double additional, String wagerActionId) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null) {
+            return true;
+        }
+        Map<BetOption, Double> current = new java.util.EnumMap<>(BetOption.class);
+        for (Map.Entry<BetOption, Deque<Double>> entry : betStacks.entrySet()) {
+            current.put(entry.getKey(), entry.getValue().stream().mapToDouble(Double::doubleValue).sum());
+        }
+        Exposure rawExposure = BaccaratLiability.exposureAfterAdding(current, option, additional);
+        // Item-mode payouts round up probabilistically to the next whole
+        // item at settlement (see BaccaratServer.applyProbabilisticRoundingIfDiscrete);
+        // the reservation must cover that ceiling, not just the raw
+        // fractional worst case, or a legitimate rounded-up payout would
+        // exceed its own reservation. Vault keeps exact fractional accounting.
+        Exposure updatedExposure = Exposure.of(
+            rawExposure.stake(),
+            org.nc.nccasino.currency.MoneyHelper.reservationCeilingForMode(rawExposure.maxGrossPayout(), currencyMode));
+        Material material = plugin.getCurrency(internalName);
+        org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
+            currencyMode, material == null ? null : material.name(), currencyName);
+
+        Commitment result;
+        if (budgetCommitment == null) {
+            result = budget.reserve(
+                internalName, player.getUniqueId(), "Baccarat",
+                wagerActionId + "-reservation", currency, updatedExposure);
+        } else {
+            result = budget.increase(
+                internalName, budgetCommitment, updatedExposure, Money.of(additional), wagerActionId);
+        }
+
+        if (!result.isAccepted()) {
+            denyPortfolioBet();
+            return false;
+        }
+        budgetCommitment = result;
+        return true;
+    }
+
+    /**
+     * Undoes the hypothetical growth {@link #ensurePortfolioCovered} applied
+     * for a bet whose debit then failed: shrinks the reservation back down to
+     * exactly what {@code betStacks} still reflects (the failed bet was never
+     * added to it).
+     */
+    private void rollbackPortfolioGrowth(double failedAmount, String wagerActionId) {
+        Map<BetOption, Double> current = new java.util.EnumMap<>(BetOption.class);
+        for (Map.Entry<BetOption, Deque<Double>> entry : betStacks.entrySet()) {
+            current.put(entry.getKey(), entry.getValue().stream().mapToDouble(Double::doubleValue).sum());
+        }
+        shrinkPortfolioReservationTo(current, failedAmount, wagerActionId + "-rollback");
+    }
+
+    /**
+     * Reconciles the portfolio reservation to {@code remaining} after
+     * currency amounting to {@code removedStake} has been (or is about to
+     * be) returned to the player -- an undo, a rollback of a bet whose debit
+     * failed, or any other case where less is now staked than the
+     * reservation currently reflects.
+     *
+     * <p>Balance, remaining exposure, and credited-stake metadata move in one
+     * persisted kernel transaction. The commitment is never released and
+     * reopened, so a failed write cannot strand the remaining bets without
+     * their original reservation.
+     */
+    private void shrinkPortfolioReservationTo(
+        Map<BetOption, Double> remaining, double removedStake, String operationId) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null || budgetCommitment == null || budgetCommitment.unlimited()) {
+            budgetCommitment = null;
+            return;
+        }
+        Exposure remainingExposure = Exposure.none();
+        if (!remaining.isEmpty()) {
+            Exposure raw = BaccaratLiability.exposureOf(remaining);
+            remainingExposure = Exposure.of(
+                raw.stake(),
+                org.nc.nccasino.currency.MoneyHelper.reservationCeilingForMode(
+                    raw.maxGrossPayout(), currencyMode));
+        }
+        Commitment adjusted = budget.reduce(
+            internalName,
+            budgetCommitment,
+            remainingExposure,
+            Money.of(removedStake),
+            operationId);
+        if (adjusted.isAccepted()) {
+            budgetCommitment = adjusted.requiresSettlement() ? adjusted : null;
+        } else {
+            plugin.getLogger().severe("[NCCasino] Baccarat could not persist an atomic"
+                + " dealer-budget reduction for '" + internalName + "'. The original"
+                + " reservation was retained for reconciliation.");
+        }
+    }
+
+    private void denyPortfolioBet() {
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case STANDARD, VERBOSE -> player.sendMessage(text("baccarat.dealer-cannot-cover"));
+            case NONE -> {
+            }
+        }
+        if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+        }
+    }
+
+    /** Pays the round's result and releases the portfolio reservation, exactly once. */
+    void settlePortfolio(java.math.BigDecimal payout) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null || budgetCommitment == null) {
+            budgetCommitment = null;
+            return;
+        }
+        org.nc.nccasino.budget.Settlement result =
+            budget.settle(internalName, budgetCommitment, payout);
+        if (result.status() != org.nc.nccasino.budget.Settlement.Status.FAILED) {
+            budgetCommitment = null;
+        }
+    }
+
+    /** Returns the stake and releases the portfolio reservation for a cancelled hand. */
+    void refundPortfolio(java.math.BigDecimal stake) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null || budgetCommitment == null) {
+            budgetCommitment = null;
+            return;
+        }
+        org.nc.nccasino.budget.Settlement result =
+            budget.refund(internalName, budgetCommitment, stake);
+        if (result.status() != org.nc.nccasino.budget.Settlement.Status.FAILED) {
+            budgetCommitment = null;
         }
     }
 
@@ -757,11 +955,11 @@ public class BaccaratClient extends Client implements TerminableSession {
 
     public void reapplyPreviousBets() {
         if (!rebetEnabled) return;
-        
+
         double totalRequired = previousBets.stream()
             .mapToDouble(bet -> bet.amount)
             .sum();
-    
+
         if (!hasEnoughWager(player, totalRequired)) {
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case STANDARD:
@@ -777,15 +975,77 @@ public class BaccaratClient extends Client implements TerminableSession {
             previousBets.clear();
             return;
         }
-    
-        betHistory.clear(); // Clear before reapplying
 
+        // A rebet must be exactly as safe as placing every one of its bets
+        // fresh: bank-gated, dealer-admitted for the whole portfolio before
+        // anything is taken, and atomic -- either every bet is admitted,
+        // debited and recorded, or none of it is.
+        if (!WagerGate.allowsWager(plugin, player)) {
+            return;
+        }
+
+        Map<BetOption, Double> hypothetical = new java.util.EnumMap<>(BetOption.class);
+        for (BetData bet : previousBets) {
+            hypothetical.merge(bet.betType, bet.amount, Double::sum);
+        }
+
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        Commitment commitment = Commitment.forUnlimitedDealer();
+        if (budget != null) {
+            Material material = plugin.getCurrency(internalName);
+            org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
+                currencyMode, material == null ? null : material.name(), currencyName);
+            budgetRoundCounter++;
+            Exposure rebetRaw = BaccaratLiability.exposureOf(hypothetical);
+            Exposure rebetExposure = Exposure.of(
+                rebetRaw.stake(),
+                org.nc.nccasino.currency.MoneyHelper.reservationCeilingForMode(rebetRaw.maxGrossPayout(), currencyMode));
+            commitment = budget.reserve(
+                internalName, player.getUniqueId(), "Baccarat",
+                budgetSessionId + "-round-" + budgetRoundCounter, currency,
+                rebetExposure);
+            if (!commitment.isAccepted()) {
+                denyPortfolioBet();
+                return;
+            }
+        }
+        budgetCommitment = commitment;
+
+        List<BetData> debited = new ArrayList<>();
+        boolean allDebited = true;
+        for (BetData bet : previousBets) {
+            if (tryRemoveWagerFromInventory(player, bet.amount)) {
+                debited.add(bet);
+            } else {
+                allDebited = false;
+                break;
+            }
+        }
+
+        if (!allDebited) {
+            // Undo whatever was actually taken and release the reservation
+            // -- nothing here was ever really funded, so it is returned,
+            // never treated as a forfeited loss -- rather than partially
+            // applying the rebet.
+            for (BetData bet : debited) {
+                refundCurrency(player, (int) bet.amount);
+            }
+            if (budget != null && budgetCommitment != null) {
+                org.nc.nccasino.budget.Settlement result = budget.refund(
+                    internalName, budgetCommitment, BaccaratLiability.totalStake(hypothetical));
+                if (result.status() != org.nc.nccasino.budget.Settlement.Status.FAILED) {
+                    budgetCommitment = null;
+                }
+            }
+            return;
+        }
+
+        betHistory.clear(); // Clear before reapplying
+        betStacks.clear();
         for (BetData bet : previousBets) {
             betHistory.add(bet); // Maintain order
             betStacks.putIfAbsent(bet.betType, new ArrayDeque<>());
             betStacks.get(bet.betType).addLast(bet.amount); // Add LAST to preserve order
-
-            removeWagerFromInventory(player, bet.amount);
             sendUpdateToServer("PLACE_BET", bet);
         }
         }

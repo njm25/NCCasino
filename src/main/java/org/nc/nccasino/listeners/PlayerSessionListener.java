@@ -17,10 +17,13 @@ import org.nc.nccasino.components.DragonDescentMenu;
 import org.nc.nccasino.components.MinesMenu;
 import org.nc.nccasino.components.RockPaperScissorsMenu;
 import org.nc.nccasino.components.RouletteMenu;
+import org.nc.nccasino.components.SlotsMenu;
 import org.nc.nccasino.payout.DeliveryResult;
+import org.nc.nccasino.payout.OverflowBankService;
 import org.nc.nccasino.payout.PayoutMessages;
 import org.nc.nccasino.payout.PendingPayout;
 import org.nc.nccasino.payout.PendingPayoutStore;
+import org.nc.nccasino.payout.WagerGate;
 import org.nc.nccasino.session.ExitReason;
 import org.nc.nccasino.session.SessionRegistry;
 
@@ -107,17 +110,21 @@ public class PlayerSessionListener implements Listener {
         CoinFlipMenu.clearPlayerState(playerId);
         DragonDescentMenu.clearPlayerState(playerId);
         RockPaperScissorsMenu.clearPlayerState(playerId);
+        SlotsMenu.clearPlayerState(playerId);
         DealerInteractListener.clearActiveAnimation(player);
+        WagerGate.clearPlayerState(playerId);
     }
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+
         PendingPayoutStore store = plugin.getPendingPayoutStore();
         if (store == null) {
+            deliverBankedWinnings(player);
             return;
         }
 
-        Player player = event.getPlayer();
         DeliveryResult result = store.attemptDeliver(player);
 
         for (PendingPayout payout : result.delivered()) {
@@ -147,6 +154,29 @@ public class PlayerSessionListener implements Listener {
                 "count",
                 count
             ));
+        }
+
+        // Pending payouts are settled first so the oldest obligations get
+        // first claim on inventory space; whatever the bank still holds --
+        // including anything the deliveries above just overflowed into it --
+        // is attempted afterwards.
+        deliverBankedWinnings(player);
+    }
+
+    /**
+     * Join is one of the four automatic bank-delivery opportunities. The
+     * player is told only when something is still banked afterwards, since
+     * that balance blocks all further wagering until it fits.
+     */
+    private void deliverBankedWinnings(Player player) {
+        OverflowBankService bank = plugin.getOverflowBankService();
+        if (bank == null || !bank.isBlocked(player.getUniqueId())) {
+            return;
+        }
+        long remaining = bank.claimAll(player);
+        if (remaining > 0) {
+            player.sendMessage(plugin.getLocalization().text(
+                player, "payout.bank-still-blocked", "amount", remaining));
         }
     }
 

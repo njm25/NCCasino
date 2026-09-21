@@ -104,12 +104,15 @@ Current games/dealer types:
 - Coin Flip
 - Rock Paper Scissors
 - Dragon Descent
+- Slots
 - Test Game (development/testing surface, not a normal player-facing release
   game)
 
 Current shared/player menu surfaces:
 
 - Player, Preferences, Language, Game Options, and Confirm menus
+- The overflow bank: `payout.bank-*`, `payout.wager-blocked`,
+  `preferences.overflow.*`, and `slots.payout-banked`
 - Shared betting, card, payout, game-welcome, interaction, dealer, occupation,
   error, and command messages
 
@@ -289,6 +292,59 @@ actual implementation, and update this section.
   collapse them into one generic "your bet was handled" message, and do not
   change a completed-past-tense payout into a future/conditional one or vice
   versa.
+
+- **The overflow bank is a delivery buffer, not a second wallet or a bet.**
+  `payout.bank-*`, `payout.wager-blocked`, `preferences.overflow.*` and
+  `slots.payout-banked` all describe winnings the player has *already won*
+  that could not physically fit in their inventory, so NCCasino is holding
+  them until space exists. Three consequences for translation: the money is
+  never described as at risk, lost, or still being gambled; "banked" here is
+  storage, not a Baccarat banker (§C) and not a real-world bank account; and
+  `payout.wager-blocked` states a precondition for playing again, not a
+  punishment or an error in the player's conduct. `preferences.overflow.bank`
+  vs. `drop` is a player choice between *holding* the excess and *dropping it
+  on the ground nearby up to a server limit* -- "drop" is the Minecraft
+  drop-item sense, and even DROP holds whatever exceeds the limit, so it must
+  not be translated as discarding or losing anything. (Verified:
+  `OverflowBankService.deliver`, `WagerGate.allowsWager`,
+  `OverflowPreferenceToggle`.)
+- **`preferences.overflow.server-controlled` / `server-controlled-notice`
+  mean the administrator has overridden the choice, while the player's own
+  saved choice is untouched and will apply again later.** Keep both halves:
+  the override is current, and the personal setting survives it. Do not
+  translate these as the player's setting having been reset or removed.
+  (Verified: `OverflowPreferenceToggle.toggle` returns the stored choice
+  unchanged while forced.)
+
+- **Slots "variance" is a risk/volatility preset that never changes the
+  return.** `slots-settings.variance*` and `slots.variance-steady|low|balanced|
+  high|high_roller` select how a machine's payouts are *shaped* -- higher
+  variance pays a winning line less often but with a much larger ceiling --
+  while `theoreticalRtp` stays identical across every level at the same house
+  edge. `variance-same-rtp` exists specifically to say so, so it must not be
+  translated as though variance changed the payout percentage. `{variance}`
+  receives an already-localized level name, so surrounding grammar must suit a
+  noun phrase in that locale. `variance-hit-rate` is the chance a single active
+  line pays *anything*, not the chance of winning the spin; `variance-top-line`
+  is the biggest single-line multiplier; `variance-max-exposure` is the largest
+  total payout at a per-line wager of 1 across the default line count -- a
+  ceiling, not an expected or average win. (Verified: `SlotsVarianceStats`
+  field docs, `SlotsMenu` variance lore block.)
+- **The Slots house edge is typed into chat, and the parser accepts a decimal
+  comma.** `slots-settings.house-edge-hint` was changed from a click-to-cycle
+  control to a chat prompt, so a "click to cycle between {min} and {max}"
+  translation is now wrong. `{min}`/`{max}` already arrive formatted with their
+  own `%` sign (`SlotsMenu.formatPercent` -> `"%.2f%%"`), so do not add another.
+  A locale may write its example with a decimal comma ("2,5 %"):
+  `SlotsHouseEdgeInput.parse` replaces a comma with a point when no point is
+  present, so the advice stays executable. (Verified:
+  `SlotsHouseEdgeInput.parse`, `SlotsMenu.formatPercent`.)
+- **`slots.music-paused` / `slots.music-playing` are glyph-only.** They name the
+  Slots cabinet's rainbow housing, which is the shared play/pause control for
+  the in-game jukebox, and their entire value is a colour code plus a music
+  note. They are deliberately byte-identical in every locale; that is not
+  source-language residue. zh_CN pins for this surface: variance 波动性,
+  house edge 庄家优势, Slots machine 老虎机.
 
 This registry is not exhaustive. When a new ambiguous key is resolved via
 Java inspection, add it here with the exact affected key family and a short
@@ -481,7 +537,12 @@ far from the original example that established the pin.
 | RPS: throw/action (not generic "turn") | Wurf | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
 | Dragon Descent: vine mechanic | *(pin when first reviewed — climbing-vine sense)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
 | ON/OFF display state | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
+| Slots: variance (risk preset, not the RTP) | Varianz | varianza | variance | variância |
+| Slots: house edge | Hausvorteil | ventaja de la casa | avantage de la maison | vantagem da casa |
+| Slots: return/RTP verb | zahlt zurück | devuelve | redistribue | devolve |
 | seat | Sitz | asiento | siège | assento |
+| banked winnings (overflow bank) | verwahrte Gewinne | ganancias guardadas | gains conservés | ganhos guardados |
+| overflow: hold vs. drop nearby | aufbewahren / fallen lassen | guardar / soltar | garder / lâcher | guardar / largar |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as

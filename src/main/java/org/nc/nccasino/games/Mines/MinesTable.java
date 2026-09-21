@@ -44,6 +44,16 @@ import org.nc.nccasino.session.GameTerminationPolicy;
 import org.nc.nccasino.session.TerminationAction;
 import org.nc.nccasino.session.SessionRegistry;
 import org.nc.nccasino.session.TerminableSession;
+import org.nc.nccasino.payout.WagerGate;
+import org.nc.nccasino.payout.BankedCurrency;
+import org.nc.nccasino.payout.ItemDeliveryOutcome;
+import org.nc.nccasino.payout.OverflowBankService;
+import org.nc.nccasino.payout.WagerFunding;
+import org.nc.nccasino.payout.UnsettledPayouts;
+import org.nc.nccasino.budget.Commitment;
+import org.nc.nccasino.budget.DealerBudgetService;
+import org.nc.nccasino.budget.Exposure;
+import org.nc.nccasino.budget.Money;
 
 public class MinesTable extends DealerInventory implements TerminableSession {
     // Game state management
@@ -71,6 +81,14 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     private boolean[][] mineGrid;      // [5][5]
     private boolean[][] revealedGrid;  // [5][5]
     private int safePicks;
+    /**
+     * The single dealer-budget promise covering this board, reserved when
+     * the mine layout is generated and grown before each safe-tile reveal.
+     * Null between rounds and after settlement.
+     */
+    private Commitment budgetCommitment;
+    private final String budgetSessionId = java.util.UUID.randomUUID().toString();
+    private long budgetRoundCounter = 0;
     private boolean gameOver;
     private boolean wagerPlaced = false;
     private boolean minesSelected = true; // Default to true since default minesCount is set
@@ -651,6 +669,13 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 if (canBet) {
                     // If the player was holding the item, remove it from the cursor
                     if (usedHeldItem) {
+                        // A cursor-dragged stack IS the debit: clearing it is irreversible,
+                        // so the gate runs here, inside the cursor branch only. Inventory
+                        // wagers are gated by their own INVENTORY debit instead -- running
+                        // both would trigger two automatic claim attempts per wager.
+                        if (!WagerGate.allowsWager(plugin, player, WagerFunding.CURSOR)) {
+                            return;
+                        }
                         player.setItemOnCursor(null);
                     } else {
                         boolean removed = units > 0 && removeWagerFromInventory(player, units);
@@ -787,6 +812,9 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             // Start the gamet
             if (minesSelected) {
                 if (wager > 0) {
+                     if (!ensureBudgetCoversNextPick(0)) {
+                        return;
+                     }
                      if (SoundHelper.getSoundSafely("block.enchantment_table.use", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER,1.0f, 1.0f);
                     startGame();
                 } else {
@@ -929,6 +957,66 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         previousWager = totalBet;
     }
 
+    /**
+     * Checks and, if covered, atomically opens or grows this board's single
+     * dealer-budget reservation to the cash-out that would exist after one
+     * more safe pick. Denies before the tile reveal, before any currency or
+     * random result is involved for this pick.
+     */
+    private boolean ensureBudgetCoversNextPick(int picksSoFar) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null) {
+            return true;
+        }
+        double totalBet = betStack.stream().mapToDouble(Double::doubleValue).sum();
+        Exposure updatedExposure = MinesLiability.exposureAfterNextSafePick(
+            totalBet, totalTiles, minesCount, picksSoFar);
+        updatedExposure = Exposure.of(
+            updatedExposure.stake(),
+            MoneyHelper.reservationCeilingForMode(updatedExposure.maxGrossPayout(), currencyMode));
+
+        Commitment result;
+        if (budgetCommitment == null) {
+            budgetRoundCounter++;
+            Material material = plugin.getCurrency(internalName);
+            org.nc.nccasino.payout.BankedCurrency currency = new org.nc.nccasino.payout.BankedCurrency(
+                currencyMode, material == null ? null : material.name(), currencyName);
+            result = budget.reserve(
+                internalName, playerId, "Mines",
+                budgetSessionId + "-round-" + budgetRoundCounter, currency, updatedExposure);
+        } else {
+            result = budget.increase(internalName, budgetCommitment, updatedExposure, Money.ZERO);
+        }
+
+        if (!result.isAccepted()) {
+            switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                case STANDARD, VERBOSE -> player.sendMessage(text("mines.dealer-cannot-cover"));
+                case NONE -> {
+                }
+            }
+            if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            return false;
+        }
+        budgetCommitment = result;
+        return true;
+    }
+
+    /** Pays the round's result and releases the board's reservation, exactly once. */
+    private void settleBudget(java.math.BigDecimal payout) {
+        DealerBudgetService budget = plugin.getDealerBudgetService();
+        if (budget == null || budgetCommitment == null) {
+            budgetCommitment = null;
+            return;
+        }
+        org.nc.nccasino.budget.Settlement result =
+            budget.settle(internalName, budgetCommitment, payout);
+        if (result.status() != org.nc.nccasino.budget.Settlement.Status.FAILED) {
+            budgetCommitment = null;
+        }
+    }
+
     private void placeMines() {
         Random random = new Random();
         int minesPlaced = 0;
@@ -965,6 +1053,14 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         return;
     }
 
+    // The mine layout was fixed when the round started, but the reveal is
+    // the player-visible moment a result becomes known. Deny here, before
+    // that reveal, if the dealer could not cover the cash-out a safe tile
+    // would create -- never after the player has already seen a win.
+    if (!ensureBudgetCoversNextPick(safePicks)) {
+        return;
+    }
+
     if (mineGrid[x][y]) {
        // Change the cash-out button to a barrier immediately
        updateCashOutToBarrier();
@@ -982,6 +1078,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 
        gameOver = true;
        gameState = GameState.GAME_OVER;
+       settleBudget(Money.ZERO);
        switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
         case STANDARD:{
             player.sendMessage(text("mines.game-over-message"));
@@ -1222,16 +1319,39 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 			CurrencyProvider provider = getCurrencyProvider();
 			boolean isVault = provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider;
 
+			// Decide the final item-currency payout exactly once, before the
+			// dealer settles -- Vault's fractional currency has no separate
+			// rounding step to disagree with, so only the item-mode branch
+			// needs to round before this settles. Either way, settlement,
+			// delivery and the player-facing message now share one value.
+			if (!isVault) {
+				winnings = applyProbabilisticRounding(winnings, player);
+			}
+			// The dealer's books close here, before delivery -- delivery may
+			// still bank or queue the amount, but the dealer has already
+			// paid it either way.
+			settleBudget(Money.of(winnings));
+
 			if (isVault) {
 				java.math.BigDecimal betBD = MoneyHelper.clampNonNegative(MoneyHelper.bd(totalBet));
 				java.math.BigDecimal winningsBD = MoneyHelper.clampNonNegative(MoneyHelper.bd(winnings));
 				java.math.BigDecimal displayWinnings = MoneyHelper.roundDisplay(winningsBD);
 				java.math.BigDecimal displayProfit = MoneyHelper.roundDisplay(winningsBD.subtract(betBD));
 
+				boolean delivered = true;
 				if (winningsBD.compareTo(java.math.BigDecimal.ZERO) > 0) {
-					((VaultCurrencyProvider) provider).deposit(player, internalName, winningsBD);
+					// The dealer's books already closed above (settleBudget)
+					// -- deposit()'s boolean return must not be ignored, or a
+					// failed delivery here would leave the dealer settled
+					// while the player received nothing and no durable
+					// obligation exists.
+					delivered = ((VaultCurrencyProvider) provider).deposit(player, internalName, winningsBD);
+					if (!delivered) {
+						queueFailedVaultPayout(player.getUniqueId(), winningsBD.doubleValue());
+					}
 				}
 
+				if (delivered)
 				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 					case STANDARD:{
 						player.sendMessage(text(
@@ -1255,7 +1375,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 					}
 				}
 			} else {
-				winnings = applyProbabilisticRounding(winnings,player); 
+				// winnings was already rounded once, above, before settlement.
 				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 					case STANDARD:{
 						player.sendMessage(text(
@@ -1291,15 +1411,8 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     }
     
     private double applyProbabilisticRounding(double value,Player  player) {
-        int integerPart = (int) value;
-
-        double fractionalPart = value - integerPart;
-
-        Random random = new Random();
-        if (random.nextDouble() <= fractionalPart) {
-            return integerPart + 1; // Round up based on probability
-        }
-        return integerPart; // Otherwise, keep it rounded down
+        return MoneyHelper.probabilisticItemAmount(
+            value, java.util.concurrent.ThreadLocalRandom.current().nextDouble());
     }
     
 
@@ -1327,16 +1440,39 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 			CurrencyProvider provider = getCurrencyProvider();
 			boolean isVault = provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider;
 
+			// Decide the final item-currency payout exactly once, before the
+			// dealer settles -- Vault's fractional currency has no separate
+			// rounding step to disagree with, so only the item-mode branch
+			// needs to round before this settles. Either way, settlement,
+			// delivery and the player-facing message now share one value.
+			if (!isVault) {
+				winnings = applyProbabilisticRounding(winnings, player);
+			}
+			// The dealer's books close here, before delivery -- delivery may
+			// still bank or queue the amount, but the dealer has already
+			// paid it either way.
+			settleBudget(Money.of(winnings));
+
 			if (isVault) {
 				java.math.BigDecimal betBD = MoneyHelper.clampNonNegative(MoneyHelper.bd(totalBet));
 				java.math.BigDecimal winningsBD = MoneyHelper.clampNonNegative(MoneyHelper.bd(winnings));
 				java.math.BigDecimal displayWinnings = MoneyHelper.roundDisplay(winningsBD);
 				java.math.BigDecimal displayProfit = MoneyHelper.roundDisplay(winningsBD.subtract(betBD));
 
+				boolean delivered = true;
 				if (winningsBD.compareTo(java.math.BigDecimal.ZERO) > 0) {
-					((VaultCurrencyProvider) provider).deposit(player, internalName, winningsBD);
+					// The dealer's books already closed above (settleBudget)
+					// -- deposit()'s boolean return must not be ignored, or a
+					// failed delivery here would leave the dealer settled
+					// while the player received nothing and no durable
+					// obligation exists.
+					delivered = ((VaultCurrencyProvider) provider).deposit(player, internalName, winningsBD);
+					if (!delivered) {
+						queueFailedVaultPayout(player.getUniqueId(), winningsBD.doubleValue());
+					}
 				}
 
+				if (delivered)
 				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 					case STANDARD:{
 						player.sendMessage(text(
@@ -1360,7 +1496,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 					}
 				}
 			} else {
-				winnings = applyProbabilisticRounding(winnings,player); 
+				// winnings was already rounded once, above, before settlement.
 				switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
 					case STANDARD:{
 						player.sendMessage(text(
@@ -1581,6 +1717,13 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     private boolean removeWagerFromInventory(Player player, int amount) {
         if (amount == 0) return true; // No need to remove currency for zero wager
 
+        // Universal overflow-bank gate: any banked balance, in any currency,
+        // blocks every new wager. Checked here -- the single point money
+        // actually leaves the player -- so no betting path can bypass it.
+        if (!WagerGate.allowsWager(plugin, player)) {
+            return false;
+        }
+
         CurrencyProvider provider = getCurrencyProvider();
         if (provider != null) {
 			if (provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT) {
@@ -1614,44 +1757,65 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 		CurrencyProvider provider = getCurrencyProvider();
 		if (provider != null && provider.getMode() != org.nc.nccasino.currency.CurrencyMode.STANDARD) {
 			// VAULT/CUSTOM: refund is a balance credit.
-			provider.deposit(player, internalName, amount);
+			boolean delivered = provider.deposit(player, internalName, amount);
+			if (!delivered) {
+				queueFailedVaultPayout(player.getUniqueId(), amount);
+			}
 			return;
 		}
-    
-        int fullStacks = amount / 64;
-        int remainder = amount % 64;
-        Material currencyMaterial = plugin.getCurrency(internalName);
-    
-        for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = null;
-            if (provider != null) {
-                stack = provider.createCurrencyStack(internalName, 64);
-            } else {
-                stack = new ItemStack(currencyMaterial, 64);
-            }
-            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
-            if (!leftover.isEmpty()) {
-                for (ItemStack item : leftover.values()) {
-                    player.getWorld().dropItemNaturally(player.getLocation(), item);
-                }
-            }
-        }
-        if (remainder > 0) {
-            ItemStack stack = null;
-            if (provider != null) {
-                stack = provider.createCurrencyStack(internalName, remainder);
-            } else {
-                stack = new ItemStack(currencyMaterial, remainder);
-            }
-            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
-            if (!leftover.isEmpty()) {
-                for (ItemStack item : leftover.values()) {
-                    player.getWorld().dropItemNaturally(player.getLocation(), item);
-                }
-            }
-        }
+
+        deliverCurrencyItems(player, amount);
     }
-    
+
+    /**
+     * Hands whole currency items over through the shared overflow bank rather
+     * than dropping whatever will not fit. Anything beyond the inventory (and
+     * beyond the server's drop cap) is durably banked, so a large payout or
+     * refund can no longer despawn on the floor.
+     *
+     * @return the full accounting -- inventory, dropped, banked and any
+     *     genuinely unsettled remainder the caller still owes
+     */
+    private ItemDeliveryOutcome deliverCurrencyItems(Player recipient, int amount) {
+        if (amount <= 0) {
+            return ItemDeliveryOutcome.nothing();
+        }
+        OverflowBankService bank = plugin.getOverflowBankService();
+        Material material = plugin.getCurrency(internalName);
+        if (bank == null || material == null || recipient == null) {
+            retainUnsettledPayout(recipient, amount, material);
+            return ItemDeliveryOutcome.allUnsettled(amount);
+        }
+        ItemDeliveryOutcome outcome = bank.deliver(recipient,
+            new BankedCurrency(currencyMode, material.name(), currencyName), amount);
+        if (!outcome.settled()) {
+            // Never dropped without limit and never merely logged: an
+            // unbankable remainder becomes a retryable pending payout.
+            retainUnsettledPayout(recipient, outcome.unsettled(), material);
+        }
+        return outcome;
+    }
+
+    /**
+     * Records a remainder that reached neither the player nor the bank as a
+     * durable, retryable obligation. The amount is by construction
+     * undelivered, so retaining it can never double-pay.
+     */
+    private void retainUnsettledPayout(Player recipient, long amount, Material material) {
+        if (recipient == null || amount <= 0) {
+            return;
+        }
+        UnsettledPayouts.retain(
+            plugin,
+            recipient.getUniqueId(),
+            "Mines",
+            internalName,
+            currencyMode,
+            material == null ? null : material.name(),
+            currencyName,
+            amount);
+    }
+
 
     private void giveWinningsToPlayer(double amount) {
         if (amount <= 0) return; // No winnings to give
@@ -1660,51 +1824,21 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 		if (provider != null && provider.getMode() == org.nc.nccasino.currency.CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider vaultProvider) {
 			java.math.BigDecimal payout = MoneyHelper.clampNonNegative(MoneyHelper.bd(amount));
 			if (payout.compareTo(java.math.BigDecimal.ZERO) > 0) {
-				vaultProvider.deposit(player, internalName, payout);
+				boolean delivered = vaultProvider.deposit(player, internalName, payout);
+				if (!delivered) {
+					queueFailedVaultPayout(player.getUniqueId(), payout.doubleValue());
+				}
 			}
 			return;
 		}
 
         int totalAmount = (int) Math.floor(amount);
 
-        int fullStacks = totalAmount / 64;
-        int remainder = totalAmount % 64;
-        Material currencyMaterial = plugin.getCurrency(internalName);
-        int totalDropped = 0; // Track how many items were dropped
-    
-        for (int i = 0; i < fullStacks; i++) {
-            ItemStack stack = null;
-            if (provider != null) {
-                stack = provider.createCurrencyStack(internalName, 64);
-            } else {
-                stack = new ItemStack(currencyMaterial, 64);
-            }
-            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
-            if (!leftover.isEmpty()) {
-                for (ItemStack item : leftover.values()) {
-                    player.getWorld().dropItemNaturally(player.getLocation(), item);
-                    totalDropped += item.getAmount();
-                }
-            }
-        }
-    
-        if (remainder > 0) {
-            ItemStack stack = null;
-            if (provider != null) {
-                stack = provider.createCurrencyStack(internalName, remainder);
-            } else {
-                stack = new ItemStack(currencyMaterial, remainder);
-            }
-            HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(stack);
-            if (!leftover.isEmpty()) {
-                for (ItemStack item : leftover.values()) {
-                    player.getWorld().dropItemNaturally(player.getLocation(), item);
-                    totalDropped += item.getAmount();
-                }
-            }
-        }
-    
-        // Print total dropped if any items couldn't fit in inventory
+        ItemDeliveryOutcome delivery = deliverCurrencyItems(player, totalAmount);
+        // Still "how much did not fit", so the existing inventory-full
+        // notice keeps its meaning -- the overflow is banked now, not lost.
+        int totalDropped = (int) Math.min(Integer.MAX_VALUE, delivery.dropped() + delivery.banked());
+
         if (totalDropped > 0) {     
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
             case STANDARD:{
@@ -1731,6 +1865,20 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     
 
     void endGame() {
+        // Safety net for a mid-game exit (e.g. the Exit door clicked while
+        // GameState.PLAYING): a round already resolved via cashOut()/a mine
+        // hit already settled and cleared this, making the call below a
+        // harmless no-op; an abandoned live round forfeits here with
+        // nothing paid, exactly like a voluntary mid-round leave elsewhere.
+        // Never while a real cash-out's own delayed delivery is already
+        // in flight (cashOutDepositPending) -- that win is committed and
+        // its own scheduled task will settle the true amount when it runs;
+        // forfeiting here first would zero out the reservation before that
+        // task's settle call ever sees it, leaving the dealer's ledger
+        // silently short by exactly what it just paid out.
+        if (!cashOutDepositPending) {
+            settleBudget(Money.ZERO);
+        }
         if (player != null) {
             if (gameState == GameState.PLACING_WAGER || gameState == GameState.WAITING_TO_START) {
                 refundAllBets(player);  // Refund any remaining bets
@@ -1861,6 +2009,12 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         // KICKED: forfeit unconditionally regardless of phase — no refund,
         // no cash-out.
 
+        // Safety net: releases any reservation a path above did not already
+        // settle (e.g. a pregame refund, or a forfeit). A no-op wherever the
+        // round already settled explicitly, since settleBudget clears the
+        // commitment the first time it runs.
+        settleBudget(Money.ZERO);
+
         betStack.clear();
 
         for (int taskId : scheduledTasks) {
@@ -1883,12 +2037,42 @@ public class MinesTable extends DealerInventory implements TerminableSession {
      * exchange for slightly faster delivery in the ambiguous cases is not
      * an acceptable trade.
      */
+    /**
+     * Durably queues a payout this player was owed but a live Vault deposit
+     * failed to deliver -- the dealer's books have already closed by the
+     * time either win-path Vault branch calls this, so the money must not
+     * simply vanish while the player receives nothing and no durable
+     * obligation exists.
+     */
+    private void queueFailedVaultPayout(UUID playerId, double amount) {
+        if (amount <= 0) {
+            return;
+        }
+        Material currencyMaterial = plugin.getCurrency(internalName);
+        PendingPayout payout = PendingPayout.create(
+            playerId,
+            "Mines",
+            internalName,
+            currencyMode,
+            currencyMaterial != null ? currencyMaterial.name() : null,
+            currencyName,
+            amount,
+            PayoutMessages.committedResultContext("Mines")
+        );
+        boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
+        if (!persisted) {
+            plugin.getLogger().severe("[NCCasino] Mines payout of " + amount + " for " + playerId
+                + " failed to deliver AND failed to persist as a pending payout -- money genuinely lost.");
+        }
+    }
+
     private void resolveMidGameDisconnect(UUID terminatedPlayerId) {
         double totalBet = 0;
         for (double t : betStack) {
             totalBet += t;
         }
         double winnings = safePicks == 0 ? totalBet : totalBet * calculatePayoutMultiplier(safePicks);
+        settleBudget(Money.of(Math.max(0.0, winnings)));
         if (winnings <= 0) {
             return;
         }

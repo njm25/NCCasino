@@ -1,0 +1,503 @@
+package org.nc.nccasino.budget;
+
+import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.payout.BankedCurrency;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * The one entry point games use to ask "can the dealer afford this?" and to
+ * record the answer.
+ *
+ * <p>Games never touch {@link DealerBudgetStore} directly. Everything a game
+ * needs is here, in the order a round actually happens:
+ *
+ * <ol>
+ *   <li>{@link #admit} -- before taking money and before choosing any random
+ *       outcome;
+ *   <li>{@link #reserve} -- credits the stake and promises the worst case;
+ *   <li>{@link #increase} -- for a split, a double, another Roulette bet,
+ *       another Mines tile;
+ *   <li>{@link #settle}, {@link #releaseLoss} or {@link #refund} -- exactly
+ *       once per commitment, however many times it is called.
+ * </ol>
+ *
+ * <h2>Unlimited dealers</h2>
+ *
+ * <p>Every existing dealer is {@link DealerBudgetMode#UNLIMITED} and must
+ * behave exactly as it did before Phase 2. So every method here short-circuits
+ * on unlimited before doing anything at all: no config parsing beyond the mode,
+ * no arithmetic, no reservation, no disk write. An unlimited dealer costs one
+ * string read per call, which is why the mode is checked first everywhere
+ * rather than modelled as a very large balance.
+ */
+public class DealerBudgetService {
+
+    private final Nccasino plugin;
+    private final DealerBudgetStore store;
+    /** Dealers whose invalid configuration has already been reported, so the log is not spammed. */
+    private final Set<String> reportedProblems = new LinkedHashSet<>();
+    /**
+     * In-memory fallback for the rare case where even the durable settlement
+     * intent's first write fails. The service outlives individual game
+     * sessions, so a GUI reset cannot discard the known payout while the
+     * server remains running.
+     */
+    private final java.util.Map<String, PendingSettlement> transientSettlementIntents =
+        new ConcurrentHashMap<>();
+
+    private record PendingSettlement(String dealer, Reservation reservation, BigDecimal payout) {
+    }
+
+    public DealerBudgetService(Nccasino plugin, DealerBudgetStore store) {
+        this.plugin = plugin;
+        this.store = store;
+    }
+
+    public DealerBudgetStore store() {
+        return store;
+    }
+
+    // ---- configuration ---------------------------------------------------
+
+    /**
+     * Reads one dealer's budget policy from config.
+     *
+     * <p>Read per call rather than cached: the Bukkit config is an in-memory
+     * map, so this is cheap, and an administrator editing a dealer mid-session
+     * should not need a restart for the change to apply. Configuration
+     * problems are logged once per dealer per session.
+     */
+    public DealerBudgetSettings settingsFor(String dealerInternalName) {
+        if (plugin == null || dealerInternalName == null) {
+            return DealerBudgetSettings.unlimited();
+        }
+        String base = "dealers." + dealerInternalName + ".";
+        DealerBudgetSettings settings = DealerBudgetSettings.parse(
+            plugin.getConfig().getString(base + DealerBudgetSettings.PATH_MODE),
+            plugin.getConfig().getString(base + DealerBudgetSettings.PATH_BASELINE),
+            plugin.getConfig().getString(base + DealerBudgetSettings.PATH_GUARANTEED_ROUNDS),
+            plugin.getConfig().getString(base + DealerBudgetSettings.PATH_REFILL_MODE),
+            plugin.getConfig().getString(base + DealerBudgetSettings.PATH_REFILL_AMOUNT),
+            plugin.getConfig().getString(base + DealerBudgetSettings.PATH_REFILL_PERIOD),
+            plugin.getConfig().getString(base + DealerBudgetSettings.PATH_REFILL_CAP),
+            plugin.getConfig().getString(base + DealerBudgetSettings.PATH_RESET_TARGET));
+
+        reportProblemsOnce(dealerInternalName, settings);
+        return settings;
+    }
+
+    private void reportProblemsOnce(String dealer, DealerBudgetSettings settings) {
+        if (settings.problems().isEmpty() || !reportedProblems.add(dealer)) {
+            return;
+        }
+        for (String problem : settings.problems()) {
+            plugin.getLogger().warning("[NCCasino] Dealer '" + dealer + "' budget config -- " + problem);
+        }
+        if (!settings.isUsable()) {
+            plugin.getLogger().severe("[NCCasino] Dealer '" + dealer
+                + "' is LIMITED but its risk policy is unusable, so it will refuse every wager."
+                + " Fix its budget block, or set budget.mode to UNLIMITED. No stored balance was changed.");
+        }
+    }
+
+    /** Clears the once-per-session problem reporting, e.g. after a config reload. */
+    public void onConfigReloaded() {
+        reportedProblems.clear();
+    }
+
+    public boolean isUnlimited(String dealerInternalName) {
+        return !settingsFor(dealerInternalName).mode().isLimited();
+    }
+
+    // ---- admission -------------------------------------------------------
+
+    /**
+     * Whether this dealer can cover {@code exposure} right now.
+     *
+     * <p>Must be called <em>before</em> any money moves and before any random
+     * outcome is generated. A denial here means nothing has happened yet and
+     * the game can simply decline.
+     *
+     * <p>Applies any elapsed refill first, so a dealer whose funding period
+     * came round while nobody was looking is judged on its real balance.
+     */
+    public AdmissionDecision admit(String dealerInternalName, Exposure exposure) {
+        DealerBudgetSettings settings = settingsFor(dealerInternalName);
+        if (!retrySettlementIntents(dealerInternalName)) {
+            return AdmissionDecision.PERSISTENCE_FAILED;
+        }
+        if (!settings.mode().isLimited()) {
+            return AdmissionDecision.ADMITTED;
+        }
+        seedInitialFunding(dealerInternalName, settings);
+        refreshFunding(dealerInternalName, settings);
+        return AdmissionPolicy.admit(settings, store.available(dealerInternalName), exposure);
+    }
+
+    /**
+     * A LIMITED dealer's one-time funding bootstrap: see {@link
+     * DealerBudgetStore#ensureInitialFunding}. Safe to call on every
+     * admission check -- it is a no-op the moment the dealer has ever been
+     * touched before.
+     */
+    private void seedInitialFunding(String dealerInternalName, DealerBudgetSettings settings) {
+        if (!settings.isUsable()) {
+            return;
+        }
+        store.ensureInitialFunding(
+            dealerInternalName, settings.underwritingBaseline(), Instant.now().getEpochSecond());
+    }
+
+    /** Applies any elapsed refill periods. Cheap and idempotent within a period. */
+    public void refreshFunding(String dealerInternalName, DealerBudgetSettings settings) {
+        if (settings == null || !settings.hasRefill()) {
+            return;
+        }
+        store.applyRefill(dealerInternalName, settings, Instant.now().getEpochSecond());
+    }
+
+    /**
+     * Which of {@code denominations} this dealer could underwrite, given the
+     * exposure each one creates.
+     *
+     * <p>Deliberately a filter rather than a calculation: the design forbids
+     * inventing new, smaller wager amounts as a dealer's balance falls. A
+     * denomination the dealer cannot currently cover becomes unavailable and
+     * comes back unchanged when funding recovers.
+     */
+    public List<BigDecimal> affordableDenominations(
+        String dealerInternalName,
+        List<BigDecimal> denominations,
+        java.util.function.Function<BigDecimal, Exposure> exposureOf
+    ) {
+        List<BigDecimal> affordable = new ArrayList<>();
+        if (denominations == null) {
+            return affordable;
+        }
+        DealerBudgetSettings settings = settingsFor(dealerInternalName);
+        if (!retrySettlementIntents(dealerInternalName)) {
+            return affordable;
+        }
+        if (!settings.mode().isLimited()) {
+            return new ArrayList<>(denominations);
+        }
+        seedInitialFunding(dealerInternalName, settings);
+        refreshFunding(dealerInternalName, settings);
+        BigDecimal available = store.available(dealerInternalName);
+        for (BigDecimal denomination : denominations) {
+            if (AdmissionPolicy.admit(settings, available, exposureOf.apply(denomination)).isAdmitted()) {
+                affordable.add(denomination);
+            }
+        }
+        return affordable;
+    }
+
+    // ---- commitments -----------------------------------------------------
+
+    /**
+     * Accepts a commitment: credits the stake and promises the worst-case
+     * payout, atomically and exactly once.
+     *
+     * @param commitmentKey stable for this commitment -- a round id, a hand
+     *     id, a spin number. Never a fresh random value per attempt, or the
+     *     replay protection is defeated (see {@link Reservation}).
+     * @return an accepted {@link Commitment} to settle later, an
+     *     {@link Commitment#forUnlimitedDealer()} one that needs no settlement, or a
+     *     refusal carrying the reason. On a refusal nothing has changed and
+     *     the wager must not be taken.
+     */
+    public Commitment reserve(
+        String dealerInternalName,
+        UUID playerId,
+        String gameType,
+        String commitmentKey,
+        BankedCurrency currency,
+        Exposure exposure
+    ) {
+        DealerBudgetSettings settings = settingsFor(dealerInternalName);
+        if (!settings.mode().isLimited()) {
+            return Commitment.forUnlimitedDealer();
+        }
+        AdmissionDecision decision = admit(dealerInternalName, exposure);
+        if (!decision.isAdmitted()) {
+            return Commitment.refused(decision);
+        }
+        Reservation reservation = new Reservation(
+            Reservation.forCommitment(dealerInternalName, playerId, commitmentKey),
+            dealerInternalName,
+            playerId,
+            gameType,
+            currency,
+            exposure.maxGrossPayout(),
+            Instant.now().getEpochSecond());
+        Reservation stored = store.creditAndReserve(reservation, exposure.stake());
+        if (stored == null) {
+            // Admitted a moment ago, so this is a write failure rather than a
+            // funding one. Refuse: an unpersisted reservation would vanish at
+            // the next restart while the game carried on believing in it.
+            return Commitment.refused(AdmissionDecision.PERSISTENCE_FAILED);
+        }
+        return Commitment.accepted(stored);
+    }
+
+    /**
+     * Raises an open commitment's worst case -- a Blackjack split or double,
+     * another Roulette bet, the next Mines tile.
+     *
+     * <p>Checked and applied in one step so a refused increase cannot leave the
+     * additional stake taken. The check uses the exposure the commitment would
+     * have <em>after</em> the increase, not the increment alone, because that
+     * is what the dealer must be able to cover.
+     *
+     * @return the updated commitment, or a refusal carrying the reason -- in
+     *     which case nothing changed and the action must be refused before any
+     *     card, tile or random result is chosen
+     */
+    public Commitment increase(
+        String dealerInternalName,
+        Commitment open,
+        Exposure totalExposureAfterIncrease,
+        BigDecimal additionalStake
+    ) {
+        return increase(dealerInternalName, open, totalExposureAfterIncrease, additionalStake, null);
+    }
+
+    /**
+     * {@link #increase(String, Commitment, Exposure, BigDecimal)}, guarded by
+     * an explicit {@code operationId} identifying this specific action (one
+     * bet-placement click, one split, one double) rather than inferring
+     * replay-safety from the resulting exposure alone.
+     *
+     * <p>Prefer this overload for any action where the same resulting
+     * worst-case payout can legitimately arise from two different real
+     * actions (for example, a Roulette or Baccarat portfolio taking another
+     * bet whose own worst case does not exceed the portfolio's existing
+     * maximum) -- {@code newAmount}-only idempotency would silently refuse to
+     * credit that bet's stake a second time it is in fact owed for the first
+     * time. Pass {@code null} only when every legitimate increase for this
+     * commitment always changes the resulting exposure (e.g. Blackjack's
+     * double, which always raises the hand's ceiling).
+     *
+     * @param operationId a stable identity for this specific attempt, or
+     *     {@code null} to fall back to the legacy exposure-only guard
+     */
+    public Commitment increase(
+        String dealerInternalName,
+        Commitment open,
+        Exposure totalExposureAfterIncrease,
+        BigDecimal additionalStake,
+        String operationId
+    ) {
+        if (open == null) {
+            return Commitment.refused(AdmissionDecision.CONFIGURATION_INVALID);
+        }
+        if (open.unlimited()) {
+            return open;
+        }
+        Reservation existing = open.reservation();
+        if (existing == null) {
+            return Commitment.refused(AdmissionDecision.CONFIGURATION_INVALID);
+        }
+        DealerBudgetSettings settings = settingsFor(dealerInternalName);
+        if (!retrySettlementIntents(dealerInternalName)) {
+            return Commitment.refused(AdmissionDecision.PERSISTENCE_FAILED);
+        }
+        if (!settings.mode().isLimited()) {
+            return Commitment.forUnlimitedDealer();
+        }
+        refreshFunding(dealerInternalName, settings);
+
+        // Judge the increase against what is available once this commitment's
+        // existing reservation is set aside -- it is being replaced, not added
+        // to, so counting it twice would refuse legitimate increases.
+        BigDecimal availableIgnoringThis = Money.add(
+            store.available(dealerInternalName), existing.amount());
+        AdmissionDecision decision = AdmissionPolicy.admit(
+            settings, availableIgnoringThis, totalExposureAfterIncrease);
+        if (!decision.isAdmitted()) {
+            return Commitment.refused(decision);
+        }
+        Reservation updated = operationId == null
+            ? store.adjustReservation(
+                dealerInternalName,
+                existing.id(),
+                totalExposureAfterIncrease.maxGrossPayout(),
+                additionalStake)
+            : store.adjustReservation(
+                dealerInternalName,
+                existing.id(),
+                operationId,
+                totalExposureAfterIncrease.maxGrossPayout(),
+                additionalStake);
+        return updated == null
+            ? Commitment.refused(AdmissionDecision.PERSISTENCE_FAILED)
+            : Commitment.accepted(updated);
+    }
+
+    /**
+     * Atomically backs out one failed or returned stake while preserving the
+     * commitment identity and every wager that remains.
+     */
+    public Commitment reduce(
+        String dealerInternalName,
+        Commitment open,
+        Exposure remainingExposure,
+        BigDecimal stakeToRemove,
+        String operationId
+    ) {
+        if (open == null || remainingExposure == null) {
+            return Commitment.refused(AdmissionDecision.CONFIGURATION_INVALID);
+        }
+        if (open.unlimited()) {
+            return open;
+        }
+        Reservation reservation = open.reservation();
+        if (reservation == null) {
+            return Commitment.released();
+        }
+        ReservationAdjustment adjusted = store.reduceReservation(
+            dealerInternalName,
+            reservation.id(),
+            operationId,
+            remainingExposure.maxGrossPayout(),
+            stakeToRemove);
+        if (!adjusted.success()) {
+            return Commitment.refused(AdmissionDecision.PERSISTENCE_FAILED);
+        }
+        return adjusted.reservation() == null
+            ? Commitment.released()
+            : Commitment.accepted(adjusted.reservation());
+    }
+
+    // ---- settlement ------------------------------------------------------
+
+    /**
+     * Pays a commitment and releases its reservation, exactly once.
+     *
+     * <p>Call this at the moment the result is known and the payout is
+     * <em>awarded</em>, not when it is physically delivered. A payout that
+     * goes to the overflow bank or a pending record has already left the
+     * dealer; claiming or retrying it later must have no budget effect, which
+     * is exactly what the idempotent reservation id gives.
+     */
+    public Settlement settle(String dealerInternalName, Commitment commitment, BigDecimal payout) {
+        if (commitment == null || !commitment.requiresSettlement()) {
+            // Nothing was reserved -- an unlimited dealer, or a commitment that
+            // was never accepted. Reporting this as already settled keeps a
+            // caller's settlement path identical in both modes.
+            return Settlement.alreadySettled();
+        }
+        Reservation reservation = commitment.reservation();
+        PendingSettlement pending = new PendingSettlement(dealerInternalName, reservation, Money.of(payout));
+        PendingSettlement prior = transientSettlementIntents.putIfAbsent(reservation.id(), pending);
+        if (prior != null && prior.payout().compareTo(pending.payout()) != 0) {
+            plugin.getLogger().severe("[NCCasino] Settlement retry for commitment "
+                + reservation.id() + " changed from " + Money.store(prior.payout())
+                + " to " + Money.store(pending.payout()) + "; refusing the mismatched result.");
+            return Settlement.failed();
+        }
+        Settlement result = store.settle(dealerInternalName, reservation.id(), payout);
+        if (result.status() != Settlement.Status.FAILED) {
+            transientSettlementIntents.remove(reservation.id());
+        }
+        logSettlementAnomaly(dealerInternalName, reservation, payout, result);
+        return result;
+    }
+
+    /** A player loss: the dealer keeps the stake and the reservation is released. */
+    public Settlement releaseLoss(String dealerInternalName, Commitment commitment) {
+        return settle(dealerInternalName, commitment, Money.ZERO);
+    }
+
+    /** A push or cancellation: the stake goes back and the reservation is released. */
+    public Settlement refund(String dealerInternalName, Commitment commitment, BigDecimal stake) {
+        return settle(dealerInternalName, commitment, stake);
+    }
+
+    private void logSettlementAnomaly(
+        String dealer, Reservation reservation, BigDecimal payout, Settlement result) {
+
+        if (result.exposureViolation()) {
+            plugin.getLogger().severe("[NCCasino] Dealer '" + dealer + "' was asked to pay "
+                + Money.store(payout) + " against a reservation of only "
+                + Money.store(reservation.amount()) + " (commitment " + reservation.id()
+                + "). The player was paid in full, but this means the game's pre-commitment"
+                + " exposure calculation is wrong and must be fixed -- the dealer's live"
+                + " balance no longer accurately reflects what it can safely underwrite.");
+        }
+        if (result.insolvent()) {
+            plugin.getLogger().severe("[NCCasino] Dealer '" + dealer
+                + "' did not hold enough live balance to cover the full payout of "
+                + Money.store(payout) + " for commitment " + reservation.id()
+                + ". Its balance was floored at zero rather than driven negative, but real"
+                + " money left this dealer's economy with no backing. This requires manual"
+                + " reconciliation and almost certainly means an earlier exposure-calculation"
+                + " bug already let this dealer take on more risk than it could afford.");
+        }
+        if (result.status() == Settlement.Status.FAILED) {
+            plugin.getLogger().severe("[NCCasino] Dealer '" + dealer
+                + "' could not persist the settlement of commitment " + reservation.id()
+                + " for " + Money.store(payout) + ". Nothing was debited; the reservation"
+                + " is still held and requires manual reconciliation.");
+        }
+    }
+
+    /**
+     * Replays awarded results whose intent reached disk but whose final
+     * settlement write did not. Called before new exposure is admitted.
+     */
+    private boolean retrySettlementIntents(String dealerInternalName) {
+        for (PendingSettlement pending : List.copyOf(transientSettlementIntents.values())) {
+            if (!dealerInternalName.equals(pending.dealer())) {
+                continue;
+            }
+            Settlement result = store.settle(
+                pending.dealer(), pending.reservation().id(), pending.payout());
+            logSettlementAnomaly(
+                pending.dealer(), pending.reservation(), pending.payout(), result);
+            if (result.status() == Settlement.Status.FAILED) {
+                return false;
+            }
+            transientSettlementIntents.remove(pending.reservation().id());
+        }
+        for (var entry : store.settlementIntents(dealerInternalName).entrySet()) {
+            Reservation reservation = store.state(dealerInternalName).reservation(entry.getKey());
+            Settlement result = store.settle(dealerInternalName, entry.getKey(), entry.getValue());
+            if (reservation != null) {
+                logSettlementAnomaly(dealerInternalName, reservation, entry.getValue(), result);
+            }
+            if (result.status() == Settlement.Status.FAILED) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // ---- diagnostics -----------------------------------------------------
+
+    /** A human-readable summary for an administrator. */
+    public String describe(String dealerInternalName) {
+        DealerBudgetSettings settings = settingsFor(dealerInternalName);
+        if (!settings.mode().isLimited()) {
+            return dealerInternalName + ": UNLIMITED";
+        }
+        DealerBudgetState state = store.state(dealerInternalName);
+        return dealerInternalName + ": LIMITED"
+            + " balance=" + Money.store(state.liveBalance())
+            + " reserved=" + Money.store(state.reservedTotal())
+            + " available=" + Money.store(state.available())
+            + " baseline=" + Money.store(settings.underwritingBaseline())
+            + " guaranteed-rounds=" + settings.guaranteedWorstCaseRounds()
+            + " max-loss-per-round=" + Money.store(settings.maxHouseLossPerRound())
+            + " refill=" + settings.refillMode()
+            + " open-commitments=" + state.reservations().size();
+    }
+}

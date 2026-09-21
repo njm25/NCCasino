@@ -21,6 +21,7 @@ import org.nc.nccasino.components.AnimationMessage;
 import org.nc.nccasino.components.PlayerMenu;
 import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.payout.OverflowBankService;
 import org.nc.nccasino.games.Blackjack.BlackjackInventory;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
 import org.nc.nccasino.helpers.Preferences.MessageSetting;
@@ -195,6 +196,7 @@ public class DealerInteractListener implements Listener {
             case "Coin Flip" -> plugin.getLocalization().text(player, "game-options.coin-flip");
             case "Rock Paper Scissors" -> plugin.getLocalization().text(player, "game-options.rock-paper-scissors");
             case "Dragon Descent" -> plugin.getLocalization().text(player, "game-options.dragon-descent");
+            case "Slots" -> plugin.getLocalization().text(player, "game-options.slots");
             case "Test Game" -> plugin.getLocalization().text(player, "game-options.test-game");
             default -> gameType;
         };
@@ -300,12 +302,35 @@ public class DealerInteractListener implements Listener {
      * directly; every other game type is unaffected.
      */
     private void openDealerInventoryForPlayer(Player player, DealerInventory dealerInventory) {
+        // Opening any NCCasino game is one of the four automatic
+        // bank-delivery opportunities. It only ever adds to the player's own
+        // survival inventory -- the dealer view being opened is untouched.
+        tryDeliverBankedWinnings(player);
+
         if (dealerInventory instanceof RouletteInventory roulette) {
             player.openInventory(roulette.getOrCreateView(player));
         } else if (dealerInventory instanceof BlackjackInventory blackjack) {
             player.openInventory(blackjack.getOrCreateView(player));
         } else {
             player.openInventory(dealerInventory.getInventory());
+        }
+    }
+
+    /**
+     * Best-effort automatic claim of any overflow-banked winnings. Silent on
+     * success: a player who had room simply gets their items back with no
+     * ceremony. Never throws into the interact/open path -- a delivery
+     * problem must not stop a player from opening a dealer.
+     */
+    private void tryDeliverBankedWinnings(Player player) {
+        OverflowBankService bank = plugin.getOverflowBankService();
+        if (bank == null || !bank.isBlocked(player.getUniqueId())) {
+            return;
+        }
+        long remaining = bank.claimAll(player);
+        if (remaining > 0) {
+            player.sendMessage(plugin.getLocalization().text(
+                player, "payout.bank-still-blocked", "amount", remaining));
         }
     }
 
@@ -431,6 +456,7 @@ public class DealerInteractListener implements Listener {
             case "coin flip" : return "nccasino.games.coinflip";
             case "rock paper scissors" : return "nccasino.games.rockpaperscissors";
             case "dragon descent" : return "nccasino.games.dragon";
+            case "slots" : return "nccasino.games.slots";
             default: return null;
         }
     }

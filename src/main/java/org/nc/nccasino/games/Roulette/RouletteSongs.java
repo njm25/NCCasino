@@ -6,12 +6,6 @@ import org.nc.VSE.Song;
 
 public class RouletteSongs {
 
-    public static Song getTimerTick() {
-        Song timerTick = new Song("TimerTick", 20);
-        timerTick.addNote(new Note("minecraft:block.note_block.hat", 1, 1, 1.0f, 1.0f));
-        return timerTick;
-    }
-
     public static Song getBallLaunch() {
         Song BallLaunch = new Song("BallLaunch", 20);
 
@@ -32,32 +26,6 @@ public class RouletteSongs {
         BallLaunch.addNote(new Note("minecraft:entity.breeze.jump",              80, 80, 3.0f, 1.0f));
         BallLaunch.addNote(new Note("minecraft:item.crossbow.shoot",             80, 80, 3.0f, 1.0f));
         return BallLaunch;
-    }
-
-    public static Song getDynamicFastTick() {
-        Song dynamicFastTick = new Song("DynamicFastTick", 20);
-        int totalTicks = 100;
-        int currentTick = 0;
-        float initialPitch = 1.0f;
-        float maxPitch = 2.0f;
-        int initialInterval = 10;
-        int minInterval = 1;
-
-        while (currentTick < totalTicks) {
-            float progress = (float) currentTick / totalTicks;
-            float pitch = initialPitch + progress * (maxPitch - initialPitch);
-
-            dynamicFastTick.addNote(new Note("minecraft:block.note_block.hat",
-                                             currentTick,
-                                             currentTick + 1,
-                                             pitch,
-                                             1.0f));
-            int interval = (int) (initialInterval - progress * (initialInterval - minInterval));
-            currentTick += Math.max(interval, minInterval);
-        }
-
-        dynamicFastTick.addNote(new Note("minecraft:block.piston.extend", 100, 100, 0.5f, 1.0f));
-        return dynamicFastTick;
     }
 
     public static Song getSpinTick() {

@@ -15,7 +15,6 @@ the linked task guides for specialized workflows.
 - Search for the nearest existing implementation before inventing a new
   convention. Player-visible text belongs in the localization catalogs, not in
   hardcoded Java strings.
-
 ## Editing and Git safety
 
 - Preserve unrelated user changes. Inspect `git status` and the relevant diff

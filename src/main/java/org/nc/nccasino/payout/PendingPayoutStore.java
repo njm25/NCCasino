@@ -7,7 +7,6 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.MoneyHelper;
@@ -221,32 +220,90 @@ public class PendingPayoutStore {
         List<PendingPayout> stillPending = new ArrayList<>();
 
         for (PendingPayout payout : pending) {
-            boolean depositOk = payout.amount() <= 0 || depositCurrency(player, payout);
-            if (!depositOk) {
-                stillPending.add(payout);
-                plugin.getLogger().warning("[NCCasino] Could not deliver pending payout " + payout.id()
-                    + " (" + payout.amount() + " " + payout.currencyMode() + ") to " + player.getUniqueId()
-                    + "; left pending for retry.");
+            double owed = payout.amount();
+            if (owed <= 0) {
+                markDelivered(payout.id());
+                delivered.add(payout);
                 continue;
             }
 
-            markDelivered(payout.id());
-            delivered.add(payout);
+            double remaining = depositCurrency(player, payout);
+            if (remaining <= 0) {
+                markDelivered(payout.id());
+                delivered.add(payout);
+                continue;
+            }
+
+            if (remaining < owed) {
+                // Part of this payout genuinely reached the player. Shrink the
+                // record to only what is still owed so a retry can never pay
+                // the delivered portion a second time.
+                PendingPayout reduced = reduceTo(payout, remaining);
+                stillPending.add(reduced == null ? payout : reduced);
+                plugin.getLogger().warning("[NCCasino] Partially delivered pending payout " + payout.id()
+                    + " to " + player.getUniqueId() + "; " + remaining + " of " + owed
+                    + " still owed and retained for retry.");
+                continue;
+            }
+
+            stillPending.add(payout);
+            plugin.getLogger().warning("[NCCasino] Could not deliver pending payout " + payout.id()
+                + " (" + payout.amount() + " " + payout.currencyMode() + ") to " + player.getUniqueId()
+                + "; left pending for retry.");
         }
 
         return new DeliveryResult(delivered, stillPending);
     }
 
-    private boolean depositCurrency(Player player, PendingPayout payout) {
+    /**
+     * Rewrites a partially-delivered record in place, keeping its id so the
+     * whole change is a single durable write rather than a remove-then-add
+     * pair that could lose or duplicate the payout in between.
+     *
+     * <p>On a persist failure the reduced amount is deliberately kept in
+     * memory anyway: the delivered portion is already in the player's hands,
+     * so the smaller figure is the only one that cannot pay it twice while
+     * this instance is running. The stale on-disk record is logged for manual
+     * reconciliation, matching {@link #markDelivered}'s reasoning.
+     */
+    private synchronized PendingPayout reduceTo(PendingPayout original, double remainingAmount) {
+        PendingPayout existing = byId.get(original.id());
+        if (existing == null) {
+            return null;
+        }
+
+        PendingPayout reduced = new PendingPayout(
+            existing.id(), existing.playerId(), existing.gameType(), existing.dealerInternalName(),
+            existing.currencyMode(), existing.currencyMaterial(), existing.currencyName(),
+            remainingAmount, existing.createdAtEpochMillis(), existing.context());
+
+        indexRemove(existing);
+        indexAdd(reduced);
+
+        if (!persist()) {
+            plugin.getLogger().severe("[NCCasino] Delivered part of pending payout " + original.id()
+                + " to " + original.playerId() + " but failed to persist the reduced remainder ("
+                + remainingAmount + "). pending-payouts.yml may still show the original amount and should be"
+                + " reconciled manually to avoid paying the delivered portion twice.");
+        }
+        return reduced;
+    }
+
+    /**
+     * @return how much of {@code payout} is still owed; {@code 0} means fully
+     *     delivered. A value equal to the original amount means nothing moved
+     *     and the whole record can be safely retried.
+     */
+    private double depositCurrency(Player player, PendingPayout payout) {
         try {
             if (payout.currencyMode() == CurrencyMode.VAULT) {
-                return depositVault(player, payout);
+                return depositVault(player, payout) ? 0d : payout.amount();
             }
             return depositItems(player, payout);
         } catch (RuntimeException e) {
             plugin.getLogger().log(Level.SEVERE,
                 "[NCCasino] Exception delivering pending payout " + payout.id(), e);
-            return false;
+            return payout.amount();
         }
     }
 
@@ -265,12 +322,24 @@ public class PendingPayoutStore {
         return resp != null && resp.transactionSuccess();
     }
 
-    private boolean depositItems(Player player, PendingPayout payout) {
+    /**
+     * Hands a pending item payout over through {@link OverflowBankService},
+     * so the part that does not fit is banked rather than scattered on the
+     * ground. This is the hand-off point between the two systems: the record
+     * stops being an unresolved outcome and whatever could not physically
+     * fit becomes a bank balance the player already owns.
+     *
+     * @return how much is still owed afterwards. The service reserves the
+     *     overflow durably before moving anything physical, so this is either
+     *     the full amount (nothing happened, safe to retry whole) or only the
+     *     portion that genuinely reached neither the player nor the bank.
+     */
+    private double depositItems(Player player, PendingPayout payout) {
         Material material = payout.currencyMaterial() != null
             ? Material.matchMaterial(payout.currencyMaterial())
             : null;
         if (material == null) {
-            return false;
+            return payout.amount();
         }
 
         int wholeAmount = MoneyHelper.probabilisticItemAmount(
@@ -278,14 +347,20 @@ public class PendingPayoutStore {
             ThreadLocalRandom.current().nextDouble()
         );
         if (wholeAmount <= 0) {
-            return true;
+            return 0d;
         }
 
-        Map<Integer, ItemStack> leftover = player.getInventory().addItem(new ItemStack(material, wholeAmount));
-        if (!leftover.isEmpty()) {
-            int leftoverAmount = leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
-            player.getWorld().dropItemNaturally(player.getLocation(), new ItemStack(material, leftoverAmount));
+        OverflowBankService bank = plugin.getOverflowBankService();
+        if (bank == null) {
+            // No safe destination for a remainder yet; leave the record
+            // pending rather than risk dropping winnings on the floor.
+            return payout.amount();
         }
-        return true;
+
+        ItemDeliveryOutcome outcome = bank.deliver(
+            player,
+            new BankedCurrency(payout.currencyMode(), material.name(), payout.currencyName()),
+            wholeAmount);
+        return outcome.unsettled();
     }
 }

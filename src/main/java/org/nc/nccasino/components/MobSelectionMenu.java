@@ -747,6 +747,10 @@ public class MobSelectionMenu extends Menu {
                 settings.put("rps-max-chain-rounds", config.getInt(basePath + "rps-max-chain-rounds", -1));
                 settings.put("rps-mode-switching-enabled", config.getBoolean(basePath + "rps-mode-switching-enabled", true));
             }
+            case "Slots" -> {
+                // No game-specific config beyond the shared chip-sizes/currency
+                // keys already preserved elsewhere -- the paytable is fixed.
+            }
         }
         return settings;
     }

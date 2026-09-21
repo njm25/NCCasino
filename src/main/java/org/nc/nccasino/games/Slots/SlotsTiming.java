@@ -1,0 +1,170 @@
+package org.nc.nccasino.games.Slots;
+
+/**
+ * Named animation delays, in server ticks. Pure constants -- nothing here
+ * decides an outcome, and none of it can alter a result already committed by
+ * {@link SlotsSpinController}.
+ *
+ * <p>Kept in one place, the way {@code BlackjackTiming} is, so the ordering
+ * relationships between phases stay visible and testable rather than being
+ * scattered as inline literals across the renderer.
+ */
+public final class SlotsTiming {
+
+    private SlotsTiming() {
+    }
+
+    // ---- reel spin ------------------------------------------------------
+
+    /** The animation ticker runs every tick; individual reels advance on their own schedule. */
+    public static final long TICK_INTERVAL = 1L;
+
+    /** Ticks between symbol advances while a reel is at full speed. */
+    public static final long SPIN_STEP_TICKS = 1L;
+
+    /** How long the leftmost reel spins at full speed before it begins slowing. */
+    public static final long FIRST_REEL_SPIN_TICKS = 14L;
+
+    /** Each reel to the right spins this much longer than the one before it. */
+    public static final long REEL_STAGGER_TICKS = 9L;
+
+    /**
+     * How many progressively-slower advances a reel makes as it settles. The
+     * deceleration is what sells the reel as a physical object with mass --
+     * a reel that simply stops dead reads as a texture swap.
+     */
+    public static final int DECELERATION_STEPS = 4;
+
+    /** Each deceleration step waits this many ticks longer than the previous one. */
+    public static final long DECELERATION_GROWTH_TICKS = 3L;
+
+    /**
+     * Extra ticks the final reel hangs when the reels already down could
+     * still become a big win. This is the single most important piece of
+     * tension in a slot machine: the pause exists only when it means
+     * something, so players learn to read it.
+     */
+    public static final long ANTICIPATION_TICKS = 26L;
+
+    /** How long a reel's landing bounce (overshoot then settle) takes. */
+    public static final long REEL_LANDING_BOUNCE_TICKS = 2L;
+
+    // ---- win presentation ------------------------------------------------
+
+    /** Pause after the last reel lands before any win is announced. */
+    public static final long PRE_REVEAL_PAUSE_TICKS = 6L;
+
+    /** How long each winning line stays lit during the sequential walk-through. */
+    public static final long LINE_REVEAL_HOLD_TICKS = 14L;
+
+    /** Gap between one winning line going dark and the next lighting up. */
+    public static final long LINE_REVEAL_GAP_TICKS = 3L;
+
+    /** After every line has been walked, all winners light together for this long. */
+    public static final long ALL_LINES_FINALE_TICKS = 20L;
+
+    /** Ticks between win-meter count-up increments. */
+    public static final long WIN_METER_STEP_TICKS = 2L;
+
+    /** The count-up never takes longer than this, however large the win. */
+    public static final long WIN_METER_MAX_TICKS = 40L;
+
+    /** Pause on a losing spin before controls unlock -- short, so a dead spin does not drag. */
+    public static final long LOSS_SETTLE_TICKS = 8L;
+
+    /**
+     * Beat of suspense held before a non-winning spin's cue actually sounds, so
+     * the verdict does not land on top of the last reel stop. Shared by a total
+     * loss and by a partial return, which are both "you did not beat the
+     * stake" outcomes and so should be paced identically.
+     *
+     * <p>This is ON TOP OF {@link #PRE_REVEAL_PAUSE_TICKS}, which already
+     * separates the last reel landing from the whole win presentation -- the
+     * finale fires at {@code SlotsReelPlan.revealStartTick()}, not when the
+     * reels stop. What a player actually hears after the final reel is the sum
+     * of the two, so tune this against 6 + this, not against zero. At 4 the
+     * total is 10 ticks, half a second.
+     */
+    public static final long RESULT_CUE_DELAY_TICKS = 4L;
+
+    // ---- opening animation -------------------------------------------
+    //
+    // Dedicated to the once-per-session opening animation only -- never
+    // reused for a paid or demo spin's own timing above, and never reused
+    // by it, so retuning one can never silently retune the other.
+
+    /**
+     * The gap, in ticks, between each opening-animation column starting and
+     * the next one to its right -- one entry per gap, so nine columns need
+     * eight gaps. Deliberately uneven rather than a single flat interval:
+     * a constant stagger reads as nine identical machines deploying on a
+     * metronome, while varied gaps read as one machine waking up. Every gap
+     * is still strictly positive, so the columns always start in strict
+     * left-to-right order.
+     *
+     * <p>Fixed, not random: the same nine columns start on the same ticks
+     * every open, exactly as the fixed rainbow itself does, so the whole
+     * intro stays reproducible and pinnable by a plain unit test.
+     */
+    public static final long[] OPENING_COLUMN_STAGGER_GAPS = {2L, 3L, 1L, 3L, 2L, 1L, 3L, 2L};
+
+    /** Ticks between one downward shift and the next while an opening-animation column is at full speed. */
+    public static final long OPENING_STEP_TICKS = 1L;
+
+    /**
+     * How many progressively-slower shifts an opening-animation column makes
+     * as it settles, mirroring {@link #DECELERATION_STEPS} for a real reel.
+     * Without this the intro ran at a flat {@link #OPENING_STEP_TICKS} and
+     * then stopped dead, which reads as a texture swap rather than as a reel
+     * with mass coming to rest.
+     */
+    public static final int OPENING_DECELERATION_STEPS = 4;
+
+    /**
+     * Each opening-animation deceleration step waits this many ticks longer
+     * than the one before it. Gentler than a real spin's
+     * {@link #DECELERATION_GROWTH_TICKS}, because the intro plays on every
+     * open and must not feel like it is dragging.
+     */
+    public static final long OPENING_DECELERATION_GROWTH_TICKS = 2L;
+
+    // ---- auto spin ---------------------------------------------------
+
+    /**
+     * Gap between one automatic spin's settlement finishing and the next
+     * automatic spin starting -- never zero, so the player can always see
+     * one spin's result land before the next wager is placed.
+     */
+    public static final long AUTO_SPIN_GAP_TICKS = 10L;
+
+    // ---- idle / attract --------------------------------------------------
+
+    /** How often the idle attract shimmer advances while the machine sits unplayed. */
+    public static final long ATTRACT_STEP_TICKS = 8L;
+
+    /**
+     * Total ticks a spin takes with no anticipation and no win, for the
+     * widest machine -- used to sanity-check that a spin never outlives its
+     * own callback guard.
+     */
+    public static long worstCaseSpinTicks(int columns) {
+        return lastReelStopTick(columns) + ANTICIPATION_TICKS + PRE_REVEAL_PAUSE_TICKS
+            + (SlotsPayline.MAX_LINES * (LINE_REVEAL_HOLD_TICKS + LINE_REVEAL_GAP_TICKS))
+            + ALL_LINES_FINALE_TICKS + WIN_METER_MAX_TICKS;
+    }
+
+    /** Tick at which reel {@code index} finishes decelerating, ignoring anticipation. */
+    public static long reelStopTick(int index) {
+        long fullSpeed = FIRST_REEL_SPIN_TICKS + (index * REEL_STAGGER_TICKS);
+        long decelerating = 0L;
+        for (int step = 1; step <= DECELERATION_STEPS; step++) {
+            decelerating += SPIN_STEP_TICKS + (step * DECELERATION_GROWTH_TICKS);
+        }
+        return fullSpeed + decelerating + REEL_LANDING_BOUNCE_TICKS;
+    }
+
+    public static long lastReelStopTick(int columns) {
+        SlotsGeometry.requireSupportedColumnCount(columns);
+        return reelStopTick(columns - 1);
+    }
+}

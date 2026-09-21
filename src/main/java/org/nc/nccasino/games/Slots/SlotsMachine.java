@@ -1,0 +1,4331 @@
+package org.nc.nccasino.games.Slots;
+
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
+import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
+import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.CurrencyMode;
+import org.nc.nccasino.currency.CurrencyProvider;
+import org.nc.nccasino.currency.MoneyHelper;
+import org.nc.nccasino.currency.VaultCurrencyProvider;
+import org.nc.nccasino.currency.WagerTransaction;
+import org.nc.nccasino.entities.DealerInventory;
+import org.nc.nccasino.helpers.Preferences;
+import org.nc.nccasino.helpers.SoundHelper;
+import org.nc.nccasino.payout.BankedCurrency;
+import org.nc.nccasino.payout.ItemDeliveryOutcome;
+import org.nc.nccasino.payout.OverflowBankService;
+import org.nc.nccasino.payout.PayoutMessages;
+import org.nc.nccasino.payout.PendingPayout;
+import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.GameTerminationPolicy;
+import org.nc.nccasino.session.SessionRegistry;
+import org.nc.nccasino.session.TerminableSession;
+import org.nc.nccasino.session.TerminationAction;
+import org.nc.VSE.MultiChannelEngine;
+import org.nc.VSE.Song;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import org.nc.nccasino.payout.WagerGate;
+import org.nc.nccasino.budget.AdmissionDecision;
+import org.nc.nccasino.budget.Commitment;
+import org.nc.nccasino.budget.DealerBudgetService;
+import org.nc.nccasino.budget.Exposure;
+import org.nc.nccasino.budget.Money;
+
+/**
+ * One player's independent Slots machine: a personal 54-slot view backed by
+ * the explicit {@link SlotsSessionState} lifecycle.
+ *
+ * <p>The machine's width and visible height ({@link SlotsGeometry}) and its
+ * active payline count are all player-selectable in session; the upper 5
+ * inventory rows are a canvas centred around whichever geometry is currently
+ * selected, and the bottom row (45-53) holds every control. Because the
+ * configured house edge is applied by deriving the paytable
+ * ({@link SlotsPaytable}) rather than by hardcoding multipliers, none of
+ * width, height, or line count moves the machine's return -- see
+ * {@link SlotsPaytable} and {@link SlotsPaylineCatalog} for why every shape
+ * and every height shares one run-length distribution per column.
+ *
+ * <p>Financial contract: a debit ({@link WagerTransaction#tryWithdraw}) is
+ * always attempted and confirmed <em>before</em> any outcome is generated.
+ * The instant that debit succeeds, {@link SlotsSpinController} draws one
+ * immutable {@link SlotsOutcome} (one stop per reel, from that reel's
+ * {@link SlotsReelStrip}) and the payout owed is computed and stored --
+ * everything from that point on (the reel motion, the win walk-through, the
+ * eventual credit) is just carrying out an already-decided result. There is
+ * no route back from a committed result to a refundable pregame state (see
+ * {@link SlotsStateMachine}).
+ *
+ * <p>The same inventory has four canvas views ({@link SlotsUiView}):
+ * {@code GAME} (the ordinary reel canvas), {@code PAYTABLE} (the condensed
+ * symbol-card paytable plus its informational rail), {@code PROFILES} (the
+ * player's globally saved configurations) and {@code AUTO_SETTINGS} (the
+ * Auto Spin settings menu). Each modal view repaints only the upper 45-slot
+ * canvas; the bottom control row stays exactly as it is in Game View except
+ * for the single slot that view swaps in place for Back to Game -- 48, 50
+ * and 53 respectively, per {@link SlotsUiView#backToGameSlot()}. Demo Spin
+ * is not a separate mode: it is an isolated cosmetic animation launched from
+ * the same central Spin lever (right-click), rendered directly onto the Game
+ * canvas, that can never debit, credit, reserve against the dealer budget,
+ * or affect the real spin lifecycle in any way.
+ */
+public class SlotsMachine extends DealerInventory implements TerminableSession {
+
+    // ---- layout ------------------------------------------------------
+    // Inventory rows 0-4 (slots 0-44): the reel/information canvas, centred
+    // per SlotsGeometry's exact contract for the current width/height.
+    // Inventory row 5 (slots 45-53): every control, in the exact left-to-right
+    // order required by the control redesign.
+
+    // Aliases of the single source of truth in SlotsControlLayout, which also
+    // owns the click-routing matrix so it can be tested without a live server.
+
+    private static final int EXIT_SLOT = SlotsControlLayout.EXIT_SLOT;
+    /** Brown Stained Glass Pane -- the reel (column) count. */
+    private static final int REELS_SLOT = SlotsControlLayout.REELS_SLOT;
+    /** Pink Stained Glass Pane -- the visible height. */
+    private static final int HEIGHT_SLOT = SlotsControlLayout.HEIGHT_SLOT;
+    /** Book (open the Paytable) in Game View; Back to Game (Magenta Glazed Terracotta) in Paytable View. */
+    private static final int PAYTABLE_SLOT = SlotsControlLayout.PAYTABLE_SLOT;
+    /** The true centre of the 9-slot control row (45-53): the always-present central Spin lever. */
+    private static final int SPIN_SLOT = SlotsControlLayout.SPIN_SLOT;
+    /**
+     * Auto Spin (left-click), Spin Speed (right-click) and Auto Spin Settings
+     * (shift-left-click) -- all three combined on one Clock control. Becomes
+     * Back to Game in the Auto Spin Settings view; the same Clock, with the
+     * same three actions, is also carried into that view's own canvas (see
+     * {@link SlotsAutoSettingsLayout#CLOCK_SLOT}), where shift-left-click
+     * closes the menu instead of opening it.
+     */
+    private static final int CLOCK_SLOT = SlotsControlLayout.CLOCK_SLOT;
+    /** Green Stained Glass Pane -- the active payline count. */
+    private static final int LINES_SLOT = SlotsControlLayout.LINES_SLOT;
+    /** Black Stained Glass Pane -- the per-line wager. */
+    private static final int WAGER_SLOT = SlotsControlLayout.WAGER_SLOT;
+    /** Ender Chest -- this player's globally saved profiles. Becomes Back to Game in the Profiles view. */
+    private static final int PROFILES_SLOT = SlotsControlLayout.PROFILES_SLOT;
+
+    /** How long a demo's hypothetical result stays highlighted before the round finishes. */
+    private static final long DEMO_FINALE_HOLD_TICKS = SlotsTiming.ALL_LINES_FINALE_TICKS;
+
+    private final UUID playerId;
+    private final Player player;
+    private final Nccasino plugin;
+    private final String internalName;
+    private final CurrencyMode currencyMode;
+    private final String currencyName;
+    private final SlotsInventory slotsInventory;
+    private final double[] chipValues;
+    /** Plays the opening-animation intro song; a fresh engine per machine, mirroring Roulette's per-inventory instance. */
+    private final MultiChannelEngine mce;
+    /** Every payout cue shares one channel and song id so a new cue replaces the last. */
+    private static final String PAYOUT_CHANNEL = "SlotsPayout";
+    private static final String PAYOUT_SONG_ID = "PayoutCue";
+
+    private SlotsConfig config;
+    private final SlotsSpinController controller = new SlotsSpinController();
+    /**
+     * Distinguishes this table's commitments from those of any earlier
+     * session at the same dealer.
+     *
+     * <p>A reservation id must be stable across retries of one spin and
+     * distinct across everything else. {@code generation} alone gives the
+     * first but not the second: it restarts at zero when the plugin restarts,
+     * so a crash that left spin 1 unsettled would let the next session's spin
+     * 1 silently adopt that stale reservation instead of making its own. The
+     * session nonce closes that, and the orphan is left for
+     * {@code staleReservations} to report rather than being quietly reused.
+     */
+    private final String budgetSessionId = java.util.UUID.randomUUID().toString();
+    private final SlotsUnderwriting underwriting = new DealerBudgetUnderwriting();
+    private int denominationIndex = 0;
+    private boolean closeFlag = false;
+
+    private BukkitTask animationTask;
+    private BukkitTask winMeterTask;
+    private BukkitTask lineFlashTask;
+    /** Holds a non-winning spin's verdict for its beat of suspense. */
+    private BukkitTask resultCueTask;
+
+    /**
+     * Whether this presentation has already sounded its result. Fast-forward
+     * stays available for the whole finale hold, well after the cue has
+     * started, so without this a player who skips at that point would restart
+     * a three- or four-second phrase from the top.
+     */
+    private boolean resultCueSounded;
+    /**
+     * Pure staleness guard for the Paylines blink flash -- see
+     * {@link SlotsLineFlashGuard}. {@link #cancelLineFlashTask()} drives
+     * {@link SlotsLineFlashGuard#cancel()} so a stale scheduled blink frame
+     * from a superseded flash can never repaint over a newer Paylines input,
+     * view change, geometry change, spin start, or a closed/torn-down
+     * session -- the same guard pattern {@link #demoGeneration} and
+     * {@link #openingGeneration} use.
+     */
+    private final SlotsLineFlashGuard lineFlashGuard = new SlotsLineFlashGuard();
+    private BukkitTask demoTask;
+    private BukkitTask openingAnimationTask;
+    /** True only while the once-per-session opening animation is running -- every click is ignored. */
+    private boolean openingActive = false;
+    /**
+     * Bumped by {@link #cancelOpeningAnimationTask()} so a stale scheduled
+     * frame from a superseded or cancelled opening animation can never
+     * repaint a closed or newer inventory session -- the same guard pattern
+     * {@link #demoGeneration} uses for Demo Spin.
+     */
+    private long openingGeneration = 0;
+    /** Cosmetic symbols currently shown per reel, top row first. Never authoritative. */
+    private SlotsSymbol[][] reelDisplay;
+    /** Each reel's current cosmetic position on its strip during a spin -- not the committed stop until landing. */
+    private int[] reelScrollPosition;
+    /** Whether {@link #reelDisplay}'s current contents came from a Demo Spin -- drives the idle repaint's demo lore. */
+    private boolean lastGridIsDemo = false;
+    /** The Spin lever's Last Result lore's count-up lifecycle -- see {@link SlotsWinMeterAnimation}. */
+    private final SlotsWinMeterAnimation lastWinState = new SlotsWinMeterAnimation();
+    /**
+     * A demo spin's own independent randomness stream -- see
+     * {@link SlotsDemoRandomSource}. Held once and reused for every demo
+     * draw; never shared with {@link SlotsRandomSource#production()} and
+     * never recreated per spin.
+     */
+    private final SlotsDemoRandomSource demoRng = new SlotsDemoRandomSource();
+
+    private SlotsUiView uiView = SlotsUiView.GAME;
+    /**
+     * A demo spin's own generation counter. A running demo task checks this
+     * (never the real controller's) so it can never observe or affect the
+     * real spin lifecycle, and a stale demo callback can never repaint over
+     * a newer demo or a return to Game View.
+     */
+    private long demoGeneration = 0;
+    private boolean demoActive = false;
+    /** The demo currently running/just finished -- retained only so a lever fast-forward can paint its own result. */
+    private SlotsOutcome demoOutcome;
+    private long demoHypotheticalBet;
+    private long demoHypotheticalPayout;
+
+    /**
+     * This spin's randomly-chosen starting note for {@link #playReelStop}'s musical pattern
+     * (3-reel major triad, 5-reel Egyptian pentatonic, 7-reel blues-to-octave run) -- picked
+     * fresh in {@link #startAnimation} and {@link #startDemoAnimation} from each pattern's
+     * verified-safe range, one per spin so every reel of that spin shares the same starting
+     * note. Null for any other reel count, which sends {@link #playReelStop} back to the plain
+     * pitch ramp.
+     */
+    private double[] activeSpinReelScale;
+
+    /**
+     * The whole-semitone transpose {@link #activeSpinReelScale} was rolled at,
+     * which every payout cue for this spin inherits so wins, losses and reels
+     * all answer in one key. Zero whenever the spin has no scale.
+     */
+    private int activeSpinTranspose;
+
+    /** Session-local; always resets to {@link SlotsSpinSpeed#NORMAL} on a new session, and only ever loaded from a profile. */
+    private SlotsSpinSpeed spinSpeed = SlotsSpinSpeed.NORMAL;
+    private boolean autoSpinActive = false;
+    private BukkitTask autoSpinTask;
+
+    /**
+     * The Auto Spin configuration this session is editing. A brand-new
+     * session starts at {@link SlotsAutoSpinSettings#defaults()} -- spin
+     * limit 15 with every stop condition off -- and loading a profile
+     * replaces it wholesale.
+     */
+    private SlotsAutoSpinSettings autoSettings = SlotsAutoSpinSettings.defaults();
+
+    /**
+     * The current Auto Spin batch's ledger. Reset the instant Auto Spin
+     * starts and never carried across batches, so one batch's profit target
+     * or loss limit can never be judged against another batch's history.
+     */
+    private final SlotsAutoSpinBatch autoBatch = new SlotsAutoSpinBatch();
+
+    /**
+     * The settings snapshot the running batch was started with, so an edit
+     * made after the fact cannot retroactively change a batch that is
+     * already running.
+     */
+    private SlotsAutoSpinSettings activeBatchSettings = SlotsAutoSpinSettings.defaults();
+
+    /** The exact total bet of the spin currently committed -- what the big-win threshold is measured against. */
+    private long committedTotalBet = 0L;
+
+    /**
+     * Bumped every time a chat prompt is opened or abandoned. A prompt
+     * callback that arrives carrying an older value belongs to a superseded
+     * prompt and must do nothing -- the same guard pattern
+     * {@link #demoGeneration} and {@link #openingGeneration} use for
+     * scheduled animation frames.
+     */
+    private long promptGeneration = 0;
+
+    /**
+     * True only while this machine's inventory has been deliberately closed
+     * for a chat prompt. It is what stops {@link #onInventoryClose} from
+     * terminating a session that is merely suspended, and it is always
+     * cleared by whichever path ends the prompt.
+     */
+    private boolean promptSuspended = false;
+
+    /** Session-level jukebox toggle; survives spins, modal views, and chat-prompt suspension. */
+    private boolean goldenSlumbersEnabled = false;
+
+    /** The exact configuration a profile save captured when the player started naming it. */
+    private SlotsProfile pendingProfileSnapshot;
+
+    public SlotsMachine(UUID dealerId, Player player, Nccasino plugin, String internalName, SlotsInventory slotsInventory) {
+        super(player.getUniqueId(), SlotsGeometry.INVENTORY_SIZE,
+            plugin.getLocalization().text(player, "slots.title"));
+        this.dealerId = dealerId;
+        this.playerId = player.getUniqueId();
+        this.player = player;
+        this.plugin = plugin;
+        this.internalName = internalName;
+        this.currencyMode = plugin.getCurrencyMode(internalName);
+        this.currencyName = plugin.getCurrencyName(internalName);
+        this.slotsInventory = slotsInventory;
+        this.mce = new MultiChannelEngine(plugin);
+        this.chipValues = loadChipValues();
+        this.config = SlotsConfig.load(plugin, internalName);
+        this.reelDisplay = neutralGrid(config.columns(), config.visibleRows());
+        this.reelScrollPosition = new int[config.columns()];
+
+        Bukkit.getPluginManager().registerEvents(this, plugin);
+        SessionRegistry.register(playerId, this);
+    }
+
+    private double[] loadChipValues() {
+        double[] values = new double[5];
+        for (int i = 0; i < 5; i++) {
+            values[i] = plugin.getChipValue(internalName, i + 1);
+        }
+        return values;
+    }
+
+    public void initializeTable() {
+        beginOpeningAnimation();
+    }
+
+    private void redrawEverything() {
+        repaintCanvas();
+        renderControls();
+    }
+
+    /**
+     * The single authoritative canvas-transition path: every one of the 45
+     * canvas slots (0-44) is always repainted -- {@link #renderFrame} first
+     * (frame/gutter for the destination geometry, a no-op for the Paytable
+     * view, which paints every slot itself), then {@link #renderCanvas} for
+     * the destination view. Every view switch (Game/Paytable), every
+     * geometry change, and every "return to X" path must go through this
+     * method rather than calling {@link #renderCanvas} alone, or a
+     * transition from a view that owns cells outside the current grid (the
+     * Paytable view owns all 45) can leave its items stranded in the
+     * destination view's gutters. The bottom control row (45-53) is never
+     * touched here.
+     */
+    private void repaintCanvas() {
+        renderFrame();
+        renderCanvas();
+    }
+
+    // ---- opening animation -------------------------------------------
+
+    /**
+     * Runs exactly once, the first time this machine's inventory is ever
+     * shown to the player -- {@link SlotsInventory} always constructs a
+     * fresh {@link SlotsMachine} and calls {@link #initializeTable} exactly
+     * once, before {@code openInventory}. Every later repaint (geometry
+     * change, view switch, spin) goes through {@link #redrawEverything}
+     * directly and never touches this method again, which is what stops the
+     * animation from ever replaying.
+     *
+     * <p>The authoritative final frame is rendered for real first, then
+     * captured and the inventory cleared back to visually empty -- so the
+     * animation always falls the machine's actual real items (rainbow
+     * housing, white reel bay, and every control) into place rather than a
+     * hand-maintained duplicate of what the final layout should look like.
+     * That is also what makes the control row's order safe to change: the
+     * animation's targets are captured live from whatever
+     * {@link #renderControls()} just painted, so reordering the controls
+     * needs no change here at all.
+     */
+    private void beginOpeningAnimation() {
+        redrawEverything();
+        int size = SlotsGeometry.INVENTORY_SIZE;
+        ItemStack[] finalItems = new ItemStack[size];
+        for (int slot = 0; slot < size; slot++) {
+            ItemStack item = getInventory().getItem(slot);
+            finalItems[slot] = item == null ? null : item.clone();
+        }
+        for (int slot = 0; slot < size; slot++) {
+            getInventory().clear(slot);
+        }
+        startOpeningAnimation(finalItems);
+    }
+
+    /**
+     * Drives the nine-column falling-panes intro. Each of the 9 inventory
+     * columns is treated as an independent {@link SlotsOpeningColumnMotion#ROWS}-cell
+     * reel: the fixed {@link SlotsOpeningFiller#fixedRainbowSequence()}
+     * cosmetic sequence, then the column's six real final items fed in
+     * bottom-to-top order -- twice, with the same fixed rainbow in between
+     * (see {@link SlotsOpeningColumnMotion#buildEntrySequenceWithSettle}), so
+     * the correct items visibly pass through once before the second pass
+     * actually lands and stays, rather than the column insta-stopping the
+     * instant it first reads correctly. The completed column reads
+     * top-to-bottom exactly as {@code finalItems} already has it. Columns
+     * start on a fixed but deliberately uneven left-to-right stagger
+     * ({@link SlotsTiming#OPENING_COLUMN_STAGGER_GAPS}) and overlap in time
+     * rather than running one after another, and each column decelerates
+     * into its landing ({@link SlotsTiming#OPENING_DECELERATION_STEPS})
+     * rather than stopping dead.
+     *
+     * <p>Guarded by {@link #openingGeneration} exactly like {@link #demoGeneration}
+     * guards Demo Spin: a stale scheduled frame from a cancelled or
+     * superseded animation can never repaint a closed or newer session.
+     */
+    private void startOpeningAnimation(ItemStack[] finalItems) {
+        openingActive = true;
+        openingGeneration++;
+        final long myGeneration = openingGeneration;
+
+        final int columnCount = SlotsGeometry.INVENTORY_WIDTH;
+        final List<List<ItemStack>> entries = new ArrayList<>(columnCount);
+        for (int col = 0; col < columnCount; col++) {
+            List<ItemStack> firstBurst = fixedRainbowFillerItems();
+            List<ItemStack> finalColumn = new ArrayList<>(SlotsOpeningColumnMotion.ROWS);
+            for (int row = 0; row < SlotsGeometry.CANVAS_ROWS; row++) {
+                finalColumn.add(asSkippableAnimationItem(finalItems[row * columnCount + col]));
+            }
+            finalColumn.add(asSkippableAnimationItem(finalItems[SlotsGeometry.CANVAS_ROWS * columnCount + col]));
+            List<ItemStack> secondBurst = fixedRainbowFillerItems();
+            entries.add(SlotsOpeningColumnMotion.buildEntrySequenceWithSettle(firstBurst, secondBurst, finalColumn));
+        }
+        final int[] entryCounts = new int[columnCount];
+        int maxEntryCount = 0;
+        for (int col = 0; col < columnCount; col++) {
+            entryCounts[col] = entries.get(col).size();
+            maxEntryCount = Math.max(maxEntryCount, entryCounts[col]);
+        }
+        final long finalTick = SlotsOpeningColumnMotion.finalTick(columnCount, maxEntryCount);
+        final ItemStack[][] columnState = new ItemStack[columnCount][SlotsOpeningColumnMotion.ROWS];
+        final long[] elapsed = {0L};
+        final long openingSoundDecelerationStartTick =
+            SlotsOpeningColumnMotion.localTickOfEntry(
+                maxEntryCount - SlotsTiming.OPENING_DECELERATION_STEPS, maxEntryCount);
+
+        playOpeningPowerOn();
+        playOpeningIntroSong();
+
+        BukkitRunnable runnable = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (closeFlag || openingGeneration != myGeneration) {
+                    cancel();
+                    openingAnimationTask = null;
+                    return;
+                }
+                long tick = elapsed[0];
+                boolean advancedAnyColumn = false;
+                for (int col = 0; col < columnCount; col++) {
+                    int localIndex = SlotsOpeningColumnMotion.localEntryIndexAt(
+                        col, tick, entryCounts[col]);
+                    if (localIndex < 0) {
+                        continue;
+                    }
+                    advancedAnyColumn = true;
+                    SlotsOpeningColumnMotion.shiftDownAndInsert(columnState[col], entries.get(col).get(localIndex));
+                    paintOpeningColumn(col, columnState[col]);
+                }
+                if (advancedAnyColumn && tick != finalTick) {
+                    playOpeningReelTick(tick, openingSoundDecelerationStartTick, finalTick);
+                }
+                if (tick >= finalTick) {
+                    cancel();
+                    openingAnimationTask = null;
+                    finishOpeningAnimation(myGeneration);
+                    return;
+                }
+                elapsed[0] = tick + SlotsTiming.OPENING_STEP_TICKS;
+            }
+        };
+        openingAnimationTask = runnable.runTaskTimer(plugin, SlotsTiming.OPENING_STEP_TICKS, SlotsTiming.OPENING_STEP_TICKS);
+    }
+
+    /** Paints one opening-animation column's current 6 cells (5 canvas rows, then the control row) into the real inventory. */
+    private void paintOpeningColumn(int col, ItemStack[] state) {
+        int columnCount = SlotsGeometry.INVENTORY_WIDTH;
+        for (int row = 0; row < SlotsGeometry.CANVAS_ROWS; row++) {
+            getInventory().setItem(row * columnCount + col, state[row]);
+        }
+        getInventory().setItem(SlotsGeometry.CANVAS_ROWS * columnCount + col, state[SlotsGeometry.CANVAS_ROWS]);
+    }
+
+    /**
+     * On successful completion, unlocks controls and re-renders the
+     * authoritative pregame layout from live state -- a cheap, idempotent
+     * verification pass, since the last item every column received was
+     * already that exact final item.
+     */
+    private void finishOpeningAnimation(long myGeneration) {
+        if (openingGeneration != myGeneration) {
+            return;
+        }
+        openingActive = false;
+        redrawEverything();
+    }
+
+    /**
+     * A cosmetic filler pane: no lore, and named with the shared
+     * {@code common.click-skip} text (the same "CLICK TO SKIP" convention
+     * {@link org.nc.nccasino.components.AnimationMessage} uses for its own
+     * skippable animation) rather than blank, so it can never be mistaken
+     * for a control or a rolled symbol while still telling the player a
+     * click lands here.
+     */
+    /** One fixed vertical-rainbow filler burst, as real renderable items. */
+    private List<ItemStack> fixedRainbowFillerItems() {
+        Material[] colors = SlotsOpeningFiller.fixedRainbowSequence();
+        List<ItemStack> items = new ArrayList<>(colors.length);
+        for (Material material : colors) {
+            items.add(blankFillerItem(material));
+        }
+        return items;
+    }
+
+    private ItemStack blankFillerItem(Material material) {
+        ItemStack item = new ItemStack(material, 1);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(text("common.click-skip"));
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    /**
+     * A clone of a real final-layout item, renamed to the same
+     * {@code common.click-skip} text as {@link #blankFillerItem} for the
+     * duration of the opening animation, so every item the animation shows
+     * -- filler and real final items alike -- carries the same "click to
+     * skip" hint. {@link #finishOpeningAnimation} always repaints the
+     * authoritative frame from scratch afterward, so this renamed clone is
+     * never what the player sees once the machine is actually playable.
+     */
+    private ItemStack asSkippableAnimationItem(ItemStack source) {
+        if (source == null) {
+            return null;
+        }
+        ItemStack item = source.clone();
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(text("common.click-skip"));
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    /**
+     * A click anywhere in the inventory while the opening animation is
+     * still running skips straight to the finished state: cancels the
+     * in-flight task the same way {@link #cancelOpeningAnimationTask()}
+     * always does (bumping {@link #openingGeneration} so an already-queued
+     * tick can never paint over this), then repaints the authoritative
+     * final frame immediately -- the exact same end state the animation
+     * would have reached on its own.
+     */
+    private void skipOpeningAnimation() {
+        cancelOpeningAnimationTask();
+        redrawEverything();
+    }
+
+    /**
+     * A genuine interruption of the opening animation -- the inventory
+     * closing, session termination, or plugin disable before it finished.
+     * Bumps {@link #openingGeneration} (not just cancels the task) so a
+     * callback already queued for this tick can still detect it is stale,
+     * the same pattern {@link #cancelDemoTask()} uses.
+     */
+    private void cancelOpeningAnimationTask() {
+        openingGeneration++;
+        openingActive = false;
+        if (openingAnimationTask != null) {
+            openingAnimationTask.cancel();
+            openingAnimationTask = null;
+        }
+        mce.stopSong("SlotsIntro", "OpeningIntro");
+    }
+
+    // ---- rendering -----------------------------------------------------
+
+    private void renderFrame() {
+        if (uiView.isModal()) {
+            // Every modal view repurposes the whole 5-row canvas as its own
+            // layout rather than the current width/height grid, and paints
+            // (or deliberately clears) every one of its own slots itself.
+            return;
+        }
+        int columns = config.columns();
+        int rows = config.visibleRows();
+        for (int slot = 0; slot < SlotsGeometry.INVENTORY_WIDTH * SlotsGeometry.CANVAS_ROWS; slot++) {
+            if (SlotsGeometry.isGridSlot(columns, rows, slot)) {
+                continue;
+            }
+            // The housing is a horizontal rainbow keyed purely off the
+            // slot's inventory column (slot % 9, see SlotsRainbowHousing) so
+            // it grows and shrinks around every supported geometry without
+            // any per-geometry slot table.
+            paintHousing(slot);
+        }
+    }
+
+    /**
+     * The pregame/idle canvas: the neutral "ready" state, never the union of
+     * every active payline (that reads as meaningless once a horizontal line
+     * covers every cell at wide geometries). Once a spin has actually run,
+     * {@link #reelDisplay} instead holds that spin's real committed result
+     * (or a demo's, per {@link #lastGridIsDemo}) and this simply repaints it
+     * unchanged.
+     */
+    private void renderCanvas() {
+        switch (uiView) {
+            case PAYTABLE -> renderPaytableCanvas();
+            case PROFILES -> renderProfilesCanvas();
+            case AUTO_SETTINGS -> renderAutoSettingsCanvas();
+            case GAME -> {
+                int columns = config.columns();
+                for (int col = 0; col < columns; col++) {
+                    paintReel(col);
+                }
+            }
+        }
+    }
+
+    /** Empties every one of the 45 canvas slots, so no modal view can leak the view it replaced. */
+    private void clearCanvas() {
+        for (int slot = 0; slot < SlotsGeometry.INVENTORY_WIDTH * SlotsGeometry.CANVAS_ROWS; slot++) {
+            getInventory().clear(slot);
+        }
+    }
+
+    // ---- paytable view -------------------------------------------------
+
+    /**
+     * The condensed paytable: exactly one card per real paying symbol, in
+     * that symbol's own in-game material, whose lore lists every run length
+     * actually achievable at the current reel count.
+     *
+     * <p>Nothing here duplicates a payout value. The symbols come from
+     * {@link SlotsSymbol#payingSymbols()} and every multiplier from the live
+     * {@link SlotsPaytable}, so a paytable derived from a different house
+     * edge, variance or reel count renders itself correctly with no change
+     * here -- and the card slots come from {@link SlotsPaytableLayout}, which
+     * packs whatever number of symbols exists rather than assuming five.
+     *
+     * <p>Canvas row 4 (slots 36-44) is not part of this layout: it belongs to
+     * the informational rail that aligns with the bottom control row.
+     */
+    private void renderPaytableCanvas() {
+        clearCanvas();
+        SlotsPaytable paytable = config.paytable();
+        double denomination = chipValues[denominationIndex];
+
+        // Every backdrop slot is rainbow housing: the interior used to be
+        // black panes, which read as dead space and, now that housing is the
+        // shared play/pause control, would have been an inert hole in it.
+        for (int slot : SlotsPaytableLayout.paytableCanvasSlots()) {
+            paintHousing(slot);
+        }
+
+        renderCurrentMachineCard(paytable, denomination);
+
+        SlotsSymbol[] symbols = SlotsSymbol.payingSymbols();
+        int[] cardSlots = SlotsPaytableLayout.symbolCardSlots(symbols.length);
+        for (int i = 0; i < symbols.length; i++) {
+            renderSymbolCard(symbols[i], cardSlots[i], paytable, denomination);
+        }
+
+        renderPaytableSupportRow(paytable);
+        renderInformationalRail(denomination);
+    }
+
+    /**
+     * One symbol's card: its real material, its localized name, and one
+     * {@code run - multiplier - return} line per achievable run at the
+     * current reel count. Return is the total returned payout for one line
+     * (multiplier x the per-line wager), never profit on top of the stake.
+     */
+    private void renderSymbolCard(SlotsSymbol symbol, int slot, SlotsPaytable paytable, double denomination) {
+        int columns = config.columns();
+        List<String> lore = new ArrayList<>();
+        lore.add(text("slots.paytable-card-header"));
+        boolean anyRun = false;
+        for (int run = Math.max(1, symbol.minimumRun()); run <= columns; run++) {
+            double multiplier = paytable.multiplier(symbol, run);
+            if (multiplier <= 0.0) {
+                continue;
+            }
+            anyRun = true;
+            lore.add(text("slots.paytable-card-row",
+                "run", run,
+                "multiplier", formatMultiplier(multiplier),
+                "amount", plugin.formatWagerDisplay(currencyMode, currencyName, multiplier * denomination)));
+        }
+        if (!anyRun) {
+            // Only reachable if a symbol's minimum run exceeds the machine's
+            // width; stating it is far better than rendering an empty card.
+            lore.add(text("slots.paytable-card-no-runs", "columns", columns));
+        }
+        lore.add(text("slots.paytable-leftmost-rule"));
+        // Always a single item: the stack badge used to carry the minimum
+        // matching run (two Cherries, three of everything else), but the same
+        // number is already spelled out in every run line of the lore above,
+        // so the count on the icon only read as a quantity.
+        addItemAndLore(symbol.material(), 1, text(symbolKey(symbol)), slot,
+            lore.toArray(new String[0]));
+    }
+
+    /**
+     * Three balanced secondary cards below the actual payouts. They preserve
+     * the details a curious player may want without competing with the symbol
+     * band as the page's visual focus.
+     */
+    private void renderPaytableSupportRow(SlotsPaytable paytable) {
+        addItemAndLore(SlotsSymbol.SEEDS.material(), 1, text("slots.guide-seeds-title"),
+            SlotsPaytableLayout.SEEDS_SLOT,
+            text("slots.guide-seeds-never-pays"),
+            text("slots.guide-seeds-ends-run"));
+
+        renderPaytableLegend();
+
+        addItemAndLore(SlotsControlPresentation.Role.GUIDE_BOOK.material(), 1,
+            text("slots.guide-volatility-title"), SlotsPaytableLayout.VOLATILITY_SLOT,
+            text("slots.guide-volatility-tradeoff"),
+            text("slots.guide-volatility-normalized", "rtp", formatPercent(paytable.theoreticalRtp())),
+            text("slots.guide-volatility-height"));
+    }
+
+    /** The single centred Legend that explains the Run / Multiplier / Return card format. */
+    private void renderPaytableLegend() {
+        // GUIDE_BOOK is BOOK, not KNOWLEDGE_BOOK -- a knowledge book glints
+        // inherently in vanilla Minecraft regardless of actual enchantments,
+        // which would violate the approved glint list.
+        addItemAndLore(SlotsControlPresentation.Role.GUIDE_BOOK.material(), 1,
+            text("slots.paytable-legend"), SlotsPaytableLayout.LEGEND_SLOT,
+            text("slots.paytable-card-header"),
+            text("slots.paytable-legend-run"),
+            text("slots.paytable-legend-multiplier"),
+            text("slots.paytable-legend-return"));
+    }
+
+    /** The live machine summary that balances the Legend on the paytable's top row. */
+    private void renderCurrentMachineCard(SlotsPaytable paytable, double denomination) {
+        addItemAndLore(SlotsControlPresentation.Role.GUIDE_BOOK.material(), 1,
+            text("slots.guide-machine-title"), SlotsPaytableLayout.MACHINE_SLOT,
+            text("slots.guide-machine-reels", "columns", config.columns()),
+            text("slots.guide-machine-height", "rows", config.visibleRows()),
+            text("slots.guide-machine-lines", "lines", config.activeLines()),
+            text("slots.guide-machine-wager", "amount",
+                plugin.formatWagerDisplay(currencyMode, currencyName, denomination)),
+            text("slots.guide-machine-total-bet", "amount",
+                plugin.formatWagerDisplay(currencyMode, currencyName, currentTotalBet())),
+            text("slots.guide-machine-rtp", "rtp", formatPercent(paytable.theoreticalRtp())),
+            text("slots.guide-machine-edge", "edge", formatPercent(paytable.houseEdge())),
+            text("slots.guide-machine-variance", "variance", text(varianceKey(config.variance()))));
+    }
+
+    /**
+     * The Paytable-only informational rail: canvas slots 36-44, each sitting
+     * directly above the bottom-row control it explains (see
+     * {@link SlotsInfoRail}). Rendered as hoppers, whose downward funnel
+     * points at the control each cell explains, and which are still not one of
+     * this UI's clickable materials -- every click on the rail is cancelled.
+     */
+    private void renderInformationalRail(double denomination) {
+        Material rail = SlotsControlPresentation.Role.INFO_RAIL.material();
+        int profileCount = profileCount();
+
+        addItemAndLore(rail, 1, text("slots.rail-exit"), SlotsInfoRail.railSlotFor(EXIT_SLOT),
+            text("slots.rail-exit-what"),
+            text("slots.rail-exit-session"));
+
+        addItemAndLore(rail, 1, text("slots.rail-reels"), SlotsInfoRail.railSlotFor(REELS_SLOT),
+            text("slots.rail-reels-current", "columns", config.columns()),
+            text("slots.rail-reels-tradeoff"),
+            text("slots.rail-reels-controls"));
+
+        addItemAndLore(rail, 1, text("slots.rail-height"), SlotsInfoRail.railSlotFor(HEIGHT_SLOT),
+            text("slots.rail-height-current", "rows", config.visibleRows()),
+            text("slots.rail-height-effect"),
+            text("slots.rail-height-controls"));
+
+        addItemAndLore(rail, 1, text("slots.rail-paytable"), SlotsInfoRail.railSlotFor(PAYTABLE_SLOT),
+            text("slots.rail-paytable-run"),
+            text("slots.rail-paytable-multiplier"),
+            text("slots.rail-paytable-return"),
+            text("slots.rail-paytable-back"));
+
+        addItemAndLore(rail, 1, text("slots.rail-spin"), SlotsInfoRail.railSlotFor(SPIN_SLOT),
+            text("slots.rail-spin-total", "amount",
+                plugin.formatWagerDisplay(currencyMode, currencyName, currentTotalBet())),
+            balanceRailLine(),
+            lastResultLoreLine(),
+            text("slots.rail-spin-controls"));
+
+        List<String> clockRail = new ArrayList<>();
+        clockRail.add(text("slots.rail-clock-speed", "speed", text(spinSpeed.labelKey())));
+        clockRail.add(autoSpinSummaryLine());
+        clockRail.addAll(autoSettingsRuleLines(autoSettings));
+        clockRail.add(text("slots.rail-clock-controls"));
+        addItemAndLore(rail, 1, text("slots.rail-clock"), SlotsInfoRail.railSlotFor(CLOCK_SLOT),
+            clockRail.toArray(new String[0]));
+
+        addItemAndLore(rail, 1, text("slots.rail-paylines"), SlotsInfoRail.railSlotFor(LINES_SLOT),
+            text("slots.rail-paylines-current", "lines", config.activeLines()),
+            text("slots.rail-paylines-cost"),
+            text("slots.rail-paylines-feedback"),
+            text("slots.rail-paylines-controls"));
+
+        addItemAndLore(rail, 1, text("slots.rail-wager"), SlotsInfoRail.railSlotFor(WAGER_SLOT),
+            text("slots.rail-wager-current", "amount",
+                plugin.formatWagerDisplay(currencyMode, currencyName, denomination)),
+            text("slots.rail-wager-total", "amount",
+                plugin.formatWagerDisplay(currencyMode, currencyName, currentTotalBet()),
+                "lines", config.activeLines()),
+            text("slots.rail-wager-controls"));
+
+        addItemAndLore(rail, 1, text("slots.rail-profiles"), SlotsInfoRail.railSlotFor(PROFILES_SLOT),
+            text("slots.rail-profiles-count", "count", profileCount,
+                "max", SlotsProfileStore.MAX_PROFILES_PER_PLAYER),
+            text("slots.rail-profiles-global"),
+            text("slots.rail-profiles-stores"),
+            profileCount > 0 ? text("slots.rail-profiles-controls") : text("slots.rail-profiles-controls-empty"));
+    }
+
+    private String balanceRailLine() {
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider == null) {
+            return text("slots.spin-lore-balance-items");
+        }
+        return text("slots.spin-lore-balance", "amount",
+            plugin.formatWagerDisplay(currencyMode, currencyName, provider.getBalance(player, internalName)));
+    }
+
+    // ---- profiles view -------------------------------------------------
+
+    /**
+     * The Profiles view owns the upper 45 slots outright: the white reel bay
+     * and every other decorative canvas item are cleared away first, so the
+     * canvas contains nothing but this player's actual saved profiles -- one
+     * inventory slot each, packed row-major from slot 0 -- over the machine's
+     * ordinary rainbow housing, which fills every position no profile
+     * occupies.
+     */
+    private void renderProfilesCanvas() {
+        clearCanvas();
+        List<SlotsProfile> saved = savedProfiles();
+        int entries = Math.min(saved.size(), SlotsProfileStore.MAX_PROFILES_PER_PLAYER);
+        // The machine's own rainbow housing fills every position no profile
+        // occupies. Left genuinely empty, the list read as a broken or
+        // half-loaded screen rather than as a short list in a full cabinet.
+        for (int slot = entries; slot < SlotsGeometry.INVENTORY_WIDTH * SlotsGeometry.CANVAS_ROWS; slot++) {
+            paintHousing(slot);
+        }
+        for (int index = 0; index < entries; index++) {
+            SlotsProfile profile = saved.get(index);
+            addItemAndLore(SlotsControlPresentation.Role.PROFILE_ENTRY.material(), 1,
+                profile.name(), index, profileEntryLore(profile));
+        }
+    }
+
+    private String[] profileEntryLore(SlotsProfile profile) {
+        List<String> lore = new ArrayList<>();
+        lore.add(text("slots.profile-entry-height", "rows", profile.height()));
+        lore.add(text("slots.profile-entry-reels", "columns", profile.reels()));
+        lore.add(text("slots.profile-entry-paylines", "lines", profile.paylines()));
+        lore.add(text("slots.profile-entry-wager", "amount",
+            plugin.formatWagerDisplay(currencyMode, currencyName, profile.wagerPerLine())));
+        lore.add(text("slots.profile-entry-speed", "speed", text(profile.spinSpeed().labelKey())));
+        lore.add(text("slots.profile-entry-auto"));
+        lore.addAll(autoSettingsRuleLines(profile.autoSettings()));
+        lore.add("");
+        lore.add(text("slots.profile-entry-load"));
+        lore.add(text("slots.profile-entry-delete"));
+        return lore.toArray(new String[0]);
+    }
+
+    // ---- auto spin settings view ---------------------------------------
+
+    /**
+     * The Auto Spin Settings menu. Every canvas slot is repainted -- the
+     * seven entries on their symmetric cross ({@link SlotsAutoSettingsLayout})
+     * and the machine's own rainbow housing everywhere else -- so no stale
+     * reel symbol can ever show through behind the settings, and the menu
+     * still reads as part of the same cabinet rather than as a grey sheet
+     * dropped over it.
+     */
+    private void renderAutoSettingsCanvas() {
+        clearCanvas();
+        for (int slot = 0; slot < SlotsGeometry.INVENTORY_WIDTH * SlotsGeometry.CANVAS_ROWS; slot++) {
+            if (SlotsAutoSettingsLayout.isBackdrop(slot)) {
+                paintHousing(slot);
+            }
+        }
+
+        renderAutoSpinClock(SlotsAutoSettingsLayout.CLOCK_SLOT);
+
+        addItemAndLore(SlotsControlPresentation.Role.AUTO_SETTINGS_SPIN_LIMIT.material(),
+            SlotsStackSize.forSpinLimit(autoSettings.spinLimit()),
+            text("slots.auto-spin-limit"), SlotsAutoSettingsLayout.SPIN_LIMIT_SLOT,
+            autoSettings.hasSpinLimit()
+                ? text("slots.auto-spin-limit-current", "spins", autoSettings.spinLimit())
+                : text("slots.auto-spin-limit-unlimited"),
+            text("slots.auto-spin-limit-hint"));
+
+        addItemAndLore(toggleMaterial(autoSettings.stopOnAnyWin(),
+                SlotsControlPresentation.Role.AUTO_SETTINGS_ANY_WIN_ON), 1,
+            text("slots.auto-any-win"), SlotsAutoSettingsLayout.STOP_ON_ANY_WIN_SLOT,
+            autoSettings.stopOnAnyWin() ? text("slots.auto-state-on") : text("slots.auto-state-off"),
+            text("slots.auto-any-win-description"),
+            text("slots.auto-any-win-hint"));
+
+        addItemAndLore(toggleMaterial(autoSettings.hasBigWinMultiplier(),
+                SlotsControlPresentation.Role.AUTO_SETTINGS_BIG_WIN_ON), 1,
+            text("slots.auto-big-win"), SlotsAutoSettingsLayout.BIG_WIN_SLOT,
+            autoSettings.hasBigWinMultiplier()
+                ? text("slots.auto-big-win-current", "multiplier",
+                    formatMultiplier(autoSettings.bigWinMultiplier()))
+                : text("slots.auto-state-off"),
+            text("slots.auto-big-win-description"),
+            text("slots.auto-big-win-hint"),
+            text("slots.auto-right-click-off"));
+
+        addItemAndLore(toggleMaterial(autoSettings.hasProfitTarget(),
+                SlotsControlPresentation.Role.AUTO_SETTINGS_PROFIT_ON), 1,
+            text("slots.auto-profit-target"), SlotsAutoSettingsLayout.PROFIT_TARGET_SLOT,
+            autoSettings.hasProfitTarget()
+                ? text("slots.auto-profit-target-current", "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, autoSettings.profitTarget()))
+                : text("slots.auto-state-off"),
+            text("slots.auto-profit-target-description"),
+            text("slots.auto-profit-target-hint"),
+            text("slots.auto-right-click-off"));
+
+        addItemAndLore(toggleMaterial(autoSettings.hasLossLimit(),
+                SlotsControlPresentation.Role.AUTO_SETTINGS_LOSS_ON), 1,
+            text("slots.auto-loss-limit"), SlotsAutoSettingsLayout.LOSS_LIMIT_SLOT,
+            autoSettings.hasLossLimit()
+                ? text("slots.auto-loss-limit-current", "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, autoSettings.lossLimit()))
+                : text("slots.auto-state-off"),
+            text("slots.auto-loss-limit-description"),
+            text("slots.auto-loss-limit-hint"),
+            text("slots.auto-right-click-off"));
+
+        List<String> resetLore = new ArrayList<>();
+        resetLore.add(text("slots.auto-settings-reset-hint"));
+        resetLore.add(text("slots.auto-settings-reset-keeps-speed"));
+        resetLore.addAll(autoSettingsResetPreviewLines());
+        addItemAndLore(SlotsControlPresentation.Role.AUTO_SETTINGS_RESET.material(), 1,
+            text("slots.auto-settings-reset"), SlotsAutoSettingsLayout.RESET_SLOT,
+            resetLore.toArray(new String[0]));
+    }
+
+    private static Material toggleMaterial(boolean on, SlotsControlPresentation.Role onRole) {
+        return on ? onRole.material() : SlotsControlPresentation.Role.AUTO_SETTINGS_OFF.material();
+    }
+
+    /**
+     * What Reset would actually do, spelled out on the Reset button itself as
+     * one {@code setting: current -> default} line per Auto Spin setting that
+     * is not already at its default -- so the consequence is readable
+     * <em>before</em> the click rather than reported after it. A setting
+     * already at its default contributes no line; when none of them differ the
+     * button says exactly that instead, and clicking it changes nothing.
+     *
+     * <p>The gameplay spin speed is deliberately absent: it is shared with
+     * manual spinning and Reset has never touched it.
+     */
+    private List<String> autoSettingsResetPreviewLines() {
+        SlotsAutoSpinSettings defaults = SlotsAutoSpinSettings.defaults();
+        List<String> lines = new ArrayList<>();
+        for (SlotsAutoSpinSettings.Field field : autoSettings.changedFieldsFrom(defaults)) {
+            lines.add(text("slots.auto-reset-change", "setting", fieldLabel(field),
+                "from", fieldDisplay(field, autoSettings), "to", fieldDisplay(field, defaults)));
+        }
+        if (lines.isEmpty()) {
+            lines.add(text("slots.auto-reset-already-default"));
+        }
+        return lines;
+    }
+
+    private String fieldLabel(SlotsAutoSpinSettings.Field field) {
+        return switch (field) {
+            case SPIN_LIMIT -> text("slots.auto-spin-limit");
+            case STOP_ON_ANY_WIN -> text("slots.auto-any-win");
+            case BIG_WIN_MULTIPLIER -> text("slots.auto-big-win");
+            case PROFIT_TARGET -> text("slots.auto-profit-target");
+            case LOSS_LIMIT -> text("slots.auto-loss-limit");
+        };
+    }
+
+    private String fieldDisplay(SlotsAutoSpinSettings.Field field, SlotsAutoSpinSettings settings) {
+        return switch (field) {
+            case SPIN_LIMIT -> spinLimitDisplay(settings);
+            case STOP_ON_ANY_WIN -> onOffDisplay(settings.stopOnAnyWin());
+            case BIG_WIN_MULTIPLIER -> multiplierDisplay(settings);
+            case PROFIT_TARGET -> amountDisplay(settings.hasProfitTarget(), settings.profitTarget());
+            case LOSS_LIMIT -> amountDisplay(settings.hasLossLimit(), settings.lossLimit());
+        };
+    }
+
+    private String spinLimitDisplay(SlotsAutoSpinSettings settings) {
+        return settings.hasSpinLimit()
+            ? String.valueOf(settings.spinLimit())
+            : text("slots.auto-summary-unlimited");
+    }
+
+    private String multiplierDisplay(SlotsAutoSpinSettings settings) {
+        return settings.hasBigWinMultiplier()
+            ? formatMultiplier(settings.bigWinMultiplier())
+            : text("slots.auto-state-off-value");
+    }
+
+    private String amountDisplay(boolean on, double amount) {
+        return on
+            ? plugin.formatWagerDisplay(currencyMode, currencyName, amount)
+            : text("slots.auto-state-off-value");
+    }
+
+    private String onOffDisplay(boolean on) {
+        return on ? text("slots.auto-state-on-value") : text("slots.auto-state-off-value");
+    }
+
+    /**
+     * Every Auto Spin stop rule that is actually switched on, one readable
+     * line each, rather than the single "some stop rules apply" summary this
+     * replaced. The same list feeds the Clock's own lore and a saved profile's
+     * description, so a player can always see exactly what a configuration
+     * will do without having to open the settings menu to find out.
+     */
+    private List<String> autoSettingsRuleLines(SlotsAutoSpinSettings settings) {
+        List<String> lines = new ArrayList<>();
+        lines.add(text("slots.auto-rule-spins", "spins", spinLimitDisplay(settings)));
+        List<SlotsAutoSpinSettings.Field> active = settings.activeStopRules();
+        for (SlotsAutoSpinSettings.Field field : active) {
+            lines.add(switch (field) {
+                case STOP_ON_ANY_WIN -> text("slots.auto-rule-any-win");
+                case BIG_WIN_MULTIPLIER -> text("slots.auto-rule-big-win", "multiplier",
+                    formatMultiplier(settings.bigWinMultiplier()));
+                case PROFIT_TARGET -> text("slots.auto-rule-profit", "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, settings.profitTarget()));
+                case LOSS_LIMIT -> text("slots.auto-rule-loss", "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, settings.lossLimit()));
+                case SPIN_LIMIT -> throw new IllegalStateException("SPIN_LIMIT is never a stop rule");
+            });
+        }
+        if (active.isEmpty()) {
+            lines.add(text("slots.auto-rule-none"));
+        }
+        return lines;
+    }
+
+    private String autoSpinSummaryLine() {
+        return text(autoSpinActive ? "slots.rail-clock-auto-active" : "slots.rail-clock-auto-stopped",
+            "spins", spinLimitDisplay(autoSettings));
+    }
+
+    private String varianceKey(SlotsVariance variance) {
+        return "slots.variance-" + variance.name().toLowerCase();
+    }
+
+    private String shapeKey(SlotsPaylineCatalog.Line line) {
+        return "slots.payline-shape-" + line.shapeKey();
+    }
+
+    /**
+     * The pregame/reset "not yet spun" state, left as {@code null} cells
+     * rather than {@link SlotsSymbol#SEEDS} -- a rolled SEEDS is a real
+     * strip stop and must never look identical to "nothing has been rolled
+     * here yet". {@link #paintReel} renders a {@code null} cell as a
+     * distinct neutral placeholder, never as an evaluated outcome.
+     */
+    private static SlotsSymbol[][] neutralGrid(int columns, int rows) {
+        return new SlotsSymbol[columns][rows];
+    }
+
+    /**
+     * The bottom control row, always in this exact left-to-right order:
+     * Exit (45), Reels (46), Height (47), Paytable (48), the central Spin
+     * lever (49), the Clock (50), Paylines (51), Wager Per Line (52) and
+     * Saved Profiles (53).
+     *
+     * <p>The four configuration controls thus read Reels, Height, Paylines,
+     * Wager Per Line across the row, each keeping its own colour: brown, pink,
+     * green, black respectively.
+     *
+     * <p>Whichever modal view is open replaces exactly one of those slots
+     * with Back to Game -- 48 in Paytable, 50 in Auto Spin Settings, 53 in
+     * Profiles -- and nothing else about the row changes, so the player's
+     * muscle memory for every other control survives every view.
+     */
+    private void renderControls() {
+        boolean locked = !controller.isReadyForSpin() || demoActive;
+        boolean blocked = controller.state() == SlotsSessionState.SETTLEMENT_FAILED;
+        boolean heightOne = config.visibleRows() == 1;
+        // Profiles is a modal editor whose bottom-row controls stay visible
+        // for orientation but must never change the machine out from under
+        // the open list. Auto Spin Settings deliberately keeps its
+        // configuration controls live -- they apply and hand the player back
+        // to the game view -- so inertness is asked per slot rather than
+        // assumed for every modal view at once.
+        boolean inert = SlotsControlLayout.isInertIn(uiView, REELS_SLOT);
+        double denomination = chipValues[denominationIndex];
+
+        addItemAndLore(SlotsControlPresentation.Role.EXIT_CONTROL.material(), 1,
+            text("slots.exit"), EXIT_SLOT, text("slots.exit-lore"));
+
+        if (!renderBackToGameIfOwned(REELS_SLOT)) {
+            addItemAndLore(SlotsControlPresentation.Role.REELS_CONTROL.material(), SlotsStackSize.forReels(config.columns()),
+                text("slots.reels"), REELS_SLOT,
+                text("slots.reels-current", "columns", config.columns()),
+                text("slots.reels-description"),
+                text("slots.reels-hint"));
+            if (locked || inert) {
+                dimSlot(REELS_SLOT);
+            }
+        }
+
+        if (!renderBackToGameIfOwned(HEIGHT_SLOT)) {
+            addItemAndLore(SlotsControlPresentation.Role.HEIGHT_CONTROL.material(), SlotsStackSize.forHeight(config.visibleRows()),
+                text("slots.height"), HEIGHT_SLOT,
+                text("slots.height-current", "rows", config.visibleRows()),
+                text("slots.height-description"),
+                text("slots.height-hint"));
+            if (locked || inert) {
+                dimSlot(HEIGHT_SLOT);
+            }
+        }
+
+        renderPaytableSlot();
+        renderSpinControl(blocked, presentationRunning(), denomination);
+        renderAutoSpinControl();
+
+        if (!renderBackToGameIfOwned(LINES_SLOT)) {
+            addItemAndLore(SlotsControlPresentation.Role.PAYLINES_CONTROL.material(), SlotsStackSize.forPaylines(config.activeLines()),
+                text("slots.paylines"), LINES_SLOT,
+                text("slots.paylines-current", "lines", config.activeLines()),
+                text("slots.paylines-description"),
+                heightOne ? text("slots.paylines-inert") : text("slots.paylines-hint"));
+            if (locked || heightOne || inert) {
+                dimSlot(LINES_SLOT);
+            }
+        }
+
+        if (!renderBackToGameIfOwned(WAGER_SLOT)) {
+            addItemAndLore(SlotsControlPresentation.Role.WAGER_CONTROL.material(), SlotsStackSize.forWager(denomination),
+                text("slots.wager-control"), WAGER_SLOT,
+                text("slots.wager-control-current", "amount",
+                    plugin.formatWagerDisplay(currencyMode, currencyName, denomination)),
+                text("slots.wager-control-description"),
+                text("slots.wager-control-hint"));
+            if (locked || inert) {
+                dimSlot(WAGER_SLOT);
+            }
+        }
+
+        renderProfilesSlot();
+    }
+
+    /**
+     * Paints Back to Game over {@code slot} if the open view owns that slot.
+     *
+     * @return whether Back to Game was painted, in which case the caller must
+     *     not paint that slot's ordinary Game View control
+     */
+    private boolean renderBackToGameIfOwned(int slot) {
+        if (uiView.backToGameSlot() != slot) {
+            return false;
+        }
+        addItemAndLore(SlotsControlPresentation.Role.BACK_TO_GAME.material(), 1,
+            text("slots.back-to-game"), slot, text("slots.back-to-game-hint"));
+        return true;
+    }
+
+    /** Whether a paid or Demo Spin presentation is currently running -- the lever's fast-forward eligibility. */
+    private boolean presentationRunning() {
+        return animationTask != null || demoTask != null;
+    }
+
+    private void renderAutoSpinControl() {
+        if (renderBackToGameIfOwned(CLOCK_SLOT)) {
+            return;
+        }
+        renderAutoSpinClock(CLOCK_SLOT);
+        if (SlotsControlLayout.isInertIn(uiView, CLOCK_SLOT)) {
+            dimSlot(CLOCK_SLOT);
+        }
+    }
+
+    /**
+     * The Clock, painted identically wherever it appears: bottom-row slot 50
+     * in every view that still owns it, and the Auto Spin Settings menu's own
+     * canvas copy at {@link SlotsAutoSettingsLayout#CLOCK_SLOT}. One renderer
+     * for both, so the two can never drift into disagreeing about what Auto
+     * Spin is currently set to do.
+     *
+     * <p>Its lore enumerates every active stop rule outright rather than
+     * summarising them away, and it glints while a batch is actually running.
+     * The status line is only meaningful on the bottom row: inside the
+     * settings menu the batch is always stopped -- {@link #handleOpenAutoSettings}
+     * stops it before the menu can open -- so printing "Stopped" there would
+     * state the only thing that could possibly be true.
+     */
+    private void renderAutoSpinClock(int slot) {
+        boolean inMenu = slot != CLOCK_SLOT;
+        String titleKey = autoSpinActive ? "slots.auto-spin-title-active" : "slots.auto-spin-title-stopped";
+        String startStopKey = autoSpinActive ? "slots.auto-spin-left-click-stop" : "slots.auto-spin-left-click-start";
+
+        List<String> lore = new ArrayList<>();
+        if (!inMenu) {
+            lore.add(text(autoSpinActive
+                ? "slots.auto-spin-status-active" : "slots.auto-spin-status-stopped"));
+        }
+        lore.add(text("slots.auto-spin-speed", "speed", text(spinSpeed.labelKey())));
+        lore.add("");
+        lore.addAll(autoSettingsRuleLines(autoSettings));
+        lore.add("");
+        lore.add(text(startStopKey));
+        lore.add(text("slots.auto-spin-right-click-speed"));
+        lore.add(text(inMenu
+            ? "slots.auto-spin-shift-left-back" : "slots.auto-spin-shift-left-settings"));
+
+        String[] loreLines = lore.toArray(new String[0]);
+        if (autoSpinActive) {
+            setGlowingItem(slot, SlotsControlPresentation.Role.AUTO_SPIN_CONTROL.material(),
+                text(titleKey), loreLines);
+            return;
+        }
+        addItemAndLore(SlotsControlPresentation.Role.AUTO_SPIN_CONTROL.material(), 1,
+            text(titleKey), slot, loreLines);
+    }
+
+    private void renderPaytableSlot() {
+        if (renderBackToGameIfOwned(PAYTABLE_SLOT)) {
+            return;
+        }
+        addItemAndLore(SlotsControlPresentation.Role.PAYTABLE_OPEN.material(), 1, text("slots.paytable"), PAYTABLE_SLOT,
+            text("slots.paytable-open-hint"));
+        if (SlotsControlLayout.isInertIn(uiView, PAYTABLE_SLOT)) {
+            dimSlot(PAYTABLE_SLOT);
+        }
+    }
+
+    /**
+     * The Ender Chest. When the player has no profiles yet its lore says only
+     * that a left-click saves one -- there is deliberately no "right-click to
+     * open" instruction for a list that does not exist. Once at least one
+     * profile is saved, the right-click instruction and the live count appear.
+     */
+    private void renderProfilesSlot() {
+        if (renderBackToGameIfOwned(PROFILES_SLOT)) {
+            return;
+        }
+        int count = profileCount();
+        List<String> lore = new ArrayList<>();
+        lore.add(text("slots.profiles-global"));
+        // Says outright that a profile is the whole machine, Auto Spin
+        // settings included -- the store has always saved all of it, but the
+        // lore used to call it only "this setup".
+        lore.add(text("slots.profiles-saves-what"));
+        if (count > 0) {
+            lore.add(text("slots.profiles-count", "count", count,
+                "max", SlotsProfileStore.MAX_PROFILES_PER_PLAYER));
+        }
+        lore.add(text("slots.profiles-left-click-save"));
+        if (count > 0) {
+            lore.add(text("slots.profiles-right-click-open"));
+        }
+        addItemAndLore(SlotsControlPresentation.Role.PROFILES_CONTROL.material(),
+            SlotsStackSize.forProfiles(count), text("slots.profiles"), PROFILES_SLOT,
+            lore.toArray(new String[0]));
+        if (SlotsControlLayout.isInertIn(uiView, PROFILES_SLOT)) {
+            dimSlot(PROFILES_SLOT);
+        }
+    }
+
+    /**
+     * The Spin lever's own name/lore is the machine's primary financial
+     * summary -- the exact conceptual order and blank-line grouping required
+     * by the redesign: a left-click instruction, the total bet and per-line
+     * breakdown, a right-click Demo instruction, the balance, and finally
+     * Last Result.
+     */
+    private void renderSpinControl(boolean blocked, boolean active, double denomination) {
+        if (blocked) {
+            // Not glowing -- only a READY real Spin glints; a blocked/retry-pending control is deliberately inert-looking.
+            addItemAndLore(SlotsControlPresentation.Role.PAYOUT_BLOCKED.material(), 1, text("slots.payout-blocked"),
+                SPIN_SLOT, text("slots.payout-blocked-retry"));
+            return;
+        }
+        if (active) {
+            addItemAndLore(SlotsControlPresentation.Role.SPIN_ACTIVE.material(), 1, text("slots.spin-active"),
+                SPIN_SLOT, text("slots.spin-active-lore"));
+            return;
+        }
+        // While a modal editor owns the canvas the lever commits nothing --
+        // the click routing refuses it -- but it keeps its ordinary financial
+        // summary rather than being replaced by a blank locked block, because
+        // the total bet, balance and last result are exactly the figures a
+        // player is reading while configuring Auto Spin. It simply reads as
+        // the reference card it has become there: never glinting, and dimmed
+        // so it does not advertise itself as ready.
+        boolean inert = SlotsControlLayout.isInertIn(uiView, SPIN_SLOT);
+
+        List<String> lore = new ArrayList<>();
+        lore.add(text(inert ? "slots.modal-view-locked" : "slots.spin-lore-left-click"));
+        lore.add("");
+        lore.add(text("slots.spin-lore-total", "amount",
+            plugin.formatWagerDisplay(currencyMode, currencyName, currentTotalBet())));
+        lore.add(text("slots.spin-lore-breakdown",
+            "wager", plugin.formatWagerDisplay(currencyMode, currencyName, denomination),
+            "lines", config.activeLines()));
+        if (!inert) {
+            lore.add(text("slots.spin-lore-right-click-demo"));
+        }
+        lore.add("");
+
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            int balance = provider.getBalance(player, internalName);
+            lore.add(text("slots.spin-lore-balance", "amount",
+                plugin.formatWagerDisplay(currencyMode, currencyName, balance)));
+        } else {
+            lore.add(text("slots.spin-lore-balance-items"));
+        }
+        lore.add("");
+        lore.add(lastResultLoreLine());
+
+        String[] loreLines = lore.toArray(new String[0]);
+        if (inert) {
+            addItemAndLore(SlotsControlPresentation.Role.SPIN_READY.material(), 1, text("slots.spin"),
+                SPIN_SLOT, loreLines);
+            dimSlot(SPIN_SLOT);
+            return;
+        }
+        setGlowingItem(SPIN_SLOT, SlotsControlPresentation.Role.SPIN_READY.material(), text("slots.spin"), loreLines);
+    }
+
+    private String lastResultLoreLine() {
+        long amount = lastWinState.displayedWin();
+        if (amount < 0) {
+            return text("slots.last-result-not-yet-spun");
+        }
+        if (amount == 0) {
+            return text("slots.last-result-no-win");
+        }
+        return text("slots.last-result-won", "amount",
+            plugin.formatWagerDisplay(currencyMode, currencyName, amount));
+    }
+
+    /**
+     * Re-renders only the Spin lever -- used by the win-meter count-up ticker
+     * so a still-animating Last Result never has to repaint the other eight
+     * controls every {@link SlotsTiming#WIN_METER_STEP_TICKS} ticks.
+     */
+    private void refreshSpinControl() {
+        boolean blocked = controller.state() == SlotsSessionState.SETTLEMENT_FAILED;
+        renderSpinControl(blocked, presentationRunning(), chipValues[denominationIndex]);
+    }
+
+    /**
+     * Counts the win meter up to the awarded amount rather than snapping to
+     * it. The credited balance is already final before this starts -- this is
+     * presentation only, and a termination mid-count loses nothing.
+     *
+     * <p>The caller must have already stopped any previous scheduler (via
+     * {@link #stopWinMeterScheduler()}) and called {@link SlotsWinMeterAnimation#settle}
+     * to obtain {@code generation} <em>before</em> invoking this method --
+     * this method itself must never cancel the very animation it is about to
+     * schedule ticks for. {@link SlotsWinMeterMath#increment} guarantees
+     * completion in at most {@link SlotsTiming#WIN_METER_MAX_TICKS} regardless
+     * of how {@code payout} divides, and every tick is guarded by
+     * {@code generation} so a stale callback from a superseded animation can
+     * never repaint over a newer result.
+     */
+    private void animateWinMeter(long payout, long generation) {
+        long steps = SlotsWinMeterMath.steps(SlotsTiming.WIN_METER_MAX_TICKS, SlotsTiming.WIN_METER_STEP_TICKS);
+        long increment = SlotsWinMeterMath.increment(payout, steps);
+        long stepTicks = spinSpeed.scaled(SlotsTiming.WIN_METER_STEP_TICKS);
+
+        BukkitRunnable runnable = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (closeFlag || player == null || !player.isOnline()) {
+                    cancel();
+                    winMeterTask = null;
+                    return;
+                }
+                long shown = lastWinState.tick(generation, increment);
+                if (shown < 0) {
+                    // Stale (superseded) or nothing animating -- never repaint
+                    // or play a tick sound off a sentinel value.
+                    cancel();
+                    winMeterTask = null;
+                    return;
+                }
+                refreshSpinControl();
+                playMeterTick(shown, payout);
+                if (!lastWinState.isCurrent(generation)) {
+                    cancel();
+                    winMeterTask = null;
+                }
+            }
+        };
+        winMeterTask = runnable.runTaskTimer(plugin, stepTicks, stepTicks);
+    }
+
+    /** Rising ticks as the meter climbs, the way a physical machine pays out. */
+    private void playMeterTick(long shown, long payout) {
+        float progress = payout <= 0 ? 1f : (float) shown / payout;
+        play("block.note_block.hat", Sound.BLOCK_NOTE_BLOCK_HAT, 0.35f, 0.9f + (progress * 0.9f));
+    }
+
+    private long currentTotalBet() {
+        long denomUnits = Math.max(0L, Math.round(chipValues[denominationIndex]));
+        try {
+            return SlotsMath.totalBetForGeometry(denomUnits, config.visibleRows(), config.activeLines());
+        } catch (ArithmeticException e) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    // ---- small render helpers -------------------------------------------
+
+    /** Item with the repo's standard "glow" treatment (harmless enchant, hidden from lore). */
+    private void setGlowingItem(int slot, Material material, String name, String... lore) {
+        ItemStack item = new ItemStack(material, 1);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(name);
+            if (lore.length > 0) {
+                List<String> loreList = new ArrayList<>();
+                for (String line : lore) {
+                    loreList.add(line.isEmpty() ? "" : ChatColor.GRAY + line);
+                }
+                meta.setLore(loreList);
+            }
+            meta.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
+            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+            item.setItemMeta(meta);
+        }
+        getInventory().setItem(slot, item);
+    }
+
+    private void dimSlot(int slot) {
+        ItemStack existing = getInventory().getItem(slot);
+        if (existing == null) {
+            return;
+        }
+        ItemMeta meta = existing.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.DARK_GRAY + ChatColor.stripColor(
+                meta.hasDisplayName() ? meta.getDisplayName() : ""));
+            existing.setItemMeta(meta);
+        }
+    }
+
+    private String formatPercent(double fraction) {
+        return String.format("%.2f%%", fraction * 100.0);
+    }
+
+    private String formatMultiplier(double multiplier) {
+        if (multiplier >= 100.0) {
+            return String.valueOf(Math.round(multiplier));
+        }
+        return String.format("%.1f", multiplier);
+    }
+
+    private String symbolKey(SlotsSymbol symbol) {
+        return "slots.symbol-" + symbol.name().toLowerCase();
+    }
+
+    // ---- click handling --------------------------------------------------
+
+    @Override
+    public void handleClick(int slot, Player clicker, InventoryClickEvent event) {
+        if (!(event.getInventory().getHolder() instanceof SlotsMachine) || !clicker.getUniqueId().equals(playerId)) {
+            return;
+        }
+        if (openingActive) {
+            // The once-per-session opening animation is still falling into
+            // place: any click ("CLICK TO SKIP" -- see #asSkippableAnimationItem
+            // and #blankFillerItem -- is shown on every animation item)
+            // immediately skips to the finished state rather than being a
+            // no-op. The listener that dispatched this click has already
+            // cancelled the underlying InventoryClickEvent (see
+            // DealerInteractListener), so this click can never also fall
+            // through to a real control action.
+            skipOpeningAnimation();
+            return;
+        }
+        ClickType clickType = event.getClick();
+        if (controller.state() == SlotsSessionState.SETTLEMENT_FAILED) {
+            if (slot == SPIN_SLOT && SlotsClickClassifier.isOrdinaryClick(clickType)) {
+                attemptSettlementRetry();
+            } else if (slot == SPIN_SLOT) {
+                // An unsupported click type on the retry control is a safe
+                // no-op, not a denial message -- it never reached an
+                // ordinary-click gate in the first place.
+                return;
+            } else {
+                denyAction(player, text("slots.payout-blocked"));
+            }
+            return;
+        }
+
+        // Every accepted click, in every view, is classified in exactly one
+        // place -- including the Clock's shift-left-click, which the
+        // ordinary-click gate would otherwise swallow, and the Back to Game
+        // substitution each modal view owns. The shared listener has already
+        // cancelled the underlying InventoryClickEvent, so nothing routed
+        // from here can move an item; this method only ever repaints.
+        SlotsControlLayout.Route route = SlotsControlLayout.route(uiView, slot, clickType);
+        int direction = route.direction();
+        switch (route.target()) {
+            case NONE -> {
+            }
+            case CANVAS -> handleCanvasClick(slot, clickType);
+            case BACK_TO_GAME -> handleBackToGame();
+            case AUTO_SETTINGS -> handleOpenAutoSettings();
+            // Profiles is modal: its other bottom controls stay visible for
+            // orientation but must never change the game out from under the
+            // open list, and the Spin lever is inert in every modal view.
+            case MODAL_LOCKED -> denyAction(player, text("slots.modal-view-locked"));
+            case EXIT -> handleExit();
+            case WAGER -> withConfigurationView(() -> handleChangeDenomination(direction));
+            case REELS -> withConfigurationView(() -> handleChangeColumns(direction));
+            case PAYTABLE -> handleOpenPaytable();
+            case SPIN -> handleSpinLeverClick(clickType);
+            case CLOCK -> handleClockClick(clickType);
+            case PAYLINES -> withConfigurationView(() -> handleChangeLines(direction));
+            case HEIGHT -> withConfigurationView(() -> handleChangeHeight(direction));
+            case PROFILES -> handleProfilesControlClick(clickType);
+        }
+    }
+
+    /**
+     * A click inside the upper 45-slot canvas.
+     *
+     * <p>The rainbow housing is one shared play/pause control for the
+     * session-level Golden Slumbers jukebox, and it behaves identically in
+     * every view -- the reel canvas, the Paytable, Auto Spin Settings and
+     * Profiles. Whichever surface is open, clicking the cabinet itself rather
+     * than something on it toggles the music, and it is the same music and the
+     * same on/off state throughout: switching views never starts, stops or
+     * restarts it. Anything that is not housing falls through to whichever
+     * view owns that slot.
+     */
+    private void handleCanvasClick(int slot, ClickType clickType) {
+        if (isHousingSlot(slot)) {
+            toggleGoldenSlumbers();
+            return;
+        }
+        switch (uiView) {
+            case AUTO_SETTINGS -> handleAutoSettingsClick(slot, clickType);
+            case PROFILES -> handleProfilesEntryClick(slot, clickType);
+            // Neither the reel grid nor the Paytable's cards are controls.
+            case GAME, PAYTABLE -> { }
+        }
+    }
+
+    /**
+     * Paints one rainbow housing tile.
+     *
+     * <p>Every housing tile in every view is the shared Golden Slumbers
+     * play/pause control, so each is named with a music symbol rather than the
+     * blank it used to carry -- otherwise the control is invisible and nobody
+     * would think to click the cabinet. The symbol doubles as the state
+     * readout: a lone quiet note when the jukebox is off, a brighter double
+     * note while it is playing.
+     */
+    private void paintHousing(int slot) {
+        addItemAndLore(SlotsRainbowHousing.materialForSlot(slot), 1,
+            text(goldenSlumbersEnabled ? "slots.music-playing" : "slots.music-paused"),
+            slot);
+    }
+
+    /**
+     * Repaints the housing tiles alone so the music symbol tracks the toggle
+     * immediately. Deliberately not {@link #repaintCanvas()}: housing can be
+     * clicked mid-spin, and a full canvas repaint would paint over the running
+     * reel animation. Housing is never a grid slot, so this can never disturb
+     * it.
+     */
+    private void refreshHousingLabels() {
+        if (closeFlag) {
+            return;
+        }
+        for (int slot = 0; slot < SlotsGeometry.INVENTORY_WIDTH * SlotsGeometry.CANVAS_ROWS; slot++) {
+            if (isHousingSlot(slot)) {
+                paintHousing(slot);
+            }
+        }
+    }
+
+    /**
+     * Whether this canvas slot is bare rainbow housing in the current view,
+     * i.e. the cabinet rather than anything mounted on it. Each view answers
+     * from its own layout, so the housing automatically follows a changed reel
+     * count, a shorter profile list or a different symbol count instead of
+     * assuming a fixed slot table.
+     */
+    private boolean isHousingSlot(int slot) {
+        return switch (uiView) {
+            case GAME ->
+                !SlotsGeometry.isGridSlot(config.columns(), config.visibleRows(), slot);
+            // Rows 0-3 are the Paytable proper; row 4 is the informational
+            // rail, which is content and must stay inert.
+            case PAYTABLE ->
+                slot < SlotsPaytableLayout.PAYTABLE_ROWS * SlotsGeometry.INVENTORY_WIDTH
+                    && !SlotsPaytableLayout.isContentSlot(
+                        slot, SlotsSymbol.payingSymbols().length);
+            case AUTO_SETTINGS -> SlotsAutoSettingsLayout.isBackdrop(slot);
+            // The profile list packs from slot 0; everything past the last
+            // saved profile is housing filling the rest of the cabinet.
+            case PROFILES -> slot >= Math.min(savedProfiles().size(),
+                SlotsProfileStore.MAX_PROFILES_PER_PLAYER);
+        };
+    }
+
+    /**
+     * Applies one of the four configuration controls (Reels, Height,
+     * Paylines, Wager Per Line) in a view that is allowed to see the result.
+     *
+     * <p>From the Game and Paytable views that is simply the current view, and
+     * this changes nothing. From Auto Spin Settings the change is real but
+     * invisible -- the settings menu owns the whole canvas -- so the player is
+     * handed back to the Game view first and the change then lands somewhere
+     * they can actually watch it happen. That is also why the switch comes
+     * first: {@link #switchView} repaints authoritatively, so applying before
+     * it would paint the new geometry and then immediately repaint over it.
+     */
+    private void withConfigurationView(Runnable change) {
+        if (uiView == SlotsUiView.AUTO_SETTINGS) {
+            switchViewSilently(SlotsUiView.GAME);
+        }
+        change.run();
+    }
+
+    /** The exit door's own close sound, matching Roulette/Mines/Coin Flip/RPS -- not the generic click every other button uses. */
+    private void handleExit() {
+        play("block.wooden_door.close", Sound.BLOCK_WOODEN_DOOR_CLOSE, 1.0f, 1.0f);
+        player.closeInventory();
+    }
+
+    // ---- view transitions --------------------------------------------
+
+    /**
+     * The single authoritative view transition. Every route into a different
+     * view goes through here, so the same cleanup always happens: Auto Spin
+     * is stopped, any payline flash is cancelled and invalidated (which also
+     * invalidates its scheduled frames), the Game canvas is restored from the
+     * last committed result when returning, and the whole inventory is
+     * repainted authoritatively for the destination.
+     *
+     * <p>The opening animation is never replayed here -- it belongs to
+     * {@link #initializeTable()} alone, which runs exactly once per genuine
+     * Slots open.
+     *
+     * @param destination the view to switch to
+     * @param pitch the click pitch to confirm the transition with, or 0 for silence
+     */
+    private void switchView(SlotsUiView destination, float pitch) {
+        switchViewSilently(destination);
+        if (pitch > 0f) {
+            playViewTransition(pitch);
+        }
+        redrawEverything();
+    }
+
+    /**
+     * The state-only half of {@link #switchView}: moves {@link #uiView},
+     * stops any running batch or line flash, and restores the play canvas
+     * when landing on {@link SlotsUiView#GAME} -- without a click sound or a
+     * repaint. For a caller whose very next step already plays its own sound
+     * and repaints (e.g. {@link #withConfigurationView}), so leaving the
+     * view mid-transition never produces a second, redundant sound and
+     * repaint on top of that step's own.
+     */
+    private void switchViewSilently(SlotsUiView destination) {
+        stopAutoSpin();
+        cancelLineFlashTask();
+        if (destination == SlotsUiView.GAME && uiView != SlotsUiView.GAME) {
+            restorePlayCanvas();
+        }
+        uiView = destination;
+    }
+
+    /** Allowed only while a real spin is not in flight and no demo is currently animating. */
+    private void handleOpenPaytable() {
+        if (!canOpenModalView()) {
+            return;
+        }
+        switchView(SlotsUiView.PAYTABLE, 1.0f);
+    }
+
+    /** One shared control (BACK_TO_GAME) for every modal view, so the sound has to be picked from whichever one is actually being left. */
+    private void handleBackToGame() {
+        SlotsUiView leaving = uiView;
+        switchViewSilently(SlotsUiView.GAME);
+        switch (leaving) {
+            case PROFILES -> playProfilesClose();
+            case AUTO_SETTINGS -> playAutoSettingsClose();
+            case PAYTABLE -> playPaytableClose();
+            default -> playViewTransition(0.9f);
+        }
+        redrawEverything();
+    }
+
+    /**
+     * The shared precondition for opening any modal view: no committed spin
+     * may be mid-presentation, and no Demo Spin may be animating.
+     */
+    private boolean canOpenModalView() {
+        if (!controller.isReadyForSpin() || demoActive) {
+            denyAction(player, text("slots.spin-locked"));
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Silently returns to Game View from any modal view -- used before a
+     * spin/demo/auto-spin action begins.
+     *
+     * <p>The whole inventory is repainted, not just the canvas: the view
+     * being left owns one bottom-row slot as Back to Game, and leaving that
+     * item in place would advertise "Back to Game" on a slot that has
+     * already gone back to its ordinary Game View control. That matters even
+     * on the paths that repaint again a moment later, because a rejected
+     * spin (insufficient funds, an unsafe wager, a dealer that cannot cover
+     * it) never reaches those repaints at all.
+     */
+    private void returnToGameViewForAction() {
+        if (uiView != SlotsUiView.GAME) {
+            uiView = SlotsUiView.GAME;
+            restorePlayCanvas();
+            redrawEverything();
+        }
+    }
+
+    /**
+     * Rebuilds {@link #reelDisplay} from the real controller's last committed
+     * outcome (which {@link SlotsSpinController} keeps until the next spin
+     * overwrites it, settlement or no), so returning to Game View restores
+     * the last compatible paid result -- never a stale Paytable item and
+     * never a leftover Demo Spin grid.
+     */
+    private void restorePlayCanvas() {
+        SlotsOutcome last = controller.currentOutcome();
+        lastGridIsDemo = false;
+        if (last != null && last.columns() == config.columns() && last.rows() == config.visibleRows()) {
+            SlotsSymbol[][] grid = new SlotsSymbol[last.columns()][last.rows()];
+            for (int col = 0; col < last.columns(); col++) {
+                for (int row = 0; row < last.rows(); row++) {
+                    grid[col][row] = last.symbolAt(row, col);
+                }
+            }
+            reelDisplay = grid;
+        } else {
+            reelDisplay = neutralGrid(config.columns(), config.visibleRows());
+        }
+    }
+
+    // ---- settings controls ---------------------------------------------
+
+    /**
+     * Every configuration control checks its precondition <em>before</em>
+     * stopping Auto Spin, never after. A rejected click is not a
+     * configuration change, so it must not silently end the player's batch --
+     * and stopping first would additionally leave the Clock advertising a
+     * batch that is no longer running until the next repaint happened to
+     * come along.
+     */
+    private void handleChangeHeight(int direction) {
+        if (!controller.isReadyForSpin() || demoActive) {
+            denyAction(player, text("slots.spin-locked"));
+            return;
+        }
+        stopAutoSpin();
+        int[] supported = SlotsGeometry.supportedRowCounts();
+        int next = supported[Math.floorMod(indexOf(supported, config.visibleRows()) + direction, supported.length)];
+        config = config.withVisibleRows(next);
+        onGeometryChanged();
+        playDialClick(direction, 0.95f);
+        redrawEverything();
+    }
+
+    /** Cycles among the supported widths in {@code direction}'s order, wrapping both ways. */
+    private void handleChangeColumns(int direction) {
+        if (!controller.isReadyForSpin() || demoActive) {
+            denyAction(player, text("slots.spin-locked"));
+            return;
+        }
+        stopAutoSpin();
+        int[] supported = SlotsGeometry.supportedColumnCounts();
+        int next = supported[Math.floorMod(indexOf(supported, config.columns()) + direction, supported.length)];
+        config = config.withColumns(next);
+        onGeometryChanged();
+        playDialClick(direction, 1.15f);
+        redrawEverything();
+    }
+
+    private void handleChangeLines(int direction) {
+        if (!controller.isReadyForSpin() || demoActive) {
+            denyAction(player, text("slots.spin-locked"));
+            return;
+        }
+        if (config.visibleRows() == 1) {
+            denyAction(player, text("slots.paylines-inert"));
+            return;
+        }
+        stopAutoSpin();
+        // Every new Paylines input synchronously supersedes any active
+        // blink -- cancelled, invalidated, and the clean canvas repainted --
+        // before this input's own feedback renders, so two different lines'
+        // colored paths can never blend together.
+        supersedeLineFlash();
+        int max = SlotsPaylineCatalog.lineCount(config.visibleRows());
+        int oldLines = config.activeLines();
+        int next = Math.floorMod((oldLines - 1) + direction, max) + 1;
+        // The 1<->max wrap changes every line's active status at once, not
+        // just one -- it must never be presented as a single-line
+        // added/removed flash.
+        boolean wrapped = (oldLines == 1 && next == max) || (oldLines == max && next == 1);
+        config = config.withActiveLines(next);
+        revalidateDenomination();
+        playDialClick(direction, 1.3f);
+        renderControls();
+        SlotsLineChangeRepaint.Action action = SlotsLineChangeRepaint.decide(toLineChangeMode(uiView), wrapped);
+        switch (action) {
+            case FLASH_SINGLE_LINE -> flashLineChange(oldLines, next);
+            case ANNOUNCE_WRAP_AND_REPAINT_CANVAS -> {
+                announceLineWrap(next);
+                cascadeLineWrap(oldLines, next);
+            }
+            case REPAINT_CANVAS -> repaintCanvas();
+        }
+    }
+
+    /**
+     * Only Game View shows the single-line blink; every non-Game view simply
+     * repaints its own canvas for the new line count. The modal Profiles and
+     * Auto Spin Settings views can never actually reach a Paylines change
+     * (the routing makes their bottom controls inert), but mapping them here
+     * rather than throwing keeps a future route from producing a flash over
+     * a menu.
+     */
+    private static SlotsLineChangeRepaint.Mode toLineChangeMode(SlotsUiView view) {
+        return view == SlotsUiView.GAME
+            ? SlotsLineChangeRepaint.Mode.GAME
+            : SlotsLineChangeRepaint.Mode.PAYTABLE;
+    }
+
+    /**
+     * Distinct feedback for the 1<->max payline wrap: a localized
+     * count-based notice rather than a flash claiming only one line
+     * changed, and never the union of every newly (in)active path.
+     */
+    private void announceLineWrap(int newLines) {
+        play("entity.experience_orb.pickup", Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.6f, 1.3f);
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case STANDARD, VERBOSE -> player.sendMessage(text("slots.paylines-wrap-notice", "lines", newLines));
+            case NONE -> {
+            }
+        }
+    }
+
+    /**
+     * The 1&lt;-&gt;max wrap's own feedback: every affected line's exact path,
+     * flashed one quick step after another per {@link SlotsLineWrapCascade},
+     * finishing on a clean canvas. Dropping to a single line walks downward
+     * and lands on line 1 lit, so the change reads as "all of those went away,
+     * this one is what is left" rather than as an unexplained repaint.
+     *
+     * <p>Shares the ordinary flash's guard, task handle and staleness checks,
+     * so a new Paylines input supersedes a running cascade exactly as it
+     * supersedes a running blink -- {@link #supersedeLineFlash()} needs no
+     * special case for it.
+     */
+    private void cascadeLineWrap(int oldLines, int newLines) {
+        repaintCanvas();
+        List<SlotsLineWrapCascade.Step> steps = SlotsLineWrapCascade.stepsFor(oldLines, newLines);
+        if (steps.isEmpty()) {
+            return;
+        }
+        List<SlotsPaylineCatalog.Line> all =
+            SlotsPaylineCatalog.forGeometry(config.columns(), config.visibleRows());
+        scheduleLineWrapStep(lineFlashGuard.currentGeneration(), steps, 0, config, uiView, all);
+    }
+
+    private void scheduleLineWrapStep(
+        long myGeneration, List<SlotsLineWrapCascade.Step> steps, int stepIndex,
+        SlotsConfig configAtFlash, SlotsUiView viewAtFlash, List<SlotsPaylineCatalog.Line> all) {
+
+        // Every line gets the same quick step; the run's very last hop waits
+        // longer, so the line the cascade lands on is readable before the
+        // clean canvas comes back.
+        long delay = stepIndex >= steps.size()
+            ? SlotsLineWrapCascade.SETTLE_TICKS
+            : SlotsLineWrapCascade.STEP_TICKS;
+        lineFlashTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            lineFlashTask = null;
+            if (lineFlashGuard.isStale(myGeneration, closeFlag, configAtFlash, config, viewAtFlash, uiView)) {
+                return;
+            }
+            if (stepIndex >= steps.size()) {
+                repaintCanvas();
+                return;
+            }
+            SlotsLineWrapCascade.Step step = steps.get(stepIndex);
+            repaintCanvas();
+            paintWrapCascadeLine(step, all);
+            playLineWrapStep(step.added(), stepIndex);
+            scheduleLineWrapStep(myGeneration, steps, stepIndex + 1, configAtFlash, viewAtFlash, all);
+        }, delay);
+    }
+
+    private void paintWrapCascadeLine(SlotsLineWrapCascade.Step step, List<SlotsPaylineCatalog.Line> all) {
+        if (step.lineNumber() < 1 || step.lineNumber() > all.size()) {
+            return;
+        }
+        SlotsPaylineCatalog.Line line = all.get(step.lineNumber() - 1);
+        int columns = config.columns();
+        int rows = config.visibleRows();
+        int[] path = line.rows();
+        Material material = SlotsLineFlashPlan.materialForChange(step.added());
+        String key = step.added() ? "slots.line-flash-added" : "slots.line-flash-removed";
+        for (int col = 0; col < columns; col++) {
+            addItemAndLore(material, 1, text(key), SlotsGeometry.gridSlot(columns, rows, path[col], col),
+                text("slots.line-flash-number", "line", step.lineNumber()),
+                text("slots.line-preview-shape", "shape", text(shapeKey(line))));
+        }
+    }
+
+    /**
+     * Blinks only the exact path of the line whose active/inactive status
+     * just flipped, alternating between the colored path and the ordinary
+     * clean canvas per {@link SlotsLineFlashPlan} -- never a single
+     * continuous hold, and never the union of every active line, which reads
+     * as meaningless once lines overlap. Always finishes on the clean
+     * canvas. The caller ({@link #handleChangeLines}, via
+     * {@link #supersedeLineFlash()}) has already cancelled and invalidated
+     * any prior flash and repainted clean before this is called. Never
+     * called in Paytable View -- see {@link SlotsLineChangeRepaint}.
+     */
+    private void flashLineChange(int oldLines, int newLines) {
+        boolean added = newLines > oldLines;
+        int changedLineNumber = added ? newLines : oldLines;
+        List<SlotsPaylineCatalog.Line> all = SlotsPaylineCatalog.forGeometry(config.columns(), config.visibleRows());
+        if (changedLineNumber < 1 || changedLineNumber > all.size()) {
+            return;
+        }
+        SlotsPaylineCatalog.Line line = all.get(changedLineNumber - 1);
+        int columns = config.columns();
+        int rows = config.visibleRows();
+        // Plain colored tiles, never glinting -- glint is reserved for a
+        // ready real Spin and actual matched winning symbols.
+        Material material = SlotsLineFlashPlan.materialForChange(added);
+        String key = added ? "slots.line-flash-added" : "slots.line-flash-removed";
+        int[] path = line.rows();
+
+        final SlotsConfig configAtFlash = config;
+        final SlotsUiView viewAtFlash = uiView;
+        final long myGeneration = lineFlashGuard.currentGeneration();
+        List<SlotsLineFlashPlan.Frame> frames = SlotsLineFlashPlan.frames();
+        // Frame 0 (always COLORED, per SlotsLineFlashPlan) paints
+        // synchronously, in this same call, immediately after the caller's
+        // clean repaint -- no scheduler latency, so the newest change's
+        // feedback is genuinely the next thing rendered.
+        paintLineFlashFrame(frames.get(0), material, key, changedLineNumber, line, path, columns, rows);
+        if (frames.size() > 1) {
+            scheduleLineFlashFrame(myGeneration, frames, 1, configAtFlash, viewAtFlash,
+                material, key, changedLineNumber, line, path, columns, rows);
+        }
+    }
+
+    private void paintLineFlashFrame(
+        SlotsLineFlashPlan.Frame frame, Material material, String key, int changedLineNumber,
+        SlotsPaylineCatalog.Line line, int[] path, int columns, int rows) {
+
+        if (frame == SlotsLineFlashPlan.Frame.COLORED) {
+            for (int col = 0; col < columns; col++) {
+                addItemAndLore(material, 1, text(key), SlotsGeometry.gridSlot(columns, rows, path[col], col),
+                    text("slots.line-flash-number", "line", changedLineNumber),
+                    text("slots.line-preview-shape", "shape", text(shapeKey(line))));
+            }
+        } else {
+            repaintCanvas();
+        }
+    }
+
+    /**
+     * Plays {@code frames.get(frameIndex)} one {@link SlotsLineFlashPlan#STEP_TICKS}
+     * step after the previous frame, then schedules the next -- each
+     * scheduled callback re-checks {@link #lineFlashGuard} via {@link SlotsLineFlashGuard#isStale},
+     * {@code closeFlag}, the config, and the {@link SlotsUiView} before
+     * painting anything, so a stale frame from a superseded flash can never
+     * repaint a closed session, a different geometry, or a different view.
+     */
+    private void scheduleLineFlashFrame(
+        long myGeneration, List<SlotsLineFlashPlan.Frame> frames, int frameIndex,
+        SlotsConfig configAtFlash, SlotsUiView viewAtFlash,
+        Material material, String key, int changedLineNumber, SlotsPaylineCatalog.Line line,
+        int[] path, int columns, int rows) {
+
+        lineFlashTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            lineFlashTask = null;
+            if (lineFlashGuard.isStale(myGeneration, closeFlag, configAtFlash, config, viewAtFlash, uiView)) {
+                return;
+            }
+            paintLineFlashFrame(frames.get(frameIndex), material, key, changedLineNumber, line, path, columns, rows);
+            int nextIndex = frameIndex + 1;
+            if (nextIndex < frames.size()) {
+                scheduleLineFlashFrame(myGeneration, frames, nextIndex, configAtFlash, viewAtFlash,
+                    material, key, changedLineNumber, line, path, columns, rows);
+            }
+        }, SlotsLineFlashPlan.STEP_TICKS);
+    }
+
+    private void handleChangeDenomination(int direction) {
+        if (!controller.isReadyForSpin() || demoActive) {
+            denyAction(player, text("slots.spin-locked"));
+            return;
+        }
+        int next = SlotsDenominationPolicy.nextAllowedIndex(
+            chipValues, denominationIndex, direction, config.visibleRows(), config.activeLines(), isItemMode(), config.paytable());
+        if (next == denominationIndex) {
+            denyAction(player, text("slots.no-safe-denomination"));
+            return;
+        }
+        stopAutoSpin();
+        denominationIndex = next;
+        playDialClick(direction, 1.05f);
+        renderControls();
+        if (uiView == SlotsUiView.PAYTABLE) {
+            // The paytable view shows a hypothetical payout at the current
+            // wager -- a wager change must repaint it immediately.
+            repaintCanvas();
+        }
+    }
+
+    /**
+     * Every geometry change resets the physical grid to a neutral state and
+     * revalidates the current wager -- but never touches {@link #lastWinState},
+     * the explicit rule that a harmless setting change must not erase the
+     * player's last real result.
+     */
+    private void onGeometryChanged() {
+        cancelLineFlashTask();
+        reelDisplay = neutralGrid(config.columns(), config.visibleRows());
+        reelScrollPosition = new int[config.columns()];
+        lastGridIsDemo = false;
+        revalidateDenomination();
+    }
+
+    /** If the current denomination is no longer safe under the new geometry, steps to the nearest safe one. */
+    private void revalidateDenomination() {
+        if (!SlotsDenominationPolicy.isAllowed(
+            chipValues[denominationIndex], config.visibleRows(), config.activeLines(), isItemMode(), config.paytable())) {
+            denominationIndex = SlotsDenominationPolicy.nextAllowedIndex(
+                chipValues, denominationIndex, 1, config.visibleRows(), config.activeLines(), isItemMode(), config.paytable());
+        }
+    }
+
+    private static int indexOf(int[] values, int target) {
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == target) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    private boolean isItemMode() {
+        CurrencyProvider provider = getCurrencyProvider();
+        return provider == null || provider.getMode() != CurrencyMode.VAULT;
+    }
+
+    // ---- spin lever: paid spin, demo spin, fast-forward -------------------
+
+    private void handleSpinLeverClick(ClickType clickType) {
+        if (presentationRunning()) {
+            if (clickType == ClickType.LEFT) {
+                fastForwardCurrentPresentation();
+            }
+            // An ordinary right-click while a presentation is running is a
+            // safe no-op -- it must never start a second Demo Spin.
+            return;
+        }
+        if (clickType == ClickType.LEFT) {
+            if (autoSpinActive) {
+                stopAutoSpin();
+            }
+            returnToGameViewForAction();
+            handleSpin(false);
+        } else {
+            returnToGameViewForAction();
+            handleDemoSpin();
+        }
+    }
+
+    /**
+     * @param autoTriggered whether this attempt was started by the Auto Spin
+     *     loop rather than a direct player click -- a rejection while
+     *     auto-triggered stops the loop (Section 8) rather than just denying
+     *     this one spin
+     */
+    private void handleSpin(boolean autoTriggered) {
+        if (!passesOverflowBankGate()) {
+            if (autoTriggered) {
+                stopAutoSpin();
+                renderControls();
+            }
+            return;
+        }
+        long denomUnits = Math.max(0L, Math.round(chipValues[denominationIndex]));
+        SlotsSpinController.SpinAttempt attempt = controller.trySpin(
+            denomUnits,
+            config.columns(),
+            config.visibleRows(),
+            config.activeLines(),
+            isItemMode(),
+            config.paytable(),
+            SlotsRandomSource.production(),
+            underwriting,
+            this::attemptDebit);
+
+        switch (attempt) {
+            case SlotsSpinController.SpinAttempt.Rejected rejected -> {
+                handleRejectedSpin(rejected.reason(), rejected.dealerDecision());
+                if (autoTriggered && SlotsAutoSpinLifecycle.stopsOn(rejected.reason())) {
+                    stopAutoSpin(SlotsAutoSpinRules.StopReason.SPIN_REJECTED);
+                    renderControls();
+                }
+            }
+            case SlotsSpinController.SpinAttempt.Accepted accepted -> {
+                controller.beginAnimating();
+                // The batch ledger only ever moves on real economic events:
+                // this wager was actually debited, so it counts, and only
+                // now. A rejected attempt never reaches here.
+                committedTotalBet = accepted.totalBetUnits();
+                if (autoSpinActive) {
+                    autoBatch.recordCommittedWager(accepted.totalBetUnits());
+                }
+                // Last Result names the last COMPLETED real spin, not the
+                // in-flight one -- it must keep showing the preceding
+                // result throughout this spin's animation (the active-state
+                // lever is what tells the player a new spin is running) and
+                // only change once this spin actually settles.
+                //
+                // A still-counting meter from the previous spin is snapped to
+                // its exact authoritative payout here, BEFORE controls are
+                // painted -- not inside startAnimation(), which runs after
+                // renderControls() below. Snapping first and rendering after
+                // is what stops the inventory from painting this spin's
+                // now-interrupted partial value and leaving it on screen
+                // throughout the new spin's reel animation, even though
+                // internal state is already correct. A rejected spin (see
+                // handleRejectedSpin) never reaches this branch, so it never
+                // interrupts a meter.
+                cancelWinMeterTask();
+                cancelLineFlashTask();
+                playLeverPull();
+                renderControls();
+                startAnimation(
+                    new SlotsCallbackGuard.SpinToken(playerId, dealerId, accepted.generation()),
+                    accepted.stops());
+            }
+        }
+    }
+
+    private void handleRejectedSpin(
+        SlotsSpinController.RejectReason reason, AdmissionDecision dealerDecision) {
+
+        String key = switch (reason) {
+            case NOT_READY -> "slots.spin-locked";
+            case INVALID_DENOMINATION -> "slots.invalid-denomination";
+            case WAGER_OVERFLOW, BET_TOO_LARGE_FOR_MODE -> "slots.bet-too-large";
+            case INSUFFICIENT_FUNDS -> "slots.insufficient-funds";
+            // The machine is short, not the player. Saying "you cannot afford
+            // this" would send them to top up a balance that is already fine.
+            // A wager over the machine's fixed tier will never be accepted, so
+            // it must not be reported as something to retry later.
+            case DEALER_CANNOT_COVER -> dealerDecision == AdmissionDecision.EXCEEDS_RISK_TIER
+                ? "slots.dealer-wager-too-large"
+                : "slots.dealer-cannot-cover";
+        };
+        denyAction(player, text(key));
+    }
+
+    // ---- demo spin (financially isolated) --------------------
+
+    /**
+     * A free practice spin. Uses the real strip/paytable/rounding machinery
+     * so the odds shown match reality, but through a source of randomness
+     * and a generation counter entirely separate from {@link #controller} --
+     * it never calls {@link WagerGate}, never debits or credits currency,
+     * never touches the dealer budget, never creates a {@link PendingPayout},
+     * and never advances the real spin lifecycle in any way. Rendered
+     * directly onto the Game canvas rather than a separate mode.
+     */
+    private void handleDemoSpin() {
+        if (demoActive || presentationRunning()) {
+            playDefaultSound(player);
+            return;
+        }
+        if (!controller.isReadyForSpin()) {
+            denyAction(player, text("slots.spin-locked"));
+            return;
+        }
+
+        stopAutoSpin();
+        cancelLineFlashTask();
+        demoActive = true;
+        demoGeneration++;
+        long myGeneration = demoGeneration;
+
+        int columns = config.columns();
+        int rows = config.visibleRows();
+        SlotsSpinGenerator.StripResult result =
+            SlotsSpinGenerator.generateFromStrips(columns, rows, demoRng, config.variance());
+        SlotsOutcome outcome = result.outcome();
+
+        long denomUnits = Math.max(0L, Math.round(chipValues[denominationIndex]));
+        long hypotheticalBet = SlotsMath.totalBetForGeometry(denomUnits, rows, config.activeLines());
+        long hypotheticalPayout =
+            SlotsMath.totalPayoutForGeometry(outcome, config.activeLines(), denomUnits, config.paytable(), demoRng);
+
+        this.demoOutcome = outcome;
+        this.demoHypotheticalBet = hypotheticalBet;
+        this.demoHypotheticalPayout = hypotheticalPayout;
+
+        playLeverPull();
+        // A real view transition -- e.g. from the Paytable view, which owns
+        // every canvas slot -- so the frame/gutters must be repainted before
+        // seedReelDisplay paints the grid cells themselves, or stale
+        // Paytable items would remain in the gutters. returnToGameViewForAction()
+        // has already run this if needed; this call is a harmless idempotent
+        // repaint of the current (already-Game) frame.
+        renderFrame();
+        renderControls();
+        startDemoAnimation(myGeneration, outcome, result.stops(), hypotheticalBet, hypotheticalPayout);
+    }
+
+    private void startDemoAnimation(
+        long myGeneration, SlotsOutcome outcome, int[] stops, long hypotheticalBet, long hypotheticalPayout) {
+
+        cancelDemoAnimationTaskOnly();
+        SlotsReelPlan plan = SlotsReelPlan.build(outcome, config.activeLines());
+        int columns = outcome.columns();
+        int rows = outcome.rows();
+        // The previous spin's losing cue outlives the controls unlocking, so a
+        // new spin must drop it -- it would otherwise sound over these reels.
+        silenceResultCue();
+        beginSpinScale(columns);
+        SlotsVariance variance = config.variance();
+        SlotsReelStrip[] strips = new SlotsReelStrip[columns];
+        for (int col = 0; col < columns; col++) {
+            strips[col] = SlotsReelStrip.forReel(variance, col);
+        }
+        List<SlotsMath.CatalogLineResult> winners = winningLines(outcome);
+        boolean[] landed = new boolean[columns];
+        // The same rational simulated-tick cadence the paid presentation
+        // uses, so a Demo Spin is visibly the same speed as the real thing.
+        SlotsReelCadence cadence = SlotsReelCadence.forSpeed(spinSpeed);
+
+        seedReelDisplay(columns, rows, true, strips, plan, stops);
+
+        BukkitRunnable runnable = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (closeFlag || demoGeneration != myGeneration) {
+                    cancel();
+                    demoTask = null;
+                    return;
+                }
+                long from = cadence.simulatedTicksElapsed();
+                long to = from + cadence.advanceOneRealTick();
+                for (long tick = from; tick < to; tick++) {
+                    for (int reel = 0; reel < columns; reel++) {
+                        if (landed[reel]) {
+                            continue;
+                        }
+                        if (plan.isStopped(reel, tick)) {
+                            landed[reel] = true;
+                            lockReelToStop(columns, rows, true, reel, strips[reel], stops[reel]);
+                            playReelStop(reel, columns);
+                            continue;
+                        }
+                        int advanceIndex = plan.advanceIndex(reel, tick);
+                        if (advanceIndex >= 0) {
+                            advanceReelAlongStrip(columns, rows, true, reel, strips[reel]);
+                            reportReelAdvance(plan, reel, columns, tick, advanceIndex);
+                        }
+                    }
+
+                    if (tick >= plan.revealStartTick()) {
+                        long sinceReveal = tick - plan.revealStartTick();
+                        if (sinceReveal == 0) {
+                            paintOutcomeGrid(outcome, true);
+                            for (SlotsMath.CatalogLineResult win : winners) {
+                                highlightLine(win, outcome, true);
+                            }
+                            playResultCue(hypotheticalPayout);
+                        }
+                        if (sinceReveal >= DEMO_FINALE_HOLD_TICKS) {
+                            cancel();
+                            demoTask = null;
+                            finishDemoSpin(myGeneration, hypotheticalBet, hypotheticalPayout);
+                            return;
+                        }
+                    }
+                }
+            }
+        };
+        demoTask = runnable.runTaskTimer(plugin, SlotsTiming.TICK_INTERVAL, SlotsTiming.TICK_INTERVAL);
+    }
+
+    private void finishDemoSpin(long myGeneration, long hypotheticalBet, long hypotheticalPayout) {
+        if (demoGeneration != myGeneration) {
+            return;
+        }
+        demoActive = false;
+        String key = hypotheticalPayout > 0 ? "slots.demo-result-win" : "slots.demo-result-loss";
+        player.sendMessage(text(key,
+            "bet", plugin.formatWagerDisplay(currencyMode, currencyName, hypotheticalBet),
+            "amount", plugin.formatWagerDisplay(currencyMode, currencyName, hypotheticalPayout)));
+        renderControls();
+    }
+
+    /** Cancels only the running demo animation task, without bumping the generation -- see {@link #cancelDemoTask}. */
+    private void cancelDemoAnimationTaskOnly() {
+        if (demoTask != null) {
+            demoTask.cancel();
+            demoTask = null;
+        }
+    }
+
+    // ---- fast-forward (Section 9) -----------------------------------
+
+    /**
+     * Fast-forwards whichever presentation is currently running (paid or
+     * Demo Spin) straight to its already-determined result: cancels the
+     * remaining reel/reveal/count-up callbacks, paints the exact committed
+     * result, and performs normal settlement exactly once for a paid spin
+     * (or the equivalent finish for a demo). Never redraws, regenerates,
+     * rerolls, or replaces the result, and never duplicates settlement.
+     */
+    private void fastForwardCurrentPresentation() {
+        if (animationTask != null) {
+            fastForwardPaidSpin();
+        } else if (demoTask != null) {
+            fastForwardDemoSpin();
+        }
+    }
+
+    private void fastForwardPaidSpin() {
+        cancelAnimationTask();
+        SlotsOutcome outcome = controller.currentOutcome();
+        if (outcome == null) {
+            return;
+        }
+        List<SlotsMath.CatalogLineResult> winners = winningLines(outcome);
+        paintOutcomeGrid(outcome, false);
+        for (SlotsMath.CatalogLineResult win : winners) {
+            highlightLine(win, outcome, false);
+        }
+        if (!winners.isEmpty()) {
+            playResultCue(controller.pendingPayoutAmount());
+        }
+        // A loss is sounded by announceSettlementResult after settlement.
+        // Playing it here as well made fast-forward emit the cue twice in the
+        // same tick; winning finales stay here because settlement does not
+        // replay those.
+        // Same generation as the in-flight spin: nothing new was committed,
+        // so a token built from the controller's current generation is valid
+        // for exactly the spin being fast-forwarded.
+        SlotsCallbackGuard.SpinToken token =
+            new SlotsCallbackGuard.SpinToken(playerId, dealerId, controller.generation());
+        settle(token);
+    }
+
+    private void fastForwardDemoSpin() {
+        long myGeneration = demoGeneration;
+        cancelDemoAnimationTaskOnly();
+        if (demoOutcome == null) {
+            demoActive = false;
+            renderControls();
+            return;
+        }
+        List<SlotsMath.CatalogLineResult> winners = winningLines(demoOutcome);
+        paintOutcomeGrid(demoOutcome, true);
+        for (SlotsMath.CatalogLineResult win : winners) {
+            highlightLine(win, demoOutcome, true);
+        }
+        playResultCue(demoHypotheticalPayout);
+        finishDemoSpin(myGeneration, demoHypotheticalBet, demoHypotheticalPayout);
+    }
+
+    // ---- auto spin ----------------------------------------------------
+
+    /**
+     * The Clock's three actions, shared by the bottom-row Clock and the Auto
+     * Spin Settings menu's own canvas copy of it, so both behave identically.
+     * Shift-left-click is routed ahead of this in {@link #handleClick},
+     * because the ordinary-click gate would otherwise swallow it.
+     */
+    private void handleClockClick(ClickType clickType) {
+        if (clickType == ClickType.LEFT) {
+            handleAutoSpinToggle();
+        } else if (clickType == ClickType.RIGHT) {
+            handleSpeedCycle();
+        }
+    }
+
+    private void handleAutoSpinToggle() {
+        if (autoSpinActive) {
+            // Must remain clickable even while other controls are locked --
+            // stopping never touches the currently running/committed spin.
+            stopAutoSpin();
+            playToggle(false);
+            renderControls();
+            return;
+        }
+        if (!controller.isReadyForSpin() || demoActive) {
+            denyAction(player, text("slots.spin-locked"));
+            return;
+        }
+        returnToGameViewForAction();
+        startAutoSpinBatch();
+    }
+
+    /**
+     * Starts one Auto Spin batch: a fresh ledger, a frozen snapshot of the
+     * settings it will run under, and the first spin down the ordinary paid
+     * path. There is deliberately no second economic spin implementation --
+     * Auto Spin only ever decides <em>whether</em> to call
+     * {@link #handleSpin(boolean)}, never how a spin works.
+     */
+    private void startAutoSpinBatch() {
+        autoBatch.reset();
+        activeBatchSettings = autoSettings;
+        autoSpinActive = true;
+        playToggle(true);
+        renderControls();
+
+        SlotsAutoSpinRules.StopReason blocked =
+            SlotsAutoSpinRules.beforeNextSpin(activeBatchSettings, autoBatch, currentTotalBet());
+        if (blocked != null) {
+            stopAutoSpin(blocked);
+            renderControls();
+            return;
+        }
+        handleSpin(true);
+    }
+
+    /** SLOW -&gt; NORMAL -&gt; FAST -&gt; SLOW. Never an Auto Spin setting: speed is owned by this control alone. */
+    private void handleSpeedCycle() {
+        spinSpeed = spinSpeed.next();
+        playSpeedSelect(spinSpeed);
+        renderControls();
+    }
+
+    /**
+     * Stops the automatic loop from starting its next wager. Never cancels
+     * or refunds a spin whose outcome is already committed -- that spin (if
+     * any) simply finishes and settles on its own schedule, exactly as it
+     * would have without Auto Spin. Idempotent and safe to call whether or
+     * not Auto Spin is currently active.
+     */
+    private void stopAutoSpin() {
+        stopAutoSpin(null);
+    }
+
+    /**
+     * @param reason the stop rule that fired, so the player is told
+     *     specifically why the batch ended; {@code null} for an ordinary
+     *     manual stop or a view change, which needs no message
+     */
+    private void stopAutoSpin(SlotsAutoSpinRules.StopReason reason) {
+        boolean wasActive = autoSpinActive;
+        autoSpinActive = false;
+        if (autoSpinTask != null) {
+            autoSpinTask.cancel();
+            autoSpinTask = null;
+        }
+        if (wasActive && reason != null && !closeFlag) {
+            player.sendMessage(text(reason.messageKey()));
+        }
+        if (!autoSpinActive) {
+            // The batch is over: its ledger must never be judged against a
+            // later batch's limits.
+            autoBatch.reset();
+        }
+    }
+
+    /** Called once a spin's settlement has just finished -- schedules the next automatic wager, or stops the loop. */
+    private void continueAutoSpinIfNeeded(SlotsSettlementResult result, long payout) {
+        if (!autoSpinActive) {
+            return;
+        }
+        // Awarded returns are what the ledger tracks: a delivered or durably
+        // queued payout is awarded under this game's settlement semantics; a
+        // FAILED settlement awards nothing and stops the batch below.
+        if (result != SlotsSettlementResult.FAILED) {
+            autoBatch.recordAward(payout);
+        }
+        SlotsAutoSpinRules.StopReason stop = SlotsAutoSpinRules.afterSettlement(
+            activeBatchSettings, autoBatch, committedTotalBet, payout, result);
+        if (stop != null) {
+            stopAutoSpin(stop);
+            renderControls();
+            return;
+        }
+        scheduleNextAutoSpin();
+    }
+
+    private void scheduleNextAutoSpin() {
+        long delay = spinSpeed.scaled(SlotsTiming.AUTO_SPIN_GAP_TICKS);
+        autoSpinTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            autoSpinTask = null;
+            if (closeFlag || !autoSpinActive) {
+                return;
+            }
+            // Re-checked immediately before committing, not only after the
+            // previous settlement: the loss limit in particular must stop the
+            // loop BEFORE it knowingly overshoots by one more wager.
+            SlotsAutoSpinRules.StopReason blocked =
+                SlotsAutoSpinRules.beforeNextSpin(activeBatchSettings, autoBatch, currentTotalBet());
+            if (blocked != null) {
+                stopAutoSpin(blocked);
+                renderControls();
+                return;
+            }
+            handleSpin(true);
+        }, delay);
+    }
+
+    // ---- auto spin settings menu ---------------------------------------
+
+    /**
+     * Shift-left-clicking the Clock. Any running Auto Spin is stopped --
+     * which only prevents the <em>next</em> wager; a spin already committed
+     * finishes and settles exactly as it would have.
+     */
+    private void handleOpenAutoSettings() {
+        // The one control that deliberately stops the batch before checking
+        // whether the menu can open: a running batch schedules its next
+        // wager as soon as the previous spin settles, so the only reliable
+        // moment the player can reach this click is while a committed spin
+        // is still playing out -- and that spin must (and does) finish and
+        // settle untouched.
+        boolean wasRunning = autoSpinActive;
+        stopAutoSpin();
+        if (!canOpenModalView()) {
+            if (wasRunning) {
+                // The Clock must never keep advertising a batch that this
+                // very click has already ended.
+                renderControls();
+            }
+            return;
+        }
+        switchViewSilently(SlotsUiView.AUTO_SETTINGS);
+        playAutoSettingsOpen();
+        redrawEverything();
+    }
+
+    /**
+     * A click on the Auto Spin Settings canvas.
+     *
+     * <p>The three numeric settings each accept both ordinary clicks: a left
+     * click opens the chat prompt to set a figure, and a right click switches
+     * the rule straight off. Turning a rule off was previously reachable only
+     * by opening the prompt and typing the word, which made the commonest edit
+     * in the menu the slowest one. A right click on an already-off rule is a
+     * deliberate no-op rather than a denial -- it is already in the state the
+     * click asks for.
+     */
+    private void handleAutoSettingsClick(int slot, ClickType clickType) {
+        SlotsAutoSettingsLayout.Entry entry = SlotsAutoSettingsLayout.entryAt(slot);
+        if (entry == null) {
+            return;
+        }
+        boolean disable = SlotsClickClassifier.cycleDirection(clickType) < 0;
+        switch (entry) {
+            case CLOCK -> handleClockClick(clickType);
+            case SPIN_LIMIT -> beginAutoSettingPrompt(SlotsChatPrompt.Type.SPIN_LIMIT);
+            case STOP_ON_ANY_WIN -> {
+                autoSettings = autoSettings.toggleStopOnAnyWin();
+                playToggle(autoSettings.stopOnAnyWin());
+                redrawEverything();
+            }
+            case BIG_WIN_MULTIPLIER -> {
+                if (disable) {
+                    disableAutoSetting(autoSettings.hasBigWinMultiplier(),
+                        () -> autoSettings = autoSettings.withBigWinMultiplier(0.0));
+                } else {
+                    beginAutoSettingPrompt(SlotsChatPrompt.Type.BIG_WIN_MULTIPLIER);
+                }
+            }
+            case PROFIT_TARGET -> {
+                if (disable) {
+                    disableAutoSetting(autoSettings.hasProfitTarget(),
+                        () -> autoSettings = autoSettings.withProfitTarget(0.0));
+                } else {
+                    beginAutoSettingPrompt(SlotsChatPrompt.Type.PROFIT_TARGET);
+                }
+            }
+            case LOSS_LIMIT -> {
+                if (disable) {
+                    disableAutoSetting(autoSettings.hasLossLimit(),
+                        () -> autoSettings = autoSettings.withLossLimit(0.0));
+                } else {
+                    beginAutoSettingPrompt(SlotsChatPrompt.Type.LOSS_LIMIT);
+                }
+            }
+            case RESET -> {
+                // Restores exactly the Auto Spin defaults -- the same set the
+                // button's own lore has been previewing as current -> default
+                // all along. The gameplay spin speed is not an Auto Spin
+                // setting and is deliberately untouched here.
+                autoSettings = SlotsAutoSpinSettings.defaults();
+                playResetClunk();
+                player.sendMessage(text("slots.auto-settings-reset-done"));
+                redrawEverything();
+            }
+        }
+    }
+
+    private void disableAutoSetting(boolean currentlyOn, Runnable disable) {
+        if (!currentlyOn) {
+            return;
+        }
+        disable.run();
+        playToggle(false);
+        redrawEverything();
+    }
+
+    // ---- saved profiles ------------------------------------------------
+
+    private SlotsProfileStore profileStore() {
+        return plugin.getSlotsProfileStore();
+    }
+
+    private List<SlotsProfile> savedProfiles() {
+        SlotsProfileStore store = profileStore();
+        return store == null ? List.of() : store.profilesFor(playerId);
+    }
+
+    private int profileCount() {
+        SlotsProfileStore store = profileStore();
+        return store == null ? 0 : store.countFor(playerId);
+    }
+
+    /** Exactly what this machine currently has selected, ready to be stored under a name. */
+    private SlotsProfile snapshotProfile(String name) {
+        return new SlotsProfile(
+            name,
+            config.visibleRows(),
+            config.columns(),
+            config.activeLines(),
+            chipValues[denominationIndex],
+            spinSpeed,
+            autoSettings);
+    }
+
+    private void handleProfilesControlClick(ClickType clickType) {
+        if (clickType == ClickType.LEFT) {
+            beginProfileSave();
+            return;
+        }
+        // Right-click opens the list -- but only when there is a list. With
+        // no profiles saved, the control advertises only the left-click save.
+        if (profileCount() <= 0) {
+            playDefaultSound(player);
+            return;
+        }
+        handleOpenProfiles();
+    }
+
+    private void handleOpenProfiles() {
+        if (!canOpenModalView()) {
+            return;
+        }
+        switchViewSilently(SlotsUiView.PROFILES);
+        playProfilesOpen();
+        redrawEverything();
+    }
+
+    private void handleProfilesEntryClick(int slot, ClickType clickType) {
+        SlotsProfileStore store = profileStore();
+        if (store == null) {
+            return;
+        }
+        SlotsProfile profile = store.profileAt(playerId, slot);
+        if (profile == null) {
+            // An empty position in the list: genuinely nothing here.
+            return;
+        }
+        if (clickType == ClickType.LEFT) {
+            loadProfile(profile);
+        } else {
+            deleteProfile(store, slot, profile);
+        }
+    }
+
+    /** Immediate deletion, no confirmation dialog; the list compacts and repaints in place. */
+    private void deleteProfile(SlotsProfileStore store, int slot, SlotsProfile profile) {
+        if (!store.deleteAt(playerId, slot)) {
+            denyAction(player, text("slots.profile-delete-failed", "name", profile.name()));
+            return;
+        }
+        playProfileDelete();
+        player.sendMessage(text("slots.profile-deleted", "name", profile.name()));
+        redrawEverything();
+    }
+
+    /**
+     * Loads a profile onto <em>this</em> machine, normalizing every saved
+     * value first: a profile carries no dealer identity, so its geometry may
+     * not be supported here and its per-line wager may not exist (or may not
+     * be safe) on this dealer's chip ladder. The wager fallback is always
+     * downward -- see {@link SlotsProfileNormalizer} -- so loading can never
+     * silently increase the player's exposure, and the player is told
+     * whenever anything had to be adjusted.
+     */
+    private void loadProfile(SlotsProfile profile) {
+        if (!canOpenModalView()) {
+            return;
+        }
+        int targetColumns = SlotsGeometry.normalizeColumnCount(profile.reels());
+        SlotsPaytable targetPaytable =
+            SlotsPaytable.forConfig(targetColumns, config.houseEdge(), config.variance());
+        SlotsProfileNormalizer.Fitted fitted = SlotsProfileNormalizer.fit(
+            profile, chipValues, denominationIndex, isItemMode(), targetPaytable);
+
+        config = config.withColumns(fitted.reels())
+            .withVisibleRows(fitted.height())
+            .withActiveLines(fitted.paylines());
+        denominationIndex = fitted.denominationIndex();
+        spinSpeed = profile.spinSpeed();
+        autoSettings = profile.autoSettings();
+        onGeometryChanged();
+
+        player.sendMessage(text("slots.profile-loaded", "name", profile.name()));
+        if (fitted.adjusted()) {
+            player.sendMessage(text("slots.profile-adjusted",
+                "rows", config.visibleRows(),
+                "columns", config.columns(),
+                "lines", config.activeLines(),
+                "amount", plugin.formatWagerDisplay(
+                    currencyMode, currencyName, chipValues[denominationIndex])));
+        }
+        // Straight back to the reels, repainted immediately -- never the
+        // opening animation, which belongs to a genuine Slots open alone.
+        switchView(SlotsUiView.GAME, 1.2f);
+    }
+
+    // ---- chat prompts --------------------------------------------------
+
+    /** One prompt type's parse-and-apply step; see {@link SlotsChatPrompt.Handler#submit}. */
+    private interface PromptParser {
+        SlotsChatPrompt.Outcome parse(SlotsChatPrompt prompt, String input);
+    }
+
+    private SlotsChatPromptService promptService() {
+        return plugin.getSlotsChatPromptService();
+    }
+
+    /** Whether {@code generation} still identifies this session's live prompt. */
+    private boolean isCurrentPrompt(long generation) {
+        return !closeFlag && promptGeneration == generation;
+    }
+
+    /**
+     * Opens one chat prompt: suspends this Slots session (the inventory is
+     * closed, but the session is deliberately <em>not</em> terminated),
+     * privately explains the rules, and hands ownership of the player's chat
+     * to the shared {@link SlotsChatPromptService}.
+     */
+    private void beginPrompt(SlotsChatPrompt.Type type, SlotsUiView returnView, PromptParser parser) {
+        SlotsChatPromptService service = promptService();
+        if (service == null) {
+            denyAction(player, text("slots.prompt-unavailable"));
+            return;
+        }
+        promptGeneration++;
+        final long myGeneration = promptGeneration;
+        // The handler is constructed with the prompt, so it reaches its own
+        // prompt (for the duplicate-name overwrite sub-state) through this
+        // holder rather than by looking it up again.
+        final SlotsChatPrompt[] self = new SlotsChatPrompt[1];
+        SlotsChatPrompt prompt = new SlotsChatPrompt(
+            playerId, type, SlotsChatPromptService.deadlineFromNow(), returnView, this, myGeneration,
+            new SlotsChatPrompt.Handler() {
+                @Override
+                public boolean isSessionValid() {
+                    return isCurrentPrompt(myGeneration)
+                        && SessionRegistry.isRegistered(playerId, SlotsMachine.this)
+                        && player != null
+                        && player.isOnline();
+                }
+
+                @Override
+                public SlotsChatPrompt.Outcome submit(String input) {
+                    if (!isCurrentPrompt(myGeneration)) {
+                        return SlotsChatPrompt.Outcome.CANCELLED;
+                    }
+                    if (SlotsPromptValues.isCancel(input)) {
+                        return SlotsChatPrompt.Outcome.CANCELLED;
+                    }
+                    return parser.parse(self[0], input);
+                }
+
+                @Override
+                public void accepted() {
+                    if (!isCurrentPrompt(myGeneration)) {
+                        return;
+                    }
+                    playPromptAccepted();
+                    resumeFromPrompt(returnView);
+                }
+
+                @Override
+                public void cancelled() {
+                    if (!isCurrentPrompt(myGeneration)) {
+                        return;
+                    }
+                    player.sendMessage(text("slots.prompt-cancelled"));
+                    playLoss();
+                    resumeFromPrompt(returnView);
+                }
+
+                @Override
+                public void timedOut() {
+                    if (!isCurrentPrompt(myGeneration)) {
+                        return;
+                    }
+                    promptTimedOut();
+                }
+
+                @Override
+                public void ended(SlotsChatPrompt.EndReason reason) {
+                    if (!isCurrentPrompt(myGeneration)) {
+                        // A newer prompt, or a torn-down session, already owns
+                        // this state -- a stale callback must change nothing.
+                        return;
+                    }
+                    promptEnded(reason);
+                }
+            });
+        self[0] = prompt;
+
+        // Set before the inventory closes, so the close is already recognized
+        // as a suspension rather than an exit.
+        promptSuspended = true;
+        stopAutoSpin();
+        cancelLineFlashTask();
+        service.begin(prompt);
+        sendPromptInstructions(prompt);
+        player.closeInventory();
+    }
+
+    private void sendPromptInstructions(SlotsChatPrompt prompt) {
+        player.sendMessage(text(prompt.instructionKey()));
+        player.sendMessage(text("slots.prompt-deadline", "seconds", SlotsChatPromptService.TIMEOUT_SECONDS));
+        player.sendMessage(text("slots.prompt-cancel-hint", "cancel", SlotsPromptValues.CANCEL));
+        player.sendMessage(text("slots.prompt-another-game-warning"));
+    }
+
+    /** Reopens the machine directly into {@code view}, with no opening animation. */
+    private void resumeFromPrompt(SlotsUiView view) {
+        promptGeneration++;
+        promptSuspended = false;
+        pendingProfileSnapshot = null;
+        if (closeFlag || player == null || !player.isOnline()) {
+            return;
+        }
+        uiView = view;
+        if (view == SlotsUiView.GAME) {
+            restorePlayCanvas();
+        }
+        redrawEverything();
+        player.openInventory(getInventory());
+    }
+
+    /** The deadline expired: the suspended session ends cleanly and is never reopened. */
+    private void promptTimedOut() {
+        promptGeneration++;
+        promptSuspended = false;
+        pendingProfileSnapshot = null;
+        if (player != null && player.isOnline()) {
+            player.sendMessage(text("slots.prompt-timed-out"));
+            playLoss();
+        }
+        terminateSuspendedSession(ExitReason.VOLUNTARY_INVENTORY_CLOSE);
+    }
+
+    private void promptEnded(SlotsChatPrompt.EndReason reason) {
+        promptGeneration++;
+        promptSuspended = false;
+        pendingProfileSnapshot = null;
+        switch (reason) {
+            case ANOTHER_GAME_OPENED -> {
+                if (player != null && player.isOnline()) {
+                    player.sendMessage(text("slots.prompt-another-game-cancelled"));
+                }
+                terminateSuspendedSession(ExitReason.VOLUNTARY_INVENTORY_CLOSE);
+            }
+            case DISCONNECTED -> terminateSuspendedSession(ExitReason.DISCONNECTED);
+            case SESSION_ENDED -> terminateSuspendedSession(ExitReason.VOLUNTARY_INVENTORY_CLOSE);
+            case TIMED_OUT -> promptTimedOut();
+            // A newer prompt for this same session took over; it now owns the
+            // suspension and will reopen the inventory itself.
+            case SUPERSEDED -> {
+            }
+        }
+    }
+
+    private void terminateSuspendedSession(ExitReason reason) {
+        if (closeFlag) {
+            return;
+        }
+        SessionRegistry.terminateSession(playerId, this, reason);
+    }
+
+    // ---- profile naming prompt -----------------------------------------
+
+    private void beginProfileSave() {
+        SlotsProfileStore store = profileStore();
+        if (store == null) {
+            denyAction(player, text("slots.prompt-unavailable"));
+            return;
+        }
+        if (store.isFullFor(playerId)) {
+            denyAction(player, text("slots.profiles-full",
+                "max", SlotsProfileStore.MAX_PROFILES_PER_PLAYER));
+            return;
+        }
+        if (!canOpenModalView()) {
+            return;
+        }
+        // Captured now, before the inventory closes, so the profile stores
+        // exactly what the player was looking at when they pressed save.
+        pendingProfileSnapshot = snapshotProfile("pending");
+        // Reopens whichever view Save was actually clicked from -- Game,
+        // Paytable, or (since Profiles survives the modal gate there) Auto
+        // Spin Settings -- rather than always dropping the player back to
+        // Game regardless of where they started.
+        beginPrompt(SlotsChatPrompt.Type.PROFILE_NAME, uiView, this::submitProfileName);
+    }
+
+    private SlotsChatPrompt.Outcome submitProfileName(SlotsChatPrompt prompt, String input) {
+        SlotsProfileStore store = profileStore();
+        if (store == null || pendingProfileSnapshot == null || prompt == null) {
+            return SlotsChatPrompt.Outcome.CANCELLED;
+        }
+
+        String awaiting = prompt.pendingOverwriteName();
+        if (awaiting != null) {
+            if (SlotsPromptValues.isOverwrite(input)) {
+                return finishProfileSave(prompt, store, awaiting, true);
+            }
+            // Anything else re-asks, without restarting the original deadline.
+            player.sendMessage(text("slots.profile-overwrite-retry",
+                "name", awaiting, "overwrite", SlotsPromptValues.OVERWRITE, "cancel", SlotsPromptValues.CANCEL));
+            return SlotsChatPrompt.Outcome.RETRY;
+        }
+
+        SlotsProfileName.Rejection rejection = SlotsProfileName.validate(input);
+        if (rejection != null) {
+            player.sendMessage(text(rejection.messageKey(),
+                "min", SlotsProfileName.MIN_LENGTH, "max", SlotsProfileName.MAX_LENGTH));
+            sendRetryHint(prompt);
+            return SlotsChatPrompt.Outcome.RETRY;
+        }
+
+        String name = SlotsProfileName.normalize(input);
+        if (store.hasProfileNamed(playerId, name)) {
+            prompt.awaitOverwriteConfirmation(name);
+            player.sendMessage(text("slots.profile-duplicate",
+                "name", name, "overwrite", SlotsPromptValues.OVERWRITE, "cancel", SlotsPromptValues.CANCEL));
+            return SlotsChatPrompt.Outcome.RETRY;
+        }
+        return finishProfileSave(prompt, store, name, false);
+    }
+
+    private SlotsChatPrompt.Outcome finishProfileSave(
+        SlotsChatPrompt prompt, SlotsProfileStore store, String name, boolean overwrite) {
+
+        SlotsProfileStore.SaveResult result =
+            store.save(playerId, pendingProfileSnapshot.renamed(name), overwrite);
+        switch (result) {
+            case SAVED -> {
+                player.sendMessage(text("slots.profile-saved", "name", name));
+                return SlotsChatPrompt.Outcome.ACCEPTED;
+            }
+            case OVERWROTE -> {
+                player.sendMessage(text("slots.profile-overwritten", "name", name));
+                return SlotsChatPrompt.Outcome.ACCEPTED;
+            }
+            case DUPLICATE -> {
+                prompt.awaitOverwriteConfirmation(name);
+                player.sendMessage(text("slots.profile-duplicate",
+                    "name", name, "overwrite", SlotsPromptValues.OVERWRITE, "cancel", SlotsPromptValues.CANCEL));
+                return SlotsChatPrompt.Outcome.RETRY;
+            }
+            case FULL -> {
+                player.sendMessage(text("slots.profiles-full",
+                    "max", SlotsProfileStore.MAX_PROFILES_PER_PLAYER));
+                return SlotsChatPrompt.Outcome.CANCELLED;
+            }
+            default -> {
+                player.sendMessage(text("slots.profile-save-failed"));
+                return SlotsChatPrompt.Outcome.CANCELLED;
+            }
+        }
+    }
+
+    // ---- auto setting prompts ------------------------------------------
+
+    private void beginAutoSettingPrompt(SlotsChatPrompt.Type type) {
+        beginPrompt(type, SlotsUiView.AUTO_SETTINGS, this::submitAutoSetting);
+    }
+
+    private SlotsChatPrompt.Outcome submitAutoSetting(SlotsChatPrompt prompt, String input) {
+        if (prompt == null) {
+            return SlotsChatPrompt.Outcome.CANCELLED;
+        }
+        if (prompt.type() == SlotsChatPrompt.Type.SPIN_LIMIT) {
+            return submitSpinLimit(prompt, input);
+        }
+        SlotsPromptValues.Amount parsed = SlotsPromptValues.parsePositiveAmount(input);
+        if (parsed.kind() == SlotsPromptValues.Kind.CANCEL) {
+            return SlotsChatPrompt.Outcome.CANCELLED;
+        }
+        if (parsed.kind() == SlotsPromptValues.Kind.INVALID) {
+            player.sendMessage(text(prompt.type() == SlotsChatPrompt.Type.BIG_WIN_MULTIPLIER
+                ? "slots.prompt-invalid-multiplier"
+                : "slots.prompt-invalid-amount"));
+            sendRetryHint(prompt);
+            return SlotsChatPrompt.Outcome.RETRY;
+        }
+        boolean off = parsed.kind() == SlotsPromptValues.Kind.OFF;
+        double value = off ? 0.0 : parsed.value();
+        switch (prompt.type()) {
+            case BIG_WIN_MULTIPLIER -> {
+                autoSettings = autoSettings.withBigWinMultiplier(value);
+                player.sendMessage(off
+                    ? text("slots.auto-big-win-off-set")
+                    : text("slots.auto-big-win-set", "multiplier", formatMultiplier(value)));
+            }
+            case PROFIT_TARGET -> {
+                autoSettings = autoSettings.withProfitTarget(value);
+                player.sendMessage(off
+                    ? text("slots.auto-profit-target-off-set")
+                    : text("slots.auto-profit-target-set", "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, value)));
+            }
+            case LOSS_LIMIT -> {
+                autoSettings = autoSettings.withLossLimit(value);
+                player.sendMessage(off
+                    ? text("slots.auto-loss-limit-off-set")
+                    : text("slots.auto-loss-limit-set", "amount",
+                        plugin.formatWagerDisplay(currencyMode, currencyName, value)));
+            }
+            default -> {
+                return SlotsChatPrompt.Outcome.CANCELLED;
+            }
+        }
+        return SlotsChatPrompt.Outcome.ACCEPTED;
+    }
+
+    private SlotsChatPrompt.Outcome submitSpinLimit(SlotsChatPrompt prompt, String input) {
+        SlotsPromptValues.SpinLimit parsed = SlotsPromptValues.parseSpinLimit(input);
+        switch (parsed.kind()) {
+            case CANCEL -> {
+                return SlotsChatPrompt.Outcome.CANCELLED;
+            }
+            case UNLIMITED -> {
+                autoSettings = autoSettings.withSpinLimit(SlotsAutoSpinSettings.UNLIMITED_SPINS);
+                player.sendMessage(text("slots.auto-spin-limit-unlimited-set"));
+                return SlotsChatPrompt.Outcome.ACCEPTED;
+            }
+            case VALUE -> {
+                autoSettings = autoSettings.withSpinLimit(parsed.value());
+                player.sendMessage(text("slots.auto-spin-limit-set", "spins", parsed.value()));
+                return SlotsChatPrompt.Outcome.ACCEPTED;
+            }
+            default -> {
+                player.sendMessage(text("slots.prompt-invalid-spin-limit",
+                    "unlimited", SlotsPromptValues.UNLIMITED));
+                sendRetryHint(prompt);
+                return SlotsChatPrompt.Outcome.RETRY;
+            }
+        }
+    }
+
+    /** Tells the player they may try again, and exactly how much of the original deadline is left. */
+    private void sendRetryHint(SlotsChatPrompt prompt) {
+        player.sendMessage(text("slots.prompt-retry",
+            "seconds", prompt.remainingSeconds(System.currentTimeMillis())));
+    }
+
+    // ---- shared overflow-bank / debit gate --------------------------------
+
+    /**
+     * The universal pre-wager overflow-bank gate.
+     *
+     * <p>Any nonzero banked balance blocks every NCCasino wager, whatever
+     * currency it is in -- banked emeralds block a diamond spin just as much
+     * as a diamond balance would. An automatic delivery attempt runs first,
+     * so a player who has since made room simply plays on without noticing
+     * the gate at all; only a balance that still cannot fit rejects the
+     * spin, before any wager is withdrawn.
+     */
+    private boolean passesOverflowBankGate() {
+        // Checked here, before trySpin, so a blocked player never reaches the
+        // debit OR the random outcome generation. attemptDebit re-checks as
+        // defence in depth; this call is what keeps the rejection clean.
+        return WagerGate.allowsWager(plugin, player);
+    }
+
+    private boolean attemptDebit(long totalBetUnits) {
+        // Universal overflow-bank gate: any banked balance, in any currency,
+        // blocks every new wager. Checked here -- the single point money
+        // actually leaves the player -- so no betting path can bypass it.
+        if (!WagerGate.allowsWager(plugin, player)) {
+            return false;
+        }
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null) {
+            return WagerTransaction.tryWithdraw(provider, player, internalName, (double) totalBetUnits);
+        }
+        return tryWithdrawRawMaterial(totalBetUnits);
+    }
+
+    private boolean tryWithdrawRawMaterial(long amountUnits) {
+        Material mat = plugin.getCurrency(internalName);
+        if (mat == null || amountUnits <= 0 || amountUnits > Integer.MAX_VALUE) {
+            return false;
+        }
+        int amount = (int) amountUnits;
+        ItemStack required = new ItemStack(mat, amount);
+        if (!player.getInventory().containsAtLeast(required, amount)) {
+            return false;
+        }
+        player.getInventory().removeItem(required);
+        return true;
+    }
+
+    // ---- animation -------------------------------------------------------
+
+    /**
+     * Traverses each reel's actual {@link SlotsReelStrip} sequence, landing
+     * exactly on the stop {@code committedStops} already fixed at debit
+     * time -- see {@link #seedReelDisplay} for how every visible transition,
+     * including the last one, is a real +1 step rather than a snap.
+     *
+     * <p>There is no cosmetic fallback: a paid spin's committed stops are
+     * fixed synchronously at debit time by {@link SlotsSpinController}, so
+     * missing or malformed stops here means the caller is broken, not that
+     * this spin should silently pretend to be a physical reel using
+     * unrelated cells. Fail fast instead.
+     *
+     * <p>Spin Speed never alters the reel-motion schedule itself
+     * ({@link SlotsReelPlan}), so every ordering, landing, and reveal
+     * guarantee stays exactly as designed. It changes only how many of those
+     * already-decided simulated ticks each real server tick plays out, via
+     * the exact rational cadence in {@link SlotsReelCadence}: 2 per real tick
+     * at FAST, 1 at NORMAL, and 2 every 3 real ticks at SLOW. A real tick
+     * that plays out zero simulated ticks is what makes SLOW expressible at
+     * all -- the earlier integer step could only ever be 1 or more, so it
+     * could only speed the presentation up.
+     */
+    private void startAnimation(SlotsCallbackGuard.SpinToken token, int[] committedStops) {
+        cancelAnimationTask();
+        SlotsOutcome outcome = controller.currentOutcome();
+        if (committedStops == null || committedStops.length != outcome.columns()) {
+            throw new IllegalStateException(
+                "Slots animation requires one committed stop per reel; got "
+                    + (committedStops == null ? "null" : committedStops.length)
+                    + " for " + outcome.columns() + " columns");
+        }
+        final SlotsReelPlan plan = SlotsReelPlan.build(outcome, config.activeLines());
+        final int columns = outcome.columns();
+        final int rows = outcome.rows();
+        silenceResultCue();
+        beginSpinScale(columns);
+        final SlotsVariance variance = config.variance();
+        final SlotsReelStrip[] strips = new SlotsReelStrip[columns];
+        for (int col = 0; col < columns; col++) {
+            strips[col] = SlotsReelStrip.forReel(variance, col);
+        }
+        final List<SlotsMath.CatalogLineResult> winners = winningLines(outcome);
+        final boolean[] landed = new boolean[columns];
+        final boolean[] anticipationAnnounced = {false};
+        final int[] revealIndex = {0};
+        // Captured once, at animation start: a speed change mid-presentation
+        // must never retime a spin that is already playing out.
+        final SlotsReelCadence cadence = SlotsReelCadence.forSpeed(spinSpeed);
+
+        seedReelDisplay(columns, rows, false, strips, plan, committedStops);
+
+        BukkitRunnable runnable = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!SlotsCallbackGuard.isValid(token, playerId, dealerId, controller.generation())) {
+                    cancel();
+                    animationTask = null;
+                    return;
+                }
+                long from = cadence.simulatedTicksElapsed();
+                long to = from + cadence.advanceOneRealTick();
+                for (long tick = from; tick < to; tick++) {
+                    for (int reel = 0; reel < columns; reel++) {
+                        if (landed[reel]) {
+                            continue;
+                        }
+                        if (plan.isStopped(reel, tick)) {
+                            landed[reel] = true;
+                            lockReelToStop(columns, rows, false, reel, strips[reel], committedStops[reel]);
+                            playReelStop(reel, columns);
+                            continue;
+                        }
+                        int advanceIndex = plan.advanceIndex(reel, tick);
+                        if (advanceIndex >= 0) {
+                            advanceReelAlongStrip(columns, rows, false, reel, strips[reel]);
+                            reportReelAdvance(plan, reel, columns, tick, advanceIndex);
+                        }
+                    }
+
+                    if (!anticipationAnnounced[0]
+                        && plan.isAnticipated()
+                        && columns >= 2
+                        && landed[columns - 2]
+                        && !landed[columns - 1]) {
+                        anticipationAnnounced[0] = true;
+                        playAnticipation();
+                    }
+
+                    if (tick >= plan.revealStartTick()) {
+                        long sinceReveal = tick - plan.revealStartTick();
+                        long perLine = SlotsTiming.LINE_REVEAL_HOLD_TICKS + SlotsTiming.LINE_REVEAL_GAP_TICKS;
+
+                        if (winners.isEmpty()) {
+                            if (sinceReveal >= SlotsTiming.LOSS_SETTLE_TICKS) {
+                                cancel();
+                                animationTask = null;
+                                settle(token);
+                                return;
+                            }
+                        } else if (revealIndex[0] < winners.size()) {
+                            if (sinceReveal >= revealIndex[0] * perLine) {
+                                SlotsMath.CatalogLineResult win = winners.get(revealIndex[0]);
+                                revealIndex[0]++;
+                                paintOutcomeGrid(outcome, false);
+                                highlightLine(win, outcome, false);
+                                playLineReveal(revealIndex[0], winners.size());
+                            }
+                        } else {
+                            long finaleStart = winners.size() * perLine;
+                            if (sinceReveal == finaleStart) {
+                                paintOutcomeGrid(outcome, false);
+                                for (SlotsMath.CatalogLineResult win : winners) {
+                                    highlightLine(win, outcome, false);
+                                }
+                                playResultCue(controller.pendingPayoutAmount());
+                            }
+                            if (sinceReveal >= finaleStart + SlotsTiming.ALL_LINES_FINALE_TICKS) {
+                                cancel();
+                                animationTask = null;
+                                settle(token);
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        animationTask = runnable.runTaskTimer(plugin, SlotsTiming.TICK_INTERVAL, SlotsTiming.TICK_INTERVAL);
+    }
+
+    private List<SlotsMath.CatalogLineResult> winningLines(SlotsOutcome outcome) {
+        List<SlotsMath.CatalogLineResult> winners = new ArrayList<>();
+        for (SlotsMath.CatalogLineResult result : SlotsMath.evaluateActiveCatalogLines(outcome, config.activeLines(), config.paytable())) {
+            if (result.winning()) {
+                winners.add(result);
+            }
+        }
+        return winners;
+    }
+
+    /**
+     * Seeds every reel's cosmetic starting position so its scheduled
+     * advances land it <em>naturally</em> on the committed stop -- never a
+     * snap. For a reel with {@code plan.advanceCount(col)} scheduled
+     * advances and committed stop {@code committedStops[col]}, starting at
+     * {@code floorMod(committedStop + advanceCount, SIZE)} means the last of
+     * those advances lands exactly on the committed stop, because every
+     * intervening advance is a real -1 step along that reel's own circular
+     * strip (see {@link SlotsReelPlan#advanceCount}). The traversal runs
+     * backward (seed ahead of the stop, then decrement) rather than forward
+     * so the visible motion is a real symbol entering the top and every
+     * existing symbol shifting one row down -- see {@link #advanceReelAlongStrip}.
+     *
+     * @param demo whether this animation is a Demo Spin -- captured once at
+     *     animation start and threaded through explicitly, rather than
+     *     re-read from a live view flag on every repaint, so a mid-animation
+     *     repaint can never disagree with which animation is actually
+     *     running. Also updates {@link #lastGridIsDemo} so the idle repaint
+     *     after this animation ends knows whether to keep showing the demo
+     *     disclaimer.
+     */
+    private void seedReelDisplay(
+        int columns, int rows, boolean demo, SlotsReelStrip[] strips, SlotsReelPlan plan, int[] committedStops) {
+
+        lastGridIsDemo = demo;
+        reelDisplay = new SlotsSymbol[columns][rows];
+        reelScrollPosition = new int[columns];
+        for (int col = 0; col < columns; col++) {
+            int seedPosition = Math.floorMod(committedStops[col] + plan.advanceCount(col), SlotsReelStrip.SIZE);
+            reelScrollPosition[col] = seedPosition;
+            paintReelWindow(columns, rows, demo, col, strips[col].window(seedPosition, rows));
+        }
+    }
+
+    /**
+     * Scrolls one reel backward by exactly one stop along its own real
+     * strip -- {@link SlotsReelStrip#window} indexes top-to-bottom from
+     * {@code selectedStop}, so decrementing the selected stop is what makes
+     * a brand-new symbol enter at the top of the window and every
+     * previously-visible symbol shift one row down toward the bottom, the
+     * reel's required downward motion.
+     */
+    private void advanceReelAlongStrip(int columns, int rows, boolean demo, int col, SlotsReelStrip strip) {
+        reelScrollPosition[col] = Math.floorMod(reelScrollPosition[col] - 1, SlotsReelStrip.SIZE);
+        paintReelWindow(columns, rows, demo, col, strip.window(reelScrollPosition[col], rows));
+    }
+
+    /**
+     * Marks the reel landed. By construction (see {@link #seedReelDisplay})
+     * the reel's natural position already equals {@code committedStop} after
+     * its last scheduled advance -- this repaints the same window rather
+     * than performing any unrelated jump, and exists as an explicit,
+     * assertable landing event rather than trusting the tick count alone.
+     */
+    private void lockReelToStop(int columns, int rows, boolean demo, int col, SlotsReelStrip strip, int committedStop) {
+        reelScrollPosition[col] = committedStop;
+        paintReelWindow(columns, rows, demo, col, strip.window(committedStop, rows));
+    }
+
+    /** Paints one reel's window using explicitly captured geometry -- see {@link #seedReelDisplay}. */
+    private void paintReelWindow(int columns, int rows, boolean demo, int col, SlotsSymbol[] window) {
+        reelDisplay[col] = window;
+        for (int row = 0; row < rows; row++) {
+            paintCell(columns, rows, demo, col, row, window[row]);
+        }
+    }
+
+    /**
+     * Paints one reel's visible cells from the machine's current live
+     * config -- used only outside animation (e.g. {@link #renderCanvas}'s
+     * idle repaint), where "the current geometry" and "what is on screen"
+     * are the same thing by definition. {@link #lastGridIsDemo} says whether
+     * the currently-displayed grid came from a Demo Spin.
+     */
+    private void paintReel(int col) {
+        int columns = config.columns();
+        int rows = config.visibleRows();
+        for (int row = 0; row < rows; row++) {
+            paintCell(columns, rows, lastGridIsDemo, col, row, reelDisplay[col][row]);
+        }
+    }
+
+    /**
+     * Paints one cell. When {@code demo} is true every cell carries an
+     * explicit "this is a demo" lore line -- required to be unmistakable
+     * everywhere, not only in the end-of-spin chat message.
+     */
+    private void paintCell(int columns, int rows, boolean demo, int col, int row, SlotsSymbol symbol) {
+        int slot = SlotsGeometry.gridSlot(columns, rows, row, col);
+        switch (SlotsCellPresentation.of(symbol, demo)) {
+            // A clean white reel bay/shutter, not a repeated textual
+            // placeholder -- blank name, no lore. The old slots.neutral-cell
+            // keys this used to leave registered have been removed with the
+            // rest of the pre-overhaul vocabulary.
+            case NEUTRAL -> addItemAndLore(SlotsControlPresentation.Role.NEUTRAL_CELL.material(), 1, " ", slot);
+            case DEMO -> addItemAndLore(symbol.material(), 1, text(symbolKey(symbol)),
+                ChatColor.WHITE, ChatColor.YELLOW, slot, text("slots.demo-cell-note"));
+            case PAID -> addItemAndLore(symbol.material(), 1, text(symbolKey(symbol)), ChatColor.WHITE, slot);
+        }
+    }
+
+    private void paintOutcomeGrid(SlotsOutcome outcome, boolean demo) {
+        int columns = outcome.columns();
+        int rows = outcome.rows();
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < columns; col++) {
+                SlotsSymbol symbol = outcome.symbolAt(row, col);
+                int slot = SlotsGeometry.gridSlot(columns, rows, row, col);
+                if (demo) {
+                    addItemAndLore(symbol.material(), 1, text(symbolKey(symbol)),
+                        ChatColor.WHITE, ChatColor.YELLOW, slot, text("slots.demo-cell-note"));
+                } else {
+                    addItemAndLore(symbol.material(), 1, text(symbolKey(symbol)), ChatColor.WHITE, slot);
+                }
+            }
+        }
+    }
+
+    /** Lights only the cells that actually matched -- the run, not the whole line. */
+    private void highlightLine(SlotsMath.CatalogLineResult win, SlotsOutcome outcome, boolean demo) {
+        int columns = outcome.columns();
+        int rows = outcome.rows();
+        int[] path = win.line().rows();
+        boolean demoLabelled = SlotsCellPresentation.of(win.symbol(), demo).isDemoLabelled();
+        for (int col = 0; col < win.runLength(); col++) {
+            if (demoLabelled) {
+                setGlowingItem(
+                    SlotsGeometry.gridSlot(columns, rows, path[col], col),
+                    win.symbol().material(),
+                    ChatColor.GOLD + text(symbolKey(win.symbol())),
+                    text("slots.win-line-lore",
+                        "run", win.runLength(),
+                        "multiplier", formatMultiplier(win.multiplier())),
+                    text("slots.demo-cell-note"));
+                continue;
+            }
+            setGlowingItem(
+                SlotsGeometry.gridSlot(columns, rows, path[col], col),
+                win.symbol().material(),
+                ChatColor.GOLD + text(symbolKey(win.symbol())),
+                text("slots.win-line-lore",
+                    "run", win.runLength(),
+                    "multiplier", formatMultiplier(win.multiplier())));
+        }
+    }
+
+    // ---- audio -----------------------------------------------------------
+
+    private void play(String key, Sound sound, float volume, float pitch) {
+        if (SoundHelper.getSoundSafely(key, player) != null) {
+            player.playSound(player.getLocation(), sound, SoundCategory.MASTER, volume, pitch);
+        }
+    }
+
+    private void playLeverPull() {
+        play("block.lever.click", Sound.BLOCK_LEVER_CLICK, 1.0f, 0.7f);
+        play("block.piston.extend", Sound.BLOCK_PISTON_EXTEND, 0.5f, 1.6f);
+    }
+
+    /**
+     * The pitch ladder: each reel stops a step higher than the one before it.
+     * This is the cheapest and most effective tension device a slot machine
+     * has -- the ear tracks the rising sequence and anticipates the last one.
+     */
+    private void playReelStop(int reel, int columns) {
+        double[] scale = activeSpinReelScale;
+        if (scale != null && reel < scale.length) {
+            float pitch = semitonePitch(REEL_STOP_SCALE_BASE_PITCH, scale[reel]);
+            play("block.note_block.bass", Sound.BLOCK_NOTE_BLOCK_BASS, 0.9f, pitch);
+            play("block.wooden_button.click_on", Sound.BLOCK_WOODEN_BUTTON_CLICK_ON, 0.5f, pitch);
+            return;
+        }
+        float progress = columns <= 1 ? 0f : (float) reel / (columns - 1);
+        float pitch = 0.8f + (progress * 0.9f);
+        play("block.note_block.bass", Sound.BLOCK_NOTE_BLOCK_BASS, 0.9f, pitch);
+        play("block.wooden_button.click_on", Sound.BLOCK_WOODEN_BUTTON_CLICK_ON, 0.5f, pitch);
+    }
+
+    /**
+     * The reel ladder's root. Quantised to an exact equal-tempered semitone --
+     * G#1, six semitones below the bass sample's F#2 reference minus an octave
+     * -- because the previous 0.55f sat 35 cents flat of any semitone. Every
+     * payout cue is written in exact semitones, so a ladder that was a third
+     * of a semitone off would clash audibly with the win it hands over to.
+     * The shift itself is inaudible on a percussive bass thud.
+     */
+    static final float REEL_STOP_SCALE_BASE_PITCH = 0.5612310f;
+
+    /**
+     * Picks this spin's starting note at random from each pattern's verified-safe range -- -1
+     * to +7 for the 3-reel major triad, -1 to +4 for the 5-reel Egyptian pentatonic, -1 to +2
+     * for the 7-reel blues-to-octave run, each precisely checked (not estimated) against the
+     * pitch floor/ceiling this base pitch leaves for every value in the range -- or null for
+     * any other reel count, which sends {@link #playReelStop} back to the plain pitch ramp.
+     */
+    /**
+     * Rolls this spin's reel ladder and the transpose every payout cue
+     * inherits from it. The ladder's first step IS the transpose, so the two
+     * can never drift apart.
+     */
+    private void beginSpinScale(int columns) {
+        activeSpinReelScale = randomReelStopScale(columns);
+        activeSpinTranspose = activeSpinReelScale == null
+            ? 0
+            : (int) Math.round(activeSpinReelScale[0]);
+    }
+
+    static double[] randomReelStopScale(int columns) {
+        if (columns == 3) {
+            int transpose = java.util.concurrent.ThreadLocalRandom.current().nextInt(-1, 8);
+            return new double[] {transpose, transpose + 4, transpose + 7};
+        }
+        if (columns == 5) {
+            int transpose = java.util.concurrent.ThreadLocalRandom.current().nextInt(-1, 5);
+            return new double[] {transpose, transpose + 2, transpose + 5, transpose + 7, transpose + 10};
+        }
+        if (columns == 7) {
+            int transpose = java.util.concurrent.ThreadLocalRandom.current().nextInt(-1, 3);
+            return new double[] {
+                transpose, transpose + 3, transpose + 5, transpose + 6,
+                transpose + 7, transpose + 10, transpose + 12
+            };
+        }
+        return null;
+    }
+
+    /**
+     * The reel's per-step motion sound, called on every scheduled advance
+     * (see {@link SlotsReelPlan#advancesAt}) -- not just the landing. Full
+     * speed reads as a quiet blur (decimated so up to 7 concurrent reels
+     * never turn into noise); the final {@link SlotsTiming#DECELERATION_STEPS}
+     * steps reuse the landing reel's own click at rising volume, so the
+     * ratchet audibly builds into {@link #playReelStop} rather than sounding
+     * like an unrelated event.
+     */
+    private void reportReelAdvance(SlotsReelPlan plan, int reel, int columns, long tick, int advanceIndex) {
+        boolean decelerating = plan.isDeceleratingAdvance(reel, tick);
+        int decelStepIndex = decelerating
+            ? advanceIndex - (plan.advanceCount(reel) - SlotsTiming.DECELERATION_STEPS)
+            : 0;
+        playWinningReelTick(advanceIndex, reel, decelerating, decelStepIndex);
+    }
+
+    /** The chosen #8 piston cadence, shared by paid and Demo Spins. */
+    private void playWinningReelTick(int phase, int reel, boolean decelerating, int decelStepIndex) {
+        if (!decelerating && Math.floorMod(phase + reel, 3) != 0) {
+            return;
+        }
+        float pitch = 1.7f + (0.035f * reel);
+        if (decelerating) {
+            double slowdownProgress = SlotsTiming.DECELERATION_STEPS <= 1
+                ? 1.0
+                : (double) decelStepIndex / (SlotsTiming.DECELERATION_STEPS - 1);
+            // Roulette-style loss of energy: widening gaps plus a perfect-
+            // fifth pitch descent from the first slow step to the last.
+            pitch = semitonePitch(pitch, -7.0 * slowdownProgress);
+        }
+        float volume = 0.21f + (decelerating ? 0.18f * decelStepIndex : 0f);
+        play("block.piston.extend", Sound.BLOCK_PISTON_EXTEND, volume, pitch);
+    }
+
+    /**
+     * The intro has nine tightly-overlapping columns, so its shared piston
+     * voice stays decimated throughout the slowdown instead of firing once
+     * for every individual column movement. Pitch and volume travel smoothly
+     * across the whole settling tail rather than sticking to the first
+     * column's final deceleration step.
+     */
+    private void playOpeningReelTick(long phase, long decelerationStartTick, long finalTick) {
+        if (Math.floorMod(phase, 3L) != 0L) {
+            return;
+        }
+        double slowdownProgress = phase <= decelerationStartTick
+            ? 0.0
+            : Math.min(1.0, (double) (phase - decelerationStartTick)
+                / Math.max(1L, finalTick - decelerationStartTick));
+        double jitter = java.util.concurrent.ThreadLocalRandom.current().nextDouble(-0.35, 0.35);
+        float pitch = semitonePitch(1.7f, (-7.0 * slowdownProgress) + jitter);
+        float volume = 0.21f + (float) (0.09 * slowdownProgress);
+        play("block.piston.extend", Sound.BLOCK_PISTON_EXTEND, volume, pitch);
+    }
+
+    private void playAnticipation() {
+        play("block.note_block.pling", Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.9f);
+        play("entity.experience_orb.pickup", Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.7f, 0.6f);
+    }
+
+    private void playLineReveal(int index, int total) {
+        float pitch = 1.0f + (0.12f * Math.min(index, 8));
+        play("block.note_block.bell", Sound.BLOCK_NOTE_BLOCK_BELL, 0.8f, pitch);
+    }
+
+    /**
+     * The single result cue for every finished spin, paid or demo. The band is
+     * decided purely by what came back against what was staked
+     * ({@link SlotsPayoutSoundTier#forReturn(long, long)}), so the same return
+     * always sounds the same way whichever route produced it.
+     *
+     * <p>The two non-winning bands are held for a beat
+     * ({@link SlotsTiming#RESULT_CUE_DELAY_TICKS}); the four profitable bands
+     * are composed VSE phrases of one escalating motif, each transposed into
+     * the key this spin's reel ladder established.
+     */
+    private void playResultCue(long payout) {
+        if (resultCueSounded) {
+            // Already sounded for this spin: a fast-forward inside the finale
+            // hold must skip the remaining animation, not replay the cue.
+            return;
+        }
+        resultCueSounded = true;
+        switch (SlotsPayoutSoundTier.forReturn(payout, currentTotalBet())) {
+            case NO_RETURN -> playDelayedLoss();
+            case PARTIAL_RETURN -> playDelayedPartialReturn();
+            case SMALL_WIN -> playPayoutSong(CasinoSongs.slotsPayoutSmall(activeSpinTranspose));
+            case MEDIUM_WIN -> playPayoutSong(CasinoSongs.slotsPayoutMedium(activeSpinTranspose));
+            case BIG_WIN -> playPayoutSong(CasinoSongs.slotsPayoutBig(activeSpinTranspose));
+            case JACKPOT -> playPayoutSong(CasinoSongs.slotsPayoutJackpot(activeSpinTranspose));
+        }
+    }
+
+    /**
+     * One finite pass of a payout cue through VSE. Every profitable tier shares
+     * this one channel and song id, so a new cue always replaces the previous
+     * one rather than stacking on top of it. The engine bypasses {@link #play},
+     * so the sound preference is checked here instead.
+     */
+    private void playPayoutSong(Song score) {
+        if (plugin.getPreferences(playerId).getSoundSetting() != Preferences.SoundSetting.ON) {
+            return;
+        }
+        mce.stopSong(PAYOUT_CHANNEL, PAYOUT_SONG_ID);
+        mce.addPlayerToChannel(PAYOUT_CHANNEL, player);
+        mce.playSong(PAYOUT_CHANNEL, score, false, PAYOUT_SONG_ID);
+    }
+
+    /**
+     * A losing spin result, held back {@link SlotsTiming#LOSS_CUE_DELAY_TICKS}
+     * so the cue does not land on top of the final reel stop -- the small gap
+     * is what makes a dead spin read as a verdict rather than another click.
+     *
+     * <p>Only the two spin-result paths use this. A cancelled or timed-out
+     * chat prompt keeps the immediate {@link #playLoss()}: those answer a
+     * direct player action and must not feel laggy.
+     */
+    private void playDelayedLoss() {
+        // Captured now, not when the task fires: the pitch must belong to the
+        // spin that just lost, even if another spin starts inside the gap.
+        final float pitch = lossPitchForThisSpin();
+        playDelayedResultCue(() -> playLossAt(pitch));
+    }
+
+    /**
+     * 0-1x: something came back, but less than the stake. It keeps the ordinary
+     * Chime rather than joining the escalating win family, but it is paced like
+     * a loss -- both are "you did not beat the stake" verdicts, so hearing one
+     * land instantly and the other after a held beat read as a bug.
+     */
+    private void playDelayedPartialReturn() {
+        playDelayedResultCue(
+            () -> play("block.note_block.chime", Sound.BLOCK_NOTE_BLOCK_CHIME, 0.9f, 1.1f));
+    }
+
+    /**
+     * Holds any non-winning verdict for {@link SlotsTiming#RESULT_CUE_DELAY_TICKS}.
+     * One task for all of them, so a second result can never stack on top of a
+     * pending one, and teardown or a new spin drops whatever is waiting.
+     */
+    private void playDelayedResultCue(Runnable cue) {
+        cancelResultCueTask();
+        resultCueTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            resultCueTask = null;
+            // The session can end, or the player leave, inside the gap.
+            if (closeFlag || player == null || !player.isOnline()) {
+                return;
+            }
+            cue.run();
+        }, SlotsTiming.RESULT_CUE_DELAY_TICKS);
+    }
+
+    /**
+     * A losing spin resolves to the note THIS spin's reel-stop ladder started
+     * on, so the verdict lands in the key the reels just spent the whole spin
+     * establishing instead of always answering in a fixed one. The ladder is
+     * randomly transposed per spin ({@link #randomReelStopScale(int)}), so a
+     * constant loss note was in the wrong key on most spins.
+     *
+     * <p>Same sample and same base pitch as the reel stops themselves, so it
+     * reads as the ladder finally falling back to its root. Every transpose in
+     * every pattern's range keeps this above the 0.5 pitch floor (the lowest,
+     * a -1 transpose, is 0.519).
+     *
+     * <p>Falls back to the payout motif's own root for reel counts that have
+     * no scale (the plain pitch ramp) and for callers with no spin behind
+     * them, which is the tonal home the win cues resolve to.
+     */
+    private float lossPitchForThisSpin() {
+        double[] scale = activeSpinReelScale;
+        if (scale != null && scale.length > 0) {
+            return semitonePitch(REEL_STOP_SCALE_BASE_PITCH, scale[0]);
+        }
+        return CasinoSongs.payoutLossBassPitch();
+    }
+
+    /**
+     * Clears the last spin's result audio at the start of a new one: a verdict
+     * still waiting out its held beat, and any composed win phrase still
+     * ringing. The jackpot cue runs 4.05 seconds and the big win 3.05, so a
+     * fast-forward-then-respin or an Auto Spin straight after a jackpot used
+     * to leave the previous result playing over the new reels -- the phrase
+     * was only ever replaced when the NEXT result sounded.
+     */
+    private void silenceResultCue() {
+        cancelResultCueTask();
+        resultCueSounded = false;
+        mce.stopSong(PAYOUT_CHANNEL, PAYOUT_SONG_ID);
+    }
+
+    /** Drops a pending verdict so it can never fire after teardown or into a newer spin. */
+    private void cancelResultCueTask() {
+        if (resultCueTask != null) {
+            resultCueTask.cancel();
+            resultCueTask = null;
+        }
+    }
+
+    /**
+     * A losing spin. Its note is the payout motif's own starting note dropped
+     * four octaves (see {@link CasinoSongs#payoutLossBassPitch()}), so wins and
+     * losses share one tonal centre instead of the old unrelated 0.6 thud that
+     * landed 16 cents sharp of A1.
+     */
+    private void playLoss() {
+        playLossAt(CasinoSongs.payoutLossBassPitch());
+    }
+
+    /** The losing cue itself, at whichever root its caller resolved to. */
+    private void playLossAt(float pitch) {
+        play("block.note_block.bass", Sound.BLOCK_NOTE_BLOCK_BASS, 0.5f, pitch);
+    }
+
+    private static float semitonePitch(float basePitch, double semitones) {
+        return (float) (basePitch * Math.pow(2.0, semitones / 12.0));
+    }
+
+    // ---- audio: menu and control identity ---------------------------------
+    //
+    // Every non-reel control used to share one Sound (UI_BUTTON_CLICK) and
+    // differ only by pitch, so a value dial, a toggle, a view change, and an
+    // irreversible reset were indistinguishable by ear. Each family below
+    // gets its own timbre instead; pitch still carries direction/magnitude
+    // within a family.
+
+    /** Opening the Paytable -- returning to Game from it uses {@link #playPaytableClose} instead. */
+    private void playViewTransition(float pitch) {
+        play("item.book.page_turn", Sound.ITEM_BOOK_PAGE_TURN, 0.6f, pitch);
+    }
+
+    /** Returning to Game from the Paytable. */
+    private void playPaytableClose() {
+        play("ui.toast.out", Sound.UI_TOAST_OUT, 0.6f, 1.0f);
+    }
+
+    /** Opening Profiles: the same Ender Chest the control itself is. */
+    private void playProfilesOpen() {
+        play("block.ender_chest.open", Sound.BLOCK_ENDER_CHEST_OPEN, 0.6f, 1.0f);
+    }
+
+    /** Returning to Game from Profiles. */
+    private void playProfilesClose() {
+        play("block.ender_chest.close", Sound.BLOCK_ENDER_CHEST_CLOSE, 0.6f, 1.0f);
+    }
+
+    /** Opening Auto Spin Settings: activating the automation, not a literal clock tick. */
+    private void playAutoSettingsOpen() {
+        play("block.beacon.activate", Sound.BLOCK_BEACON_ACTIVATE, 0.6f, 1.0f);
+    }
+
+    /** Returning to Game from Auto Spin Settings. */
+    private void playAutoSettingsClose() {
+        play("block.beacon.deactivate", Sound.BLOCK_BEACON_DEACTIVATE, 0.6f, 1.0f);
+    }
+
+    /** Cycling a numeric control (Height, Reels, Paylines, Wager). Direction picks the button's on/off half. */
+    private void playDialClick(int direction, float basePitch) {
+        float pitch = basePitch + (direction > 0 ? 0.15f : -0.15f);
+        if (direction > 0) {
+            play("block.stone_button.click_on", Sound.BLOCK_STONE_BUTTON_CLICK_ON, 0.5f, pitch);
+        } else {
+            play("block.stone_button.click_off", Sound.BLOCK_STONE_BUTTON_CLICK_OFF, 0.5f, pitch);
+        }
+    }
+
+    /** An on/off switch: Auto Spin start/stop, a rule toggled or disabled. */
+    private void playToggle(boolean on) {
+        play("block.comparator.click", Sound.BLOCK_COMPARATOR_CLICK, 0.5f, on ? 1.4f : 0.8f);
+    }
+
+    /** SLOW / NORMAL / FAST is a three-way mode select, not a +/- dial -- a short ascending motif instead. */
+    private void playSpeedSelect(SlotsSpinSpeed speed) {
+        float pitch = switch (speed) {
+            case SLOW -> 0.7f;
+            case NORMAL -> 1.0f;
+            case FAST -> 1.4f;
+        };
+        play("block.note_block.xylophone", Sound.BLOCK_NOTE_BLOCK_XYLOPHONE, 0.5f, pitch);
+    }
+
+    /** Restoring Auto Spin Settings to defaults -- a heavier, deliberate clunk, distinct from a plain toggle. */
+    private void playResetClunk() {
+        play("block.wooden_trapdoor.close", Sound.BLOCK_WOODEN_TRAPDOOR_CLOSE, 0.5f, 0.8f);
+    }
+
+    /** Deleting a saved profile: the same "this no longer exists" cue the game uses for a broken/consumed item. */
+    private void playProfileDelete() {
+        play("entity.item.break", Sound.ENTITY_ITEM_BREAK, 0.5f, 1.0f);
+    }
+
+    /** A chat-prompt value was accepted -- distinctly quieter/lower than {@link #playResultCue} so it can't read as a win. */
+    private void playPromptAccepted() {
+        play("block.note_block.chime", Sound.BLOCK_NOTE_BLOCK_CHIME, 0.5f, 1.1f);
+    }
+
+    // ---- audio: rainbow-housing jukebox ------------------------------------
+
+    private void toggleGoldenSlumbers() {
+        if (goldenSlumbersEnabled) {
+            stopGoldenSlumbers();
+            return;
+        }
+        if (closeFlag || plugin.getPreferences(playerId).getSoundSetting() != Preferences.SoundSetting.ON) {
+            return;
+        }
+        // The opening score's final chord may still be queued after the columns land.
+        mce.stopSong("SlotsIntro", "OpeningIntro");
+        mce.removePlayerFromChannel("SlotsIntro", player);
+        mce.addPlayerToChannel("SlotsMusic", player);
+        mce.playSong("SlotsMusic", CasinoSongs.goldenSlumbers(), true, "GoldenSlumbers");
+        goldenSlumbersEnabled = true;
+        refreshHousingLabels();
+    }
+
+    private void stopGoldenSlumbers() {
+        boolean wasPlaying = goldenSlumbersEnabled;
+        goldenSlumbersEnabled = false;
+        if (wasPlaying) {
+            refreshHousingLabels();
+        }
+        mce.stopSong("SlotsMusic", "GoldenSlumbers");
+        // Removing the channel itself can stop VSE's ticker permanently.
+        // Remove its listener instead; VSE retains a reusable empty channel.
+        mce.removePlayerFromChannel("SlotsMusic", player);
+    }
+
+    // ---- audio: opening animation ------------------------------------------
+
+    /** Once, when the falling-panes intro begins -- the cabinet waking up. */
+    private void playOpeningPowerOn() {
+        play("block.piston.extend", Sound.BLOCK_PISTON_EXTEND, 0.35f, 0.6f);
+    }
+
+    /**
+     * Replaces the old per-column landing click with {@link SlotsSongs#getOpeningIntro()},
+     * a verified transcription of the real intro riff whose closing note lands on the
+     * same tick the last column lands its last item -- see that method's doc for the
+     * full derivation. Respects the same sound preference {@link #play} gates on -- the
+     * VSE engine bypasses that helper, so the check is done here instead.
+     */
+    private void playOpeningIntroSong() {
+        if (plugin.getPreferences(playerId).getSoundSetting() != Preferences.SoundSetting.ON) {
+            return;
+        }
+        mce.addPlayerToChannel("SlotsIntro", player);
+        mce.playSong("SlotsIntro", SlotsSongs.getOpeningIntro(), false, "OpeningIntro");
+    }
+
+    // ---- audio: payline 1<->max wrap cascade -------------------------------
+
+    /**
+     * One step of {@link #cascadeLineWrap}: a quick, quiet tick per line,
+     * distinct from {@link #playLineReveal}'s bell so a player can never
+     * mistake "this used to be part of your spread" for "this line just won."
+     * Lines being added step upward in pitch; lines going dark step downward,
+     * so dropping to 1 line reads as a descending run-down and climbing to
+     * the max reads as an ascending build.
+     */
+    private void playLineWrapStep(boolean added, int stepIndex) {
+        float step = 0.1f * Math.min(stepIndex, 8);
+        if (added) {
+            play("block.note_block.hat", Sound.BLOCK_NOTE_BLOCK_HAT, 0.3f, 0.9f + step);
+        } else {
+            play("block.note_block.bass", Sound.BLOCK_NOTE_BLOCK_BASS, 0.25f, 1.1f - step);
+        }
+    }
+
+    // ---- settlement ------------------------------------------------------
+
+    private void settle(SlotsCallbackGuard.SpinToken token) {
+        if (!SlotsCallbackGuard.isValid(token, playerId, dealerId, controller.generation())) {
+            return;
+        }
+        if (controller.state() != SlotsSessionState.ANIMATING && controller.state() != SlotsSessionState.RESULT_COMMITTED) {
+            return;
+        }
+        long payout = controller.pendingPayoutAmount();
+        SlotsSettlementResult result = controller.settle(
+            this::creditPlayerDirect,
+            amount -> queuePayout(amount, PayoutMessages.committedResultContext("Slots")),
+            underwriting);
+        reportSettlement(result, payout);
+        continueAutoSpinIfNeeded(result, payout);
+    }
+
+    /**
+     * Retried only when the player clicks the blocked spin control. The
+     * retry consumes that click even when it succeeds, so resolving an old
+     * obligation can never also debit a new spin as a side effect of the
+     * same interaction. The retained amount is re-attempted exactly as-is,
+     * never recomputed.
+     */
+    private void attemptSettlementRetry() {
+        // The retry attempt itself must use exactly the outstanding
+        // remainder -- controller.retrySettlement() reads
+        // pendingPayoutAmount() internally for that, and this local capture
+        // is only for the announcement below (what THIS retry actually
+        // delivers/queues), never for what Last Result displays.
+        long remainder = controller.pendingPayoutAmount();
+        SlotsSettlementResult result = controller.retrySettlement(
+            this::creditPlayerDirect,
+            amount -> queuePayout(amount, PayoutMessages.committedResultContext("Slots")));
+        // Last Result must show the FULL awarded payout, not the remainder
+        // still outstanding after an earlier partial delivery --
+        // pendingPayoutAmount() was reduced to the remainder by that partial
+        // delivery, but controller.lastWinAmount() retains what the spin
+        // actually won. A retry is otherwise a delivery-only event: the
+        // spin's result already fixed this payout, and Last Result already
+        // shows it (or was snapped to it) from when the spin first settled.
+        // Re-running the count-up here would visibly drop the display back
+        // to zero and count back up to the same number -- exactly the
+        // backward-jump defect this class exists to prevent -- so a retry
+        // only ever snaps, never animates.
+        stopWinMeterScheduler();
+        lastWinState.retrySettled(controller.lastWinAmount());
+        renderControls();
+        announceSettlementResult(result, remainder);
+    }
+
+    private void reportSettlement(SlotsSettlementResult result, long payout) {
+        // Stop any previous scheduler first (task only -- must not touch the
+        // presentation state), so the settlement below starts the new
+        // animation from a clean slate rather than being immediately
+        // cancelled by its own setup.
+        stopWinMeterScheduler();
+        long generation = lastWinState.settle(payout);
+        // Other controls (Spin unlocking, Height/Reels/etc.) must update
+        // immediately regardless of the win amount; the meter animation
+        // below only concerns the Spin lever's own repaint from here on.
+        renderControls();
+        if (payout > 0) {
+            animateWinMeter(payout, generation);
+        }
+        announceSettlementResult(result, payout);
+    }
+
+    private void announceSettlementResult(SlotsSettlementResult result, long payout) {
+        switch (result) {
+            case DELIVERED -> {
+                if (payout > 0) {
+                    long bet = Math.max(1L, currentTotalBet());
+                    // Reported against the stake so a payout smaller than the
+                    // total bet reads honestly as a partial return, not a win.
+                    String key = payout >= bet ? "slots.win" : "slots.partial-return";
+                    player.sendMessage(text(key,
+                        "amount", plugin.formatWagerDisplay(currencyMode, currencyName, payout),
+                        "bet", plugin.formatWagerDisplay(currencyMode, currencyName, bet)));
+                } else {
+                    player.sendMessage(text("slots.loss"));
+                    playDelayedLoss();
+                }
+            }
+            case QUEUED -> player.sendMessage(text("slots.payout-pending"));
+            case FAILED -> {
+                plugin.getLogger().severe("[NCCasino] Slots payout could not be delivered or durably queued -- player="
+                    + playerId + ", dealer=" + internalName + ", game=Slots, amount=" + payout
+                    + ", currencyMode=" + currencyMode + ". Retained as SETTLEMENT_FAILED for retry; requires manual reconciliation if this persists.");
+                player.sendMessage(text("slots.payout-blocked"));
+            }
+        }
+    }
+
+    /**
+     * Live delivery of a committed payout.
+     *
+     * <p>Vault balances are numeric and deposit exactly. Item currencies go
+     * through {@link OverflowBankService}, which reserves any overflow in the
+     * bank before moving a single item, then fills the inventory, applies the
+     * player's Bank/Drop preference and caps physical drops -- so an item win
+     * larger than the inventory is a completed payout rather than a failed
+     * one.
+     *
+     * @return how much of {@code amount} is STILL owed. A partial result
+     *     matters: the controller retains exactly this remainder, so the
+     *     portion already delivered is never paid a second time.
+     */
+    private long creditPlayerDirect(long amount) {
+        if (amount <= 0) {
+            return 0L;
+        }
+        if (player == null || !player.isOnline()) {
+            return amount;
+        }
+        CurrencyProvider provider = getCurrencyProvider();
+        if (provider != null
+            && provider.getMode() == CurrencyMode.VAULT
+            && provider instanceof VaultCurrencyProvider vaultProvider) {
+            return vaultProvider.deposit(player, internalName, MoneyHelper.bd(amount)) ? 0L : amount;
+        }
+
+        OverflowBankService bank = plugin.getOverflowBankService();
+        Material mat = plugin.getCurrency(internalName);
+        if (bank == null || mat == null) {
+            return amount;
+        }
+
+        ItemDeliveryOutcome outcome = bank.deliver(
+            player, new BankedCurrency(currencyMode, mat.name(), currencyName), amount);
+        if (outcome.hasBanked()) {
+            player.sendMessage(text("slots.payout-banked", "amount", outcome.banked()));
+        }
+        return outcome.unsettled();
+    }
+
+    /** Attempts only durable persistence; live delivery is owned exclusively by the controller. */
+    private boolean queuePayout(long amount, String context) {
+        Material mat = plugin.getCurrency(internalName);
+        PendingPayout payout = PendingPayout.create(
+            playerId,
+            "Slots",
+            internalName,
+            currencyMode,
+            mat != null ? mat.name() : null,
+            currencyName,
+            amount,
+            context
+        );
+        return plugin.getPendingPayoutStore().addPendingPayout(payout);
+    }
+
+    // ---- lifecycle ---------------------------------------------------
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (event.getInventory().getHolder() != this || !event.getPlayer().getUniqueId().equals(playerId)) {
+            return;
+        }
+        if (promptSuspended) {
+            // This machine closed its own inventory to collect chat input.
+            // The session is suspended, not exited: it is reopened on a
+            // successful answer or a cancel, and only ever terminated by the
+            // prompt's own timeout/another-game/disconnect paths.
+            return;
+        }
+
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (promptSuspended || !SessionRegistry.isRegistered(playerId, this)) {
+                return;
+            }
+            if (!player.isOnline()) {
+                ExitReason reason = SessionRegistry.consumeQuitReason(playerId);
+                SessionRegistry.terminatePlayerSession(playerId, reason);
+                return;
+            }
+            SessionRegistry.terminateSession(playerId, this, ExitReason.VOLUNTARY_INVENTORY_CLOSE);
+        });
+    }
+
+    /**
+     * Authoritative disconnect/kick/shutdown resolution. Debit, outcome
+     * generation, and payout computation are all synchronous within
+     * {@link #handleSpin(boolean)} -- whatever this table's state shows at the
+     * moment of termination already reflects the true, finished outcome of
+     * the last accepted spin.
+     */
+    @Override
+    public void onSessionTerminated(UUID terminatedPlayerId, ExitReason reason) {
+        if (closeFlag) {
+            return;
+        }
+        closeFlag = true;
+        promptSuspended = false;
+        pendingProfileSnapshot = null;
+        stopGoldenSlumbers();
+        mce.removePlayerFromAllChannels(player);
+        mce.shutdown();
+        // Release any chat prompt this machine still owns -- a disconnect,
+        // a dealer removal, or a plugin shutdown must never leave the shared
+        // service holding a prompt for a session that no longer exists. Scoped
+        // to this machine, so it can never cancel a prompt a newer session for
+        // the same player has already taken over.
+        SlotsChatPromptService prompts = promptService();
+        if (prompts != null) {
+            prompts.endForSession(playerId, this, SlotsChatPrompt.EndReason.SESSION_ENDED);
+        }
+
+        GameTerminationPolicy.SlotsPhase phase = switch (controller.state()) {
+            case IDLE, RESOLVED -> GameTerminationPolicy.SlotsPhase.PREGAME;
+            case TERMINATED -> GameTerminationPolicy.SlotsPhase.RESOLVED;
+            // Covers DEBIT_ACCEPTED, RESULT_COMMITTED, ANIMATING, SETTLING,
+            // and SETTLEMENT_FAILED alike -- in every one of those a
+            // positive committed payout may still be owed, so termination
+            // always (re-)queues it durably, including a fresh attempt for
+            // an amount already stuck in SETTLEMENT_FAILED.
+            default -> GameTerminationPolicy.SlotsPhase.RESULT_COMMITTED;
+        };
+        TerminationAction action = GameTerminationPolicy.slots(reason, phase);
+
+        if (action == TerminationAction.QUEUE_KNOWN_PAYOUT) {
+            String context = reason == ExitReason.PLUGIN_DISABLE
+                ? PayoutMessages.committedResultContext("Slots")
+                : PayoutMessages.disconnectedMidGameContext("Slots");
+            // The result stands and the payout is preserved, so the dealer's
+            // books close here too, for the real amount. Idempotent: if the
+            // round had already settled normally, there is no open
+            // commitment left to settle.
+            controller.settleBudgetOnTermination(underwriting, true);
+            queuePayoutDurableOnly(controller.pendingPayoutAmount(), context);
+        } else {
+            // Nothing is owed to the player -- a pregame exit, an
+            // already-resolved round, or a kick that forfeits even a
+            // pending win outright (see FORFEIT below). Release any open
+            // promise with nothing paid, so the dealer is never debited for
+            // a win that will never actually be delivered.
+            controller.settleBudgetOnTermination(underwriting, false);
+        }
+        // FORFEIT (kicked): the debited stake stays with the house, nothing to give back.
+        // NO_ACTION: nothing was owed (pregame) or it was already resolved through normal play.
+
+        cancelScheduledTasks();
+        controller.terminate();
+        slotsInventory.removeTable(terminatedPlayerId);
+        HandlerList.unregisterAll(this);
+    }
+
+    /**
+     * Never attempts a live credit here -- unlike {@link #settle}, it is
+     * not reliably knowable whether the {@link Player} object is still
+     * safely usable at the exact moment a disconnect/shutdown termination
+     * runs, so this always durably queues first and only falls back to a
+     * best-effort direct credit if the durable write itself fails.
+     */
+    private void queuePayoutDurableOnly(long amount, String context) {
+        Material mat = plugin.getCurrency(internalName);
+        PendingPayout payout = PendingPayout.create(
+            playerId,
+            "Slots",
+            internalName,
+            currencyMode,
+            mat != null ? mat.name() : null,
+            currencyName,
+            amount,
+            context
+        );
+        boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
+        if (!persisted) {
+            plugin.getLogger().severe("[NCCasino] Slots pending payout failed to persist for " + playerId
+                + " at dealer " + internalName + " (amount=" + amount
+                + "); attempting a live fallback only if the player is still safely online.");
+            boolean fallbackDelivered = amount <= 0
+                || (player != null && player.isOnline() && creditPlayerDirect(amount) <= 0);
+            if (!fallbackDelivered) {
+                plugin.getLogger().severe("[NCCasino] Slots termination payout requires manual reconciliation -- player="
+                    + playerId + ", dealer=" + internalName + ", game=Slots, amount=" + amount
+                    + ", currencyMode=" + currencyMode + ", context=" + context
+                    + ". It could not be delivered live or durably queued and the client is terminating.");
+            }
+        }
+    }
+
+    /**
+     * Binds the pure spin controller to this dealer's shared budget.
+     *
+     * <p>Every method short-circuits for an UNLIMITED dealer, which is every
+     * dealer until an administrator opts one in -- so an ordinary server runs
+     * exactly the code it ran before Phase 2.
+     */
+    private final class DealerBudgetUnderwriting implements SlotsUnderwriting {
+
+        @Override
+        public Commitment underwrite(long totalBetUnits, long maxPossiblePayout) {
+            DealerBudgetService budget = plugin.getDealerBudgetService();
+            if (budget == null) {
+                return Commitment.forUnlimitedDealer();
+            }
+            Material material = plugin.getCurrency(internalName);
+            return budget.reserve(
+                internalName,
+                playerId,
+                "Slots",
+                budgetSessionId + "-spin-" + (controller.generation() + 1),
+                new BankedCurrency(currencyMode, material == null ? null : material.name(), currencyName),
+                Exposure.of(totalBetUnits, maxPossiblePayout));
+        }
+
+        @Override
+        public void cancel(Commitment commitment, long totalBetUnits) {
+            DealerBudgetService budget = plugin.getDealerBudgetService();
+            if (budget == null || commitment == null) {
+                return;
+            }
+            // Paying the stake back out of the dealer exactly reverses the
+            // credit taken when the commitment was accepted.
+            budget.refund(internalName, commitment, Money.of(totalBetUnits));
+        }
+
+        @Override
+        public void settle(Commitment commitment, long payout) {
+            DealerBudgetService budget = plugin.getDealerBudgetService();
+            if (budget == null || commitment == null) {
+                return;
+            }
+            budget.settle(internalName, commitment, Money.of(payout));
+        }
+    }
+
+    private void cancelScheduledTasks() {
+        cancelAnimationTask();
+        cancelWinMeterTask();
+        cancelLineFlashTask();
+        cancelDemoTask();
+        cancelOpeningAnimationTask();
+        cancelResultCueTask();
+        stopAutoSpin();
+    }
+
+    private void cancelAnimationTask() {
+        if (animationTask != null) {
+            animationTask.cancel();
+            animationTask = null;
+        }
+    }
+
+    /**
+     * Stops any currently scheduled meter-tick task without touching the
+     * presentation state -- used only when a settlement is about to
+     * immediately replace it with its own freshly-started animation
+     * ({@link #reportSettlement}, {@link #attemptSettlementRetry}). Must
+     * never be confused with {@link #cancelWinMeterTask()}: calling that
+     * (state-snapping) version here was the exact bug this fixes -- it
+     * cancelled the very animation it was about to schedule ticks for,
+     * before a single tick had run.
+     */
+    private void stopWinMeterScheduler() {
+        if (winMeterTask != null) {
+            winMeterTask.cancel();
+            winMeterTask = null;
+        }
+    }
+
+    /**
+     * A genuine interruption -- a new spin starting, the inventory closing,
+     * session teardown. Cancelling the task alone used to be the whole bug:
+     * the meter's internal counter simply stopped wherever it was, and that
+     * partial value stayed on screen as "the" last result until the next
+     * settlement. {@link SlotsWinMeterAnimation#interrupt} snaps the
+     * presentation back to the authoritative completed payout in the same
+     * call, so a cancel from anywhere here can never leave a partial amount
+     * displayed.
+     */
+    private void cancelWinMeterTask() {
+        stopWinMeterScheduler();
+        lastWinState.interrupt();
+    }
+
+    /**
+     * Bumping {@link #lineFlashGuard}'s generation (not just cancelling the
+     * task) is what lets every scheduled blink frame check, on its own next
+     * tick, whether it has been superseded -- safe to call from teardown
+     * paths (session termination, inventory close) since it never repaints.
+     * See {@link #supersedeLineFlash()} for the interactive path that also
+     * repaints immediately.
+     */
+    private void cancelLineFlashTask() {
+        lineFlashGuard.cancel();
+        if (lineFlashTask != null) {
+            lineFlashTask.cancel();
+            lineFlashTask = null;
+        }
+    }
+
+    /**
+     * Synchronous supersession: cancels and invalidates any active blink,
+     * then -- only if a flash was actually running -- immediately repaints
+     * the ordinary clean canvas, so a new Paylines input, view change,
+     * geometry change, or spin start can never leave a stale colored path
+     * (or two different lines' colored paths) visible at once. Never called
+     * from a teardown path (use {@link #cancelLineFlashTask()} there
+     * instead), since {@code closeFlag} guards against repainting a closed
+     * inventory.
+     */
+    private void supersedeLineFlash() {
+        boolean hadActiveFlash = lineFlashTask != null;
+        cancelLineFlashTask();
+        if (hadActiveFlash && !closeFlag) {
+            repaintCanvas();
+        }
+    }
+
+    /**
+     * Bumping {@link #demoGeneration} (rather than only cancelling the task)
+     * is what makes this safe to call even from inside a running demo tick --
+     * the running callback's own captured generation will no longer match on
+     * its next check.
+     */
+    private void cancelDemoTask() {
+        demoGeneration++;
+        demoActive = false;
+        if (demoTask != null) {
+            demoTask.cancel();
+            demoTask = null;
+        }
+    }
+
+    @Override
+    public void delete() {
+        cancelScheduledTasks();
+        HandlerList.unregisterAll(this);
+        super.delete();
+    }
+
+    private CurrencyProvider getCurrencyProvider() {
+        if (plugin.getCurrencyManager() == null) {
+            return null;
+        }
+        return plugin.getCurrencyManager().getProvider(internalName);
+    }
+
+    private String text(String key, Object... placeholders) {
+        return plugin.getLocalization().text(player, key, placeholders);
+    }
+}

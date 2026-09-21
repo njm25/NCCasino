@@ -39,6 +39,7 @@ public abstract class Menu extends DealerInventory {
         SOUNDS,
         MESSAGES,
         LANGUAGE,
+        OVERFLOW,
         LANGUAGE_SERVER_DEFAULT,
 
         // Player menu
@@ -54,7 +55,8 @@ public abstract class Menu extends DealerInventory {
         COIN_FLIP,
         ROCK_PAPER_SCISSORS,
         DRAGON_DESCENT,
-        
+        SLOTS,
+
         // Default game settings
         EDIT_TIMER,
 
@@ -87,8 +89,15 @@ public abstract class Menu extends DealerInventory {
         
         // Dragon Descent settings menu
         EDIT_COLUMNS,
-        EDIT_VINES, 
+        EDIT_VINES,
         EDIT_FLOORS,
+
+        // Slots settings menu
+        SLOTS_HOUSE_EDGE,
+        SLOTS_DEFAULT_COLUMNS,
+        SLOTS_DEFAULT_ROWS,
+        SLOTS_DEFAULT_LINES,
+        SLOTS_VARIANCE,
 
         YES,
         NO,
