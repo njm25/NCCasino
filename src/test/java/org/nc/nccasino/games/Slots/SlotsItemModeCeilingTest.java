@@ -26,6 +26,18 @@ class SlotsItemModeCeilingTest {
     /** The physical-delivery ceiling that used to reject these spins. */
     private static final long OLD_ITEM_CEILING = 10_000L;
 
+    private static long largestSafeItemModeWager() {
+        long candidate = (long) Math.floor(SlotsMath.MAX_ITEM_MODE_PAYOUT
+            / PAYTABLE.maximumReachableMultiplier(3, LINES));
+        while (SlotsMath.maxPossiblePayout(candidate, LINES, PAYTABLE) > SlotsMath.MAX_ITEM_MODE_PAYOUT) {
+            candidate--;
+        }
+        while (SlotsMath.maxPossiblePayout(candidate + 1, LINES, PAYTABLE) <= SlotsMath.MAX_ITEM_MODE_PAYOUT) {
+            candidate++;
+        }
+        return candidate;
+    }
+
     private static SlotsRandomSource allSevens() {
         return bound -> 95;
     }
@@ -141,8 +153,7 @@ class SlotsItemModeCeilingTest {
     void aWagerBeyondThePrecisionCeilingIsStillRejectedBeforeAnyDebit() {
         SlotsSpinController controller = new SlotsSpinController();
         RecordingDebit debit = new RecordingDebit();
-        long oversized = (long) Math.floor(
-            SlotsMath.MAX_ITEM_MODE_PAYOUT / (PAYTABLE.maxLineMultiplier() * LINES)) + 1;
+        long oversized = largestSafeItemModeWager() + 1;
 
         assertTrue(SlotsMath.maxPossiblePayout(oversized, LINES, PAYTABLE) > SlotsMath.MAX_ITEM_MODE_PAYOUT);
 
@@ -173,8 +184,7 @@ class SlotsItemModeCeilingTest {
     void precisionCeilingStillAppliesOnlyToItemMode() {
         SlotsSpinController controller = new SlotsSpinController();
         RecordingDebit debit = new RecordingDebit();
-        long oversized = (long) Math.floor(
-            SlotsMath.MAX_ITEM_MODE_PAYOUT / (PAYTABLE.maxLineMultiplier() * LINES)) + 1;
+        long oversized = largestSafeItemModeWager() + 1;
 
         SlotsSpinController.SpinAttempt attempt = controller.trySpin(
             oversized, COLUMNS, LINES, false, PAYTABLE, allSevens(), debit::test);
@@ -184,8 +194,7 @@ class SlotsItemModeCeilingTest {
 
     @Test
     void anOversizedItemModeDenominationIsStillFilteredOutOfSelection() {
-        double oversized = Math.floor(
-            SlotsMath.MAX_ITEM_MODE_PAYOUT / (PAYTABLE.maxLineMultiplier() * LINES)) + 1;
+        double oversized = largestSafeItemModeWager() + 1d;
 
         assertFalse(SlotsDenominationPolicy.isAllowed(oversized, 3, LINES, true, PAYTABLE));
     }

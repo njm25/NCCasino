@@ -15,7 +15,19 @@ class SlotsDenominationPolicyTest {
 
     /** Largest per-line wager whose worst case still fits under the item-mode ceiling. */
     private static long ceilingUnits() {
-        return (long) Math.floor(SlotsMath.MAX_ITEM_MODE_PAYOUT / (PAYTABLE.maxLineMultiplier() * LINES));
+        return largestSafe(PAYTABLE, LINES);
+    }
+
+    private static long largestSafe(SlotsPaytable paytable, int lines) {
+        long candidate = (long) Math.floor(SlotsMath.MAX_ITEM_MODE_PAYOUT
+            / paytable.maximumReachableMultiplier(3, lines));
+        while (SlotsMath.maxPossiblePayout(candidate, lines, paytable) > SlotsMath.MAX_ITEM_MODE_PAYOUT) {
+            candidate--;
+        }
+        while (SlotsMath.maxPossiblePayout(candidate + 1, lines, paytable) <= SlotsMath.MAX_ITEM_MODE_PAYOUT) {
+            candidate++;
+        }
+        return candidate;
     }
 
     @Test
@@ -48,11 +60,14 @@ class SlotsDenominationPolicyTest {
     }
 
     @Test
-    @DisplayName("more active lines lower the safe denomination in item mode")
+    @DisplayName("a broad active-line spread lowers the safe denomination in item mode")
     void moreLinesTightenTheCeiling() {
-        long safeAtFive = (long) Math.floor(SlotsMath.MAX_ITEM_MODE_PAYOUT / (PAYTABLE.maxLineMultiplier() * 5));
-        assertTrue(SlotsDenominationPolicy.isAllowed(safeAtFive, 3, 5, true, PAYTABLE));
-        assertFalse(SlotsDenominationPolicy.isAllowed(safeAtFive, 3, 9, true, PAYTABLE),
+        SlotsPaytable wide = SlotsPaytable.forConfig(7, 0.03);
+        assertTrue(wide.maximumReachableMultiplier(3, 9)
+            > wide.maximumReachableMultiplier(3, 1));
+        long safeAtOne = largestSafe(wide, 1);
+        assertTrue(SlotsDenominationPolicy.isAllowed(safeAtOne, 3, 1, true, wide));
+        assertFalse(SlotsDenominationPolicy.isAllowed(safeAtOne, 3, 9, true, wide),
             "the same denomination exposes more with nine lines live");
     }
 

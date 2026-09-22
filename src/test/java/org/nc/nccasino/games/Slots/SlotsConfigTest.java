@@ -36,6 +36,7 @@ class SlotsConfigTest {
     void ensureDefaultsAddsSlotsRowsWhenMissing() {
         assertTrue(SlotsConfig.ensureDefaults(plugin, DEALER));
         assertEquals(3, config.getInt("dealers." + DEALER + ".slots-rows"));
+        assertEquals("BALANCED", config.getString("dealers." + DEALER + ".slots-variance"));
     }
 
     @Test
@@ -95,6 +96,16 @@ class SlotsConfigTest {
     void configPathIsDirectlyUnderTheDealerAlongsideExistingSlotsKeys() {
         SlotsConfig.setRows(plugin, DEALER, 5);
         assertTrue(config.contains("dealers." + DEALER + ".slots-rows"));
+    }
+
+    @Test
+    void adminVarianceSelectionPersistsPerDealerAndLoadsBack() {
+        SlotsConfig.setVariance(plugin, DEALER, SlotsVariance.HIGH_ROLLER);
+
+        assertEquals("HIGH_ROLLER",
+            config.getString("dealers." + DEALER + ".slots-variance"));
+        assertEquals(SlotsVariance.HIGH_ROLLER,
+            SlotsConfig.load(plugin, DEALER).variance());
     }
 
     @Test

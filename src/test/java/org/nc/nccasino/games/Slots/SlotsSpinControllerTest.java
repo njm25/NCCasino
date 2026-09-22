@@ -186,7 +186,15 @@ class SlotsSpinControllerTest {
      * edge ever changes.
      */
     private static long largestSafeItemModeWager() {
-        return (long) Math.floor(SlotsMath.MAX_ITEM_MODE_PAYOUT / (PAYTABLE.maxLineMultiplier() * LINES));
+        long candidate = (long) Math.floor(SlotsMath.MAX_ITEM_MODE_PAYOUT
+            / PAYTABLE.maximumReachableMultiplier(3, LINES));
+        while (SlotsMath.maxPossiblePayout(candidate, LINES, PAYTABLE) > SlotsMath.MAX_ITEM_MODE_PAYOUT) {
+            candidate--;
+        }
+        while (SlotsMath.maxPossiblePayout(candidate + 1, LINES, PAYTABLE) <= SlotsMath.MAX_ITEM_MODE_PAYOUT) {
+            candidate++;
+        }
+        return candidate;
     }
 
     @Test

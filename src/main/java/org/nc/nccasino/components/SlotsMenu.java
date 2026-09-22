@@ -12,20 +12,27 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.EventHandler;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.entities.DealerInventory;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.games.Slots.SlotsAdminSettingsTransitions;
+import org.nc.nccasino.games.Slots.SlotsChatPrompt;
+import org.nc.nccasino.games.Slots.SlotsChatPromptService;
 import org.nc.nccasino.games.Slots.SlotsClickClassifier;
 import org.nc.nccasino.games.Slots.SlotsConfig;
 import org.nc.nccasino.games.Slots.SlotsGeometry;
+import org.nc.nccasino.games.Slots.SlotsHouseEdgeInput;
 import org.nc.nccasino.games.Slots.SlotsPayline;
 import org.nc.nccasino.games.Slots.SlotsPaytable;
+import org.nc.nccasino.games.Slots.SlotsPromptValues;
+import org.nc.nccasino.games.Slots.SlotsVariance;
+import org.nc.nccasino.games.Slots.SlotsVarianceStats;
 
 /**
  * Slots' admin settings sub-menu.
  *
- * <p>Three per-dealer controls, each cycled by clicking rather than typed in
- * chat -- every value here is a small enumerated set, so a click-cycle cannot
- * produce an invalid entry the way free text can.
+ * <p>Reels, height and paylines are small enumerated sets and cycle on click.
+ * House edge instead opens a chat prompt so the administrator can enter any
+ * exact percentage inside the supported range.
  *
  * <p>The house edge is the substantive one. Unlike every other game in the
  * plugin, whose edge is a hardcoded constant, Slots derives its whole paytable
@@ -41,9 +48,6 @@ public class SlotsMenu extends Menu {
     private final String returnName;
     public static final Map<UUID, SlotsMenu> openInventories = new HashMap<>();
 
-    /** Selectable house edges, as whole percentage points across the supported band. */
-    private static final double[] EDGE_STEPS = {0.01, 0.02, 0.03, 0.04, 0.05, 0.06};
-
     // Repacked without gaps (rather than the old every-other-slot spacing) so
     // the new Height control fits alongside House Edge, Reels, Lines, Return
     // and Exit in this menu's single 9-slot row -- see the redesign's admin
@@ -52,6 +56,11 @@ public class SlotsMenu extends Menu {
     private static final int COLUMNS_SLOT = 2;
     private static final int ROWS_SLOT = 3;
     private static final int LINES_SLOT = 4;
+    private static final int VARIANCE_SLOT = 5;
+
+    /** True while this menu instance owns its player's next chat message. */
+    private boolean editingHouseEdge;
+    private long promptGeneration;
 
     public SlotsMenu(UUID dealerId, Player player, String title, Consumer<Player> ret, Nccasino plugin, String returnName, String internalName) {
         super(player, plugin, dealerId, title, 9, title, ret);
@@ -66,6 +75,7 @@ public class SlotsMenu extends Menu {
         slotMapping.put(SlotOption.SLOTS_DEFAULT_COLUMNS, COLUMNS_SLOT);
         slotMapping.put(SlotOption.SLOTS_DEFAULT_ROWS, ROWS_SLOT);
         slotMapping.put(SlotOption.SLOTS_DEFAULT_LINES, LINES_SLOT);
+        slotMapping.put(SlotOption.SLOTS_VARIANCE, VARIANCE_SLOT);
 
         SlotsConfig.ensureDefaults(plugin, internalName);
         initializeMenu();
@@ -73,6 +83,12 @@ public class SlotsMenu extends Menu {
 
     @Override
     public void cleanup() {
+        editingHouseEdge = false;
+        promptGeneration++;
+        SlotsChatPromptService prompts = plugin.getSlotsChatPromptService();
+        if (prompts != null) {
+            prompts.endForSession(ownerId, this, SlotsChatPrompt.EndReason.SESSION_ENDED);
+        }
         HandlerList.unregisterAll(this);
         openInventories.remove(ownerId);
         this.delete();
@@ -89,6 +105,9 @@ public class SlotsMenu extends Menu {
     @Override
     protected void initializeMenu() {
         SlotsConfig config = SlotsConfig.load(plugin, internalName);
+        SlotsVarianceStats varianceStats = SlotsVarianceStats.forConfig(
+            config.columns(), config.visibleRows(), config.houseEdge(), config.variance(),
+            1L, config.activeLines());
 
         addItemAndLore(
             Material.GOLD_INGOT,
@@ -129,6 +148,23 @@ public class SlotsMenu extends Menu {
                 ? text("slots-settings.default-lines-inert-hint")
                 : text("slots-settings.default-lines-hint", "max", SlotsPayline.MAX_LINES));
 
+        addItemAndLore(
+            Material.COMPARATOR,
+            1,
+            text("slots-settings.variance"),
+            VARIANCE_SLOT,
+            text("slots-settings.variance-current", "variance", text(varianceKey(config.variance()))),
+            text("slots-settings.variance-hit-rate",
+                "chance", formatPercent(varianceStats.lineHitProbability())),
+            text("slots-settings.variance-top-line",
+                "multiplier", formatMultiplier(varianceStats.maxLineMultiplier())),
+            text("slots-settings.variance-max-exposure",
+                "amount", varianceStats.maxPossiblePayoutAtDenomination(),
+                "lines", varianceStats.activeLines()),
+            text("slots-settings.variance-tradeoff"),
+            text("slots-settings.variance-same-rtp", "rtp", formatPercent(config.paytable().theoreticalRtp())),
+            text("slots-settings.variance-hint"));
+
         addItemAndLore(Material.MAGENTA_GLAZED_TERRACOTTA, 1, text("common.return-to", "menu", returnName), slotMapping.get(SlotOption.RETURN));
         addItemAndLore(Material.SPRUCE_DOOR, 1, text("common.exit"), slotMapping.get(SlotOption.EXIT));
     }
@@ -144,10 +180,11 @@ public class SlotsMenu extends Menu {
         }
         int direction = SlotsClickClassifier.cycleDirection(event.getClick());
         switch (option) {
-            case SLOTS_HOUSE_EDGE -> cycleHouseEdge(player, direction);
+            case SLOTS_HOUSE_EDGE -> beginHouseEdgePrompt(player);
             case SLOTS_DEFAULT_COLUMNS -> cycleColumns(player, direction);
             case SLOTS_DEFAULT_ROWS -> cycleRows(player, direction);
             case SLOTS_DEFAULT_LINES -> cycleLines(player, direction);
+            case SLOTS_VARIANCE -> cycleVariance(player, direction);
             default -> {
                 switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                     case STANDARD -> player.sendMessage(text("slots-settings.invalid-option"));
@@ -159,31 +196,128 @@ public class SlotsMenu extends Menu {
         }
     }
 
-    private void cycleHouseEdge(Player player, int direction) {
-        SlotsConfig config = SlotsConfig.load(plugin, internalName);
-        double next = EDGE_STEPS[Math.floorMod(nearestEdgeIndex(config.houseEdge()) + direction, EDGE_STEPS.length)];
-        SlotsConfig.setHouseEdge(plugin, internalName, next);
-        plugin.saveConfig();
+    private void beginHouseEdgePrompt(Player player) {
+        SlotsChatPromptService prompts = plugin.getSlotsChatPromptService();
+        if (prompts == null) {
+            player.sendMessage(text("slots.prompt-unavailable"));
+            return;
+        }
+        promptGeneration++;
+        long generation = promptGeneration;
+        editingHouseEdge = true;
+        SlotsChatPrompt prompt = new SlotsChatPrompt(
+            ownerId,
+            SlotsChatPrompt.Type.HOUSE_EDGE,
+            SlotsChatPromptService.deadlineFromNow(),
+            null,
+            this,
+            generation,
+            new SlotsChatPrompt.Handler() {
+                @Override
+                public boolean isSessionValid() {
+                    return isCurrentHouseEdgePrompt(generation) && player.isOnline();
+                }
 
+                @Override
+                public SlotsChatPrompt.Outcome submit(String input) {
+                    if (SlotsPromptValues.isCancel(input)) {
+                        return SlotsChatPrompt.Outcome.CANCELLED;
+                    }
+                    return submitHouseEdge(player, input);
+                }
+
+                @Override
+                public void accepted() {
+                    resumeHouseEdgeMenu(player, generation, true);
+                }
+
+                @Override
+                public void cancelled() {
+                    if (isCurrentHouseEdgePrompt(generation)) {
+                        player.sendMessage(text("slots.prompt-cancelled"));
+                    }
+                    resumeHouseEdgeMenu(player, generation, false);
+                }
+
+                @Override
+                public void timedOut() {
+                    if (isCurrentHouseEdgePrompt(generation) && player.isOnline()) {
+                        player.sendMessage(text("slots-settings.house-edge-timed-out"));
+                    }
+                    abandonHouseEdgePrompt(generation);
+                }
+
+                @Override
+                public void ended(SlotsChatPrompt.EndReason reason) {
+                    abandonHouseEdgePrompt(generation);
+                }
+            });
+        prompts.begin(prompt);
+        player.sendMessage(text("slots-settings.house-edge-prompt",
+            "min", formatPercent(SlotsPaytable.MIN_HOUSE_EDGE),
+            "max", formatPercent(SlotsPaytable.MAX_HOUSE_EDGE)));
+        player.sendMessage(text("slots.prompt-deadline", "seconds", SlotsChatPromptService.TIMEOUT_SECONDS));
+        player.sendMessage(text("slots.prompt-cancel-hint", "cancel", SlotsPromptValues.CANCEL));
+        player.sendMessage(text("slots.prompt-another-game-warning"));
+        player.closeInventory();
+    }
+
+    private SlotsChatPrompt.Outcome submitHouseEdge(Player player, String input) {
+        var parsed = SlotsHouseEdgeInput.parse(input);
+        if (parsed.isEmpty()) {
+            player.sendMessage(text("slots-settings.house-edge-invalid",
+                "min", formatPercent(SlotsPaytable.MIN_HOUSE_EDGE),
+                "max", formatPercent(SlotsPaytable.MAX_HOUSE_EDGE)));
+            return SlotsChatPrompt.Outcome.RETRY;
+        }
+
+        SlotsConfig.setHouseEdge(plugin, internalName, parsed.getAsDouble());
+        plugin.saveConfig();
         SlotsConfig updated = SlotsConfig.load(plugin, internalName);
         announce(player, text("slots-settings.house-edge-updated",
             "edge", formatPercent(updated.houseEdge()),
             "rtp", formatPercent(updated.paytable().theoreticalRtp())));
-        refresh(player);
+        return SlotsChatPrompt.Outcome.ACCEPTED;
     }
 
-    /** Snaps an arbitrary stored value onto the nearest selectable step before advancing. */
-    private static int nearestEdgeIndex(double edge) {
-        int best = 0;
-        double bestDistance = Double.MAX_VALUE;
-        for (int i = 0; i < EDGE_STEPS.length; i++) {
-            double distance = Math.abs(EDGE_STEPS[i] - edge);
-            if (distance < bestDistance) {
-                bestDistance = distance;
-                best = i;
-            }
+    private boolean isCurrentHouseEdgePrompt(long generation) {
+        return editingHouseEdge
+            && promptGeneration == generation
+            && openInventories.get(ownerId) == this;
+    }
+
+    private void resumeHouseEdgeMenu(Player player, long generation, boolean accepted) {
+        if (!isCurrentHouseEdgePrompt(generation)) {
+            return;
         }
-        return best;
+        editingHouseEdge = false;
+        promptGeneration++;
+        if (!player.isOnline()) {
+            cleanup();
+            return;
+        }
+        if (accepted) {
+            playDefaultSound(player);
+        }
+        initializeMenu();
+        player.openInventory(getInventory());
+    }
+
+    private void abandonHouseEdgePrompt(long generation) {
+        if (!isCurrentHouseEdgePrompt(generation)) {
+            return;
+        }
+        editingHouseEdge = false;
+        promptGeneration++;
+        HandlerList.unregisterAll(this);
+        openInventories.remove(ownerId, this);
+        // ANOTHER_GAME_OPENED fires after the replacement inventory has been
+        // installed. DealerInventory.delete() removes by dealer id rather
+        // than by instance, so calling it from this stale menu would remove
+        // the newly opened inventory from the shared registry.
+        if (DealerInventory.getInventory(dealerId) == this) {
+            this.delete();
+        }
     }
 
     private void cycleColumns(Player player, int direction) {
@@ -242,6 +376,21 @@ public class SlotsMenu extends Menu {
         refresh(player);
     }
 
+    private void cycleVariance(Player player, int direction) {
+        SlotsConfig config = SlotsConfig.load(plugin, internalName);
+        var next = SlotsAdminSettingsTransitions.nextVariance(config.variance(), direction);
+        SlotsConfig.setVariance(plugin, internalName, next);
+        plugin.saveConfig();
+
+        announce(player, text("slots-settings.variance-updated",
+            "variance", text(varianceKey(next))));
+        refresh(player);
+    }
+
+    private static String varianceKey(SlotsVariance variance) {
+        return "slots.variance-" + variance.name().toLowerCase();
+    }
+
     private void announce(Player player, String message) {
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
             case STANDARD, VERBOSE -> player.sendMessage(message);
@@ -260,11 +409,20 @@ public class SlotsMenu extends Menu {
         return String.format("%.2f%%", fraction * 100.0);
     }
 
+    private static String formatMultiplier(double multiplier) {
+        return multiplier >= 100.0
+            ? Long.toString(Math.round(multiplier))
+            : String.format("%.2f", multiplier);
+    }
+
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
         Player player = (Player) event.getPlayer();
         UUID playerId = player.getUniqueId();
         if (event.getInventory().getHolder() instanceof SlotsMenu && openInventories.containsKey(playerId)) {
+            if (editingHouseEdge) {
+                return;
+            }
             SlotsMenu menu = openInventories.remove(playerId);
             if (menu != null) {
                 menu.cleanup();

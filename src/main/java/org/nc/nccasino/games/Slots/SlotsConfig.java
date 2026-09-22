@@ -102,6 +102,10 @@ public final class SlotsConfig {
             plugin.getConfig().set(path(internalName, KEY_HOUSE_EDGE), SlotsPaytable.DEFAULT_HOUSE_EDGE);
             changed = true;
         }
+        if (!plugin.getConfig().contains(path(internalName, KEY_VARIANCE))) {
+            plugin.getConfig().set(path(internalName, KEY_VARIANCE), SlotsVariance.BALANCED.name());
+            changed = true;
+        }
         return changed;
     }
 
