@@ -9,9 +9,9 @@ import java.util.UUID;
  * {@link SlotsChatPromptService} needs to route a submitted line, decide
  * whether it is still relevant, and end the prompt correctly.
  *
- * <p>Every Slots prompt -- profile naming and all four Auto Spin Settings
- * values -- is one of these. There is deliberately no per-prompt chat
- * listener: the single service owns the only
+ * <p>Every Slots prompt -- profile naming, all four Auto Spin Settings values,
+ * and administrator house-edge entry -- is one of these. There is
+ * deliberately no per-prompt chat listener: the single service owns the only
  * {@code AsyncPlayerChatEvent} handler, and this class carries the
  * per-prompt behavior.
  *
@@ -24,6 +24,7 @@ public final class SlotsChatPrompt {
 
     /** Which value this prompt is collecting -- also selects its instruction text. */
     public enum Type {
+        HOUSE_EDGE,
         PROFILE_NAME,
         SPIN_LIMIT,
         BIG_WIN_MULTIPLIER,
@@ -176,6 +177,9 @@ public final class SlotsChatPrompt {
 
     /** This prompt's {@code slots.prompt-*} instruction key. */
     public String instructionKey() {
+        if (type == Type.HOUSE_EDGE) {
+            return "slots-settings.house-edge-prompt";
+        }
         return "slots.prompt-" + type.name().toLowerCase().replace('_', '-');
     }
 }

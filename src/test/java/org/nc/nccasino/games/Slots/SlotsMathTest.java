@@ -140,10 +140,14 @@ class SlotsMathTest {
             int lines = SlotsPayline.MAX_LINES;
             long ceiling = SlotsMath.maxPossiblePayout(wager, lines, paytable);
 
-            for (SlotsSymbol symbol : SlotsSymbol.payingSymbols()) {
-                long actual = SlotsMath.totalPayout(uniform(symbol, columns), lines, wager, paytable);
+            for (int stop = 0; stop < SlotsReelStrip.SIZE; stop++) {
+                int[] stops = new int[columns];
+                java.util.Arrays.fill(stops, stop);
+                SlotsOutcome outcome = SlotsSpinGenerator.outcomeFromStops(
+                    stops, SlotsGeometry.ROWS, SlotsVariance.BALANCED);
+                long actual = SlotsMath.totalPayoutForGeometry(outcome, lines, wager, paytable, bound -> 0);
                 assertTrue(actual <= ceiling,
-                    "a full grid of " + symbol + " (" + actual + ") must not exceed the probe ceiling (" + ceiling + ")");
+                    "reachable stop " + stop + " (" + actual + ") must not exceed the probe ceiling (" + ceiling + ")");
             }
         }
     }

@@ -81,6 +81,13 @@ public final class SlotsAdminSettingsTransitions {
     /** Sentinel returned by {@link #nextLinesOrInert} when Default Paylines is inert at height 1. */
     public static final int INERT = -1;
 
+    /** The next per-dealer variance level, wrapping in declaration order. */
+    public static SlotsVariance nextVariance(SlotsVariance current, int direction) {
+        SlotsVariance[] levels = SlotsVariance.values();
+        SlotsVariance effective = current == null ? SlotsVariance.BALANCED : current;
+        return levels[Math.floorMod(effective.ordinal() + direction, levels.length)];
+    }
+
     private static int indexOf(int[] values, int target) {
         for (int i = 0; i < values.length; i++) {
             if (values[i] == target) {

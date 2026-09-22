@@ -16,6 +16,8 @@ class SlotsVarianceStatsTest {
 
         assertEquals(SlotsVariance.HIGH, stats.variance());
         assertEquals(5, stats.columns());
+        assertEquals(3, stats.visibleRows());
+        assertEquals(5, stats.activeLines());
         assertEquals(paytable.theoreticalRtp(), stats.theoreticalRtp(), 1e-12);
         assertEquals(paytable.maxLineMultiplier(), stats.maxLineMultiplier(), 1e-12);
         assertEquals(SlotsPaytable.lineHitProbability(SlotsVariance.HIGH), stats.lineHitProbability(), 1e-12);
@@ -46,5 +48,29 @@ class SlotsVarianceStatsTest {
         SlotsVarianceStats large = SlotsVarianceStats.forConfig(
             5, SlotsPaytable.DEFAULT_HOUSE_EDGE, SlotsVariance.BALANCED, 100L, 5);
         assertTrue(large.maxPossiblePayoutAtDenomination() > small.maxPossiblePayoutAtDenomination());
+    }
+
+    @Test
+    void adminPreviewUsesTheConfiguredDefaultHeightAndReachableExposure() {
+        SlotsVarianceStats preview = SlotsVarianceStats.forConfig(
+            7, 5, SlotsPaytable.DEFAULT_HOUSE_EDGE, SlotsVariance.HIGH_ROLLER, 1L, 9);
+
+        assertEquals(5, preview.visibleRows());
+        assertEquals(9, preview.activeLines());
+        assertEquals(3_267_247L, preview.maxPossiblePayoutAtDenomination());
+        assertEquals(1.0 - SlotsPaytable.DEFAULT_HOUSE_EDGE, preview.theoreticalRtp(), 1e-12);
+        assertTrue(preview.lineHitProbability() <
+            SlotsPaytable.lineHitProbability(SlotsVariance.BALANCED));
+    }
+
+    @Test
+    void heightOneAdminPreviewForcesItsOnlyLegalPayline() {
+        SlotsVarianceStats preview = SlotsVarianceStats.forConfig(
+            5, 1, SlotsPaytable.DEFAULT_HOUSE_EDGE, SlotsVariance.BALANCED, 1L, 9);
+
+        assertEquals(1, preview.visibleRows());
+        assertEquals(1, preview.activeLines());
+        assertEquals((long) Math.ceil(preview.maxLineMultiplier()),
+            preview.maxPossiblePayoutAtDenomination());
     }
 }

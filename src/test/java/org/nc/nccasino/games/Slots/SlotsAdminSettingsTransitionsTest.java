@@ -69,6 +69,18 @@ class SlotsAdminSettingsTransitionsTest {
         }
     }
 
+    @Test
+    void varianceCyclesAndWrapsBothDirections() {
+        assertEquals(SlotsVariance.LOW,
+            SlotsAdminSettingsTransitions.nextVariance(SlotsVariance.STEADY, 1));
+        assertEquals(SlotsVariance.STEADY,
+            SlotsAdminSettingsTransitions.nextVariance(SlotsVariance.HIGH_ROLLER, 1));
+        assertEquals(SlotsVariance.HIGH_ROLLER,
+            SlotsAdminSettingsTransitions.nextVariance(SlotsVariance.STEADY, -1));
+        assertEquals(SlotsVariance.BALANCED,
+            SlotsAdminSettingsTransitions.nextVariance(null, 0));
+    }
+
     // ---- exact scenarios named in the audit -------------------------------
 
     @Test
