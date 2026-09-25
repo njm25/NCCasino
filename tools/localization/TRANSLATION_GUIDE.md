@@ -667,6 +667,34 @@ Second continuation for later locales (same concept rows; split so neither table
 | banked winnings (overflow bank) | tárolt nyeremények | câștiguri păstrate | ganhos guardados | gemte gevinster | lagrede gevinster | φυλαγμένα κέρδη | uschované výhry | запазени печалби |
 | overflow: hold vs. drop nearby | Őrizd meg nekem / Leejtés a közelben | Păstrează-le pentru mine / Lasă-le pe jos lângă mine | Guardar para mim / Largar aqui perto | Gem dem til mig / Læg dem på jorden i nærheden | Ta vare på dem for meg / Legg dem på bakken i nærheten | Κράτα τα για μένα / Άφησέ τα στο έδαφος κοντά μου | Uschovať pre mňa / Položiť na zem nablízku | Пази ги за мен / Остави ги на земята наблизо |
 
+Third continuation for later locales (same concept rows; split so neither table grows too wide to read):
+
+| Concept (continued 3) | es_MX |
+| --- | --- |
+| generic physical dealer/croupier | crupier |
+| Baccarat banker/bank side | Banca (Jugador / Banca) |
+| bet / wager amount | apuesta |
+| all in | Apostar todo |
+| rebet (repeat previous wager) | Repetir apuesta |
+| chip denomination/value | valor de la ficha |
+| win streak / chain (PvE) | racha (máx. de rondas en racha) |
+| cash out / payout | Cobrar / pago |
+| Blackjack: shoe | zapato |
+| Blackjack: hit | Pedir |
+| Blackjack: stand | Plantarse |
+| Blackjack: split | Dividir |
+| Blackjack: insurance | seguro |
+| Blackjack: same-rank vs. same-value split rule | Mismo rango / Mismo valor |
+| RPS: throw/action (not generic "turn") | jugada |
+| Dragon Descent: vine mechanic | enredadera |
+| ON/OFF display state | ACTIVADO / DESACTIVADO |
+| Slots: variance (risk preset, not the RTP) | volatilidad |
+| Slots: house edge | ventaja de la casa |
+| Slots: return/RTP verb | retorno al jugador |
+| seat | lugar (silla = chair) |
+| banked winnings (overflow bank) | ganancias guardadas |
+| overflow: hold vs. drop nearby | Guárdalas por mí / Suéltalas cerca |
+
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
 settled — do not fill a cell with a guess presented as an established pin.
@@ -945,6 +973,17 @@ a real, previously-observed defect, not a hypothetical risk.
   `поредица` (`{run} поред`), distinct from the PvE streak `серия`. The
   card shoe is described as `кутията с тестетата`; a mob is `същество`, a
   jockey `ездач`, vehicle/passenger `носач` / `пътник`.
+- `es_MX`: Mexican Spanish, informal `tú`, decimal point (`0.95:1`,
+  `2.5%`), written from the English source rather than adapted from es_ES
+  (`tragamonedas`, `configuración`, `pozo`, no `vosotros`). Gender-neutral
+  toward the player (`Ya tienes asiento`, `Te damos la bienvenida a
+  {game}`, `Tomaste asiento`). Coin Flip is `Águila o sol`; the dealer
+  `crupier`; the Baccarat sides `Jugador` / `Banca`; cash-out `Cobrar`; the
+  house edge `ventaja de la casa`. Slots uses `carretes`, `filas` and
+  `líneas de pago`; its run is `secuencia` (`{run} seguidos`), distinct from
+  the PvE streak `racha`; big win is `premio grande`, kept apart from
+  `jackpot`. Blackjack is `Pedir` / `Plantarse` / `Doblar` / `Dividir` with
+  the shoe `zapato`; a mob is `criatura`, a vehicle `montura`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.

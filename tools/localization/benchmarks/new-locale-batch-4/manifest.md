@@ -18,3 +18,28 @@
   batch 3. Glossary columns go into a third continuation of the §H table.
 
 ## Per-locale record
+
+### es_MX -- Español (México) (Mexican Spanish)
+
+- Final catalog SHA-256: `13c4e3ee691f361b5264529b32c8e5b845044286e1857ecd1d93a35e083317f3` (identical in the run directory and
+  `src/main/resources/lang/es_MX.yml`; NFC-normalized)
+- Voice: Mexican Spanish, informal `tú`, decimal point; written from the
+  English source rather than adapted from es_ES (Spain-form scan clean);
+  gender-neutral toward the player; `Águila o sol`, `crupier`, Baccarat
+  `Jugador` / `Banca`, cash-out `Cobrar`, pot `pozo`, Slots
+  `Tragamonedas` with run `secuencia` vs streak `racha`. Recorded in a
+  new third continuation of the §H table.
+- Structural: helper strict check 0 errors (3 residue warnings are Spanish
+  `a` and the loanword `chat`); `localizationCandidateCheck` CANDIDATE
+  OK (1184); full `localizationCheck` with all twenty-four new locales
+  registered: every one of the 30 locales OK (1184), no new warnings;
+  `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 1 (`blackjack.resplit-offer` is a confirmation sent after the
+  re-split, verified in `BlackjackInventory`; added to the guide's §C
+  registry and the reviewer rubric), Tier 2 = 0, Tier 3 = 24, all applied
+  ("Baccarat" name, queue "cola" vs row "fila", "Misma carta"). 26 keys
+  patched, rechecked after. Findings: `reviews/es_MX-findings-*.md`.
+- Not registered in `locales.yml`. Registry line:
+  `es_MX: name: "Español (México)"`.
+- Native-speaker review: not performed; recommended before release.
