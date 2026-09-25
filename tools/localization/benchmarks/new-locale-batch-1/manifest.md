@@ -67,3 +67,21 @@ Each entry is appended when that locale is finished.
   Findings: `reviews/fi_FI-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `fi_FI: name: "Suomi"`.
 - Native-speaker review: not performed; recommended before release.
+
+### ja_JP -- 日本語 (Japanese)
+
+- Final catalog SHA-256: `8c2dabf8b4522cfbd5add6f61de375fc08d306cf04da5484ac18c4d66204eeeb` (identical in the run directory and
+  `src/main/resources/lang/ja_JP.yml`)
+- Voice: polite です/ます; noun-style labels; half-width space after a
+  placeholder before a particle/counter (recorded in the guide).
+- Structural: helper strict check 0 errors (only "Shift" key-name residue
+  flags); `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with nl_NL + fi_FI + ja_JP registered: ja_JP OK (1184),
+  no ja_JP warnings, all other locales unchanged.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 1 (profile-name character rule, confirmed against
+  `SlotsProfileName` and fixed), Tier 2 = 6, Tier 3 = 41; all applied, plus
+  a coordinator consistency sweep of " -- " in Slots keys. 54 keys patched,
+  rechecked after. Findings: `reviews/ja_JP-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `ja_JP: name: "日本語"`.
+- Native-speaker review: not performed; recommended before release.
