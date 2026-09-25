@@ -96,3 +96,28 @@
   after. Findings: `reviews/eu_ES-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `eu_ES: name: "Euskara"`.
 - Native-speaker review: not performed; recommended before release.
+
+### sq_AL -- Shqip (Albanian)
+
+- Final catalog SHA-256: `805e5f3b7ba79f315ca78051a096bd12b5fe1cddc2d852c811edcdfbcd8a3fef` (identical in the run directory and
+  `src/main/resources/lang/sq_AL.yml`; NFC-normalized)
+- Voice: standard literary Albanian, polite plural `ju` for instructions and
+  the singular imperative for buttons, `„”` quotes, decimal comma; no
+  adjective predicates about a player; classifier nouns carry the genitive
+  for placeholders and game names (`e lojës Blackjack`, `e mob-it {mob}`);
+  `krupieri`, Baccarat `Lojtari` / `Bankieri`, `Tërhiq fitimin`, slots run
+  `varg` vs streak `seri`. Recorded in the fifth continuation of the §H
+  table.
+- Structural: helper strict check 0 errors (one residue warning, the
+  `chat-it` loanword); `localizationCandidateCheck` CANDIDATE OK (1184);
+  full `localizationCheck` with all forty-one new locales registered: every
+  one of the 47 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 14 (uninflected game names and `{mob}` after a linking article,
+  "shumë" read as "very", predicate possessive, Gheg `çka`), Tier 2 = 3
+  (admin imperative number), Tier 3 = 26 (gendered `lojtarit {player}`,
+  bare feminine safe / unsafe labels, clitic doubling of indefinite
+  objects), all applied. 43 review keys plus 3 self-review fixes, rechecked
+  after. Findings: `reviews/sq_AL-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `sq_AL: name: "Shqip"`.
+- Native-speaker review: not performed; recommended before release.
