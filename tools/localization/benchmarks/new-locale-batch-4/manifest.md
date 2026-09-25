@@ -43,3 +43,26 @@
 - Not registered in `locales.yml`. Registry line:
   `es_MX: name: "Español (México)"`.
 - Native-speaker review: not performed; recommended before release.
+
+### hr_HR -- Hrvatski (Croatian)
+
+- Final catalog SHA-256: `853dfa7965cf78f416cf47a989a853fc78a14c69c655d739b6d8453242c18df4` (identical in the run directory and
+  `src/main/resources/lang/hr_HR.yml`; NFC-normalized)
+- Voice: ijekavian Croatian, informal `ti`, Croatian UI vocabulary
+  (Serbian-form scan clean); gender-neutral toward the player (no gendered
+  second-person perfect); number agreement avoided; genitive fillers for
+  `occupations.*` and the Dragon `{setting}` slot; `djelitelj`, Baccarat
+  `Igrač` / `Bankar`, stake `ulog`, Slots `Slot automat` with run `niz`
+  vs streak `serija`. Recorded in the guide.
+- Structural: helper strict check 0 errors (2 residue warnings are
+  Croatian `a`/`to`); `localizationCandidateCheck` CANDIDATE OK (1184);
+  full `localizationCheck` with all twenty-five new locales registered:
+  every one of the 31 locales OK (1184), no new warnings; `compileJava`
+  succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0, Tier 2 = 1 (Slots stake term), Tier 3 = 34, all applied
+  ("od strane igrača" calque, standard plural `asove`, left-game and
+  left-chair confirmations, `Uporaba:`). 40 keys patched, rechecked after.
+  Findings: `reviews/hr_HR-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `hr_HR: name: "Hrvatski"`.
+- Native-speaker review: not performed; recommended before release.
