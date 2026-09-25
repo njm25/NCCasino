@@ -774,31 +774,31 @@ Fifth continuation for later locales (same concept rows; split so neither table 
 
 Sixth continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 6) | bs_BA | hy_AM |
-| --- | --- | --- |
-| generic physical dealer/croupier | diler | դիլեր |
-| Baccarat banker/bank side | Bankar (Igrač / Bankar) | Բանկիր (Խաղացող / Բանկիր) |
-| bet / wager amount | ulog (placed bet: opklada) | խաղադրույք |
-| all in | Uloži sve | Դնել ամբողջը |
-| rebet (repeat previous wager) | Ponovi ulog | Կրկնել խաղադրույքը |
-| chip denomination/value | vrijednost žetona | ֆիշկայի արժեք |
-| win streak / chain (PvE) | serija (najveći broj rundi u seriji) | սերիա (սերիայի ռաունդների առավելագույն քանակ) |
-| cash out / payout | Podigni dobitak / isplata | Ստանալ շահումը / վճարում |
-| Blackjack: shoe | kutija za dijeljenje | քարտերի տուփ |
-| Blackjack: hit | Karta | Վերցնել քարտ |
-| Blackjack: stand | Stani | Կանգ առնել |
-| Blackjack: split | Podijeli | Բաժանել |
-| Blackjack: insurance | osiguranje | ապահովագրություն |
-| Blackjack: same-rank vs. same-value split rule | Isti rang / Ista vrijednost | Նույն կարգ / Նույն արժեք |
-| RPS: throw/action (not generic "turn") | potez | քայլ |
-| Dragon Descent: vine mechanic | puzavica | լիանա |
-| ON/OFF display state | UKLJUČENO / ISKLJUČENO | ՄԻԱՑՎԱԾ / ԱՆՋԱՏՎԱԾ |
-| Slots: variance (risk preset, not the RTP) | volatilnost | տատանողականություն |
-| Slots: house edge | prednost kuće | խաղատան առավելություն |
-| Slots: return/RTP verb | povrat igraču | Խաղացողին վերադարձի տոկոս (RTP) |
-| seat | mjesto (stolica = chair) | տեղ (աթոռ = chair) |
-| banked winnings (overflow bank) | sačuvani dobici | պահված շահումներ |
-| overflow: hold vs. drop nearby | Čuvaj ih za mene / Ostavi ih na tlu u blizini | Պահել ինձ համար / Գցել մոտակայքում |
+| Concept (continued 6) | bs_BA | hy_AM | uz_UZ |
+| --- | --- | --- | --- |
+| generic physical dealer/croupier | diler | դիլեր | diler |
+| Baccarat banker/bank side | Bankar (Igrač / Bankar) | Բանկիր (Խաղացող / Բանկիր) | Bankir (Oʻyinchi / Bankir) |
+| bet / wager amount | ulog (placed bet: opklada) | խաղադրույք | stavka |
+| all in | Uloži sve | Դնել ամբողջը | Hammasini tikish |
+| rebet (repeat previous wager) | Ponovi ulog | Կրկնել խաղադրույքը | Stavkani takrorlash |
+| chip denomination/value | vrijednost žetona | ֆիշկայի արժեք | fishka qiymati |
+| win streak / chain (PvE) | serija (najveći broj rundi u seriji) | սերիա (սերիայի ռաունդների առավելագույն քանակ) | seriya (seriyadagi raundlarning eng koʻp soni) |
+| cash out / payout | Podigni dobitak / isplata | Ստանալ շահումը / վճարում | Yutuqni olish / toʻlov |
+| Blackjack: shoe | kutija za dijeljenje | քարտերի տուփ | karta qutisi |
+| Blackjack: hit | Karta | Վերցնել քարտ | Karta olish |
+| Blackjack: stand | Stani | Կանգ առնել | Toʻxtash |
+| Blackjack: split | Podijeli | Բաժանել | Boʻlish |
+| Blackjack: insurance | osiguranje | ապահովագրություն | sugʻurta |
+| Blackjack: same-rank vs. same-value split rule | Isti rang / Ista vrijednost | Նույն կարգ / Նույն արժեք | Bir xil daraja / Bir xil qiymat |
+| RPS: throw/action (not generic "turn") | potez | քայլ | yurish |
+| Dragon Descent: vine mechanic | puzavica | լիանա | chirmoviq |
+| ON/OFF display state | UKLJUČENO / ISKLJUČENO | ՄԻԱՑՎԱԾ / ԱՆՋԱՏՎԱԾ | YOQILGAN / OʻCHIRILGAN |
+| Slots: variance (risk preset, not the RTP) | volatilnost | տատանողականություն | volatillik |
+| Slots: house edge | prednost kuće | խաղատան առավելություն | kazino ustunligi |
+| Slots: return/RTP verb | povrat igraču | Խաղացողին վերադարձի տոկոս (RTP) | Oʻyinchiga qaytim foizi (RTP) |
+| seat | mjesto (stolica = chair) | տեղ (աթոռ = chair) | joy (oʻrindiq = chair) |
+| banked winnings (overflow bank) | sačuvani dobici | պահված շահումներ | saqlangan yutuqlar |
+| overflow: hold vs. drop nearby | Čuvaj ih za mene / Ostavi ih na tlu u blizini | Պահել ինձ համար / Գցել մոտակայքում | Men uchun saqlash / Yaqin atrofga tashlash |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -1403,6 +1403,18 @@ a real, previously-observed defect, not a hypothetical risk.
   `Ստանալ շահումը`; slot "return" is `վճարում`, RTP `Խաղացողին վերադարձի
   տոկոս`; slots run `հաջորդականություն` vs PvE streak `սերիա`; vines
   `լիանաներ`; native court cards `Զինվոր` / `Թագուհի` / `Թագավոր`.
+- `uz_UZ`: standard literary Uzbek in the official Latin alphabet, with
+  `oʻ` / `gʻ` written with U+02BB and the tutuq belgisi with U+02BC (never
+  ASCII apostrophes); polite `Siz` for instructions (`Bosing`, `Tanlang`,
+  `Yozing`) and verbal nouns for buttons; `«»` quotes, decimal comma. No
+  grammatical gender. Nothing attaches to a placeholder: a governing noun
+  or postposition carries the case (`{game} oʻyiniga`, `{amount} uchun`,
+  `{setting} sonining`), numbers take the separate counter `ta`, ranges use
+  an en dash, and a digit ordinal keeps its hyphen (`{index}-fishka`);
+  suffixes are never written apart from their word (`Vault plaginidan`).
+  `diler`, Baccarat `Oʻyinchi` / `Bankir`, `stavka`, `Yutuqni olish`;
+  slots run `ketma-ketlik` vs PvE streak `seriya`; vines `chirmoviqlar`;
+  suits `yurak` / `gʻisht` / `chillak` / `qargʻa`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.

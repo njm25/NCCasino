@@ -81,3 +81,33 @@
 - Not registered in `locales.yml`. Registry line: `hy_AM: name: "Հայերեն"`.
 - Native-speaker review: not performed; recommended before release, with
   an in-game check of Armenian letters and `։` / `՞` / `՝` in the font.
+
+### uz_UZ -- Oʻzbekcha (Uzbek)
+
+- Final catalog SHA-256: `ec196795f25cdffd562cae5880499e767c1bea0fb1b5d591713b3c13796c540b` (identical in the run directory and
+  `src/main/resources/lang/uz_UZ.yml`; NFC-normalized)
+- Voice: standard literary Uzbek in the official Latin alphabet (`oʻ` /
+  `gʻ` with U+02BB, tutuq belgisi U+02BC, no ASCII apostrophes), polite
+  `Siz`, `«»` quotes, decimal comma; no grammatical gender; nothing attaches
+  to a placeholder (governing nouns or postpositions carry the case, the
+  counter `ta` follows numbers, en-dash ranges, digit ordinals keep their
+  hyphen); `diler`, Baccarat `Oʻyinchi` / `Bankir`, `stavka`,
+  `ketma-ketlik` vs `seriya`. Recorded in the sixth continuation of the §H
+  table.
+- Structural: helper strict check 0 errors, 0 residue warnings; the
+  apostrophe code-point audit found only U+02BB (741 at draft time) and
+  U+02BC (8), no ASCII or curly quotes; no suffix after a placeholder;
+  `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all forty-eight new locales registered: every
+  one of the 54 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 6 (misspelled suit "qarga", ungrammatical "Stavkalar qabul
+  qilish yopildi" ×3, intransitive "urinmoq" with an object, the variance
+  trade-off read as smaller payouts), Tier 2 = 2 (spin label, drag verb),
+  Tier 3 = 28 ("duyjina", suffix written apart in "Vault dan", unmarked
+  genitives, chip value vs size), all applied. 36 review keys plus 6
+  self-review fixes (sibling currency and inventory lines), rechecked
+  after. Findings: `reviews/uz_UZ-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `uz_UZ: name: "Oʻzbekcha"`.
+- Native-speaker review: not performed; recommended before release, with
+  an in-game check that the font renders U+02BB / U+02BC.
