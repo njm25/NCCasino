@@ -195,3 +195,57 @@
   "&7Wyższa zmienność oznacza, że linie wygrywają rzadziej, ale jackpoty z
   długich ciągów są dużo większe." The other batch-2 catalogs keep the two
   terms distinct.
+
+### sv_SE -- Svenska (Swedish)
+
+- Final catalog SHA-256: `8affec52cc41d70ad245acf8c770f5bf34b66101806185cc112b7526588a8465` (identical in the run directory and
+  `src/main/resources/lang/sv_SE.yml`; NFC-normalized)
+- Voice: `du`; genitive `-s` never attached to a placeholder; dealer
+  `croupier`, Baccarat `Spelare` / `Bank`, house edge `husets fördel`;
+  Slots run `följd` kept apart from `rad` (row) (recorded in the guide).
+- Structural: helper strict check 0 errors (4 residue warnings: the two
+  `Timer … (PvP)` lore lines and the shared `/ncc create|delete` usage
+  text); `localizationCandidateCheck` CANDIDATE OK (1184) with no warning
+  after `round-summary-hand-blackjack` was given Swedish post-colon
+  lowercase; full `localizationCheck` with all fifteen new locales
+  registered: every one of the 21 locales OK (1184), no new warnings;
+  `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0; Tier 2 = 2, Tier 3 = 20, all applied, plus a consistency pass
+  moving the Slots RTP wording to `återbetalningsprocent`. 39 keys patched,
+  rechecked after. Findings: `reviews/sv_SE-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `sv_SE: name: "Svenska"`.
+- Native-speaker review: not performed; recommended before release.
+
+## Batch summary
+
+All eight batch-2 locales are complete. To expose them in the language menu,
+append to `src/main/resources/lang/locales.yml` (after the batch-1 lines):
+
+```yaml
+  ko_KR:
+    name: "한국어"
+  pl_PL:
+    name: "Polski"
+  it_IT:
+    name: "Italiano"
+  id_ID:
+    name: "Bahasa Indonesia"
+  zh_TW:
+    name: "繁體中文"
+  uk_UA:
+    name: "Українська"
+  cs_CZ:
+    name: "Čeština"
+  sv_SE:
+    name: "Svenska"
+```
+
+With the batch-1 and batch-2 lines appended, `localizationCheck` reports
+all 21 locales OK at 1184 entries (verified in this run) and `compileJava`
+succeeds. Remaining warnings are the seven pre-existing ones plus the
+de_DE-precedent identity in nl_NL; batch 2 adds none. Two out-of-scope
+observations are recorded above (chain-win wording in six earlier catalogs;
+the pl_PL variance-tradeoff line). Still needed before release: an in-game
+check (CJK glyphs in inventory titles, line widths) and native-speaker
+review.

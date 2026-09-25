@@ -606,31 +606,31 @@ far from the original example that established the pin.
 
 Continuation of the table above for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued) | ko_KR | pl_PL | it_IT | id_ID | zh_TW | uk_UA | cs_CZ |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| generic physical dealer/croupier | 딜러 | krupier | croupier | bandar | 荷官 | круп'є | krupiér |
-| Baccarat banker/bank side | 뱅커 (플레이어 / 뱅커) | Bankier (Gracz / Bankier) | Banco (Giocatore / Banco) | Bankir (Pemain / Bankir) | 莊家（閒家 / 莊家） | Банкір (Гравець / Банкір; game: Бакара) | Bankéř (Hráč / Bankéř) |
-| bet / wager amount | 베팅 (베팅액) | zakład (stawka) | puntata | taruhan (nilai taruhan) | 下注（下注金額） | ставка | sázka (výše sázky) |
-| all in | 올인 | va banque | punta tutto | pertaruhkan semua | 全押 | ва-банк | vsadit vše |
-| rebet (repeat previous wager) | 재베팅 | ponawianie zakładu (ponowiono zakład) | ripeti puntata (ripetizione) | taruhan ulang | 重複下注 | повтор ставки | opakování sázky |
-| chip denomination/value | 칩 금액 | nominał żetonu | valore della fiche | nilai keping | 籌碼面額 | номінал фішки | hodnota žetonu |
-| win streak / chain (PvE) | 연승 (최대 연승 라운드) | seria zwycięstw (maks. liczba rund serii) | serie di vittorie (round massimi della serie) | beruntun (ronde beruntun maksimum) | 連勝（最大連勝回合數） | серія перемог (макс. кількість раундів серії) | série výher (max. počet kol série) |
-| cash out / payout | 캐시아웃 / 지급 (당첨금) | wypłać / wypłata | incassa / vincita, pagamento | cairkan / pembayaran | 兌現 / 派彩 | забрати виграш / виплата | vybrat výhru / výplata |
-| Blackjack: shoe | 슈 | sabot | sabot | kotak kartu | 牌靴 | сабо | sabot |
-| Blackjack: hit | 히트 | Dobierz | Carta | Ambil | 要牌 | Ще карту | Karta |
-| Blackjack: stand | 스탠드 | Pas (pasujesz) | Stai | Tahan (memilih Tahan) | 停牌 | Досить | Stát |
-| Blackjack: split | 스플릿 | Rozdziel (rozdzielanie) | Dividi (divisione) | Pisah | 分牌 | Розділити | Rozdělit |
-| Blackjack: insurance | 인슈어런스 | ubezpieczenie | assicurazione | asuransi | 保險 | страховка | pojištění |
-| Blackjack: same-rank vs. same-value split rule | 같은 랭크 / 같은 점수 | Ta sama ranga / Ta sama wartość | Stesso rango / Stesso valore | Peringkat Sama / Nilai Sama | 相同牌面 / 相同點數 | Однаковий ранг / Однакове значення | Stejné označení / Stejná bodová hodnota |
-| RPS: throw/action (not generic "turn") | 낼 손 (내다) | zagranie (zatwierdź zagranie) | mossa | pilihan (kunci pilihan) | 出拳 | жест | volba |
-| Dragon Descent: vine mechanic | 덩굴 | pnącza | rampicanti | tanaman rambat | 藤蔓 | ліани | liány |
-| ON/OFF display state | 켜짐 / 꺼짐 | WŁ. / WYŁ. | ATTIVATA / DISATTIVATA (Attivato / Disattivato; Sì / No where one value fills labels of both genders) | AKTIF / NONAKTIF | 開啟 / 關閉 | УВІМК. / ВИМК. | ZAP. / VYP. |
-| Slots: variance (risk preset, not the RTP) | 변동성 | zmienność | volatilità | volatilitas | 波動度 | волатильність | volatilita |
-| Slots: house edge | 하우스 엣지 | przewaga kasyna | vantaggio della casa | keunggulan kasino | 賭場優勢 | перевага казино | výhoda kasina |
-| Slots: return/RTP verb | 환수율 (돌려받다) | zwrot (zwrot dla gracza) | ritorno al giocatore | pengembalian ke pemain | 返還率（玩家返還率） | повернення гравцеві | návratnost |
-| seat | 자리 | miejsce (krzesło = chair) | posto (sedia = chair) | kursi | 座位（椅子 = chair） | місце (стілець = chair) | místo (židle = chair) |
-| banked winnings (overflow bank) | 보관 중인 당첨금 | przechowywane wygrane | vincite custodite | kemenangan yang disimpan | 暫存獎金 | збережені виграші | uschované výhry |
-| overflow: hold vs. drop nearby | 보관해 두기 / 근처에 떨어뜨리기 | Przechowaj dla mnie / Upuść obok | Tienile da parte / Falle cadere vicino | Simpan Untukku / Jatuhkan di Dekatku | 替我保管 / 掉落在附近 | Зберегти для мене / Скинути поруч | Uschovat pro mě / Upustit poblíž |
+| Concept (continued) | ko_KR | pl_PL | it_IT | id_ID | zh_TW | uk_UA | cs_CZ | sv_SE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | 딜러 | krupier | croupier | bandar | 荷官 | круп'є | krupiér | croupier |
+| Baccarat banker/bank side | 뱅커 (플레이어 / 뱅커) | Bankier (Gracz / Bankier) | Banco (Giocatore / Banco) | Bankir (Pemain / Bankir) | 莊家（閒家 / 莊家） | Банкір (Гравець / Банкір; game: Бакара) | Bankéř (Hráč / Bankéř) | Bank (Spelare / Bank) |
+| bet / wager amount | 베팅 (베팅액) | zakład (stawka) | puntata | taruhan (nilai taruhan) | 下注（下注金額） | ставка | sázka (výše sázky) | insats |
+| all in | 올인 | va banque | punta tutto | pertaruhkan semua | 全押 | ва-банк | vsadit vše | satsa allt |
+| rebet (repeat previous wager) | 재베팅 | ponawianie zakładu (ponowiono zakład) | ripeti puntata (ripetizione) | taruhan ulang | 重複下注 | повтор ставки | opakování sázky | upprepa insats |
+| chip denomination/value | 칩 금액 | nominał żetonu | valore della fiche | nilai keping | 籌碼面額 | номінал фішки | hodnota žetonu | markervalör |
+| win streak / chain (PvE) | 연승 (최대 연승 라운드) | seria zwycięstw (maks. liczba rund serii) | serie di vittorie (round massimi della serie) | beruntun (ronde beruntun maksimum) | 連勝（最大連勝回合數） | серія перемог (макс. кількість раундів серії) | série výher (max. počet kol série) | vinstsvit (max antal rundor i vinstsvit) |
+| cash out / payout | 캐시아웃 / 지급 (당첨금) | wypłać / wypłata | incassa / vincita, pagamento | cairkan / pembayaran | 兌現 / 派彩 | забрати виграш / виплата | vybrat výhru / výplata | ta ut / utbetalning |
+| Blackjack: shoe | 슈 | sabot | sabot | kotak kartu | 牌靴 | сабо | sabot | kortsko |
+| Blackjack: hit | 히트 | Dobierz | Carta | Ambil | 要牌 | Ще карту | Karta | Kort |
+| Blackjack: stand | 스탠드 | Pas (pasujesz) | Stai | Tahan (memilih Tahan) | 停牌 | Досить | Stát | Stanna |
+| Blackjack: split | 스플릿 | Rozdziel (rozdzielanie) | Dividi (divisione) | Pisah | 分牌 | Розділити | Rozdělit | Dela |
+| Blackjack: insurance | 인슈어런스 | ubezpieczenie | assicurazione | asuransi | 保險 | страховка | pojištění | försäkring |
+| Blackjack: same-rank vs. same-value split rule | 같은 랭크 / 같은 점수 | Ta sama ranga / Ta sama wartość | Stesso rango / Stesso valore | Peringkat Sama / Nilai Sama | 相同牌面 / 相同點數 | Однаковий ранг / Однакове значення | Stejné označení / Stejná bodová hodnota | Samma valör / Samma poängvärde |
+| RPS: throw/action (not generic "turn") | 낼 손 (내다) | zagranie (zatwierdź zagranie) | mossa | pilihan (kunci pilihan) | 出拳 | жест | volba | val (låsa ditt val) |
+| Dragon Descent: vine mechanic | 덩굴 | pnącza | rampicanti | tanaman rambat | 藤蔓 | ліани | liány | klängväxter |
+| ON/OFF display state | 켜짐 / 꺼짐 | WŁ. / WYŁ. | ATTIVATA / DISATTIVATA (Attivato / Disattivato; Sì / No where one value fills labels of both genders) | AKTIF / NONAKTIF | 開啟 / 關閉 | УВІМК. / ВИМК. | ZAP. / VYP. | PÅ / AV |
+| Slots: variance (risk preset, not the RTP) | 변동성 | zmienność | volatilità | volatilitas | 波動度 | волатильність | volatilita | volatilitet |
+| Slots: house edge | 하우스 엣지 | przewaga kasyna | vantaggio della casa | keunggulan kasino | 賭場優勢 | перевага казино | výhoda kasina | husets fördel |
+| Slots: return/RTP verb | 환수율 (돌려받다) | zwrot (zwrot dla gracza) | ritorno al giocatore | pengembalian ke pemain | 返還率（玩家返還率） | повернення гравцеві | návratnost | återbetalningsprocent (återbetalning till spelaren) |
+| seat | 자리 | miejsce (krzesło = chair) | posto (sedia = chair) | kursi | 座位（椅子 = chair） | місце (стілець = chair) | místo (židle = chair) | plats (stol = chair) |
+| banked winnings (overflow bank) | 보관 중인 당첨금 | przechowywane wygrane | vincite custodite | kemenangan yang disimpan | 暫存獎金 | збережені виграші | uschované výhry | sparade vinster |
+| overflow: hold vs. drop nearby | 보관해 두기 / 근처에 떨어뜨리기 | Przechowaj dla mnie / Upuść obok | Tienile da parte / Falle cadere vicino | Simpan Untukku / Jatuhkan di Dekatku | 替我保管 / 掉落在附近 | Зберегти для мене / Скинути поруч | Uschovat pro mě / Upustit poblíž | Spara åt mig / Släpp i närheten |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -794,6 +794,17 @@ a real, previously-observed defect, not a hypothetical risk.
   genitive plurals for their single `{setting}` slot. Baccarat sides are
   `Hráč` / `Bankéř`; the house edge is `výhoda kasina`. The Slots game is
   `Automaty`; its "run" is `řada`, distinct from the PvE win streak `série`.
+- `sv_SE`: standard Swedish; `du` address as in Swedish Minecraft
+  (ungendered). A placeholder cannot carry the genitive `-s`, so possession
+  is rephrased (`{player} har turen`, `Adminmeny för {dealer}`,
+  `Spelare 2:s plats` only with a literal). The physical dealer is
+  `croupier`; the Baccarat sides are `Spelare` / `Bank`; the house edge is
+  `husets fördel`. The Slots game is `Spelautomat` with `hjul` (reels) and
+  `vinstlinjer` (paylines); its "run" is `följd`, kept apart from `rad`
+  (a row of symbols) and from the PvE win streak `vinstsvit`. RTP is
+  `återbetalningsprocent` (bare `återbetalning` also means refund).
+  Blackjack rounds are `omgång`. Decimal comma and spaced percent (`0,95:1`,
+  `2,5 %`); lowercase after a colon (`Hand {number}: blackjack!`).
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
