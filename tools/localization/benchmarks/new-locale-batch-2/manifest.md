@@ -76,3 +76,26 @@
   rechecked after. Findings: `reviews/pl_PL-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `pl_PL: name: "Polski"`.
 - Native-speaker review: not performed; recommended before release.
+
+### it_IT -- Italiano (Italian)
+
+- Final catalog SHA-256: `7998073d25daf19d2100eebb55c5242dd5cb9436696fa471fbdd85072309fcea` (identical in the run directory and
+  `src/main/resources/lang/it_IT.yml`; NFC-normalized)
+- Voice: informal `tu`; no gender-revealing agreement for the player;
+  placeholders never take an article; dealer `croupier`, Baccarat Banker
+  side `Banco`, so the house edge is `vantaggio della casa` (recorded in
+  the guide).
+- Structural: helper strict check 0 errors (48 residue warnings, all false
+  positives from Italian `in`/`a`/`chat`/`round`, plus the two
+  `Timer … (PvP)` lore lines using the accepted loanword);
+  `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all ten new locales registered: every one of
+  the 16 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0; Tier 2 = 2, Tier 3 = 43, all applied. `blackjack-settings.enabled`
+  / `disabled` were confirmed against `BlackjackMenu` to fill labels of
+  both genders before switching them to `Sì` / `No`; the other on/off
+  states moved to participles. 64 keys patched, rechecked after. Findings:
+  `reviews/it_IT-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `it_IT: name: "Italiano"`.
+- Native-speaker review: not performed; recommended before release.

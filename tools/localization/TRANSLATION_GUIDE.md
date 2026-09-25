@@ -601,31 +601,31 @@ far from the original example that established the pin.
 
 Continuation of the table above for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued) | ko_KR | pl_PL |
-| --- | --- | --- |
-| generic physical dealer/croupier | 딜러 | krupier |
-| Baccarat banker/bank side | 뱅커 (플레이어 / 뱅커) | Bankier (Gracz / Bankier) |
-| bet / wager amount | 베팅 (베팅액) | zakład (stawka) |
-| all in | 올인 | va banque |
-| rebet (repeat previous wager) | 재베팅 | ponawianie zakładu (ponowiono zakład) |
-| chip denomination/value | 칩 금액 | nominał żetonu |
-| win streak / chain (PvE) | 연승 (최대 연승 라운드) | seria zwycięstw (maks. liczba rund serii) |
-| cash out / payout | 캐시아웃 / 지급 (당첨금) | wypłać / wypłata |
-| Blackjack: shoe | 슈 | sabot |
-| Blackjack: hit | 히트 | Dobierz |
-| Blackjack: stand | 스탠드 | Pas (pasujesz) |
-| Blackjack: split | 스플릿 | Rozdziel (rozdzielanie) |
-| Blackjack: insurance | 인슈어런스 | ubezpieczenie |
-| Blackjack: same-rank vs. same-value split rule | 같은 랭크 / 같은 점수 | Ta sama ranga / Ta sama wartość |
-| RPS: throw/action (not generic "turn") | 낼 손 (내다) | zagranie (zatwierdź zagranie) |
-| Dragon Descent: vine mechanic | 덩굴 | pnącza |
-| ON/OFF display state | 켜짐 / 꺼짐 | WŁ. / WYŁ. |
-| Slots: variance (risk preset, not the RTP) | 변동성 | zmienność |
-| Slots: house edge | 하우스 엣지 | przewaga kasyna |
-| Slots: return/RTP verb | 환수율 (돌려받다) | zwrot (zwrot dla gracza) |
-| seat | 자리 | miejsce (krzesło = chair) |
-| banked winnings (overflow bank) | 보관 중인 당첨금 | przechowywane wygrane |
-| overflow: hold vs. drop nearby | 보관해 두기 / 근처에 떨어뜨리기 | Przechowaj dla mnie / Upuść obok |
+| Concept (continued) | ko_KR | pl_PL | it_IT |
+| --- | --- | --- | --- |
+| generic physical dealer/croupier | 딜러 | krupier | croupier |
+| Baccarat banker/bank side | 뱅커 (플레이어 / 뱅커) | Bankier (Gracz / Bankier) | Banco (Giocatore / Banco) |
+| bet / wager amount | 베팅 (베팅액) | zakład (stawka) | puntata |
+| all in | 올인 | va banque | punta tutto |
+| rebet (repeat previous wager) | 재베팅 | ponawianie zakładu (ponowiono zakład) | ripeti puntata (ripetizione) |
+| chip denomination/value | 칩 금액 | nominał żetonu | valore della fiche |
+| win streak / chain (PvE) | 연승 (최대 연승 라운드) | seria zwycięstw (maks. liczba rund serii) | serie di vittorie (round massimi della serie) |
+| cash out / payout | 캐시아웃 / 지급 (당첨금) | wypłać / wypłata | incassa / vincita, pagamento |
+| Blackjack: shoe | 슈 | sabot | sabot |
+| Blackjack: hit | 히트 | Dobierz | Carta |
+| Blackjack: stand | 스탠드 | Pas (pasujesz) | Stai |
+| Blackjack: split | 스플릿 | Rozdziel (rozdzielanie) | Dividi (divisione) |
+| Blackjack: insurance | 인슈어런스 | ubezpieczenie | assicurazione |
+| Blackjack: same-rank vs. same-value split rule | 같은 랭크 / 같은 점수 | Ta sama ranga / Ta sama wartość | Stesso rango / Stesso valore |
+| RPS: throw/action (not generic "turn") | 낼 손 (내다) | zagranie (zatwierdź zagranie) | mossa |
+| Dragon Descent: vine mechanic | 덩굴 | pnącza | rampicanti |
+| ON/OFF display state | 켜짐 / 꺼짐 | WŁ. / WYŁ. | ATTIVATA / DISATTIVATA (Attivato / Disattivato; Sì / No where one value fills labels of both genders) |
+| Slots: variance (risk preset, not the RTP) | 변동성 | zmienność | volatilità |
+| Slots: house edge | 하우스 엣지 | przewaga kasyna | vantaggio della casa |
+| Slots: return/RTP verb | 환수율 (돌려받다) | zwrot (zwrot dla gracza) | ritorno al giocatore |
+| seat | 자리 | miejsce (krzesło = chair) | posto (sedia = chair) |
+| banked winnings (overflow bank) | 보관 중인 당첨금 | przechowywane wygrane | vincite custodite |
+| overflow: hold vs. drop nearby | 보관해 두기 / 근처에 떨어뜨리기 | Przechowaj dla mnie / Upuść obok | Tienile da parte / Falle cadere vicino |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -729,6 +729,18 @@ a real, previously-observed defect, not a hypothetical risk.
   from the PvE win streak `seria`; the Auto Spin "batch" is
   `od ich uruchomienia` (never `sesja`, which is the whole Slots session).
   Horse "style" is `wzór sierści` (`umaszczenie` means coat colour).
+- `it_IT`: standard Italian; informal `tu` address as in Italian Minecraft,
+  imperative for buttons and prompts. Agreement that would reveal the
+  player's gender (`sei seduto/a`, `benvenuto/a`) is avoided: `Hai già un
+  posto.`, `Ti diamo il benvenuto nel gioco {game}`; `hai vinto/perso` is
+  invariant and fine. Placeholders never take an article: they follow a
+  colon label or a governing noun (`Turno di {player}`, `nel gioco {game}`);
+  `{currency}` is labelled (`Valuta insufficiente: {currency}`) because its
+  gender is unknown. The physical dealer is `croupier`; the Baccarat Banker
+  side is `Banco` (Giocatore / Banco), so the house edge is `vantaggio della
+  casa`, never `vantaggio del banco`. Slots "run" is `sequenza`, distinct
+  from the PvE win streak `serie`. Shift is `Maiusc`, as on Italian keyboards. On/off states use participles
+  (`ATTIVATA`/`DISATTIVATA`), never the imperative-looking `ATTIVA`/`DISATTIVA`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
