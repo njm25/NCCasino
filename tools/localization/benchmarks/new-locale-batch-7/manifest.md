@@ -208,3 +208,37 @@
   `reviews/mn_MN-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `mn_MN: name: "Монгол"`.
 - Native-speaker review: not performed; recommended before release.
+
+### bn_BD -- বাংলা (Bengali)
+
+- Final catalog SHA-256: `78397d94fb15b00efb9762559db83925f42ca9dd2b1991743a446007a23f81aa` (identical in the run directory and
+  `src/main/resources/lang/bn_BD.yml`; NFC-normalized)
+- Voice: standard Bangladeshi Bengali, formal `আপনি` with `-উন`
+  imperatives and honorific agreement for players, danda `।`, ASCII digits,
+  decimal point, `“ ”` quotes; no case ending or classifier on a
+  placeholder (labels, or a separate following word such as `{rounds}
+  রাউন্ড`); `ডিলার`, Baccarat `খেলোয়াড়` / `ব্যাংকার`, `বাজি`, `জেতা অর্থ`,
+  slots run `ক্রম` vs PvE streak `টানা জয়` vs auto-spin batch `দফা`, vines
+  `লতা`, RTP `খেলোয়াড়কে প্রদানের হার` kept apart from the refund `ফেরত`,
+  traditional card names. Recorded in the sixth continuation of the §H
+  table.
+- Structural: helper strict check 0 errors, 0 residue warnings (the draft's
+  "র‍্যাঙ্ক" carried two ZWJ characters; the split rule now says "একই কার্ড"
+  instead); `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all fifty-two new locales registered: every one
+  of the 58 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Self-review before the independent review: chip-number lines turned into
+  labels (no suffix on `{index}`), `{currency}` lines reordered so the
+  placeholder stands before a separate verb, and "All In" reworded to
+  "সবকিছু বাজি ধরুন".
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 4 ("ফেলে দেওয়া" read as discarding in three `inventory-full`
+  lines; the timeout description placing the seat's ride inside the
+  window), Tier 2 = 4 (cash-out term drift ×3, "winnings" term), Tier 3 =
+  28 ("চলে যান" read as "Go away", hyphenated game name for `{game}`,
+  "বকলস" for a collar, stilted round labels), all applied. 36 review keys
+  plus 4 self-review follow-ups (the other Rock Paper Scissors mentions),
+  rechecked after. Findings: `reviews/bn_BD-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `bn_BD: name: "বাংলা"`.
+- Native-speaker review: not performed; recommended before release, with
+  an in-game check of Bengali conjunct rendering in the Minecraft font.
