@@ -48,3 +48,22 @@ Each entry is appended when that locale is finished.
 - Not registered in `locales.yml` (user's follow-up). Registry line:
   `nl_NL: name: "Nederlands"`.
 - Native-speaker review: not performed; recommended before release.
+
+### fi_FI -- Suomi (Finnish)
+
+- Final catalog SHA-256: `bd89ab232bf7e3179646f906decbe3685cdedc16241ab9f5c2dad623a89edce9` (identical in the run directory and
+  `src/main/resources/lang/fi_FI.yml`)
+- Voice: informal `sinä`, standard written Finnish; placeholders never take
+  case endings (recorded in the guide).
+- Structural: helper strict check 0 errors / 0 residue warnings;
+  `localizationCandidateCheck` CANDIDATE OK (1184); full `localizationCheck`
+  with nl_NL + fi_FI temporarily registered: fi_FI OK (1184) with no warnings,
+  all other locales unchanged.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 6, Tier 2 = 12, Tier 3 = 52. All Tier 1 fixed (one with a
+  different wording than suggested, because the suggestion would have added a
+  protected `Vault` literal); all Tier 2 fixed; Tier 3 applied except keeping
+  the parser-verified "2,5 %" example. 71 keys patched, rechecked after.
+  Findings: `reviews/fi_FI-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `fi_FI: name: "Suomi"`.
+- Native-speaker review: not performed; recommended before release.
