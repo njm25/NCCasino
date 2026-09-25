@@ -746,31 +746,31 @@ Fourth continuation for later locales (same concept rows; split so neither table
 
 Fifth continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 5) | mk_MK | az_AZ | eu_ES | sq_AL |
-| --- | --- | --- | --- | --- |
-| generic physical dealer/croupier | дилер | diler | krupierra | krupieri |
-| Baccarat banker/bank side | Банкар (Играч / Банкар) | Bankir (Oyunçu / Bankir) | Bankaria (Jokalaria / Bankaria) | Bankieri (Lojtari / Bankieri) |
-| bet / wager amount | облог | mərc | apustua | bast |
-| all in | Ва-банк | Hamısını qoy | Dena jokoan | Gjithçka në lojë |
-| rebet (repeat previous wager) | Повтор на облог | Mərci təkrarla | Errepikatu apustua | Përsërit bastin |
-| chip denomination/value | вредност на жетонот | fişkanın dəyəri | fitxaren balioa | vlera e fishës |
-| win streak / chain (PvE) | низа победи (макс. број рунди во низа) | qələbə seriyası (seriyada maks. raund) | garaipen-bolada (boladako gehieneko txandak) | seri fitoresh (raundet maksimale në seri) |
-| cash out / payout | Подигни добивка / исплата | Uduşu götür / ödəniş | Kobratu / ordainketa | Tërhiq fitimin / pagesë |
-| Blackjack: shoe | кутија со карти | kart qutusu | karta-kutxa | kutia e letrave |
-| Blackjack: hit | Карта | Kart al | Eskatu | Letër |
-| Blackjack: stand | Доста | Dayan | Plantatu | Ndal |
-| Blackjack: split | Подели | Böl | Banatu | Ndaj |
-| Blackjack: insurance | осигурување | sığorta | asegurua | sigurim |
-| Blackjack: same-rank vs. same-value split rule | Ист ранг / Иста вредност | Eyni rütbə / Eyni dəyər | Maila bera / Balio bera | I njëjti rang / E njëjta vlerë |
-| RPS: throw/action (not generic "turn") | потег | seçim | jokaldia | lëvizje |
-| Dragon Descent: vine mechanic | лијана | sarmaşıq | liana | lianë |
-| ON/OFF display state | ВКЛ. / ИСКЛ. | AÇIQ / BAĞLI | PIZTUTA / ITZALITA | AKTIV / JOAKTIV |
-| Slots: variance (risk preset, not the RTP) | волатилност | volatillik | hegazkortasuna | luhatshmëri |
-| Slots: house edge | предност на казиното | kazino üstünlüyü | etxearen abantaila | avantazhi i kazinosë |
-| Slots: return/RTP verb | враќање кон играчите | oyunçuya qayıdış | jokalariarentzako itzulera | kthimi për lojtarin |
-| seat | место (стол = chair) | yer (stul = chair) | eserlekua (aulkia = chair) | vend (karrige = chair) |
-| banked winnings (overflow bank) | зачувана добивка | saxlanılan uduş | gordetako irabaziak | fitimet e ruajtura |
-| overflow: hold vs. drop nearby | Чувај ја за мене / Фрли ја во близина | Mənim üçün saxla / Yaxınlıqda yerə at | Gorde niretzat / Bota ondoan | Mbaji për mua / Hidhi afër meje |
+| Concept (continued 5) | mk_MK | az_AZ | eu_ES | sq_AL | is_IS |
+| --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | дилер | diler | krupierra | krupieri | gjafari |
+| Baccarat banker/bank side | Банкар (Играч / Банкар) | Bankir (Oyunçu / Bankir) | Bankaria (Jokalaria / Bankaria) | Bankieri (Lojtari / Bankieri) | Banki (Leikmaður / Banki) |
+| bet / wager amount | облог | mərc | apustua | bast | veðmál |
+| all in | Ва-банк | Hamısını qoy | Dena jokoan | Gjithçka në lojë | Allt undir |
+| rebet (repeat previous wager) | Повтор на облог | Mərci təkrarla | Errepikatu apustua | Përsërit bastin | Endurtaka veðmál |
+| chip denomination/value | вредност на жетонот | fişkanın dəyəri | fitxaren balioa | vlera e fishës | virði spilapenings |
+| win streak / chain (PvE) | низа победи (макс. број рунди во низа) | qələbə seriyası (seriyada maks. raund) | garaipen-bolada (boladako gehieneko txandak) | seri fitoresh (raundet maksimale në seri) | hrina (hámarksumferðir hrinu) |
+| cash out / payout | Подигни добивка / исплата | Uduşu götür / ödəniş | Kobratu / ordainketa | Tërhiq fitimin / pagesë | Innleysa / útborgun |
+| Blackjack: shoe | кутија со карти | kart qutusu | karta-kutxa | kutia e letrave | stokkahólf |
+| Blackjack: hit | Карта | Kart al | Eskatu | Letër | Spil |
+| Blackjack: stand | Доста | Dayan | Plantatu | Ndal | Standa |
+| Blackjack: split | Подели | Böl | Banatu | Ndaj | Skipta |
+| Blackjack: insurance | осигурување | sığorta | asegurua | sigurim | trygging |
+| Blackjack: same-rank vs. same-value split rule | Ист ранг / Иста вредност | Eyni rütbə / Eyni dəyər | Maila bera / Balio bera | I njëjti rang / E njëjta vlerë | Sama tegund / Sama virði |
+| RPS: throw/action (not generic "turn") | потег | seçim | jokaldia | lëvizje | val |
+| Dragon Descent: vine mechanic | лијана | sarmaşıq | liana | lianë | klifurjurt |
+| ON/OFF display state | ВКЛ. / ИСКЛ. | AÇIQ / BAĞLI | PIZTUTA / ITZALITA | AKTIV / JOAKTIV | KVEIKT / SLÖKKT |
+| Slots: variance (risk preset, not the RTP) | волатилност | volatillik | hegazkortasuna | luhatshmëri | sveiflur (sveiflustig) |
+| Slots: house edge | предност на казиното | kazino üstünlüyü | etxearen abantaila | avantazhi i kazinosë | forskot hússins |
+| Slots: return/RTP verb | враќање кон играчите | oyunçuya qayıdış | jokalariarentzako itzulera | kthimi për lojtarin | útborgunarhlutfall (not endurgreiðsla = refund) |
+| seat | место (стол = chair) | yer (stul = chair) | eserlekua (aulkia = chair) | vend (karrige = chair) | sæti (stóll = chair) |
+| banked winnings (overflow bank) | зачувана добивка | saxlanılan uduş | gordetako irabaziak | fitimet e ruajtura | geymdir vinningar |
+| overflow: hold vs. drop nearby | Чувај ја за мене / Фрли ја во близина | Mənim üçün saxla / Yaxınlıqda yerə at | Gorde niretzat / Bota ondoan | Mbaji për mua / Hidhi afër meje | Geyma fyrir mig / Sleppa nálægt |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -1302,6 +1302,19 @@ a real, previously-observed defect, not a hypothetical risk.
   `krupieri`, Baccarat `Lojtari` / `Bankieri`, `bast`, `Tërhiq fitimin`,
   vines `Liana`; slots run `varg` vs PvE streak `seri`; `Rrotullim
   automatik`.
+- `is_IS`: standard Icelandic, informal singular `þú` as Icelandic
+  software does (`Smelltu`, `Þú situr nú þegar`) and the infinitive for
+  buttons and admin items (`Standa`, `Breyta tímamæli`); `„“` quotes,
+  decimal comma. Gender is never assumed for the player or a named player:
+  finite verbs replace predicate adjectives (`Þú vannst`, `{player} á
+  leik`), and "welcome" becomes `Góða skemmtun í …`. Placeholders cannot
+  show case, so they sit in nominative slots, after a colon or in a
+  parenthesis. The comma-list game name is quoted where it is inserted
+  into running text (`stillingar „Steinn, skæri, blað“`). `gjafari`,
+  Baccarat `Leikmaður` / `Banki`, `veðmál`, `Innleysa`; RTP is
+  `útborgunarhlutfall` because `endurgreiða` means refund; turn `röð` vs
+  round `umferð`; slots run `runa` vs PvE streak `hrina`; vines
+  `klifurjurtir`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.

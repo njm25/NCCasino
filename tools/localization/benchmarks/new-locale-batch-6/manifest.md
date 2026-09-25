@@ -121,3 +121,31 @@
   after. Findings: `reviews/sq_AL-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `sq_AL: name: "Shqip"`.
 - Native-speaker review: not performed; recommended before release.
+
+### is_IS -- Íslenska (Icelandic)
+
+- Final catalog SHA-256: `db820a5ab48d5deada8b6f0e8c74e976ae3f2fbdc6c431a31d1bb565de884ab5` (identical in the run directory and
+  `src/main/resources/lang/is_IS.yml`; NFC-normalized)
+- Voice: standard Icelandic, informal singular `þú` for instructions as
+  Icelandic software does and the infinitive for buttons, `„“` quotes,
+  decimal comma; no gendered predicate about a player (finite verbs,
+  `{player} á leik`, "welcome" as `Góða skemmtun í …`); placeholders only in
+  nominative slots; the comma-list RPS name quoted in running text;
+  `gjafari`, Baccarat `Leikmaður` / `Banki`, `Innleysa`, RTP
+  `útborgunarhlutfall` (not the refund word `endurgreiðsla`), turn `röð` vs
+  round `umferð`. Recorded in the fifth continuation of the §H table.
+- Structural: helper strict check 0 errors, 0 residue warnings (stray soft
+  hyphens found in drafting were removed and the helper now rejects
+  invisible characters); `localizationCandidateCheck` CANDIDATE OK (1184);
+  full `localizationCheck` with all forty-two new locales registered: every
+  one of the 48 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 5 (seat-unavailable read as "not vacant", `Engin` / `Enginn`
+  agreement, "stöðugar sveiflur" inverting the low-risk preset, Same Rank
+  labelled with the value word), Tier 2 = 1 (turn vs round), Tier 3 = 21
+  (dative placeholder slots, "lokað fyrir veðmál", RTP read as a refund,
+  bare comma-list game name), all applied. 27 review keys plus 7
+  self-review fixes (the remaining RTP lines, `current-player-turn`,
+  `partial-return`), rechecked after. Findings: `reviews/is_IS-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `is_IS: name: "Íslenska"`.
+- Native-speaker review: not performed; recommended before release.
