@@ -420,6 +420,13 @@ actual implementation, and update this section.
   by a letter, and agglutinative locales (fi_FI, tr_TR) must not attach case
   suffixes to a placeholder; restructure so the placeholder stays in its base
   form (e.g. a colon label or an apposition).
+- **`mob-settings.none` / `admin.none` only fill the llama-decor and
+  wolf-collar-colour slots.** Every call site is `getLlamaCarpetName` (after
+  `decor-lore` / `current-decor-lore`) or the wolf collar value in
+  `jockey-options.current` under `edit-collar-color` (`JockeyOptionsMenu`,
+  `MobSelectionMenu`). In gendered languages, make "None" agree with the
+  locale's decor and colour nouns (gl_ES `Ningunha` for `decoración` /
+  `cor`), not with a generic masculine default.
 
 This registry is not exhaustive. When a new ambiguous key is resolved via
 Java inspection, add it here with the exact affected key family and a short
@@ -705,31 +712,31 @@ Third continuation for later locales (same concept rows; split so neither table 
 
 Fourth continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 4) | ms_MY | fil_PH |
-| --- | --- | --- |
-| generic physical dealer/croupier | pengendali | dealer |
-| Baccarat banker/bank side | Jurubank (Pemain / Jurubank) | Bangkero (Manlalaro / Bangkero) |
-| bet / wager amount | taruhan | taya |
-| all in | Pertaruhkan Semua | Itaya Lahat |
-| rebet (repeat previous wager) | Ulang Taruhan | Ulitin ang Taya |
-| chip denomination/value | nilai cip | halaga ng chip |
-| win streak / chain (PvE) | berturut-turut (had pusingan berturut-turut) | sunod-sunod na panalo (max na sunod-sunod na round) |
-| cash out / payout | Tunaikan / bayaran | Kunin ang Panalo / bayad |
-| Blackjack: shoe | kotak kad | shoe |
-| Blackjack: hit | Ambil | Kumuha |
-| Blackjack: stand | Berhenti | Tumigil |
-| Blackjack: split | Pisah | Hatiin |
-| Blackjack: insurance | insurans | insurance |
-| Blackjack: same-rank vs. same-value split rule | Pangkat Sama / Nilai Sama | Parehong Ranggo / Parehong Halaga |
-| RPS: throw/action (not generic "turn") | pilihan | tira |
-| Dragon Descent: vine mechanic | tumbuhan menjalar | baging |
-| ON/OFF display state | HIDUP / MATI | NAKA-ON / NAKA-OFF |
-| Slots: variance (risk preset, not the RTP) | volatiliti | volatility |
-| Slots: house edge | kelebihan kasino | kalamangan ng casino |
-| Slots: return/RTP verb | pulangan kepada pemain | balik sa manlalaro |
-| seat | tempat duduk (kerusi = chair) | upuan |
-| banked winnings (overflow bank) | kemenangan simpanan | nakatabing panalo |
-| overflow: hold vs. drop nearby | Simpan Untuk Saya / Jatuhkan Berdekatan | Itabi Para Sa Akin / Ihulog sa Malapit |
+| Concept (continued 4) | ms_MY | fil_PH | gl_ES |
+| --- | --- | --- | --- |
+| generic physical dealer/croupier | pengendali | dealer | crupier |
+| Baccarat banker/bank side | Jurubank (Pemain / Jurubank) | Bangkero (Manlalaro / Bangkero) | Banca (Xogador / Banca) |
+| bet / wager amount | taruhan | taya | aposta |
+| all in | Pertaruhkan Semua | Itaya Lahat | Apostalo todo |
+| rebet (repeat previous wager) | Ulang Taruhan | Ulitin ang Taya | Repetir aposta |
+| chip denomination/value | nilai cip | halaga ng chip | valor da ficha |
+| win streak / chain (PvE) | berturut-turut (had pusingan berturut-turut) | sunod-sunod na panalo (max na sunod-sunod na round) | racha (máximo de roldas en racha) |
+| cash out / payout | Tunaikan / bayaran | Kunin ang Panalo / bayad | Cobrar / pagamento |
+| Blackjack: shoe | kotak kad | shoe | zapata |
+| Blackjack: hit | Ambil | Kumuha | Pedir |
+| Blackjack: stand | Berhenti | Tumigil | Plantarse |
+| Blackjack: split | Pisah | Hatiin | Dividir |
+| Blackjack: insurance | insurans | insurance | seguro |
+| Blackjack: same-rank vs. same-value split rule | Pangkat Sama / Nilai Sama | Parehong Ranggo / Parehong Halaga | Mesmo rango / Mesmo valor |
+| RPS: throw/action (not generic "turn") | pilihan | tira | xogada |
+| Dragon Descent: vine mechanic | tumbuhan menjalar | baging | enredadeira |
+| ON/OFF display state | HIDUP / MATI | NAKA-ON / NAKA-OFF | ACTIVADO / DESACTIVADO |
+| Slots: variance (risk preset, not the RTP) | volatiliti | volatility | volatilidade |
+| Slots: house edge | kelebihan kasino | kalamangan ng casino | vantaxe da casa |
+| Slots: return/RTP verb | pulangan kepada pemain | balik sa manlalaro | retorno ao xogador |
+| seat | tempat duduk (kerusi = chair) | upuan | asento |
+| banked winnings (overflow bank) | kemenangan simpanan | nakatabing panalo | gañancias gardadas |
+| overflow: hold vs. drop nearby | Simpan Untuk Saya / Jatuhkan Berdekatan | Itabi Para Sa Akin / Ihulog sa Malapit | Gárdamas / Déixaas no chan, preto de min |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -1159,6 +1166,18 @@ a real, previously-observed defect, not a hypothetical risk.
   `sunuran` vs PvE streak `sunod-sunod`; `Awtomatikong Ikot` for Auto Spin.
   Coin Flip is `Kara o Krus`; Spanish-derived card names (`Alas`, `Sota`,
   `Reyna`, `Hari`; `Puso`, `Diyamante`, `Trebol`, `Ispada`).
+- `gl_ES`: normative Galician (RAG/ILG), informal `ti`, decimal comma,
+  `«»` quotes. Watch for Spanish interference (`Bieeen`, `jackpots`,
+  Castilian clitic habits): pronouns go before the verb after negation,
+  subordinators, `así que` and quantifier subjects (`todo … se paga`), and
+  after it otherwise (`Déixaas`, `Gárdamas`). Stay neutral toward the player
+  (`Dámosche a benvida`, `Xa tes asento`, `doutra persoa`, `Unha persoa
+  administradora`) and use label forms where `{amount}` or a count could be
+  singular (`Cantidade retirada: …`, `devolvéronche {amount}`). `preto` is
+  both "near" and "black", so write `preto de ti/min`. Blackjack buttons are
+  infinitives (`Pedir`, `Plantarse`, `Dobrar`, `Dividir`); spin `tirada` vs
+  round `rolda`; slots run `secuencia` vs PvE streak `racha`; `None` is
+  `Ningunha` (decor/colour slots).
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.

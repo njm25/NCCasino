@@ -75,3 +75,31 @@
   `reviews/fil_PH-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `fil_PH: name: "Filipino"`.
 - Native-speaker review: not performed; recommended before release.
+
+### gl_ES -- Galego (Galician)
+
+- Final catalog SHA-256: `9d4a6b4eeca9420760c03f4aa40346dd06774581d3270fe6659e9ce5939cd89d` (identical in the run directory and
+  `src/main/resources/lang/gl_ES.yml`; NFC-normalized)
+- Voice: normative Galician (RAG/ILG), informal `ti`, decimal comma, `«»`
+  quotes; written from the English source with a Spanish-interference scan
+  (clitic placement, `Bieeen`, `jackpots`); player-neutral forms; label
+  forms where a singular amount would break plural agreement; Blackjack
+  buttons as infinitives; `crupier`, Baccarat `Xogador` / `Banca`, `aposta`,
+  `Cobrar`, Coin Flip `Cara ou cruz`, Slots `Tragaperras` with `rolos`,
+  run `secuencia` vs streak `racha`. Recorded in the fourth continuation of
+  the §H table.
+- Structural: helper strict check 0 errors (the 31 residue warnings are the
+  Galician article `a` and the `chat` loanword); `localizationCandidateCheck`
+  CANDIDATE OK (1184); full `localizationCheck` with all thirty-four new
+  locales registered: every one of the 40 locales OK (1184), no new
+  warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 1 (Spanish `Bieeen`), Tier 2 = 1 (unlimited spin limit shown two
+  ways), Tier 3 = 23 (colon after `de`, `preto` = near/black ambiguity,
+  proclisis after `así que` / `todo`, chip value vs size, singular-amount
+  agreement, "None" agreement verified in Java and added to guide §C), all
+  applied, plus the reviewer's optional `doutra persoa` note. 26 review
+  keys plus 6 self-review fixes, rechecked after. Findings:
+  `reviews/gl_ES-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `gl_ES: name: "Galego"`.
+- Native-speaker review: not performed; recommended before release.
