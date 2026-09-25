@@ -772,6 +772,34 @@ Fifth continuation for later locales (same concept rows; split so neither table 
 | banked winnings (overflow bank) | зачувана добивка | saxlanılan uduş | gordetako irabaziak | fitimet e ruajtura | geymdir vinningar | сақталған ұтыс | შენახული მოგება | enillion a gadwyd |
 | overflow: hold vs. drop nearby | Чувај ја за мене / Фрли ја во близина | Mənim üçün saxla / Yaxınlıqda yerə at | Gorde niretzat / Bota ondoan | Mbaji për mua / Hidhi afër meje | Geyma fyrir mig / Sleppa nálægt | Маған сақтап қою / Жаныма тастау | ჩემთვის შენახვა / ახლოს დაყრა | Cadw i Mi / Gollwng Gerllaw |
 
+Sixth continuation for later locales (same concept rows; split so neither table grows too wide to read):
+
+| Concept (continued 6) | bs_BA |
+| --- | --- |
+| generic physical dealer/croupier | diler |
+| Baccarat banker/bank side | Bankar (Igrač / Bankar) |
+| bet / wager amount | ulog (placed bet: opklada) |
+| all in | Uloži sve |
+| rebet (repeat previous wager) | Ponovi ulog |
+| chip denomination/value | vrijednost žetona |
+| win streak / chain (PvE) | serija (najveći broj rundi u seriji) |
+| cash out / payout | Podigni dobitak / isplata |
+| Blackjack: shoe | kutija za dijeljenje |
+| Blackjack: hit | Karta |
+| Blackjack: stand | Stani |
+| Blackjack: split | Podijeli |
+| Blackjack: insurance | osiguranje |
+| Blackjack: same-rank vs. same-value split rule | Isti rang / Ista vrijednost |
+| RPS: throw/action (not generic "turn") | potez |
+| Dragon Descent: vine mechanic | puzavica |
+| ON/OFF display state | UKLJUČENO / ISKLJUČENO |
+| Slots: variance (risk preset, not the RTP) | volatilnost |
+| Slots: house edge | prednost kuće |
+| Slots: return/RTP verb | povrat igraču |
+| seat | mjesto (stolica = chair) |
+| banked winnings (overflow bank) | sačuvani dobici |
+| overflow: hold vs. drop nearby | Čuvaj ih za mene / Ostavi ih na tlu u blizini |
+
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
 settled — do not fill a cell with a guess presented as an established pin.
@@ -1350,6 +1378,19 @@ a real, previously-observed defect, not a hypothetical risk.
   `Chwaraewr` / `Banciwr`, `Casglu enillion`; RTP `dychweliad`, never
   `ad-dalu` (refund); slots run `rhediad` vs PvE streak `cyfres`; vines
   `planhigion dringo`, never `gwinwydd`.
+- `bs_BA`: standard ijekavian Bosnian in Latin script, informal `ti`
+  like the hr_HR / sr_RS siblings, `„“` quotes, decimal comma; Bosnian UI
+  vocabulary (`meni`, `dugme`, `postavke`, `sačuvati`, `server`, `tajmer`,
+  `sto`, `sprat`, `kolona`, `makaze`, `procenat`, `vjerovatnoća`,
+  `komanda`, `tačno`), never Croatian-only or ekavian forms. Gender-neutral
+  toward the player: outcomes are nouns, present tense or passive
+  (`Pobjeda!`, `Već sjediš.`, `runda je izgubljena`); welcomes use the
+  plural `Dobro došli`. Number placeholders stay out of 1 / 2-4 / 5+
+  agreement (colon labels, also for the profile-name length).
+  `occupations.*` are genitive and `dragon-settings.columns|vines|floors`
+  genitive plural. `diler`; Baccarat `Igrač` / `Bankar`; stake `ulog`, a
+  placed bet `opklada`; ace plural `asovi`; slots run `niz` vs PvE streak
+  `serija`; `džekpot`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
