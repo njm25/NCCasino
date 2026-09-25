@@ -174,3 +174,37 @@
   after. Findings: `reviews/ga_IE-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `ga_IE: name: "Gaeilge"`.
 - Native-speaker review: not performed; recommended before release.
+
+### mn_MN -- Монгол (Mongolian)
+
+- Final catalog SHA-256: `bfc606cb6e112ae80a6e82aeb0b216f1fc1cb66a36f9e7d9242fa3aeab5a34e8` (identical in the run directory and
+  `src/main/resources/lang/mn_MN.yml`; NFC-normalized)
+- Voice: standard Khalkha Mongolian in Cyrillic, polite `Та` with polite
+  imperatives (`дарна уу`, `бичнэ үү`) and verbal nouns for buttons, `«»`
+  quotes, decimal comma; no grammatical gender; no case ending is ever
+  attached to a placeholder (colon labels, governing nouns and
+  postpositions, en-dash ranges, only the invariant digit marker `-р`);
+  `дилер`, Baccarat `Тоглогч` / `Банкир`, `бооцоо`, `сан`, slots run
+  `дараалал` vs PvE streak `цуврал` vs auto-spin batch `багц`, vines
+  `ороонго`, RTP `тоглогчид олгох төлбөрийн хувь` kept apart from the refund
+  `буцаан олгох`, traditional card names. Recorded in the sixth
+  continuation of the §H table.
+- Structural: helper strict check 0 errors, 0 residue warnings;
+  `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all fifty-one new locales registered: every one
+  of the 57 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Self-review before the independent review: loanword case forms
+  replaced with a governing noun ("Блэкжек тоглоомд", "Рулет тоглоом
+  руу"), "хүрэх" / "хэтрэх" given their dative / ablative objects through
+  "дараах дүнд / дүнгээс" labels, genitive titles for the Coin Flip and
+  RPS settings, and "Тоглогчийн горим солих эрх".
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0, Tier 2 = 3 (two short RTP forms, "шинэчлэх" used for reset),
+  Tier 3 = 25 (ь-stem past tense "тавилаа" / "барилаа", "эсрэг" with the
+  genitive ×4, "хаяж байна" without "ойролцоо" ×3, "болсон юм болсон",
+  countdown wording), all applied. 28 review keys plus 7 self-review
+  follow-ups (the same spelling in blackjack, test-game reset, the
+  split-rule toggles), rechecked after. Findings:
+  `reviews/mn_MN-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `mn_MN: name: "Монгол"`.
+- Native-speaker review: not performed; recommended before release.
