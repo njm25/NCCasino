@@ -146,3 +146,29 @@
   rechecked after. Findings: `reviews/lt_LT-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `lt_LT: name: "Lietuvių"`.
 - Native-speaker review: not performed; recommended before release.
+
+### lv_LV -- Latviešu (Latvian)
+
+- Final catalog SHA-256: `07a47a4c1fc85d636f922ccf94f40a0390c841730786605e5ba23557b5743a0f` (identical in the run directory and
+  `src/main/resources/lang/lv_LV.yml`; NFC-normalized)
+- Voice: standard Latvian, informal `tu`, `„“` quotes, decimal comma;
+  gender-neutral toward the player (impersonal or finite forms instead of
+  participles; `atteicies` replaced); number agreement avoided with labels;
+  accusative `occupations.*` and genitive-plural Dragon fillers;
+  `dīleris`, Baccarat `Spēlētājs` / `Baņķieris`, `likme`, pot `banka`,
+  Slots `Spēļu automāts` with `ruļļi`, run `virkne` vs streak `sērija`.
+  Lessons from the lt_LT review (settlement = delivery, reflexive `savus`,
+  no colon after a preposition, `sērija` kept out of auto-spin) applied
+  before review. Recorded in the guide.
+- Structural: helper strict check 0 errors (1 residue warning is Latvian
+  `to`); `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all twenty-nine new locales registered: every
+  one of the 35 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0, Tier 2 = 2 (mob "adult" as the noun `Pieaugušais`), Tier 3 =
+  36 ("nomainīts uz:" restructured, `izkrita` for roulette results,
+  `galējais kreisais`, side labels), all applied. 38 review keys plus 16
+  self-review fixes, rechecked after. Findings:
+  `reviews/lv_LV-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `lv_LV: name: "Latviešu"`.
+- Native-speaker review: not performed; recommended before release.
