@@ -632,6 +632,34 @@ Continuation of the table above for later locales (same concept rows; split so n
 | banked winnings (overflow bank) | 보관 중인 당첨금 | przechowywane wygrane | vincite custodite | kemenangan yang disimpan | 暫存獎金 | збережені виграші | uschované výhry | sparade vinster |
 | overflow: hold vs. drop nearby | 보관해 두기 / 근처에 떨어뜨리기 | Przechowaj dla mnie / Upuść obok | Tienile da parte / Falle cadere vicino | Simpan Untukku / Jatuhkan di Dekatku | 替我保管 / 掉落在附近 | Зберегти для мене / Скинути поруч | Uschovat pro mě / Upustit poblíž | Spara åt mig / Släpp i närheten |
 
+Second continuation for later locales (same concept rows; split so neither table grows too wide to read):
+
+| Concept (continued 2) | hu_HU |
+| --- | --- |
+| generic physical dealer/croupier | osztó |
+| Baccarat banker/bank side | Bankár (Játékos / Bankár) |
+| bet / wager amount | tét |
+| all in | mindent bele |
+| rebet (repeat previous wager) | tét ismétlése |
+| chip denomination/value | zsetoncímlet |
+| win streak / chain (PvE) | győzelmi sorozat (sorozat max. körszáma) |
+| cash out / payout | nyeremény felvétele / kifizetés |
+| Blackjack: shoe | kártyaadagoló |
+| Blackjack: hit | Lap |
+| Blackjack: stand | Megállok |
+| Blackjack: split | Szétválasztás |
+| Blackjack: insurance | biztosítás |
+| Blackjack: same-rank vs. same-value split rule | Azonos rang / Azonos pontérték |
+| RPS: throw/action (not generic "turn") | választás |
+| Dragon Descent: vine mechanic | inda |
+| ON/OFF display state | BE / KI |
+| Slots: variance (risk preset, not the RTP) | volatilitás |
+| Slots: house edge | házelőny |
+| Slots: return/RTP verb | visszafizetési arány |
+| seat | hely (szék = chair) |
+| banked winnings (overflow bank) | tárolt nyeremények |
+| overflow: hold vs. drop nearby | Őrizd meg nekem / Leejtés a közelben |
+
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
 settled — do not fill a cell with a guess presented as an established pin.
@@ -805,6 +833,18 @@ a real, previously-observed defect, not a hypothetical risk.
   `återbetalningsprocent` (bare `återbetalning` also means refund).
   Blackjack rounds are `omgång`. Decimal comma and spaced percent (`0,95:1`,
   `2,5 %`); lowercase after a colon (`Hand {number}: blackjack!`).
+- `hu_HU`: standard Hungarian; informal `te` address as in Hungarian
+  Minecraft (no grammatical gender). Suffixes cannot attach to a placeholder,
+  so placeholders sit behind a colon label, in parentheses (`Adminmenü
+  ({dealer})`), or before a suffixed noun (`{player} következik`,
+  `hány {setting} legyen`); nouns stay singular after numbers. The dealer
+  is `osztó`; the Baccarat sides are `Játékos` / `Bankár`; the house edge is
+  `házelőny`. The Slots game is `Nyerőgép` with `tárcsák` (reels) and
+  `nyerővonalak` (paylines); its "run" is `lánc`, distinct from `sor` (row)
+  and the PvE win streak `sorozat`. Inventory is `tárgylista` (`eszköztár`
+  is the hotbar); overflow drop is `leejtés` / `a földre kerül`
+  (`eldobás` can read as discarding). Paytable "Return" is `Kifizetés`
+  (`visszatérítés` means refund).
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
