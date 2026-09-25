@@ -634,31 +634,31 @@ Continuation of the table above for later locales (same concept rows; split so n
 
 Second continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 2) | hu_HU | ro_RO | pt_PT | da_DK |
-| --- | --- | --- | --- | --- |
-| generic physical dealer/croupier | osztó | crupier | croupier | dealer |
-| Baccarat banker/bank side | Bankár (Játékos / Bankár) | Bancher (Jucător / Bancher) | Banca (Jogador / Banca) | Bank (Spiller / Bank) |
-| bet / wager amount | tét | pariu (miză = suma) | aposta | indsats |
-| all in | mindent bele | Mizează tot | Apostar tudo | All-in |
-| rebet (repeat previous wager) | tét ismétlése | Repetă pariul | Repetir aposta | Gentag indsats |
-| chip denomination/value | zsetoncímlet | valoarea jetonului | valor da ficha | jetonværdi |
-| win streak / chain (PvE) | győzelmi sorozat (sorozat max. körszáma) | serie de victorii (număr maxim de runde în serie) | série de vitórias (máximo de rondas em série) | sejrsstime (maks. antal runder i træk) |
-| cash out / payout | nyeremény felvétele / kifizetés | Încasează / plată | Retirar / pagamento | Indkasser / udbetaling |
-| Blackjack: shoe | kártyaadagoló | sabot | sapato | kortskoen |
-| Blackjack: hit | Lap | Carte | Pedir carta | Træk kort |
-| Blackjack: stand | Megállok | Stai | Ficar | Stå |
-| Blackjack: split | Szétválasztás | Împarte | Dividir | Del |
-| Blackjack: insurance | biztosítás | asigurare | seguro | forsikring |
-| Blackjack: same-rank vs. same-value split rule | Azonos rang / Azonos pontérték | Același rang / Aceeași valoare | Mesma carta / Mesmo valor | Samme rang / Samme værdi |
-| RPS: throw/action (not generic "turn") | választás | alegere | jogada | træk |
-| Dragon Descent: vine mechanic | inda | liană | trepadeira | slyngplante |
-| ON/OFF display state | BE / KI | PORNIT / OPRIT | LIGADO / DESLIGADO | TIL / FRA |
-| Slots: variance (risk preset, not the RTP) | volatilitás | volatilitate | volatilidade | volatilitet |
-| Slots: house edge | házelőny | avantajul casei | vantagem da casa | husets fordel |
-| Slots: return/RTP verb | visszafizetési arány | rata de returnare (către jucător) | retorno ao jogador | tilbagebetaling til spilleren |
-| seat | hely (szék = chair) | loc (scaun = chair) | lugar (cadeira = chair) | plads (stol = chair) |
-| banked winnings (overflow bank) | tárolt nyeremények | câștiguri păstrate | ganhos guardados | gemte gevinster |
-| overflow: hold vs. drop nearby | Őrizd meg nekem / Leejtés a közelben | Păstrează-le pentru mine / Lasă-le pe jos lângă mine | Guardar para mim / Largar aqui perto | Gem dem til mig / Læg dem på jorden i nærheden |
+| Concept (continued 2) | hu_HU | ro_RO | pt_PT | da_DK | nb_NO |
+| --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | osztó | crupier | croupier | dealer | dealer |
+| Baccarat banker/bank side | Bankár (Játékos / Bankár) | Bancher (Jucător / Bancher) | Banca (Jogador / Banca) | Bank (Spiller / Bank) | Bank (Spiller / Bank) |
+| bet / wager amount | tét | pariu (miză = suma) | aposta | indsats | innsats |
+| all in | mindent bele | Mizează tot | Apostar tudo | All-in | All-in |
+| rebet (repeat previous wager) | tét ismétlése | Repetă pariul | Repetir aposta | Gentag indsats | Gjenta innsats |
+| chip denomination/value | zsetoncímlet | valoarea jetonului | valor da ficha | jetonværdi | sjetongverdi |
+| win streak / chain (PvE) | győzelmi sorozat (sorozat max. körszáma) | serie de victorii (număr maxim de runde în serie) | série de vitórias (máximo de rondas em série) | sejrsstime (maks. antal runder i træk) | seiersrekke (maks antall runder på rad) |
+| cash out / payout | nyeremény felvétele / kifizetés | Încasează / plată | Retirar / pagamento | Indkasser / udbetaling | Ta ut / utbetaling |
+| Blackjack: shoe | kártyaadagoló | sabot | sapato | kortskoen | kortskoen |
+| Blackjack: hit | Lap | Carte | Pedir carta | Træk kort | Trekk kort |
+| Blackjack: stand | Megállok | Stai | Ficar | Stå | Stå |
+| Blackjack: split | Szétválasztás | Împarte | Dividir | Del | Splitt |
+| Blackjack: insurance | biztosítás | asigurare | seguro | forsikring | forsikring |
+| Blackjack: same-rank vs. same-value split rule | Azonos rang / Azonos pontérték | Același rang / Aceeași valoare | Mesma carta / Mesmo valor | Samme rang / Samme værdi | Samme valør / Samme verdi |
+| RPS: throw/action (not generic "turn") | választás | alegere | jogada | træk | trekk |
+| Dragon Descent: vine mechanic | inda | liană | trepadeira | slyngplante | klatreplante |
+| ON/OFF display state | BE / KI | PORNIT / OPRIT | LIGADO / DESLIGADO | TIL / FRA | PÅ / AV |
+| Slots: variance (risk preset, not the RTP) | volatilitás | volatilitate | volatilidade | volatilitet | volatilitet |
+| Slots: house edge | házelőny | avantajul casei | vantagem da casa | husets fordel | husets fordel |
+| Slots: return/RTP verb | visszafizetési arány | rata de returnare (către jucător) | retorno ao jogador | tilbagebetaling til spilleren | tilbakebetaling til spilleren |
+| seat | hely (szék = chair) | loc (scaun = chair) | lugar (cadeira = chair) | plads (stol = chair) | plass (stol = chair) |
+| banked winnings (overflow bank) | tárolt nyeremények | câștiguri păstrate | ganhos guardados | gemte gevinster | lagrede gevinster |
+| overflow: hold vs. drop nearby | Őrizd meg nekem / Leejtés a közelben | Păstrează-le pentru mine / Lasă-le pe jos lângă mine | Guardar para mim / Largar aqui perto | Gem dem til mig / Læg dem på jorden i nærheden | Ta vare på dem for meg / Legg dem på bakken i nærheten |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -884,6 +884,18 @@ a real, previously-observed defect, not a hypothetical risk.
   Danish). Turn announcements use `{player} har tur` so no genitive `-s`
   attaches to the placeholder. Overflow drop is `lægges på jorden` (`smid`
   can read as throwing away); a Minecraft mob is `væsen`.
+- `nb_NO`: standard Bokmål (moderate forms), informal `du`, closed
+  compounds; written from the English source, not adapted from da_DK
+  (`innsats`, `spill`, `klikk for å`, `sjetong`). The dealer is `dealer`;
+  the Baccarat sides are `Spiller` / `Bank`; cash-out is `Ta ut`, the pot
+  `pott`, all in `All-in`, the house edge `husets fordel`. Player
+  preferences are `Preferanser`, admin settings `innstillinger`. Coin Flip
+  is `Kron eller mynt`, Slots `Spilleautomat` with `hjul`, `rader` and
+  `gevinstlinjer`; its run is `serie` (`{run} etter hverandre`, avoiding
+  `på rad` next to `rad` = row), distinct from the PvE win streak `rekke` /
+  `seiersrekke`. A dealer timer is `nedtelling` (`timer` means hours); a
+  Minecraft mob is `skapning`. Turn announcements use `Turen til {player}` (`ha tur` means
+  to be lucky).
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.

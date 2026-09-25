@@ -118,3 +118,27 @@
   Findings: `reviews/da_DK-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `da_DK: name: "Dansk"`.
 - Native-speaker review: not performed; recommended before release.
+
+### nb_NO -- Norsk bokmål (Norwegian Bokmål)
+
+- Final catalog SHA-256: `18f7591aea0d5c76aafe44aa44228a3df7fbab00f162131579ab4fe5b301f41f` (identical in the run directory and
+  `src/main/resources/lang/nb_NO.yml`; NFC-normalized)
+- Voice: moderate Bokmål, informal `du`, written from the English source
+  rather than adapted from da_DK; `dealer`, Baccarat `Spiller` / `Bank`,
+  cash-out `Ta ut`, `All-in`; `Preferanser` vs `innstillinger`; Slots
+  `Spilleautomat` with run `serie` ("etter hverandre") vs streak
+  `rekke`; dealer timer `nedtelling`; turn lines `Turen til {player}`
+  (Bokmål `ha tur` = be lucky). Recorded in the guide.
+- Structural: helper strict check 0 errors (residue warnings are Norwegian
+  `for`/`at`/`to`, the loanword `All-in`, and the shared `/ncc` usage
+  and `Blackjack!` lines -- false positives); Danish-form scan clean;
+  `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all twenty new locales registered: every one of
+  the 26 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 1 (`{player} har tur` reads as "{player} is lucky"; fixed in all
+  five turn announcements), Tier 2 = 0, Tier 3 = 13, all applied.
+  18 keys patched, rechecked after. Findings: `reviews/nb_NO-findings-*.md`.
+- Not registered in `locales.yml`. Registry line:
+  `nb_NO: name: "Norsk bokmål"`.
+- Native-speaker review: not performed; recommended before release.
