@@ -774,31 +774,31 @@ Fifth continuation for later locales (same concept rows; split so neither table 
 
 Sixth continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 6) | bs_BA | hy_AM | uz_UZ |
-| --- | --- | --- | --- |
-| generic physical dealer/croupier | diler | դիլեր | diler |
-| Baccarat banker/bank side | Bankar (Igrač / Bankar) | Բանկիր (Խաղացող / Բանկիր) | Bankir (Oʻyinchi / Bankir) |
-| bet / wager amount | ulog (placed bet: opklada) | խաղադրույք | stavka |
-| all in | Uloži sve | Դնել ամբողջը | Hammasini tikish |
-| rebet (repeat previous wager) | Ponovi ulog | Կրկնել խաղադրույքը | Stavkani takrorlash |
-| chip denomination/value | vrijednost žetona | ֆիշկայի արժեք | fishka qiymati |
-| win streak / chain (PvE) | serija (najveći broj rundi u seriji) | սերիա (սերիայի ռաունդների առավելագույն քանակ) | seriya (seriyadagi raundlarning eng koʻp soni) |
-| cash out / payout | Podigni dobitak / isplata | Ստանալ շահումը / վճարում | Yutuqni olish / toʻlov |
-| Blackjack: shoe | kutija za dijeljenje | քարտերի տուփ | karta qutisi |
-| Blackjack: hit | Karta | Վերցնել քարտ | Karta olish |
-| Blackjack: stand | Stani | Կանգ առնել | Toʻxtash |
-| Blackjack: split | Podijeli | Բաժանել | Boʻlish |
-| Blackjack: insurance | osiguranje | ապահովագրություն | sugʻurta |
-| Blackjack: same-rank vs. same-value split rule | Isti rang / Ista vrijednost | Նույն կարգ / Նույն արժեք | Bir xil daraja / Bir xil qiymat |
-| RPS: throw/action (not generic "turn") | potez | քայլ | yurish |
-| Dragon Descent: vine mechanic | puzavica | լիանա | chirmoviq |
-| ON/OFF display state | UKLJUČENO / ISKLJUČENO | ՄԻԱՑՎԱԾ / ԱՆՋԱՏՎԱԾ | YOQILGAN / OʻCHIRILGAN |
-| Slots: variance (risk preset, not the RTP) | volatilnost | տատանողականություն | volatillik |
-| Slots: house edge | prednost kuće | խաղատան առավելություն | kazino ustunligi |
-| Slots: return/RTP verb | povrat igraču | Խաղացողին վերադարձի տոկոս (RTP) | Oʻyinchiga qaytim foizi (RTP) |
-| seat | mjesto (stolica = chair) | տեղ (աթոռ = chair) | joy (oʻrindiq = chair) |
-| banked winnings (overflow bank) | sačuvani dobici | պահված շահումներ | saqlangan yutuqlar |
-| overflow: hold vs. drop nearby | Čuvaj ih za mene / Ostavi ih na tlu u blizini | Պահել ինձ համար / Գցել մոտակայքում | Men uchun saqlash / Yaqin atrofga tashlash |
+| Concept (continued 6) | bs_BA | hy_AM | uz_UZ | sw_KE |
+| --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | diler | դիլեր | diler | mgawaji |
+| Baccarat banker/bank side | Bankar (Igrač / Bankar) | Բանկիր (Խաղացող / Բանկիր) | Bankir (Oʻyinchi / Bankir) | Benki (Mchezaji / Benki) |
+| bet / wager amount | ulog (placed bet: opklada) | խաղադրույք | stavka | dau (wingi: madau) |
+| all in | Uloži sve | Դնել ամբողջը | Hammasini tikish | Weka yote |
+| rebet (repeat previous wager) | Ponovi ulog | Կրկնել խաղադրույքը | Stavkani takrorlash | Rudia dau |
+| chip denomination/value | vrijednost žetona | ֆիշկայի արժեք | fishka qiymati | thamani ya chipu |
+| win streak / chain (PvE) | serija (najveći broj rundi u seriji) | սերիա (սերիայի ռաունդների առավելագույն քանակ) | seriya (seriyadagi raundlarning eng koʻp soni) | mfululizo (idadi ya juu ya raundi za mfululizo) |
+| cash out / payout | Podigni dobitak / isplata | Ստանալ շահումը / վճարում | Yutuqni olish / toʻlov | Chukua ushindi / malipo |
+| Blackjack: shoe | kutija za dijeljenje | քարտերի տուփ | karta qutisi | kisanduku cha karata |
+| Blackjack: hit | Karta | Վերցնել քարտ | Karta olish | Chukua karata |
+| Blackjack: stand | Stani | Կանգ առնել | Toʻxtash | Simama |
+| Blackjack: split | Podijeli | Բաժանել | Boʻlish | Gawanya |
+| Blackjack: insurance | osiguranje | ապահովագրություն | sugʻurta | bima |
+| Blackjack: same-rank vs. same-value split rule | Isti rang / Ista vrijednost | Նույն կարգ / Նույն արժեք | Bir xil daraja / Bir xil qiymat | Cheo sawa / Thamani sawa |
+| RPS: throw/action (not generic "turn") | potez | քայլ | yurish | chaguo |
+| Dragon Descent: vine mechanic | puzavica | լիանա | chirmoviq | mtambaa (wingi: mitambaa) |
+| ON/OFF display state | UKLJUČENO / ISKLJUČENO | ՄԻԱՑՎԱԾ / ԱՆՋԱՏՎԱԾ | YOQILGAN / OʻCHIRILGAN | IMEWASHWA / IMEZIMWA |
+| Slots: variance (risk preset, not the RTP) | volatilnost | տատանողականություն | volatillik | kuyumba |
+| Slots: house edge | prednost kuće | խաղատան առավելություն | kazino ustunligi | faida ya kasino |
+| Slots: return/RTP verb | povrat igraču | Խաղացողին վերադարձի տոկոս (RTP) | Oʻyinchiga qaytim foizi (RTP) | Asilimia ya malipo kwa mchezaji (RTP) |
+| seat | mjesto (stolica = chair) | տեղ (աթոռ = chair) | joy (oʻrindiq = chair) | kiti (nafasi ya kukaa) |
+| banked winnings (overflow bank) | sačuvani dobici | պահված շահումներ | saqlangan yutuqlar | ushindi uliohifadhiwa |
+| overflow: hold vs. drop nearby | Čuvaj ih za mene / Ostavi ih na tlu u blizini | Պահել ինձ համար / Գցել մոտակայքում | Men uchun saqlash / Yaqin atrofga tashlash | Nihifadhie / Dondosha karibu |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -1415,6 +1415,16 @@ a real, previously-observed defect, not a hypothetical risk.
   `diler`, Baccarat `Oʻyinchi` / `Bankir`, `stavka`, `Yutuqni olish`;
   slots run `ketma-ketlik` vs PvE streak `seriya`; vines `chirmoviqlar`;
   suits `yurak` / `gʻisht` / `chillak` / `qargʻa`.
+- `sw_KE`: standard Kiswahili sanifu as used in Kenyan software, with
+  plain imperatives for instructions (`Bofya`, `Chagua`, `Andika`), verbal
+  nouns for toggles, `“ ”` quotes and a decimal point (`2.5%`, `0.95:1`).
+  No grammatical gender and no gendered vocatives. Noun-class agreement
+  never depends on a placeholder: the governing noun carries the concord
+  (`Kiasi cha {currency} hakitoshi`, `Zamu ya {player}`), and counts use
+  labels or noun + digit (`reeli {columns}`). `mgawaji`, Baccarat
+  `Mchezaji` / `Benki`, `dau` / `madau`, `Chukua ushindi`, `chungu` for
+  the pot; slots run `msururu` vs PvE streak `mfululizo`; vines
+  `mitambaa`; `Ruleti`; suits `kopa` / `uru` / `karanga` / `shupaza`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.

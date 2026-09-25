@@ -111,3 +111,33 @@
 - Not registered in `locales.yml`. Registry line: `uz_UZ: name: "Oʻzbekcha"`.
 - Native-speaker review: not performed; recommended before release, with
   an in-game check that the font renders U+02BB / U+02BC.
+
+### sw_KE -- Kiswahili (Swahili)
+
+- Final catalog SHA-256: `d51f3a5b2eacdee8bef5e66a9ed6d8ec09180afa3ba5683b2176bf80c9da387e` (identical in the run directory and
+  `src/main/resources/lang/sw_KE.yml`; NFC-normalized)
+- Voice: standard Kiswahili sanifu as used in Kenyan software, plain
+  imperatives (`Bofya`, `Chagua`, `Andika`), `“ ”` quotes, decimal point;
+  no grammatical gender and no gendered vocatives; noun-class agreement
+  never depends on a placeholder (a governing noun carries the concord:
+  `Kiasi cha {currency} hakitoshi`, `Zamu ya {player}`); `mgawaji`,
+  Baccarat `Mchezaji` / `Benki`, `dau` / `madau`, `chungu` for the pot,
+  slots run `msururu` vs PvE streak `mfululizo`, vines `mitambaa`.
+  Recorded in the sixth continuation of the §H table.
+- Structural: helper strict check 0 errors, 0 residue warnings;
+  `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all forty-nine new locales registered: every
+  one of the 55 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 8 (a class-10 concord agreeing with `{currency}`, the leftmost
+  rule addressed to the player, "kushindwa" reversing "already won", a
+  class-7 concord with no antecedent ×4, the move-dealer destination
+  given to the admin), Tier 2 = 4 (`nambari` vs `namba` ×3, deck term),
+  Tier 3 = 30 ("Sasa:" labels, "Rulet", "Kodi" read as tax, calqued "kwa
+  bila kikomo", headline-style mode-switching label), all applied; one
+  suggestion reworded so the protected `Vault` count stays equal to the
+  English. 42 review keys plus 28 self-review follow-ups (sibling labels,
+  titles and inventory lines), rechecked after. Findings:
+  `reviews/sw_KE-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `sw_KE: name: "Kiswahili"`.
+- Native-speaker review: not performed; recommended before release.
