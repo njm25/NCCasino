@@ -167,3 +167,31 @@
   `reviews/uk_UA-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `uk_UA: name: "Українська"`.
 - Native-speaker review: not performed; recommended before release.
+
+### cs_CZ -- Čeština (Czech)
+
+- Final catalog SHA-256: `6f9d207eabe2fc824c553a671f6cdb660172c4a7d6df04fd56f773e3a4f14dfc` (identical in the run directory and
+  `src/main/resources/lang/cs_CZ.yml`; NFC-normalized)
+- Voice: informal `ty`; no gendered past-tense player forms or `(a)`
+  slashes; dealer `krupiér`, Baccarat `Hráč` / `Bankéř`, house edge
+  `výhoda kasina`; Slots game `Automaty` (recorded in the guide).
+- Structural: helper strict check 0 errors (4 residue warnings, all Czech
+  `a`/`to` false positives); `localizationCandidateCheck` CANDIDATE OK
+  (1184); full `localizationCheck` with all fourteen new locales
+  registered: every one of the 20 locales OK (1184), no new warnings;
+  `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 2 (`variance-tradeoff` read as "fewer paylines" because the
+  payline term is `výherní linie`; `blackjack.sat-down` read as "seat
+  taken"), Tier 2 = 3, Tier 3 = 23, all applied. 29 keys patched, rechecked
+  after. A registry entry on "paying lines" was added to the guide.
+  Findings: `reviews/cs_CZ-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `cs_CZ: name: "Čeština"`.
+- Native-speaker review: not performed; recommended before release.
+- Out-of-scope observation (reported, not changed): the same "paying lines"
+  collision exists in the already-promoted pl_PL
+  (`slots-settings.variance-tradeoff` "mniej wygrywających linii" next to
+  the payline term `linie wygrywające`). Suggested targeted refinement:
+  "&7Wyższa zmienność oznacza, że linie wygrywają rzadziej, ale jackpoty z
+  długich ciągów są dużo większe." The other batch-2 catalogs keep the two
+  terms distinct.
