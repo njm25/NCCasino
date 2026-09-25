@@ -70,3 +70,29 @@
   rechecked after. Findings: `reviews/az_AZ-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `az_AZ: name: "Azərbaycanca"`.
 - Native-speaker review: not performed; recommended before release.
+
+### eu_ES -- Euskara (Basque)
+
+- Final catalog SHA-256: `f75eb4fec9dedbea4fc9f0885f0d2805123e638f592d40437353d87b7fd6d7ba` (identical in the run directory and
+  `src/main/resources/lang/eu_ES.yml`; NFC-normalized)
+- Voice: standard Basque (euskara batua), `zu` address, `«»` quotes, decimal
+  comma; case endings on governing nouns or verbs, never on placeholders;
+  `-ko` adjectives before the noun, `-rako` for inanimate purpose;
+  `gehieneko` for max; `krupierra`, Baccarat `Jokalaria` / `Bankaria`,
+  `Kobratu`, `sari nagusi`, RPS `Harri, orri, artazi`; slots run `segida` vs
+  streak `bolada`; `Bira automatikoa`. Recorded in the fifth continuation of
+  the §H table.
+- Structural: helper strict check 0 errors, 0 residue warnings;
+  `localizationCandidateCheck` CANDIDATE OK (1184); full `localizationCheck`
+  with all forty new locales registered: every one of the 46 locales OK
+  (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 7 (dragon sweep stated as a loss, verified in `DragonClient`;
+  unparseable `% 2,5` house-edge example, verified in
+  `SlotsHouseEdgeInput.parse` and added to guide §C; ungrammatical
+  `-koa bat`, `zenbat` order, "esku gehienak"), Tier 2 = 4 (English
+  "jackpot", `maximo` drift), Tier 3 = 33, all applied. 44 review keys plus
+  11 self-review fixes (RPS name carried through, `gehieneko`), rechecked
+  after. Findings: `reviews/eu_ES-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `eu_ES: name: "Euskara"`.
+- Native-speaker review: not performed; recommended before release.

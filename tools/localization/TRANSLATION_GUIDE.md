@@ -427,6 +427,12 @@ actual implementation, and update this section.
   `MobSelectionMenu`). In gendered languages, make "None" agree with the
   locale's decor and colour nouns (gl_ES `Ningunha` for `decoración` /
   `cor`), not with a generic masculine default.
+- **`slots-settings.house-edge-prompt` / `house-edge-invalid` show a value
+  the player will type.** `SlotsHouseEdgeInput.parse` accepts `2.5`, `2,5`
+  (a comma is read as the decimal point when no `.` is present) and a
+  trailing `%`, but not a leading one, so the example must stay typeable
+  (`2,5%` or `2,5`) even in locales that write the sign first (eu_ES `% 2,5`,
+  tr_TR `%2,5`); display-only percentages elsewhere may follow local style.
 
 This registry is not exhaustive. When a new ambiguous key is resolved via
 Java inspection, add it here with the exact affected key family and a short
@@ -740,31 +746,31 @@ Fourth continuation for later locales (same concept rows; split so neither table
 
 Fifth continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 5) | mk_MK | az_AZ |
-| --- | --- | --- |
-| generic physical dealer/croupier | дилер | diler |
-| Baccarat banker/bank side | Банкар (Играч / Банкар) | Bankir (Oyunçu / Bankir) |
-| bet / wager amount | облог | mərc |
-| all in | Ва-банк | Hamısını qoy |
-| rebet (repeat previous wager) | Повтор на облог | Mərci təkrarla |
-| chip denomination/value | вредност на жетонот | fişkanın dəyəri |
-| win streak / chain (PvE) | низа победи (макс. број рунди во низа) | qələbə seriyası (seriyada maks. raund) |
-| cash out / payout | Подигни добивка / исплата | Uduşu götür / ödəniş |
-| Blackjack: shoe | кутија со карти | kart qutusu |
-| Blackjack: hit | Карта | Kart al |
-| Blackjack: stand | Доста | Dayan |
-| Blackjack: split | Подели | Böl |
-| Blackjack: insurance | осигурување | sığorta |
-| Blackjack: same-rank vs. same-value split rule | Ист ранг / Иста вредност | Eyni rütbə / Eyni dəyər |
-| RPS: throw/action (not generic "turn") | потег | seçim |
-| Dragon Descent: vine mechanic | лијана | sarmaşıq |
-| ON/OFF display state | ВКЛ. / ИСКЛ. | AÇIQ / BAĞLI |
-| Slots: variance (risk preset, not the RTP) | волатилност | volatillik |
-| Slots: house edge | предност на казиното | kazino üstünlüyü |
-| Slots: return/RTP verb | враќање кон играчите | oyunçuya qayıdış |
-| seat | место (стол = chair) | yer (stul = chair) |
-| banked winnings (overflow bank) | зачувана добивка | saxlanılan uduş |
-| overflow: hold vs. drop nearby | Чувај ја за мене / Фрли ја во близина | Mənim üçün saxla / Yaxınlıqda yerə at |
+| Concept (continued 5) | mk_MK | az_AZ | eu_ES |
+| --- | --- | --- | --- |
+| generic physical dealer/croupier | дилер | diler | krupierra |
+| Baccarat banker/bank side | Банкар (Играч / Банкар) | Bankir (Oyunçu / Bankir) | Bankaria (Jokalaria / Bankaria) |
+| bet / wager amount | облог | mərc | apustua |
+| all in | Ва-банк | Hamısını qoy | Dena jokoan |
+| rebet (repeat previous wager) | Повтор на облог | Mərci təkrarla | Errepikatu apustua |
+| chip denomination/value | вредност на жетонот | fişkanın dəyəri | fitxaren balioa |
+| win streak / chain (PvE) | низа победи (макс. број рунди во низа) | qələbə seriyası (seriyada maks. raund) | garaipen-bolada (boladako gehieneko txandak) |
+| cash out / payout | Подигни добивка / исплата | Uduşu götür / ödəniş | Kobratu / ordainketa |
+| Blackjack: shoe | кутија со карти | kart qutusu | karta-kutxa |
+| Blackjack: hit | Карта | Kart al | Eskatu |
+| Blackjack: stand | Доста | Dayan | Plantatu |
+| Blackjack: split | Подели | Böl | Banatu |
+| Blackjack: insurance | осигурување | sığorta | asegurua |
+| Blackjack: same-rank vs. same-value split rule | Ист ранг / Иста вредност | Eyni rütbə / Eyni dəyər | Maila bera / Balio bera |
+| RPS: throw/action (not generic "turn") | потег | seçim | jokaldia |
+| Dragon Descent: vine mechanic | лијана | sarmaşıq | liana |
+| ON/OFF display state | ВКЛ. / ИСКЛ. | AÇIQ / BAĞLI | PIZTUTA / ITZALITA |
+| Slots: variance (risk preset, not the RTP) | волатилност | volatillik | hegazkortasuna |
+| Slots: house edge | предност на казиното | kazino üstünlüyü | etxearen abantaila |
+| Slots: return/RTP verb | враќање кон играчите | oyunçuya qayıdış | jokalariarentzako itzulera |
+| seat | место (стол = chair) | yer (stul = chair) | eserlekua (aulkia = chair) |
+| banked winnings (overflow bank) | зачувана добивка | saxlanılan uduş | gordetako irabaziak |
+| overflow: hold vs. drop nearby | Чувај ја за мене / Фрли ја во близина | Mənim üçün saxla / Yaxınlıqda yerə at | Gorde niretzat / Bota ondoan |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -1273,6 +1279,17 @@ a real, previously-observed defect, not a hypothetical risk.
   `diler`, Baccarat `Oyunçu` / `Bankir`, `mərc`, `Uduşu götür`, roulette
   straight-up `Bir nömrə` (not `Tək`, the Odd bet); slots run
   `ardıcıllıq` vs PvE streak `seriya`; `Avtomatik fırlatma`.
+- `eu_ES`: standard Basque (euskara batua), `zu` address (never hika),
+  `«»` quotes, decimal comma; imperative buttons (`Egin klik`, `Aukeratu`).
+  No case suffix may follow a placeholder, so endings go on a governing
+  noun or verb (`{game} jokora`, `{columns} arrabolatan`, `{amount}
+  gordetzeko`) or the value follows a colon label; `-ko` adjectives precede
+  their noun (`baliozko zenbatekoa`); inanimate purpose takes `-rako`, not
+  `-rentzat`. `gehieneko` for max (not `maximo`); typed examples keep a
+  parseable `2,5` even though Basque writes `% 2,5`. `krupierra`, Baccarat
+  `Jokalaria` / `Bankaria`, `Kobratu`, `sari nagusi` for jackpot, RPS
+  `Harri, orri, artazi`, vines `lianak`; slots run `segida` vs PvE streak
+  `bolada`; `Bira automatikoa`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
