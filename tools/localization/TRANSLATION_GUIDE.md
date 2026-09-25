@@ -703,6 +703,34 @@ Third continuation for later locales (same concept rows; split so neither table 
 | banked winnings (overflow bank) | ganancias guardadas | sačuvani dobici | shranjeni dobitki | сачувани добици | išsaugoti laimėjimai | saglabātie laimesti | hoiustatud võidud | guanys guardats |
 | overflow: hold vs. drop nearby | Guárdalas por mí / Suéltalas cerca | Čuvaj ih za mene / Ostavi ih na tlu u blizini | Shrani jih zame / Odvrzi jih na tla v bližini | Чувај их за мене / Остави их на тлу у близини | Saugoti juos man / Padėti juos ant žemės šalia | Glabāt drošībā / Nolikt tos uz zemes tuvumā | Hoia neid minu jaoks / Pane need lähedale maha | Guarda'ls per a mi / Deixa'ls a terra a prop |
 
+Fourth continuation for later locales (same concept rows; split so neither table grows too wide to read):
+
+| Concept (continued 4) | ms_MY |
+| --- | --- |
+| generic physical dealer/croupier | pengendali |
+| Baccarat banker/bank side | Jurubank (Pemain / Jurubank) |
+| bet / wager amount | taruhan |
+| all in | Pertaruhkan Semua |
+| rebet (repeat previous wager) | Ulang Taruhan |
+| chip denomination/value | nilai cip |
+| win streak / chain (PvE) | berturut-turut (had pusingan berturut-turut) |
+| cash out / payout | Tunaikan / bayaran |
+| Blackjack: shoe | kotak kad |
+| Blackjack: hit | Ambil |
+| Blackjack: stand | Berhenti |
+| Blackjack: split | Pisah |
+| Blackjack: insurance | insurans |
+| Blackjack: same-rank vs. same-value split rule | Pangkat Sama / Nilai Sama |
+| RPS: throw/action (not generic "turn") | pilihan |
+| Dragon Descent: vine mechanic | tumbuhan menjalar |
+| ON/OFF display state | HIDUP / MATI |
+| Slots: variance (risk preset, not the RTP) | volatiliti |
+| Slots: house edge | kelebihan kasino |
+| Slots: return/RTP verb | pulangan kepada pemain |
+| seat | tempat duduk (kerusi = chair) |
+| banked winnings (overflow bank) | kemenangan simpanan |
+| overflow: hold vs. drop nearby | Simpan Untuk Saya / Jatuhkan Berdekatan |
+
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
 settled — do not fill a cell with a guess presented as an established pin.
@@ -1104,6 +1132,19 @@ a real, previously-observed defect, not a hypothetical risk.
   `Escurabutxaques` with `rodets`, spin `tirada`; slots run `seqüència` vs
   PvE streak `ratxa`. Coin Flip is `Cara o creu`; game names are
   capitalized in titles. The card shoe is `sabata`.
+- `ms_MY`: standard Malaysian Malay (DBP spelling), `anda` address,
+  decimal point; Malaysian UI vocabulary (`tetapan`, `keutamaan` for
+  personal preferences, `pelayan` for server, `sembang` for chat, `butang`,
+  `pemasa`, `cip`, `pentadbir`), never Indonesian forms (`uang`, `kursi`,
+  `pengaturan`, `obrolan`, `tombol`, `bisa`). Malay has no gender or number
+  agreement. The physical dealer/NPC is `pengendali` (not `bandar`, which
+  in Malay chiefly means a town); the Baccarat banker side is `Jurubank`.
+  `taruhan` for bet and stake; cash-out `Tunaikan`; pot `pot`; Slots `Mesin
+  Slot` with `gelendong`, spin `putaran` vs round `pusingan`; slots run
+  `urutan` vs PvE streak `berturut-turut`. Coin Flip is `Lambung Syiling`
+  (the player picks left/right, not heads/tails); Mines `Periuk Api`.
+  Traditional card names `Sat`, `Jek`, `Ratu`, `Raja` and suits `Lekuk`,
+  `Wajik`, `Kelawar`, `Sped`. The card shoe is `kotak kad`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
