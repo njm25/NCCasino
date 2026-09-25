@@ -140,3 +140,52 @@ Each entry is appended when that locale is finished.
   Findings: `reviews/tr_TR-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `tr_TR: name: "Türkçe"`.
 - Native-speaker review: not performed; recommended before release.
+
+### vi_VN -- Tiếng Việt (Vietnamese)
+
+- Final catalog SHA-256: `947250450f6114bdad9285cc6a30f1cefaf44e64a6e4162ef2afa58905e8c1e6` (identical in the run directory and
+  `src/main/resources/lang/vi_VN.yml`; NFC-normalized)
+- Voice: friendly neutral `bạn`; dealer `người chia bài` kept apart from
+  the baccarat Banker side `Nhà Cái` (recorded in the guide).
+- Structural: helper strict check 0 errors / 0 residue warnings;
+  `localizationCandidateCheck` CANDIDATE OK (1184); full `localizationCheck`
+  with all seven new locales registered: every one of the 13 locales OK (1184),
+  no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 2 claimed, both checked against `CoinFlipClient` and not
+  reproduced (no change; registry entry added); Tier 2 = 5, Tier 3 = 44; all
+  applied except one optional cross-locale "jockey" rename. 49 keys patched,
+  rechecked after. Findings: `reviews/vi_VN-findings-*.md`.
+- Not registered in `locales.yml`. Registry line:
+  `vi_VN: name: "Tiếng Việt"`.
+- Native-speaker review: not performed; recommended before release.
+
+## Batch summary
+
+All seven requested locales are complete. To expose them in the language menu,
+append to `src/main/resources/lang/locales.yml`:
+
+```yaml
+  nl_NL:
+    name: "Nederlands"
+  fi_FI:
+    name: "Suomi"
+  ja_JP:
+    name: "日本語"
+  ru_RU:
+    name: "Русский"
+  th_TH:
+    name: "ไทย"
+  tr_TR:
+    name: "Türkçe"
+  vi_VN:
+    name: "Tiếng Việt"
+```
+
+With exactly those lines appended, `localizationCheck` reports all 13 locales
+OK at 1184 entries (verified in this run) and `compileJava` succeeds. Remaining
+warnings are the seven pre-existing ones in es_ES/pt_BR/fr_FR/de_DE plus the
+de_DE-precedent `round-summary-hand-blackjack` identity in nl_NL. Still
+needed before release: an in-game check on a Minecraft server (rendering of
+CJK/Thai glyphs in inventory titles and lore, line widths) and native-speaker
+review.

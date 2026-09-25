@@ -371,6 +371,11 @@ actual implementation, and update this section.
   `{setting}` (`DragonDescentMenu.handleEditSetting`), so a case-marking
   locale may inflect them for that one slot. `{occupation}` likewise only
   fills `commands.finish-editing`.
+- **`coin-flip.waiting-bet` / `rock-paper-scissors.waiting-bet` are only shown
+  to the chair-two player,** under the chair-one "`{player}`'s turn" title,
+  while chair one has not bet yet (`CoinFlipClient.handlePlayerTwoSit`,
+  `resetPlayerTwoUI`). "Their bet" is therefore the opponent's bet from the
+  viewer's side, so an "opponent" rendering is correct here.
 - **`betting.inventory-full` fires for refunds as well as winnings.** It is
   sent from `Client.creditPlayer`/`Server.creditPlayer`, which also returns
   stakes (Baccarat refunds, undone bets, cancelled Coin Flip/RPS offers), so
@@ -561,31 +566,31 @@ lore, and help text alike. Do not let one section of a catalog fall back to
 a different or untranslated term for the same concept just because it is
 far from the original example that established the pin.
 
-| Concept | de_DE | es_ES | fr_FR | pt_BR | nl_NL | fi_FI | ja_JP | ru_RU | th_TH | tr_TR |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| generic physical dealer/croupier | Dealer | crupier | croupier | crupiê | dealer | jakaja | ディーラー | дилер | ดีลเลอร์ | krupiye |
-| Baccarat banker/bank side | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* | Bank (Speler / Bank) | Pankkiiri (Pelaaja / Pankkiiri) | バンカー (プレイヤー / バンカー) | Банкир (Игрок / Банкир) | แบงเกอร์ (ผู้เล่น / แบงเกอร์) | Banker (Oyuncu / Banker) |
-| bet / wager amount | Einsatz | apuesta | mise | aposta | inzet | panos | ベット (ベット額) | ставка | เดิมพัน | bahis |
-| all in | alles setzen | apostar todo | tout miser | apostar tudo | alles inzetten | kaikki peliin | オールイン | ва-банк | ออลอิน | hepsini yatır |
-| rebet (repeat previous wager) | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | inzet herhalen | toista panos | リベット | повтор ставки | เดิมพันซ้ำ | bahis tekrarı |
-| chip denomination/value | *(pin when first reviewed — not a physical-size word)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | fichewaarde | pelimerkin arvo | チップの額面 | номинал фишки | มูลค่าชิป | fiş değeri |
-| win streak / chain (PvE) | *(pin when first reviewed — a round count, not a payout)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | winreeks (max. rondes winreeks) | voittoputki (voittoputken enimmäiskierrokset) | 連勝 (最大連勝ラウンド数) | серия побед (макс. раундов в серии) | ชนะติดต่อกัน (จำนวนรอบชนะติดต่อกันสูงสุด) | galibiyet serisi (maks. seri eli) |
-| cash out / payout | *(pin when first reviewed — preserve current/future/conditional tense per key)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | incasseren / uitbetaling | kotiuttaa / voitonmaksu | キャッシュアウト / 配当 | забрать выигрыш / выплата | เก็บเงินรางวัล / จ่ายเงินรางวัล | kazancı al / ödeme |
-| Blackjack: shoe | *(pin when first reviewed — the card shoe, not footwear)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | kaartenschoen | korttikenkä | シュー | шуз | กล่องแจกไพ่ | kart kutusu |
-| Blackjack: hit | Karte ziehen | pedir | tirer | pedir carta | kaart (nemen) | ota kortti | ヒット | взять карту | จั่วไพ่ | kart çek |
-| Blackjack: stand | halten | plantarse | rester | parar | passen | jää | スタンド | хватит (остановиться) | หยุด | dur |
-| Blackjack: split | teilen | dividir | séparer | dividir | splitsen | jaa käsi (käden jakaminen) | スプリット | разделить | แยกไพ่ | böl |
-| Blackjack: insurance | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | verzekering | vakuutus | インシュランス | страховка | ประกัน | sigorta |
-| Blackjack: same-rank vs. same-value split rule | *(pin distinctly — two different rules, do not use near-identical labels)* | *(pin distinctly)* | *(pin distinctly)* | *(pin distinctly)* | gelijke rang / gelijke waarde | vain parit / sama pistearvo | 同じランク / 同じ点数 | одинаковый ранг / одинаковые очки | หน้าไพ่เดียวกัน / แต้มเท่ากัน | yalnızca çift / aynı puan |
-| RPS: throw/action (not generic "turn") | Wurf | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | keuze (kiezen) | valinta (valita) | 手 (出す手) | жест | ออกมือ (มือที่ออก) | seçim |
-| Dragon Descent: vine mechanic | *(pin when first reviewed — climbing-vine sense)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | klimranken | köynnökset | ツタ | лианы | เถาวัลย์ | sarmaşık |
-| ON/OFF display state | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | AAN / UIT | PÄÄLLÄ / POIS | オン / オフ | ВКЛ / ВЫКЛ | เปิด / ปิด | AÇIK / KAPALI |
-| Slots: variance (risk preset, not the RTP) | Varianz | varianza | variance | variância | variantie | varianssi | ボラティリティ | волатильность | ความผันผวน | oynaklık |
-| Slots: house edge | Hausvorteil | ventaja de la casa | avantage de la maison | vantagem da casa | huisvoordeel | talon etu | ハウスエッジ | преимущество казино | ความได้เปรียบของคาสิโน | kasa avantajı |
-| Slots: return/RTP verb | zahlt zurück | devuelve | redistribue | devolve | keert uit (uitbetalingspercentage) | palauttaa (palautusprosentti) | 還元率 | возвращает (процент возврата) | จ่ายคืน (อัตราการจ่ายคืน) | geri öder (geri ödeme oranı) |
-| seat | Sitz | asiento | siège | assento | plaats | paikka | 席 | место | ที่นั่ง | koltuk |
-| banked winnings (overflow bank) | verwahrte Gewinne | ganancias guardadas | gains conservés | ganhos guardados | bewaarde winst | säilytetyt voitot | 保管中の配当 | отложенные выигрыши | เงินรางวัลที่เก็บไว้ | saklanan kazançlar |
-| overflow: hold vs. drop nearby | aufbewahren / fallen lassen | guardar / soltar | garder / lâcher | guardar / largar | bewaren / laten vallen | säilytä / pudota lähelle | 保管 / 近くにドロップ | хранить / выложить рядом | เก็บไว้ / ดรอปไว้ใกล้ๆ | sakla / yakına düşür |
+| Concept | de_DE | es_ES | fr_FR | pt_BR | nl_NL | fi_FI | ja_JP | ru_RU | th_TH | tr_TR | vi_VN |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | Dealer | crupier | croupier | crupiê | dealer | jakaja | ディーラー | дилер | ดีลเลอร์ | krupiye | người chia bài |
+| Baccarat banker/bank side | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* | Bank (Speler / Bank) | Pankkiiri (Pelaaja / Pankkiiri) | バンカー (プレイヤー / バンカー) | Банкир (Игрок / Банкир) | แบงเกอร์ (ผู้เล่น / แบงเกอร์) | Banker (Oyuncu / Banker) | Nhà Cái (Nhà Con / Nhà Cái) |
+| bet / wager amount | Einsatz | apuesta | mise | aposta | inzet | panos | ベット (ベット額) | ставка | เดิมพัน | bahis | cược (mức cược) |
+| all in | alles setzen | apostar todo | tout miser | apostar tudo | alles inzetten | kaikki peliin | オールイン | ва-банк | ออลอิน | hepsini yatır | tất tay |
+| rebet (repeat previous wager) | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | inzet herhalen | toista panos | リベット | повтор ставки | เดิมพันซ้ำ | bahis tekrarı | cược lại |
+| chip denomination/value | *(pin when first reviewed — not a physical-size word)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | fichewaarde | pelimerkin arvo | チップの額面 | номинал фишки | มูลค่าชิป | fiş değeri | mệnh giá chip |
+| win streak / chain (PvE) | *(pin when first reviewed — a round count, not a payout)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | winreeks (max. rondes winreeks) | voittoputki (voittoputken enimmäiskierrokset) | 連勝 (最大連勝ラウンド数) | серия побед (макс. раундов в серии) | ชนะติดต่อกัน (จำนวนรอบชนะติดต่อกันสูงสุด) | galibiyet serisi (maks. seri eli) | chuỗi thắng (số ván chuỗi thắng tối đa) |
+| cash out / payout | *(pin when first reviewed — preserve current/future/conditional tense per key)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | incasseren / uitbetaling | kotiuttaa / voitonmaksu | キャッシュアウト / 配当 | забрать выигрыш / выплата | เก็บเงินรางวัล / จ่ายเงินรางวัล | kazancı al / ödeme | nhận thưởng / trả thưởng |
+| Blackjack: shoe | *(pin when first reviewed — the card shoe, not footwear)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | kaartenschoen | korttikenkä | シュー | шуз | กล่องแจกไพ่ | kart kutusu | hộp chia bài |
+| Blackjack: hit | Karte ziehen | pedir | tirer | pedir carta | kaart (nemen) | ota kortti | ヒット | взять карту | จั่วไพ่ | kart çek | rút bài |
+| Blackjack: stand | halten | plantarse | rester | parar | passen | jää | スタンド | хватит (остановиться) | หยุด | dur | dừng |
+| Blackjack: split | teilen | dividir | séparer | dividir | splitsen | jaa käsi (käden jakaminen) | スプリット | разделить | แยกไพ่ | böl | tách bài |
+| Blackjack: insurance | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | verzekering | vakuutus | インシュランス | страховка | ประกัน | sigorta | bảo hiểm |
+| Blackjack: same-rank vs. same-value split rule | *(pin distinctly — two different rules, do not use near-identical labels)* | *(pin distinctly)* | *(pin distinctly)* | *(pin distinctly)* | gelijke rang / gelijke waarde | vain parit / sama pistearvo | 同じランク / 同じ点数 | одинаковый ранг / одинаковые очки | หน้าไพ่เดียวกัน / แต้มเท่ากัน | yalnızca çift / aynı puan | cùng quân / cùng điểm |
+| RPS: throw/action (not generic "turn") | Wurf | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | keuze (kiezen) | valinta (valita) | 手 (出す手) | жест | ออกมือ (มือที่ออก) | seçim | lựa chọn (ra tay) |
+| Dragon Descent: vine mechanic | *(pin when first reviewed — climbing-vine sense)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | klimranken | köynnökset | ツタ | лианы | เถาวัลย์ | sarmaşık | dây leo |
+| ON/OFF display state | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | AAN / UIT | PÄÄLLÄ / POIS | オン / オフ | ВКЛ / ВЫКЛ | เปิด / ปิด | AÇIK / KAPALI | BẬT / TẮT |
+| Slots: variance (risk preset, not the RTP) | Varianz | varianza | variance | variância | variantie | varianssi | ボラティリティ | волатильность | ความผันผวน | oynaklık | độ biến động |
+| Slots: house edge | Hausvorteil | ventaja de la casa | avantage de la maison | vantagem da casa | huisvoordeel | talon etu | ハウスエッジ | преимущество казино | ความได้เปรียบของคาสิโน | kasa avantajı | lợi thế nhà cái |
+| Slots: return/RTP verb | zahlt zurück | devuelve | redistribue | devolve | keert uit (uitbetalingspercentage) | palauttaa (palautusprosentti) | 還元率 | возвращает (процент возврата) | จ่ายคืน (อัตราการจ่ายคืน) | geri öder (geri ödeme oranı) | hoàn trả (tỷ lệ hoàn trả) |
+| seat | Sitz | asiento | siège | assento | plaats | paikka | 席 | место | ที่นั่ง | koltuk | chỗ ngồi |
+| banked winnings (overflow bank) | verwahrte Gewinne | ganancias guardadas | gains conservés | ganhos guardados | bewaarde winst | säilytetyt voitot | 保管中の配当 | отложенные выигрыши | เงินรางวัลที่เก็บไว้ | saklanan kazançlar | tiền thưởng đang giữ |
+| overflow: hold vs. drop nearby | aufbewahren / fallen lassen | guardar / soltar | garder / lâcher | guardar / largar | bewaren / laten vallen | säilytä / pudota lähelle | 保管 / 近くにドロップ | хранить / выложить рядом | เก็บไว้ / ดรอปไว้ใกล้ๆ | sakla / yakına düşür | giữ lại / thả ở gần |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -660,6 +665,13 @@ a real, previously-observed defect, not a hypothetical risk.
   keep the sign after the number ("2,5%") because the parser rejects a
   leading `%`. Slots "run" is `dizi`, distinct from the PvE win streak
   `galibiyet serisi`.
+- `vi_VN`: standard Vietnamese; friendly neutral `bạn` for direct player
+  address. The physical dealer/NPC is `người chia bài`, never `nhà cái`:
+  in Vietnamese baccarat `Nhà Cái`/`Nhà Con` are the Banker/Player betting
+  sides, and `lợi thế nhà cái` is the house edge, so the dealer term must stay
+  separate. Blackjack is `Xì Dách`. Overflow "drop" is `thả` (Minecraft item
+  drop), never `vứt` (discard). Catalog text is NFC-normalized. Slots "run"
+  is `dãy`, distinct from the PvE win streak `chuỗi thắng`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
