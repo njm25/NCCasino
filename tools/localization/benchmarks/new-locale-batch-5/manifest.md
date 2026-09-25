@@ -156,3 +156,76 @@
   `reviews/be_BY-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `be_BY: name: "Беларуская"`.
 - Native-speaker review: not performed; recommended before release.
+
+### hi_IN -- हिन्दी (Hindi)
+
+- Final catalog SHA-256: `4327e78b7092b20c4b280f93526db583bd5aafa07d7a239dba215695b5f17632` (identical in the run directory and
+  `src/main/resources/lang/hi_IN.yml`; NFC-normalized)
+- Voice: standard conversational Hindi in Devanagari with the loanwords
+  Indian game UIs use; polite `आप`, danda, `“”` quotes, Western digits;
+  gender-neutral toward the player through ergative, dative, nominal,
+  passive and existential constructions (Hindi verbs otherwise agree with
+  the subject's gender); SOV order arranged so placeholders keep the
+  English order; traditional card names; run `क्रम` vs streak `लगातार
+  जीत`. Recorded in the fourth continuation of the §H table.
+- Structural: helper strict check 0 errors, 0 residue warnings (two
+  token-order slips from SOV order caught and fixed before review);
+  `localizationCandidateCheck` CANDIDATE OK (1184); full `localizationCheck`
+  with all thirty-seven new locales registered: every one of the 43 locales
+  OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 2 (gendered `लेंगे` future and a generic-player `कर सकते हैं`),
+  Tier 2 = 2 ("Return to" drift), Tier 3 = 19 (awkward object-less
+  ergative, `मंज़िल` collision, range order, mob-name agreement), all
+  applied. 23 review keys plus 5 self-review fixes, rechecked after.
+  Findings: `reviews/hi_IN-findings-*.md`.
+- Rendering caveat: Minecraft's font renderer does not apply complex-script
+  shaping, so Devanagari matras (e.g. the pre-base `ि`) and conjuncts may
+  display in logical rather than visual order. This must be checked in game
+  before the locale is exposed; the text itself is correct Unicode.
+- Not registered in `locales.yml`. Registry line: `hi_IN: name: "हिन्दी"`.
+- Native-speaker review: not performed; recommended before release.
+
+## Batch summary
+
+All six batch-5 locales are complete. To expose them in the language menu,
+append to `src/main/resources/lang/locales.yml` (after the batch-1 to
+batch-4 lines):
+
+```yaml
+  ms_MY:
+    name: "Bahasa Melayu"
+  fil_PH:
+    name: "Filipino"
+  gl_ES:
+    name: "Galego"
+  af_ZA:
+    name: "Afrikaans"
+  be_BY:
+    name: "Беларуская"
+  hi_IN:
+    name: "हिन्दी"
+```
+
+With the batch-1 to batch-5 lines appended, `localizationCheck` reports all
+43 locales OK at 1184 entries (verified in this run) and `compileJava`
+succeeds. Remaining warnings are the seven pre-existing ones plus the
+de_DE-precedent identity in nl_NL; batch 5 adds none. One semantic fact was
+verified in Java during this batch and added to the guide's §C registry:
+`mob-settings.none` / `admin.none` only fill the llama-decor and
+wolf-collar-colour slots (gendered languages agree "None" with those nouns).
+
+Out-of-scope observations (reported, not changed -- each would be a
+targeted refinement needing its own run and approval):
+
+- `mob-settings.none` / `admin.none` in older gendered catalogs were not
+  audited against the new registry entry; a Romance/Slavic sweep (masculine
+  "None" filling feminine decor/colour nouns) would be a separate targeted
+  refinement.
+- The batch-4 observations (`resplit-offer` wording in 28 older catalogs,
+  "not free" `seat-unavailable` renderings, hr_HR "znakova", es_ES
+  `chain-win` / "sentado") still stand.
+
+Still needed before release: an in-game check (Devanagari shaping for
+hi_IN, Belarusian ў and Cyrillic in inventory titles, line wrapping of the
+longer Filipino and Galician strings) and native-speaker review.
