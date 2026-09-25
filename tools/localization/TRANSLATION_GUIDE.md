@@ -601,31 +601,31 @@ far from the original example that established the pin.
 
 Continuation of the table above for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued) | ko_KR |
-| --- | --- |
-| generic physical dealer/croupier | 딜러 |
-| Baccarat banker/bank side | 뱅커 (플레이어 / 뱅커) |
-| bet / wager amount | 베팅 (베팅액) |
-| all in | 올인 |
-| rebet (repeat previous wager) | 재베팅 |
-| chip denomination/value | 칩 금액 |
-| win streak / chain (PvE) | 연승 (최대 연승 라운드) |
-| cash out / payout | 캐시아웃 / 지급 (당첨금) |
-| Blackjack: shoe | 슈 |
-| Blackjack: hit | 히트 |
-| Blackjack: stand | 스탠드 |
-| Blackjack: split | 스플릿 |
-| Blackjack: insurance | 인슈어런스 |
-| Blackjack: same-rank vs. same-value split rule | 같은 랭크 / 같은 점수 |
-| RPS: throw/action (not generic "turn") | 낼 손 (내다) |
-| Dragon Descent: vine mechanic | 덩굴 |
-| ON/OFF display state | 켜짐 / 꺼짐 |
-| Slots: variance (risk preset, not the RTP) | 변동성 |
-| Slots: house edge | 하우스 엣지 |
-| Slots: return/RTP verb | 환수율 (돌려받다) |
-| seat | 자리 |
-| banked winnings (overflow bank) | 보관 중인 당첨금 |
-| overflow: hold vs. drop nearby | 보관해 두기 / 근처에 떨어뜨리기 |
+| Concept (continued) | ko_KR | pl_PL |
+| --- | --- | --- |
+| generic physical dealer/croupier | 딜러 | krupier |
+| Baccarat banker/bank side | 뱅커 (플레이어 / 뱅커) | Bankier (Gracz / Bankier) |
+| bet / wager amount | 베팅 (베팅액) | zakład (stawka) |
+| all in | 올인 | va banque |
+| rebet (repeat previous wager) | 재베팅 | ponawianie zakładu (ponowiono zakład) |
+| chip denomination/value | 칩 금액 | nominał żetonu |
+| win streak / chain (PvE) | 연승 (최대 연승 라운드) | seria zwycięstw (maks. liczba rund serii) |
+| cash out / payout | 캐시아웃 / 지급 (당첨금) | wypłać / wypłata |
+| Blackjack: shoe | 슈 | sabot |
+| Blackjack: hit | 히트 | Dobierz |
+| Blackjack: stand | 스탠드 | Pas (pasujesz) |
+| Blackjack: split | 스플릿 | Rozdziel (rozdzielanie) |
+| Blackjack: insurance | 인슈어런스 | ubezpieczenie |
+| Blackjack: same-rank vs. same-value split rule | 같은 랭크 / 같은 점수 | Ta sama ranga / Ta sama wartość |
+| RPS: throw/action (not generic "turn") | 낼 손 (내다) | zagranie (zatwierdź zagranie) |
+| Dragon Descent: vine mechanic | 덩굴 | pnącza |
+| ON/OFF display state | 켜짐 / 꺼짐 | WŁ. / WYŁ. |
+| Slots: variance (risk preset, not the RTP) | 변동성 | zmienność |
+| Slots: house edge | 하우스 엣지 | przewaga kasyna |
+| Slots: return/RTP verb | 환수율 (돌려받다) | zwrot (zwrot dla gracza) |
+| seat | 자리 | miejsce (krzesło = chair) |
+| banked winnings (overflow bank) | 보관 중인 당첨금 | przechowywane wygrane |
+| overflow: hold vs. drop nearby | 보관해 두기 / 근처에 떨어뜨리기 | Przechowaj dla mnie / Upuść obok |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -717,6 +717,18 @@ a real, previously-observed defect, not a hypothetical risk.
   (`{seconds} 초`, `{count} 개`). The physical dealer is `딜러`; the Baccarat
   Banker side is `뱅커`. Slots "run" is `연속`, distinct from the PvE win
   streak `연승`.
+- `pl_PL`: standard Polish; informal `ty` address as in Polish Minecraft,
+  imperative for buttons and prompts. Second-person past tense and adjectives
+  are gendered in Polish (`wygrałeś/wygrałaś`, `spłukany`), so player-facing
+  text uses impersonal, present-tense or noun forms (`Wygrana!`, `Pasujesz.`,
+  `Nie wybrano na czas`). Placeholders cannot inflect: they follow a colon
+  label or a governing noun (`gracza {player}`, `w grze {game}`,
+  `krupiera {dealer}`); counts use labels (`liczba gier: {rounds}`) to avoid
+  numeral agreement. `dragon-settings.columns`/`vines`/`floors` are genitive
+  plurals for their single `{setting}` slot. Slots "run" is `ciąg`, distinct
+  from the PvE win streak `seria`; the Auto Spin "batch" is
+  `od ich uruchomienia` (never `sesja`, which is the whole Slots session).
+  Horse "style" is `wzór sierści` (`umaszczenie` means coat colour).
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.

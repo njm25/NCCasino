@@ -52,3 +52,27 @@
   vi_VN ("cơ hội nhận") and the pre-existing zh_CN ("争取"). The English
   "for {amount}" is itself ambiguous; a targeted refinement of those two
   keys is suggested if the owner wants the stricter reading.
+
+### pl_PL -- Polski (Polish)
+
+- Final catalog SHA-256: `fdaaeb3a4bf2009a382f5d6da079c41867b05508b14b38ddfc395620c1a92266` (identical in the run directory and
+  `src/main/resources/lang/pl_PL.yml`; NFC-normalized)
+- Voice: informal `ty`; no gendered second-person past tense or
+  adjectives; placeholders behind colon labels or governing nouns; dealer
+  `krupier`, Baccarat Banker side `Bankier` (recorded in the guide).
+- Structural: helper strict check 0 errors (4 residue warnings, all false
+  positives: Polish `to`/`a` and the shared `/ncc create|delete`
+  usage text); `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all nine new locales registered: every one of
+  the 15 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 3 (demo strings used `wymiana waluty`, i.e. currency
+  conversion; fixed), Tier 2 = 11, Tier 3 = 24. All applied, with one
+  deviation: the suggested `seria obrotów` for the Auto Spin "batch" would
+  have collided with the pinned win-streak term `seria`, so
+  `od ich uruchomienia` was used instead. `slots.auto-summary-unlimited`
+  was confirmed against `SlotsMachine.spinLimitDisplay` (it fills
+  `{spins}`) before changing it to `nieograniczony`. 40 keys patched,
+  rechecked after. Findings: `reviews/pl_PL-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `pl_PL: name: "Polski"`.
+- Native-speaker review: not performed; recommended before release.
