@@ -172,3 +172,28 @@
   `reviews/lv_LV-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `lv_LV: name: "Latviešu"`.
 - Native-speaker review: not performed; recommended before release.
+
+### et_EE -- Eesti (Estonian)
+
+- Final catalog SHA-256: `9c814310f5554385f6b9b3e60a2c72cd0baa7d40f2d257e825b6d86d2a79feb3` (identical in the run directory and
+  `src/main/resources/lang/et_EE.yml`; NFC-normalized)
+- Voice: standard Estonian, informal `sina`, `„“` quotes, decimal comma;
+  no grammatical gender, so the work is numerals and case endings (colon
+  labels, quoted appositions such as `mängu „{game}“`); genitive
+  `occupations.*` and genitive-plural Dragon fillers; `diiler`, Baccarat
+  `Bakkara` with `Mängija` / `Pankur`, `panus`, pot `pott`, Slots
+  `Mänguautomaat` with `rullid`, run `jada` vs streak `seeria`. Recorded in
+  the guide.
+- Structural: helper strict check 0 errors (one token-order slip in
+  `slots.profile-overwrite-retry` caught and fixed before review; 4 residue
+  warnings are Estonian `on`); `localizationCandidateCheck` CANDIDATE OK
+  (1184); full `localizationCheck` with all thirty new locales registered:
+  every one of the 36 locales OK (1184), no new warnings; `compileJava`
+  succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0, Tier 2 = 0, Tier 3 = 32 (`Bakkara` spelling, count labels,
+  "number of" in Dragon updates, insurance cost wording), all applied, plus
+  the `Bakkara` follow-up in the settings keys. 32 review keys plus 9
+  self-review fixes, rechecked after. Findings: `reviews/et_EE-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `et_EE: name: "Eesti"`.
+- Native-speaker review: not performed; recommended before release.

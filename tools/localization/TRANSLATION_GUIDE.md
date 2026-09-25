@@ -677,31 +677,31 @@ Second continuation for later locales (same concept rows; split so neither table
 
 Third continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 3) | es_MX | hr_HR | sl_SI | sr_RS | lt_LT | lv_LV |
-| --- | --- | --- | --- | --- | --- | --- |
-| generic physical dealer/croupier | crupier | djelitelj | delivec | делилац | dalytojas | dīleris |
-| Baccarat banker/bank side | Banca (Jugador / Banca) | Bankar (Igrač / Bankar) | Bankir (Igralec / Bankir) | Банкар (Играч / Банкар) | Bankininkas (Žaidėjas / Bankininkas) | Baņķieris (Spēlētājs / Baņķieris) |
-| bet / wager amount | apuesta | ulog (oklada = placed bet) | vložek (stava = placed bet) | улог (опклада = placed bet) | statymas (atlikti statymą = place a bet) | likme |
-| all in | Apostar todo | Uloži sve | Stavi vse | Уложи све | Statyti viską | Likt visu |
-| rebet (repeat previous wager) | Repetir apuesta | Ponovi ulog | Ponovi stavo | Понови улог | Kartoti statymą | Atkārtot likmi |
-| chip denomination/value | valor de la ficha | vrijednost žetona | vrednost žetona | вредност жетона | žetono vertė | žetona vērtība |
-| win streak / chain (PvE) | racha (máx. de rondas en racha) | serija pobjeda (najveći broj rundi u seriji) | niz zmag (največ krogov v nizu) | низ победа (највећи број рунди у низу) | pergalių serija (didžiausias raundų skaičius serijoje) | uzvaru sērija (maksimālais raundu skaits sērijā) |
-| cash out / payout | Cobrar / pago | Podigni dobitak / isplata | Unovči / izplačilo | Подигни добитак / исплата | Atsiimti / išmoka | Paņemt laimestu / izmaksa |
-| Blackjack: shoe | zapato | kutija za dijeljenje | delilnik kart | кутија за дељење | kortų dėžė | kāršu kaste |
-| Blackjack: hit | Pedir | Karta | Karta | Карта | Imti | Ņemt |
-| Blackjack: stand | Plantarse | Stani | Stoj | Стој | Sustoti | Pietiek |
-| Blackjack: split | Dividir | Podijeli | Razdeli | Подели | Skaidyti | Sadalīt |
-| Blackjack: insurance | seguro | osiguranje | zavarovanje | осигурање | draudimas | apdrošināšana |
-| Blackjack: same-rank vs. same-value split rule | Mismo rango / Mismo valor | Isti rang / Ista vrijednost | Enak rang / Enaka vrednost | Исти ранг / Иста вредност | Tas pats rangas / Ta pati vertė | Vienāds rangs / Vienāda vērtība |
-| RPS: throw/action (not generic "turn") | jugada | izbor | izbira | избор | pasirinkimas | izvēle |
-| Dragon Descent: vine mechanic | enredadera | puzavica | plezalka | пузавица | vijoklis | vīteņaugs |
-| ON/OFF display state | ACTIVADO / DESACTIVADO | UKLJUČENO / ISKLJUČENO | VKLOPLJENO / IZKLOPLJENO | УКЉУЧЕНО / ИСКЉУЧЕНО | ĮJUNGTA / IŠJUNGTA | IESLĒGTS / IZSLĒGTS |
-| Slots: variance (risk preset, not the RTP) | volatilidad | volatilnost | volatilnost | волатилност | volatilumas | volatilitāte |
-| Slots: house edge | ventaja de la casa | prednost kuće | prednost igralnice | предност куће | kazino pranašumas | kazino priekšrocība |
-| Slots: return/RTP verb | retorno al jugador | povrat igraču | povračilo igralcu | повраћај играчу | grąža žaidėjui | atdeve spēlētājam |
-| seat | lugar (silla = chair) | mjesto (stolica = chair) | mesto (stol = chair) | место (столица = chair) | vieta (kėdė = chair) | vieta (krēsls = chair) |
-| banked winnings (overflow bank) | ganancias guardadas | sačuvani dobici | shranjeni dobitki | сачувани добици | išsaugoti laimėjimai | saglabātie laimesti |
-| overflow: hold vs. drop nearby | Guárdalas por mí / Suéltalas cerca | Čuvaj ih za mene / Ostavi ih na tlu u blizini | Shrani jih zame / Odvrzi jih na tla v bližini | Чувај их за мене / Остави их на тлу у близини | Saugoti juos man / Padėti juos ant žemės šalia | Glabāt drošībā / Nolikt tos uz zemes tuvumā |
+| Concept (continued 3) | es_MX | hr_HR | sl_SI | sr_RS | lt_LT | lv_LV | et_EE |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | crupier | djelitelj | delivec | делилац | dalytojas | dīleris | diiler |
+| Baccarat banker/bank side | Banca (Jugador / Banca) | Bankar (Igrač / Bankar) | Bankir (Igralec / Bankir) | Банкар (Играч / Банкар) | Bankininkas (Žaidėjas / Bankininkas) | Baņķieris (Spēlētājs / Baņķieris) | Pankur (Mängija / Pankur) |
+| bet / wager amount | apuesta | ulog (oklada = placed bet) | vložek (stava = placed bet) | улог (опклада = placed bet) | statymas (atlikti statymą = place a bet) | likme | panus |
+| all in | Apostar todo | Uloži sve | Stavi vse | Уложи све | Statyti viską | Likt visu | Pane kõik |
+| rebet (repeat previous wager) | Repetir apuesta | Ponovi ulog | Ponovi stavo | Понови улог | Kartoti statymą | Atkārtot likmi | Korda panust |
+| chip denomination/value | valor de la ficha | vrijednost žetona | vrednost žetona | вредност жетона | žetono vertė | žetona vērtība | žetooni väärtus |
+| win streak / chain (PvE) | racha (máx. de rondas en racha) | serija pobjeda (najveći broj rundi u seriji) | niz zmag (največ krogov v nizu) | низ победа (највећи број рунди у низу) | pergalių serija (didžiausias raundų skaičius serijoje) | uzvaru sērija (maksimālais raundu skaits sērijā) | võiduseeria (seeria maksimaalne voorude arv) |
+| cash out / payout | Cobrar / pago | Podigni dobitak / isplata | Unovči / izplačilo | Подигни добитак / исплата | Atsiimti / išmoka | Paņemt laimestu / izmaksa | Võta võit välja / väljamakse |
+| Blackjack: shoe | zapato | kutija za dijeljenje | delilnik kart | кутија за дељење | kortų dėžė | kāršu kaste | kaardikast |
+| Blackjack: hit | Pedir | Karta | Karta | Карта | Imti | Ņemt | Võta |
+| Blackjack: stand | Plantarse | Stani | Stoj | Стој | Sustoti | Pietiek | Jää |
+| Blackjack: split | Dividir | Podijeli | Razdeli | Подели | Skaidyti | Sadalīt | Jaga |
+| Blackjack: insurance | seguro | osiguranje | zavarovanje | осигурање | draudimas | apdrošināšana | kindlustus |
+| Blackjack: same-rank vs. same-value split rule | Mismo rango / Mismo valor | Isti rang / Ista vrijednost | Enak rang / Enaka vrednost | Исти ранг / Иста вредност | Tas pats rangas / Ta pati vertė | Vienāds rangs / Vienāda vērtība | Sama aste / Sama väärtus |
+| RPS: throw/action (not generic "turn") | jugada | izbor | izbira | избор | pasirinkimas | izvēle | valik |
+| Dragon Descent: vine mechanic | enredadera | puzavica | plezalka | пузавица | vijoklis | vīteņaugs | vääd |
+| ON/OFF display state | ACTIVADO / DESACTIVADO | UKLJUČENO / ISKLJUČENO | VKLOPLJENO / IZKLOPLJENO | УКЉУЧЕНО / ИСКЉУЧЕНО | ĮJUNGTA / IŠJUNGTA | IESLĒGTS / IZSLĒGTS | SEES / VÄLJAS |
+| Slots: variance (risk preset, not the RTP) | volatilidad | volatilnost | volatilnost | волатилност | volatilumas | volatilitāte | volatiilsus |
+| Slots: house edge | ventaja de la casa | prednost kuće | prednost igralnice | предност куће | kazino pranašumas | kazino priekšrocība | kasiino eelis |
+| Slots: return/RTP verb | retorno al jugador | povrat igraču | povračilo igralcu | повраћај играчу | grąža žaidėjui | atdeve spēlētājam | tagastus mängijale |
+| seat | lugar (silla = chair) | mjesto (stolica = chair) | mesto (stol = chair) | место (столица = chair) | vieta (kėdė = chair) | vieta (krēsls = chair) | koht (tool = chair) |
+| banked winnings (overflow bank) | ganancias guardadas | sačuvani dobici | shranjeni dobitki | сачувани добици | išsaugoti laimėjimai | saglabātie laimesti | hoiustatud võidud |
+| overflow: hold vs. drop nearby | Guárdalas por mí / Suéltalas cerca | Čuvaj ih za mene / Ostavi ih na tlu u blizini | Shrani jih zame / Odvrzi jih na tla v bližini | Чувај их за мене / Остави их на тлу у близини | Saugoti juos man / Padėti juos ant žemės šalia | Glabāt drošībā / Nolikt tos uz zemes tuvumā | Hoia neid minu jaoks / Pane need lähedale maha |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -1074,6 +1074,21 @@ a real, previously-observed defect, not a hypothetical risk.
   (never reused for the auto-spin batch). Coin Flip is `Ģerbonis vai
   cipars`; Slots `Spēļu automāts`. The card shoe is described as `kāršu
   kaste`.
+- `et_EE`: standard Estonian, informal `sina` (imperatives `Klõpsa`,
+  `Vali`), `„“` quotes, decimal comma; Estonian UI vocabulary (`menüü`,
+  `nupp`, `seaded`, `server`, `vestlus` for chat, `taimer`, `seljakott` for
+  the inventory). Estonian has no grammatical gender, so gender neutrality
+  is automatic; the risks are numerals (partitive after numbers above 1) and
+  case endings around placeholders, handled with colon labels (`käte arv:
+  {count}`) and quoted appositions (`mängu „{game}“`). Suffixes on protected
+  literals follow common practice (`Vault'i`, `NCCasino-ga`).
+  `occupations.*` are genitive (`{occupation} muutmine`) and
+  `dragon-settings.columns|vines|floors` genitive plural (`vaikimisi
+  {setting} arv`). Dealer `diiler`; Baccarat (`Bakkara`) `Mängija` /
+  `Pankur`; bet and stake `panus`; cash-out `Võta võit välja`; pot `pott`;
+  slot reels `rullid`, spin `keerutus`; slots run `jada` vs PvE streak
+  `seeria`. Coin Flip is `Kull või kiri`; Slots `Mänguautomaat`. Closed
+  betting is `Panuseid enam vastu ei võeta`. The card shoe is `kaardikast`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
