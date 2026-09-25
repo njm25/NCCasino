@@ -406,7 +406,7 @@ slots:
   guide-machine-lines: "&7Aktyvios linijos: &a{lines}"
   guide-machine-wager: "&7Statymas linijai: &a{amount}"
   guide-machine-total-bet: "&7Bendras statymas: &a{amount}"
-  guide-machine-rtp: "&7Grąža žaidėjui: &a{rtp}"
+  guide-machine-rtp: "&7Grąža žaidėjui (RTP): &a{rtp}"
   guide-machine-edge: "&7Kazino pranašumas: &e{edge}"
   guide-machine-variance: "&7Volatilumas: &f{variance}"
   variance-steady: "Labai mažas"

@@ -406,7 +406,7 @@ slots:
   guide-machine-lines: "&7Aktiivsed liinid: &a{lines}"
   guide-machine-wager: "&7Panus liini kohta: &a{amount}"
   guide-machine-total-bet: "&7Kogupanus: &a{amount}"
-  guide-machine-rtp: "&7Tagastus mängijale: &a{rtp}"
+  guide-machine-rtp: "&7Tagastus mängijale (RTP): &a{rtp}"
   guide-machine-edge: "&7Kasiino eelis: &e{edge}"
   guide-machine-variance: "&7Volatiilsus: &f{variance}"
   variance-steady: "Väga madal"

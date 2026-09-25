@@ -433,6 +433,31 @@ actual implementation, and update this section.
   trailing `%`, but not a leading one, so the example must stay typeable
   (`2,5%` or `2,5`) even in locales that write the sign first (eu_ES `% 2,5`,
   tr_TR `%2,5`); display-only percentages elsewhere may follow local style.
+- **RTP labels must not read as a refund.** `slots.guide-machine-rtp` and
+  `admin.slots-rtp-lore` label the machine's return-to-player rate. When the
+  locale's label word shares a root with its refund wording (`refund-exit`,
+  `*-refunded`, round-voided "returned") and carries no rate/percent word,
+  append `(RTP)` (sl_SI `Povračilo igralcu (RTP)`, hr_HR/bs_BA `Povrat igraču
+  (RTP)`, ca_ES `Retorn al jugador (RTP)`); a label that already says
+  rate/percent (sv_SE `återbetalningsprocent`, tr_TR `geri ödeme oranı`) needs
+  nothing more. Running sentences that mirror English "returns {rtp}"
+  (`house-edge-current`, `house-edge-updated`) may keep the plain verb.
+- **Vault is optional.** `admin.vault-missing` is sent only when an admin tries
+  to switch a dealer to VAULT currency mode without Vault present, and
+  `admin.install-vault` / `install-economy` / `standard-mode-fallback` sit on
+  the disabled toggle while the dealer keeps the vanilla item currency
+  (`AdminMenu.handleToggleCurrencyMode`, `updateCurrencyButtons`). Render "install
+  Vault to use it with NCCasino", never "install Vault to use NCCasino", which
+  would claim the plugin needs Vault.
+- **`dragon-descent.invalid-action-capitalized` differs from `invalid-action`
+  only by English Title Case** (`DragonClient`). A script without letter case
+  (Tamil, Thai, Devanagari, CJK, Georgian, Armenian) uses the same text for
+  both keys; do not add emphasis such as `!` or all-caps (a Cyrillic all-caps
+  rendering reads as shouting).
+- **`coin-flip.max-chain-hit` / `rock-paper-scissors.max-chain-hit` count
+  "`{rounds}` games"** in English (`CoinFlipServer`, `RockPaperScissorsServer`),
+  so "games", "rounds" or a locale's counted-rounds label are all faithful; do
+  not "correct" one into another.
 
 This registry is not exhaustive. When a new ambiguous key is resolved via
 Java inspection, add it here with the exact affected key family and a short
@@ -1396,7 +1421,7 @@ a real, previously-observed defect, not a hypothetical risk.
   streak `სერია`; vines `ლიანა` (never `ვაზი`, the grapevine).
 - `cy_GB`: standard modern Welsh, formal `chi` with `-wch` imperatives
   (`Cliciwch`, `Dewiswch`, `Teipiwch`) and verb-nouns for buttons (`Gadael`,
-  `Ailadrodd bet`); `“ ”` quotes, decimal comma. Initial mutations are
+  `Ailadrodd bet`); `“ ”` quotes, decimal point (UK style). Initial mutations are
   written in full, including soft mutation after `neu` (`neu leihewch`, `neu
   deipiwch`). A placeholder cannot mutate, so no mutating word precedes a
   non-numeric placeholder: names and games sit after a colon or in

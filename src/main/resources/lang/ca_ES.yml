@@ -406,7 +406,7 @@ slots:
   guide-machine-lines: "&7Línies actives: &a{lines}"
   guide-machine-wager: "&7Aposta per línia: &a{amount}"
   guide-machine-total-bet: "&7Aposta total: &a{amount}"
-  guide-machine-rtp: "&7Retorn al jugador: &a{rtp}"
+  guide-machine-rtp: "&7Retorn al jugador (RTP): &a{rtp}"
   guide-machine-edge: "&7Avantatge de la casa: &e{edge}"
   guide-machine-variance: "&7Volatilitat: &f{variance}"
   variance-steady: "Molt baixa"

@@ -1,0 +1,699 @@
+# final-audit-1 change ledger
+
+Every production value changed by the final audit, grouped by locale.
+`before` is the value at base commit `35a93af`; `after` is the committed
+value. The same data is in `ledger.jsonl` (one JSON object per change).
+
+Total: 140 value changes in 44 locales.
+
+## af_ZA (2)
+
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Terugbetaling aan speler: &a{rtp}`
+  - after: `&7Terugbetaling aan speler (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+- `admin.slots-rtp-lore` — Phase 2 (semantic-trap keys)
+  - before: `&7Huidige terugbetaling aan speler: &a{rtp}`
+  - after: `&7Huidige terugbetaling aan speler (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+
+## az_AZ (2)
+
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Oyunçuya qayıdış: &a{rtp}`
+  - after: `&7Oyunçuya qayıdış (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+- `admin.slots-rtp-lore` — Phase 2 (semantic-trap keys)
+  - before: `&7Oyunçuya qayıdış (cari): &a{rtp}`
+  - after: `&7Cari RTP: &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+
+## be_BY (2)
+
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Вяртанне гульцу: &a{rtp}`
+  - after: `&7Вяртанне гульцу (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+- `admin.slots-rtp-lore` — Phase 2 (semantic-trap keys)
+  - before: `&7Бягучае вяртанне гульцу: &a{rtp}`
+  - after: `&7Бягучы RTP: &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+
+## bg_BG (3)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aРаздели отново!`
+  - after: `&aРъката е разделена отново!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `coin-flip.seat-unavailable` — Phase 2 (semantic-trap keys)
+  - before: `&7&oМястото не е свободно`
+  - after: `&7&oМястото още не е отворено`
+  - why: seat-unavailable labels an empty, locked chair (guide §C); "not free / not vacant" reads as occupied. Now "not open yet".
+- `rock-paper-scissors.seat-unavailable` — Phase 2 (semantic-trap keys)
+  - before: `&7&oМястото не е свободно`
+  - after: `&7&oМястото още не е отворено`
+  - why: seat-unavailable labels an empty, locked chair (guide §C); "not free / not vacant" reads as occupied. Now "not open yet".
+
+## bn_BD (2)
+
+- `admin.vault-missing` — Phase 3 (full read)
+  - before: `&cVault পাওয়া যায়নি। NCCasino ব্যবহার করতে Vault ইনস্টল করুন।`
+  - after: `&cVault পাওয়া যায়নি। NCCasino-র সঙ্গে ব্যবহার করতে Vault ইনস্টল করুন।`
+  - why: EN "Install Vault to use with NCCasino": Vault is optional (standard-mode fallback); the value said "install Vault to use NCCasino", i.e. Vault is required.
+- `admin.install-vault` — Phase 3 (full read)
+  - before: `&7NCCasino ব্যবহার করতে Vault ইনস্টল করুন`
+  - after: `&7NCCasino-র সঙ্গে ব্যবহার করতে Vault ইনস্টল করুন`
+  - why: EN "Install Vault to use with NCCasino": Vault is optional (standard-mode fallback); the value said "install Vault to use NCCasino", i.e. Vault is required.
+
+## bs_BA (1)
+
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Povrat igraču: &a{rtp}`
+  - after: `&7Povrat igraču (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+
+## ca_ES (1)
+
+- `slots.guide-machine-rtp` — Phase 3 (full read)
+  - before: `&7Retorn al jugador: &a{rtp}`
+  - after: `&7Retorn al jugador (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund verb (retornar: "s'han retornat les apostes"); adding (RTP) keeps it from reading as a refund.
+
+## cs_CZ (3)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aRozděl znovu!`
+  - after: `&aRuka znovu rozdělena!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `mob-settings.none` — Phase 2 (semantic-trap keys)
+  - before: `Žádné`
+  - after: `Žádná`
+  - why: "None" only fills the llama-decor and wolf-collar-colour slots (guide §C); both nouns are feminine in this locale (decoração/cor, ozdoba/barva, ozdoba/farba), so the default masculine/neuter form did not agree.
+- `admin.none` — Phase 2 (semantic-trap keys)
+  - before: `Žádné`
+  - after: `Žádná`
+  - why: "None" only fills the llama-decor and wolf-collar-colour slots (guide §C); both nouns are feminine in this locale (decoração/cor, ozdoba/barva, ozdoba/farba), so the default masculine/neuter form did not agree.
+
+## cy_GB (3)
+
+- `baccarat.banker-win-odds` — Phase 1 (scripted checks)
+  - before: `Buddugoliaeth y Banciwr - 0,95:1`
+  - after: `Buddugoliaeth y Banciwr - 0.95:1`
+  - why: Welsh follows UK number style with a decimal point, not a comma (parser accepts both).
+- `slots-settings.house-edge-prompt` — Phase 1 (scripted checks)
+  - before: `&eTeipiwch fantais y tŷ ({min}–{max}) yn y sgwrs (er enghraifft, 2,5%).`
+  - after: `&eTeipiwch fantais y tŷ ({min}–{max}) yn y sgwrs (er enghraifft, 2.5%).`
+  - why: Welsh follows UK number style with a decimal point, not a comma (parser accepts both).
+- `slots-settings.house-edge-invalid` — Phase 1 (scripted checks)
+  - before: `&cRhowch ganran ({min}–{max}), fel 2,5%.`
+  - after: `&cRhowch ganran ({min}–{max}), fel 2.5%.`
+  - why: Welsh follows UK number style with a decimal point, not a comma (parser accepts both).
+
+## da_DK (3)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aDel igen!`
+  - after: `&aHånden er delt igen!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `coin-flip.seat-unavailable` — Phase 2 (semantic-trap keys)
+  - before: `&7&oPladsen er ikke ledig`
+  - after: `&7&oPladsen er ikke åben endnu`
+  - why: seat-unavailable labels an empty, locked chair (guide §C); "not free / not vacant" reads as occupied. Now "not open yet".
+- `rock-paper-scissors.seat-unavailable` — Phase 2 (semantic-trap keys)
+  - before: `&7&oPladsen er ikke ledig`
+  - after: `&7&oPladsen er ikke åben endnu`
+  - why: seat-unavailable labels an empty, locked chair (guide §C); "not free / not vacant" reads as occupied. Now "not open yet".
+
+## el_GR (1)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aΔιαχώρισε ξανά!`
+  - after: `&aΤο χέρι διαχωρίστηκε ξανά!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+
+## et_EE (1)
+
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Tagastus mängijale: &a{rtp}`
+  - after: `&7Tagastus mängijale (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+
+## eu_ES (2)
+
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Jokalariarentzako itzulera: &a{rtp}`
+  - after: `&7Jokalariarentzako itzulera (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+- `admin.slots-rtp-lore` — Phase 2 (semantic-trap keys)
+  - before: `&7Jokalariarentzako uneko itzulera: &a{rtp}`
+  - after: `&7Jokalariarentzako uneko itzulera (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+
+## fi_FI (8)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aJaa uudelleen!`
+  - after: `&aKäsi jaettu uudelleen!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `coin-flip.seat-unavailable` — Phase 2 (semantic-trap keys)
+  - before: `&7&oPaikka ei ole vapaana`
+  - after: `&7&oPaikka ei ole vielä avoinna`
+  - why: seat-unavailable labels an empty, locked chair (guide §C); "not free / not vacant" reads as occupied. Now "not open yet".
+- `rock-paper-scissors.seat-unavailable` — Phase 2 (semantic-trap keys)
+  - before: `&7&oPaikka ei ole vapaana`
+  - after: `&7&oPaikka ei ole vielä avoinna`
+  - why: seat-unavailable labels an empty, locked chair (guide §C); "not free / not vacant" reads as occupied. Now "not open yet".
+- `coin-flip.chain-win` — Phase 2 (semantic-trap keys)
+  - before: `&aVoitit! Voittoputki: {streak}. Kotiuta tai heitä uudelleen, niin voit voittaa &e{amount}&a.`
+  - after: `&aVoitit! Voittoputki: {streak}. Nykyinen potti: &e{amount}&a. Kotiuta tai heitä uudelleen.`
+  - why: chain-win {amount} is the current compounded pot (guide §C), not the prize of the next win; the value promised {amount} as a future win.
+- `rock-paper-scissors.chain-win` — Phase 2 (semantic-trap keys)
+  - before: `&aVoitit! Voittoputki: {streak}. Kotiuta tai valitse uudelleen, niin voit voittaa &e{amount}&a.`
+  - after: `&aVoitit! Voittoputki: {streak}. Nykyinen potti: &e{amount}&a. Kotiuta tai valitse uudelleen.`
+  - why: chain-win {amount} is the current compounded pot (guide §C), not the prize of the next win; the value promised {amount} as a future win.
+- `slots-settings.variance-tradeoff` — Phase 2 (semantic-trap keys)
+  - before: `&7Korkeampi varianssi tarkoittaa harvempia voittavia linjoja mutta paljon suurempia jättipotteja pitkistä sarjoista.`
+  - after: `&7Korkeampi varianssi tarkoittaa, että linjat voittavat harvemmin, mutta pitkien sarjojen jättipotit ovat paljon suurempia.`
+  - why: variance-tradeoff means lines pay less often (hit rate), never fewer paylines (guide §C); "fewer winning lines" read as a smaller line count next to the payline term.
+- `blackjack-settings.updated-detailed` — Phase 2 (semantic-trap keys)
+  - before: `{setting}: &e{value}&a.`
+  - after: `{setting} Uusi arvo: &e{value}&a.`
+  - why: {setting} receives a finished sentence ("Roulette timer updated.", RouletteMenu/MinesMenu/DragonDescentMenu); "to"/colon after it rendered as "... updated. to: 25". Now "{setting} New value: {value}." as in the other catalogs.
+- `dragon-settings.updated-detailed` — Phase 2 (semantic-trap keys)
+  - before: `{setting}: {value}.`
+  - after: `{setting} Uusi arvo: {value}.`
+  - why: {setting} receives a finished sentence ("Roulette timer updated.", RouletteMenu/MinesMenu/DragonDescentMenu); "to"/colon after it rendered as "... updated. to: 25". Now "{setting} New value: {value}." as in the other catalogs.
+
+## fil_PH (1)
+
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Balik sa manlalaro: &a{rtp}`
+  - after: `&7Balik sa manlalaro (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+
+## hi_IN (2)
+
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7खिलाड़ी को वापसी: &a{rtp}`
+  - after: `&7खिलाड़ी को वापसी (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+- `admin.slots-rtp-lore` — Phase 2 (semantic-trap keys)
+  - before: `&7खिलाड़ी को मौजूदा वापसी: &a{rtp}`
+  - after: `&7खिलाड़ी को मौजूदा वापसी (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+
+## hr_HR (5)
+
+- `coin-flip.seat-unavailable` — Phase 2 (semantic-trap keys)
+  - before: `&7&oMjesto nije slobodno`
+  - after: `&7&oMjesto još nije otvoreno`
+  - why: seat-unavailable labels an empty, locked chair (guide §C); "not free / not vacant" reads as occupied. Now "not open yet".
+- `rock-paper-scissors.seat-unavailable` — Phase 2 (semantic-trap keys)
+  - before: `&7&oMjesto nije slobodno`
+  - after: `&7&oMjesto još nije otvoreno`
+  - why: seat-unavailable labels an empty, locked chair (guide §C); "not free / not vacant" reads as occupied. Now "not open yet".
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Povrat igraču: &a{rtp}`
+  - after: `&7Povrat igraču (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+- `slots.profile-name-empty` — Phase 2 (semantic-trap keys)
+  - before: `&cIme profila mora imati od {min} do {max} znakova.`
+  - after: `&cDuljina imena profila (broj znakova) mora biti od {min} do {max}.`
+  - why: With {max} = 24 (SlotsProfileName.MAX_LENGTH) Croatian needs the paucal "znaka"; "znakova" was wrong. Label form as in sr_RS/bs_BA.
+- `slots.profile-name-too-long` — Phase 2 (semantic-trap keys)
+  - before: `&cIme profila može imati najviše {max} znakova.`
+  - after: `&cNajveća dopuštena duljina imena profila (broj znakova): {max}.`
+  - why: Same paucal problem ("najviše 24 znakova"); label form keeps the number out of agreement.
+
+## hu_HU (3)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aVálaszd szét újra!`
+  - after: `&aA kéz újra szétválasztva!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `admin.vault-missing` — Phase 3 (full read)
+  - before: `&cA Vault nem található. Telepítsd a Vault plugint az NCCasino használatához.`
+  - after: `&cA Vault nem található. Telepítsd a Vault plugint, hogy az NCCasino pluginnal együtt használhasd.`
+  - why: EN "Install Vault to use with NCCasino": Vault is optional (standard-mode fallback); the value said "install Vault to use NCCasino", i.e. Vault is required.
+- `admin.install-vault` — Phase 3 (full read)
+  - before: `&7Telepítsd a Vault plugint az NCCasino használatához`
+  - after: `&7Telepítsd a Vault plugint, hogy az NCCasino pluginnal együtt használhasd`
+  - why: EN "Install Vault to use with NCCasino": Vault is optional (standard-mode fallback); the value said "install Vault to use NCCasino", i.e. Vault is required.
+
+## id_ID (6)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aPisah lagi!`
+  - after: `&aTangan dipisah lagi!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `slots-settings.variance-tradeoff` — Phase 2 (semantic-trap keys)
+  - before: `&7Volatilitas lebih tinggi berarti lebih sedikit garis yang membayar, tetapi jackpot deret panjang jauh lebih besar.`
+  - after: `&7Volatilitas lebih tinggi berarti garis lebih jarang membayar, tetapi jackpot deret panjang jauh lebih besar.`
+  - why: variance-tradeoff means lines pay less often (hit rate), never fewer paylines (guide §C); "fewer winning lines" read as a smaller line count next to the payline term.
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Pengembalian ke pemain: &a{rtp}`
+  - after: `&7Pengembalian ke pemain (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+- `admin.slots-rtp-lore` — Phase 2 (semantic-trap keys)
+  - before: `&7Tingkat pengembalian ke pemain saat ini: &a{rtp}`
+  - after: `&7Tingkat pengembalian ke pemain (RTP) saat ini: &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+- `blackjack-settings.updated-detailed` — Phase 2 (semantic-trap keys)
+  - before: `{setting} menjadi: &e{value}&a.`
+  - after: `{setting} Nilai baru: &e{value}&a.`
+  - why: {setting} receives a finished sentence ("Roulette timer updated.", RouletteMenu/MinesMenu/DragonDescentMenu); "to"/colon after it rendered as "... updated. to: 25". Now "{setting} New value: {value}." as in the other catalogs.
+- `dragon-settings.updated-detailed` — Phase 2 (semantic-trap keys)
+  - before: `{setting} menjadi {value}.`
+  - after: `{setting} Nilai baru: {value}.`
+  - why: {setting} receives a finished sentence ("Roulette timer updated.", RouletteMenu/MinesMenu/DragonDescentMenu); "to"/colon after it rendered as "... updated. to: 25". Now "{setting} New value: {value}." as in the other catalogs.
+
+## it_IT (2)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aDividi di nuovo!`
+  - after: `&aMano divisa di nuovo!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `slots-settings.variance-tradeoff` — Phase 2 (semantic-trap keys)
+  - before: `&7Una volatilità più alta significa meno linee vincenti, ma jackpot molto più grandi da sequenze lunghe.`
+  - after: `&7Una volatilità più alta significa che le linee pagano meno spesso, ma i jackpot delle sequenze lunghe sono molto più grandi.`
+  - why: variance-tradeoff means lines pay less often (hit rate), never fewer paylines (guide §C); "fewer winning lines" read as a smaller line count next to the payline term.
+
+## ja_JP (4)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aもう一度スプリット！`
+  - after: `&aハンドをもう一度スプリットしました！`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `coin-flip.chain-win` — Phase 2 (semantic-trap keys)
+  - before: `&a勝ちました！ 連勝：{streak}。キャッシュアウトするか、もう一度投げて &e{amount}&a を狙いましょう。`
+  - after: `&a勝ちました！ 連勝：{streak}。現在のポット：&e{amount}&a。キャッシュアウトするか、もう一度投げましょう。`
+  - why: chain-win {amount} is the current compounded pot (guide §C), not the prize of the next win; the value promised {amount} as a future win.
+- `rock-paper-scissors.chain-win` — Phase 2 (semantic-trap keys)
+  - before: `&a勝ちました！ 連勝：{streak}。キャッシュアウトするか、もう一度勝負して &e{amount}&a を狙いましょう。`
+  - after: `&a勝ちました！ 連勝：{streak}。現在のポット：&e{amount}&a。キャッシュアウトするか、もう一度勝負しましょう。`
+  - why: chain-win {amount} is the current compounded pot (guide §C), not the prize of the next win; the value promised {amount} as a future win.
+- `slots-settings.variance-tradeoff` — Phase 2 (semantic-trap keys)
+  - before: `&7ボラティリティが高いほど当たるラインは減りますが、長い連続のジャックポットははるかに大きくなります。`
+  - after: `&7ボラティリティが高いほどラインが当たる頻度は下がりますが、長い連続のジャックポットははるかに大きくなります。`
+  - why: variance-tradeoff means lines pay less often (hit rate), never fewer paylines (guide §C); "fewer winning lines" read as a smaller line count next to the payline term.
+
+## kk_KZ (2)
+
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Ойыншыға қайтарым: &a{rtp}`
+  - after: `&7Ойыншыға қайтарым (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+- `admin.slots-rtp-lore` — Phase 2 (semantic-trap keys)
+  - before: `&7Ойыншыға қайтарым (ағымдағы): &a{rtp}`
+  - after: `&7Ағымдағы RTP: &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+
+## ko_KR (2)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&a다시 스플릿!`
+  - after: `&a핸드를 다시 스플릿했습니다!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `slots-settings.variance-tradeoff` — Phase 2 (semantic-trap keys)
+  - before: `&7변동성이 높을수록 당첨되는 라인은 줄지만, 긴 연속의 잭팟은 훨씬 커집니다.`
+  - after: `&7변동성이 높을수록 라인이 당첨되는 빈도는 줄지만, 긴 연속의 잭팟은 훨씬 커집니다.`
+  - why: variance-tradeoff means lines pay less often (hit rate), never fewer paylines (guide §C); "fewer winning lines" read as a smaller line count next to the payline term.
+
+## lt_LT (1)
+
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Grąža žaidėjui: &a{rtp}`
+  - after: `&7Grąža žaidėjui (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+
+## mk_MK (14)
+
+- `payout.context-server-restart` — Phase 1 (scripted checks)
+  - before: `Серверот се рестартираше додека вашиот облог ({game}) сè уште чекаше исход, па облогот е вратен.`
+  - after: `Серверот се рестартираше додека вашиот облог ({game}) сѐ уште чекаше исход, па облогот е вратен.`
+  - why: Latin è (U+00E8) inside the Cyrillic word "сѐ"; Macedonian uses Cyrillic ѐ (U+0450).
+- `payout.retry-one` — Phase 1 (scripted checks)
+  - before: `&6Имате 1 исплата што сè уште не можеше да се достави. Ќе се обиде повторно автоматски.`
+  - after: `&6Имате 1 исплата што сѐ уште не можеше да се достави. Ќе се обиде повторно автоматски.`
+  - why: Latin è (U+00E8) inside the Cyrillic word "сѐ"; Macedonian uses Cyrillic ѐ (U+0450).
+- `payout.retry-many` — Phase 1 (scripted checks)
+  - before: `&6Исплати што сè уште не можеа да се достават: {count}. Ќе се обидат повторно автоматски.`
+  - after: `&6Исплати што сѐ уште не можеа да се достават: {count}. Ќе се обидат повторно автоматски.`
+  - why: Latin è (U+00E8) inside the Cyrillic word "сѐ"; Macedonian uses Cyrillic ѐ (U+0450).
+- `payout.bank-reminder` — Phase 1 (scripted checks)
+  - before: `&6Дел од вашата добивка сè уште чека место во инвентарот: {amount}. Направете место, а потоа користете &e/ncc claim&6 за да ја подигнете.`
+  - after: `&6Дел од вашата добивка сѐ уште чека место во инвентарот: {amount}. Направете место, а потоа користете &e/ncc claim&6 за да ја подигнете.`
+  - why: Latin è (U+00E8) inside the Cyrillic word "сѐ"; Macedonian uses Cyrillic ѐ (U+0450).
+- `payout.bank-still-blocked` — Phase 1 (scripted checks)
+  - before: `&6Добивката сè уште чека место во инвентарот: {amount}. Направете место, а потоа користете &e/ncc claim&6 за да ја подигнете.`
+  - after: `&6Добивката сѐ уште чека место во инвентарот: {amount}. Направете место, а потоа користете &e/ncc claim&6 за да ја подигнете.`
+  - why: Latin è (U+00E8) inside the Cyrillic word "сѐ"; Macedonian uses Cyrillic ѐ (U+0450).
+- `coin-flip.seat-unavailable` — Phase 1 (scripted checks)
+  - before: `&7&oМестото сè уште не е достапно`
+  - after: `&7&oМестото сѐ уште не е достапно`
+  - why: Latin è (U+00E8) inside the Cyrillic word "сѐ"; Macedonian uses Cyrillic ѐ (U+0450).
+- `rock-paper-scissors.seat-unavailable` — Phase 1 (scripted checks)
+  - before: `&7&oМестото сè уште не е достапно`
+  - after: `&7&oМестото сѐ уште не е достапно`
+  - why: Latin è (U+00E8) inside the Cyrillic word "сѐ"; Macedonian uses Cyrillic ѐ (U+0450).
+- `slots.last-result-not-yet-spun` — Phase 1 (scripted checks)
+  - before: `&7Последен исход: &fсè уште нема вртење`
+  - after: `&7Последен исход: &fсѐ уште нема вртење`
+  - why: Latin è (U+00E8) inside the Cyrillic word "сѐ"; Macedonian uses Cyrillic ѐ (U+0450).
+- `slots.auto-reset-already-default` — Phase 1 (scripted checks)
+  - before: `&8Сè е веќе на стандардните вредности.`
+  - after: `&8Сѐ е веќе на стандардните вредности.`
+  - why: Latin è (U+00E8) inside the Cyrillic word "сѐ"; Macedonian uses Cyrillic ѐ (U+0450).
+- `slots.rail-exit-session` — Phase 1 (scripted checks)
+  - before: `&7Со тоа сесијата тука завршува; сè што е веќе добиено сепак се исплаќа.`
+  - after: `&7Со тоа сесијата тука завршува; сѐ што е веќе добиено сепак се исплаќа.`
+  - why: Latin è (U+00E8) inside the Cyrillic word "сѐ"; Macedonian uses Cyrillic ѐ (U+0450).
+- `mines.mode-all` — Phase 1 (scripted checks)
+  - before: `Сè`
+  - after: `Сѐ`
+  - why: Latin è (U+00E8) inside the Cyrillic word "сѐ"; Macedonian uses Cyrillic ѐ (U+0450).
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Враќање кон играчите: &a{rtp}`
+  - after: `&7Враќање кон играчите (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+- `admin.slots-rtp-lore` — Phase 2 (semantic-trap keys)
+  - before: `&7Тековно враќање кон играчите: &a{rtp}`
+  - after: `&7Тековно враќање кон играчите (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+- `slots.profile-name-empty` — Phase 2 (semantic-trap keys)
+  - before: `&cИмето на профилот мора да има од {min} до {max} знаци.`
+  - after: `&cИмето на профилот мора да има од {min} до {max} знака.`
+  - why: Macedonian uses the numeral count form "знака" after a number, not the plain plural "знаци".
+
+## mn_MN (3)
+
+- `admin.vault-missing` — Phase 3 (full read)
+  - before: `&cVault олдсонгүй. NCCasino ашиглахын тулд Vault суулгана уу.`
+  - after: `&cVault олдсонгүй. NCCasino-той хамт ашиглахын тулд Vault суулгана уу.`
+  - why: EN "Install Vault to use with NCCasino": Vault is optional (standard-mode fallback); the value said "install Vault to use NCCasino", i.e. Vault is required.
+- `admin.install-vault` — Phase 3 (full read)
+  - before: `&7NCCasino ашиглахын тулд Vault суулгана уу`
+  - after: `&7NCCasino-той хамт ашиглахын тулд Vault суулгана уу`
+  - why: EN "Install Vault to use with NCCasino": Vault is optional (standard-mode fallback); the value said "install Vault to use NCCasino", i.e. Vault is required.
+- `dragon-descent.invalid-action-capitalized` — Phase 3 (full read)
+  - before: `&cБУРУУ ҮЙЛДЭЛ.`
+  - after: `&cБуруу үйлдэл.`
+  - why: All-caps rendering of an EN Title Case string; Mongolian Cyrillic has no title case, the all-caps text reads as shouting and was the only such outlier across 61 locales; now matches the locale's own dragon-descent.invalid-action.
+
+## ms_MY (1)
+
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Pulangan kepada pemain: &a{rtp}`
+  - after: `&7Pulangan kepada pemain (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+
+## nb_NO (3)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aSplitt igjen!`
+  - after: `&aHånden er splittet igjen!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `coin-flip.seat-unavailable` — Phase 2 (semantic-trap keys)
+  - before: `&7&oPlassen er ikke ledig`
+  - after: `&7&oPlassen er ikke åpen ennå`
+  - why: seat-unavailable labels an empty, locked chair (guide §C); "not free / not vacant" reads as occupied. Now "not open yet".
+- `rock-paper-scissors.seat-unavailable` — Phase 2 (semantic-trap keys)
+  - before: `&7&oPlassen er ikke ledig`
+  - after: `&7&oPlassen er ikke åpen ennå`
+  - why: seat-unavailable labels an empty, locked chair (guide §C); "not free / not vacant" reads as occupied. Now "not open yet".
+
+## nl_NL (4)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aOpnieuw splitsen!`
+  - after: `&aHand opnieuw gesplitst!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `slots-settings.variance-tradeoff` — Phase 2 (semantic-trap keys)
+  - before: `&7Hogere variantie betekent minder winnende lijnen, maar veel grotere jackpots bij lange series.`
+  - after: `&7Hogere variantie betekent dat lijnen minder vaak winnen, maar dat jackpots bij lange series veel groter zijn.`
+  - why: variance-tradeoff means lines pay less often (hit rate), never fewer paylines (guide §C); "fewer winning lines" read as a smaller line count next to the payline term.
+- `blackjack-settings.updated-detailed` — Phase 2 (semantic-trap keys)
+  - before: `{setting} naar: &e{value}&a.`
+  - after: `{setting} Nieuwe waarde: &e{value}&a.`
+  - why: {setting} receives a finished sentence ("Roulette timer updated.", RouletteMenu/MinesMenu/DragonDescentMenu); "to"/colon after it rendered as "... updated. to: 25". Now "{setting} New value: {value}." as in the other catalogs.
+- `dragon-settings.updated-detailed` — Phase 2 (semantic-trap keys)
+  - before: `{setting} naar {value}.`
+  - after: `{setting} Nieuwe waarde: {value}.`
+  - why: {setting} receives a finished sentence ("Roulette timer updated.", RouletteMenu/MinesMenu/DragonDescentMenu); "to"/colon after it rendered as "... updated. to: 25". Now "{setting} New value: {value}." as in the other catalogs.
+
+## pl_PL (4)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aRozdziel ponownie!`
+  - after: `&aRęka ponownie rozdzielona!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `slots-settings.variance-tradeoff` — Phase 2 (semantic-trap keys)
+  - before: `&7Wyższa zmienność to mniej wygrywających linii, ale dużo większe jackpoty z długich ciągów.`
+  - after: `&7Wyższa zmienność oznacza, że linie wygrywają rzadziej, ale jackpoty z długich ciągów są dużo większe.`
+  - why: variance-tradeoff means lines pay less often (hit rate), never fewer paylines (guide §C); "fewer winning lines" read as a smaller line count next to the payline term.
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Zwrot dla gracza: &a{rtp}`
+  - after: `&7Zwrot dla gracza (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+- `admin.slots-rtp-lore` — Phase 2 (semantic-trap keys)
+  - before: `&7Obecny zwrot dla gracza: &a{rtp}`
+  - after: `&7Obecny zwrot dla gracza (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+
+## pt_PT (3)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aDivide outra vez!`
+  - after: `&aMão dividida outra vez!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `mob-settings.none` — Phase 2 (semantic-trap keys)
+  - before: `Nenhum`
+  - after: `Nenhuma`
+  - why: "None" only fills the llama-decor and wolf-collar-colour slots (guide §C); both nouns are feminine in this locale (decoração/cor, ozdoba/barva, ozdoba/farba), so the default masculine/neuter form did not agree.
+- `admin.none` — Phase 2 (semantic-trap keys)
+  - before: `Nenhum`
+  - after: `Nenhuma`
+  - why: "None" only fills the llama-decor and wolf-collar-colour slots (guide §C); both nouns are feminine in this locale (decoração/cor, ozdoba/barva, ozdoba/farba), so the default masculine/neuter form did not agree.
+
+## ro_RO (1)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aÎmparte din nou!`
+  - after: `&aMâna a fost împărțită din nou!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+
+## ru_RU (5)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aРазделить ещё раз!`
+  - after: `&aРука снова разделена!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `coin-flip.chain-win` — Phase 2 (semantic-trap keys)
+  - before: `&aВы выиграли! Серия побед: {streak}. Заберите выигрыш или подбросьте снова, чтобы побороться за &e{amount}&a.`
+  - after: `&aВы выиграли! Серия побед: {streak}. Текущий банк: &e{amount}&a. Заберите его или подбросьте монету снова.`
+  - why: chain-win {amount} is the current compounded pot (guide §C), not the prize of the next win; the value promised {amount} as a future win.
+- `rock-paper-scissors.chain-win` — Phase 2 (semantic-trap keys)
+  - before: `&aВы выиграли! Серия побед: {streak}. Заберите выигрыш или сыграйте снова, чтобы побороться за &e{amount}&a.`
+  - after: `&aВы выиграли! Серия побед: {streak}. Текущий банк: &e{amount}&a. Заберите его или сыграйте снова.`
+  - why: chain-win {amount} is the current compounded pot (guide §C), not the prize of the next win; the value promised {amount} as a future win.
+- `blackjack-settings.updated-detailed` — Phase 2 (semantic-trap keys)
+  - before: `{setting}: &e{value}&a.`
+  - after: `{setting} Новое значение: &e{value}&a.`
+  - why: {setting} receives a finished sentence ("Roulette timer updated.", RouletteMenu/MinesMenu/DragonDescentMenu); "to"/colon after it rendered as "... updated. to: 25". Now "{setting} New value: {value}." as in the other catalogs.
+- `dragon-settings.updated-detailed` — Phase 2 (semantic-trap keys)
+  - before: `{setting}: {value}.`
+  - after: `{setting} Новое значение: {value}.`
+  - why: {setting} receives a finished sentence ("Roulette timer updated.", RouletteMenu/MinesMenu/DragonDescentMenu); "to"/colon after it rendered as "... updated. to: 25". Now "{setting} New value: {value}." as in the other catalogs.
+
+## sk_SK (5)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aRozdeľ znova!`
+  - after: `&aRuka znova rozdelená!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `coin-flip.seat-unavailable` — Phase 2 (semantic-trap keys)
+  - before: `&7&oMiesto nie je voľné`
+  - after: `&7&oMiesto ešte nie je otvorené`
+  - why: seat-unavailable labels an empty, locked chair (guide §C); "not free / not vacant" reads as occupied. Now "not open yet".
+- `rock-paper-scissors.seat-unavailable` — Phase 2 (semantic-trap keys)
+  - before: `&7&oMiesto nie je voľné`
+  - after: `&7&oMiesto ešte nie je otvorené`
+  - why: seat-unavailable labels an empty, locked chair (guide §C); "not free / not vacant" reads as occupied. Now "not open yet".
+- `mob-settings.none` — Phase 2 (semantic-trap keys)
+  - before: `Žiadne`
+  - after: `Žiadna`
+  - why: "None" only fills the llama-decor and wolf-collar-colour slots (guide §C); both nouns are feminine in this locale (decoração/cor, ozdoba/barva, ozdoba/farba), so the default masculine/neuter form did not agree.
+- `admin.none` — Phase 2 (semantic-trap keys)
+  - before: `Žiadne`
+  - after: `Žiadna`
+  - why: "None" only fills the llama-decor and wolf-collar-colour slots (guide §C); both nouns are feminine in this locale (decoração/cor, ozdoba/barva, ozdoba/farba), so the default masculine/neuter form did not agree.
+
+## sl_SI (3)
+
+- `coin-flip.seat-unavailable` — Phase 2 (semantic-trap keys)
+  - before: `&7&oMesto ni prosto`
+  - after: `&7&oMesto še ni odprto`
+  - why: seat-unavailable labels an empty, locked chair (guide §C); "not free / not vacant" reads as occupied. Now "not open yet".
+- `rock-paper-scissors.seat-unavailable` — Phase 2 (semantic-trap keys)
+  - before: `&7&oMesto ni prosto`
+  - after: `&7&oMesto še ni odprto`
+  - why: seat-unavailable labels an empty, locked chair (guide §C); "not free / not vacant" reads as occupied. Now "not open yet".
+- `slots.guide-machine-rtp` — Phase 3 (full read)
+  - before: `&7Povračilo igralcu: &a{rtp}`
+  - after: `&7Povračilo igralcu (RTP): &a{rtp}`
+  - why: The RTP label shares the vrač- root with the catalog refund wording (mines/roulette refund-exit "Vračilo stav", "vrnjeno") and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund, matching the phase-2 fix for the sibling hr_HR/bs_BA/sr_RS "Povrat igraču (RTP)" labels.
+
+## sq_AL (2)
+
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Kthimi për lojtarin: &a{rtp}`
+  - after: `&7Kthimi për lojtarin (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+- `admin.slots-rtp-lore` — Phase 2 (semantic-trap keys)
+  - before: `&7Kthimi aktual për lojtarin: &a{rtp}`
+  - after: `&7Kthimi aktual për lojtarin (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+
+## sr_RS (3)
+
+- `coin-flip.seat-unavailable` — Phase 2 (semantic-trap keys)
+  - before: `&7&oМесто није слободно`
+  - after: `&7&oМесто још није отворено`
+  - why: seat-unavailable labels an empty, locked chair (guide §C); "not free / not vacant" reads as occupied. Now "not open yet".
+- `rock-paper-scissors.seat-unavailable` — Phase 2 (semantic-trap keys)
+  - before: `&7&oМесто није слободно`
+  - after: `&7&oМесто још није отворено`
+  - why: seat-unavailable labels an empty, locked chair (guide §C); "not free / not vacant" reads as occupied. Now "not open yet".
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Повраћај играчу: &a{rtp}`
+  - after: `&7Повраћај играчу (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+
+## sv_SE (4)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aDela igen!`
+  - after: `&aHanden delad igen!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Återbetalning till spelaren: &a{rtp}`
+  - after: `&7Återbetalning till spelaren (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+- `blackjack-settings.updated-detailed` — Phase 2 (semantic-trap keys)
+  - before: `{setting} till: &e{value}&a.`
+  - after: `{setting} Nytt värde: &e{value}&a.`
+  - why: {setting} receives a finished sentence ("Roulette timer updated.", RouletteMenu/MinesMenu/DragonDescentMenu); "to"/colon after it rendered as "... updated. to: 25". Now "{setting} New value: {value}." as in the other catalogs.
+- `dragon-settings.updated-detailed` — Phase 2 (semantic-trap keys)
+  - before: `{setting} till {value}.`
+  - after: `{setting} Nytt värde: {value}.`
+  - why: {setting} receives a finished sentence ("Roulette timer updated.", RouletteMenu/MinesMenu/DragonDescentMenu); "to"/colon after it rendered as "... updated. to: 25". Now "{setting} New value: {value}." as in the other catalogs.
+
+## ta_IN (3)
+
+- `admin.vault-missing` — Phase 3 (full read)
+  - before: `&cVault கிடைக்கவில்லை. NCCasino பயன்படுத்த Vault நிறுவுங்கள்.`
+  - after: `&cVault கிடைக்கவில்லை. NCCasino உடன் பயன்படுத்த Vault நிறுவுங்கள்.`
+  - why: EN "Install Vault to use with NCCasino": Vault is optional (standard-mode fallback); the value said "install Vault to use NCCasino", i.e. Vault is required.
+- `admin.install-vault` — Phase 3 (full read)
+  - before: `&7NCCasino பயன்படுத்த Vault நிறுவுங்கள்`
+  - after: `&7NCCasino உடன் பயன்படுத்த Vault நிறுவுங்கள்`
+  - why: EN "Install Vault to use with NCCasino": Vault is optional (standard-mode fallback); the value said "install Vault to use NCCasino", i.e. Vault is required.
+- `dragon-descent.invalid-action-capitalized` — Phase 3 (full read)
+  - before: `&cதவறான செயல்!`
+  - after: `&cதவறான செயல்.`
+  - why: EN differs from invalid-action only by Title Case, which Tamil script cannot express; the added "!" was not in the source and made ta_IN the only caseless-script locale (vs hi/bn/th/ja/ko/ka/hy/zh_TW/zh_CN) whose two variants differ; now matches the locale's own dragon-descent.invalid-action and the EN full stop.
+
+## th_TH (6)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aแยกไพ่อีกครั้ง!`
+  - after: `&aแยกไพ่อีกครั้งแล้ว!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `coin-flip.chain-win` — Phase 2 (semantic-trap keys)
+  - before: `&aคุณชนะ! ชนะติดต่อกัน: {streak} เก็บเงินรางวัล หรือโยนอีกครั้งเพื่อลุ้น &e{amount}&a`
+  - after: `&aคุณชนะ! ชนะติดต่อกัน: {streak} กองกลางตอนนี้: &e{amount}&a เก็บเงินรางวัล หรือโยนอีกครั้ง`
+  - why: chain-win {amount} is the current compounded pot (guide §C), not the prize of the next win; the value promised {amount} as a future win.
+- `rock-paper-scissors.chain-win` — Phase 2 (semantic-trap keys)
+  - before: `&aคุณชนะ! ชนะติดต่อกัน: {streak} เก็บเงินรางวัล หรือออกมืออีกครั้งเพื่อลุ้น &e{amount}&a`
+  - after: `&aคุณชนะ! ชนะติดต่อกัน: {streak} กองกลางตอนนี้: &e{amount}&a เก็บเงินรางวัล หรือออกมืออีกครั้ง`
+  - why: chain-win {amount} is the current compounded pot (guide §C), not the prize of the next win; the value promised {amount} as a future win.
+- `slots-settings.variance-tradeoff` — Phase 2 (semantic-trap keys)
+  - before: `&7ความผันผวนยิ่งสูง ไลน์ที่ได้รางวัลยิ่งน้อย แต่แจ็คพอตจากการเรียงยาวจะใหญ่ขึ้นมาก`
+  - after: `&7ความผันผวนยิ่งสูง ไลน์ยิ่งได้รางวัลไม่บ่อย แต่แจ็คพอตจากการเรียงยาวจะใหญ่ขึ้นมาก`
+  - why: variance-tradeoff means lines pay less often (hit rate), never fewer paylines (guide §C); "fewer winning lines" read as a smaller line count next to the payline term.
+- `blackjack-settings.updated-detailed` — Phase 2 (semantic-trap keys)
+  - before: `{setting} เป็น: &e{value}&a`
+  - after: `{setting} ค่าใหม่: &e{value}&a`
+  - why: {setting} receives a finished sentence ("Roulette timer updated.", RouletteMenu/MinesMenu/DragonDescentMenu); "to"/colon after it rendered as "... updated. to: 25". Now "{setting} New value: {value}." as in the other catalogs.
+- `dragon-settings.updated-detailed` — Phase 2 (semantic-trap keys)
+  - before: `{setting} เป็น {value}`
+  - after: `{setting} ค่าใหม่: {value}`
+  - why: {setting} receives a finished sentence ("Roulette timer updated.", RouletteMenu/MinesMenu/DragonDescentMenu); "to"/colon after it rendered as "... updated. to: 25". Now "{setting} New value: {value}." as in the other catalogs.
+
+## tr_TR (2)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aTekrar böl!`
+  - after: `&aEl tekrar bölündü!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `slots-settings.variance-tradeoff` — Phase 2 (semantic-trap keys)
+  - before: `&7Daha yüksek oynaklık daha az kazanan çizgi demektir, ama uzun dizilerin jackpotları çok daha büyüktür.`
+  - after: `&7Daha yüksek oynaklık, çizgilerin daha seyrek kazandırması demektir, ama uzun dizilerin jackpotları çok daha büyüktür.`
+  - why: variance-tradeoff means lines pay less often (hit rate), never fewer paylines (guide §C); "fewer winning lines" read as a smaller line count next to the payline term.
+
+## uk_UA (4)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aРозділіть ще раз!`
+  - after: `&aРуку розділено ще раз!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `slots-settings.variance-tradeoff` — Phase 2 (semantic-trap keys)
+  - before: `&7Вища волатильність — менше виграшних ліній, зате значно більші джекпоти з довгих комбінацій.`
+  - after: `&7Вища волатильність — лінії виграють рідше, зате джекпоти з довгих комбінацій значно більші.`
+  - why: variance-tradeoff means lines pay less often (hit rate), never fewer paylines (guide §C); "fewer winning lines" read as a smaller line count next to the payline term.
+- `slots.guide-machine-rtp` — Phase 2 (semantic-trap keys)
+  - before: `&7Повернення гравцеві: &a{rtp}`
+  - after: `&7Повернення гравцеві (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+- `admin.slots-rtp-lore` — Phase 2 (semantic-trap keys)
+  - before: `&7Поточне повернення гравцеві: &a{rtp}`
+  - after: `&7Поточне повернення гравцеві (RTP): &a{rtp}`
+  - why: The RTP label shares its root with the catalog refund word and has no rate/percent word; adding "(RTP)" keeps it from reading as a refund (batch-6 RTP/refund finding).
+
+## vi_VN (6)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&aTách tiếp!`
+  - after: `&aĐã tách bài thêm lần nữa!`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `coin-flip.chain-win` — Phase 2 (semantic-trap keys)
+  - before: `&aBạn thắng! Chuỗi thắng: {streak}. Nhận thưởng hoặc tung tiếp để có cơ hội nhận &e{amount}&a.`
+  - after: `&aBạn thắng! Chuỗi thắng: {streak}. Tiền cược chung hiện tại: &e{amount}&a. Nhận thưởng hoặc tung tiếp.`
+  - why: chain-win {amount} is the current compounded pot (guide §C), not the prize of the next win; the value promised {amount} as a future win.
+- `rock-paper-scissors.chain-win` — Phase 2 (semantic-trap keys)
+  - before: `&aBạn thắng! Chuỗi thắng: {streak}. Nhận thưởng hoặc chơi tiếp để có cơ hội nhận &e{amount}&a.`
+  - after: `&aBạn thắng! Chuỗi thắng: {streak}. Tiền cược chung hiện tại: &e{amount}&a. Nhận thưởng hoặc chơi tiếp.`
+  - why: chain-win {amount} is the current compounded pot (guide §C), not the prize of the next win; the value promised {amount} as a future win.
+- `slots-settings.variance-tradeoff` — Phase 2 (semantic-trap keys)
+  - before: `&7Độ biến động càng cao thì càng ít dòng trúng, nhưng giải độc đắc từ dãy dài lớn hơn nhiều.`
+  - after: `&7Độ biến động càng cao thì các dòng càng ít khi trúng, nhưng giải độc đắc từ dãy dài lớn hơn nhiều.`
+  - why: variance-tradeoff means lines pay less often (hit rate), never fewer paylines (guide §C); "fewer winning lines" read as a smaller line count next to the payline term.
+- `blackjack-settings.updated-detailed` — Phase 2 (semantic-trap keys)
+  - before: `{setting} thành: &e{value}&a.`
+  - after: `{setting} Giá trị mới: &e{value}&a.`
+  - why: {setting} receives a finished sentence ("Roulette timer updated.", RouletteMenu/MinesMenu/DragonDescentMenu); "to"/colon after it rendered as "... updated. to: 25". Now "{setting} New value: {value}." as in the other catalogs.
+- `dragon-settings.updated-detailed` — Phase 2 (semantic-trap keys)
+  - before: `{setting} thành {value}.`
+  - after: `{setting} Giá trị mới: {value}.`
+  - why: {setting} receives a finished sentence ("Roulette timer updated.", RouletteMenu/MinesMenu/DragonDescentMenu); "to"/colon after it rendered as "... updated. to: 25". Now "{setting} New value: {value}." as in the other catalogs.
+
+## zh_TW (2)
+
+- `blackjack.resplit-offer` — Phase 2 (semantic-trap keys)
+  - before: `&a再次分牌！`
+  - after: `&a已再次分牌！`
+  - why: blackjack.resplit-offer confirms a re-split that already happened (guide §C); the value read as an instruction or offer to split.
+- `slots-settings.variance-tradeoff` — Phase 2 (semantic-trap keys)
+  - before: `&7波動度越高，中獎的賠付線越少，但長連線的大獎會大得多。`
+  - after: `&7波動度越高，賠付線中獎的頻率越低，但長連線的大獎會大得多。`
+  - why: variance-tradeoff means lines pay less often (hit rate), never fewer paylines (guide §C); "fewer winning lines" read as a smaller line count next to the payline term.

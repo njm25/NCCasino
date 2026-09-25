@@ -828,7 +828,7 @@ blackjack:
   split-ineligible: "&cAceastă mână nu poate fi împărțită."
   split-insufficient-funds: "&cNu ai destui bani ca să împarți."
   split-success: "&aMâna a fost împărțită!"
-  resplit-offer: "&aÎmparte din nou!"
+  resplit-offer: "&aMâna a fost împărțită din nou!"
   shoe-exhausted-refunded: "&eSabotul a rămas fără cărți în mijlocul rundei -- ți s-a returnat suma de {amount}."
   start-transition-failed-refunded: "&eRunda nu a putut începe -- ți s-a returnat suma de {amount}."
   table-reset-refunded: "&eMasa a fost resetată de un administrator -- ți s-a returnat suma de {amount}."

@@ -828,7 +828,7 @@ blackjack:
   split-ineligible: "&cΑυτό το χέρι δεν μπορεί να διαχωριστεί."
   split-insufficient-funds: "&cΔεν φτάνουν τα χρήματα για διαχωρισμό."
   split-success: "&aΤο χέρι διαχωρίστηκε!"
-  resplit-offer: "&aΔιαχώρισε ξανά!"
+  resplit-offer: "&aΤο χέρι διαχωρίστηκε ξανά!"
   shoe-exhausted-refunded: "&eΤο σαμπό άδειασε στη μέση του γύρου -- επιστράφηκαν {amount}."
   start-transition-failed-refunded: "&eΟ γύρος δεν μπόρεσε να ξεκινήσει -- επιστράφηκαν {amount}."
   table-reset-refunded: "&eΤο τραπέζι επαναφέρθηκε από διαχειριστή -- επιστράφηκαν {amount}."

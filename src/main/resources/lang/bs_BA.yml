@@ -406,7 +406,7 @@ slots:
   guide-machine-lines: "&7Aktivne linije: &a{lines}"
   guide-machine-wager: "&7Ulog po liniji: &a{amount}"
   guide-machine-total-bet: "&7Ukupni ulog: &a{amount}"
-  guide-machine-rtp: "&7Povrat igraču: &a{rtp}"
+  guide-machine-rtp: "&7Povrat igraču (RTP): &a{rtp}"
   guide-machine-edge: "&7Prednost kuće: &e{edge}"
   guide-machine-variance: "&7Volatilnost: &f{variance}"
   variance-steady: "Vrlo niska"

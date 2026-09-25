@@ -828,7 +828,7 @@ blackjack:
   split-ineligible: "&cNão podes dividir essa mão."
   split-insufficient-funds: "&cNão tens dinheiro suficiente para dividir."
   split-success: "&aMão dividida!"
-  resplit-offer: "&aDivide outra vez!"
+  resplit-offer: "&aMão dividida outra vez!"
   shoe-exhausted-refunded: "&eO sapato ficou sem cartas a meio da ronda -- reembolso de {amount}."
   start-transition-failed-refunded: "&eNão foi possível começar a ronda -- reembolso de {amount}."
   table-reset-refunded: "&eA mesa foi reiniciada por um administrador -- reembolso de {amount}."
@@ -891,7 +891,7 @@ mob-settings:
   pattern-lore: "&7Padrão: &a{value}"
   body-color-lore: "&7Cor do corpo: &a{value}"
   pattern-color-lore: "&7Cor do padrão: &a{value}"
-  none: "Nenhum"
+  none: "Nenhuma"
   dealer-not-found: "&cErro: não foi possível encontrar o croupier"
 
 jockey-mob:
@@ -1200,7 +1200,7 @@ admin:
   current-pattern-lore: "Padrão atual: &a{value}"
   current-body-color-lore: "Cor atual do corpo: &a{value}"
   current-pattern-color-lore: "Cor atual do padrão: &a{value}"
-  none: "Nenhum"
+  none: "Nenhuma"
   size-lore: "Tamanho: &a{value}"
   age-lore: "Idade: &a{value}"
   adult: "Adulto"

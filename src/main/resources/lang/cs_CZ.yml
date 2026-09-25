@@ -828,7 +828,7 @@ blackjack:
   split-ineligible: "&cTuto ruku nelze rozdělit."
   split-insufficient-funds: "&cNa rozdělení nemáš dost prostředků."
   split-success: "&aRuka rozdělena!"
-  resplit-offer: "&aRozděl znovu!"
+  resplit-offer: "&aRuka znovu rozdělena!"
   shoe-exhausted-refunded: "&eV sabotu došly karty uprostřed kola – vráceno {amount}."
   start-transition-failed-refunded: "&eKolo se nepodařilo zahájit – vráceno {amount}."
   table-reset-refunded: "&eSprávce resetoval stůl – vráceno {amount}."
@@ -891,7 +891,7 @@ mob-settings:
   pattern-lore: "&7Vzor: &a{value}"
   body-color-lore: "&7Barva těla: &a{value}"
   pattern-color-lore: "&7Barva vzoru: &a{value}"
-  none: "Žádné"
+  none: "Žádná"
   dealer-not-found: "&cChyba: krupiéra se nepodařilo najít"
 
 jockey-mob:
@@ -1200,7 +1200,7 @@ admin:
   current-pattern-lore: "Aktuální vzor: &a{value}"
   current-body-color-lore: "Aktuální barva těla: &a{value}"
   current-pattern-color-lore: "Aktuální barva vzoru: &a{value}"
-  none: "Žádné"
+  none: "Žádná"
   size-lore: "Velikost: &a{value}"
   age-lore: "Věk: &a{value}"
   adult: "Dospělý"

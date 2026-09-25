@@ -406,7 +406,7 @@ slots:
   guide-machine-lines: "&7Garisan aktif: &a{lines}"
   guide-machine-wager: "&7Taruhan setiap garisan: &a{amount}"
   guide-machine-total-bet: "&7Jumlah taruhan: &a{amount}"
-  guide-machine-rtp: "&7Pulangan kepada pemain: &a{rtp}"
+  guide-machine-rtp: "&7Pulangan kepada pemain (RTP): &a{rtp}"
   guide-machine-edge: "&7Kelebihan kasino: &e{edge}"
   guide-machine-variance: "&7Volatiliti: &f{variance}"
   variance-steady: "Stabil"

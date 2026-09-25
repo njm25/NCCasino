@@ -406,7 +406,7 @@ slots:
   guide-machine-lines: "&7Aktibong linya: &a{lines}"
   guide-machine-wager: "&7Taya bawat linya: &a{amount}"
   guide-machine-total-bet: "&7Kabuuang taya: &a{amount}"
-  guide-machine-rtp: "&7Balik sa manlalaro: &a{rtp}"
+  guide-machine-rtp: "&7Balik sa manlalaro (RTP): &a{rtp}"
   guide-machine-edge: "&7Kalamangan ng casino: &e{edge}"
   guide-machine-variance: "&7Volatility: &f{variance}"
   variance-steady: "Panatag"
