@@ -118,3 +118,31 @@
   `reviews/sr_RS-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `sr_RS: name: "Српски"`.
 - Native-speaker review: not performed; recommended before release.
+
+### lt_LT -- Lietuvių (Lithuanian)
+
+- Final catalog SHA-256: `84cd677c323b51e4fd1d6e5296e59dc9f1e6e2d17f32005d17dec611806c6417` (identical in the run directory and
+  `src/main/resources/lang/lt_LT.yml`; NFC-normalized)
+- Voice: standard Lithuanian, informal `tu`, `„“` quotes, decimal comma;
+  gender-neutral toward the player (gerunds such as `keičiant` /
+  `spustelint` instead of gendered half-participles); number agreement
+  avoided with labels; accusative `occupations.*` and genitive-plural Dragon
+  fillers; `dalytojas`, Baccarat `Žaidėjas` / `Bankininkas`, `statymas`,
+  pot `Bankas`, Slots `Lošimo automatas` with `ritiniai` (not `būgnai`,
+  the diamonds suit), run `seka` vs streak `serija`. Recorded in the guide.
+- Structural: helper strict check 0 errors, 0 residue warnings (one
+  token-order slip in `slots.demo-result-win` caught and fixed before
+  review); `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all twenty-eight new locales registered: every
+  one of the 34 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 3 (`seat-unavailable` rendered as "occupied" although the chair
+  is empty and locked -- verified in `CoinFlipClient` /
+  `RockPaperScissorsClient` and added to the guide's §C registry and the
+  rubric; Slots settlement is delivery, not calculation), Tier 2 = 3
+  (`atlikti statymą`), Tier 3 = 46 (`nebepriimami`, button-label
+  restructuring, reflexive `savo`, "on split aces" calque), all applied;
+  5 consistency follow-ups. 56 review keys plus 11 self-review fixes,
+  rechecked after. Findings: `reviews/lt_LT-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `lt_LT: name: "Lietuvių"`.
+- Native-speaker review: not performed; recommended before release.
