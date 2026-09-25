@@ -142,3 +142,27 @@
 - Not registered in `locales.yml`. Registry line:
   `nb_NO: name: "Norsk bokmål"`.
 - Native-speaker review: not performed; recommended before release.
+
+### el_GR -- Ελληνικά (Greek)
+
+- Final catalog SHA-256: `496b96a7ed9d3e1aa8e0c6db0535c9455b9060f164642feefd30c599619ccd60` (identical in the run directory and
+  `src/main/resources/lang/el_GR.yml`; NFC-normalized; no Latin homoglyphs
+  inside Greek words)
+- Voice: monotonic Greek, informal `εσύ`, gender-neutral toward the player;
+  no article directly on an inserted name (`στο παιχνίδι {game}`,
+  `Παίζει: {player}`); genitive fillers for `occupations.*` and the Dragon
+  `{setting}` slot; `ντίλερ`, Baccarat `Παίκτης` / `Τράπεζα`, house edge
+  `πλεονέκτημα του καζίνο`; Slots `Κουλοχέρης` with run `αλληλουχία` vs
+  streak `σερί`. Recorded in the guide.
+- Structural: helper strict check 0 errors, 0 residue warnings;
+  `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all twenty-one new locales registered: every one
+  of the 27 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 1 (`roulette.category-straight-up` "Μονός αριθμός" = odd
+  number), Tier 2 = 7 (ON/OFF state wording, all-in wording), Tier 3 = 38,
+  all applied, plus the `τραπουλών` spelling and the Roulette/Blackjack
+  currency notices aligned; the guide's ON/OFF cell was corrected to match.
+  49 keys patched, rechecked after. Findings: `reviews/el_GR-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `el_GR: name: "Ελληνικά"`.
+- Native-speaker review: not performed; recommended before release.
