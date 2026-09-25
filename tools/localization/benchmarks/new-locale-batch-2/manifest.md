@@ -145,3 +145,25 @@
   after. Findings: `reviews/zh_TW-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `zh_TW: name: "繁體中文"`.
 - Native-speaker review: not performed; recommended before release.
+
+### uk_UA -- Українська (Ukrainian)
+
+- Final catalog SHA-256: `623c9bba9081a3fc276bdbf11f523243463a8c5781541575fe71f21a5a15c856` (identical in the run directory and
+  `src/main/resources/lang/uk_UA.yml`; NFC-normalized)
+- Voice: polite plural `ви` (plural past tense, never gendered); dealer
+  `круп'є`, Baccarat `Гравець` / `Банкір`, house edge `перевага
+  казино`; 2019 spelling for loanwords (`Бакара`) (recorded in the
+  guide). Written from English, not adapted from ru_RU; a scan found no
+  Russian-only letters.
+- Structural: helper strict check 0 errors / 0 residue warnings;
+  `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all thirteen new locales registered: every one
+  of the 19 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0, Tier 2 = 0, Tier 3 = 15, all applied, including the
+  Russian-style `Баккара` -> `Бакара` and Russian-style `при`
+  conditions, plus a consistency pass unifying `ймовірність`. 14 keys
+  patched plus the two catalog-wide passes, rechecked after. Findings:
+  `reviews/uk_UA-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `uk_UA: name: "Українська"`.
+- Native-speaker review: not performed; recommended before release.
