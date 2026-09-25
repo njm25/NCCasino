@@ -50,3 +50,34 @@
   drafting), rechecked after. Findings: `reviews/bs_BA-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `bs_BA: name: "Bosanski"`.
 - Native-speaker review: not performed; recommended before release.
+
+### hy_AM -- Հայերեն (Armenian)
+
+- Final catalog SHA-256: `beb078a9d5987d4b15d065adfa82b71eda0bc1dd43820625e8a73dd7a3d42b65` (identical in the run directory and
+  `src/main/resources/lang/hy_AM.yml`; NFC-normalized)
+- Voice: standard Eastern Armenian (reformed orthography), polite plural
+  `Դուք`, `«»` quotes, decimal comma, Armenian punctuation (`։` ends every
+  sentence including questions, `՞` on the questioned word, `՝` before a
+  label value); no grammatical gender; placeholders never take a case
+  ending or article (after `՝`, in parentheses, or before the noun that
+  carries the ending); `դիլեր`, Baccarat `Խաղացող` / `Բանկիր`, slot return
+  `վճարում`, RTP as a percentage; native court cards. Recorded in the sixth
+  continuation of the §H table.
+- Structural: helper strict check 0 errors, 0 residue warnings; a scan of
+  Armenian letters (not the Armenian punctuation block) found no suffix
+  after a placeholder and no mixed-script word; `localizationCandidateCheck`
+  CANDIDATE OK (1184); full `localizationCheck` with all forty-seven new
+  locales registered: every one of the 53 locales OK (1184), no new
+  warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0, Tier 2 = 2 (slot return read as "give back", two wordings
+  for busted), Tier 3 = 43 (article -ը / -ն before vowels, standard
+  genitive "շահման", subjunctive after "նախքան", "աջակցում" and "ընթացքի
+  մեջ" calques, Russian-loan court cards and "Բակկարա"), all applied.
+  45 review keys plus 16 self-review fixes (questions ending in "։", the
+  column and Baccarat terms through the settings keys, the split-rule
+  court card, one more "աջակցում"), rechecked after. Findings:
+  `reviews/hy_AM-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `hy_AM: name: "Հայերեն"`.
+- Native-speaker review: not performed; recommended before release, with
+  an in-game check of Armenian letters and `։` / `՞` / `՝` in the font.

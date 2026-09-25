@@ -774,31 +774,31 @@ Fifth continuation for later locales (same concept rows; split so neither table 
 
 Sixth continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 6) | bs_BA |
-| --- | --- |
-| generic physical dealer/croupier | diler |
-| Baccarat banker/bank side | Bankar (Igrač / Bankar) |
-| bet / wager amount | ulog (placed bet: opklada) |
-| all in | Uloži sve |
-| rebet (repeat previous wager) | Ponovi ulog |
-| chip denomination/value | vrijednost žetona |
-| win streak / chain (PvE) | serija (najveći broj rundi u seriji) |
-| cash out / payout | Podigni dobitak / isplata |
-| Blackjack: shoe | kutija za dijeljenje |
-| Blackjack: hit | Karta |
-| Blackjack: stand | Stani |
-| Blackjack: split | Podijeli |
-| Blackjack: insurance | osiguranje |
-| Blackjack: same-rank vs. same-value split rule | Isti rang / Ista vrijednost |
-| RPS: throw/action (not generic "turn") | potez |
-| Dragon Descent: vine mechanic | puzavica |
-| ON/OFF display state | UKLJUČENO / ISKLJUČENO |
-| Slots: variance (risk preset, not the RTP) | volatilnost |
-| Slots: house edge | prednost kuće |
-| Slots: return/RTP verb | povrat igraču |
-| seat | mjesto (stolica = chair) |
-| banked winnings (overflow bank) | sačuvani dobici |
-| overflow: hold vs. drop nearby | Čuvaj ih za mene / Ostavi ih na tlu u blizini |
+| Concept (continued 6) | bs_BA | hy_AM |
+| --- | --- | --- |
+| generic physical dealer/croupier | diler | դիլեր |
+| Baccarat banker/bank side | Bankar (Igrač / Bankar) | Բանկիր (Խաղացող / Բանկիր) |
+| bet / wager amount | ulog (placed bet: opklada) | խաղադրույք |
+| all in | Uloži sve | Դնել ամբողջը |
+| rebet (repeat previous wager) | Ponovi ulog | Կրկնել խաղադրույքը |
+| chip denomination/value | vrijednost žetona | ֆիշկայի արժեք |
+| win streak / chain (PvE) | serija (najveći broj rundi u seriji) | սերիա (սերիայի ռաունդների առավելագույն քանակ) |
+| cash out / payout | Podigni dobitak / isplata | Ստանալ շահումը / վճարում |
+| Blackjack: shoe | kutija za dijeljenje | քարտերի տուփ |
+| Blackjack: hit | Karta | Վերցնել քարտ |
+| Blackjack: stand | Stani | Կանգ առնել |
+| Blackjack: split | Podijeli | Բաժանել |
+| Blackjack: insurance | osiguranje | ապահովագրություն |
+| Blackjack: same-rank vs. same-value split rule | Isti rang / Ista vrijednost | Նույն կարգ / Նույն արժեք |
+| RPS: throw/action (not generic "turn") | potez | քայլ |
+| Dragon Descent: vine mechanic | puzavica | լիանա |
+| ON/OFF display state | UKLJUČENO / ISKLJUČENO | ՄԻԱՑՎԱԾ / ԱՆՋԱՏՎԱԾ |
+| Slots: variance (risk preset, not the RTP) | volatilnost | տատանողականություն |
+| Slots: house edge | prednost kuće | խաղատան առավելություն |
+| Slots: return/RTP verb | povrat igraču | Խաղացողին վերադարձի տոկոս (RTP) |
+| seat | mjesto (stolica = chair) | տեղ (աթոռ = chair) |
+| banked winnings (overflow bank) | sačuvani dobici | պահված շահումներ |
+| overflow: hold vs. drop nearby | Čuvaj ih za mene / Ostavi ih na tlu u blizini | Պահել ինձ համար / Գցել մոտակայքում |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -1391,6 +1391,18 @@ a real, previously-observed defect, not a hypothetical risk.
   genitive plural. `diler`; Baccarat `Igrač` / `Bankar`; stake `ulog`, a
   placed bet `opklada`; ace plural `asovi`; slots run `niz` vs PvE streak
   `serija`; `džekpot`.
+- `hy_AM`: standard Eastern Armenian (reformed orthography), polite plural
+  `Դուք` forms for instructions (`Սեղմեք`, `Ընտրեք`) and infinitives for
+  buttons (`Ելք` aside, `Կրկնել խաղադրույքը`); `«»` quotes, decimal comma;
+  Armenian punctuation: `։` ends every sentence (questions too), `՞` sits on
+  the questioned word, `՝` introduces a label value. No grammatical gender.
+  Placeholders take no case ending or article: they follow `՝`, sit in
+  parentheses, or precede the noun that carries the ending (`{game} խաղին`,
+  `«{name}» անունով`); the article after our own words follows the next
+  sound (`շահումն ավտոմատ`). `դիլեր`, Baccarat `Խաղացող` / `Բանկիր`,
+  `Ստանալ շահումը`; slot "return" is `վճարում`, RTP `Խաղացողին վերադարձի
+  տոկոս`; slots run `հաջորդականություն` vs PvE streak `սերիա`; vines
+  `լիանաներ`; native court cards `Զինվոր` / `Թագուհի` / `Թագավոր`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
