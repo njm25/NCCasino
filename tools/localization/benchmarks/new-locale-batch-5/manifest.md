@@ -131,3 +131,28 @@
   rechecked after. Findings: `reviews/af_ZA-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `af_ZA: name: "Afrikaans"`.
 - Native-speaker review: not performed; recommended before release.
+
+### be_BY -- Беларуская (Belarusian)
+
+- Final catalog SHA-256: `3e1c84db6092a580e3d697cdf05592a9924502f5d23b0c632eb2bbd91398e9fd` (identical in the run directory and
+  `src/main/resources/lang/be_BY.yml`; NFC-normalized)
+- Voice: standard Belarusian, official 2008 orthography; polite plural
+  `вы`, so past forms addressed to the player are plural and never
+  gendered; `«»` quotes, decimal comma; written from the English source,
+  not adapted from ru_RU / uk_UA (no и/щ/ъ, ў rule checked by script);
+  `крупье`, Baccarat `Гулец` / `Банкір`, `Забраць выйгрыш`, `шуз`, slots
+  run `камбінацыя` vs streak `серыя`, `Аўтакручэнне`. Recorded in the
+  fourth continuation of the §H table.
+- Structural: helper strict check 0 errors, 0 residue warnings;
+  `localizationCandidateCheck` CANDIDATE OK (1184); full `localizationCheck`
+  with all thirty-six new locales registered: every one of the 42 locales
+  OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 3 (Russian-pattern conditional `пры` calques), Tier 2 = 0,
+  Tier 3 = 26 (Baccarat side capitalization, `мэта па прыбытку` calque,
+  label forms, `гуляць у гульню {game}` apposition), all applied. 29 review
+  keys plus 11 self-review fixes (the remaining conditional `пры` phrasings
+  and the capitalized odds labels), rechecked after. Findings:
+  `reviews/be_BY-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `be_BY: name: "Беларуская"`.
+- Native-speaker review: not performed; recommended before release.

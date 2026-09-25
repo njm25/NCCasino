@@ -712,31 +712,31 @@ Third continuation for later locales (same concept rows; split so neither table 
 
 Fourth continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 4) | ms_MY | fil_PH | gl_ES | af_ZA |
-| --- | --- | --- | --- | --- |
-| generic physical dealer/croupier | pengendali | dealer | crupier | kroepier |
-| Baccarat banker/bank side | Jurubank (Pemain / Jurubank) | Bangkero (Manlalaro / Bangkero) | Banca (Xogador / Banca) | Bankier (Speler / Bankier) |
-| bet / wager amount | taruhan | taya | aposta | weddenskap (inset = amount) |
-| all in | Pertaruhkan Semua | Itaya Lahat | Apostalo todo | Alles in |
-| rebet (repeat previous wager) | Ulang Taruhan | Ulitin ang Taya | Repetir aposta | Herhaal weddenskap |
-| chip denomination/value | nilai cip | halaga ng chip | valor da ficha | skyfiewaarde |
-| win streak / chain (PvE) | berturut-turut (had pusingan berturut-turut) | sunod-sunod na panalo (max na sunod-sunod na round) | racha (máximo de roldas en racha) | wenreeks (maksimum reeksrondes) |
-| cash out / payout | Tunaikan / bayaran | Kunin ang Panalo / bayad | Cobrar / pagamento | Betaal uit / uitbetaling |
-| Blackjack: shoe | kotak kad | shoe | zapata | kaartskoen |
-| Blackjack: hit | Ambil | Kumuha | Pedir | Trek |
-| Blackjack: stand | Berhenti | Tumigil | Plantarse | Staan |
-| Blackjack: split | Pisah | Hatiin | Dividir | Verdeel |
-| Blackjack: insurance | insurans | insurance | seguro | versekering |
-| Blackjack: same-rank vs. same-value split rule | Pangkat Sama / Nilai Sama | Parehong Ranggo / Parehong Halaga | Mesmo rango / Mesmo valor | Dieselfde rang / Dieselfde waarde |
-| RPS: throw/action (not generic "turn") | pilihan | tira | xogada | keuse |
-| Dragon Descent: vine mechanic | tumbuhan menjalar | baging | enredadeira | rankplant |
-| ON/OFF display state | HIDUP / MATI | NAKA-ON / NAKA-OFF | ACTIVADO / DESACTIVADO | AAN / AF |
-| Slots: variance (risk preset, not the RTP) | volatiliti | volatility | volatilidade | wisselvalligheid |
-| Slots: house edge | kelebihan kasino | kalamangan ng casino | vantaxe da casa | huisvoordeel |
-| Slots: return/RTP verb | pulangan kepada pemain | balik sa manlalaro | retorno ao xogador | terugbetaling aan speler |
-| seat | tempat duduk (kerusi = chair) | upuan | asento | sitplek (stoel = chair) |
-| banked winnings (overflow bank) | kemenangan simpanan | nakatabing panalo | gañancias gardadas | bewaarde winste |
-| overflow: hold vs. drop nearby | Simpan Untuk Saya / Jatuhkan Berdekatan | Itabi Para Sa Akin / Ihulog sa Malapit | Gárdamas / Déixaas no chan, preto de min | Hou dit vir my / Los dit naby op die grond |
+| Concept (continued 4) | ms_MY | fil_PH | gl_ES | af_ZA | be_BY |
+| --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | pengendali | dealer | crupier | kroepier | крупье |
+| Baccarat banker/bank side | Jurubank (Pemain / Jurubank) | Bangkero (Manlalaro / Bangkero) | Banca (Xogador / Banca) | Bankier (Speler / Bankier) | Банкір (Гулец / Банкір) |
+| bet / wager amount | taruhan | taya | aposta | weddenskap (inset = amount) | стаўка |
+| all in | Pertaruhkan Semua | Itaya Lahat | Apostalo todo | Alles in | Ва-банк |
+| rebet (repeat previous wager) | Ulang Taruhan | Ulitin ang Taya | Repetir aposta | Herhaal weddenskap | паўтор стаўкі |
+| chip denomination/value | nilai cip | halaga ng chip | valor da ficha | skyfiewaarde | намінал фішкі |
+| win streak / chain (PvE) | berturut-turut (had pusingan berturut-turut) | sunod-sunod na panalo (max na sunod-sunod na round) | racha (máximo de roldas en racha) | wenreeks (maksimum reeksrondes) | серыя перамог (макс. колькасць раўндаў серыі) |
+| cash out / payout | Tunaikan / bayaran | Kunin ang Panalo / bayad | Cobrar / pagamento | Betaal uit / uitbetaling | забраць выйгрыш / выплата |
+| Blackjack: shoe | kotak kad | shoe | zapata | kaartskoen | шуз |
+| Blackjack: hit | Ambil | Kumuha | Pedir | Trek | Яшчэ карту |
+| Blackjack: stand | Berhenti | Tumigil | Plantarse | Staan | Хопіць |
+| Blackjack: split | Pisah | Hatiin | Dividir | Verdeel | Падзяліць |
+| Blackjack: insurance | insurans | insurance | seguro | versekering | страхоўка |
+| Blackjack: same-rank vs. same-value split rule | Pangkat Sama / Nilai Sama | Parehong Ranggo / Parehong Halaga | Mesmo rango / Mesmo valor | Dieselfde rang / Dieselfde waarde | Аднолькавы ранг / Аднолькавая вартасць |
+| RPS: throw/action (not generic "turn") | pilihan | tira | xogada | keuse | жэст |
+| Dragon Descent: vine mechanic | tumbuhan menjalar | baging | enredadeira | rankplant | ліяна |
+| ON/OFF display state | HIDUP / MATI | NAKA-ON / NAKA-OFF | ACTIVADO / DESACTIVADO | AAN / AF | УКЛ. / ВЫКЛ. |
+| Slots: variance (risk preset, not the RTP) | volatiliti | volatility | volatilidade | wisselvalligheid | валацільнасць |
+| Slots: house edge | kelebihan kasino | kalamangan ng casino | vantaxe da casa | huisvoordeel | перавага казіно |
+| Slots: return/RTP verb | pulangan kepada pemain | balik sa manlalaro | retorno ao xogador | terugbetaling aan speler | вяртанне гульцу |
+| seat | tempat duduk (kerusi = chair) | upuan | asento | sitplek (stoel = chair) | месца (крэсла = chair) |
+| banked winnings (overflow bank) | kemenangan simpanan | nakatabing panalo | gañancias gardadas | bewaarde winste | захаваныя выйгрышы |
+| overflow: hold vs. drop nearby | Simpan Untuk Saya / Jatuhkan Berdekatan | Itabi Para Sa Akin / Ihulog sa Malapit | Gárdamas / Déixaas no chan, preto de min | Hou dit vir my / Los dit naby op die grond | Захаваць для мяне / Скінуць побач |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -1192,6 +1192,20 @@ a real, previously-observed defect, not a hypothetical risk.
   `klawers` / `skoppens`; game names in sentence case (`Kop of stert`,
   `Draak se afdaling`); slots run `opeenvolging` vs PvE streak `reeks`;
   payout queue `wagtou`; `Outodraai` for Auto Spin.
+- `be_BY`: standard Belarusian in the official 2008 orthography (not
+  тарашкевіца), written from the English source rather than adapted from
+  ru_RU / uk_UA; polite plural `вы`, as uk_UA does, so every past form
+  addressed to the player is plural (`выйгралі`, `селі`) and never
+  gendered; `«»` quotes, decimal comma. Watch for Russian-pattern calques:
+  conditional `пры` + locative (`у выпадку перамогі`, `пасля любога
+  выйгрышу`), `мэта па прыбытку` (`мэтавы прыбытак`), `памылка пры …`.
+  Placeholders follow a colon label or a governing noun (`гульца {player}`,
+  `гульню {game}`, `моба {mob}`); counts use labels (`раўндаў:
+  {rounds}`); `dragon-settings.columns`/`vines`/`floors` are genitive
+  plurals. `крупье` (indeclinable), Baccarat `Гулец` / `Банкір`
+  (capitalized as side names), `Забраць выйгрыш`, card indices `К-К` /
+  `К-Д`; slots run `камбінацыя` vs PvE streak `серыя`; `Аўтакручэнне`;
+  `ЛКМ` / `ПКМ`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
