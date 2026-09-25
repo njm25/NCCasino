@@ -141,3 +141,36 @@
   `reviews/sw_KE-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `sw_KE: name: "Kiswahili"`.
 - Native-speaker review: not performed; recommended before release.
+
+### ga_IE -- Gaeilge (Irish)
+
+- Final catalog SHA-256: `aa45c47d426c083280be99f2a1a922944ae861098aee73f9d17b699b18a698fc` (identical in the run directory and
+  `src/main/resources/lang/ga_IE.yml`; NFC-normalized)
+- Voice: standard Irish (An Caighdeán Oifigiúil), singular `tú` with plain
+  imperatives, `“ ”` quotes, decimal point; Caighdeán mutations (eclipsis
+  after `leis an` / `chuig an` / `ar an`), but no mutating word or numeral
+  rule ever governs a placeholder (colon labels, and `{n} líne` / `{n} ró`
+  / `{n} ríl`, whose initials never show a mutation); `déileálaí`,
+  Baccarat `Imreoir` / `Baincéir`, `geall`, `airgead buaite`, slots run
+  `seicheamh` vs PvE streak `sraith`, vines `féithleoga`, RTP `ráta
+  íocaíochta` kept apart from the refund word `aisíoc`. Recorded in the
+  sixth continuation of the §H table.
+- Structural: helper strict check 0 errors, 0 residue warnings (Irish `a`,
+  `an`, `in`, `is` added to the helper's per-locale function-word
+  allowlist); `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all fifty new locales registered: every one of
+  the 56 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Self-review before the independent review replaced the gender-uncertain
+  noun `buachan` with `airgead buaite` / `bua` throughout, fixed the
+  genitive `an ghill`, made the overflow pronouns agree with `airgead`, and
+  rephrased `variance-tradeoff` so it cannot read as fewer paylines.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0, Tier 2 = 2 (English rank initials K / Q in the split-rule
+  examples), Tier 3 = 19 ("oir" = suit used for "fit", "Slán" read as
+  "Goodbye", a missing t-prefix, "le haghaidh gan teorainn" calque,
+  "ag an am céanna" for "in one payout", "comhoiriúnacha" for identical
+  symbols), all applied. 21 review keys plus 19 self-review follow-ups
+  (sibling "-1" prompts, rebet wording, "uaslíon" for counts), rechecked
+  after. Findings: `reviews/ga_IE-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `ga_IE: name: "Gaeilge"`.
+- Native-speaker review: not performed; recommended before release.

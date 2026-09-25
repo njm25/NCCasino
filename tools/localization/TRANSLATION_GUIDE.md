@@ -774,31 +774,31 @@ Fifth continuation for later locales (same concept rows; split so neither table 
 
 Sixth continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 6) | bs_BA | hy_AM | uz_UZ | sw_KE |
-| --- | --- | --- | --- | --- |
-| generic physical dealer/croupier | diler | դիլեր | diler | mgawaji |
-| Baccarat banker/bank side | Bankar (Igrač / Bankar) | Բանկիր (Խաղացող / Բանկիր) | Bankir (Oʻyinchi / Bankir) | Benki (Mchezaji / Benki) |
-| bet / wager amount | ulog (placed bet: opklada) | խաղադրույք | stavka | dau (wingi: madau) |
-| all in | Uloži sve | Դնել ամբողջը | Hammasini tikish | Weka yote |
-| rebet (repeat previous wager) | Ponovi ulog | Կրկնել խաղադրույքը | Stavkani takrorlash | Rudia dau |
-| chip denomination/value | vrijednost žetona | ֆիշկայի արժեք | fishka qiymati | thamani ya chipu |
-| win streak / chain (PvE) | serija (najveći broj rundi u seriji) | սերիա (սերիայի ռաունդների առավելագույն քանակ) | seriya (seriyadagi raundlarning eng koʻp soni) | mfululizo (idadi ya juu ya raundi za mfululizo) |
-| cash out / payout | Podigni dobitak / isplata | Ստանալ շահումը / վճարում | Yutuqni olish / toʻlov | Chukua ushindi / malipo |
-| Blackjack: shoe | kutija za dijeljenje | քարտերի տուփ | karta qutisi | kisanduku cha karata |
-| Blackjack: hit | Karta | Վերցնել քարտ | Karta olish | Chukua karata |
-| Blackjack: stand | Stani | Կանգ առնել | Toʻxtash | Simama |
-| Blackjack: split | Podijeli | Բաժանել | Boʻlish | Gawanya |
-| Blackjack: insurance | osiguranje | ապահովագրություն | sugʻurta | bima |
-| Blackjack: same-rank vs. same-value split rule | Isti rang / Ista vrijednost | Նույն կարգ / Նույն արժեք | Bir xil daraja / Bir xil qiymat | Cheo sawa / Thamani sawa |
-| RPS: throw/action (not generic "turn") | potez | քայլ | yurish | chaguo |
-| Dragon Descent: vine mechanic | puzavica | լիանա | chirmoviq | mtambaa (wingi: mitambaa) |
-| ON/OFF display state | UKLJUČENO / ISKLJUČENO | ՄԻԱՑՎԱԾ / ԱՆՋԱՏՎԱԾ | YOQILGAN / OʻCHIRILGAN | IMEWASHWA / IMEZIMWA |
-| Slots: variance (risk preset, not the RTP) | volatilnost | տատանողականություն | volatillik | kuyumba |
-| Slots: house edge | prednost kuće | խաղատան առավելություն | kazino ustunligi | faida ya kasino |
-| Slots: return/RTP verb | povrat igraču | Խաղացողին վերադարձի տոկոս (RTP) | Oʻyinchiga qaytim foizi (RTP) | Asilimia ya malipo kwa mchezaji (RTP) |
-| seat | mjesto (stolica = chair) | տեղ (աթոռ = chair) | joy (oʻrindiq = chair) | kiti (nafasi ya kukaa) |
-| banked winnings (overflow bank) | sačuvani dobici | պահված շահումներ | saqlangan yutuqlar | ushindi uliohifadhiwa |
-| overflow: hold vs. drop nearby | Čuvaj ih za mene / Ostavi ih na tlu u blizini | Պահել ինձ համար / Գցել մոտակայքում | Men uchun saqlash / Yaqin atrofga tashlash | Nihifadhie / Dondosha karibu |
+| Concept (continued 6) | bs_BA | hy_AM | uz_UZ | sw_KE | ga_IE |
+| --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | diler | դիլեր | diler | mgawaji | déileálaí |
+| Baccarat banker/bank side | Bankar (Igrač / Bankar) | Բանկիր (Խաղացող / Բանկիր) | Bankir (Oʻyinchi / Bankir) | Benki (Mchezaji / Benki) | Baincéir (Imreoir / Baincéir) |
+| bet / wager amount | ulog (placed bet: opklada) | խաղադրույք | stavka | dau (wingi: madau) | geall (iol. geallta; gin. gill) |
+| all in | Uloži sve | Դնել ամբողջը | Hammasini tikish | Weka yote | Cuir an t-iomlán |
+| rebet (repeat previous wager) | Ponovi ulog | Կրկնել խաղադրույքը | Stavkani takrorlash | Rudia dau | Geall arís |
+| chip denomination/value | vrijednost žetona | ֆիշկայի արժեք | fishka qiymati | thamani ya chipu | luach licín |
+| win streak / chain (PvE) | serija (najveći broj rundi u seriji) | սերիա (սերիայի ռաունդների առավելագույն քանակ) | seriya (seriyadagi raundlarning eng koʻp soni) | mfululizo (idadi ya juu ya raundi za mfululizo) | sraith (uaslíon na mbabhtaí sraithe) |
+| cash out / payout | Podigni dobitak / isplata | Ստանալ շահումը / վճարում | Yutuqni olish / toʻlov | Chukua ushindi / malipo | Bailigh an t-airgead / íocaíocht |
+| Blackjack: shoe | kutija za dijeljenje | քարտերի տուփ | karta qutisi | kisanduku cha karata | bosca cártaí |
+| Blackjack: hit | Karta | Վերցնել քարտ | Karta olish | Chukua karata | Tarraing |
+| Blackjack: stand | Stani | Կանգ առնել | Toʻxtash | Simama | Seas |
+| Blackjack: split | Podijeli | Բաժանել | Boʻlish | Gawanya | Scoilt |
+| Blackjack: insurance | osiguranje | ապահովագրություն | sugʻurta | bima | árachas |
+| Blackjack: same-rank vs. same-value split rule | Isti rang / Ista vrijednost | Նույն կարգ / Նույն արժեք | Bir xil daraja / Bir xil qiymat | Cheo sawa / Thamani sawa | Céim chéanna / Luach céanna |
+| RPS: throw/action (not generic "turn") | potez | քայլ | yurish | chaguo | caitheamh |
+| Dragon Descent: vine mechanic | puzavica | լիանա | chirmoviq | mtambaa (wingi: mitambaa) | féithleog (iol. féithleoga) |
+| ON/OFF display state | UKLJUČENO / ISKLJUČENO | ՄԻԱՑՎԱԾ / ԱՆՋԱՏՎԱԾ | YOQILGAN / OʻCHIRILGAN | IMEWASHWA / IMEZIMWA | AIR / AS |
+| Slots: variance (risk preset, not the RTP) | volatilnost | տատանողականություն | volatillik | kuyumba | luaineacht |
+| Slots: house edge | prednost kuće | խաղատան առավելություն | kazino ustunligi | faida ya kasino | buntáiste an tí |
+| Slots: return/RTP verb | povrat igraču | Խաղացողին վերադարձի տոկոս (RTP) | Oʻyinchiga qaytim foizi (RTP) | Asilimia ya malipo kwa mchezaji (RTP) | Ráta íocaíochta don imreoir (RTP) |
+| seat | mjesto (stolica = chair) | տեղ (աթոռ = chair) | joy (oʻrindiq = chair) | kiti (nafasi ya kukaa) | suíochán (cathaoir = chair) |
+| banked winnings (overflow bank) | sačuvani dobici | պահված շահումներ | saqlangan yutuqlar | ushindi uliohifadhiwa | airgead buaite sábháilte |
+| overflow: hold vs. drop nearby | Čuvaj ih za mene / Ostavi ih na tlu u blizini | Պահել ինձ համար / Գցել մոտակայքում | Men uchun saqlash / Yaqin atrofga tashlash | Nihifadhie / Dondosha karibu | Coinnigh dom é / Scaoil in aice láimhe |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -1425,6 +1425,18 @@ a real, previously-observed defect, not a hypothetical risk.
   `Mchezaji` / `Benki`, `dau` / `madau`, `Chukua ushindi`, `chungu` for
   the pot; slots run `msururu` vs PvE streak `mfululizo`; vines
   `mitambaa`; `Ruleti`; suits `kopa` / `uru` / `karanga` / `shupaza`.
+- `ga_IE`: standard Irish (An Caighdeán Oifigiúil), singular `tú` with
+  plain imperatives (`Cliceáil`, `Roghnaigh`, `Clóscríobh`), `“ ”` quotes
+  and a decimal point. Initial mutations follow the Caighdeán (eclipsis
+  after `leis an` / `chuig an` / `ar an`, lenition after `do`, `sa`, `aon`),
+  but a placeholder can never mutate, so no mutating word or numeral rule
+  ever governs one: colon labels (`Seal: {player}`, `Geall: {amount}`) and
+  nouns whose initial never shows a mutation (`{n} líne`, `{n} ró`, `{n}
+  ríl`). `déileálaí`, Baccarat `Imreoir` / `Baincéir`, `geall` / `geallta`,
+  `Bailigh an t-airgead`, `airgead buaite`; slots run `seicheamh` vs PvE
+  streak `sraith`; vines `féithleoga`; RTP `ráta íocaíochta` (never
+  `aisíoc`, the refund word); suits `hartaí` / `muileata` / `triuf` /
+  `spéireata`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
