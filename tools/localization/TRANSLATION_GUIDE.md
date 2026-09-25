@@ -802,31 +802,31 @@ Sixth continuation for later locales (same concept rows; split so neither table 
 
 Seventh continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 7) | nn_NO |
-| --- | --- |
-| generic physical dealer/croupier | dealer |
-| Baccarat banker/bank side | Bank (Spelar / Bank) |
-| bet / wager amount | innsats |
-| all in | All-in |
-| rebet (repeat previous wager) | Gjenta innsats |
-| chip denomination/value | sjetongverdi |
-| win streak / chain (PvE) | rekkje / sigersrekkje (maks tal på rundar på rad) |
-| cash out / payout | Ta ut / utbetaling |
-| Blackjack: shoe | kortsko |
-| Blackjack: hit | Trekk kort |
-| Blackjack: stand | Stå |
-| Blackjack: split | Splitt |
-| Blackjack: insurance | forsikring |
-| Blackjack: same-rank vs. same-value split rule | Same valør / Same verdi |
-| RPS: throw/action (not generic "turn") | trekk |
-| Dragon Descent: vine mechanic | klatreplante (fl. klatreplantar) |
-| ON/OFF display state | PÅ / AV |
-| Slots: variance (risk preset, not the RTP) | volatilitet |
-| Slots: house edge | fordelen til huset |
-| Slots: return/RTP verb | tilbakebetaling til spelaren (RTP) |
-| seat | plass (stol = chair) |
-| banked winnings (overflow bank) | lagra gevinstar |
-| overflow: hold vs. drop nearby | Ta vare på dei for meg / Legg dei på bakken i nærleiken |
+| Concept (continued 7) | nn_NO | eo_UY |
+| --- | --- | --- |
+| generic physical dealer/croupier | dealer | krupiero |
+| Baccarat banker/bank side | Bank (Spelar / Bank) | Bankisto (Ludanto / Bankisto) |
+| bet / wager amount | innsats | veto |
+| all in | All-in | Ĉion veti |
+| rebet (repeat previous wager) | Gjenta innsats | Reveti |
+| chip denomination/value | sjetongverdi | valoro de ĵetono |
+| win streak / chain (PvE) | rekkje / sigersrekkje (maks tal på rundar på rad) | serio / venkoserio (maksimuma nombro de seriaj raŭndoj) |
+| cash out / payout | Ta ut / utbetaling | Enkasigi / elpago |
+| Blackjack: shoe | kortsko | kartujo |
+| Blackjack: hit | Trekk kort | Preni karton |
+| Blackjack: stand | Stå | Resti |
+| Blackjack: split | Splitt | Dividi |
+| Blackjack: insurance | forsikring | asekuro |
+| Blackjack: same-rank vs. same-value split rule | Same valør / Same verdi | Sama rango / Sama valoro |
+| RPS: throw/action (not generic "turn") | trekk | taktoj |
+| Dragon Descent: vine mechanic | klatreplante (fl. klatreplantar) | lianoj |
+| ON/OFF display state | PÅ / AV | ŜALTITA / MALŜALTITA |
+| Slots: variance (risk preset, not the RTP) | volatilitet | volatileco |
+| Slots: house edge | fordelen til huset | avantaĝo de la kazino |
+| Slots: return/RTP verb | tilbakebetaling til spelaren (RTP) | elpaga procento al la ludanto (RTP) |
+| seat | plass (stol = chair) | sidloko (seĝo = chair) |
+| banked winnings (overflow bank) | lagra gevinstar | konservitaj gajnoj |
+| overflow: hold vs. drop nearby | Ta vare på dei for meg / Legg dei på bakken i nærleiken | Konservu ilin por mi / Demetu ilin proksime |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -1513,6 +1513,16 @@ a real, previously-observed defect, not a hypothetical risk.
   `Ta ut`, `pott`; slots run `serie` vs PvE streak `rekkje`, auto-spin batch
   `omgang`; vines `klatreplantar` (plante is masculine); RTP
   `tilbakebetaling til spelaren`, kept apart from `refundert`.
+- `eo_UY`: Esperanto (Minecraft's locale code), standard Fundamento
+  grammar, `vi` with `-u` volitive imperatives (`Klaku`, `Elektu`,
+  `Tajpu`), “ ” quotes, decimal comma (`0,95:1`, `2,5%`). A placeholder can
+  never carry the accusative `-n` or plural `-j`, so values put it after a
+  colon label (`Gajno: {amount}`), after a preposition (`de {player}`,
+  `al {game}`) or before a separate noun (`{spins} turnojn`). `krupiero`,
+  Baccarat `Ludanto` / `Bankisto`, `veto`, `Ĉion veti`, `Reveti`,
+  `Enkasigi`, `poto`; slots run `sinsekvo` vs PvE streak `serio` /
+  `venkoserio`, auto-spin batch `aro`; vines `lianoj`; RTP `elpaga procento`,
+  kept apart from the refund verb `repagi`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.

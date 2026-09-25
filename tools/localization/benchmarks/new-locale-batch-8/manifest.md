@@ -54,3 +54,53 @@
   Findings: `reviews/nn_NO-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `nn_NO: name: "Norsk nynorsk"`.
 - Native-speaker review: not performed; recommended before release.
+
+### eo_UY -- Esperanto
+
+- Final catalog SHA-256: `3b671be7bfd66b419064675864795a2c301d2ecb44b4296b32130b129c18e3b3` (identical in the run directory and
+  `src/main/resources/lang/eo_UY.yml`; NFC-normalized)
+- Voice: standard Fundamento grammar, `vi` with `-u` volitive imperatives,
+  “ ” quotes, decimal comma. A placeholder cannot carry the accusative `-n`
+  or plural `-j`, so values place it after a colon label, after a
+  preposition (`de {player}`, `por {amount}`, `sumon de {amount}`) or before
+  a separate noun. `krupiero`, Baccarat side names capitalised `Ludanto` /
+  `Bankisto`, `veto`, `Ĉion veti`, `Reveti`, `Enkasigi`, slots run
+  `sinsekvo` vs PvE streak `serio` / `venkoserio` vs auto-spin batch `aro`,
+  vines `lianoj`, RTP `elpaga procento` kept apart from the refund verb
+  `repagi`. Recorded in the seventh continuation of the §H table.
+- Structural: helper strict check 0 errors, 0 residue warnings (no
+  allowlist change needed). `localizationCandidateCheck` CANDIDATE OK
+  (1184); full `localizationCheck` with all fifty-five new locales
+  registered: every one of the 61 locales OK (1184), the 8 baseline
+  non-fatal warnings only; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0, Tier 2 = 9 (max-chain lore and occupation labels drifting
+  from "maksimuma nombro de seriaj raŭndoj", "ripeti la veton" vs
+  "reveti", "aŭtomataj agordoj", the RPS throw calque), Tier 3 = 40
+  ("ludanta menuo" read as a participle, bare `{amount}` direct objects,
+  "{amount} da profito", "pagi samtempe", mode-switching labels phrased as
+  statements, split-rule wording); 48 applied (one reworded), 1 declined
+  with a reason ("personecigi" is the established software term for
+  "customize"). The packet-1 reviewer was interrupted once by an API rate
+  limit and resumed with its context intact; on resumption it was told of
+  the packet-2 "ludanta menuo" finding. 48 review keys plus 4 self-review
+  follow-ups (the other two "Neniu mono" lines, two auto-spin confirmations),
+  rechecked after. Findings: `reviews/eo_UY-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `eo_UY: name: "Esperanto"`.
+- Native-speaker review: not performed; recommended before release.
+
+## Batch status
+
+The repository user asked in chat to finish the languages already started
+and then stop. This run therefore ends after `nn_NO` and `eo_UY`; `lb_LU`,
+`mt_MT`, `ky_KG`, `tg_TJ`, `tk_TM` and `mr_IN` from the selection above were
+not started and have no files in this run.
+
+`locales.yml` lines for the two locales produced here:
+
+```yaml
+  nn_NO:
+    name: "Norsk nynorsk"
+  eo_UY:
+    name: "Esperanto"
+```
