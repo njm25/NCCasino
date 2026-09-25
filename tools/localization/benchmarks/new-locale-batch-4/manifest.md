@@ -197,3 +197,88 @@
   self-review fixes, rechecked after. Findings: `reviews/et_EE-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `et_EE: name: "Eesti"`.
 - Native-speaker review: not performed; recommended before release.
+
+### ca_ES -- Català (Catalan)
+
+- Final catalog SHA-256: `0dc7019060ff7a2238e9f3708fd8bd5a944b24d9bab9f8b27f07fa68765631f3` (identical in the run directory and
+  `src/main/resources/lang/ca_ES.yml`; NFC-normalized)
+- Voice: standard Central Catalan (Softcatalà / TERMCAT conventions),
+  informal `tu`, `«»` quotes, decimal comma; gender-neutral toward the
+  player (no gendered adjectives; invariable `haver` participles);
+  `occupations.*` carry their own article; `crupier`, Baccarat `Jugador` /
+  `Banca`, `aposta`, cash-out `Cobra`, Slots `Escurabutxaques` with
+  `rodets` and `tirada`, run `seqüència` vs streak `ratxa`. Written from the
+  English source, not adapted from es_ES. Recorded in the guide.
+- Structural: helper strict check 0 errors (one token-order slip in
+  `dealer.game-set` caught and fixed before review; 21 residue warnings are
+  Catalan `a` / `has`); `localizationCandidateCheck` CANDIDATE OK (1184);
+  full `localizationCheck` with all thirty-one new locales registered: every
+  one of the 37 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 1 (`blackjack.starts-in` "comença en" castellanisme; `{seconds}`
+  verified as a raw integer), Tier 2 = 18 (capitalized game names in
+  settings titles, `nombre` vs `número`, `Activat` / `Desactivat`), Tier 3 =
+  17, all applied. 36 review keys plus 5 self-review fixes, rechecked after.
+  Findings: `reviews/ca_ES-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `ca_ES: name: "Català"`.
+- Native-speaker review: not performed; recommended before release.
+
+## Batch summary
+
+All eight batch-4 locales are complete. To expose them in the language menu,
+append to `src/main/resources/lang/locales.yml` (after the batch-1, batch-2
+and batch-3 lines):
+
+```yaml
+  es_MX:
+    name: "Español (México)"
+  hr_HR:
+    name: "Hrvatski"
+  sl_SI:
+    name: "Slovenščina"
+  sr_RS:
+    name: "Српски"
+  lt_LT:
+    name: "Lietuvių"
+  lv_LV:
+    name: "Latviešu"
+  et_EE:
+    name: "Eesti"
+  ca_ES:
+    name: "Català"
+```
+
+With the batch-1 to batch-4 lines appended, `localizationCheck` reports all
+37 locales OK at 1184 entries (verified in this run) and `compileJava`
+succeeds. Remaining warnings are the seven pre-existing ones plus the
+de_DE-precedent identity in nl_NL; batch 4 adds none. Two semantic facts
+were verified in Java during this batch and added to the guide's §C
+registry and the reviewer rubric: `blackjack.resplit-offer` confirms a
+re-split that already happened, and `coin-flip` / `rock-paper-scissors`
+`seat-unavailable` labels an empty, locked chair.
+
+Out-of-scope observations (reported, not changed -- each would be a
+targeted refinement needing its own run and approval):
+
+- `blackjack.resplit-offer` is rendered as an instruction or offer ("Split
+  again!") rather than a completed action in zh_CN, th_TH, ro_RO, zh_TW,
+  nl_NL, tr_TR, vi_VN, ja_JP, sv_SE, ru_RU, fr_FR, uk_UA, pt_PT, pl_PL,
+  el_GR, nb_NO, sk_SK, ko_KR, it_IT, bg_BG, pt_BR, hu_HU, fi_FI, cs_CZ,
+  de_DE, da_DK, id_ID and es_ES.
+- `seat-unavailable` reads as "not free / not vacant", which usually means
+  occupied, in bg_BG ("не е свободно"), da_DK / nb_NO ("ikke ledig"), fi_FI
+  ("ei ole vapaana"), hr_HR ("nije slobodno"), sk_SK ("nie je voľné"),
+  sl_SI ("ni prosto") and sr_RS ("није слободно"). hr_HR, sl_SI and sr_RS
+  were promoted in this batch before the fact was verified during the lt_LT
+  review.
+- hr_HR `slots.profile-name-empty` / `profile-name-too-long` use "{max}
+  znakova"; with `SlotsProfileName.MAX_LENGTH` = 24 Croatian needs the
+  paucal "znaka" (or a label form, as sr_RS now uses). The other Slavic and
+  Baltic catalogs checked (bg, cs, pl, ru, sk, sl, uk, lt, lv) are correct
+  for 24.
+- es_ES: `chain-win` wording and the gendered "sentado" (noted in batch 4's
+  es_MX work).
+
+Still needed before release: an in-game check (Cyrillic and Baltic
+diacritics in inventory titles, line wrapping of the longer Baltic and
+Catalan strings) and native-speaker review.
