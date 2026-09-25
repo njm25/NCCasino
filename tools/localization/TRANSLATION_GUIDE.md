@@ -669,31 +669,31 @@ Second continuation for later locales (same concept rows; split so neither table
 
 Third continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 3) | es_MX | hr_HR | sl_SI |
-| --- | --- | --- | --- |
-| generic physical dealer/croupier | crupier | djelitelj | delivec |
-| Baccarat banker/bank side | Banca (Jugador / Banca) | Bankar (Igrač / Bankar) | Bankir (Igralec / Bankir) |
-| bet / wager amount | apuesta | ulog (oklada = placed bet) | vložek (stava = placed bet) |
-| all in | Apostar todo | Uloži sve | Stavi vse |
-| rebet (repeat previous wager) | Repetir apuesta | Ponovi ulog | Ponovi stavo |
-| chip denomination/value | valor de la ficha | vrijednost žetona | vrednost žetona |
-| win streak / chain (PvE) | racha (máx. de rondas en racha) | serija pobjeda (najveći broj rundi u seriji) | niz zmag (največ krogov v nizu) |
-| cash out / payout | Cobrar / pago | Podigni dobitak / isplata | Unovči / izplačilo |
-| Blackjack: shoe | zapato | kutija za dijeljenje | delilnik kart |
-| Blackjack: hit | Pedir | Karta | Karta |
-| Blackjack: stand | Plantarse | Stani | Stoj |
-| Blackjack: split | Dividir | Podijeli | Razdeli |
-| Blackjack: insurance | seguro | osiguranje | zavarovanje |
-| Blackjack: same-rank vs. same-value split rule | Mismo rango / Mismo valor | Isti rang / Ista vrijednost | Enak rang / Enaka vrednost |
-| RPS: throw/action (not generic "turn") | jugada | izbor | izbira |
-| Dragon Descent: vine mechanic | enredadera | puzavica | plezalka |
-| ON/OFF display state | ACTIVADO / DESACTIVADO | UKLJUČENO / ISKLJUČENO | VKLOPLJENO / IZKLOPLJENO |
-| Slots: variance (risk preset, not the RTP) | volatilidad | volatilnost | volatilnost |
-| Slots: house edge | ventaja de la casa | prednost kuće | prednost igralnice |
-| Slots: return/RTP verb | retorno al jugador | povrat igraču | povračilo igralcu |
-| seat | lugar (silla = chair) | mjesto (stolica = chair) | mesto (stol = chair) |
-| banked winnings (overflow bank) | ganancias guardadas | sačuvani dobici | shranjeni dobitki |
-| overflow: hold vs. drop nearby | Guárdalas por mí / Suéltalas cerca | Čuvaj ih za mene / Ostavi ih na tlu u blizini | Shrani jih zame / Odvrzi jih na tla v bližini |
+| Concept (continued 3) | es_MX | hr_HR | sl_SI | sr_RS |
+| --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | crupier | djelitelj | delivec | делилац |
+| Baccarat banker/bank side | Banca (Jugador / Banca) | Bankar (Igrač / Bankar) | Bankir (Igralec / Bankir) | Банкар (Играч / Банкар) |
+| bet / wager amount | apuesta | ulog (oklada = placed bet) | vložek (stava = placed bet) | улог (опклада = placed bet) |
+| all in | Apostar todo | Uloži sve | Stavi vse | Уложи све |
+| rebet (repeat previous wager) | Repetir apuesta | Ponovi ulog | Ponovi stavo | Понови улог |
+| chip denomination/value | valor de la ficha | vrijednost žetona | vrednost žetona | вредност жетона |
+| win streak / chain (PvE) | racha (máx. de rondas en racha) | serija pobjeda (najveći broj rundi u seriji) | niz zmag (največ krogov v nizu) | низ победа (највећи број рунди у низу) |
+| cash out / payout | Cobrar / pago | Podigni dobitak / isplata | Unovči / izplačilo | Подигни добитак / исплата |
+| Blackjack: shoe | zapato | kutija za dijeljenje | delilnik kart | кутија за дељење |
+| Blackjack: hit | Pedir | Karta | Karta | Карта |
+| Blackjack: stand | Plantarse | Stani | Stoj | Стој |
+| Blackjack: split | Dividir | Podijeli | Razdeli | Подели |
+| Blackjack: insurance | seguro | osiguranje | zavarovanje | осигурање |
+| Blackjack: same-rank vs. same-value split rule | Mismo rango / Mismo valor | Isti rang / Ista vrijednost | Enak rang / Enaka vrednost | Исти ранг / Иста вредност |
+| RPS: throw/action (not generic "turn") | jugada | izbor | izbira | избор |
+| Dragon Descent: vine mechanic | enredadera | puzavica | plezalka | пузавица |
+| ON/OFF display state | ACTIVADO / DESACTIVADO | UKLJUČENO / ISKLJUČENO | VKLOPLJENO / IZKLOPLJENO | УКЉУЧЕНО / ИСКЉУЧЕНО |
+| Slots: variance (risk preset, not the RTP) | volatilidad | volatilnost | volatilnost | волатилност |
+| Slots: house edge | ventaja de la casa | prednost kuće | prednost igralnice | предност куће |
+| Slots: return/RTP verb | retorno al jugador | povrat igraču | povračilo igralcu | повраћај играчу |
+| seat | lugar (silla = chair) | mjesto (stolica = chair) | mesto (stol = chair) | место (столица = chair) |
+| banked winnings (overflow bank) | ganancias guardadas | sačuvani dobici | shranjeni dobitki | сачувани добици |
+| overflow: hold vs. drop nearby | Guárdalas por mí / Suéltalas cerca | Čuvaj ih za mene / Ostavi ih na tlu u blizini | Shrani jih zame / Odvrzi jih na tla v bližini | Чувај их за мене / Остави их на тлу у близини |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -1016,6 +1016,22 @@ a real, previously-observed defect, not a hypothetical risk.
   `vrstice` and `dobitne linije`. Plugin literals in running text take a
   classifier noun (`vtičnik Vault`, `z vtičnikom NCCasino`). The card shoe
   is described as `delilnik kart`.
+- `sr_RS`: standard ekavian Serbian in Cyrillic, informal `ти`, `„“`
+  quotes, decimal comma; Serbian UI vocabulary (`мени`, `дугме`,
+  `подешавања`, `сервер`, `чет`, `тајмер`, `подразумевано`, `спрат`,
+  `колона`), never Croatian or ijekavian forms, and no Latin letters inside
+  Cyrillic words (seconds are `с`; Latin only in protected tokens).
+  Gender-neutral toward the player: the second-person perfect and `да би`
+  clauses are gendered (`победио си`, `да би уложио`), so outcomes are
+  nouns, present tense or impersonal (`Победа!`, `Седни да се кладиш.`);
+  welcomes use the plural `Добро дошли`. Number placeholders stay out of 1 /
+  2-4 / 5+ agreement (colon labels, including the profile-name length).
+  `occupations.*` are genitive and `dragon-settings.columns|vines|floors`
+  genitive plural for their template slots. Dealer `делилац`; Baccarat
+  `Играч` / `Банкар`; stake `улог`, a placed bet `опклада`; cash-out
+  `Подигни добитак`; pot `пот`; ace `кец`. Coin Flip is `Писмо или
+  глава`; Slots `Слот машина` with `ролне`, `редови` and `добитне линије`,
+  a spin `окретање`. The card shoe is described as `кутија за дељење`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.

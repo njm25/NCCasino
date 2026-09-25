@@ -93,3 +93,28 @@
   Findings: `reviews/sl_SI-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `sl_SI: name: "Slovenščina"`.
 - Native-speaker review: not performed; recommended before release.
+
+### sr_RS -- Српски (Serbian, Cyrillic)
+
+- Final catalog SHA-256: `0501949dc80a3d2d52d69381a84ee4dd1dd5143431c8de65eea60771337407dd` (identical in the run directory and
+  `src/main/resources/lang/sr_RS.yml`; NFC-normalized)
+- Voice: ekavian Serbian in Cyrillic, informal `ти`, `„“` quotes, Serbian UI
+  vocabulary (Croatian/ijekavian scan and mixed-script scan clean; seconds
+  as Cyrillic `с`); gender-neutral toward the player (no gendered perfect
+  or `да би` participles); number agreement avoided with labels; genitive
+  fillers for `occupations.*` and the Dragon `{setting}` slot; `делилац`,
+  Baccarat `Играч` / `Банкар`, stake `улог` vs placed bet `опклада`,
+  Slots `Слот машина` with `ролне`. Recorded in the guide.
+- Structural: helper strict check 0 errors, 0 residue warnings;
+  `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all twenty-seven new locales registered: every
+  one of the 33 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0, Tier 2 = 0, Tier 3 = 11, all applied (profile-name length as
+  a label because 24 takes the paucal `знака`, `Пробни мени`, double
+  `за` in occupation fillers, "changed to" label form); 1 consistency
+  follow-up. 14 keys patched including two self-review fixes (masculine
+  `да би уложио` / `да би се кладио`), rechecked after. Findings:
+  `reviews/sr_RS-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `sr_RS: name: "Српски"`.
+- Native-speaker review: not performed; recommended before release.
