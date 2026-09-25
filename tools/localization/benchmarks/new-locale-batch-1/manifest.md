@@ -121,3 +121,22 @@ Each entry is appended when that locale is finished.
   rechecked after. Findings: `reviews/th_TH-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `th_TH: name: "ไทย"`.
 - Native-speaker review: not performed; recommended before release.
+
+### tr_TR -- Türkçe (Turkish)
+
+- Final catalog SHA-256: `081fda1d312bd56a9db16cffd02972431eb7b49e1167048505afa2d67f15a0f1` (identical in the run directory and
+  `src/main/resources/lang/tr_TR.yml`)
+- Voice: informal `sen`; placeholders never take suffixes; Turkish card
+  indices (P/K) in Blackjack examples; house-edge example keeps a trailing
+  `%` for the parser (recorded in the guide).
+- Structural: helper strict check 0 errors / 0 residue warnings (after one
+  self-caught placeholder-order fix and a stray Cyrillic letter);
+  `localizationCandidateCheck` CANDIDATE OK (1184); full `localizationCheck`
+  with the six new locales registered: tr_TR OK (1184), no tr_TR warnings,
+  all other locales unchanged.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 1 (roulette straight-up rendered as "odd number"; fixed),
+  Tier 2 = 13, Tier 3 = 42; all applied. 57 keys patched, rechecked after.
+  Findings: `reviews/tr_TR-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `tr_TR: name: "Türkçe"`.
+- Native-speaker review: not performed; recommended before release.
