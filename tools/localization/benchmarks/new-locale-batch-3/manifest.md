@@ -39,3 +39,29 @@
   after. Findings: `reviews/hu_HU-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `hu_HU: name: "Magyar"`.
 - Native-speaker review: not performed; recommended before release.
+
+### ro_RO -- Română (Romanian)
+
+- Final catalog SHA-256: `0a392ebe82c60d6e7dae95fbe24dccb86e89da9f9e93a82f9bc5cbab790023ec` (identical in the run directory and
+  `src/main/resources/lang/ro_RO.yml`; NFC-normalized, comma-below ș/ț only)
+- Voice: informal `tu`, gender-neutral toward the player; number
+  placeholders kept out of noun-agreement positions (colon labels,
+  parentheses); dealer `crupier`, Baccarat `Jucător` / `Bancher`, house
+  edge `avantajul casei`; Coin Flip `Cap sau pajură`, Mines `Câmp minat`
+  (`Mine` collides with `la mine`, "at my place"), Slots `Sloturi` with a
+  run `șir` distinct from the PvE streak `serie` (recorded in the guide).
+- Structural: helper strict check 0 errors (residue warnings are Romanian
+  infinitive `a`, the loanword `chat`, and the shared `/ncc create` usage
+  lines -- all false positives); `localizationCandidateCheck` CANDIDATE OK
+  (1184); full `localizationCheck` with all seventeen new locales
+  registered: every one of the 23 locales OK (1184), no new warnings;
+  `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0, Tier 2 = 1 (`slots.auto-settings-reset` Auto Spin drift),
+  Tier 3 = 45, all applied (numeral agreement for `{rounds}`/`{max}`/
+  `{amount}`, "Pot" read as a verb, `Constantă` variance label, rail
+  "below" controls, timer prompts, refund agreement), plus the three sibling
+  `inventory-full` keys aligned. 49 keys patched, rechecked after.
+  Findings: `reviews/ro_RO-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `ro_RO: name: "Română"`.
+- Native-speaker review: not performed; recommended before release.

@@ -634,31 +634,31 @@ Continuation of the table above for later locales (same concept rows; split so n
 
 Second continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 2) | hu_HU |
-| --- | --- |
-| generic physical dealer/croupier | osztó |
-| Baccarat banker/bank side | Bankár (Játékos / Bankár) |
-| bet / wager amount | tét |
-| all in | mindent bele |
-| rebet (repeat previous wager) | tét ismétlése |
-| chip denomination/value | zsetoncímlet |
-| win streak / chain (PvE) | győzelmi sorozat (sorozat max. körszáma) |
-| cash out / payout | nyeremény felvétele / kifizetés |
-| Blackjack: shoe | kártyaadagoló |
-| Blackjack: hit | Lap |
-| Blackjack: stand | Megállok |
-| Blackjack: split | Szétválasztás |
-| Blackjack: insurance | biztosítás |
-| Blackjack: same-rank vs. same-value split rule | Azonos rang / Azonos pontérték |
-| RPS: throw/action (not generic "turn") | választás |
-| Dragon Descent: vine mechanic | inda |
-| ON/OFF display state | BE / KI |
-| Slots: variance (risk preset, not the RTP) | volatilitás |
-| Slots: house edge | házelőny |
-| Slots: return/RTP verb | visszafizetési arány |
-| seat | hely (szék = chair) |
-| banked winnings (overflow bank) | tárolt nyeremények |
-| overflow: hold vs. drop nearby | Őrizd meg nekem / Leejtés a közelben |
+| Concept (continued 2) | hu_HU | ro_RO |
+| --- | --- | --- |
+| generic physical dealer/croupier | osztó | crupier |
+| Baccarat banker/bank side | Bankár (Játékos / Bankár) | Bancher (Jucător / Bancher) |
+| bet / wager amount | tét | pariu (miză = suma) |
+| all in | mindent bele | Mizează tot |
+| rebet (repeat previous wager) | tét ismétlése | Repetă pariul |
+| chip denomination/value | zsetoncímlet | valoarea jetonului |
+| win streak / chain (PvE) | győzelmi sorozat (sorozat max. körszáma) | serie de victorii (număr maxim de runde în serie) |
+| cash out / payout | nyeremény felvétele / kifizetés | Încasează / plată |
+| Blackjack: shoe | kártyaadagoló | sabot |
+| Blackjack: hit | Lap | Carte |
+| Blackjack: stand | Megállok | Stai |
+| Blackjack: split | Szétválasztás | Împarte |
+| Blackjack: insurance | biztosítás | asigurare |
+| Blackjack: same-rank vs. same-value split rule | Azonos rang / Azonos pontérték | Același rang / Aceeași valoare |
+| RPS: throw/action (not generic "turn") | választás | alegere |
+| Dragon Descent: vine mechanic | inda | liană |
+| ON/OFF display state | BE / KI | PORNIT / OPRIT |
+| Slots: variance (risk preset, not the RTP) | volatilitás | volatilitate |
+| Slots: house edge | házelőny | avantajul casei |
+| Slots: return/RTP verb | visszafizetési arány | rata de returnare (către jucător) |
+| seat | hely (szék = chair) | loc (scaun = chair) |
+| banked winnings (overflow bank) | tárolt nyeremények | câștiguri păstrate |
+| overflow: hold vs. drop nearby | Őrizd meg nekem / Leejtés a közelben | Păstrează-le pentru mine / Lasă-le pe jos lângă mine |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -845,6 +845,19 @@ a real, previously-observed defect, not a hypothetical risk.
   is the hotbar); overflow drop is `leejtés` / `a földre kerül`
   (`eldobás` can read as discarding). Paytable "Return" is `Kifizetés`
   (`visszatérítés` means refund).
+- `ro_RO`: standard Romanian with comma-below `ș`/`ț` (never the cedilla
+  forms); informal `tu` address as in Romanian Minecraft, and gender-neutral
+  toward the player (no participle or adjective agreeing with the player:
+  `Ai deja un loc`, `Te-ai așezat`, `Sigur vrei asta?`). A number placeholder
+  does not sit directly before a counted noun (Romanian needs `de` from 20 up
+  and the singular for 1), so counts use a colon label (`Crupieri șterși:
+  {count}`) or parentheses. The dealer is `crupier`; the Baccarat sides are
+  `Jucător` / `Bancher`; the house edge is `avantajul casei`. Coin Flip is
+  `Cap sau pajură`; Mines is `Câmp minat` (plain `Mine` collides with the
+  pronoun in `la Mine`, "at my place"). Slots is `Sloturi`, played on an
+  `aparat` with `role` and `linii de plată`; its run is `șir` (`{run} la
+  rând`), distinct from the PvE win streak `serie`. Overflow drop is `lăsate
+  pe jos` (Minecraft's `Aruncă` can read as throwing away).
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
