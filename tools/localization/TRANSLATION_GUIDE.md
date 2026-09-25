@@ -601,31 +601,31 @@ far from the original example that established the pin.
 
 Continuation of the table above for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued) | ko_KR | pl_PL | it_IT | id_ID |
-| --- | --- | --- | --- | --- |
-| generic physical dealer/croupier | 딜러 | krupier | croupier | bandar |
-| Baccarat banker/bank side | 뱅커 (플레이어 / 뱅커) | Bankier (Gracz / Bankier) | Banco (Giocatore / Banco) | Bankir (Pemain / Bankir) |
-| bet / wager amount | 베팅 (베팅액) | zakład (stawka) | puntata | taruhan (nilai taruhan) |
-| all in | 올인 | va banque | punta tutto | pertaruhkan semua |
-| rebet (repeat previous wager) | 재베팅 | ponawianie zakładu (ponowiono zakład) | ripeti puntata (ripetizione) | taruhan ulang |
-| chip denomination/value | 칩 금액 | nominał żetonu | valore della fiche | nilai keping |
-| win streak / chain (PvE) | 연승 (최대 연승 라운드) | seria zwycięstw (maks. liczba rund serii) | serie di vittorie (round massimi della serie) | beruntun (ronde beruntun maksimum) |
-| cash out / payout | 캐시아웃 / 지급 (당첨금) | wypłać / wypłata | incassa / vincita, pagamento | cairkan / pembayaran |
-| Blackjack: shoe | 슈 | sabot | sabot | kotak kartu |
-| Blackjack: hit | 히트 | Dobierz | Carta | Ambil |
-| Blackjack: stand | 스탠드 | Pas (pasujesz) | Stai | Tahan (memilih Tahan) |
-| Blackjack: split | 스플릿 | Rozdziel (rozdzielanie) | Dividi (divisione) | Pisah |
-| Blackjack: insurance | 인슈어런스 | ubezpieczenie | assicurazione | asuransi |
-| Blackjack: same-rank vs. same-value split rule | 같은 랭크 / 같은 점수 | Ta sama ranga / Ta sama wartość | Stesso rango / Stesso valore | Peringkat Sama / Nilai Sama |
-| RPS: throw/action (not generic "turn") | 낼 손 (내다) | zagranie (zatwierdź zagranie) | mossa | pilihan (kunci pilihan) |
-| Dragon Descent: vine mechanic | 덩굴 | pnącza | rampicanti | tanaman rambat |
-| ON/OFF display state | 켜짐 / 꺼짐 | WŁ. / WYŁ. | ATTIVATA / DISATTIVATA (Attivato / Disattivato; Sì / No where one value fills labels of both genders) | AKTIF / NONAKTIF |
-| Slots: variance (risk preset, not the RTP) | 변동성 | zmienność | volatilità | volatilitas |
-| Slots: house edge | 하우스 엣지 | przewaga kasyna | vantaggio della casa | keunggulan kasino |
-| Slots: return/RTP verb | 환수율 (돌려받다) | zwrot (zwrot dla gracza) | ritorno al giocatore | pengembalian ke pemain |
-| seat | 자리 | miejsce (krzesło = chair) | posto (sedia = chair) | kursi |
-| banked winnings (overflow bank) | 보관 중인 당첨금 | przechowywane wygrane | vincite custodite | kemenangan yang disimpan |
-| overflow: hold vs. drop nearby | 보관해 두기 / 근처에 떨어뜨리기 | Przechowaj dla mnie / Upuść obok | Tienile da parte / Falle cadere vicino | Simpan Untukku / Jatuhkan di Dekatku |
+| Concept (continued) | ko_KR | pl_PL | it_IT | id_ID | zh_TW |
+| --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | 딜러 | krupier | croupier | bandar | 荷官 |
+| Baccarat banker/bank side | 뱅커 (플레이어 / 뱅커) | Bankier (Gracz / Bankier) | Banco (Giocatore / Banco) | Bankir (Pemain / Bankir) | 莊家（閒家 / 莊家） |
+| bet / wager amount | 베팅 (베팅액) | zakład (stawka) | puntata | taruhan (nilai taruhan) | 下注（下注金額） |
+| all in | 올인 | va banque | punta tutto | pertaruhkan semua | 全押 |
+| rebet (repeat previous wager) | 재베팅 | ponawianie zakładu (ponowiono zakład) | ripeti puntata (ripetizione) | taruhan ulang | 重複下注 |
+| chip denomination/value | 칩 금액 | nominał żetonu | valore della fiche | nilai keping | 籌碼面額 |
+| win streak / chain (PvE) | 연승 (최대 연승 라운드) | seria zwycięstw (maks. liczba rund serii) | serie di vittorie (round massimi della serie) | beruntun (ronde beruntun maksimum) | 連勝（最大連勝回合數） |
+| cash out / payout | 캐시아웃 / 지급 (당첨금) | wypłać / wypłata | incassa / vincita, pagamento | cairkan / pembayaran | 兌現 / 派彩 |
+| Blackjack: shoe | 슈 | sabot | sabot | kotak kartu | 牌靴 |
+| Blackjack: hit | 히트 | Dobierz | Carta | Ambil | 要牌 |
+| Blackjack: stand | 스탠드 | Pas (pasujesz) | Stai | Tahan (memilih Tahan) | 停牌 |
+| Blackjack: split | 스플릿 | Rozdziel (rozdzielanie) | Dividi (divisione) | Pisah | 分牌 |
+| Blackjack: insurance | 인슈어런스 | ubezpieczenie | assicurazione | asuransi | 保險 |
+| Blackjack: same-rank vs. same-value split rule | 같은 랭크 / 같은 점수 | Ta sama ranga / Ta sama wartość | Stesso rango / Stesso valore | Peringkat Sama / Nilai Sama | 相同牌面 / 相同點數 |
+| RPS: throw/action (not generic "turn") | 낼 손 (내다) | zagranie (zatwierdź zagranie) | mossa | pilihan (kunci pilihan) | 出拳 |
+| Dragon Descent: vine mechanic | 덩굴 | pnącza | rampicanti | tanaman rambat | 藤蔓 |
+| ON/OFF display state | 켜짐 / 꺼짐 | WŁ. / WYŁ. | ATTIVATA / DISATTIVATA (Attivato / Disattivato; Sì / No where one value fills labels of both genders) | AKTIF / NONAKTIF | 開啟 / 關閉 |
+| Slots: variance (risk preset, not the RTP) | 변동성 | zmienność | volatilità | volatilitas | 波動度 |
+| Slots: house edge | 하우스 엣지 | przewaga kasyna | vantaggio della casa | keunggulan kasino | 賭場優勢 |
+| Slots: return/RTP verb | 환수율 (돌려받다) | zwrot (zwrot dla gracza) | ritorno al giocatore | pengembalian ke pemain | 返還率（玩家返還率） |
+| seat | 자리 | miejsce (krzesło = chair) | posto (sedia = chair) | kursi | 座位（椅子 = chair） |
+| banked winnings (overflow bank) | 보관 중인 당첨금 | przechowywane wygrane | vincite custodite | kemenangan yang disimpan | 暫存獎金 |
+| overflow: hold vs. drop nearby | 보관해 두기 / 근처에 떨어뜨리기 | Przechowaj dla mnie / Upuść obok | Tienile da parte / Falle cadere vicino | Simpan Untukku / Jatuhkan di Dekatku | 替我保管 / 掉落在附近 |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -752,6 +752,18 @@ a real, previously-observed defect, not a hypothetical risk.
   Descent is `Turun ke Sarang Naga` (`penurunan` means a decline).
   Slots "run" is `deret`, distinct from the PvE win streak `beruntun`.
   Odds and house-edge examples use a decimal comma (`0,95:1`, `2,5%`).
+- `zh_TW`: Traditional Chinese with Taiwan vocabulary (`設定`, `伺服器`,
+  `物品欄`, `預設`, `訊息`, `選單`, `外掛`, `區塊`), full-width punctuation,
+  `你` for the player. CJK characters count as letters for the validator, so a
+  placeholder touching Han text is spaced on both sides (`在 {columns} 個`,
+  `{name} 的`), Taiwan-style spacing around inserted Latin/number text. The
+  physical dealer is `荷官`; the Baccarat sides are `閒家` / `莊家`, so the
+  house edge is `賭場優勢`
+  (never `莊家優勢`). Payout is `派彩`, cash out `兌現`. Slots "run" is
+  `連線`, distinct from the PvE win streak `連勝`. Card names keep
+  `{rank}（{suit}）` order with `A`/`K`/`Q`/`J` ranks. Minecraft drop is
+  `掉落` (never `丟棄`, which means discard); llama is `駱馬` (`羊駝` is the
+  Mainland term and means alpaca in Taiwan).
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.

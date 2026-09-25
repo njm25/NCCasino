@@ -121,3 +121,27 @@
 - Not registered in `locales.yml`. Registry line:
   `id_ID: name: "Bahasa Indonesia"`.
 - Native-speaker review: not performed; recommended before release.
+
+### zh_TW -- 繁體中文 (Traditional Chinese, Taiwan)
+
+- Final catalog SHA-256: `98a62755f1652291b65a4b519fa63627d2d1679a54512a30cfbd3c73eaf93f53` (identical in the run directory and
+  `src/main/resources/lang/zh_TW.yml`; NFC-normalized)
+- Voice: Taiwan vocabulary and full-width punctuation; dealer `荷官`,
+  Baccarat `閒家` / `莊家`, house edge `賭場優勢`; placeholders touching
+  Han text are spaced on both sides (recorded in the guide). Written fresh
+  from English, not converted from zh_CN; a scan found no Simplified-only
+  characters.
+- Structural: helper strict check 0 errors / 0 residue warnings;
+  `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all twelve new locales registered: every one of
+  the 18 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key; the packet-2
+  reviewer's first run ended early on an API content-filter error and was
+  relaunched once): Tier 0 = 0, Tier 1 = 5 (llama rendered with the
+  Mainland `羊駝`, which means alpaca in Taiwan; fixed to `駱馬`),
+  Tier 2 = 3, Tier 3 = 21, all applied, plus a mechanical pass adding a
+  space wherever a placeholder touched Han text (23 spots) to resolve the
+  spacing inconsistency both reviewers noted. 30 keys patched, rechecked
+  after. Findings: `reviews/zh_TW-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `zh_TW: name: "繁體中文"`.
+- Native-speaker review: not performed; recommended before release.
