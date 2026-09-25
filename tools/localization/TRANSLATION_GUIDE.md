@@ -388,6 +388,13 @@ actual implementation, and update this section.
   locale whose payline term is itself "winning lines" (cs_CZ `výherní
   linie`, pl_PL `linie wygrywające`), phrase it as "lines win less often" so
   it cannot read as a smaller line count.
+- **`blackjack.resplit-offer` confirms a re-split that already happened.**
+  Despite the English "Split again!", `BlackjackInventory` sends it right
+  after a hand has been split a second time (`wasResplit ?
+  "blackjack.resplit-offer" : "blackjack.split-success"`); it is the
+  re-split counterpart of `split-success` ("Hand split!"), not an
+  instruction or an offer to split. Translate it as a completed action
+  ("Hand split again!").
 - **`betting.inventory-full` fires for refunds as well as winnings.** It is
   sent from `Client.creditPlayer`/`Server.creditPlayer`, which also returns
   stakes (Baccarat refunds, undone bets, cancelled Coin Flip/RPS offers), so
