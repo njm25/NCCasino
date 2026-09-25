@@ -28,3 +28,23 @@
 ## Per-locale record
 
 Each entry is appended when that locale is finished.
+
+### nl_NL -- Nederlands (Dutch)
+
+- Final catalog SHA-256: `31c9911939ca60cd1a99522abc1e77c03b25e4b3a99d65473970b6ec5863b49c` (identical bytes in the run directory and
+  `src/main/resources/lang/nl_NL.yml`)
+- Voice: informal `je`/`jij`, Netherlands Dutch (recorded in the guide).
+- Structural: helper strict check 0 errors; `localizationCandidateCheck`
+  CANDIDATE OK (1184); full `localizationCheck` with nl_NL temporarily
+  registered: nl_NL OK (1184), all six existing locales unchanged.
+- Remaining warning: `blackjack.round-summary-hand-blackjack` is identical to
+  English because "Hand {number}: Blackjack! +{amount}" is also correct Dutch
+  (same precedent as de_DE).
+- Independent review (2 isolated reviewers, 592 keys each, every key):
+  Tier 0 = 0, Tier 1 = 0, Tier 2 = 10, Tier 3 = 30. All 10 Tier 2 and all 30
+  Tier 3 suggestions were applied, plus one coordinator-found Tier 2 term drift
+  (`mines.dealer-cannot-cover`): 41 keys patched, candidate rechecked after
+  patching. Findings: `reviews/nl_NL-findings-*.md`.
+- Not registered in `locales.yml` (user's follow-up). Registry line:
+  `nl_NL: name: "Nederlands"`.
+- Native-speaker review: not performed; recommended before release.

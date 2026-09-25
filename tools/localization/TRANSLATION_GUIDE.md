@@ -550,31 +550,31 @@ lore, and help text alike. Do not let one section of a catalog fall back to
 a different or untranslated term for the same concept just because it is
 far from the original example that established the pin.
 
-| Concept | de_DE | es_ES | fr_FR | pt_BR |
-| --- | --- | --- | --- | --- |
-| generic physical dealer/croupier | Dealer | crupier | croupier | crupiê |
-| Baccarat banker/bank side | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* |
-| bet / wager amount | Einsatz | apuesta | mise | aposta |
-| all in | alles setzen | apostar todo | tout miser | apostar tudo |
-| rebet (repeat previous wager) | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| chip denomination/value | *(pin when first reviewed — not a physical-size word)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| win streak / chain (PvE) | *(pin when first reviewed — a round count, not a payout)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| cash out / payout | *(pin when first reviewed — preserve current/future/conditional tense per key)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| Blackjack: shoe | *(pin when first reviewed — the card shoe, not footwear)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| Blackjack: hit | Karte ziehen | pedir | tirer | pedir carta |
-| Blackjack: stand | halten | plantarse | rester | parar |
-| Blackjack: split | teilen | dividir | séparer | dividir |
-| Blackjack: insurance | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| Blackjack: same-rank vs. same-value split rule | *(pin distinctly — two different rules, do not use near-identical labels)* | *(pin distinctly)* | *(pin distinctly)* | *(pin distinctly)* |
-| RPS: throw/action (not generic "turn") | Wurf | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| Dragon Descent: vine mechanic | *(pin when first reviewed — climbing-vine sense)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| ON/OFF display state | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| Slots: variance (risk preset, not the RTP) | Varianz | varianza | variance | variância |
-| Slots: house edge | Hausvorteil | ventaja de la casa | avantage de la maison | vantagem da casa |
-| Slots: return/RTP verb | zahlt zurück | devuelve | redistribue | devolve |
-| seat | Sitz | asiento | siège | assento |
-| banked winnings (overflow bank) | verwahrte Gewinne | ganancias guardadas | gains conservés | ganhos guardados |
-| overflow: hold vs. drop nearby | aufbewahren / fallen lassen | guardar / soltar | garder / lâcher | guardar / largar |
+| Concept | de_DE | es_ES | fr_FR | pt_BR | nl_NL |
+| --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | Dealer | crupier | croupier | crupiê | dealer |
+| Baccarat banker/bank side | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* | Bank (Speler / Bank) |
+| bet / wager amount | Einsatz | apuesta | mise | aposta | inzet |
+| all in | alles setzen | apostar todo | tout miser | apostar tudo | alles inzetten |
+| rebet (repeat previous wager) | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | inzet herhalen |
+| chip denomination/value | *(pin when first reviewed — not a physical-size word)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | fichewaarde |
+| win streak / chain (PvE) | *(pin when first reviewed — a round count, not a payout)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | winreeks (max. rondes winreeks) |
+| cash out / payout | *(pin when first reviewed — preserve current/future/conditional tense per key)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | incasseren / uitbetaling |
+| Blackjack: shoe | *(pin when first reviewed — the card shoe, not footwear)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | kaartenschoen |
+| Blackjack: hit | Karte ziehen | pedir | tirer | pedir carta | kaart (nemen) |
+| Blackjack: stand | halten | plantarse | rester | parar | passen |
+| Blackjack: split | teilen | dividir | séparer | dividir | splitsen |
+| Blackjack: insurance | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | verzekering |
+| Blackjack: same-rank vs. same-value split rule | *(pin distinctly — two different rules, do not use near-identical labels)* | *(pin distinctly)* | *(pin distinctly)* | *(pin distinctly)* | gelijke rang / gelijke waarde |
+| RPS: throw/action (not generic "turn") | Wurf | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | keuze (kiezen) |
+| Dragon Descent: vine mechanic | *(pin when first reviewed — climbing-vine sense)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | klimranken |
+| ON/OFF display state | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | AAN / UIT |
+| Slots: variance (risk preset, not the RTP) | Varianz | varianza | variance | variância | variantie |
+| Slots: house edge | Hausvorteil | ventaja de la casa | avantage de la maison | vantagem da casa | huisvoordeel |
+| Slots: return/RTP verb | zahlt zurück | devuelve | redistribue | devolve | keert uit (uitbetalingspercentage) |
+| seat | Sitz | asiento | siège | assento | plaats |
+| banked winnings (overflow bank) | verwahrte Gewinne | ganancias guardadas | gains conservés | ganhos guardados | bewaarde winst |
+| overflow: hold vs. drop nearby | aufbewahren / fallen lassen | guardar / soltar | garder / lâcher | guardar / largar | bewaren / laten vallen |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -594,6 +594,13 @@ a real, previously-observed defect, not a hypothetical risk.
   unless the user explicitly approves a whole-catalog register migration.
 - `pt_BR`: Brazilian Portuguese; use `você`; favor terms natural to Brazilian
   gaming and Minecraft players.
+- `nl_NL`: Netherlands Dutch; informal `je`/`jij` for direct player address
+  (the norm in Dutch Minecraft and gaming UIs); natural sentence casing, not
+  English title case. Placeholders stay uninflected: possessives use
+  "X van {name}" rather than an attached `-s`. The `{game}` name for Slots is
+  `Slots` (a proper-name label), while the machine itself is `gokkast`. Slots
+  "run" is `serie`, kept distinct from the PvE win streak `winreeks`; a line
+  payout is `uitbetaald`, never `terugbetaald` (that means a refund).
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
