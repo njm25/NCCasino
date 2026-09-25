@@ -242,3 +242,92 @@
 - Not registered in `locales.yml`. Registry line: `bn_BD: name: "বাংলা"`.
 - Native-speaker review: not performed; recommended before release, with
   an in-game check of Bengali conjunct rendering in the Minecraft font.
+
+### ta_IN -- தமிழ் (Tamil)
+
+- Final catalog SHA-256: `9d59453d1d2f023e17a07770f7aee0021d9bdf17ffaced2789d5a6dd9e5c8861` (identical in the run directory and
+  `src/main/resources/lang/ta_IN.yml`; NFC-normalized)
+- Voice: standard written Tamil as used in Tamil Nadu software, polite
+  `-ங்கள்` instructions and plain imperative stems on short buttons, ASCII
+  digits, decimal point, `“ ”` quotes; no gendered forms for the player; no
+  case suffix on a placeholder (colon labels, `என்ற`, separate following
+  words); sandhi doubling after an infinitive is written before `கிளிக்`,
+  `போதுமான` and native hard-initial words; `டீலர்`, Baccarat `வீரர்` /
+  `வங்கியாளர்`, `பந்தயம்`, slots run `வரிசை` vs PvE streak `தொடர் வெற்றி`,
+  row `நிரை`, vines `படர்கொடிகள்`, RTP `வீரருக்கான செலுத்துகை விகிதம்` kept
+  apart from the refund wording, OFF `முடக்கத்தில்`. Recorded in the sixth
+  continuation of the §H table.
+- Structural: helper strict check 0 errors, 0 residue warnings;
+  `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all fifty-three new locales registered: every
+  one of the 59 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Self-review before the independent review: refund-root wording removed
+  from the paytable Return lines, the Rock Paper Scissors name hyphenated
+  for `{game}`, a detached `க்கான` suffix and a verb-before-value line
+  rewritten, the cash-out notice given the cash-out term, and a gendered
+  vocative (`நண்பா`) removed.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 3 (the test-game waiting line with seat 2 as the one waiting,
+  the variance trade-off read as smaller payouts, "current player" in the
+  RTP lore), Tier 2 = 14 (shortened Dragon Descent name read as an
+  infinitive, hidden-card and enabled / disabled drift, register mix in
+  lore), Tier 3 = 81 (the missing doubling before `கிளிக்` across 40 keys,
+  "சுண்டல்" read as a snack, "அணைப்பில்" read as "in an embrace", -அர் noun
+  agreement), all applied. 98 review keys plus 9 self-review follow-ups
+  (the other OFF values and Coin Flip mentions), rechecked after with a
+  catalog-wide doubling scan. Findings: `reviews/ta_IN-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `ta_IN: name: "தமிழ்"`.
+- Native-speaker review: not performed; recommended before release, with
+  an in-game check of Tamil vowel-sign rendering in the Minecraft font.
+
+## Batch summary
+
+All eight batch-7 locales are complete. To expose them in the language
+menu, append to `src/main/resources/lang/locales.yml` (after the batch-1 to
+batch-6 lines):
+
+```yaml
+  bs_BA:
+    name: "Bosanski"
+  hy_AM:
+    name: "Հայերեն"
+  uz_UZ:
+    name: "Oʻzbekcha"
+  sw_KE:
+    name: "Kiswahili"
+  ga_IE:
+    name: "Gaeilge"
+  mn_MN:
+    name: "Монгол"
+  bn_BD:
+    name: "বাংলা"
+  ta_IN:
+    name: "தமிழ்"
+```
+
+With the batch-1 to batch-7 lines appended, `localizationCheck` reports all
+59 locales OK at 1184 entries (verified in this run) and `compileJava`
+succeeds. Remaining warnings are the eight pre-existing ones; batch 7 adds
+none. No new Java-verified semantic fact was needed; the language-specific
+traps met this batch are recorded in each voice entry instead: noun-class
+concord that would have to agree with a placeholder (sw_KE, fixed with a
+governing noun), Irish initial mutations that can never apply to a
+placeholder, Mongolian ь-stem past tenses, a zero-width joiner hidden in the
+Bengali spelling of "rank", and the Tamil sandhi doubling before `கிளிக்`.
+
+Out-of-scope observations (reported, not changed -- each would be a
+targeted refinement needing its own run and approval):
+
+- The batch-4 to batch-6 observations (`resplit-offer` wording, "not free"
+  `seat-unavailable` renderings, hr_HR "znakova", unaudited `none`
+  agreement, the RTP / refund collision audit) still stand; the nb_NO
+  catalog, read as a terminology reference for batch 8, shows two of them
+  ("Plassen er ikke ledig", "Splitt igjen!").
+- `variance-tradeoff` was misread as "smaller payouts" by the first draft
+  of two batch-7 locales even with the §C note; older catalogs were not
+  re-audited for the same reading.
+
+Still needed before release: an in-game check (Armenian and Bengali /
+Tamil script rendering and conjuncts, Uzbek U+02BB / U+02BC, Mongolian
+Cyrillic ө / ү, Irish fadas, line wrapping of the longer Tamil and
+Swahili strings) and native-speaker review.
