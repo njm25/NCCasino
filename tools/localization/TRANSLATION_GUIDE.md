@@ -634,31 +634,31 @@ Continuation of the table above for later locales (same concept rows; split so n
 
 Second continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 2) | hu_HU | ro_RO |
-| --- | --- | --- |
-| generic physical dealer/croupier | osztó | crupier |
-| Baccarat banker/bank side | Bankár (Játékos / Bankár) | Bancher (Jucător / Bancher) |
-| bet / wager amount | tét | pariu (miză = suma) |
-| all in | mindent bele | Mizează tot |
-| rebet (repeat previous wager) | tét ismétlése | Repetă pariul |
-| chip denomination/value | zsetoncímlet | valoarea jetonului |
-| win streak / chain (PvE) | győzelmi sorozat (sorozat max. körszáma) | serie de victorii (număr maxim de runde în serie) |
-| cash out / payout | nyeremény felvétele / kifizetés | Încasează / plată |
-| Blackjack: shoe | kártyaadagoló | sabot |
-| Blackjack: hit | Lap | Carte |
-| Blackjack: stand | Megállok | Stai |
-| Blackjack: split | Szétválasztás | Împarte |
-| Blackjack: insurance | biztosítás | asigurare |
-| Blackjack: same-rank vs. same-value split rule | Azonos rang / Azonos pontérték | Același rang / Aceeași valoare |
-| RPS: throw/action (not generic "turn") | választás | alegere |
-| Dragon Descent: vine mechanic | inda | liană |
-| ON/OFF display state | BE / KI | PORNIT / OPRIT |
-| Slots: variance (risk preset, not the RTP) | volatilitás | volatilitate |
-| Slots: house edge | házelőny | avantajul casei |
-| Slots: return/RTP verb | visszafizetési arány | rata de returnare (către jucător) |
-| seat | hely (szék = chair) | loc (scaun = chair) |
-| banked winnings (overflow bank) | tárolt nyeremények | câștiguri păstrate |
-| overflow: hold vs. drop nearby | Őrizd meg nekem / Leejtés a közelben | Păstrează-le pentru mine / Lasă-le pe jos lângă mine |
+| Concept (continued 2) | hu_HU | ro_RO | pt_PT |
+| --- | --- | --- | --- |
+| generic physical dealer/croupier | osztó | crupier | croupier |
+| Baccarat banker/bank side | Bankár (Játékos / Bankár) | Bancher (Jucător / Bancher) | Banca (Jogador / Banca) |
+| bet / wager amount | tét | pariu (miză = suma) | aposta |
+| all in | mindent bele | Mizează tot | Apostar tudo |
+| rebet (repeat previous wager) | tét ismétlése | Repetă pariul | Repetir aposta |
+| chip denomination/value | zsetoncímlet | valoarea jetonului | valor da ficha |
+| win streak / chain (PvE) | győzelmi sorozat (sorozat max. körszáma) | serie de victorii (număr maxim de runde în serie) | série de vitórias (máximo de rondas em série) |
+| cash out / payout | nyeremény felvétele / kifizetés | Încasează / plată | Retirar / pagamento |
+| Blackjack: shoe | kártyaadagoló | sabot | sapato |
+| Blackjack: hit | Lap | Carte | Pedir carta |
+| Blackjack: stand | Megállok | Stai | Ficar |
+| Blackjack: split | Szétválasztás | Împarte | Dividir |
+| Blackjack: insurance | biztosítás | asigurare | seguro |
+| Blackjack: same-rank vs. same-value split rule | Azonos rang / Azonos pontérték | Același rang / Aceeași valoare | Mesma carta / Mesmo valor |
+| RPS: throw/action (not generic "turn") | választás | alegere | jogada |
+| Dragon Descent: vine mechanic | inda | liană | trepadeira |
+| ON/OFF display state | BE / KI | PORNIT / OPRIT | LIGADO / DESLIGADO |
+| Slots: variance (risk preset, not the RTP) | volatilitás | volatilitate | volatilidade |
+| Slots: house edge | házelőny | avantajul casei | vantagem da casa |
+| Slots: return/RTP verb | visszafizetési arány | rata de returnare (către jucător) | retorno ao jogador |
+| seat | hely (szék = chair) | loc (scaun = chair) | lugar (cadeira = chair) |
+| banked winnings (overflow bank) | tárolt nyeremények | câștiguri păstrate | ganhos guardados |
+| overflow: hold vs. drop nearby | Őrizd meg nekem / Leejtés a közelben | Păstrează-le pentru mine / Lasă-le pe jos lângă mine | Guardar para mim / Largar aqui perto |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -858,6 +858,20 @@ a real, previously-observed defect, not a hypothetical risk.
   `aparat` with `role` and `linii de plată`; its run is `șir` (`{run} la
   rând`), distinct from the PvE win streak `serie`. Overflow drop is `lăsate
   pe jos` (Minecraft's `Aruncă` can read as throwing away).
+- `pt_PT`: European Portuguese, post-1990 spelling (`ação`, `atual`,
+  `carateres`, `contacto`, `prémio`); informal `tu` with Portuguese clitic
+  placement (`Sentaste-te`, `levanta-te`) and `a + infinitive` rather than
+  the gerund (`A sair do jogo...`). It must not read as pt_BR: `ronda` (a
+  game round), `definições`, `guardar`, `eliminar`, `ficheiro`, `croupier`
+  (not `crupiê`), `ecrã`. Gender-neutral toward the player (`Já tens um
+  lugar`, `Boas-vindas a {game}`); welcome lines avoid gendering the player,
+  and `{game}` follows a bare preposition as a proper name. Cash-out is
+  `Retirar`; the Baccarat sides are `Jogador` / `Banca`; the house edge is
+  `vantagem da casa`. Slots keeps the name `Slots`, with `rolos`, `filas`
+  (rows) and `linhas de pagamento`; its run is `sequência`, distinct from
+  the PvE win streak `série`; a spin is `rodada` and Auto Spin `rodadas
+  automáticas`. Minecraft mobs are `criatura`. Same Rank / Same Value are
+  `Mesma carta` / `Mesmo valor` (`figura` would mean a face card).
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.

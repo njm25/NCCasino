@@ -65,3 +65,30 @@
   Findings: `reviews/ro_RO-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `ro_RO: name: "Română"`.
 - Native-speaker review: not performed; recommended before release.
+
+### pt_PT -- Português (Portugal) (European Portuguese)
+
+- Final catalog SHA-256: `9651acda7b36dbfee3e6fbdb61b4d816e2f951a91d480bb5aac088f2bceb21af` (identical in the run directory and
+  `src/main/resources/lang/pt_PT.yml`; NFC-normalized)
+- Voice: European Portuguese, AO90 spelling, informal `tu` with European
+  clitics and `a + infinitive`; written from the English source, not
+  adapted from pt_BR (`ronda`, `definições`, `guardar`, `eliminar`,
+  `croupier`); gender-neutral welcome `Boas-vindas a {game}`; cash-out
+  `Retirar`, Baccarat `Jogador` / `Banca`, Slots `Slots` with `rolos`,
+  `filas`, `linhas de pagamento`, run `sequência` vs streak `série`
+  (recorded in the guide).
+- Structural: helper strict check 0 errors (residue warnings are Portuguese
+  `a` and the loanword `chat` -- false positives); Brazilian-form scan
+  clean; `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all eighteen new locales registered: every one
+  of the 24 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 2 (`dragon-descent.rebet-reset` "reposta" read as the wager
+  being put back -- the stack is cleared; `roulette.spin-results`
+  "rodada" read as a pt_BR round -> "giro"), Tier 2 = 2 (Auto Spin settings
+  name, rebet feature name), Tier 3 = 26, all applied, plus the sibling
+  Baccarat rebet and seated notices and the loss-limit pair aligned.
+  35 keys patched, rechecked after. Findings: `reviews/pt_PT-findings-*.md`.
+- Not registered in `locales.yml`. Registry line:
+  `pt_PT: name: "Português (Portugal)"`.
+- Native-speaker review: not performed; recommended before release.
