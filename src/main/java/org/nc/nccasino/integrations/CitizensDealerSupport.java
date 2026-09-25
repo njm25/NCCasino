@@ -72,7 +72,9 @@ public final class CitizensDealerSupport {
     private static boolean available;
 
     /** Admins currently being asked to right-click an NPC, keyed by player id. */
-    private static final Map<UUID, String> pendingBinds = new HashMap<>();
+    private static final Map<UUID, BindRequest> pendingBinds = new HashMap<>();
+
+    private record BindRequest(String internalName, UUID requestId) {}
 
     /**
      * The Bukkit entity each bound NPC was last seen wearing, keyed by NPC id.
@@ -92,6 +94,22 @@ public final class CitizensDealerSupport {
         return available;
     }
 
+    /** Releases this plugin instance's transient Citizens state on disable. */
+    public static void shutdown() {
+        pendingBinds.clear();
+        for (UUID bodyId : lastKnownBody.values()) {
+            Dealer.removeDealerFromMap(bodyId);
+        }
+        lastKnownBody.clear();
+        available = false;
+        plugin = null;
+    }
+
+    /** Cancels a pending bind when its admin leaves the server. */
+    public static void cancelBind(UUID adminId) {
+        pendingBinds.remove(adminId);
+    }
+
     /**
      * Wires up Citizens support if the plugin is present. Safe -- and a no-op --
      * to call on a server without Citizens.
@@ -104,6 +122,50 @@ public final class CitizensDealerSupport {
         }
         Bukkit.getPluginManager().registerEvents(new CitizensDealerListener(), nccasino);
         nccasino.getLogger().info("Citizens detected -- NPC dealers are available.");
+        // Best-effort immediate pass, for the case where Citizens already
+        // finished loading its NPCs from disk before this ran. Not relied on
+        // alone -- see sweepAlreadySpawned's own doc for why.
+        sweepAlreadySpawned();
+    }
+
+    /**
+     * Restores every already-spawned NPC carrying NCCasino binding metadata.
+     *
+     * <p>Citizens is a soft-dependency, so Bukkit enables it before NCCasino,
+     * but Citizens' own documentation and a corroborating reported timing bug
+     * (CitizensDev/Citizens2#1784) both say {@link CitizensAPI#getNPCRegistry()}
+     * is not reliably populated merely because Citizens' {@code onEnable} has
+     * returned -- NPCs are loaded from disk on a schedule Citizens controls,
+     * not synchronously within its own enable. Calling this only once, inline
+     * from {@link #register}, can therefore run against an empty or
+     * partially-populated registry and silently restore nothing. The
+     * authoritative caller is {@link CitizensDealerListener}'s
+     * {@code CitizensEnableEvent}/{@code CitizensReloadEvent} handlers --
+     * Citizens' own documented "safe to use the API now" signal -- with the
+     * immediate call in {@link #register} kept only as a harmless, idempotent
+     * best-effort pass for whichever ordering happens to already have NPCs
+     * loaded.
+     *
+     * <p>Without this sweep at all, a dealer bound to an NPC already standing
+     * in the world at server start would remain untagged and inert until
+     * something forces a fresh spawn event (a manual {@code /npc despawn} +
+     * {@code /npc spawn}, or a chunk unload/reload). Safe to call more than
+     * once, from any trigger, in any order: {@link #restoreOnSpawn} is itself
+     * idempotent for an NPC whose entity has not changed since the last call.
+     */
+    static void sweepAlreadySpawned() {
+        if (!available) {
+            return;
+        }
+        var registry = CitizensAPI.getNPCRegistry();
+        if (registry == null) {
+            return;
+        }
+        for (NPC npc : registry) {
+            if (npc.isSpawned()) {
+                restoreOnSpawn(npc);
+            }
+        }
     }
 
     /**
@@ -116,13 +178,24 @@ public final class CitizensDealerSupport {
         if (!available || npcId == null) {
             return;
         }
-        NPC npc = CitizensAPI.getNPCRegistry().getByUniqueId(npcId);
+        UUID previousBody = lastKnownBody.remove(npcId);
+        if (previousBody != null) {
+            Dealer.removeDealerFromMap(previousBody);
+        }
+        var registry = CitizensAPI.getNPCRegistry();
+        if (registry == null) {
+            return;
+        }
+        NPC npc = registry.getByUniqueId(npcId);
         if (npc == null) {
             return;
         }
         npc.data().remove(META_DEALER_ID);
         npc.data().remove(META_INTERNAL_NAME);
-        lastKnownBody.remove(npcId);
+        // Dealer.dealers is keyed by entity UUID for a Citizens-backed dealer
+        // (see adoptBody), never by NCCasino's own dealerId -- evict by the
+        // same key here, or this entry outlives the NPC's binding for the
+        // life of the server.
         Entity entity = npc.getEntity();
         if (entity instanceof LivingEntity living) {
             Dealer.clearCitizensTags(living);
@@ -134,7 +207,8 @@ public final class CitizensDealerSupport {
         if (!available || entity == null) {
             return false;
         }
-        return CitizensAPI.getNPCRegistry().isNPC(entity);
+        var registry = CitizensAPI.getNPCRegistry();
+        return registry != null && registry.isNPC(entity);
     }
 
     /**
@@ -146,14 +220,15 @@ public final class CitizensDealerSupport {
             return;
         }
         UUID adminId = admin.getUniqueId();
-        pendingBinds.put(adminId, internalName);
+        BindRequest request = new BindRequest(internalName, UUID.randomUUID());
+        pendingBinds.put(adminId, request);
         admin.closeInventory();
         admin.sendMessage(plugin.getLocalization().text(admin, "admin.citizens-bind-prompt"));
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             // Only expire the request we created: if the admin already bound an
             // NPC and started a second bind, that newer request must survive.
-            if (internalName.equals(pendingBinds.get(adminId))) {
+            if (request.equals(pendingBinds.get(adminId))) {
                 pendingBinds.remove(adminId);
                 if (admin.isOnline()) {
                     admin.sendMessage(plugin.getLocalization().text(admin, "admin.citizens-bind-timeout"));
@@ -168,12 +243,11 @@ public final class CitizensDealerSupport {
      * @return true if the click was consumed by the bind flow
      */
     static boolean consumeBindClick(NPC npc, Player clicker) {
-        String internalName = pendingBinds.get(clicker.getUniqueId());
-        if (internalName == null) {
+        BindRequest request = pendingBinds.remove(clicker.getUniqueId());
+        if (request == null) {
             return false;
         }
-        pendingBinds.remove(clicker.getUniqueId());
-        bind(npc, internalName, clicker);
+        bind(npc, request.internalName(), clicker);
         return true;
     }
 
@@ -239,9 +313,30 @@ public final class CitizensDealerSupport {
      * place, returning the dealer id to carry over to the new body.
      */
     private static UUID detachExistingBody(String internalName) {
+        UUID retainedId = null;
+        if (available) {
+            var registry = CitizensAPI.getNPCRegistry();
+            if (registry != null) {
+                for (NPC boundNpc : registry) {
+                    if (!internalName.equals(readNpcString(boundNpc, META_INTERNAL_NAME))) {
+                        continue;
+                    }
+                    String rawId = readNpcString(boundNpc, META_DEALER_ID);
+                    if (rawId != null) {
+                        try {
+                            retainedId = UUID.fromString(rawId);
+                        } catch (IllegalArgumentException e) {
+                            plugin.getLogger().warning("Malformed dealer id on Citizens NPC " + boundNpc.getUniqueId());
+                        }
+                    }
+                    detachOnDespawn(boundNpc);
+                    releaseNpc(boundNpc.getUniqueId());
+                }
+            }
+        }
         LivingEntity existing = Dealer.findDealerByInternalName(internalName);
         if (existing == null) {
-            return null;
+            return retainedId;
         }
         UUID dealerId = Dealer.getUniqueId(existing);
 
@@ -262,7 +357,37 @@ public final class CitizensDealerSupport {
         if (dealerId != null) {
             Dealer.removeDealerFromMap(dealerId);
         }
-        return dealerId;
+        return dealerId != null ? dealerId : retainedId;
+    }
+
+    /** Drops the current game and body when Citizens temporarily despawns an NPC. */
+    static void detachOnDespawn(NPC npc) {
+        if (plugin == null) {
+            return;
+        }
+        String internalName = readNpcString(npc, META_INTERNAL_NAME);
+        String rawId = readNpcString(npc, META_DEALER_ID);
+        if (internalName == null || rawId == null) {
+            return;
+        }
+        UUID dealerId;
+        try {
+            dealerId = UUID.fromString(rawId);
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("Malformed dealer id on Citizens NPC " + npc.getUniqueId());
+            return;
+        }
+        Entity entity = npc.getEntity();
+        if (entity instanceof LivingEntity living
+            && npc.getUniqueId().equals(Dealer.getCitizensNpcId(living))) {
+            AdminMenu.clearAllEditModes(living);
+            Dealer.clearCitizensTags(living);
+        }
+        plugin.deleteAssociatedInventories(dealerId, internalName);
+        UUID bodyId = lastKnownBody.remove(npc.getUniqueId());
+        if (bodyId != null) {
+            Dealer.removeDealerFromMap(bodyId);
+        }
     }
 
     /**
@@ -292,6 +417,17 @@ public final class CitizensDealerSupport {
             // Leave the NPC alone rather than resurrecting a dead dealer.
             npc.data().remove(META_DEALER_ID);
             npc.data().remove(META_INTERNAL_NAME);
+            return;
+        }
+
+        UUID npcId = npc.getUniqueId();
+        UUID bodyId = living.getUniqueId();
+        if (bodyId.equals(lastKnownBody.get(npcId))
+            && Dealer.isDealer(living)
+            && dealerId.equals(Dealer.getUniqueId(living))
+            && npcId.equals(Dealer.getCitizensNpcId(living))
+            && internalName.equals(Dealer.getInternalName(living))
+            && org.nc.nccasino.entities.DealerInventory.getInventory(dealerId) != null) {
             return;
         }
 
@@ -363,6 +499,7 @@ public final class CitizensDealerSupport {
         if (internalName == null) {
             return;
         }
+        String dealerIdRaw = readNpcString(npc, META_DEALER_ID);
         npc.data().remove(META_DEALER_ID);
         npc.data().remove(META_INTERNAL_NAME);
 
@@ -375,6 +512,25 @@ public final class CitizensDealerSupport {
             Dealer.clearCitizensTags(living);
             if (dealerId != null) {
                 Dealer.removeDealerFromMap(dealerId);
+            }
+        } else if (dealerIdRaw != null) {
+            // Citizens removed this NPC while it had no live Bukkit entity
+            // (e.g. `/npc despawn` followed by `/npc remove`, or removal in an
+            // unloaded chunk). The entity-keyed cleanup above cannot run --
+            // there is no entity to read a dealerId or hand to
+            // deleteAssociatedInventories -- but the NPC-side record just
+            // cleared above still names the dealer, so the inventory/session
+            // teardown that a live-entity removal already gets is not skipped
+            // here too. This does not clear AdminMenu.clearAllEditModes: that
+            // tracks state by live LivingEntity reference identity, and no
+            // such reference exists once the entity is gone.
+            try {
+                UUID dealerId = UUID.fromString(dealerIdRaw);
+                plugin.deleteAssociatedInventories(dealerId, internalName);
+            } catch (IllegalArgumentException e) {
+                plugin.getLogger().warning(
+                    "Citizens NPC " + npc.getUniqueId() + " carried a malformed NCCasino dealer id on removal: "
+                        + dealerIdRaw);
             }
         }
         if (lastBody != null) {

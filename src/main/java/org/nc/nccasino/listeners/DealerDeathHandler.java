@@ -27,7 +27,8 @@ public class DealerDeathHandler implements Listener {
             NamespacedKey dealerKey = new NamespacedKey(plugin, "dealer_villager");
 
             // Check if the mob is a dealer
-            if (dataContainer.has(dealerKey, PersistentDataType.BYTE)) {
+            if (dataContainer.has(dealerKey, PersistentDataType.BYTE)
+                && Dealer.getBackend(mob) != Dealer.Backend.CITIZENS) {
                 // Get the internal name and unique ID of the dealer
                 String internalName = dataContainer.get(new NamespacedKey(plugin, "internal_name"), PersistentDataType.STRING);
                 String uniqueId = dataContainer.get(new NamespacedKey(plugin, "dealer_unique_id"), PersistentDataType.STRING);

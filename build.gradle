@@ -53,6 +53,13 @@ dependencies {
     testImplementation('com.github.MilkBowl:VaultAPI:1.7') {
         exclude group: 'org.bukkit'
     }
+    // Same artifact/pin as the main compileOnly dependency above, so
+    // CitizensDealerSupport/CitizensDealerListener lifecycle tests can compile
+    // against NPC/NPCRegistry/CitizensAPI without bundling the plugin jar.
+    testImplementation('net.citizensnpcs:citizensapi:2.0.43-SNAPSHOT') {
+        exclude group: 'org.bukkit'
+        exclude group: 'org.spigotmc'
+    }
 }
 
 def targetJavaVersion = 21

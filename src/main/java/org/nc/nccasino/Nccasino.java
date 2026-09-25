@@ -123,6 +123,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         if (overflowBankReminder != null) {
             overflowBankReminder.stop();
         }
+        CitizensDealerSupport.shutdown();
         savePreferences();
     }
 
@@ -297,7 +298,16 @@ public final class Nccasino extends JavaPlugin implements Listener {
             // Now check all entities
             for (Entity entity : world.getEntities()) {
                 if (entity instanceof Mob mob) {
-                    if (Dealer.isDealer(mob)) {
+                    // A Citizens-backed dealer is restored by
+                    // CitizensDealerSupport, never by this legacy vanilla-mob
+                    // scan -- Citizens alone owns this entity's collidability,
+                    // passengers, and equipment. Letting a Citizens dealer
+                    // fall through here would fight that ownership (an
+                    // unconditional setCollidable(false) below, plus the
+                    // jockey-stack remount further down actively removing and
+                    // remounting passengers) the moment CitizensDealerSupport
+                    // tags an already-spawned mob-type NPC before this runs.
+                    if (Dealer.isDealer(mob) && Dealer.getBackend(mob) != Dealer.Backend.CITIZENS) {
                         // Skip if we've already initialized this dealer
                         if (initializedDealers.contains(mob.getUniqueId())) {
                             //getLogger().info("[Debug] Skipping already initialized dealer: " + mob.getUniqueId());
@@ -623,7 +633,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         
         Dealer.updateGameType(mob, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
         // Citizens NPCs have no NCCasino-managed jockey stack to rebuild.
-        if (mob instanceof Mob mobEntity) {
+        if (mob instanceof Mob mobEntity && Dealer.getBackend(mob) != Dealer.Backend.CITIZENS) {
             new JockeyManager(mobEntity);
         }
     }
@@ -641,14 +651,33 @@ public final class Nccasino extends JavaPlugin implements Listener {
     }
         
     public void deleteAssociatedInventories(LivingEntity mob) {
-        UUID dealerId = Dealer.getUniqueId(mob);
-    
+        deleteAssociatedInventories(Dealer.getUniqueId(mob), Dealer.getInternalName(mob));
+    }
+
+    /**
+     * Tears down a dealer's game session, inventories, and open player views by
+     * id rather than by its live entity.
+     *
+     * <p>A permanently removed Citizens NPC can have no live Bukkit entity at
+     * cleanup time ({@code npc.getEntity() == null}), which makes the
+     * entity-keyed {@link #deleteAssociatedInventories(LivingEntity)} unusable —
+     * none of the state this method tears down (the {@link DealerInventory},
+     * open {@link Menu}/{@link Client}/{@link AnimationMessage} views, active
+     * budget reservations released via each game's {@code DealerInventory.delete()})
+     * is actually keyed by the entity itself, only by {@code dealerId}/
+     * {@code internalName}, so this overload works identically without one.
+     */
+    public void deleteAssociatedInventories(UUID dealerId, String internalName) {
+        if (dealerId == null) {
+            return;
+        }
+
         DealerInventory inv = DealerInventory.getInventory(dealerId);
         if (inv != null) {
             inv.delete();
             DealerInventory.inventories.remove(dealerId);
         }
-    
+
         // Close inventories on the main thread
         Bukkit.getScheduler().runTask(this, () -> {
             // Close all player inventories linked to this dealer
@@ -656,8 +685,6 @@ public final class Nccasino extends JavaPlugin implements Listener {
             for (Player player : menuPlayers) {
                 player.closeInventory();
             }
-
-            String internalName = Dealer.getInternalName(mob);
 
             List<Player> clientPlayers = Client.getOpenInventories(internalName);
             for (Player player : clientPlayers) {
@@ -1012,6 +1039,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
     }
 
     public void executeOnDealer(String internalName, Runnable action) {
+        // A Citizens NPC can walk away from the location saved at bind time.
+        // If its body is already loaded, use that live identity directly.
+        if (Dealer.findDealerByInternalName(internalName) != null) {
+            Bukkit.getScheduler().runTask(this, action);
+            return;
+        }
         Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
             File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
             FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile); // Reload fresh config
@@ -1143,7 +1176,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
                 // Jockey stacks only exist on mob dealers we spawned; a
                 // Citizens-backed dealer has nothing here to tear down.
-                if (mob instanceof Mob mobEntity) {
+                if (mob instanceof Mob mobEntity && Dealer.getBackend(mob) != Dealer.Backend.CITIZENS) {
                     // Create a JockeyManager to handle stack cleanup
                     JockeyManager jockeyManager = new JockeyManager(mobEntity);
 

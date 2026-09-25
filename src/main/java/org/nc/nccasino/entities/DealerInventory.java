@@ -132,7 +132,10 @@ public class DealerInventory implements InventoryHolder, Listener {
     }
 
     public static void unregisterAllListeners(LivingEntity mob) {
-        HandlerList.unregisterAll(inventories.get(mob.getUniqueId()));
+        DealerInventory inventory = inventories.get(Dealer.getUniqueId(mob));
+        if (inventory != null) {
+            HandlerList.unregisterAll(inventory);
+        }
     }
 
     // Add item with a custom name to the inventory

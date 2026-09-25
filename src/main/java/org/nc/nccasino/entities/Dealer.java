@@ -450,7 +450,15 @@ public class Dealer {
      * itself untouched and fully usable for whatever else the admin wants.
      */
     public static void clearCitizensTags(LivingEntity entity) {
-        deleteAllPersistentData(entity.getPersistentDataContainer());
+        PersistentDataContainer container = entity.getPersistentDataContainer();
+        container.remove(DEALER_KEY);
+        container.remove(UNIQUE_ID_KEY);
+        container.remove(NAME_KEY);
+        container.remove(GAME_TYPE_KEY);
+        container.remove(INTERNAL_NAME_KEY);
+        container.remove(ANIMATION_MESSAGE_KEY);
+        container.remove(BACKEND_KEY);
+        container.remove(CITIZENS_NPC_ID_KEY);
     }
 
     public static void openDealerInventory(LivingEntity mob, Player player) {
@@ -571,7 +579,7 @@ public class Dealer {
 
             // Jockey stacks are a mob-dealer feature only -- a Citizens NPC
             // has no NCCasino-managed stack to rename.
-            if (mob instanceof Mob mobEntity) {
+            if (mob instanceof Mob mobEntity && getBackend(mob) != Backend.CITIZENS) {
                 // Update names of all mobs in the stack
                 JockeyManager jockeyManager = new JockeyManager(mobEntity);
                 for (JockeyNode jockey : jockeyManager.getJockeys()) {
@@ -722,7 +730,11 @@ public class Dealer {
 
     
         // Remove the persistent data, then dispose of the body.
-        deleteAllPersistentData(dataContainer);
+        if (backend == Backend.CITIZENS) {
+            clearCitizensTags(mob);
+        } else {
+            deleteAllPersistentData(dataContainer);
+        }
         if (backend == Backend.CITIZENS) {
             // The NPC belongs to the admin, not to us. Deleting the dealer
             // only detaches the game -- Citizens keeps the NPC, its skin and
@@ -751,7 +763,9 @@ public class Dealer {
     }
 
     public static void removeDealerFromMap(UUID dealerId) {
+        if (dealerId == null) return;
         dealers.remove(dealerId);
+        dealers.values().removeIf(dealer -> dealerId.equals(getUniqueId(dealer.mob)));
     }
 
     /**
@@ -774,8 +788,15 @@ public class Dealer {
     }
 
     public static LivingEntity getMobFromId(UUID dealerId) {
+        if (dealerId == null) return null;
         Dealer dealer = dealers.get(dealerId);
-        return (dealer != null) ? dealer.getMob() : null;
+        if (dealer != null) return dealer.getMob();
+        for (Dealer candidate : dealers.values()) {
+            if (dealerId.equals(getUniqueId(candidate.mob))) {
+                return candidate.mob;
+            }
+        }
+        return null;
     }
 
     /**

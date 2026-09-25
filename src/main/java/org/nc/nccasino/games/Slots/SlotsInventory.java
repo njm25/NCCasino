@@ -11,6 +11,7 @@ import org.nc.nccasino.session.ExitReason;
 import org.nc.nccasino.session.SessionRegistry;
 
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
 
@@ -35,6 +36,11 @@ public class SlotsInventory extends DealerInventory {
 
     @Override
     public void delete() {
+        // A dealer can disappear while a spin has a committed result. Resolve
+        // each machine before dropping the only references to those sessions.
+        for (Map.Entry<UUID, SlotsMachine> entry : new ArrayList<>(machines.entrySet())) {
+            SessionRegistry.terminateSession(entry.getKey(), entry.getValue(), ExitReason.PLUGIN_DISABLE);
+        }
         super.delete();
         machines.clear();
         HandlerList.unregisterAll(this);
@@ -48,6 +54,9 @@ public class SlotsInventory extends DealerInventory {
 
         Player player = (Player) event.getPlayer();
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (getInventory() == null || player.getOpenInventory().getTopInventory() == null) {
+                return;
+            }
             if (player.getOpenInventory().getTopInventory().getHolder() != this.getInventory().getHolder()) {
                 return;
             }

@@ -104,7 +104,7 @@ public class DeleteCommand implements CasinoCommand {
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     // Jockey stacks and armor-stand riders only exist on mob
                     // dealers; a Citizens-backed dealer has neither.
-                    if (mob instanceof Mob mobEntity) {
+                    if (mob instanceof Mob mobEntity && Dealer.getBackend(mob) != Dealer.Backend.CITIZENS) {
                         // Create a JockeyManager to handle stack cleanup
                         JockeyManager jockeyManager = new JockeyManager(mobEntity);
 

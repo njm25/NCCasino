@@ -256,7 +256,9 @@ public class AdminMenu extends Menu {
         );
 
        /*  addItem(createCustomItem(Material.GOLD_INGOT, "Edit Currency", "Current: " + currencyName + " (" + currencyMaterial + ")"),slotMapping.get(SlotOption.EDIT_CURRENCY));*/
-        addItemAndLore(Material.COMPASS, 1, text("admin.move-dealer"), slotMapping.get(SlotOption.MOVE_DEALER));
+        if (dealer != null && Dealer.getBackend(dealer) != Dealer.Backend.CITIZENS) {
+            addItemAndLore(Material.COMPASS, 1, text("admin.move-dealer"), slotMapping.get(SlotOption.MOVE_DEALER));
+        }
         if (CitizensDealerSupport.isAvailable()) {
             boolean bound = dealer != null && Dealer.getBackend(dealer) == Dealer.Backend.CITIZENS;
             addItemAndLore(Material.PLAYER_HEAD, 1,
@@ -279,7 +281,7 @@ public class AdminMenu extends Menu {
         addItem(head,slotMapping.get(SlotOption.PM) );
         updateCurrencyButtons();
 
-        if (dealer instanceof Mob mobDealer) {
+        if (dealer instanceof Mob mobDealer && Dealer.getBackend(dealer) != Dealer.Backend.CITIZENS) {
             Material mobEgg = MobSelectionMenu.getSpawnEggFor(mobDealer.getType());
 
             // Now display that egg item in the slot
@@ -614,7 +616,7 @@ public class AdminMenu extends Menu {
         // Species, variant and jockey editing are all mob-only. A Citizens NPC's
         // appearance is Citizens' to manage, so send the admin there instead of
         // opening a menu whose every button would be a no-op.
-        if (!(dealer instanceof Mob)) {
+        if (!(dealer instanceof Mob) || Dealer.getBackend(dealer) == Dealer.Backend.CITIZENS) {
             player.sendMessage(text("admin.citizens-npc-lore"));
             return;
         }
@@ -1149,6 +1151,14 @@ public class AdminMenu extends Menu {
     }
 
     private void handleMoveDealer(Player player) {
+        if (dealer == null) {
+            player.sendMessage(text("admin.dealer-not-found"));
+            return;
+        }
+        if (Dealer.getBackend(dealer) == Dealer.Backend.CITIZENS) {
+            player.sendMessage(text("admin.citizens-npc-lore"));
+            return;
+        }
         UUID playerId = player.getUniqueId();
 
         moveMode.put(playerId, dealer);
@@ -1340,7 +1350,7 @@ public class AdminMenu extends Menu {
                 // spawned. On a Citizens NPC the rename still applies to the
                 // dealer's configured display name, while the NPC keeps the
                 // name and skin its owner gave it.
-                if (dealer instanceof Mob mobDealer) {
+                if (dealer instanceof Mob mobDealer && Dealer.getBackend(dealer) != Dealer.Backend.CITIZENS) {
                     mobDealer.setCustomNameVisible(true);
 
                     // Update all jockey names in the stack

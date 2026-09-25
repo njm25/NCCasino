@@ -9,6 +9,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.integrations.CitizensDealerSupport;
 import org.nc.nccasino.components.AdminMenu;
 import org.nc.nccasino.components.BaccaratMenu;
 import org.nc.nccasino.components.BlackjackMenu;
@@ -102,6 +103,7 @@ public class PlayerSessionListener implements Listener {
      * Also clears stale intro-animation tracking for the same reason.
      */
     private void clearAdminAndInteractionState(Player player, UUID playerId) {
+        CitizensDealerSupport.cancelBind(playerId);
         AdminMenu.clearPlayerEditState(playerId);
         BlackjackMenu.clearPlayerState(playerId);
         RouletteMenu.clearPlayerState(playerId);
