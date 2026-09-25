@@ -800,6 +800,34 @@ Sixth continuation for later locales (same concept rows; split so neither table 
 | banked winnings (overflow bank) | sačuvani dobici | պահված շահումներ | saqlangan yutuqlar | ushindi uliohifadhiwa | airgead buaite sábháilte | хадгалсан хожил | সংরক্ষিত জেতা অর্থ | சேமிக்கப்பட்ட வெற்றித் தொகை |
 | overflow: hold vs. drop nearby | Čuvaj ih za mene / Ostavi ih na tlu u blizini | Պահել ինձ համար / Գցել մոտակայքում | Men uchun saqlash / Yaqin atrofga tashlash | Nihifadhie / Dondosha karibu | Coinnigh dom é / Scaoil in aice láimhe | Надад хадгалж өгөх / Ойролцоо хаях | আমার জন্য রেখে দিন / কাছে মাটিতে ফেলুন | எனக்காக வைத்திருங்கள் / அருகில் போடுங்கள் |
 
+Seventh continuation for later locales (same concept rows; split so neither table grows too wide to read):
+
+| Concept (continued 7) | nn_NO |
+| --- | --- |
+| generic physical dealer/croupier | dealer |
+| Baccarat banker/bank side | Bank (Spelar / Bank) |
+| bet / wager amount | innsats |
+| all in | All-in |
+| rebet (repeat previous wager) | Gjenta innsats |
+| chip denomination/value | sjetongverdi |
+| win streak / chain (PvE) | rekkje / sigersrekkje (maks tal på rundar på rad) |
+| cash out / payout | Ta ut / utbetaling |
+| Blackjack: shoe | kortsko |
+| Blackjack: hit | Trekk kort |
+| Blackjack: stand | Stå |
+| Blackjack: split | Splitt |
+| Blackjack: insurance | forsikring |
+| Blackjack: same-rank vs. same-value split rule | Same valør / Same verdi |
+| RPS: throw/action (not generic "turn") | trekk |
+| Dragon Descent: vine mechanic | klatreplante (fl. klatreplantar) |
+| ON/OFF display state | PÅ / AV |
+| Slots: variance (risk preset, not the RTP) | volatilitet |
+| Slots: house edge | fordelen til huset |
+| Slots: return/RTP verb | tilbakebetaling til spelaren (RTP) |
+| seat | plass (stol = chair) |
+| banked winnings (overflow bank) | lagra gevinstar |
+| overflow: hold vs. drop nearby | Ta vare på dei for meg / Legg dei på bakken i nærleiken |
+
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
 settled — do not fill a cell with a guess presented as an established pin.
@@ -1474,6 +1502,17 @@ a real, previously-observed defect, not a hypothetical risk.
   `படர்கொடிகள்`; RTP `வீரருக்கான செலுத்துகை விகிதம்`, kept apart from the
   refund `திருப்பித் தரப்பட்டது`; OFF `முடக்கத்தில்`; Tamil card names
   (ஜாக்கி / ராணி / ராஜா / ஏஸ்; ஆட்டின் / டைமன் / கிளாவர் / இஸ்பேடு).
+- `nn_NO`: Norwegian Nynorsk (current official norm), informal `du`
+  with plain imperatives (`Klikk`, `Vel`, `Skriv`), « » quotes, decimal
+  comma (`0,95:1`, `2,5 %`), a space before `...`. Nynorsk forms throughout,
+  never Bokmål (`ikkje`, `berre`, `frå`, `allereie`, `høgd`, `storleik`),
+  prepositional genitives instead of s-genitives (`fordelen til huset`,
+  `turen til {player}`), pronouns by grammatical gender (innsats → han,
+  utbetaling / forsikring → ho), and neuter agreement with `spinn` /
+  `autospinn` (`aktivt`). `dealer`, Baccarat `Spelar` / `Bank`, `innsats`,
+  `Ta ut`, `pott`; slots run `serie` vs PvE streak `rekkje`, auto-spin batch
+  `omgang`; vines `klatreplantar` (plante is masculine); RTP
+  `tilbakebetaling til spelaren`, kept apart from `refundert`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
