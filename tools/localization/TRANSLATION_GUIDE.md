@@ -601,31 +601,31 @@ far from the original example that established the pin.
 
 Continuation of the table above for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued) | ko_KR | pl_PL | it_IT |
-| --- | --- | --- | --- |
-| generic physical dealer/croupier | 딜러 | krupier | croupier |
-| Baccarat banker/bank side | 뱅커 (플레이어 / 뱅커) | Bankier (Gracz / Bankier) | Banco (Giocatore / Banco) |
-| bet / wager amount | 베팅 (베팅액) | zakład (stawka) | puntata |
-| all in | 올인 | va banque | punta tutto |
-| rebet (repeat previous wager) | 재베팅 | ponawianie zakładu (ponowiono zakład) | ripeti puntata (ripetizione) |
-| chip denomination/value | 칩 금액 | nominał żetonu | valore della fiche |
-| win streak / chain (PvE) | 연승 (최대 연승 라운드) | seria zwycięstw (maks. liczba rund serii) | serie di vittorie (round massimi della serie) |
-| cash out / payout | 캐시아웃 / 지급 (당첨금) | wypłać / wypłata | incassa / vincita, pagamento |
-| Blackjack: shoe | 슈 | sabot | sabot |
-| Blackjack: hit | 히트 | Dobierz | Carta |
-| Blackjack: stand | 스탠드 | Pas (pasujesz) | Stai |
-| Blackjack: split | 스플릿 | Rozdziel (rozdzielanie) | Dividi (divisione) |
-| Blackjack: insurance | 인슈어런스 | ubezpieczenie | assicurazione |
-| Blackjack: same-rank vs. same-value split rule | 같은 랭크 / 같은 점수 | Ta sama ranga / Ta sama wartość | Stesso rango / Stesso valore |
-| RPS: throw/action (not generic "turn") | 낼 손 (내다) | zagranie (zatwierdź zagranie) | mossa |
-| Dragon Descent: vine mechanic | 덩굴 | pnącza | rampicanti |
-| ON/OFF display state | 켜짐 / 꺼짐 | WŁ. / WYŁ. | ATTIVATA / DISATTIVATA (Attivato / Disattivato; Sì / No where one value fills labels of both genders) |
-| Slots: variance (risk preset, not the RTP) | 변동성 | zmienność | volatilità |
-| Slots: house edge | 하우스 엣지 | przewaga kasyna | vantaggio della casa |
-| Slots: return/RTP verb | 환수율 (돌려받다) | zwrot (zwrot dla gracza) | ritorno al giocatore |
-| seat | 자리 | miejsce (krzesło = chair) | posto (sedia = chair) |
-| banked winnings (overflow bank) | 보관 중인 당첨금 | przechowywane wygrane | vincite custodite |
-| overflow: hold vs. drop nearby | 보관해 두기 / 근처에 떨어뜨리기 | Przechowaj dla mnie / Upuść obok | Tienile da parte / Falle cadere vicino |
+| Concept (continued) | ko_KR | pl_PL | it_IT | id_ID |
+| --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | 딜러 | krupier | croupier | bandar |
+| Baccarat banker/bank side | 뱅커 (플레이어 / 뱅커) | Bankier (Gracz / Bankier) | Banco (Giocatore / Banco) | Bankir (Pemain / Bankir) |
+| bet / wager amount | 베팅 (베팅액) | zakład (stawka) | puntata | taruhan (nilai taruhan) |
+| all in | 올인 | va banque | punta tutto | pertaruhkan semua |
+| rebet (repeat previous wager) | 재베팅 | ponawianie zakładu (ponowiono zakład) | ripeti puntata (ripetizione) | taruhan ulang |
+| chip denomination/value | 칩 금액 | nominał żetonu | valore della fiche | nilai keping |
+| win streak / chain (PvE) | 연승 (최대 연승 라운드) | seria zwycięstw (maks. liczba rund serii) | serie di vittorie (round massimi della serie) | beruntun (ronde beruntun maksimum) |
+| cash out / payout | 캐시아웃 / 지급 (당첨금) | wypłać / wypłata | incassa / vincita, pagamento | cairkan / pembayaran |
+| Blackjack: shoe | 슈 | sabot | sabot | kotak kartu |
+| Blackjack: hit | 히트 | Dobierz | Carta | Ambil |
+| Blackjack: stand | 스탠드 | Pas (pasujesz) | Stai | Tahan (memilih Tahan) |
+| Blackjack: split | 스플릿 | Rozdziel (rozdzielanie) | Dividi (divisione) | Pisah |
+| Blackjack: insurance | 인슈어런스 | ubezpieczenie | assicurazione | asuransi |
+| Blackjack: same-rank vs. same-value split rule | 같은 랭크 / 같은 점수 | Ta sama ranga / Ta sama wartość | Stesso rango / Stesso valore | Peringkat Sama / Nilai Sama |
+| RPS: throw/action (not generic "turn") | 낼 손 (내다) | zagranie (zatwierdź zagranie) | mossa | pilihan (kunci pilihan) |
+| Dragon Descent: vine mechanic | 덩굴 | pnącza | rampicanti | tanaman rambat |
+| ON/OFF display state | 켜짐 / 꺼짐 | WŁ. / WYŁ. | ATTIVATA / DISATTIVATA (Attivato / Disattivato; Sì / No where one value fills labels of both genders) | AKTIF / NONAKTIF |
+| Slots: variance (risk preset, not the RTP) | 변동성 | zmienność | volatilità | volatilitas |
+| Slots: house edge | 하우스 엣지 | przewaga kasyna | vantaggio della casa | keunggulan kasino |
+| Slots: return/RTP verb | 환수율 (돌려받다) | zwrot (zwrot dla gracza) | ritorno al giocatore | pengembalian ke pemain |
+| seat | 자리 | miejsce (krzesło = chair) | posto (sedia = chair) | kursi |
+| banked winnings (overflow bank) | 보관 중인 당첨금 | przechowywane wygrane | vincite custodite | kemenangan yang disimpan |
+| overflow: hold vs. drop nearby | 보관해 두기 / 근처에 떨어뜨리기 | Przechowaj dla mnie / Upuść obok | Tienile da parte / Falle cadere vicino | Simpan Untukku / Jatuhkan di Dekatku |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -741,6 +741,17 @@ a real, previously-observed defect, not a hypothetical risk.
   casa`, never `vantaggio del banco`. Slots "run" is `sequenza`, distinct
   from the PvE win streak `serie`. Shift is `Maiusc`, as on Italian keyboards. On/off states use participles
   (`ATTIVATA`/`DISATTIVATA`), never the imperative-looking `ATTIVA`/`DISATTIVA`.
+- `id_ID`: standard Indonesian; friendly casual `kamu` address (possessive
+  `-mu`), imperative for buttons and prompts. Indonesian has no gender or
+  inflection, so placeholders sit anywhere. The physical dealer/NPC is
+  `bandar`; the Baccarat Banker side is `Bankir` (Pemain / Bankir), and the
+  house edge is `keunggulan kasino`, so the three stay distinct. Chip is
+  `keping` and multiplier `pengali` (no English loanword for either).
+  Blackjack uses `Ambil` / `Tahan` / `Gandakan` / `Pisah`; the transitive
+  `menahan` never stands alone (`memilih Tahan`); bust is `lewat 21`. Dragon
+  Descent is `Turun ke Sarang Naga` (`penurunan` means a decline).
+  Slots "run" is `deret`, distinct from the PvE win streak `beruntun`.
+  Odds and house-edge examples use a decimal comma (`0,95:1`, `2,5%`).
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.

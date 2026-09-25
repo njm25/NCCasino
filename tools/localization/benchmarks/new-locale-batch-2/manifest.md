@@ -99,3 +99,25 @@
   `reviews/it_IT-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `it_IT: name: "Italiano"`.
 - Native-speaker review: not performed; recommended before release.
+
+### id_ID -- Bahasa Indonesia (Indonesian)
+
+- Final catalog SHA-256: `e754ce27d47b5511d0054a3bb603f995d9ba809cfed7b1ca05d960e383c1f8c7` (identical in the run directory and
+  `src/main/resources/lang/id_ID.yml`; NFC-normalized)
+- Voice: casual `kamu`; dealer `bandar`, Baccarat Banker side `Bankir`,
+  house edge `keunggulan kasino`; chip `keping`, multiplier `pengali`
+  (recorded in the guide).
+- Structural: helper strict check 0 errors (2 residue warnings: the shared
+  `/ncc create|delete` usage text); `localizationCandidateCheck`
+  CANDIDATE OK (1184); full `localizationCheck` with all eleven new
+  locales registered: every one of the 17 locales OK (1184), no new
+  warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0; Tier 2 = 1, Tier 3 = 23, all applied, including the optional
+  rename of Dragon Descent from `Penurunan Naga` ("dragon's decline") to
+  `Turun ke Sarang Naga` across every key. 26 keys patched plus the
+  catalog-wide rename, rechecked after. Findings:
+  `reviews/id_ID-findings-*.md`.
+- Not registered in `locales.yml`. Registry line:
+  `id_ID: name: "Bahasa Indonesia"`.
+- Native-speaker review: not performed; recommended before release.
