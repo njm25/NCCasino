@@ -190,3 +190,67 @@
   rechecked after. Findings: `reviews/sk_SK-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `sk_SK: name: "Slovenčina"`.
 - Native-speaker review: not performed; recommended before release.
+
+### bg_BG -- Български (Bulgarian)
+
+- Final catalog SHA-256: `67adc4051a6577b6604eb2ea0f1517203cb4d6379b3422bc39029b71da8c61ce` (identical in the run directory and
+  `src/main/resources/lang/bg_BG.yml`; NFC-normalized; no Russian-only
+  letters, no Latin homoglyphs)
+- Voice: informal `ти`, gender-neutral toward the player (aorist, present
+  or nouns; plural `Добре дошли`); no article on inserted names; turns
+  `ход`, slots rows `ред`, the RPS throw `избор`; `крупие`, Baccarat
+  `Играч` / `Банкер`; Slots `Слот машина` with run `поредица` vs
+  streak `серия`; the card shoe described as `кутията с тестетата`.
+  Recorded in the guide.
+- Structural: helper strict check 0 errors, 0 residue warnings;
+  `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all twenty-three new locales registered: every
+  one of the 29 locales OK (1184), no new warnings; `compileJava`
+  succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0, Tier 2 = 9 (cancel as "decline", the RPS throw colliding with
+  the turn term `ход`, the Auto Spin batch colliding with the run term),
+  Tier 3 = 25, all applied, plus sibling seated notices, the Game Options
+  reset prompt and the Baccarat odds labels aligned. 43 keys patched,
+  rechecked after. Findings: `reviews/bg_BG-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `bg_BG: name: "Български"`.
+- Native-speaker review: not performed; recommended before release.
+
+## Batch summary
+
+All eight batch-3 locales are complete. To expose them in the language menu,
+append to `src/main/resources/lang/locales.yml` (after the batch-1 and
+batch-2 lines):
+
+```yaml
+  hu_HU:
+    name: "Magyar"
+  ro_RO:
+    name: "Română"
+  pt_PT:
+    name: "Português (Portugal)"
+  da_DK:
+    name: "Dansk"
+  nb_NO:
+    name: "Norsk bokmål"
+  el_GR:
+    name: "Ελληνικά"
+  sk_SK:
+    name: "Slovenčina"
+  bg_BG:
+    name: "Български"
+```
+
+With the batch-1, batch-2 and batch-3 lines appended, `localizationCheck`
+reports all 29 locales OK at 1184 entries (verified in this run) and
+`compileJava` succeeds. Remaining warnings are the seven pre-existing ones
+plus the de_DE-precedent identity in nl_NL; batch 3 adds none. Every batch-3
+locale was written from the English source (pt_PT, nb_NO and sk_SK were not
+adapted from pt_BR, da_DK or cs_CZ) and passed a regional-variant scan.
+Out-of-scope observation (not changed): da_DK was committed before the
+Norwegian finding that `{player} har tur` can read as "is lucky" in
+Bokmål; in Danish `har tur` is the ordinary game-rule phrasing for a turn,
+so da_DK is left as is, but a Danish native check is worth adding to the
+release review. Still needed before release: an in-game check (Greek and
+Cyrillic glyph widths in inventory titles, line wrapping) and
+native-speaker review.
