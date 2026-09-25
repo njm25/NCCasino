@@ -346,6 +346,38 @@ actual implementation, and update this section.
   source-language residue. zh_CN pins for this surface: variance 波动性,
   house edge 庄家优势, Slots machine 老虎机.
 
+- **Slots chat keywords are parser literals.** `{overwrite}`, `{cancel}` and
+  `{unlimited}` are filled with the exact words the player must type
+  (`SlotsPromptValues.OVERWRITE`/`CANCEL`/`UNLIMITED`), and the literal `off`
+  in `slots.prompt-big-win-multiplier`/`prompt-profit-target`/
+  `prompt-loss-limit` is matched as typed (`SlotsPromptValues.OFF`). Keep
+  `off` byte-exact and write the surrounding sentence so the inserted word
+  reads as something to type, in every locale. (Verified:
+  `SlotsPromptValues`, `SlotsMachine` prompt calls.)
+- **The house-edge example must stay parseable.**
+  `SlotsHouseEdgeInput.parse` strips only a *trailing* `%` and accepts a
+  decimal comma, so "2,5%" and "2,5 %" work but a locale convention that puts
+  the percent sign first (Turkish "%2,5") would be rejected. Write the example
+  with the sign after the number even in such a locale.
+- **`cards.suits.*` are only ever inserted into `cards.name`** (with
+  `cards.ranks.*`), never shown alone, so a locale may put suits in the
+  grammatical form that `cards.name` needs (e.g. a genitive plural).
+  `blackjack.drew-card` receives a bare rank name. `{rank}` must still precede
+  `{suit}` in `cards.name` (ordered-placeholder rule), so a locale whose
+  natural order is suit-first uses a construction such as "{rank} ({suit})".
+  (Verified: `Client` card naming, `BlackjackFrame`.)
+- **`dragon-settings.columns`/`vines`/`floors` are only inserted into
+  `dragon-settings.prompt-setting` and `prompt-setting-detailed`** as
+  `{setting}` (`DragonDescentMenu.handleEditSetting`), so a case-marking
+  locale may inflect them for that one slot. `{occupation}` likewise only
+  fills `commands.finish-editing`.
+- **A placeholder directly followed by a letter fails validation**
+  (`SyntaxTokens.introducedPlaceholderWordJoins`). Scripts written without
+  spaces (zh_CN, ja_JP, th_TH) put a space after a placeholder that is followed
+  by a letter, and agglutinative locales (fi_FI, tr_TR) must not attach case
+  suffixes to a placeholder; restructure so the placeholder stays in its base
+  form (e.g. a colon label or an apposition).
+
 This registry is not exhaustive. When a new ambiguous key is resolved via
 Java inspection, add it here with the exact affected key family and a short
 "verified: <file/method>" note, so the next translation pass does not have
