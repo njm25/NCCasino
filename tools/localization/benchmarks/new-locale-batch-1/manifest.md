@@ -103,3 +103,21 @@ Each entry is appended when that locale is finished.
   Findings: `reviews/ru_RU-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `ru_RU: name: "Русский"`.
 - Native-speaker review: not performed; recommended before release.
+
+### th_TH -- ไทย (Thai)
+
+- Final catalog SHA-256: `783ca78d650d45ac46246cdbdb10d4d21552e8b889098c6e1efbbd8f61dd7614` (identical in the run directory and
+  `src/main/resources/lang/th_TH.yml`)
+- Voice: neutral polite UI Thai, no gendered particles; Banker = แบงเกอร์ kept
+  distinct from dealer ดีลเลอร์ (recorded in the guide).
+- Structural: helper strict check 0 errors (only "Shift" key-name flags);
+  `localizationCandidateCheck` CANDIDATE OK (1184); full `localizationCheck`
+  with the five new locales registered: th_TH OK (1184), no th_TH warnings,
+  all other locales unchanged.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 1 (roulette "fewer bets" read as "smaller bets"; fixed),
+  Tier 2 = 2, Tier 3 = 44; all applied, with the reviewers' phrase groups
+  (invalid-action, RTP term) extended catalog-wide. 63 keys patched,
+  rechecked after. Findings: `reviews/th_TH-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `th_TH: name: "ไทย"`.
+- Native-speaker review: not performed; recommended before release.
