@@ -66,3 +66,30 @@
   Findings: `reviews/hr_HR-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `hr_HR: name: "Hrvatski"`.
 - Native-speaker review: not performed; recommended before release.
+
+### sl_SI -- Slovenščina (Slovenian)
+
+- Final catalog SHA-256: `3f5a325f00745756c8b6021a1101745e69a3265ae4e5025f9a6651e5804a8e58` (identical in the run directory and
+  `src/main/resources/lang/sl_SI.yml`; NFC-normalized)
+- Voice: standard Slovenian, informal `ti`, `»«` quotes, Slovenian UI
+  vocabulary (Croatian/Serbian-form scan clean); gender-neutral toward the
+  player (no gendered second-person past); singular/dual/plural agreement
+  avoided with labels; genitive fillers for `occupations.*` and the Dragon
+  `{setting}` slot; `delivec`, Baccarat `Igralec` / `Bankir`, stake
+  `vložek` vs placed bet `stava`, pot `sklad` (mob stack therefore
+  `kup`), Slots `Igralni avtomat` with `koluti`. Recorded in the guide.
+- Structural: helper strict check 0 errors (6 residue warnings are
+  Slovenian `in`/`to`/`a`); `localizationCandidateCheck` CANDIDATE OK
+  (1184); full `localizationCheck` with all twenty-six new locales
+  registered: every one of the 32 locales OK (1184), no new warnings;
+  `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 2 (the Coin Flip / RPS pot label left as English "Pot", which
+  reads as Slovenian "path"; now `Sklad`), Tier 2 = 11 (Slots stake term
+  `vložek`, All In label), Tier 3 = 32 (plugin literals given a classifier
+  noun, `sestavljene različice`, "set to" phrasing), all applied; 11
+  consistency follow-ups (remaining Slots stake prose, mob stack renamed
+  `kup`). 56 keys patched including one self-review fix, rechecked after.
+  Findings: `reviews/sl_SI-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `sl_SI: name: "Slovenščina"`.
+- Native-speaker review: not performed; recommended before release.
