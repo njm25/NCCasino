@@ -149,3 +149,35 @@
   `partial-return`), rechecked after. Findings: `reviews/is_IS-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `is_IS: name: "Íslenska"`.
 - Native-speaker review: not performed; recommended before release.
+
+### kk_KZ -- Қазақша (Kazakh)
+
+- Final catalog SHA-256: `a53dff5300b4692523e2d4bb53e44d913e4b3e39715b8794bb12fe527216b928` (identical in the run directory and
+  `src/main/resources/lang/kk_KZ.yml`; NFC-normalized)
+- Voice: standard literary Kazakh in Cyrillic, polite `Сіз` for
+  instructions and verbal nouns for buttons, `«»` quotes, decimal comma;
+  no grammatical gender. Nothing attaches to a placeholder: governing nouns
+  carry the case (`{game} ойынына`), ranges use an en dash
+  (`{min}–{max} аралығында`) because `мен/бен/пен` must agree with the
+  preceding sound, names sit after a colon or in a parenthesis; `ұтылу`
+  (lose) is kept apart from `ұтып алу` (win), `шығын` only for loss;
+  `дилер`, Baccarat `Ойыншы` / `Банкир`, slots run `тізбек` vs streak
+  `серия`. Recorded in the fifth continuation of the §H table.
+- Structural: helper strict check 0 errors, 0 residue warnings; a
+  catalog-wide scan found no suffix, hyphenated suffix or harmony-dependent
+  particle after any placeholder once the fixes landed;
+  `localizationCandidateCheck` CANDIDATE OK (1184); full `localizationCheck`
+  with all forty-three new locales registered: every one of the 49 locales
+  OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 8 (`{min} мен {max}` harmony in five ranges, the Leave door as
+  "Тұру" (stand / stay), "ұтылған" turning "already won" into "already
+  lost"), Tier 2 = 1 (Russian "Шарик"), Tier 3 = 32 (calques such as
+  "күйіп кетті", "шығын" read as loss in the cost line, double
+  locatives), 39 applied and 2 declined with reasons (court-card names
+  jack / queen, left for native review). 39 review keys plus 4
+  self-review fixes (the matching reset question and inventory-full
+  lines), rechecked after. Findings: `reviews/kk_KZ-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `kk_KZ: name: "Қазақша"`.
+- Native-speaker review: not performed; recommended before release
+  (including the court-card register).
