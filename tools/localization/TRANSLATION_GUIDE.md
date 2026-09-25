@@ -740,31 +740,31 @@ Fourth continuation for later locales (same concept rows; split so neither table
 
 Fifth continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 5) | mk_MK |
-| --- | --- |
-| generic physical dealer/croupier | дилер |
-| Baccarat banker/bank side | Банкар (Играч / Банкар) |
-| bet / wager amount | облог |
-| all in | Ва-банк |
-| rebet (repeat previous wager) | Повтор на облог |
-| chip denomination/value | вредност на жетонот |
-| win streak / chain (PvE) | низа победи (макс. број рунди во низа) |
-| cash out / payout | Подигни добивка / исплата |
-| Blackjack: shoe | кутија со карти |
-| Blackjack: hit | Карта |
-| Blackjack: stand | Доста |
-| Blackjack: split | Подели |
-| Blackjack: insurance | осигурување |
-| Blackjack: same-rank vs. same-value split rule | Ист ранг / Иста вредност |
-| RPS: throw/action (not generic "turn") | потег |
-| Dragon Descent: vine mechanic | лијана |
-| ON/OFF display state | ВКЛ. / ИСКЛ. |
-| Slots: variance (risk preset, not the RTP) | волатилност |
-| Slots: house edge | предност на казиното |
-| Slots: return/RTP verb | враќање кон играчите |
-| seat | место (стол = chair) |
-| banked winnings (overflow bank) | зачувана добивка |
-| overflow: hold vs. drop nearby | Чувај ја за мене / Фрли ја во близина |
+| Concept (continued 5) | mk_MK | az_AZ |
+| --- | --- | --- |
+| generic physical dealer/croupier | дилер | diler |
+| Baccarat banker/bank side | Банкар (Играч / Банкар) | Bankir (Oyunçu / Bankir) |
+| bet / wager amount | облог | mərc |
+| all in | Ва-банк | Hamısını qoy |
+| rebet (repeat previous wager) | Повтор на облог | Mərci təkrarla |
+| chip denomination/value | вредност на жетонот | fişkanın dəyəri |
+| win streak / chain (PvE) | низа победи (макс. број рунди во низа) | qələbə seriyası (seriyada maks. raund) |
+| cash out / payout | Подигни добивка / исплата | Uduşu götür / ödəniş |
+| Blackjack: shoe | кутија со карти | kart qutusu |
+| Blackjack: hit | Карта | Kart al |
+| Blackjack: stand | Доста | Dayan |
+| Blackjack: split | Подели | Böl |
+| Blackjack: insurance | осигурување | sığorta |
+| Blackjack: same-rank vs. same-value split rule | Ист ранг / Иста вредност | Eyni rütbə / Eyni dəyər |
+| RPS: throw/action (not generic "turn") | потег | seçim |
+| Dragon Descent: vine mechanic | лијана | sarmaşıq |
+| ON/OFF display state | ВКЛ. / ИСКЛ. | AÇIQ / BAĞLI |
+| Slots: variance (risk preset, not the RTP) | волатилност | volatillik |
+| Slots: house edge | предност на казиното | kazino üstünlüyü |
+| Slots: return/RTP verb | враќање кон играчите | oyunçuya qayıdış |
+| seat | место (стол = chair) | yer (stul = chair) |
+| banked winnings (overflow bank) | зачувана добивка | saxlanılan uduş |
+| overflow: hold vs. drop nearby | Чувај ја за мене / Фрли ја во близина | Mənim üçün saxla / Yaxınlıqda yerə at |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -1261,6 +1261,18 @@ a real, previously-observed defect, not a hypothetical risk.
   `Играч` / `Банкар`, `Подигни добивка`, `банка` for the pot, card index
   `П-П` / `П-Д` (Поп / Дама); slots run `комбинација` vs PvE streak
   `низа`; `Автоматско вртење`.
+- `az_AZ`: standard literary North Azerbaijani (Latin script), polite
+  `siz`, `“”` quotes, decimal comma; written from the English source, not
+  adapted from tr_TR (Turkish-form scan: `için`, `değil`, `bahis`,
+  `oyuncu`, `menü`). No grammatical gender. No suffix may follow a
+  placeholder, so the case ending goes on a governing noun (`{game}
+  oyununa`, `{game} oyunundakı`, `{columns} barabana`, `/ncc help
+  əmrindən`) and numerals take a singular noun (`{rounds} raund`,
+  `{count} ödənişiniz`). `ədəd` for a number (not `rəqəm`, a digit);
+  `söndürüldü` for switched off, `AÇIQ` / `BAĞLI` for toggle states.
+  `diler`, Baccarat `Oyunçu` / `Bankir`, `mərc`, `Uduşu götür`, roulette
+  straight-up `Bir nömrə` (not `Tək`, the Odd bet); slots run
+  `ardıcıllıq` vs PvE streak `seriya`; `Avtomatik fırlatma`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.

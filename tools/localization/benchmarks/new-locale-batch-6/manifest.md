@@ -44,3 +44,29 @@
   self-review fixes, rechecked after. Findings: `reviews/mk_MK-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `mk_MK: name: "Македонски"`.
 - Native-speaker review: not performed; recommended before release.
+
+### az_AZ -- Azərbaycanca (Azerbaijani)
+
+- Final catalog SHA-256: `55170e3e0faa0d2d36bd31dec239b7bd970d2a513056727e65b1ba7adda3189f` (identical in the run directory and
+  `src/main/resources/lang/az_AZ.yml`; NFC-normalized)
+- Voice: standard literary North Azerbaijani (Latin), polite `siz`, `“”`
+  quotes, decimal comma; written from the English source, not adapted from
+  tr_TR (Turkish-form scan clean); no suffix after a placeholder (case
+  endings on governing nouns), numeral + singular noun; `ədəd` vs `rəqəm`;
+  `diler`, Baccarat `Oyunçu` / `Bankir`, `Uduşu götür`, slots run
+  `ardıcıllıq` vs streak `seriya`, `Avtomatik fırlatma`. Recorded in the
+  fifth continuation of the §H table.
+- Structural: helper strict check 0 errors, 0 residue warnings (one
+  token-order slip in `dragon-settings.prompt-setting-detailed` caught and
+  fixed before review); `localizationCandidateCheck` CANDIDATE OK (1184);
+  full `localizationCheck` with all thirty-nine new locales registered:
+  every one of the 45 locales OK (1184), no new warnings; `compileJava`
+  succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 1 (straight-up "Tək rəqəm" colliding with the Odd bet),
+  Tier 2 = 1 (rebet-off wording), Tier 3 = 42 (`{game}` parentheticals,
+  missing ablative with `istifadə etmək`, `rəqəm` / `ədəd`, tense of
+  Baccarat results), all applied. 44 review keys plus 10 self-review fixes,
+  rechecked after. Findings: `reviews/az_AZ-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `az_AZ: name: "Azərbaycanca"`.
+- Native-speaker review: not performed; recommended before release.
