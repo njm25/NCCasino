@@ -85,3 +85,21 @@ Each entry is appended when that locale is finished.
   rechecked after. Findings: `reviews/ja_JP-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `ja_JP: name: "日本語"`.
 - Native-speaker review: not performed; recommended before release.
+
+### ru_RU -- Русский (Russian)
+
+- Final catalog SHA-256: `dc43e4e5a12857e7dcf2795ce347fe291b43169451c2dbf14cb25be105552fb7` (identical in the run directory and
+  `src/main/resources/lang/ru_RU.yml`)
+- Voice: polite `вы`; ЛКМ/ПКМ; placeholders never declined (recorded in the
+  guide).
+- Structural: helper strict check 0 errors (only "Shift" key-name flags);
+  `localizationCandidateCheck` CANDIDATE OK (1184); full `localizationCheck`
+  with the four new locales registered: ru_RU OK (1184), no ru_RU warnings,
+  all other locales unchanged.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 1 (`betting.inventory-full` called refunds "winnings"; confirmed
+  against `creditPlayer` and fixed), Tier 2 = 13, Tier 3 = 69; all applied,
+  plus coordinator consistency fixes. 89 keys patched, rechecked after.
+  Findings: `reviews/ru_RU-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `ru_RU: name: "Русский"`.
+- Native-speaker review: not performed; recommended before release.
