@@ -634,31 +634,31 @@ Continuation of the table above for later locales (same concept rows; split so n
 
 Second continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 2) | hu_HU | ro_RO | pt_PT |
-| --- | --- | --- | --- |
-| generic physical dealer/croupier | osztó | crupier | croupier |
-| Baccarat banker/bank side | Bankár (Játékos / Bankár) | Bancher (Jucător / Bancher) | Banca (Jogador / Banca) |
-| bet / wager amount | tét | pariu (miză = suma) | aposta |
-| all in | mindent bele | Mizează tot | Apostar tudo |
-| rebet (repeat previous wager) | tét ismétlése | Repetă pariul | Repetir aposta |
-| chip denomination/value | zsetoncímlet | valoarea jetonului | valor da ficha |
-| win streak / chain (PvE) | győzelmi sorozat (sorozat max. körszáma) | serie de victorii (număr maxim de runde în serie) | série de vitórias (máximo de rondas em série) |
-| cash out / payout | nyeremény felvétele / kifizetés | Încasează / plată | Retirar / pagamento |
-| Blackjack: shoe | kártyaadagoló | sabot | sapato |
-| Blackjack: hit | Lap | Carte | Pedir carta |
-| Blackjack: stand | Megállok | Stai | Ficar |
-| Blackjack: split | Szétválasztás | Împarte | Dividir |
-| Blackjack: insurance | biztosítás | asigurare | seguro |
-| Blackjack: same-rank vs. same-value split rule | Azonos rang / Azonos pontérték | Același rang / Aceeași valoare | Mesma carta / Mesmo valor |
-| RPS: throw/action (not generic "turn") | választás | alegere | jogada |
-| Dragon Descent: vine mechanic | inda | liană | trepadeira |
-| ON/OFF display state | BE / KI | PORNIT / OPRIT | LIGADO / DESLIGADO |
-| Slots: variance (risk preset, not the RTP) | volatilitás | volatilitate | volatilidade |
-| Slots: house edge | házelőny | avantajul casei | vantagem da casa |
-| Slots: return/RTP verb | visszafizetési arány | rata de returnare (către jucător) | retorno ao jogador |
-| seat | hely (szék = chair) | loc (scaun = chair) | lugar (cadeira = chair) |
-| banked winnings (overflow bank) | tárolt nyeremények | câștiguri păstrate | ganhos guardados |
-| overflow: hold vs. drop nearby | Őrizd meg nekem / Leejtés a közelben | Păstrează-le pentru mine / Lasă-le pe jos lângă mine | Guardar para mim / Largar aqui perto |
+| Concept (continued 2) | hu_HU | ro_RO | pt_PT | da_DK |
+| --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | osztó | crupier | croupier | dealer |
+| Baccarat banker/bank side | Bankár (Játékos / Bankár) | Bancher (Jucător / Bancher) | Banca (Jogador / Banca) | Bank (Spiller / Bank) |
+| bet / wager amount | tét | pariu (miză = suma) | aposta | indsats |
+| all in | mindent bele | Mizează tot | Apostar tudo | All-in |
+| rebet (repeat previous wager) | tét ismétlése | Repetă pariul | Repetir aposta | Gentag indsats |
+| chip denomination/value | zsetoncímlet | valoarea jetonului | valor da ficha | jetonværdi |
+| win streak / chain (PvE) | győzelmi sorozat (sorozat max. körszáma) | serie de victorii (număr maxim de runde în serie) | série de vitórias (máximo de rondas em série) | sejrsstime (maks. antal runder i træk) |
+| cash out / payout | nyeremény felvétele / kifizetés | Încasează / plată | Retirar / pagamento | Indkasser / udbetaling |
+| Blackjack: shoe | kártyaadagoló | sabot | sapato | kortskoen |
+| Blackjack: hit | Lap | Carte | Pedir carta | Træk kort |
+| Blackjack: stand | Megállok | Stai | Ficar | Stå |
+| Blackjack: split | Szétválasztás | Împarte | Dividir | Del |
+| Blackjack: insurance | biztosítás | asigurare | seguro | forsikring |
+| Blackjack: same-rank vs. same-value split rule | Azonos rang / Azonos pontérték | Același rang / Aceeași valoare | Mesma carta / Mesmo valor | Samme rang / Samme værdi |
+| RPS: throw/action (not generic "turn") | választás | alegere | jogada | træk |
+| Dragon Descent: vine mechanic | inda | liană | trepadeira | slyngplante |
+| ON/OFF display state | BE / KI | PORNIT / OPRIT | LIGADO / DESLIGADO | TIL / FRA |
+| Slots: variance (risk preset, not the RTP) | volatilitás | volatilitate | volatilidade | volatilitet |
+| Slots: house edge | házelőny | avantajul casei | vantagem da casa | husets fordel |
+| Slots: return/RTP verb | visszafizetési arány | rata de returnare (către jucător) | retorno ao jogador | tilbagebetaling til spilleren |
+| seat | hely (szék = chair) | loc (scaun = chair) | lugar (cadeira = chair) | plads (stol = chair) |
+| banked winnings (overflow bank) | tárolt nyeremények | câștiguri păstrate | ganhos guardados | gemte gevinster |
+| overflow: hold vs. drop nearby | Őrizd meg nekem / Leejtés a közelben | Păstrează-le pentru mine / Lasă-le pe jos lângă mine | Guardar para mim / Largar aqui perto | Gem dem til mig / Læg dem på jorden i nærheden |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -872,6 +872,18 @@ a real, previously-observed defect, not a hypothetical risk.
   the PvE win streak `série`; a spin is `rodada` and Auto Spin `rodadas
   automáticas`. Minecraft mobs are `criatura`. Same Rank / Same Value are
   `Mesma carta` / `Mesmo valor` (`figura` would mean a face card).
+- `da_DK`: standard Danish, informal `du`, closed compounds
+  (`gevinstlinjer`, `spinhastighed`, `autospin-indstillinger` with a hyphen
+  only after a name or abbreviation). The dealer is `dealer`; the Baccarat
+  sides are `Spiller` / `Bank`; a bet is `indsats`, cash-out `Indkasser`,
+  the pot `pulje`, the house edge `husets fordel`. Coin Flip is `Plat eller
+  krone`, Rock Paper Scissors `Sten, saks, papir`, Slots `Spilleautomat`
+  with `hjul` (reels), `rækker` (rows) and `gevinstlinjer`; its run is
+  `stribe` (`{run} på stribe`), distinct from the PvE win streak `stime` /
+  `sejrsstime`. A dealer timer is `nedtælling` (`timer` means hours in
+  Danish). Turn announcements use `{player} har tur` so no genitive `-s`
+  attaches to the placeholder. Overflow drop is `lægges på jorden` (`smid`
+  can read as throwing away); a Minecraft mob is `væsen`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.

@@ -92,3 +92,29 @@
 - Not registered in `locales.yml`. Registry line:
   `pt_PT: name: "Português (Portugal)"`.
 - Native-speaker review: not performed; recommended before release.
+
+### da_DK -- Dansk (Danish)
+
+- Final catalog SHA-256: `4bf07f5950ff182bb459d7b05c424b9659692e858210e12488acfe3f0db1d9b1` (identical in the run directory and
+  `src/main/resources/lang/da_DK.yml`; NFC-normalized)
+- Voice: informal `du`, closed compounds; `dealer`, Baccarat `Spiller` /
+  `Bank`, bet `indsats`, cash-out `Indkasser`, all in `All-in` (Den
+  Danske Ordbog loanword; both reviewers rejected the calque `Alt ind`);
+  Slots `Spilleautomat` with `hjul`, `rækker`, `gevinstlinjer` and run
+  `stribe` vs streak `stime`; dealer timer `nedtælling` (`timer` means
+  hours); turn lines `{player} har tur` (no genitive `-s` on a
+  placeholder). Recorded in the guide.
+- Structural: helper strict check 0 errors (residue warnings are Danish
+  `for`/`at`/`to`/`have`, the loanwords `dealer` and `All-in`, and the
+  shared `/ncc` usage and `Blackjack!` lines -- false positives);
+  `localizationCandidateCheck` CANDIDATE OK (1184); full
+  `localizationCheck` with all nineteen new locales registered: every one
+  of the 25 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0, Tier 2 = 4 (cash-out notice wording/conditional, leftmost
+  reel, `Standardhjul`), Tier 3 = 43, all applied, with catalog-wide
+  alignment of `All-in`, "tage plads", "Indsatsrunden er lukket" and
+  unaccented imperatives. 56 keys patched, rechecked after.
+  Findings: `reviews/da_DK-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `da_DK: name: "Dansk"`.
+- Native-speaker review: not performed; recommended before release.
