@@ -103,3 +103,31 @@
   `reviews/gl_ES-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `gl_ES: name: "Galego"`.
 - Native-speaker review: not performed; recommended before release.
+
+### af_ZA -- Afrikaans
+
+- Final catalog SHA-256: `7df0e4fb9eeb78f38f8c3819f60bfd5d9ce09ac464430e5267af9f2b8ff1492d` (identical in the run directory and
+  `src/main/resources/lang/af_ZA.yml`; NFC-normalized)
+- Voice: standard Afrikaans (AWS / Taalkommissie), informal `jy` / `jou`,
+  decimal comma, `“”` quotes; written from the English source, not adapted
+  from nl_NL; double negation, verb-final subordinate clauses, AWS
+  compounding; neutral opponents; `kroepier`, Baccarat `Speler` / `Bankier`,
+  `weddenskap` vs `inset`, `Betaal uit`, `ruitens`, sentence-case game names
+  (`Kop of stert`, `Draak se afdaling`), run `opeenvolging` vs streak
+  `reeks`, `Outodraai`. Recorded in the fourth continuation of the §H table.
+- Structural: helper strict check 0 errors (the residue warnings are
+  function words shared with English: `is`, `in`, `of`, `by`);
+  `localizationCandidateCheck` CANDIDATE OK (1184); full `localizationCheck`
+  with all thirty-five new locales registered: every one of the 41 locales
+  OK (1184), no new warnings; `compileJava` succeeds. The English-identical
+  values are shared words (`Pot`, `Hand`, `Variant`, `Jazz`, game names).
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0, Tier 2 = 8 (`diamante` calque, payout-queue and "afhaal"
+  drift, spin-limit and re-split wording), Tier 3 = 38 (AWS compounds,
+  number agreement with `lyn(e)` / labels, clause-as-label toggles,
+  `occupations.*` double "vir"), 45 applied; 1 declined with reason
+  (settlement = delivery, per guide §C). 45 review keys plus 10 self-review
+  fixes (including a gendered "sy of haar keuse" neutralized before review),
+  rechecked after. Findings: `reviews/af_ZA-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `af_ZA: name: "Afrikaans"`.
+- Native-speaker review: not performed; recommended before release.

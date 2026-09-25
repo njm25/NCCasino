@@ -712,31 +712,31 @@ Third continuation for later locales (same concept rows; split so neither table 
 
 Fourth continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 4) | ms_MY | fil_PH | gl_ES |
-| --- | --- | --- | --- |
-| generic physical dealer/croupier | pengendali | dealer | crupier |
-| Baccarat banker/bank side | Jurubank (Pemain / Jurubank) | Bangkero (Manlalaro / Bangkero) | Banca (Xogador / Banca) |
-| bet / wager amount | taruhan | taya | aposta |
-| all in | Pertaruhkan Semua | Itaya Lahat | Apostalo todo |
-| rebet (repeat previous wager) | Ulang Taruhan | Ulitin ang Taya | Repetir aposta |
-| chip denomination/value | nilai cip | halaga ng chip | valor da ficha |
-| win streak / chain (PvE) | berturut-turut (had pusingan berturut-turut) | sunod-sunod na panalo (max na sunod-sunod na round) | racha (máximo de roldas en racha) |
-| cash out / payout | Tunaikan / bayaran | Kunin ang Panalo / bayad | Cobrar / pagamento |
-| Blackjack: shoe | kotak kad | shoe | zapata |
-| Blackjack: hit | Ambil | Kumuha | Pedir |
-| Blackjack: stand | Berhenti | Tumigil | Plantarse |
-| Blackjack: split | Pisah | Hatiin | Dividir |
-| Blackjack: insurance | insurans | insurance | seguro |
-| Blackjack: same-rank vs. same-value split rule | Pangkat Sama / Nilai Sama | Parehong Ranggo / Parehong Halaga | Mesmo rango / Mesmo valor |
-| RPS: throw/action (not generic "turn") | pilihan | tira | xogada |
-| Dragon Descent: vine mechanic | tumbuhan menjalar | baging | enredadeira |
-| ON/OFF display state | HIDUP / MATI | NAKA-ON / NAKA-OFF | ACTIVADO / DESACTIVADO |
-| Slots: variance (risk preset, not the RTP) | volatiliti | volatility | volatilidade |
-| Slots: house edge | kelebihan kasino | kalamangan ng casino | vantaxe da casa |
-| Slots: return/RTP verb | pulangan kepada pemain | balik sa manlalaro | retorno ao xogador |
-| seat | tempat duduk (kerusi = chair) | upuan | asento |
-| banked winnings (overflow bank) | kemenangan simpanan | nakatabing panalo | gañancias gardadas |
-| overflow: hold vs. drop nearby | Simpan Untuk Saya / Jatuhkan Berdekatan | Itabi Para Sa Akin / Ihulog sa Malapit | Gárdamas / Déixaas no chan, preto de min |
+| Concept (continued 4) | ms_MY | fil_PH | gl_ES | af_ZA |
+| --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | pengendali | dealer | crupier | kroepier |
+| Baccarat banker/bank side | Jurubank (Pemain / Jurubank) | Bangkero (Manlalaro / Bangkero) | Banca (Xogador / Banca) | Bankier (Speler / Bankier) |
+| bet / wager amount | taruhan | taya | aposta | weddenskap (inset = amount) |
+| all in | Pertaruhkan Semua | Itaya Lahat | Apostalo todo | Alles in |
+| rebet (repeat previous wager) | Ulang Taruhan | Ulitin ang Taya | Repetir aposta | Herhaal weddenskap |
+| chip denomination/value | nilai cip | halaga ng chip | valor da ficha | skyfiewaarde |
+| win streak / chain (PvE) | berturut-turut (had pusingan berturut-turut) | sunod-sunod na panalo (max na sunod-sunod na round) | racha (máximo de roldas en racha) | wenreeks (maksimum reeksrondes) |
+| cash out / payout | Tunaikan / bayaran | Kunin ang Panalo / bayad | Cobrar / pagamento | Betaal uit / uitbetaling |
+| Blackjack: shoe | kotak kad | shoe | zapata | kaartskoen |
+| Blackjack: hit | Ambil | Kumuha | Pedir | Trek |
+| Blackjack: stand | Berhenti | Tumigil | Plantarse | Staan |
+| Blackjack: split | Pisah | Hatiin | Dividir | Verdeel |
+| Blackjack: insurance | insurans | insurance | seguro | versekering |
+| Blackjack: same-rank vs. same-value split rule | Pangkat Sama / Nilai Sama | Parehong Ranggo / Parehong Halaga | Mesmo rango / Mesmo valor | Dieselfde rang / Dieselfde waarde |
+| RPS: throw/action (not generic "turn") | pilihan | tira | xogada | keuse |
+| Dragon Descent: vine mechanic | tumbuhan menjalar | baging | enredadeira | rankplant |
+| ON/OFF display state | HIDUP / MATI | NAKA-ON / NAKA-OFF | ACTIVADO / DESACTIVADO | AAN / AF |
+| Slots: variance (risk preset, not the RTP) | volatiliti | volatility | volatilidade | wisselvalligheid |
+| Slots: house edge | kelebihan kasino | kalamangan ng casino | vantaxe da casa | huisvoordeel |
+| Slots: return/RTP verb | pulangan kepada pemain | balik sa manlalaro | retorno ao xogador | terugbetaling aan speler |
+| seat | tempat duduk (kerusi = chair) | upuan | asento | sitplek (stoel = chair) |
+| banked winnings (overflow bank) | kemenangan simpanan | nakatabing panalo | gañancias gardadas | bewaarde winste |
+| overflow: hold vs. drop nearby | Simpan Untuk Saya / Jatuhkan Berdekatan | Itabi Para Sa Akin / Ihulog sa Malapit | Gárdamas / Déixaas no chan, preto de min | Hou dit vir my / Los dit naby op die grond |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -1178,6 +1178,20 @@ a real, previously-observed defect, not a hypothetical risk.
   infinitives (`Pedir`, `Plantarse`, `Dobrar`, `Dividir`); spin `tirada` vs
   round `rolda`; slots run `secuencia` vs PvE streak `racha`; `None` is
   `Ningunha` (decor/colour slots).
+- `af_ZA`: standard Afrikaans (AWS / Taalkommissie), informal `jy` /
+  `jou`, decimal comma, `“”` quotes; written from the English source, not
+  adapted from nl_NL (Dutch-form scan: `je`, `inzet`, `gewonnen`). Every
+  negation closes with `nie`; subordinate clauses are verb-final (`wat
+  aanbly`, `dat lyne minder gereeld uitbetaal`), and possessive relatives
+  use `wie se`. Compounds are written solid unless long or vowel-clashing
+  (`Verstekrolle`, `Spelerpaar`, but `Slotmasjien-instellings`). Opponents
+  and other players are neutral (`'n keuse vasgelê`). Count phrases that
+  can be 1 use labels, `keer` or `lyn(e)`; seconds as `{seconds} s`.
+  `kroepier`, Baccarat `Speler` / `Bankier`, `weddenskap` (bet) vs `inset`
+  (amount), `Betaal uit`, `skyfiewaarde`, card suits `harte` / `ruitens` /
+  `klawers` / `skoppens`; game names in sentence case (`Kop of stert`,
+  `Draak se afdaling`); slots run `opeenvolging` vs PvE streak `reeks`;
+  payout queue `wagtou`; `Outodraai` for Auto Spin.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
