@@ -166,3 +166,27 @@
   49 keys patched, rechecked after. Findings: `reviews/el_GR-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `el_GR: name: "Ελληνικά"`.
 - Native-speaker review: not performed; recommended before release.
+
+### sk_SK -- Slovenčina (Slovak)
+
+- Final catalog SHA-256: `7b817fea6b01b9b7da8c1559e41b1f24d04bedf055aaf1bfdf625c0fb305d4f7` (identical in the run directory and
+  `src/main/resources/lang/sk_SK.yml`; NFC-normalized)
+- Voice: informal `ty`, written from the English source rather than
+  adapted from cs_CZ (Czech-letter scan clean); gender-neutral toward the
+  player (no gendered second-person past tense: outcomes as nouns or present
+  tense); number placeholders kept out of 1/2-4/5+ agreement; genitive
+  fillers for `occupations.*` and the Dragon `{setting}` slot; `krupiér`,
+  Baccarat `Hráč` / `Bankár`, Slots `Výherný automat` with run `rad` vs
+  streak `séria`. Recorded in the guide.
+- Structural: helper strict check 0 errors (3 residue warnings are Slovak
+  `a`/`to` -- false positives); `localizationCandidateCheck` CANDIDATE OK
+  (1184); full `localizationCheck` with all twenty-two new locales
+  registered: every one of the 28 locales OK (1184), no new warnings;
+  `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 0, Tier 2 = 1 (Demo spin naming), Tier 3 = 39, all applied
+  (genitive `lián`, "menu"/"meny" currency ambiguity, missing verbs,
+  masculine `Neobmedzený` to agree with the limit). 42 keys patched,
+  rechecked after. Findings: `reviews/sk_SK-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `sk_SK: name: "Slovenčina"`.
+- Native-speaker review: not performed; recommended before release.

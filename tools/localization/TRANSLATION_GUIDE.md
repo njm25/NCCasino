@@ -634,31 +634,31 @@ Continuation of the table above for later locales (same concept rows; split so n
 
 Second continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 2) | hu_HU | ro_RO | pt_PT | da_DK | nb_NO | el_GR |
-| --- | --- | --- | --- | --- | --- | --- |
-| generic physical dealer/croupier | osztó | crupier | croupier | dealer | dealer | ντίλερ |
-| Baccarat banker/bank side | Bankár (Játékos / Bankár) | Bancher (Jucător / Bancher) | Banca (Jogador / Banca) | Bank (Spiller / Bank) | Bank (Spiller / Bank) | Τράπεζα (Παίκτης / Τράπεζα) |
-| bet / wager amount | tét | pariu (miză = suma) | aposta | indsats | innsats | στοίχημα |
-| all in | mindent bele | Mizează tot | Apostar tudo | All-in | All-in | Πόνταρε τα πάντα |
-| rebet (repeat previous wager) | tét ismétlése | Repetă pariul | Repetir aposta | Gentag indsats | Gjenta innsats | Επανάληψη στοιχήματος |
-| chip denomination/value | zsetoncímlet | valoarea jetonului | valor da ficha | jetonværdi | sjetongverdi | αξία μάρκας |
-| win streak / chain (PvE) | győzelmi sorozat (sorozat max. körszáma) | serie de victorii (număr maxim de runde în serie) | série de vitórias (máximo de rondas em série) | sejrsstime (maks. antal runder i træk) | seiersrekke (maks antall runder på rad) | σερί νικών (μέγιστοι συνεχόμενοι γύροι) |
-| cash out / payout | nyeremény felvétele / kifizetés | Încasează / plată | Retirar / pagamento | Indkasser / udbetaling | Ta ut / utbetaling | Εξαργύρωση / πληρωμή |
-| Blackjack: shoe | kártyaadagoló | sabot | sapato | kortskoen | kortskoen | σαμπό |
-| Blackjack: hit | Lap | Carte | Pedir carta | Træk kort | Trekk kort | Κάρτα |
-| Blackjack: stand | Megállok | Stai | Ficar | Stå | Stå | Μένω |
-| Blackjack: split | Szétválasztás | Împarte | Dividir | Del | Splitt | Διαχωρισμός |
-| Blackjack: insurance | biztosítás | asigurare | seguro | forsikring | forsikring | ασφάλεια |
-| Blackjack: same-rank vs. same-value split rule | Azonos rang / Azonos pontérték | Același rang / Aceeași valoare | Mesma carta / Mesmo valor | Samme rang / Samme værdi | Samme valør / Samme verdi | Ίδιο φύλλο / Ίδια αξία |
-| RPS: throw/action (not generic "turn") | választás | alegere | jogada | træk | trekk | κίνηση |
-| Dragon Descent: vine mechanic | inda | liană | trepadeira | slyngplante | klatreplante | αναρριχητικό φυτό |
-| ON/OFF display state | BE / KI | PORNIT / OPRIT | LIGADO / DESLIGADO | TIL / FRA | PÅ / AV | ΕΝΕΡΓΗ / ΑΝΕΝΕΡΓΗ (Ενεργό / Ανενεργό) |
-| Slots: variance (risk preset, not the RTP) | volatilitás | volatilitate | volatilidade | volatilitet | volatilitet | μεταβλητότητα |
-| Slots: house edge | házelőny | avantajul casei | vantagem da casa | husets fordel | husets fordel | πλεονέκτημα του καζίνο |
-| Slots: return/RTP verb | visszafizetési arány | rata de returnare (către jucător) | retorno ao jogador | tilbagebetaling til spilleren | tilbakebetaling til spilleren | ποσοστό επιστροφής στον παίκτη |
-| seat | hely (szék = chair) | loc (scaun = chair) | lugar (cadeira = chair) | plads (stol = chair) | plass (stol = chair) | θέση (καρέκλα = chair) |
-| banked winnings (overflow bank) | tárolt nyeremények | câștiguri păstrate | ganhos guardados | gemte gevinster | lagrede gevinster | φυλαγμένα κέρδη |
-| overflow: hold vs. drop nearby | Őrizd meg nekem / Leejtés a közelben | Păstrează-le pentru mine / Lasă-le pe jos lângă mine | Guardar para mim / Largar aqui perto | Gem dem til mig / Læg dem på jorden i nærheden | Ta vare på dem for meg / Legg dem på bakken i nærheten | Κράτα τα για μένα / Άφησέ τα στο έδαφος κοντά μου |
+| Concept (continued 2) | hu_HU | ro_RO | pt_PT | da_DK | nb_NO | el_GR | sk_SK |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | osztó | crupier | croupier | dealer | dealer | ντίλερ | krupiér |
+| Baccarat banker/bank side | Bankár (Játékos / Bankár) | Bancher (Jucător / Bancher) | Banca (Jogador / Banca) | Bank (Spiller / Bank) | Bank (Spiller / Bank) | Τράπεζα (Παίκτης / Τράπεζα) | Bankár (Hráč / Bankár) |
+| bet / wager amount | tét | pariu (miză = suma) | aposta | indsats | innsats | στοίχημα | stávka |
+| all in | mindent bele | Mizează tot | Apostar tudo | All-in | All-in | Πόνταρε τα πάντα | Vsadiť všetko |
+| rebet (repeat previous wager) | tét ismétlése | Repetă pariul | Repetir aposta | Gentag indsats | Gjenta innsats | Επανάληψη στοιχήματος | Opakovať stávku |
+| chip denomination/value | zsetoncímlet | valoarea jetonului | valor da ficha | jetonværdi | sjetongverdi | αξία μάρκας | hodnota žetónu |
+| win streak / chain (PvE) | győzelmi sorozat (sorozat max. körszáma) | serie de victorii (număr maxim de runde în serie) | série de vitórias (máximo de rondas em série) | sejrsstime (maks. antal runder i træk) | seiersrekke (maks antall runder på rad) | σερί νικών (μέγιστοι συνεχόμενοι γύροι) | séria výhier (max. počet kôl v sérii) |
+| cash out / payout | nyeremény felvétele / kifizetés | Încasează / plată | Retirar / pagamento | Indkasser / udbetaling | Ta ut / utbetaling | Εξαργύρωση / πληρωμή | Vybrať výhru / výplata |
+| Blackjack: shoe | kártyaadagoló | sabot | sapato | kortskoen | kortskoen | σαμπό | sabot |
+| Blackjack: hit | Lap | Carte | Pedir carta | Træk kort | Trekk kort | Κάρτα | Karta |
+| Blackjack: stand | Megállok | Stai | Ficar | Stå | Stå | Μένω | Stáť |
+| Blackjack: split | Szétválasztás | Împarte | Dividir | Del | Splitt | Διαχωρισμός | Rozdeliť |
+| Blackjack: insurance | biztosítás | asigurare | seguro | forsikring | forsikring | ασφάλεια | poistenie |
+| Blackjack: same-rank vs. same-value split rule | Azonos rang / Azonos pontérték | Același rang / Aceeași valoare | Mesma carta / Mesmo valor | Samme rang / Samme værdi | Samme valør / Samme verdi | Ίδιο φύλλο / Ίδια αξία | Rovnaká hodnosť / Rovnaká hodnota |
+| RPS: throw/action (not generic "turn") | választás | alegere | jogada | træk | trekk | κίνηση | ťah |
+| Dragon Descent: vine mechanic | inda | liană | trepadeira | slyngplante | klatreplante | αναρριχητικό φυτό | liana |
+| ON/OFF display state | BE / KI | PORNIT / OPRIT | LIGADO / DESLIGADO | TIL / FRA | PÅ / AV | ΕΝΕΡΓΗ / ΑΝΕΝΕΡΓΗ (Ενεργό / Ανενεργό) | ZAPNUTÉ / VYPNUTÉ |
+| Slots: variance (risk preset, not the RTP) | volatilitás | volatilitate | volatilidade | volatilitet | volatilitet | μεταβλητότητα | volatilita |
+| Slots: house edge | házelőny | avantajul casei | vantagem da casa | husets fordel | husets fordel | πλεονέκτημα του καζίνο | výhoda kasína |
+| Slots: return/RTP verb | visszafizetési arány | rata de returnare (către jucător) | retorno ao jogador | tilbagebetaling til spilleren | tilbakebetaling til spilleren | ποσοστό επιστροφής στον παίκτη | návratnosť pre hráča |
+| seat | hely (szék = chair) | loc (scaun = chair) | lugar (cadeira = chair) | plads (stol = chair) | plass (stol = chair) | θέση (καρέκλα = chair) | miesto (stolička = chair) |
+| banked winnings (overflow bank) | tárolt nyeremények | câștiguri păstrate | ganhos guardados | gemte gevinster | lagrede gevinster | φυλαγμένα κέρδη | uschované výhry |
+| overflow: hold vs. drop nearby | Őrizd meg nekem / Leejtés a közelben | Păstrează-le pentru mine / Lasă-le pe jos lângă mine | Guardar para mim / Largar aqui perto | Gem dem til mig / Læg dem på jorden i nærheden | Ta vare på dem for meg / Legg dem på bakken i nærheten | Κράτα τα για μένα / Άφησέ τα στο έδαφος κοντά μου | Uschovať pre mňa / Položiť na zem nablízku |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -909,6 +909,21 @@ a real, previously-observed defect, not a hypothetical risk.
   `τροχοί`, `σειρές` and `γραμμές πληρωμής`; its run is `αλληλουχία`
   (`{run} συνεχόμενα`), distinct from the PvE streak `σερί`. Chat is
   `συνομιλία`, inventory `αποθέματα`, a mob `πλάσμα`, a jockey `αναβάτης`.
+- `sk_SK`: standard Slovak, informal `ty`, written from the English
+  source rather than adapted from cs_CZ (no `ř`/`ě`/`ů`). Gender-neutral
+  toward the player: Slovak second-person past tense is gendered
+  (`vyhral si` / `vyhrala si`), so outcomes are nouns or present tense
+  (`Výhra!`, `Prehra!`, `Už sedíš.`, `Stolička uvoľnená.`) and hints use
+  `Kliknutím ...` with a present-tense verb. Number placeholders stay out
+  of 1 / 2-4 / 5+ agreement positions (colon labels). `occupations.*` are
+  genitive and `dragon-settings.columns|vines|floors` genitive plural for
+  their template slots. Dealer `krupiér`; Baccarat `Hráč` / `Bankár`; pot
+  `bank`; cash-out `Vybrať výhru`; house edge `výhoda kasína`. Slots is
+  `Výherný automat` with `valce`, `riadky` and `výherné línie`; its run is
+  `rad` (`{run} v rade`), distinct from the PvE streak `séria`; since the
+  payline term contains "výherné", `variance-tradeoff` says lines "vyhrávajú
+  zriedkavejšie". A mob is `tvor`, a jockey `jazdec`, vehicle/passenger
+  `nosič` / `pasažier`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
