@@ -181,3 +181,37 @@
 - Not registered in `locales.yml`. Registry line: `kk_KZ: name: "Қазақша"`.
 - Native-speaker review: not performed; recommended before release
   (including the court-card register).
+
+### ka_GE -- ქართული (Georgian)
+
+- Final catalog SHA-256: `5bd7305723a5adf2698d7de4b6e99037421358a82542f2474dc8ff57a0aacef4` (identical in the run directory and
+  `src/main/resources/lang/ka_GE.yml`; NFC-normalized)
+- Voice: standard literary Georgian in Mkhedruli without Mtavruli capitals
+  (all-caps English lines stay in ordinary Mkhedruli), polite plural
+  `თქვენ` forms for instructions and verbal nouns for buttons, `„“`
+  quotes, decimal comma; no grammatical gender. The 2pl aorist equals the
+  polite imperative in spelling, so reported player actions use labels,
+  passives or state forms; placeholders stand only in nominative slots
+  (a real noun carries the dative / genitive and the value follows a
+  colon), ranges use an en dash; `დილერი`, Baccarat `მოთამაშე` /
+  `ბანკირი`, slots run `მიმდევრობა` vs streak `სერია`, vines `ლიანა`.
+  Recorded in the fifth continuation of the §H table.
+- Structural: helper strict check 0 errors, 0 residue warnings; scans
+  found no Mtavruli, no mixed Latin/Georgian words and no suffix (plain or
+  hyphenated) after a placeholder; `localizationCandidateCheck` CANDIDATE
+  OK (1184); full `localizationCheck` with all forty-four new locales
+  registered: every one of the 50 locales OK (1184), no new warnings;
+  `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 9 (seven aorist lines readable as commands, the insurance
+  payout read as paying the premium, "less profitable line" in the
+  variance trade-off), Tier 2 = 2 (click verb, "cover" rendered two ways),
+  Tier 3 = 31 (calques such as "ინფორმაცია თამაშზე" / "სახელით", "-ისას"
+  on a noun, hyphenated "10-ქულიანი", stack top / bottom), all applied.
+  42 review keys plus 10 self-review fixes (remaining result lines to
+  label forms, every "cover" line to "გადახდა"), rechecked after. The
+  draft had already replaced 20 aorist lines before review. Findings:
+  `reviews/ka_GE-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `ka_GE: name: "ქართული"`.
+- Native-speaker review: not performed; recommended before release, with
+  an in-game check that the Minecraft font renders Mkhedruli.
