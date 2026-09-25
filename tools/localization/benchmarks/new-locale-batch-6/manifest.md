@@ -210,8 +210,88 @@
   on a noun, hyphenated "10-ქულიანი", stack top / bottom), all applied.
   42 review keys plus 10 self-review fixes (remaining result lines to
   label forms, every "cover" line to "გადახდა"), rechecked after. The
-  draft had already replaced 20 aorist lines before review. Findings:
+  draft had already replaced 21 aorist lines before review. Findings:
   `reviews/ka_GE-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `ka_GE: name: "ქართული"`.
 - Native-speaker review: not performed; recommended before release, with
   an in-game check that the Minecraft font renders Mkhedruli.
+
+### cy_GB -- Cymraeg (Welsh)
+
+- Final catalog SHA-256: `7db51ced49f513ce896693acf8a3c943dc642f98d94886026bd69eef7b349447` (identical in the run directory and
+  `src/main/resources/lang/cy_GB.yml`; NFC-normalized)
+- Voice: standard modern Welsh, formal `chi` with `-wch` imperatives and
+  verb-nouns for buttons, `“ ”` quotes, decimal comma; initial mutations
+  written in full (soft after `neu`, nasal after `yn`, aspirate after
+  `a`); no mutating word before a non-numeric placeholder (colons and
+  parentheses instead); `ei` (his / her) never refers to a player;
+  `deliwr`, Baccarat `Chwaraewr` / `Banciwr`, RTP `dychweliad` (never
+  `ad-dalu`), slots run `rhediad` vs streak `cyfres`, vines `planhigion
+  dringo`. Recorded in the fifth continuation of the §H table.
+- Structural: helper strict check 0 errors, 0 residue warnings (with a
+  documented Welsh allow-list for `a`, `at`, `all`, `bet`, which are Welsh
+  words); scans found no mutating word before a name-type placeholder and
+  no player-referring `ei`; `localizationCandidateCheck` CANDIDATE OK (1184);
+  full `localizationCheck` with all forty-five new locales registered: every
+  one of the 51 locales OK (1184), no new warnings; `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 11 (missing soft mutation after `neu` in nine lines, `llinell
+  talu`, "yn y tymor hir" misreading long-run jackpots), Tier 2 = 0,
+  Tier 3 = 16 (the same `neu` pattern in packet 2, "wedyn" for "later",
+  a verbless clause, antecedent of `cafodd ei addasu`), all applied.
+  27 review keys plus 4 self-review fixes (the remaining "later" line and
+  `neu fe fydd` in the three `closed-*` messages), rechecked after.
+  Findings: `reviews/cy_GB-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `cy_GB: name: "Cymraeg"`.
+- Native-speaker review: not performed; recommended before release.
+
+## Batch summary
+
+All eight batch-6 locales are complete. To expose them in the language
+menu, append to `src/main/resources/lang/locales.yml` (after the batch-1 to
+batch-5 lines):
+
+```yaml
+  mk_MK:
+    name: "Македонски"
+  az_AZ:
+    name: "Azərbaycanca"
+  eu_ES:
+    name: "Euskara"
+  sq_AL:
+    name: "Shqip"
+  is_IS:
+    name: "Íslenska"
+  kk_KZ:
+    name: "Қазақша"
+  ka_GE:
+    name: "ქართული"
+  cy_GB:
+    name: "Cymraeg"
+```
+
+With the batch-1 to batch-6 lines appended, `localizationCheck` reports all
+51 locales OK at 1184 entries (verified in this run) and `compileJava`
+succeeds. Remaining warnings are the eight pre-existing ones; batch 6 adds
+none. No new Java-verified semantic fact was needed this batch; the
+language-specific traps it met are recorded in each voice entry instead:
+harmony-dependent particles after a placeholder (kk_KZ `мен/бен/пен`,
+fixed with en-dash ranges), the Georgian 2pl aorist that is spelled like
+the polite imperative, Welsh mutation after `neu`, and a return-to-player
+term that collides with the catalog's refund word (is_IS `endurgreiðsla`,
+replaced by `útborgunarhlutfall`).
+
+Out-of-scope observations (reported, not changed -- each would be a
+targeted refinement needing its own run and approval):
+
+- RTP / refund collision: older catalogs were not audited for an RTP
+  label that reuses the catalog's own refund word, which the is_IS
+  reviewer showed reads as "current refund".
+- The batch-4 and batch-5 observations (`resplit-offer` wording in older
+  catalogs, "not free" `seat-unavailable` renderings, hr_HR "znakova", the
+  unaudited `none` agreement in older gendered catalogs) still stand.
+
+Still needed before release: an in-game check (Georgian Mkhedruli and
+Kazakh-specific Cyrillic letters in inventory titles, Icelandic þ / ð,
+Welsh ŵ / ŷ, Albanian ë, line wrapping of the longer Basque and Welsh
+strings) and native-speaker review.
