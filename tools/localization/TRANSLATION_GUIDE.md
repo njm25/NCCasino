@@ -738,6 +738,34 @@ Fourth continuation for later locales (same concept rows; split so neither table
 | banked winnings (overflow bank) | kemenangan simpanan | nakatabing panalo | gañancias gardadas | bewaarde winste | захаваныя выйгрышы | सहेजी गई जीत |
 | overflow: hold vs. drop nearby | Simpan Untuk Saya / Jatuhkan Berdekatan | Itabi Para Sa Akin / Ihulog sa Malapit | Gárdamas / Déixaas no chan, preto de min | Hou dit vir my / Los dit naby op die grond | Захаваць для мяне / Скінуць побач | मेरे लिए रखें / पास में गिरा दें |
 
+Fifth continuation for later locales (same concept rows; split so neither table grows too wide to read):
+
+| Concept (continued 5) | mk_MK |
+| --- | --- |
+| generic physical dealer/croupier | дилер |
+| Baccarat banker/bank side | Банкар (Играч / Банкар) |
+| bet / wager amount | облог |
+| all in | Ва-банк |
+| rebet (repeat previous wager) | Повтор на облог |
+| chip denomination/value | вредност на жетонот |
+| win streak / chain (PvE) | низа победи (макс. број рунди во низа) |
+| cash out / payout | Подигни добивка / исплата |
+| Blackjack: shoe | кутија со карти |
+| Blackjack: hit | Карта |
+| Blackjack: stand | Доста |
+| Blackjack: split | Подели |
+| Blackjack: insurance | осигурување |
+| Blackjack: same-rank vs. same-value split rule | Ист ранг / Иста вредност |
+| RPS: throw/action (not generic "turn") | потег |
+| Dragon Descent: vine mechanic | лијана |
+| ON/OFF display state | ВКЛ. / ИСКЛ. |
+| Slots: variance (risk preset, not the RTP) | волатилност |
+| Slots: house edge | предност на казиното |
+| Slots: return/RTP verb | враќање кон играчите |
+| seat | место (стол = chair) |
+| banked winnings (overflow bank) | зачувана добивка |
+| overflow: hold vs. drop nearby | Чувај ја за мене / Фрли ја во близина |
+
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
 settled — do not fill a cell with a guess presented as an established pin.
@@ -1221,6 +1249,18 @@ a real, previously-observed defect, not a hypothetical risk.
   गुलाम, बेगम, बादशाह, इक्का; पान, ईंट, चिड़ी, हुकुम); run `क्रम` vs
   PvE streak `लगातार जीत`. Minecraft does not shape Devanagari, so matras
   and conjuncts need an in-game check before release.
+- `mk_MK`: standard literary Macedonian (Cyrillic), written from the
+  English source rather than adapted from bg_BG / sr_RS (script scan: no
+  ћ/ђ/я/ю/щ/ъ/ь); polite plural `Вие`, so aorist 2nd plural (`победивте`,
+  `Изгубивте`, `Веќе седите`) keeps the player gender-neutral; `„“`
+  quotes, decimal comma. Definite articles and clitic doubling as the
+  language requires (`Подигнете ја добивката`); `occupations.*` are
+  definite noun phrases for `finish-editing`; counts use labels (`рунди:
+  {rounds}`). `облог` is placed with `става` (not the non-standard
+  `влога`); `добивка` is winnings, `профит` is profit. `дилер`, Baccarat
+  `Играч` / `Банкар`, `Подигни добивка`, `банка` for the pot, card index
+  `П-П` / `П-Д` (Поп / Дама); slots run `комбинација` vs PvE streak
+  `низа`; `Автоматско вртење`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
