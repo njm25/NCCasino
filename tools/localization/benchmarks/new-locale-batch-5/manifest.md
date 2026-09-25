@@ -49,3 +49,29 @@
   `reviews/ms_MY-findings-*.md`.
 - Not registered in `locales.yml`. Registry line: `ms_MY: name: "Bahasa Melayu"`.
 - Native-speaker review: not performed; recommended before release.
+
+### fil_PH -- Filipino
+
+- Final catalog SHA-256: `28fbae4b66e3652d60c7dde826cbdc6549fa1cc32bbead45c1ecff4dadb19f94` (identical in the run directory and
+  `src/main/resources/lang/fil_PH.yml`; NFC-normalized)
+- Voice: standard Tagalog-based Filipino, informal `ka` / `mo`, decimal point,
+  with only the loanwords Philippine players use in UIs (dealer, chip, timer,
+  chat, reel, jackpot); no gender, gendered vocatives avoided; `taya`,
+  `Kunin ang Panalo`, `Bangkero`, `Kara o Krus`, `Awtomatikong Ikot`, run
+  `sunuran` vs streak `sunod-sunod`, Spanish-derived card names. Recorded in
+  the fourth continuation of the §H table.
+- Structural: helper strict check 0 errors (the residue warnings are the
+  accepted loanwords and a few short labels such as "Timer:"; the full check
+  confirms no new warnings); `localizationCandidateCheck` CANDIDATE OK
+  (1184); full `localizationCheck` with all thirty-three new locales
+  registered: every one of the 39 locales OK (1184), no new warnings;
+  `compileJava` succeeds.
+- Independent review (2 isolated reviewers, every key): Tier 0 = 0,
+  Tier 1 = 3 (`click-leave-chair` read as "stand on the chair"), Tier 2 = 5
+  (English word order in "Admin Menu", "even", clipped "Auto"), Tier 3 = 54
+  (standard affixes, the "talong" linker collision, "Balanse" collision),
+  all applied; 1 follow-up. 62 review keys plus 6 self-review fixes
+  (including a gendered "pare" vocative), rechecked after. Findings:
+  `reviews/fil_PH-findings-*.md`.
+- Not registered in `locales.yml`. Registry line: `fil_PH: name: "Filipino"`.
+- Native-speaker review: not performed; recommended before release.

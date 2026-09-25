@@ -705,31 +705,31 @@ Third continuation for later locales (same concept rows; split so neither table 
 
 Fourth continuation for later locales (same concept rows; split so neither table grows too wide to read):
 
-| Concept (continued 4) | ms_MY |
-| --- | --- |
-| generic physical dealer/croupier | pengendali |
-| Baccarat banker/bank side | Jurubank (Pemain / Jurubank) |
-| bet / wager amount | taruhan |
-| all in | Pertaruhkan Semua |
-| rebet (repeat previous wager) | Ulang Taruhan |
-| chip denomination/value | nilai cip |
-| win streak / chain (PvE) | berturut-turut (had pusingan berturut-turut) |
-| cash out / payout | Tunaikan / bayaran |
-| Blackjack: shoe | kotak kad |
-| Blackjack: hit | Ambil |
-| Blackjack: stand | Berhenti |
-| Blackjack: split | Pisah |
-| Blackjack: insurance | insurans |
-| Blackjack: same-rank vs. same-value split rule | Pangkat Sama / Nilai Sama |
-| RPS: throw/action (not generic "turn") | pilihan |
-| Dragon Descent: vine mechanic | tumbuhan menjalar |
-| ON/OFF display state | HIDUP / MATI |
-| Slots: variance (risk preset, not the RTP) | volatiliti |
-| Slots: house edge | kelebihan kasino |
-| Slots: return/RTP verb | pulangan kepada pemain |
-| seat | tempat duduk (kerusi = chair) |
-| banked winnings (overflow bank) | kemenangan simpanan |
-| overflow: hold vs. drop nearby | Simpan Untuk Saya / Jatuhkan Berdekatan |
+| Concept (continued 4) | ms_MY | fil_PH |
+| --- | --- | --- |
+| generic physical dealer/croupier | pengendali | dealer |
+| Baccarat banker/bank side | Jurubank (Pemain / Jurubank) | Bangkero (Manlalaro / Bangkero) |
+| bet / wager amount | taruhan | taya |
+| all in | Pertaruhkan Semua | Itaya Lahat |
+| rebet (repeat previous wager) | Ulang Taruhan | Ulitin ang Taya |
+| chip denomination/value | nilai cip | halaga ng chip |
+| win streak / chain (PvE) | berturut-turut (had pusingan berturut-turut) | sunod-sunod na panalo (max na sunod-sunod na round) |
+| cash out / payout | Tunaikan / bayaran | Kunin ang Panalo / bayad |
+| Blackjack: shoe | kotak kad | shoe |
+| Blackjack: hit | Ambil | Kumuha |
+| Blackjack: stand | Berhenti | Tumigil |
+| Blackjack: split | Pisah | Hatiin |
+| Blackjack: insurance | insurans | insurance |
+| Blackjack: same-rank vs. same-value split rule | Pangkat Sama / Nilai Sama | Parehong Ranggo / Parehong Halaga |
+| RPS: throw/action (not generic "turn") | pilihan | tira |
+| Dragon Descent: vine mechanic | tumbuhan menjalar | baging |
+| ON/OFF display state | HIDUP / MATI | NAKA-ON / NAKA-OFF |
+| Slots: variance (risk preset, not the RTP) | volatiliti | volatility |
+| Slots: house edge | kelebihan kasino | kalamangan ng casino |
+| Slots: return/RTP verb | pulangan kepada pemain | balik sa manlalaro |
+| seat | tempat duduk (kerusi = chair) | upuan |
+| banked winnings (overflow bank) | kemenangan simpanan | nakatabing panalo |
+| overflow: hold vs. drop nearby | Simpan Untuk Saya / Jatuhkan Berdekatan | Itabi Para Sa Akin / Ihulog sa Malapit |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -1145,6 +1145,20 @@ a real, previously-observed defect, not a hypothetical risk.
   (the player picks left/right, not heads/tails); Mines `Periuk Api`.
   Traditional card names `Sat`, `Jek`, `Ratu`, `Raja` and suits `Lekuk`,
   `Wajik`, `Kelawar`, `Sped`. The card shoe is `kotak kad`.
+- `fil_PH`: standard Tagalog-based Filipino, informal `ka` / `mo`, decimal
+  point, keeping only the loanwords Philippine players actually use in UIs
+  (dealer, chip, timer, chat, server, setting, reel, jackpot, multiplier,
+  volatility, currency, `i-click`, `i-type`); English word order is
+  avoided (`Menu ng Admin`, `mode ng currency`). Filipino has no
+  grammatical gender; gendered vocatives (`pare`, `tol`) are not used.
+  Standard affixes and linkers (`pagpapalit`, `paglalagay`, `ng` vs
+  `nang`); watch linker collisions (`talo` + `-ng` = eggplant). Seats are
+  left with `umalis sa upuan` (not `tumayo sa`, which reads as standing on
+  it). `taya` for bet and stake; cash-out `Kunin ang Panalo`; Baccarat
+  `Manlalaro` / `Bangkero`; spin `ikot` vs round `round`; slots run
+  `sunuran` vs PvE streak `sunod-sunod`; `Awtomatikong Ikot` for Auto Spin.
+  Coin Flip is `Kara o Krus`; Spanish-derived card names (`Alas`, `Sota`,
+  `Reyna`, `Hari`; `Puso`, `Diyamante`, `Trebol`, `Ispada`).
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
