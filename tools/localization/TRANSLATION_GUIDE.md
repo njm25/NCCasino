@@ -346,6 +346,119 @@ actual implementation, and update this section.
   source-language residue. zh_CN pins for this surface: variance 波动性,
   house edge 庄家优势, Slots machine 老虎机.
 
+- **Slots chat keywords are parser literals.** `{overwrite}`, `{cancel}` and
+  `{unlimited}` are filled with the exact words the player must type
+  (`SlotsPromptValues.OVERWRITE`/`CANCEL`/`UNLIMITED`), and the literal `off`
+  in `slots.prompt-big-win-multiplier`/`prompt-profit-target`/
+  `prompt-loss-limit` is matched as typed (`SlotsPromptValues.OFF`). Keep
+  `off` byte-exact and write the surrounding sentence so the inserted word
+  reads as something to type, in every locale. (Verified:
+  `SlotsPromptValues`, `SlotsMachine` prompt calls.)
+- **The house-edge example must stay parseable.**
+  `SlotsHouseEdgeInput.parse` strips only a *trailing* `%` and accepts a
+  decimal comma, so "2,5%" and "2,5 %" work but a locale convention that puts
+  the percent sign first (Turkish "%2,5") would be rejected. Write the example
+  with the sign after the number even in such a locale.
+- **`cards.suits.*` are only ever inserted into `cards.name`** (with
+  `cards.ranks.*`), never shown alone, so a locale may put suits in the
+  grammatical form that `cards.name` needs (e.g. a genitive plural).
+  `blackjack.drew-card` receives a bare rank name. `{rank}` must still precede
+  `{suit}` in `cards.name` (ordered-placeholder rule), so a locale whose
+  natural order is suit-first uses a construction such as "{rank} ({suit})".
+  (Verified: `Client` card naming, `BlackjackFrame`.)
+- **`dragon-settings.columns`/`vines`/`floors` are only inserted into
+  `dragon-settings.prompt-setting` and `prompt-setting-detailed`** as
+  `{setting}` (`DragonDescentMenu.handleEditSetting`), so a case-marking
+  locale may inflect them for that one slot. `{occupation}` likewise only
+  fills `commands.finish-editing`.
+- **`coin-flip.waiting-bet` / `rock-paper-scissors.waiting-bet` are only shown
+  to the chair-two player,** under the chair-one "`{player}`'s turn" title,
+  while chair one has not bet yet (`CoinFlipClient.handlePlayerTwoSit`,
+  `resetPlayerTwoUI`). "Their bet" is therefore the opponent's bet from the
+  viewer's side, so an "opponent" rendering is correct here.
+- **`coin-flip.chain-win` / `rock-paper-scissors.chain-win` `{amount}` is the
+  current compounded pot,** not the prize of the next win: the server
+  compounds `betAmount` on the win, sends it with `CHAIN_WIN`
+  (`CoinFlipServer.advanceChain`, `RockPaperScissorsServer`), and cashing out
+  pays exactly that `betAmount`. It is what the player keeps by cashing out
+  now and what the next flip/throw puts at stake, so "flip again for
+  `{amount}`" must not be rendered as "win `{amount}` if you win again".
+- **`slots-settings.variance-tradeoff` "fewer paying lines" means lines pay
+  less often** (the hit rate falls), never that there are fewer paylines. In a
+  locale whose payline term is itself "winning lines" (cs_CZ `výherní
+  linie`, pl_PL `linie wygrywające`), phrase it as "lines win less often" so
+  it cannot read as a smaller line count.
+- **`blackjack.resplit-offer` confirms a re-split that already happened.**
+  Despite the English "Split again!", `BlackjackInventory` sends it right
+  after a hand has been split a second time (`wasResplit ?
+  "blackjack.resplit-offer" : "blackjack.split-success"`); it is the
+  re-split counterpart of `split-success` ("Hand split!"), not an
+  instruction or an offer to split. Translate it as a completed action
+  ("Hand split again!").
+- **`coin-flip.seat-unavailable` / `rock-paper-scissors.seat-unavailable`
+  label an empty, locked chair.** `CoinFlipClient` and
+  `RockPaperScissorsClient` put it on chair 2 while that chair is empty,
+  whenever chair 1 is free too (PvP) or the table has just been reset to
+  PvP; chair 2 only opens after someone takes chair 1, which is why its
+  lore is `sit-other-chair`. Translate "unavailable / not open yet", never
+  "occupied" or "taken": in many languages "not free / not vacant"
+  (`nije slobodno`, `ikke ledig`, `užimta`) reads as occupied.
+- **`betting.inventory-full` fires for refunds as well as winnings.** It is
+  sent from `Client.creditPlayer`/`Server.creditPlayer`, which also returns
+  stakes (Baccarat refunds, undone bets, cancelled Coin Flip/RPS offers), so
+  the dropped `{amount}` must be described neutrally ("it", "the items"), never
+  as winnings.
+- **Slots profile names accept letters of every script.**
+  `SlotsProfileName` NFC-normalizes the name and then allows any
+  `Character.isLetter`/`isDigit` code point plus space, `-` and `_`, so
+  `slots.profile-name-illegal-characters` must say "letters" generically. Do
+  not narrow it to Latin/alphanumeric characters (e.g. Japanese 英数字), which
+  would wrongly tell players their own script is forbidden.
+- **A placeholder directly followed by a letter fails validation**
+  (`SyntaxTokens.introducedPlaceholderWordJoins`). Scripts written without
+  spaces (zh_CN, ja_JP, th_TH) put a space after a placeholder that is followed
+  by a letter, and agglutinative locales (fi_FI, tr_TR) must not attach case
+  suffixes to a placeholder; restructure so the placeholder stays in its base
+  form (e.g. a colon label or an apposition).
+- **`mob-settings.none` / `admin.none` only fill the llama-decor and
+  wolf-collar-colour slots.** Every call site is `getLlamaCarpetName` (after
+  `decor-lore` / `current-decor-lore`) or the wolf collar value in
+  `jockey-options.current` under `edit-collar-color` (`JockeyOptionsMenu`,
+  `MobSelectionMenu`). In gendered languages, make "None" agree with the
+  locale's decor and colour nouns (gl_ES `Ningunha` for `decoración` /
+  `cor`), not with a generic masculine default.
+- **`slots-settings.house-edge-prompt` / `house-edge-invalid` show a value
+  the player will type.** `SlotsHouseEdgeInput.parse` accepts `2.5`, `2,5`
+  (a comma is read as the decimal point when no `.` is present) and a
+  trailing `%`, but not a leading one, so the example must stay typeable
+  (`2,5%` or `2,5`) even in locales that write the sign first (eu_ES `% 2,5`,
+  tr_TR `%2,5`); display-only percentages elsewhere may follow local style.
+- **RTP labels must not read as a refund.** `slots.guide-machine-rtp` and
+  `admin.slots-rtp-lore` label the machine's return-to-player rate. When the
+  locale's label word shares a root with its refund wording (`refund-exit`,
+  `*-refunded`, round-voided "returned") and carries no rate/percent word,
+  append `(RTP)` (sl_SI `Povračilo igralcu (RTP)`, hr_HR/bs_BA `Povrat igraču
+  (RTP)`, ca_ES `Retorn al jugador (RTP)`); a label that already says
+  rate/percent (sv_SE `återbetalningsprocent`, tr_TR `geri ödeme oranı`) needs
+  nothing more. Running sentences that mirror English "returns {rtp}"
+  (`house-edge-current`, `house-edge-updated`) may keep the plain verb.
+- **Vault is optional.** `admin.vault-missing` is sent only when an admin tries
+  to switch a dealer to VAULT currency mode without Vault present, and
+  `admin.install-vault` / `install-economy` / `standard-mode-fallback` sit on
+  the disabled toggle while the dealer keeps the vanilla item currency
+  (`AdminMenu.handleToggleCurrencyMode`, `updateCurrencyButtons`). Render "install
+  Vault to use it with NCCasino", never "install Vault to use NCCasino", which
+  would claim the plugin needs Vault.
+- **`dragon-descent.invalid-action-capitalized` differs from `invalid-action`
+  only by English Title Case** (`DragonClient`). A script without letter case
+  (Tamil, Thai, Devanagari, CJK, Georgian, Armenian) uses the same text for
+  both keys; do not add emphasis such as `!` or all-caps (a Cyrillic all-caps
+  rendering reads as shouting).
+- **`coin-flip.max-chain-hit` / `rock-paper-scissors.max-chain-hit` count
+  "`{rounds}` games"** in English (`CoinFlipServer`, `RockPaperScissorsServer`),
+  so "games", "rounds" or a locale's counted-rounds label are all faithful; do
+  not "correct" one into another.
+
 This registry is not exhaustive. When a new ambiguous key is resolved via
 Java inspection, add it here with the exact affected key family and a short
 "verified: <file/method>" note, so the next translation pass does not have
@@ -518,31 +631,227 @@ lore, and help text alike. Do not let one section of a catalog fall back to
 a different or untranslated term for the same concept just because it is
 far from the original example that established the pin.
 
-| Concept | de_DE | es_ES | fr_FR | pt_BR |
-| --- | --- | --- | --- | --- |
-| generic physical dealer/croupier | Dealer | crupier | croupier | crupiê |
-| Baccarat banker/bank side | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* |
-| bet / wager amount | Einsatz | apuesta | mise | aposta |
-| all in | alles setzen | apostar todo | tout miser | apostar tudo |
-| rebet (repeat previous wager) | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| chip denomination/value | *(pin when first reviewed — not a physical-size word)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| win streak / chain (PvE) | *(pin when first reviewed — a round count, not a payout)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| cash out / payout | *(pin when first reviewed — preserve current/future/conditional tense per key)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| Blackjack: shoe | *(pin when first reviewed — the card shoe, not footwear)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| Blackjack: hit | Karte ziehen | pedir | tirer | pedir carta |
-| Blackjack: stand | halten | plantarse | rester | parar |
-| Blackjack: split | teilen | dividir | séparer | dividir |
-| Blackjack: insurance | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| Blackjack: same-rank vs. same-value split rule | *(pin distinctly — two different rules, do not use near-identical labels)* | *(pin distinctly)* | *(pin distinctly)* | *(pin distinctly)* |
-| RPS: throw/action (not generic "turn") | Wurf | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| Dragon Descent: vine mechanic | *(pin when first reviewed — climbing-vine sense)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| ON/OFF display state | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* |
-| Slots: variance (risk preset, not the RTP) | Varianz | varianza | variance | variância |
-| Slots: house edge | Hausvorteil | ventaja de la casa | avantage de la maison | vantagem da casa |
-| Slots: return/RTP verb | zahlt zurück | devuelve | redistribue | devolve |
-| seat | Sitz | asiento | siège | assento |
-| banked winnings (overflow bank) | verwahrte Gewinne | ganancias guardadas | gains conservés | ganhos guardados |
-| overflow: hold vs. drop nearby | aufbewahren / fallen lassen | guardar / soltar | garder / lâcher | guardar / largar |
+| Concept | de_DE | es_ES | fr_FR | pt_BR | nl_NL | fi_FI | ja_JP | ru_RU | th_TH | tr_TR | vi_VN |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | Dealer | crupier | croupier | crupiê | dealer | jakaja | ディーラー | дилер | ดีลเลอร์ | krupiye | người chia bài |
+| Baccarat banker/bank side | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* | *(distinct from dealer — record locale decision when made)* | Bank (Speler / Bank) | Pankkiiri (Pelaaja / Pankkiiri) | バンカー (プレイヤー / バンカー) | Банкир (Игрок / Банкир) | แบงเกอร์ (ผู้เล่น / แบงเกอร์) | Banker (Oyuncu / Banker) | Nhà Cái (Nhà Con / Nhà Cái) |
+| bet / wager amount | Einsatz | apuesta | mise | aposta | inzet | panos | ベット (ベット額) | ставка | เดิมพัน | bahis | cược (mức cược) |
+| all in | alles setzen | apostar todo | tout miser | apostar tudo | alles inzetten | kaikki peliin | オールイン | ва-банк | ออลอิน | hepsini yatır | tất tay |
+| rebet (repeat previous wager) | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | inzet herhalen | toista panos | リベット | повтор ставки | เดิมพันซ้ำ | bahis tekrarı | cược lại |
+| chip denomination/value | *(pin when first reviewed — not a physical-size word)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | fichewaarde | pelimerkin arvo | チップの額面 | номинал фишки | มูลค่าชิป | fiş değeri | mệnh giá chip |
+| win streak / chain (PvE) | *(pin when first reviewed — a round count, not a payout)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | winreeks (max. rondes winreeks) | voittoputki (voittoputken enimmäiskierrokset) | 連勝 (最大連勝ラウンド数) | серия побед (макс. раундов в серии) | ชนะติดต่อกัน (จำนวนรอบชนะติดต่อกันสูงสุด) | galibiyet serisi (maks. seri eli) | chuỗi thắng (số ván chuỗi thắng tối đa) |
+| cash out / payout | *(pin when first reviewed — preserve current/future/conditional tense per key)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | incasseren / uitbetaling | kotiuttaa / voitonmaksu | キャッシュアウト / 配当 | забрать выигрыш / выплата | เก็บเงินรางวัล / จ่ายเงินรางวัล | kazancı al / ödeme | nhận thưởng / trả thưởng |
+| Blackjack: shoe | *(pin when first reviewed — the card shoe, not footwear)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | kaartenschoen | korttikenkä | シュー | шуз | กล่องแจกไพ่ | kart kutusu | hộp chia bài |
+| Blackjack: hit | Karte ziehen | pedir | tirer | pedir carta | kaart (nemen) | ota kortti | ヒット | взять карту | จั่วไพ่ | kart çek | rút bài |
+| Blackjack: stand | halten | plantarse | rester | parar | passen | jää | スタンド | хватит (остановиться) | หยุด | dur | dừng |
+| Blackjack: split | teilen | dividir | séparer | dividir | splitsen | jaa käsi (käden jakaminen) | スプリット | разделить | แยกไพ่ | böl | tách bài |
+| Blackjack: insurance | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | verzekering | vakuutus | インシュランス | страховка | ประกัน | sigorta | bảo hiểm |
+| Blackjack: same-rank vs. same-value split rule | *(pin distinctly — two different rules, do not use near-identical labels)* | *(pin distinctly)* | *(pin distinctly)* | *(pin distinctly)* | gelijke rang / gelijke waarde | vain parit / sama pistearvo | 同じランク / 同じ点数 | одинаковый ранг / одинаковые очки | หน้าไพ่เดียวกัน / แต้มเท่ากัน | yalnızca çift / aynı puan | cùng quân / cùng điểm |
+| RPS: throw/action (not generic "turn") | Wurf | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | keuze (kiezen) | valinta (valita) | 手 (出す手) | жест | ออกมือ (มือที่ออก) | seçim | lựa chọn (ra tay) |
+| Dragon Descent: vine mechanic | *(pin when first reviewed — climbing-vine sense)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | klimranken | köynnökset | ツタ | лианы | เถาวัลย์ | sarmaşık | dây leo |
+| ON/OFF display state | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | *(pin when first reviewed)* | AAN / UIT | PÄÄLLÄ / POIS | オン / オフ | ВКЛ / ВЫКЛ | เปิด / ปิด | AÇIK / KAPALI | BẬT / TẮT |
+| Slots: variance (risk preset, not the RTP) | Varianz | varianza | variance | variância | variantie | varianssi | ボラティリティ | волатильность | ความผันผวน | oynaklık | độ biến động |
+| Slots: house edge | Hausvorteil | ventaja de la casa | avantage de la maison | vantagem da casa | huisvoordeel | talon etu | ハウスエッジ | преимущество казино | ความได้เปรียบของคาสิโน | kasa avantajı | lợi thế nhà cái |
+| Slots: return/RTP verb | zahlt zurück | devuelve | redistribue | devolve | keert uit (uitbetalingspercentage) | palauttaa (palautusprosentti) | 還元率 | возвращает (процент возврата) | จ่ายคืน (อัตราการจ่ายคืน) | geri öder (geri ödeme oranı) | hoàn trả (tỷ lệ hoàn trả) |
+| seat | Sitz | asiento | siège | assento | plaats | paikka | 席 | место | ที่นั่ง | koltuk | chỗ ngồi |
+| banked winnings (overflow bank) | verwahrte Gewinne | ganancias guardadas | gains conservés | ganhos guardados | bewaarde winst | säilytetyt voitot | 保管中の配当 | отложенные выигрыши | เงินรางวัลที่เก็บไว้ | saklanan kazançlar | tiền thưởng đang giữ |
+| overflow: hold vs. drop nearby | aufbewahren / fallen lassen | guardar / soltar | garder / lâcher | guardar / largar | bewaren / laten vallen | säilytä / pudota lähelle | 保管 / 近くにドロップ | хранить / выложить рядом | เก็บไว้ / ดรอปไว้ใกล้ๆ | sakla / yakına düşür | giữ lại / thả ở gần |
+
+Continuation of the table above for later locales (same concept rows; split so neither table grows too wide to read):
+
+| Concept (continued) | ko_KR | pl_PL | it_IT | id_ID | zh_TW | uk_UA | cs_CZ | sv_SE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | 딜러 | krupier | croupier | bandar | 荷官 | круп'є | krupiér | croupier |
+| Baccarat banker/bank side | 뱅커 (플레이어 / 뱅커) | Bankier (Gracz / Bankier) | Banco (Giocatore / Banco) | Bankir (Pemain / Bankir) | 莊家（閒家 / 莊家） | Банкір (Гравець / Банкір; game: Бакара) | Bankéř (Hráč / Bankéř) | Bank (Spelare / Bank) |
+| bet / wager amount | 베팅 (베팅액) | zakład (stawka) | puntata | taruhan (nilai taruhan) | 下注（下注金額） | ставка | sázka (výše sázky) | insats |
+| all in | 올인 | va banque | punta tutto | pertaruhkan semua | 全押 | ва-банк | vsadit vše | satsa allt |
+| rebet (repeat previous wager) | 재베팅 | ponawianie zakładu (ponowiono zakład) | ripeti puntata (ripetizione) | taruhan ulang | 重複下注 | повтор ставки | opakování sázky | upprepa insats |
+| chip denomination/value | 칩 금액 | nominał żetonu | valore della fiche | nilai keping | 籌碼面額 | номінал фішки | hodnota žetonu | markervalör |
+| win streak / chain (PvE) | 연승 (최대 연승 라운드) | seria zwycięstw (maks. liczba rund serii) | serie di vittorie (round massimi della serie) | beruntun (ronde beruntun maksimum) | 連勝（最大連勝回合數） | серія перемог (макс. кількість раундів серії) | série výher (max. počet kol série) | vinstsvit (max antal rundor i vinstsvit) |
+| cash out / payout | 캐시아웃 / 지급 (당첨금) | wypłać / wypłata | incassa / vincita, pagamento | cairkan / pembayaran | 兌現 / 派彩 | забрати виграш / виплата | vybrat výhru / výplata | ta ut / utbetalning |
+| Blackjack: shoe | 슈 | sabot | sabot | kotak kartu | 牌靴 | сабо | sabot | kortsko |
+| Blackjack: hit | 히트 | Dobierz | Carta | Ambil | 要牌 | Ще карту | Karta | Kort |
+| Blackjack: stand | 스탠드 | Pas (pasujesz) | Stai | Tahan (memilih Tahan) | 停牌 | Досить | Stát | Stanna |
+| Blackjack: split | 스플릿 | Rozdziel (rozdzielanie) | Dividi (divisione) | Pisah | 分牌 | Розділити | Rozdělit | Dela |
+| Blackjack: insurance | 인슈어런스 | ubezpieczenie | assicurazione | asuransi | 保險 | страховка | pojištění | försäkring |
+| Blackjack: same-rank vs. same-value split rule | 같은 랭크 / 같은 점수 | Ta sama ranga / Ta sama wartość | Stesso rango / Stesso valore | Peringkat Sama / Nilai Sama | 相同牌面 / 相同點數 | Однаковий ранг / Однакове значення | Stejné označení / Stejná bodová hodnota | Samma valör / Samma poängvärde |
+| RPS: throw/action (not generic "turn") | 낼 손 (내다) | zagranie (zatwierdź zagranie) | mossa | pilihan (kunci pilihan) | 出拳 | жест | volba | val (låsa ditt val) |
+| Dragon Descent: vine mechanic | 덩굴 | pnącza | rampicanti | tanaman rambat | 藤蔓 | ліани | liány | klängväxter |
+| ON/OFF display state | 켜짐 / 꺼짐 | WŁ. / WYŁ. | ATTIVATA / DISATTIVATA (Attivato / Disattivato; Sì / No where one value fills labels of both genders) | AKTIF / NONAKTIF | 開啟 / 關閉 | УВІМК. / ВИМК. | ZAP. / VYP. | PÅ / AV |
+| Slots: variance (risk preset, not the RTP) | 변동성 | zmienność | volatilità | volatilitas | 波動度 | волатильність | volatilita | volatilitet |
+| Slots: house edge | 하우스 엣지 | przewaga kasyna | vantaggio della casa | keunggulan kasino | 賭場優勢 | перевага казино | výhoda kasina | husets fördel |
+| Slots: return/RTP verb | 환수율 (돌려받다) | zwrot (zwrot dla gracza) | ritorno al giocatore | pengembalian ke pemain | 返還率（玩家返還率） | повернення гравцеві | návratnost | återbetalningsprocent (återbetalning till spelaren) |
+| seat | 자리 | miejsce (krzesło = chair) | posto (sedia = chair) | kursi | 座位（椅子 = chair） | місце (стілець = chair) | místo (židle = chair) | plats (stol = chair) |
+| banked winnings (overflow bank) | 보관 중인 당첨금 | przechowywane wygrane | vincite custodite | kemenangan yang disimpan | 暫存獎金 | збережені виграші | uschované výhry | sparade vinster |
+| overflow: hold vs. drop nearby | 보관해 두기 / 근처에 떨어뜨리기 | Przechowaj dla mnie / Upuść obok | Tienile da parte / Falle cadere vicino | Simpan Untukku / Jatuhkan di Dekatku | 替我保管 / 掉落在附近 | Зберегти для мене / Скинути поруч | Uschovat pro mě / Upustit poblíž | Spara åt mig / Släpp i närheten |
+
+Second continuation for later locales (same concept rows; split so neither table grows too wide to read):
+
+| Concept (continued 2) | hu_HU | ro_RO | pt_PT | da_DK | nb_NO | el_GR | sk_SK | bg_BG |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | osztó | crupier | croupier | dealer | dealer | ντίλερ | krupiér | крупие |
+| Baccarat banker/bank side | Bankár (Játékos / Bankár) | Bancher (Jucător / Bancher) | Banca (Jogador / Banca) | Bank (Spiller / Bank) | Bank (Spiller / Bank) | Τράπεζα (Παίκτης / Τράπεζα) | Bankár (Hráč / Bankár) | Банкер (Играч / Банкер) |
+| bet / wager amount | tét | pariu (miză = suma) | aposta | indsats | innsats | στοίχημα | stávka | залог |
+| all in | mindent bele | Mizează tot | Apostar tudo | All-in | All-in | Πόνταρε τα πάντα | Vsadiť všetko | Заложи всичко |
+| rebet (repeat previous wager) | tét ismétlése | Repetă pariul | Repetir aposta | Gentag indsats | Gjenta innsats | Επανάληψη στοιχήματος | Opakovať stávku | Повторен залог |
+| chip denomination/value | zsetoncímlet | valoarea jetonului | valor da ficha | jetonværdi | sjetongverdi | αξία μάρκας | hodnota žetónu | стойност на чипа |
+| win streak / chain (PvE) | győzelmi sorozat (sorozat max. körszáma) | serie de victorii (număr maxim de runde în serie) | série de vitórias (máximo de rondas em série) | sejrsstime (maks. antal runder i træk) | seiersrekke (maks antall runder på rad) | σερί νικών (μέγιστοι συνεχόμενοι γύροι) | séria výhier (max. počet kôl v sérii) | серия от победи (макс. брой рундове в серия) |
+| cash out / payout | nyeremény felvétele / kifizetés | Încasează / plată | Retirar / pagamento | Indkasser / udbetaling | Ta ut / utbetaling | Εξαργύρωση / πληρωμή | Vybrať výhru / výplata | Вземи печалбата / изплащане |
+| Blackjack: shoe | kártyaadagoló | sabot | sapato | kortskoen | kortskoen | σαμπό | sabot | кутията с тестетата |
+| Blackjack: hit | Lap | Carte | Pedir carta | Træk kort | Trekk kort | Κάρτα | Karta | Карта |
+| Blackjack: stand | Megállok | Stai | Ficar | Stå | Stå | Μένω | Stáť | Стоп |
+| Blackjack: split | Szétválasztás | Împarte | Dividir | Del | Splitt | Διαχωρισμός | Rozdeliť | Раздели |
+| Blackjack: insurance | biztosítás | asigurare | seguro | forsikring | forsikring | ασφάλεια | poistenie | застраховка |
+| Blackjack: same-rank vs. same-value split rule | Azonos rang / Azonos pontérték | Același rang / Aceeași valoare | Mesma carta / Mesmo valor | Samme rang / Samme værdi | Samme valør / Samme verdi | Ίδιο φύλλο / Ίδια αξία | Rovnaká hodnosť / Rovnaká hodnota | Еднакъв ранг / Еднаква стойност |
+| RPS: throw/action (not generic "turn") | választás | alegere | jogada | træk | trekk | κίνηση | ťah | избор |
+| Dragon Descent: vine mechanic | inda | liană | trepadeira | slyngplante | klatreplante | αναρριχητικό φυτό | liana | лиана |
+| ON/OFF display state | BE / KI | PORNIT / OPRIT | LIGADO / DESLIGADO | TIL / FRA | PÅ / AV | ΕΝΕΡΓΗ / ΑΝΕΝΕΡΓΗ (Ενεργό / Ανενεργό) | ZAPNUTÉ / VYPNUTÉ | ВКЛЮЧЕН / ИЗКЛЮЧЕН |
+| Slots: variance (risk preset, not the RTP) | volatilitás | volatilitate | volatilidade | volatilitet | volatilitet | μεταβλητότητα | volatilita | волатилност |
+| Slots: house edge | házelőny | avantajul casei | vantagem da casa | husets fordel | husets fordel | πλεονέκτημα του καζίνο | výhoda kasína | предимство на казиното |
+| Slots: return/RTP verb | visszafizetési arány | rata de returnare (către jucător) | retorno ao jogador | tilbagebetaling til spilleren | tilbakebetaling til spilleren | ποσοστό επιστροφής στον παίκτη | návratnosť pre hráča | възвръщаемост за играча |
+| seat | hely (szék = chair) | loc (scaun = chair) | lugar (cadeira = chair) | plads (stol = chair) | plass (stol = chair) | θέση (καρέκλα = chair) | miesto (stolička = chair) | място (стол = chair) |
+| banked winnings (overflow bank) | tárolt nyeremények | câștiguri păstrate | ganhos guardados | gemte gevinster | lagrede gevinster | φυλαγμένα κέρδη | uschované výhry | запазени печалби |
+| overflow: hold vs. drop nearby | Őrizd meg nekem / Leejtés a közelben | Păstrează-le pentru mine / Lasă-le pe jos lângă mine | Guardar para mim / Largar aqui perto | Gem dem til mig / Læg dem på jorden i nærheden | Ta vare på dem for meg / Legg dem på bakken i nærheten | Κράτα τα για μένα / Άφησέ τα στο έδαφος κοντά μου | Uschovať pre mňa / Položiť na zem nablízku | Пази ги за мен / Остави ги на земята наблизо |
+
+Third continuation for later locales (same concept rows; split so neither table grows too wide to read):
+
+| Concept (continued 3) | es_MX | hr_HR | sl_SI | sr_RS | lt_LT | lv_LV | et_EE | ca_ES |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | crupier | djelitelj | delivec | делилац | dalytojas | dīleris | diiler | crupier |
+| Baccarat banker/bank side | Banca (Jugador / Banca) | Bankar (Igrač / Bankar) | Bankir (Igralec / Bankir) | Банкар (Играч / Банкар) | Bankininkas (Žaidėjas / Bankininkas) | Baņķieris (Spēlētājs / Baņķieris) | Pankur (Mängija / Pankur) | Banca (Jugador / Banca) |
+| bet / wager amount | apuesta | ulog (oklada = placed bet) | vložek (stava = placed bet) | улог (опклада = placed bet) | statymas (atlikti statymą = place a bet) | likme | panus | aposta |
+| all in | Apostar todo | Uloži sve | Stavi vse | Уложи све | Statyti viską | Likt visu | Pane kõik | Apostar-ho tot |
+| rebet (repeat previous wager) | Repetir apuesta | Ponovi ulog | Ponovi stavo | Понови улог | Kartoti statymą | Atkārtot likmi | Korda panust | Repetir aposta |
+| chip denomination/value | valor de la ficha | vrijednost žetona | vrednost žetona | вредност жетона | žetono vertė | žetona vērtība | žetooni väärtus | valor de la fitxa |
+| win streak / chain (PvE) | racha (máx. de rondas en racha) | serija pobjeda (najveći broj rundi u seriji) | niz zmag (največ krogov v nizu) | низ победа (највећи број рунди у низу) | pergalių serija (didžiausias raundų skaičius serijoje) | uzvaru sērija (maksimālais raundu skaits sērijā) | võiduseeria (seeria maksimaalne voorude arv) | ratxa (màxim de rondes en ratxa) |
+| cash out / payout | Cobrar / pago | Podigni dobitak / isplata | Unovči / izplačilo | Подигни добитак / исплата | Atsiimti / išmoka | Paņemt laimestu / izmaksa | Võta võit välja / väljamakse | Cobra / pagament |
+| Blackjack: shoe | zapato | kutija za dijeljenje | delilnik kart | кутија за дељење | kortų dėžė | kāršu kaste | kaardikast | sabata |
+| Blackjack: hit | Pedir | Karta | Karta | Карта | Imti | Ņemt | Võta | Demana |
+| Blackjack: stand | Plantarse | Stani | Stoj | Стој | Sustoti | Pietiek | Jää | Planta't |
+| Blackjack: split | Dividir | Podijeli | Razdeli | Подели | Skaidyti | Sadalīt | Jaga | Divideix |
+| Blackjack: insurance | seguro | osiguranje | zavarovanje | осигурање | draudimas | apdrošināšana | kindlustus | assegurança |
+| Blackjack: same-rank vs. same-value split rule | Mismo rango / Mismo valor | Isti rang / Ista vrijednost | Enak rang / Enaka vrednost | Исти ранг / Иста вредност | Tas pats rangas / Ta pati vertė | Vienāds rangs / Vienāda vērtība | Sama aste / Sama väärtus | Mateix rang / Mateix valor |
+| RPS: throw/action (not generic "turn") | jugada | izbor | izbira | избор | pasirinkimas | izvēle | valik | jugada |
+| Dragon Descent: vine mechanic | enredadera | puzavica | plezalka | пузавица | vijoklis | vīteņaugs | vääd | liana |
+| ON/OFF display state | ACTIVADO / DESACTIVADO | UKLJUČENO / ISKLJUČENO | VKLOPLJENO / IZKLOPLJENO | УКЉУЧЕНО / ИСКЉУЧЕНО | ĮJUNGTA / IŠJUNGTA | IESLĒGTS / IZSLĒGTS | SEES / VÄLJAS | ACTIVAT / DESACTIVAT |
+| Slots: variance (risk preset, not the RTP) | volatilidad | volatilnost | volatilnost | волатилност | volatilumas | volatilitāte | volatiilsus | volatilitat |
+| Slots: house edge | ventaja de la casa | prednost kuće | prednost igralnice | предност куће | kazino pranašumas | kazino priekšrocība | kasiino eelis | avantatge de la casa |
+| Slots: return/RTP verb | retorno al jugador | povrat igraču | povračilo igralcu | повраћај играчу | grąža žaidėjui | atdeve spēlētājam | tagastus mängijale | retorn al jugador |
+| seat | lugar (silla = chair) | mjesto (stolica = chair) | mesto (stol = chair) | место (столица = chair) | vieta (kėdė = chair) | vieta (krēsls = chair) | koht (tool = chair) | seient (cadira = chair) |
+| banked winnings (overflow bank) | ganancias guardadas | sačuvani dobici | shranjeni dobitki | сачувани добици | išsaugoti laimėjimai | saglabātie laimesti | hoiustatud võidud | guanys guardats |
+| overflow: hold vs. drop nearby | Guárdalas por mí / Suéltalas cerca | Čuvaj ih za mene / Ostavi ih na tlu u blizini | Shrani jih zame / Odvrzi jih na tla v bližini | Чувај их за мене / Остави их на тлу у близини | Saugoti juos man / Padėti juos ant žemės šalia | Glabāt drošībā / Nolikt tos uz zemes tuvumā | Hoia neid minu jaoks / Pane need lähedale maha | Guarda'ls per a mi / Deixa'ls a terra a prop |
+
+Fourth continuation for later locales (same concept rows; split so neither table grows too wide to read):
+
+| Concept (continued 4) | ms_MY | fil_PH | gl_ES | af_ZA | be_BY | hi_IN |
+| --- | --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | pengendali | dealer | crupier | kroepier | крупье | डीलर |
+| Baccarat banker/bank side | Jurubank (Pemain / Jurubank) | Bangkero (Manlalaro / Bangkero) | Banca (Xogador / Banca) | Bankier (Speler / Bankier) | Банкір (Гулец / Банкір) | बैंकर (प्लेयर / बैंकर) |
+| bet / wager amount | taruhan | taya | aposta | weddenskap (inset = amount) | стаўка | दांव |
+| all in | Pertaruhkan Semua | Itaya Lahat | Apostalo todo | Alles in | Ва-банк | सब दांव पर |
+| rebet (repeat previous wager) | Ulang Taruhan | Ulitin ang Taya | Repetir aposta | Herhaal weddenskap | паўтор стаўкі | दांव दोहराना |
+| chip denomination/value | nilai cip | halaga ng chip | valor da ficha | skyfiewaarde | намінал фішкі | चिप का मूल्य |
+| win streak / chain (PvE) | berturut-turut (had pusingan berturut-turut) | sunod-sunod na panalo (max na sunod-sunod na round) | racha (máximo de roldas en racha) | wenreeks (maksimum reeksrondes) | серыя перамог (макс. колькасць раўндаў серыі) | लगातार जीत (लगातार जीत के अधिकतम राउंड) |
+| cash out / payout | Tunaikan / bayaran | Kunin ang Panalo / bayad | Cobrar / pagamento | Betaal uit / uitbetaling | забраць выйгрыш / выплата | कैश आउट / भुगतान |
+| Blackjack: shoe | kotak kad | shoe | zapata | kaartskoen | шуз | कार्ड शू |
+| Blackjack: hit | Ambil | Kumuha | Pedir | Trek | Яшчэ карту | कार्ड लें |
+| Blackjack: stand | Berhenti | Tumigil | Plantarse | Staan | Хопіць | रुकें |
+| Blackjack: split | Pisah | Hatiin | Dividir | Verdeel | Падзяліць | बाँटें |
+| Blackjack: insurance | insurans | insurance | seguro | versekering | страхоўка | बीमा |
+| Blackjack: same-rank vs. same-value split rule | Pangkat Sama / Nilai Sama | Parehong Ranggo / Parehong Halaga | Mesmo rango / Mesmo valor | Dieselfde rang / Dieselfde waarde | Аднолькавы ранг / Аднолькавая вартасць | एक ही रैंक / एक ही मूल्य |
+| RPS: throw/action (not generic "turn") | pilihan | tira | xogada | keuse | жэст | चाल |
+| Dragon Descent: vine mechanic | tumbuhan menjalar | baging | enredadeira | rankplant | ліяна | बेल |
+| ON/OFF display state | HIDUP / MATI | NAKA-ON / NAKA-OFF | ACTIVADO / DESACTIVADO | AAN / AF | УКЛ. / ВЫКЛ. | चालू / बंद |
+| Slots: variance (risk preset, not the RTP) | volatiliti | volatility | volatilidade | wisselvalligheid | валацільнасць | अस्थिरता |
+| Slots: house edge | kelebihan kasino | kalamangan ng casino | vantaxe da casa | huisvoordeel | перавага казіно | कैसीनो का लाभ |
+| Slots: return/RTP verb | pulangan kepada pemain | balik sa manlalaro | retorno ao xogador | terugbetaling aan speler | вяртанне гульцу | खिलाड़ी को वापसी |
+| seat | tempat duduk (kerusi = chair) | upuan | asento | sitplek (stoel = chair) | месца (крэсла = chair) | सीट (कुर्सी = chair) |
+| banked winnings (overflow bank) | kemenangan simpanan | nakatabing panalo | gañancias gardadas | bewaarde winste | захаваныя выйгрышы | सहेजी गई जीत |
+| overflow: hold vs. drop nearby | Simpan Untuk Saya / Jatuhkan Berdekatan | Itabi Para Sa Akin / Ihulog sa Malapit | Gárdamas / Déixaas no chan, preto de min | Hou dit vir my / Los dit naby op die grond | Захаваць для мяне / Скінуць побач | मेरे लिए रखें / पास में गिरा दें |
+
+Fifth continuation for later locales (same concept rows; split so neither table grows too wide to read):
+
+| Concept (continued 5) | mk_MK | az_AZ | eu_ES | sq_AL | is_IS | kk_KZ | ka_GE | cy_GB |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | дилер | diler | krupierra | krupieri | gjafari | дилер | დილერი | deliwr |
+| Baccarat banker/bank side | Банкар (Играч / Банкар) | Bankir (Oyunçu / Bankir) | Bankaria (Jokalaria / Bankaria) | Bankieri (Lojtari / Bankieri) | Banki (Leikmaður / Banki) | Банкир (Ойыншы / Банкир) | ბანკირი (მოთამაშე / ბანკირი) | Banciwr (Chwaraewr / Banciwr) |
+| bet / wager amount | облог | mərc | apustua | bast | veðmál | бәс | ფსონი | bet |
+| all in | Ва-банк | Hamısını qoy | Dena jokoan | Gjithçka në lojë | Allt undir | Барын тігу | ყველაფრის დადება | Betio'r Cyfan |
+| rebet (repeat previous wager) | Повтор на облог | Mərci təkrarla | Errepikatu apustua | Përsërit bastin | Endurtaka veðmál | Бәсті қайталау | ფსონის გამეორება | Ailadrodd bet |
+| chip denomination/value | вредност на жетонот | fişkanın dəyəri | fitxaren balioa | vlera e fishës | virði spilapenings | фишка құны | ფიშკის ღირებულება | gwerth sglodyn |
+| win streak / chain (PvE) | низа победи (макс. број рунди во низа) | qələbə seriyası (seriyada maks. raund) | garaipen-bolada (boladako gehieneko txandak) | seri fitoresh (raundet maksimale në seri) | hrina (hámarksumferðir hrinu) | серия (сериядағы ең көп раунд) | სერია (სერიის მაქსიმალური რაუნდები) | cyfres (uchafswm rowndiau cyfres) |
+| cash out / payout | Подигни добивка / исплата | Uduşu götür / ödəniş | Kobratu / ordainketa | Tërhiq fitimin / pagesë | Innleysa / útborgun | Ұтысты алу / төлем | მოგების აღება / გადახდა | Casglu enillion / taliad |
+| Blackjack: shoe | кутија со карти | kart qutusu | karta-kutxa | kutia e letrave | stokkahólf | карта қорабы | კარტის ყუთი | blwch cardiau |
+| Blackjack: hit | Карта | Kart al | Eskatu | Letër | Spil | Карта алу | კარტის აღება | Cymryd Cerdyn |
+| Blackjack: stand | Доста | Dayan | Plantatu | Ndal | Standa | Тоқтау | გაჩერება | Aros |
+| Blackjack: split | Подели | Böl | Banatu | Ndaj | Skipta | Бөлу | გაყოფა | Hollti |
+| Blackjack: insurance | осигурување | sığorta | asegurua | sigurim | trygging | сақтандыру | დაზღვევა | yswiriant |
+| Blackjack: same-rank vs. same-value split rule | Ист ранг / Иста вредност | Eyni rütbə / Eyni dəyər | Maila bera / Balio bera | I njëjti rang / E njëjta vlerë | Sama tegund / Sama virði | Бірдей дәреже / Бірдей құн | ერთნაირი რანგი / ერთნაირი ღირებულება | Yr Un Safle / Yr Un Gwerth |
+| RPS: throw/action (not generic "turn") | потег | seçim | jokaldia | lëvizje | val | жүріс | სვლა | tafliad |
+| Dragon Descent: vine mechanic | лијана | sarmaşıq | liana | lianë | klifurjurt | шырмауық | ლიანა | planhigion dringo |
+| ON/OFF display state | ВКЛ. / ИСКЛ. | AÇIQ / BAĞLI | PIZTUTA / ITZALITA | AKTIV / JOAKTIV | KVEIKT / SLÖKKT | ҚОСУЛЫ / ӨШІРУЛІ | ჩართული / გამორთული | YMLAEN / I FFWRDD |
+| Slots: variance (risk preset, not the RTP) | волатилност | volatillik | hegazkortasuna | luhatshmëri | sveiflur (sveiflustig) | құбылмалылық | ვოლატილობა | amrywiant |
+| Slots: house edge | предност на казиното | kazino üstünlüyü | etxearen abantaila | avantazhi i kazinosë | forskot hússins | казино артықшылығы | კაზინოს უპირატესობა | mantais y tŷ |
+| Slots: return/RTP verb | враќање кон играчите | oyunçuya qayıdış | jokalariarentzako itzulera | kthimi për lojtarin | útborgunarhlutfall (not endurgreiðsla = refund) | ойыншыға қайтарым | მოთამაშეზე დაბრუნება (RTP) | dychweliad i'r chwaraewr (RTP) |
+| seat | место (стол = chair) | yer (stul = chair) | eserlekua (aulkia = chair) | vend (karrige = chair) | sæti (stóll = chair) | орын (орындық = chair) | ადგილი (სკამი = chair) | sedd (cadair = chair) |
+| banked winnings (overflow bank) | зачувана добивка | saxlanılan uduş | gordetako irabaziak | fitimet e ruajtura | geymdir vinningar | сақталған ұтыс | შენახული მოგება | enillion a gadwyd |
+| overflow: hold vs. drop nearby | Чувај ја за мене / Фрли ја во близина | Mənim üçün saxla / Yaxınlıqda yerə at | Gorde niretzat / Bota ondoan | Mbaji për mua / Hidhi afër meje | Geyma fyrir mig / Sleppa nálægt | Маған сақтап қою / Жаныма тастау | ჩემთვის შენახვა / ახლოს დაყრა | Cadw i Mi / Gollwng Gerllaw |
+
+Sixth continuation for later locales (same concept rows; split so neither table grows too wide to read):
+
+| Concept (continued 6) | bs_BA | hy_AM | uz_UZ | sw_KE | ga_IE | mn_MN | bn_BD | ta_IN |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | diler | դիլեր | diler | mgawaji | déileálaí | дилер | ডিলার | டீலர் |
+| Baccarat banker/bank side | Bankar (Igrač / Bankar) | Բանկիր (Խաղացող / Բանկիր) | Bankir (Oʻyinchi / Bankir) | Benki (Mchezaji / Benki) | Baincéir (Imreoir / Baincéir) | Банкир (Тоглогч / Банкир) | ব্যাংকার (খেলোয়াড় / ব্যাংকার) | வங்கியாளர் (வீரர் / வங்கியாளர்) |
+| bet / wager amount | ulog (placed bet: opklada) | խաղադրույք | stavka | dau (wingi: madau) | geall (iol. geallta; gin. gill) | бооцоо | বাজি | பந்தயம் |
+| all in | Uloži sve | Դնել ամբողջը | Hammasini tikish | Weka yote | Cuir an t-iomlán | Бүгдийг тавих | সবকিছু বাজি ধরুন | அனைத்தையும் பந்தயம் கட்டு |
+| rebet (repeat previous wager) | Ponovi ulog | Կրկնել խաղադրույքը | Stavkani takrorlash | Rudia dau | Geall arís | Бооцоо давтах | আবার বাজি | மீண்டும் பந்தயம் |
+| chip denomination/value | vrijednost žetona | ֆիշկայի արժեք | fishka qiymati | thamani ya chipu | luach licín | фишкийн үнэ | চিপের মান | சிப் மதிப்பு |
+| win streak / chain (PvE) | serija (najveći broj rundi u seriji) | սերիա (սերիայի ռաունդների առավելագույն քանակ) | seriya (seriyadagi raundlarning eng koʻp soni) | mfululizo (idadi ya juu ya raundi za mfululizo) | sraith (uaslíon na mbabhtaí sraithe) | цуврал (цуврал тойргийн дээд тоо) | টানা জয় (টানা রাউন্ডের সর্বোচ্চ সংখ্যা) | தொடர் வெற்றி (அதிகபட்சத் தொடர் சுற்றுகள்) |
+| cash out / payout | Podigni dobitak / isplata | Ստանալ շահումը / վճարում | Yutuqni olish / toʻlov | Chukua ushindi / malipo | Bailigh an t-airgead / íocaíocht | Хожлоо авах / төлбөр | জেতা অর্থ তুলুন / পরিশোধ | வெற்றித் தொகையைப் பெறு / செலுத்துகை |
+| Blackjack: shoe | kutija za dijeljenje | քարտերի տուփ | karta qutisi | kisanduku cha karata | bosca cártaí | картын хайрцаг | কার্ডের বাক্স | அட்டைப் பெட்டி |
+| Blackjack: hit | Karta | Վերցնել քարտ | Karta olish | Chukua karata | Tarraing | Карт авах | কার্ড নিন | அட்டை எடு |
+| Blackjack: stand | Stani | Կանգ առնել | Toʻxtash | Simama | Seas | Зогсох | থামুন | நில் |
+| Blackjack: split | Podijeli | Բաժանել | Boʻlish | Gawanya | Scoilt | Хуваах | ভাগ করুন | பிரி |
+| Blackjack: insurance | osiguranje | ապահովագրություն | sugʻurta | bima | árachas | даатгал | বিমা | காப்பீடு |
+| Blackjack: same-rank vs. same-value split rule | Isti rang / Ista vrijednost | Նույն կարգ / Նույն արժեք | Bir xil daraja / Bir xil qiymat | Cheo sawa / Thamani sawa | Céim chéanna / Luach céanna | Ижил зэрэг / Ижил оноо | একই কার্ড / একই মান | ஒரே அட்டை / ஒரே மதிப்பு |
+| RPS: throw/action (not generic "turn") | potez | քայլ | yurish | chaguo | caitheamh | сонголт | চাল | நகர்வு |
+| Dragon Descent: vine mechanic | puzavica | լիանա | chirmoviq | mtambaa (wingi: mitambaa) | féithleog (iol. féithleoga) | ороонго | লতা | படர்கொடி (பன்மை: படர்கொடிகள்) |
+| ON/OFF display state | UKLJUČENO / ISKLJUČENO | ՄԻԱՑՎԱԾ / ԱՆՋԱՏՎԱԾ | YOQILGAN / OʻCHIRILGAN | IMEWASHWA / IMEZIMWA | AIR / AS | АСААЛТТАЙ / УНТРААЛТТАЙ | চালু / বন্ধ | இயக்கத்தில் / முடக்கத்தில் |
+| Slots: variance (risk preset, not the RTP) | volatilnost | տատանողականություն | volatillik | kuyumba | luaineacht | хэлбэлзэл | অস্থিরতা | ஏற்ற இறக்கம் |
+| Slots: house edge | prednost kuće | խաղատան առավելություն | kazino ustunligi | faida ya kasino | buntáiste an tí | казиногийн давуу тал | ক্যাসিনোর সুবিধা | கேசினோ சாதகம் |
+| Slots: return/RTP verb | povrat igraču | Խաղացողին վերադարձի տոկոս (RTP) | Oʻyinchiga qaytim foizi (RTP) | Asilimia ya malipo kwa mchezaji (RTP) | Ráta íocaíochta don imreoir (RTP) | Тоглогчид олгох төлбөрийн хувь (RTP) | খেলোয়াড়কে প্রদানের হার (RTP) | வீரருக்கான செலுத்துகை விகிதம் (RTP) |
+| seat | mjesto (stolica = chair) | տեղ (աթոռ = chair) | joy (oʻrindiq = chair) | kiti (nafasi ya kukaa) | suíochán (cathaoir = chair) | суудал (сандал = chair) | আসন (চেয়ার = chair) | இருக்கை (நாற்காலி = chair) |
+| banked winnings (overflow bank) | sačuvani dobici | պահված շահումներ | saqlangan yutuqlar | ushindi uliohifadhiwa | airgead buaite sábháilte | хадгалсан хожил | সংরক্ষিত জেতা অর্থ | சேமிக்கப்பட்ட வெற்றித் தொகை |
+| overflow: hold vs. drop nearby | Čuvaj ih za mene / Ostavi ih na tlu u blizini | Պահել ինձ համար / Գցել մոտակայքում | Men uchun saqlash / Yaqin atrofga tashlash | Nihifadhie / Dondosha karibu | Coinnigh dom é / Scaoil in aice láimhe | Надад хадгалж өгөх / Ойролцоо хаях | আমার জন্য রেখে দিন / কাছে মাটিতে ফেলুন | எனக்காக வைத்திருங்கள் / அருகில் போடுங்கள் |
+
+Seventh continuation for later locales (same concept rows; split so neither table grows too wide to read):
+
+| Concept (continued 7) | nn_NO | eo_UY |
+| --- | --- | --- |
+| generic physical dealer/croupier | dealer | krupiero |
+| Baccarat banker/bank side | Bank (Spelar / Bank) | Bankisto (Ludanto / Bankisto) |
+| bet / wager amount | innsats | veto |
+| all in | All-in | Ĉion veti |
+| rebet (repeat previous wager) | Gjenta innsats | Reveti |
+| chip denomination/value | sjetongverdi | valoro de ĵetono |
+| win streak / chain (PvE) | rekkje / sigersrekkje (maks tal på rundar på rad) | serio / venkoserio (maksimuma nombro de seriaj raŭndoj) |
+| cash out / payout | Ta ut / utbetaling | Enkasigi / elpago |
+| Blackjack: shoe | kortsko | kartujo |
+| Blackjack: hit | Trekk kort | Preni karton |
+| Blackjack: stand | Stå | Resti |
+| Blackjack: split | Splitt | Dividi |
+| Blackjack: insurance | forsikring | asekuro |
+| Blackjack: same-rank vs. same-value split rule | Same valør / Same verdi | Sama rango / Sama valoro |
+| RPS: throw/action (not generic "turn") | trekk | taktoj |
+| Dragon Descent: vine mechanic | klatreplante (fl. klatreplantar) | lianoj |
+| ON/OFF display state | PÅ / AV | ŜALTITA / MALŜALTITA |
+| Slots: variance (risk preset, not the RTP) | volatilitet | volatileco |
+| Slots: house edge | fordelen til huset | avantaĝo de la kazino |
+| Slots: return/RTP verb | tilbakebetaling til spelaren (RTP) | elpaga procento al la ludanto (RTP) |
+| seat | plass (stol = chair) | sidloko (seĝo = chair) |
+| banked winnings (overflow bank) | lagra gevinstar | konservitaj gajnoj |
+| overflow: hold vs. drop nearby | Ta vare på dei for meg / Legg dei på bakken i nærleiken | Konservu ilin por mi / Demetu ilin proksime |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -562,6 +871,683 @@ a real, previously-observed defect, not a hypothetical risk.
   unless the user explicitly approves a whole-catalog register migration.
 - `pt_BR`: Brazilian Portuguese; use `você`; favor terms natural to Brazilian
   gaming and Minecraft players.
+- `nl_NL`: Netherlands Dutch; informal `je`/`jij` for direct player address
+  (the norm in Dutch Minecraft and gaming UIs); natural sentence casing, not
+  English title case. Placeholders stay uninflected: possessives use
+  "X van {name}" rather than an attached `-s`. The `{game}` name for Slots is
+  `Slots` (a proper-name label), while the machine itself is `gokkast`. Slots
+  "run" is `serie`, kept distinct from the PvE win streak `winreeks`; a line
+  payout is `uitbetaald`, never `terugbetaald` (that means a refund).
+- `fi_FI`: standard written Finnish; informal singular `sinä` for direct
+  player address (imperatives such as `Klikkaa`, `Valitse`, `Kirjoita`).
+  Placeholders are never inflected: the case ending goes on a neighbouring
+  noun ("pelaajan {name}", "peliin {game}", "jakajan {dealer}") or the value
+  follows a colon label. Protected literals are kept intact inside hyphen
+  compounds ("Vault-lisäosa", "NCCasino-lisäosan") instead of taking a case
+  ending. `dragon-settings.columns`/`vines`/`floors` are genitive plurals for
+  the `{setting}` slot. Slots "run" is `sarja`, distinct from the PvE win
+  streak `voittoputki`. Card ranks use
+  standard numerals (`Kaksi` … `Kymmenen`), not colloquial `seiska`/`kasi`.
+- `ja_JP`: standard Japanese; polite です/ます for messages and
+  sentences, concise noun-style labels for buttons, titles and lore; no
+  explicit あなた except where the English contrasts players. Standard
+  casino katakana (ディーラー, ベット, ヒット, スタンド, バンカー,
+  リベット). A half-width space follows a placeholder before a particle or
+  counter ("{amount} を", "{seconds} 秒"), as in zh_CN; placeholder order
+  still follows English, so a Japanese-natural order is achieved by
+  rephrasing (colon labels, parenthetical `（ベット {bet}）`) rather than by
+  moving placeholders. Slots "run" is 連続数, distinct from the PvE win
+  streak 連勝.
+- `ru_RU`: standard Russian; polite plural `вы` (as in the official Russian
+  Minecraft client); `ЛКМ`/`ПКМ` for left/right click, as is standard on
+  Russian Minecraft servers. Placeholders are never declined: they sit behind
+  a governing noun ("ход игрока {player}", "в игру «{game}»", "дилера
+  {dealer}") or after a label colon ("Удалено дилеров: {count}") so numeral
+  agreement never depends on the inserted value. `cards.suits.*` are genitive
+  plural ("Туз пик") and `dragon-settings.columns`/`vines`/`floors` are
+  genitive plural for their single `{setting}` slot. Slots "run" is
+  `цепочка`, distinct from the PvE win streak `серия побед`.
+- `th_TH`: standard Thai; neutral polite UI register with no gendered
+  particles (no ครับ/ค่ะ) and `คุณ` only where the sentence needs a subject;
+  Thai punctuation (no sentence-final full stops, spaces between phrases).
+  A space surrounds each placeholder, which Thai spacing tolerates and the
+  validator requires before a Thai letter. The Baccarat Banker side is
+  `แบงเกอร์`, never `เจ้ามือ` (which also means the house/dealer), keeping
+  it distinct from the dealer `ดีลเลอร์`. Overflow "drop" is `ดรอป` (the
+  Minecraft item-drop word), never `ทิ้ง`, which reads as discarding. Slots
+  "run" is `เรียงติดกัน`, distinct from the PvE win streak `ชนะติดต่อกัน`.
+- `tr_TR`: standard Turkish; informal `sen` (as in the Turkish Minecraft
+  client). Placeholders never take suffixes, because vowel harmony depends on
+  the inserted word: the suffix goes on a head noun ("{game} oyununa",
+  "{name} adlı oyuncunun") or the value follows a colon label; dealer-owned
+  menu titles use "{dealer} – … Ayarları". Card indices in Blackjack examples
+  are Turkish (P = Papaz/King, K = Kız/Queen). Display-only percentages may
+  use the Turkish prefix form (`%{value}`), but typed house-edge examples
+  keep the sign after the number ("2,5%") because the parser rejects a
+  leading `%`. Slots "run" is `dizi`, distinct from the PvE win streak
+  `galibiyet serisi`.
+- `vi_VN`: standard Vietnamese; friendly neutral `bạn` for direct player
+  address. The physical dealer/NPC is `người chia bài`, never `nhà cái`:
+  in Vietnamese baccarat `Nhà Cái`/`Nhà Con` are the Banker/Player betting
+  sides, and `lợi thế nhà cái` is the house edge, so the dealer term must stay
+  separate. Blackjack is `Xì Dách`. Overflow "drop" is `thả` (Minecraft item
+  drop), never `vứt` (discard). Catalog text is NFC-normalized. Slots "run"
+  is `dãy`, distinct from the PvE win streak `chuỗi thắng`.
+- `ko_KR`: standard Korean; polite 합니다/하세요 style for messages and
+  sentences, concise noun-style labels for buttons, titles and lore; no
+  explicit 당신 (player address is implied, other players are `{player} 님`).
+  Korean particles cannot attach to a placeholder (the validator rejects a
+  letter after `{...}`) and a spaced particle (`{amount} 을(를)`) is
+  ungrammatical, so placeholders sit before a colon label, a following noun
+  (`{game} 게임`, `{player} 님`, `{amount} 초과`) or a spaced counter
+  (`{seconds} 초`, `{count} 개`). The physical dealer is `딜러`; the Baccarat
+  Banker side is `뱅커`. Slots "run" is `연속`, distinct from the PvE win
+  streak `연승`.
+- `pl_PL`: standard Polish; informal `ty` address as in Polish Minecraft,
+  imperative for buttons and prompts. Second-person past tense and adjectives
+  are gendered in Polish (`wygrałeś/wygrałaś`, `spłukany`), so player-facing
+  text uses impersonal, present-tense or noun forms (`Wygrana!`, `Pasujesz.`,
+  `Nie wybrano na czas`). Placeholders cannot inflect: they follow a colon
+  label or a governing noun (`gracza {player}`, `w grze {game}`,
+  `krupiera {dealer}`); counts use labels (`liczba gier: {rounds}`) to avoid
+  numeral agreement. `dragon-settings.columns`/`vines`/`floors` are genitive
+  plurals for their single `{setting}` slot. Slots "run" is `ciąg`, distinct
+  from the PvE win streak `seria`; the Auto Spin "batch" is
+  `od ich uruchomienia` (never `sesja`, which is the whole Slots session).
+  Horse "style" is `wzór sierści` (`umaszczenie` means coat colour).
+- `it_IT`: standard Italian; informal `tu` address as in Italian Minecraft,
+  imperative for buttons and prompts. Agreement that would reveal the
+  player's gender (`sei seduto/a`, `benvenuto/a`) is avoided: `Hai già un
+  posto.`, `Ti diamo il benvenuto nel gioco {game}`; `hai vinto/perso` is
+  invariant and fine. Placeholders never take an article: they follow a
+  colon label or a governing noun (`Turno di {player}`, `nel gioco {game}`);
+  `{currency}` is labelled (`Valuta insufficiente: {currency}`) because its
+  gender is unknown. The physical dealer is `croupier`; the Baccarat Banker
+  side is `Banco` (Giocatore / Banco), so the house edge is `vantaggio della
+  casa`, never `vantaggio del banco`. Slots "run" is `sequenza`, distinct
+  from the PvE win streak `serie`. Shift is `Maiusc`, as on Italian keyboards. On/off states use participles
+  (`ATTIVATA`/`DISATTIVATA`), never the imperative-looking `ATTIVA`/`DISATTIVA`.
+- `id_ID`: standard Indonesian; friendly casual `kamu` address (possessive
+  `-mu`), imperative for buttons and prompts. Indonesian has no gender or
+  inflection, so placeholders sit anywhere. The physical dealer/NPC is
+  `bandar`; the Baccarat Banker side is `Bankir` (Pemain / Bankir), and the
+  house edge is `keunggulan kasino`, so the three stay distinct. Chip is
+  `keping` and multiplier `pengali` (no English loanword for either).
+  Blackjack uses `Ambil` / `Tahan` / `Gandakan` / `Pisah`; the transitive
+  `menahan` never stands alone (`memilih Tahan`); bust is `lewat 21`. Dragon
+  Descent is `Turun ke Sarang Naga` (`penurunan` means a decline).
+  Slots "run" is `deret`, distinct from the PvE win streak `beruntun`.
+  Odds and house-edge examples use a decimal comma (`0,95:1`, `2,5%`).
+- `zh_TW`: Traditional Chinese with Taiwan vocabulary (`設定`, `伺服器`,
+  `物品欄`, `預設`, `訊息`, `選單`, `外掛`, `區塊`), full-width punctuation,
+  `你` for the player. CJK characters count as letters for the validator, so a
+  placeholder touching Han text is spaced on both sides (`在 {columns} 個`,
+  `{name} 的`), Taiwan-style spacing around inserted Latin/number text. The
+  physical dealer is `荷官`; the Baccarat sides are `閒家` / `莊家`, so the
+  house edge is `賭場優勢`
+  (never `莊家優勢`). Payout is `派彩`, cash out `兌現`. Slots "run" is
+  `連線`, distinct from the PvE win streak `連勝`. Card names keep
+  `{rank}（{suit}）` order with `A`/`K`/`Q`/`J` ranks. Minecraft drop is
+  `掉落` (never `丟棄`, which means discard); llama is `駱馬` (`羊駝` is the
+  Mainland term and means alpaca in Taiwan).
+- `uk_UA`: standard Ukrainian (no Russianisms or Russian-only letters);
+  polite plural `ви`, as in Ukrainian Minecraft, so past tense is plural and
+  never gendered. Placeholders cannot inflect: they follow a colon label or a
+  governing noun (`гравця {player}`, `у грі {game}`, `моба {mob}`); the
+  dealer `круп'є` is indeclinable, which keeps `{dealer}` titles simple.
+  Counts use labels (`ігор: {rounds}`) to avoid numeral agreement.
+  `dragon-settings.columns`/`vines`/`floors` are genitive plurals for their
+  single `{setting}` slot. Baccarat sides are `Гравець` / `Банкір`; the
+  house edge is `перевага казино`. Slots hints use `ЛКМ`/`ПКМ`. Slots "run"
+  is `комбінація`, distinct from the PvE win streak `серія`; the Auto Spin
+  "batch" is counted `від їхнього запуску`. Card examples use Cyrillic
+  indices (`К-К`, `К-Д`). Loanwords follow the 2019 spelling (`Бакара`, not
+  the Russian-style `Баккара`); conditions use `за`/`коли`, not Russian-style
+  `при` + locative; `ймовірність` throughout.
+- `cs_CZ`: standard Czech; informal `ty` address as in Czech games,
+  imperative or second-person present for hints (`Kliknutím vybereš.`).
+  Czech past tense is gendered even with formal `vy` (`vyhrál/vyhrála
+  jste`), so player-facing text avoids past-tense player forms and `(a)`
+  slashes: nouns (`Výhra!`, `Prohra`), present tense (`Stojíš.`) or passive
+  (`Hra opuštěna.`). Placeholders follow a colon label or a governing noun
+  (`hráč {player}`, `ve hře {game}`, `krupiéra {dealer}`); counts use labels
+  (`počet her: {rounds}`). `dragon-settings.columns`/`vines`/`floors` are
+  genitive plurals for their single `{setting}` slot. Baccarat sides are
+  `Hráč` / `Bankéř`; the house edge is `výhoda kasina`. The Slots game is
+  `Automaty`; its "run" is `řada`, distinct from the PvE win streak `série`.
+- `sv_SE`: standard Swedish; `du` address as in Swedish Minecraft
+  (ungendered). A placeholder cannot carry the genitive `-s`, so possession
+  is rephrased (`{player} har turen`, `Adminmeny för {dealer}`,
+  `Spelare 2:s plats` only with a literal). The physical dealer is
+  `croupier`; the Baccarat sides are `Spelare` / `Bank`; the house edge is
+  `husets fördel`. The Slots game is `Spelautomat` with `hjul` (reels) and
+  `vinstlinjer` (paylines); its "run" is `följd`, kept apart from `rad`
+  (a row of symbols) and from the PvE win streak `vinstsvit`. RTP is
+  `återbetalningsprocent` (bare `återbetalning` also means refund).
+  Blackjack rounds are `omgång`. Decimal comma and spaced percent (`0,95:1`,
+  `2,5 %`); lowercase after a colon (`Hand {number}: blackjack!`).
+- `hu_HU`: standard Hungarian; informal `te` address as in Hungarian
+  Minecraft (no grammatical gender). Suffixes cannot attach to a placeholder,
+  so placeholders sit behind a colon label, in parentheses (`Adminmenü
+  ({dealer})`), or before a suffixed noun (`{player} következik`,
+  `hány {setting} legyen`); nouns stay singular after numbers. The dealer
+  is `osztó`; the Baccarat sides are `Játékos` / `Bankár`; the house edge is
+  `házelőny`. The Slots game is `Nyerőgép` with `tárcsák` (reels) and
+  `nyerővonalak` (paylines); its "run" is `lánc`, distinct from `sor` (row)
+  and the PvE win streak `sorozat`. Inventory is `tárgylista` (`eszköztár`
+  is the hotbar); overflow drop is `leejtés` / `a földre kerül`
+  (`eldobás` can read as discarding). Paytable "Return" is `Kifizetés`
+  (`visszatérítés` means refund).
+- `ro_RO`: standard Romanian with comma-below `ș`/`ț` (never the cedilla
+  forms); informal `tu` address as in Romanian Minecraft, and gender-neutral
+  toward the player (no participle or adjective agreeing with the player:
+  `Ai deja un loc`, `Te-ai așezat`, `Sigur vrei asta?`). A number placeholder
+  does not sit directly before a counted noun (Romanian needs `de` from 20 up
+  and the singular for 1), so counts use a colon label (`Crupieri șterși:
+  {count}`) or parentheses. The dealer is `crupier`; the Baccarat sides are
+  `Jucător` / `Bancher`; the house edge is `avantajul casei`. Coin Flip is
+  `Cap sau pajură`; Mines is `Câmp minat` (plain `Mine` collides with the
+  pronoun in `la Mine`, "at my place"). Slots is `Sloturi`, played on an
+  `aparat` with `role` and `linii de plată`; its run is `șir` (`{run} la
+  rând`), distinct from the PvE win streak `serie`. Overflow drop is `lăsate
+  pe jos` (Minecraft's `Aruncă` can read as throwing away).
+- `pt_PT`: European Portuguese, post-1990 spelling (`ação`, `atual`,
+  `carateres`, `contacto`, `prémio`); informal `tu` with Portuguese clitic
+  placement (`Sentaste-te`, `levanta-te`) and `a + infinitive` rather than
+  the gerund (`A sair do jogo...`). It must not read as pt_BR: `ronda` (a
+  game round), `definições`, `guardar`, `eliminar`, `ficheiro`, `croupier`
+  (not `crupiê`), `ecrã`. Gender-neutral toward the player (`Já tens um
+  lugar`, `Boas-vindas a {game}`); welcome lines avoid gendering the player,
+  and `{game}` follows a bare preposition as a proper name. Cash-out is
+  `Retirar`; the Baccarat sides are `Jogador` / `Banca`; the house edge is
+  `vantagem da casa`. Slots keeps the name `Slots`, with `rolos`, `filas`
+  (rows) and `linhas de pagamento`; its run is `sequência`, distinct from
+  the PvE win streak `série`; a spin is `rodada` and Auto Spin `rodadas
+  automáticas`. Minecraft mobs are `criatura`. Same Rank / Same Value are
+  `Mesma carta` / `Mesmo valor` (`figura` would mean a face card).
+- `da_DK`: standard Danish, informal `du`, closed compounds
+  (`gevinstlinjer`, `spinhastighed`, `autospin-indstillinger` with a hyphen
+  only after a name or abbreviation). The dealer is `dealer`; the Baccarat
+  sides are `Spiller` / `Bank`; a bet is `indsats`, cash-out `Indkasser`,
+  the pot `pulje`, the house edge `husets fordel`. Coin Flip is `Plat eller
+  krone`, Rock Paper Scissors `Sten, saks, papir`, Slots `Spilleautomat`
+  with `hjul` (reels), `rækker` (rows) and `gevinstlinjer`; its run is
+  `stribe` (`{run} på stribe`), distinct from the PvE win streak `stime` /
+  `sejrsstime`. A dealer timer is `nedtælling` (`timer` means hours in
+  Danish). Turn announcements use `{player} har tur` so no genitive `-s`
+  attaches to the placeholder. Overflow drop is `lægges på jorden` (`smid`
+  can read as throwing away); a Minecraft mob is `væsen`.
+- `nb_NO`: standard Bokmål (moderate forms), informal `du`, closed
+  compounds; written from the English source, not adapted from da_DK
+  (`innsats`, `spill`, `klikk for å`, `sjetong`). The dealer is `dealer`;
+  the Baccarat sides are `Spiller` / `Bank`; cash-out is `Ta ut`, the pot
+  `pott`, all in `All-in`, the house edge `husets fordel`. Player
+  preferences are `Preferanser`, admin settings `innstillinger`. Coin Flip
+  is `Kron eller mynt`, Slots `Spilleautomat` with `hjul`, `rader` and
+  `gevinstlinjer`; its run is `serie` (`{run} etter hverandre`, avoiding
+  `på rad` next to `rad` = row), distinct from the PvE win streak `rekke` /
+  `seiersrekke`. A dealer timer is `nedtelling` (`timer` means hours); a
+  Minecraft mob is `skapning`. Turn announcements use `Turen til {player}` (`ha tur` means
+  to be lucky).
+- `el_GR`: modern monotonic Greek, informal singular `εσύ`, Greek
+  question mark `;` and `«»` quotes; gender-neutral toward the player (no
+  gendered adjectives, participles or vocatives: `Έχεις ήδη θέση`,
+  `Σίγουρα;`). Articles never sit directly on an inserted name: `{game}`
+  follows an apposition (`στο παιχνίδι {game}`) or a colon/parentheses, and
+  third-person turns are `Παίζει: {player}`. `occupations.*` are genitive
+  (they fill `την επεξεργασία {occupation}`) and `dragon-settings.columns|
+  vines|floors` genitive plural (they fill `αριθμό {setting}`). Dealer
+  `ντίλερ`; Baccarat `Παίκτης` / `Τράπεζα`, so the house edge is
+  `πλεονέκτημα του καζίνο`; cash-out `Εξαργύρωση`; Slots `Κουλοχέρης` with
+  `τροχοί`, `σειρές` and `γραμμές πληρωμής`; its run is `αλληλουχία`
+  (`{run} συνεχόμενα`), distinct from the PvE streak `σερί`. Chat is
+  `συνομιλία`, inventory `αποθέματα`, a mob `πλάσμα`, a jockey `αναβάτης`.
+- `sk_SK`: standard Slovak, informal `ty`, written from the English
+  source rather than adapted from cs_CZ (no `ř`/`ě`/`ů`). Gender-neutral
+  toward the player: Slovak second-person past tense is gendered
+  (`vyhral si` / `vyhrala si`), so outcomes are nouns or present tense
+  (`Výhra!`, `Prehra!`, `Už sedíš.`, `Stolička uvoľnená.`) and hints use
+  `Kliknutím ...` with a present-tense verb. Number placeholders stay out
+  of 1 / 2-4 / 5+ agreement positions (colon labels). `occupations.*` are
+  genitive and `dragon-settings.columns|vines|floors` genitive plural for
+  their template slots. Dealer `krupiér`; Baccarat `Hráč` / `Bankár`; pot
+  `bank`; cash-out `Vybrať výhru`; house edge `výhoda kasína`. Slots is
+  `Výherný automat` with `valce`, `riadky` and `výherné línie`; its run is
+  `rad` (`{run} v rade`), distinct from the PvE streak `séria`; since the
+  payline term contains "výherné", `variance-tradeoff` says lines "vyhrávajú
+  zriedkavejšie". A mob is `tvor`, a jockey `jazdec`, vehicle/passenger
+  `nosič` / `pasažier`.
+- `bg_BG`: standard Bulgarian, informal `ти`, `„“` quotes;
+  gender-neutral toward the player (no perfect-tense participles or
+  adjectives aimed at the player: aorist, present tense or nouns such as
+  `Печалба!`, `Загуба!`, `Вече седиш.`; welcomes use the plural
+  `Добре дошли`). No definite article on an inserted name (`в играта
+  {game}`, colon labels, parentheses). Turns are `ход` (`На ход:
+  {player}`, `Твой ход.`) because `ред` is the slots row; a Rock Paper
+  Scissors throw is `избор`, and the Auto Spin batch `текущ цикъл`. Dealer `крупие`;
+  Baccarat `Играч` / `Банкер`; pot `пот`; cash-out `Вземи печалбата`; house
+  edge `предимство на казиното`. Coin Flip is `Ези или тура`; Slots `Слот
+  машина` with `барабани`, `редове` and `линии за изплащане`; its run is
+  `поредица` (`{run} поред`), distinct from the PvE streak `серия`. The
+  card shoe is described as `кутията с тестетата`; a mob is `същество`, a
+  jockey `ездач`, vehicle/passenger `носач` / `пътник`.
+- `es_MX`: Mexican Spanish, informal `tú`, decimal point (`0.95:1`,
+  `2.5%`), written from the English source rather than adapted from es_ES
+  (`tragamonedas`, `configuración`, `pozo`, no `vosotros`). Gender-neutral
+  toward the player (`Ya tienes asiento`, `Te damos la bienvenida a
+  {game}`, `Tomaste asiento`). Coin Flip is `Águila o sol`; the dealer
+  `crupier`; the Baccarat sides `Jugador` / `Banca`; cash-out `Cobrar`; the
+  house edge `ventaja de la casa`. Slots uses `carretes`, `filas` and
+  `líneas de pago`; its run is `secuencia` (`{run} seguidos`), distinct from
+  the PvE streak `racha`; big win is `premio grande`, kept apart from
+  `jackpot`. Blackjack is `Pedir` / `Plantarse` / `Doblar` / `Dividir` with
+  the shoe `zapato`; a mob is `criatura`, a vehicle `montura`.
+- `hr_HR`: standard ijekavian Croatian, informal `ti`, `„”` quotes;
+  Croatian UI vocabulary (`izbornik`, `gumb`, `mogućnost`, `postavke`,
+  `vrijeme`, `točno`), never Serbian forms. Gender-neutral toward the
+  player: the second-person perfect is gendered (`dobio si` / `dobila si`),
+  so outcomes are nouns, present tense or impersonal (`Pobjeda!`, `Već
+  sjediš.`, `Stolica je slobodna.`); welcomes use the plural `Dobro
+  došli`. Number placeholders stay out of 1 / 2-4 / 5+ agreement (colon
+  labels). `occupations.*` are genitive and `dragon-settings.columns|
+  vines|floors` genitive plural for their template slots. Dealer
+  `djelitelj`; Baccarat `Igrač` / `Bankar`; stake `ulog`, a placed bet
+  `oklada`; cash-out `Podigni dobitak`; house edge `prednost kuće`. Coin
+  Flip is `Pismo ili glava`; Slots `Slot automat` with `valjci`, `redovi`
+  and `dobitne linije`; its run is `niz` (`{run} zaredom`), distinct from
+  the PvE streak `serija`; a delivery queue is `čekanje`, never `red`
+  (row). The card shoe is described as `kutija za dijeljenje`.
+- `sl_SI`: standard Slovenian, informal `ti`, `»«` quotes; Slovenian UI
+  vocabulary (`meni`, `gumb`, `možnost`, `nastavitve`, `strežnik`,
+  `klepet`, `časovnik`), never Croatian or Serbian forms. Gender-neutral
+  toward the player: the second-person past is gendered (`si zmagal` /
+  `si zmagala`), so outcomes are nouns, present tense or impersonal
+  (`Zmaga!`, `Že sediš.`, `Stave so razveljavljene.`); welcomes use
+  `Dobrodošli`. Number placeholders stay out of singular / dual / plural
+  agreement (colon labels, `{seconds} s`). `occupations.*` are genitive and
+  `dragon-settings.columns|vines|floors` genitive plural for their template
+  slots. Dealer `delivec`; Baccarat `Igralec` / `Bankir`; stake amount
+  `vložek`, a placed bet `stava`; cash-out `Unovči`; the Coin Flip / RPS
+  pot is `sklad`, so the mob-editor stack is `kup`, never `sklad`. Admin
+  settings are `Nastavitve`, personal preferences `Osebne nastavitve`.
+  Coin Flip is `Cifra ali mož`; Slots `Igralni avtomat` with `koluti`,
+  `vrstice` and `dobitne linije`. Plugin literals in running text take a
+  classifier noun (`vtičnik Vault`, `z vtičnikom NCCasino`). The card shoe
+  is described as `delilnik kart`.
+- `sr_RS`: standard ekavian Serbian in Cyrillic, informal `ти`, `„“`
+  quotes, decimal comma; Serbian UI vocabulary (`мени`, `дугме`,
+  `подешавања`, `сервер`, `чет`, `тајмер`, `подразумевано`, `спрат`,
+  `колона`), never Croatian or ijekavian forms, and no Latin letters inside
+  Cyrillic words (seconds are `с`; Latin only in protected tokens).
+  Gender-neutral toward the player: the second-person perfect and `да би`
+  clauses are gendered (`победио си`, `да би уложио`), so outcomes are
+  nouns, present tense or impersonal (`Победа!`, `Седни да се кладиш.`);
+  welcomes use the plural `Добро дошли`. Number placeholders stay out of 1 /
+  2-4 / 5+ agreement (colon labels, including the profile-name length).
+  `occupations.*` are genitive and `dragon-settings.columns|vines|floors`
+  genitive plural for their template slots. Dealer `делилац`; Baccarat
+  `Играч` / `Банкар`; stake `улог`, a placed bet `опклада`; cash-out
+  `Подигни добитак`; pot `пот`; ace `кец`. Coin Flip is `Писмо или
+  глава`; Slots `Слот машина` with `ролне`, `редови` and `добитне линије`,
+  a spin `окретање`. The card shoe is described as `кутија за дељење`.
+- `lt_LT`: standard Lithuanian, informal `tu` (imperatives `Spustelėk`,
+  `Pasirink`), `„“` quotes, decimal comma; Lithuanian UI vocabulary
+  (`meniu`, `mygtukas`, `nustatymai`, `serveris`, `pokalbis` for chat,
+  `laikmatis`). Gender-neutral toward the player: finite verbs are
+  ungendered, but half-participles and active participles are not
+  (`keisdamas`, `spustelėdamas`, `prisijungęs`), so use gerunds (`keičiant`,
+  `spustelint`, `laimėjus`), nouns or finite verbs (`Atsiėmei …`); the
+  plural `Sveiki atvykę` greeting is conventional. Number placeholders stay
+  out of 1 / 2-9 / 10+ agreement (colon labels; `iki {max}` takes the
+  genitive). `occupations.*` are accusative (`baik redaguoti
+  {occupation}`) and `dragon-settings.columns|vines|floors` genitive plural
+  (`numatytąjį {setting} skaičių`). Dealer `dalytojas`; Baccarat `Žaidėjas` /
+  `Bankininkas`; bet and stake `statymas` (placed with `atlikti`); cash-out
+  `Atsiimti`; pot `Bankas`; slot reels `ritiniai` (never `būgnai`, the
+  diamonds suit); slots run `seka` vs PvE streak `serija`. Coin Flip is
+  `Herbas ar skaičius`; Slots `Lošimo automatas`. Closed betting is
+  `Statymai nebepriimami`. The card shoe is described as `kortų dėžė`.
+- `lv_LV`: standard Latvian, informal `tu` (imperatives `Noklikšķini`,
+  `Izvēlies`), `„“` quotes, decimal comma; Latvian UI vocabulary
+  (`izvēlne`, `poga`, `iestatījumi`, `serveris`, `tērzēšana` for chat,
+  `taimeris`). Gender-neutral toward the player: finite verbs are
+  ungendered, but past participles are not and 2sg reflexive pasts can read
+  as participles (`atteicies`), so use impersonal or finite forms
+  (`Apdrošināšana atteikta.`); the `Laipni lūdzam` greeting is neutral. Number
+  placeholders stay out of the 1 / other agreement (colon labels). No colon
+  directly after a preposition (`nomainīts. Jaunais …: {value}`).
+  `occupations.*` are accusative (`pabeidz rediģēt {occupation}`) and
+  `dragon-settings.columns|vines|floors` genitive plural (`noklusējuma
+  {setting} skaitu`). Dealer `dīleris`; Baccarat `Spēlētājs` / `Baņķieris`;
+  bet and stake `likme`; cash-out `Paņemt laimestu`; pot `banka`; slot reels
+  `ruļļi`, spin `grieziens`; slots run `virkne` vs PvE streak `sērija`
+  (never reused for the auto-spin batch). Coin Flip is `Ģerbonis vai
+  cipars`; Slots `Spēļu automāts`. The card shoe is described as `kāršu
+  kaste`.
+- `et_EE`: standard Estonian, informal `sina` (imperatives `Klõpsa`,
+  `Vali`), `„“` quotes, decimal comma; Estonian UI vocabulary (`menüü`,
+  `nupp`, `seaded`, `server`, `vestlus` for chat, `taimer`, `seljakott` for
+  the inventory). Estonian has no grammatical gender, so gender neutrality
+  is automatic; the risks are numerals (partitive after numbers above 1) and
+  case endings around placeholders, handled with colon labels (`käte arv:
+  {count}`) and quoted appositions (`mängu „{game}“`). Suffixes on protected
+  literals follow common practice (`Vault'i`, `NCCasino-ga`).
+  `occupations.*` are genitive (`{occupation} muutmine`) and
+  `dragon-settings.columns|vines|floors` genitive plural (`vaikimisi
+  {setting} arv`). Dealer `diiler`; Baccarat (`Bakkara`) `Mängija` /
+  `Pankur`; bet and stake `panus`; cash-out `Võta võit välja`; pot `pott`;
+  slot reels `rullid`, spin `keerutus`; slots run `jada` vs PvE streak
+  `seeria`. Coin Flip is `Kull või kiri`; Slots `Mänguautomaat`. Closed
+  betting is `Panuseid enam vastu ei võeta`. The card shoe is `kaardikast`.
+- `ca_ES`: standard Central Catalan (Softcatalà / TERMCAT conventions),
+  informal `tu` (`Fes clic`, `Tria`), `«»` quotes, decimal comma; Catalan UI
+  vocabulary (`configuració`, `preferències`, `servidor`, `xat`, `botó`,
+  `temporitzador`, `desar`, `esborrar`), never Spanish forms; `nombre` for a
+  quantity vs `número` for an identifier. Gender-neutral toward the player:
+  avoid gendered adjectives (`Ja tens seient`, `Et donem la benvinguda`);
+  the invariable participle after `haver` is fine (`T'has assegut`).
+  Button labels in running text are quoted (`S'ha desactivat «Repetir
+  aposta»`). `occupations.*` carry their own article (`d'editar
+  {occupation}`), and `dragon-settings.columns|vines|floors` are lowercase
+  plurals (`el nou nombre de {setting}`). Dealer `crupier`; Baccarat
+  `Jugador` / `Banca`; `aposta`; cash-out `Cobra`; pot `Pot`; Slots
+  `Escurabutxaques` with `rodets`, spin `tirada`; slots run `seqüència` vs
+  PvE streak `ratxa`. Coin Flip is `Cara o creu`; game names are
+  capitalized in titles. The card shoe is `sabata`.
+- `ms_MY`: standard Malaysian Malay (DBP spelling), `anda` address,
+  decimal point; Malaysian UI vocabulary (`tetapan`, `keutamaan` for
+  personal preferences, `pelayan` for server, `sembang` for chat, `butang`,
+  `pemasa`, `cip`, `pentadbir`), never Indonesian forms (`uang`, `kursi`,
+  `pengaturan`, `obrolan`, `tombol`, `bisa`). Malay has no gender or number
+  agreement. The physical dealer/NPC is `pengendali` (not `bandar`, which
+  in Malay chiefly means a town); the Baccarat banker side is `Jurubank`.
+  `taruhan` for bet and stake; cash-out `Tunaikan`; pot `pot`; Slots `Mesin
+  Slot` with `gelendong`, spin `putaran` vs round `pusingan`; slots run
+  `urutan` vs PvE streak `berturut-turut`. Coin Flip is `Lambung Syiling`
+  (the player picks left/right, not heads/tails); Mines `Periuk Api`.
+  Traditional card names `Sat`, `Jek`, `Ratu`, `Raja` and suits `Lekuk`,
+  `Wajik`, `Kelawar`, `Sped`. The card shoe is `kotak kad`.
+- `fil_PH`: standard Tagalog-based Filipino, informal `ka` / `mo`, decimal
+  point, keeping only the loanwords Philippine players actually use in UIs
+  (dealer, chip, timer, chat, server, setting, reel, jackpot, multiplier,
+  volatility, currency, `i-click`, `i-type`); English word order is
+  avoided (`Menu ng Admin`, `mode ng currency`). Filipino has no
+  grammatical gender; gendered vocatives (`pare`, `tol`) are not used.
+  Standard affixes and linkers (`pagpapalit`, `paglalagay`, `ng` vs
+  `nang`); watch linker collisions (`talo` + `-ng` = eggplant). Seats are
+  left with `umalis sa upuan` (not `tumayo sa`, which reads as standing on
+  it). `taya` for bet and stake; cash-out `Kunin ang Panalo`; Baccarat
+  `Manlalaro` / `Bangkero`; spin `ikot` vs round `round`; slots run
+  `sunuran` vs PvE streak `sunod-sunod`; `Awtomatikong Ikot` for Auto Spin.
+  Coin Flip is `Kara o Krus`; Spanish-derived card names (`Alas`, `Sota`,
+  `Reyna`, `Hari`; `Puso`, `Diyamante`, `Trebol`, `Ispada`).
+- `gl_ES`: normative Galician (RAG/ILG), informal `ti`, decimal comma,
+  `«»` quotes. Watch for Spanish interference (`Bieeen`, `jackpots`,
+  Castilian clitic habits): pronouns go before the verb after negation,
+  subordinators, `así que` and quantifier subjects (`todo … se paga`), and
+  after it otherwise (`Déixaas`, `Gárdamas`). Stay neutral toward the player
+  (`Dámosche a benvida`, `Xa tes asento`, `doutra persoa`, `Unha persoa
+  administradora`) and use label forms where `{amount}` or a count could be
+  singular (`Cantidade retirada: …`, `devolvéronche {amount}`). `preto` is
+  both "near" and "black", so write `preto de ti/min`. Blackjack buttons are
+  infinitives (`Pedir`, `Plantarse`, `Dobrar`, `Dividir`); spin `tirada` vs
+  round `rolda`; slots run `secuencia` vs PvE streak `racha`; `None` is
+  `Ningunha` (decor/colour slots).
+- `af_ZA`: standard Afrikaans (AWS / Taalkommissie), informal `jy` /
+  `jou`, decimal comma, `“”` quotes; written from the English source, not
+  adapted from nl_NL (Dutch-form scan: `je`, `inzet`, `gewonnen`). Every
+  negation closes with `nie`; subordinate clauses are verb-final (`wat
+  aanbly`, `dat lyne minder gereeld uitbetaal`), and possessive relatives
+  use `wie se`. Compounds are written solid unless long or vowel-clashing
+  (`Verstekrolle`, `Spelerpaar`, but `Slotmasjien-instellings`). Opponents
+  and other players are neutral (`'n keuse vasgelê`). Count phrases that
+  can be 1 use labels, `keer` or `lyn(e)`; seconds as `{seconds} s`.
+  `kroepier`, Baccarat `Speler` / `Bankier`, `weddenskap` (bet) vs `inset`
+  (amount), `Betaal uit`, `skyfiewaarde`, card suits `harte` / `ruitens` /
+  `klawers` / `skoppens`; game names in sentence case (`Kop of stert`,
+  `Draak se afdaling`); slots run `opeenvolging` vs PvE streak `reeks`;
+  payout queue `wagtou`; `Outodraai` for Auto Spin.
+- `be_BY`: standard Belarusian in the official 2008 orthography (not
+  тарашкевіца), written from the English source rather than adapted from
+  ru_RU / uk_UA; polite plural `вы`, as uk_UA does, so every past form
+  addressed to the player is plural (`выйгралі`, `селі`) and never
+  gendered; `«»` quotes, decimal comma. Watch for Russian-pattern calques:
+  conditional `пры` + locative (`у выпадку перамогі`, `пасля любога
+  выйгрышу`), `мэта па прыбытку` (`мэтавы прыбытак`), `памылка пры …`.
+  Placeholders follow a colon label or a governing noun (`гульца {player}`,
+  `гульню {game}`, `моба {mob}`); counts use labels (`раўндаў:
+  {rounds}`); `dragon-settings.columns`/`vines`/`floors` are genitive
+  plurals. `крупье` (indeclinable), Baccarat `Гулец` / `Банкір`
+  (capitalized as side names), `Забраць выйгрыш`, card indices `К-К` /
+  `К-Д`; slots run `камбінацыя` vs PvE streak `серыя`; `Аўтакручэнне`;
+  `ЛКМ` / `ПКМ`.
+- `hi_IN`: standard conversational Hindi in Devanagari with the loanwords
+  Indian game UIs use (गेम, डीलर, चैट, मेनू, सर्वर, टाइमर, स्पिन, रील,
+  पेलाइन, कैश आउट, चिप); polite `आप` with `-एँ` imperatives, danda `।`,
+  `“”` quotes, Western digits, decimal point. Hindi verbs agree with the
+  subject's gender, so nothing addressed to the player (or about another
+  player) uses an intransitive perfective, progressive, future or `सकते
+  हैं` with a human subject: use the ergative `आपने …`, the dative `आपको …
+  होगा / चाहिए`, nominal forms (`आपकी जीत हुई`, `आपकी हार हुई`), passives
+  (`… किया जा सकता है`) and the existential `आप सीट पर हैं`. SOV order
+  must still keep placeholders in the English order (parentheticals such
+  as `(दांव {bet})`); `cards.name` is `{rank} ({suit})` because `का/की`
+  would have to agree with the rank. Traditional card names (दुक्की …
+  गुलाम, बेगम, बादशाह, इक्का; पान, ईंट, चिड़ी, हुकुम); run `क्रम` vs
+  PvE streak `लगातार जीत`. Minecraft does not shape Devanagari, so matras
+  and conjuncts need an in-game check before release.
+- `mk_MK`: standard literary Macedonian (Cyrillic), written from the
+  English source rather than adapted from bg_BG / sr_RS (script scan: no
+  ћ/ђ/я/ю/щ/ъ/ь); polite plural `Вие`, so aorist 2nd plural (`победивте`,
+  `Изгубивте`, `Веќе седите`) keeps the player gender-neutral; `„“`
+  quotes, decimal comma. Definite articles and clitic doubling as the
+  language requires (`Подигнете ја добивката`); `occupations.*` are
+  definite noun phrases for `finish-editing`; counts use labels (`рунди:
+  {rounds}`). `облог` is placed with `става` (not the non-standard
+  `влога`); `добивка` is winnings, `профит` is profit. `дилер`, Baccarat
+  `Играч` / `Банкар`, `Подигни добивка`, `банка` for the pot, card index
+  `П-П` / `П-Д` (Поп / Дама); slots run `комбинација` vs PvE streak
+  `низа`; `Автоматско вртење`.
+- `az_AZ`: standard literary North Azerbaijani (Latin script), polite
+  `siz`, `“”` quotes, decimal comma; written from the English source, not
+  adapted from tr_TR (Turkish-form scan: `için`, `değil`, `bahis`,
+  `oyuncu`, `menü`). No grammatical gender. No suffix may follow a
+  placeholder, so the case ending goes on a governing noun (`{game}
+  oyununa`, `{game} oyunundakı`, `{columns} barabana`, `/ncc help
+  əmrindən`) and numerals take a singular noun (`{rounds} raund`,
+  `{count} ödənişiniz`). `ədəd` for a number (not `rəqəm`, a digit);
+  `söndürüldü` for switched off, `AÇIQ` / `BAĞLI` for toggle states.
+  `diler`, Baccarat `Oyunçu` / `Bankir`, `mərc`, `Uduşu götür`, roulette
+  straight-up `Bir nömrə` (not `Tək`, the Odd bet); slots run
+  `ardıcıllıq` vs PvE streak `seriya`; `Avtomatik fırlatma`.
+- `eu_ES`: standard Basque (euskara batua), `zu` address (never hika),
+  `«»` quotes, decimal comma; imperative buttons (`Egin klik`, `Aukeratu`).
+  No case suffix may follow a placeholder, so endings go on a governing
+  noun or verb (`{game} jokora`, `{columns} arrabolatan`, `{amount}
+  gordetzeko`) or the value follows a colon label; `-ko` adjectives precede
+  their noun (`baliozko zenbatekoa`); inanimate purpose takes `-rako`, not
+  `-rentzat`. `gehieneko` for max (not `maximo`); typed examples keep a
+  parseable `2,5` even though Basque writes `% 2,5`. `krupierra`, Baccarat
+  `Jokalaria` / `Bankaria`, `Kobratu`, `sari nagusi` for jackpot, RPS
+  `Harri, orri, artazi`, vines `lianak`; slots run `segida` vs PvE streak
+  `bolada`; `Bira automatikoa`.
+- `sq_AL`: standard literary Albanian (Tosk-based), polite plural `ju`
+  for instructions (`Klikoni`, `Fituat`, perfect `jeni ulur` with the
+  invariant participle) and the singular imperative for buttons and admin
+  items (`Ngrihu`, `Dil`, `Zgjidh monedhën`); `„”` quotes, decimal comma.
+  Adjective predicates about the player or a named player are avoided
+  (`Zonë e sigurt`, `E ka radhën {player}`). Placeholders cannot take the
+  genitive after a linking article, so a classifier noun carries it
+  (`e lojës Blackjack`, `e mob-it {mob}`); non-specific indefinite
+  objects are not clitic-doubled (`nuk mund të mbulojë një fitim`).
+  `krupieri`, Baccarat `Lojtari` / `Bankieri`, `bast`, `Tërhiq fitimin`,
+  vines `Liana`; slots run `varg` vs PvE streak `seri`; `Rrotullim
+  automatik`.
+- `is_IS`: standard Icelandic, informal singular `þú` as Icelandic
+  software does (`Smelltu`, `Þú situr nú þegar`) and the infinitive for
+  buttons and admin items (`Standa`, `Breyta tímamæli`); `„“` quotes,
+  decimal comma. Gender is never assumed for the player or a named player:
+  finite verbs replace predicate adjectives (`Þú vannst`, `{player} á
+  leik`), and "welcome" becomes `Góða skemmtun í …`. Placeholders cannot
+  show case, so they sit in nominative slots, after a colon or in a
+  parenthesis. The comma-list game name is quoted where it is inserted
+  into running text (`stillingar „Steinn, skæri, blað“`). `gjafari`,
+  Baccarat `Leikmaður` / `Banki`, `veðmál`, `Innleysa`; RTP is
+  `útborgunarhlutfall` because `endurgreiða` means refund; turn `röð` vs
+  round `umferð`; slots run `runa` vs PvE streak `hrina`; vines
+  `klifurjurtir`.
+- `kk_KZ`: standard literary Kazakh in Cyrillic, polite `Сіз` for
+  instructions (`Басыңыз`, `Сіз ұттыңыз`) and verbal nouns for buttons and
+  admin items (`Шығу`, `Бәсті қайталау`); `«»` quotes, decimal comma.
+  Kazakh has no grammatical gender. Nothing attaches to a placeholder:
+  suffixes and harmony-dependent particles (`мен/бен/пен`) cannot follow
+  an unknown value, so a governing noun carries the case (`{game}
+  ойынына`), ranges use an en dash (`{min}–{max} аралығында`), and names
+  sit after a colon or in a parenthesis. `ұтылу` means to lose, so "won"
+  is `ұтып алу`; `шығын` is reserved for loss. `дилер`, Baccarat `Ойыншы`
+  / `Банкир`, `Барын тігу`, `Ұтысты алу`; slots run `тізбек` vs PvE streak
+  `серия`; vines `шырмауық`.
+- `ka_GE`: standard literary Georgian in Mkhedruli (no Mtavruli
+  capitals, which the Minecraft font may not render), polite plural `თქვენ`
+  forms for instructions (`დააწკაპუნეთ`, `აირჩიეთ`) and verbal nouns for
+  buttons (`გასვლა`, `ფსონის გამეორება`); `„“` quotes, decimal comma; no
+  grammatical gender. The 2pl aorist is spelled like the polite imperative
+  (`მოიგეთ` = "you won" / "win!"), so reports of what the player did use a
+  label, passive or state form (`გამარჯვება!`, `სკამი დატოვებულია`,
+  `თქვენი კარტი: {rank}`). Placeholders sit only in nominative slots: a
+  real noun takes the dative or genitive and the value follows a colon
+  (`მიაღწევს მიზანს: {amount}`), ranges use an en dash. `დილერი`, Baccarat
+  `მოთამაშე` / `ბანკირი`, `მოგების აღება`; slots run `მიმდევრობა` vs PvE
+  streak `სერია`; vines `ლიანა` (never `ვაზი`, the grapevine).
+- `cy_GB`: standard modern Welsh, formal `chi` with `-wch` imperatives
+  (`Cliciwch`, `Dewiswch`, `Teipiwch`) and verb-nouns for buttons (`Gadael`,
+  `Ailadrodd bet`); `“ ”` quotes, decimal point (UK style). Initial mutations are
+  written in full, including soft mutation after `neu` (`neu leihewch`, `neu
+  deipiwch`). A placeholder cannot mutate, so no mutating word precedes a
+  non-numeric placeholder: names and games sit after a colon or in
+  parentheses (`Croeso i'r gêm: {game}`, `Nifer rhagosodedig newydd
+  ({setting}):`); digits and typed keywords are safe. `ei` marks his / her,
+  so it never refers to a player, only to things. `deliwr`, Baccarat
+  `Chwaraewr` / `Banciwr`, `Casglu enillion`; RTP `dychweliad`, never
+  `ad-dalu` (refund); slots run `rhediad` vs PvE streak `cyfres`; vines
+  `planhigion dringo`, never `gwinwydd`.
+- `bs_BA`: standard ijekavian Bosnian in Latin script, informal `ti`
+  like the hr_HR / sr_RS siblings, `„“` quotes, decimal comma; Bosnian UI
+  vocabulary (`meni`, `dugme`, `postavke`, `sačuvati`, `server`, `tajmer`,
+  `sto`, `sprat`, `kolona`, `makaze`, `procenat`, `vjerovatnoća`,
+  `komanda`, `tačno`), never Croatian-only or ekavian forms. Gender-neutral
+  toward the player: outcomes are nouns, present tense or passive
+  (`Pobjeda!`, `Već sjediš.`, `runda je izgubljena`); welcomes use the
+  plural `Dobro došli`. Number placeholders stay out of 1 / 2-4 / 5+
+  agreement (colon labels, also for the profile-name length).
+  `occupations.*` are genitive and `dragon-settings.columns|vines|floors`
+  genitive plural. `diler`; Baccarat `Igrač` / `Bankar`; stake `ulog`, a
+  placed bet `opklada`; ace plural `asovi`; slots run `niz` vs PvE streak
+  `serija`; `džekpot`.
+- `hy_AM`: standard Eastern Armenian (reformed orthography), polite plural
+  `Դուք` forms for instructions (`Սեղմեք`, `Ընտրեք`) and infinitives for
+  buttons (`Ելք` aside, `Կրկնել խաղադրույքը`); `«»` quotes, decimal comma;
+  Armenian punctuation: `։` ends every sentence (questions too), `՞` sits on
+  the questioned word, `՝` introduces a label value. No grammatical gender.
+  Placeholders take no case ending or article: they follow `՝`, sit in
+  parentheses, or precede the noun that carries the ending (`{game} խաղին`,
+  `«{name}» անունով`); the article after our own words follows the next
+  sound (`շահումն ավտոմատ`). `դիլեր`, Baccarat `Խաղացող` / `Բանկիր`,
+  `Ստանալ շահումը`; slot "return" is `վճարում`, RTP `Խաղացողին վերադարձի
+  տոկոս`; slots run `հաջորդականություն` vs PvE streak `սերիա`; vines
+  `լիանաներ`; native court cards `Զինվոր` / `Թագուհի` / `Թագավոր`.
+- `uz_UZ`: standard literary Uzbek in the official Latin alphabet, with
+  `oʻ` / `gʻ` written with U+02BB and the tutuq belgisi with U+02BC (never
+  ASCII apostrophes); polite `Siz` for instructions (`Bosing`, `Tanlang`,
+  `Yozing`) and verbal nouns for buttons; `«»` quotes, decimal comma. No
+  grammatical gender. Nothing attaches to a placeholder: a governing noun
+  or postposition carries the case (`{game} oʻyiniga`, `{amount} uchun`,
+  `{setting} sonining`), numbers take the separate counter `ta`, ranges use
+  an en dash, and a digit ordinal keeps its hyphen (`{index}-fishka`);
+  suffixes are never written apart from their word (`Vault plaginidan`).
+  `diler`, Baccarat `Oʻyinchi` / `Bankir`, `stavka`, `Yutuqni olish`;
+  slots run `ketma-ketlik` vs PvE streak `seriya`; vines `chirmoviqlar`;
+  suits `yurak` / `gʻisht` / `chillak` / `qargʻa`.
+- `sw_KE`: standard Kiswahili sanifu as used in Kenyan software, with
+  plain imperatives for instructions (`Bofya`, `Chagua`, `Andika`), verbal
+  nouns for toggles, `“ ”` quotes and a decimal point (`2.5%`, `0.95:1`).
+  No grammatical gender and no gendered vocatives. Noun-class agreement
+  never depends on a placeholder: the governing noun carries the concord
+  (`Kiasi cha {currency} hakitoshi`, `Zamu ya {player}`), and counts use
+  labels or noun + digit (`reeli {columns}`). `mgawaji`, Baccarat
+  `Mchezaji` / `Benki`, `dau` / `madau`, `Chukua ushindi`, `chungu` for
+  the pot; slots run `msururu` vs PvE streak `mfululizo`; vines
+  `mitambaa`; `Ruleti`; suits `kopa` / `uru` / `karanga` / `shupaza`.
+- `ga_IE`: standard Irish (An Caighdeán Oifigiúil), singular `tú` with
+  plain imperatives (`Cliceáil`, `Roghnaigh`, `Clóscríobh`), `“ ”` quotes
+  and a decimal point. Initial mutations follow the Caighdeán (eclipsis
+  after `leis an` / `chuig an` / `ar an`, lenition after `do`, `sa`, `aon`),
+  but a placeholder can never mutate, so no mutating word or numeral rule
+  ever governs one: colon labels (`Seal: {player}`, `Geall: {amount}`) and
+  nouns whose initial never shows a mutation (`{n} líne`, `{n} ró`, `{n}
+  ríl`). `déileálaí`, Baccarat `Imreoir` / `Baincéir`, `geall` / `geallta`,
+  `Bailigh an t-airgead`, `airgead buaite`; slots run `seicheamh` vs PvE
+  streak `sraith`; vines `féithleoga`; RTP `ráta íocaíochta` (never
+  `aisíoc`, the refund word); suits `hartaí` / `muileata` / `triuf` /
+  `spéireata`.
+- `mn_MN`: standard Khalkha Mongolian in Cyrillic, polite `Та` with
+  polite imperatives (`дарна уу`, `бичнэ үү`, `сонгоно уу`) and verbal
+  nouns for buttons (`Гарах`, `Эргүүлэх`), `«»` quotes, decimal comma
+  (`0,95:1`, `2,5%`). No grammatical gender. Case endings follow vowel
+  harmony and the stem's last sound, so none is ever attached to a
+  placeholder: colon labels (`Ээлж: {player}`), a governing noun or
+  postposition (`{game} болох`, `{columns} барабанд`), en-dash ranges, and
+  only the invariant digit marker `-р` (`{index}-р`). `дилер`, Baccarat
+  `Тоглогч` / `Банкир`, `бооцоо`, `Хожлоо авах`, `сан` for the pot; slots
+  run `дараалал` vs PvE streak `цуврал`, auto-spin batch `багц`; vines
+  `ороонго`; RTP `тоглогчид олгох төлбөрийн хувь`, kept apart from the
+  refund `буцаан олгох`; cards Боол / Хатан / Ноён / Тамга.
+- `bn_BD`: standard Bangladeshi Bengali, formal `আপনি` with `-উন`
+  imperatives (`ক্লিক করুন`, `বেছে নিন`, `লিখুন`) and honorific agreement
+  for players (not for the dealer), sentence-final danda `।`, ASCII digits,
+  decimal point, `“ ”` quotes. No grammatical gender. No case ending or
+  classifier is ever attached to a placeholder: colon or parenthesised
+  labels, or a separate following word (`{rounds} রাউন্ড`, `{spins} বার`).
+  `ডিলার`, Baccarat `খেলোয়াড়` / `ব্যাংকার`, `বাজি`, `জেতা অর্থ তুলুন`,
+  `পট`; slots run `ক্রম` vs PvE streak `টানা জয়`, auto-spin batch `দফা`;
+  vines `লতা`; RTP `খেলোয়াড়কে প্রদানের হার`, kept apart from the refund
+  `ফেরত`; overflow drop `কাছে মাটিতে ফেলুন` (never discard); traditional
+  card names (গোলাম / বিবি / সাহেব / টেক্কা; হরতন / রুইতন / চিড়িতন /
+  ইস্কাপন).
+- `ta_IN`: standard written Tamil as used in Tamil Nadu software, polite
+  `-ங்கள்` instructions in lore and messages and plain imperative stems on
+  short buttons, ASCII digits, decimal point, `“ ”` quotes. No gendered
+  forms for the player. No case suffix is ever attached to a placeholder:
+  colon labels, `என்ற` constructions and a separate following word
+  (`{rounds} சுற்றுகள்`). Sandhi doubling after an infinitive is written
+  before `கிளிக்`, `போதுமான` and native hard-initial words (`தேர்ந்தெடுக்கக்
+  கிளிக் செய்யுங்கள்`). `டீலர்`, Baccarat `வீரர்` / `வங்கியாளர்`,
+  `பந்தயம்`, `வெற்றித் தொகை`, `பாட்`; slots run `வரிசை` vs PvE streak
+  `தொடர் வெற்றி`, row `நிரை`, auto-spin batch `தொகுப்பு`; vines
+  `படர்கொடிகள்`; RTP `வீரருக்கான செலுத்துகை விகிதம்`, kept apart from the
+  refund `திருப்பித் தரப்பட்டது`; OFF `முடக்கத்தில்`; Tamil card names
+  (ஜாக்கி / ராணி / ராஜா / ஏஸ்; ஆட்டின் / டைமன் / கிளாவர் / இஸ்பேடு).
+- `nn_NO`: Norwegian Nynorsk (current official norm), informal `du`
+  with plain imperatives (`Klikk`, `Vel`, `Skriv`), « » quotes, decimal
+  comma (`0,95:1`, `2,5 %`), a space before `...`. Nynorsk forms throughout,
+  never Bokmål (`ikkje`, `berre`, `frå`, `allereie`, `høgd`, `storleik`),
+  prepositional genitives instead of s-genitives (`fordelen til huset`,
+  `turen til {player}`), pronouns by grammatical gender (innsats → han,
+  utbetaling / forsikring → ho), and neuter agreement with `spinn` /
+  `autospinn` (`aktivt`). `dealer`, Baccarat `Spelar` / `Bank`, `innsats`,
+  `Ta ut`, `pott`; slots run `serie` vs PvE streak `rekkje`, auto-spin batch
+  `omgang`; vines `klatreplantar` (plante is masculine); RTP
+  `tilbakebetaling til spelaren`, kept apart from `refundert`.
+- `eo_UY`: Esperanto (Minecraft's locale code), standard Fundamento
+  grammar, `vi` with `-u` volitive imperatives (`Klaku`, `Elektu`,
+  `Tajpu`), “ ” quotes, decimal comma (`0,95:1`, `2,5%`). A placeholder can
+  never carry the accusative `-n` or plural `-j`, so values put it after a
+  colon label (`Gajno: {amount}`), after a preposition (`de {player}`,
+  `al {game}`) or before a separate noun (`{spins} turnojn`). `krupiero`,
+  Baccarat `Ludanto` / `Bankisto`, `veto`, `Ĉion veti`, `Reveti`,
+  `Enkasigi`, `poto`; slots run `sinsekvo` vs PvE streak `serio` /
+  `venkoserio`, auto-spin batch `aro`; vines `lianoj`; RTP `elpaga procento`,
+  kept apart from the refund verb `repagi`.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
