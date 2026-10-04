@@ -9,7 +9,6 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.helpers.Preferences;
-import org.nc.nccasino.localization.LanguageMode;
 import org.nc.nccasino.localization.LocalizationService;
 import org.nc.nccasino.payout.OverflowPreference;
 import org.nc.nccasino.payout.OverflowPreferenceToggle;
@@ -72,9 +71,11 @@ public class PreferencesMenu extends Menu {
                 "mode",
                 language.text(
                     ownerId,
-                    preferences.getLanguageMode() == LanguageMode.SERVER_DEFAULT
-                        ? "preferences.language.server-default"
-                        : "preferences.language.explicit"
+                    switch (preferences.getLanguageMode()) {
+                        case CLIENT -> "preferences.language.client";
+                        case SERVER_DEFAULT -> "preferences.language.server-default";
+                        case EXPLICIT -> "preferences.language.explicit";
+                    }
                 )
             ),
             language.text(

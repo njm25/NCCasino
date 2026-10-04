@@ -1,7 +1,13 @@
 language:
-  # Language inherited by players who have not explicitly selected one.
+  # Language used by players who have not selected one, and by players whose
+  # Minecraft language has no NCCasino translation.
   # Supported locales are declared in the bundled lang/locales.yml registry.
   default: en_US
+  # Players who have not selected a language follow their Minecraft client's
+  # language when NCCasino has a matching translation. A client left on
+  # Minecraft's own default (English, US) uses the default above instead.
+  # Set to false to give every such player the default above.
+  detect-client: true
 
 payouts:
   # How item winnings that do not fit in a player's inventory are handled.

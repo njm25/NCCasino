@@ -41,6 +41,7 @@ public abstract class Menu extends DealerInventory {
         LANGUAGE,
         OVERFLOW,
         LANGUAGE_SERVER_DEFAULT,
+        LANGUAGE_CLIENT,
 
         // Player menu
         PREFERENCES,

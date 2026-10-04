@@ -1,8 +1,10 @@
 package org.nc.nccasino.components;
 
+import java.text.Collator;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -16,7 +18,11 @@ import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.localization.LanguageMode;
 import org.nc.nccasino.localization.LocalizationService;
 
-/** Data-driven, paginated language selection menu. */
+/**
+ * Data-driven, paginated language selection menu. Every page starts with
+ * "Use Server Default" and, when client detection is on, "Match My Game
+ * Language"; the locales follow, ordered by native name.
+ */
 public final class LanguageMenu extends Menu {
     private final Map<Integer, String> localeBySlot = new HashMap<>();
     private int page;
@@ -42,22 +48,38 @@ public final class LanguageMenu extends Menu {
     }
 
     private static int menuSize(Nccasino plugin) {
-        return menuSizeForLocaleCount(plugin.getLocalization().supportedLanguages().size());
+        LocalizationService language = plugin.getLocalization();
+        return menuSizeForLocaleCount(
+            language.supportedLanguages().size(),
+            fixedItemCount(language)
+        );
     }
 
-    static int menuSizeForLocaleCount(int localeCount) {
-        int entries = localeCount + 1;
+    private static int fixedItemCount(LocalizationService language) {
+        return language.isClientDetectionEnabled() ? 2 : 1;
+    }
+
+    static int menuSizeForLocaleCount(int localeCount, int fixedItems) {
+        int entries = localeCount + fixedItems;
         int rows = Math.max(2, Math.min(6, (entries + 8) / 9 + 1));
         return rows * 9;
     }
 
-    static int localeCapacity(int inventorySize) {
-        return inventorySize - 10;
+    static int localeCapacity(int inventorySize, int fixedItems) {
+        return inventorySize - 9 - fixedItems;
     }
 
-    static int pageCount(int localeCount, int inventorySize) {
-        int capacity = localeCapacity(inventorySize);
+    static int pageCount(int localeCount, int inventorySize, int fixedItems) {
+        int capacity = localeCapacity(inventorySize, fixedItems);
         return Math.max(1, (localeCount + capacity - 1) / capacity);
+    }
+
+    /** Locale ids ordered by native name, accents folded, so Čeština sorts with C. */
+    static List<String> displayOrder(Map<String, String> namesById) {
+        Collator collator = Collator.getInstance(Locale.ROOT);
+        List<String> ids = new ArrayList<>(namesById.keySet());
+        ids.sort((left, right) -> collator.compare(namesById.get(left), namesById.get(right)));
+        return ids;
     }
 
     @Override
@@ -69,13 +91,13 @@ public final class LanguageMenu extends Menu {
 
         LocalizationService language = plugin.getLocalization();
         Preferences preferences = plugin.getPreferences(ownerId);
-        String serverLanguage = language.supportedLanguages().get(language.getServerDefault());
+        Map<String, String> names = language.supportedLanguages();
+        String serverLanguage = names.get(language.getServerDefault());
+        int fixedItems = fixedItemCount(language);
         int controlRowStart = inventory.getSize() - 9;
-        int localeCapacity = localeCapacity(inventory.getSize());
-        List<Map.Entry<String, String>> locales = new ArrayList<>(
-            language.supportedLanguages().entrySet()
-        );
-        int pageCount = pageCount(locales.size(), inventory.getSize());
+        int localeCapacity = localeCapacity(inventory.getSize(), fixedItems);
+        List<String> locales = displayOrder(names);
+        int pageCount = pageCount(locales.size(), inventory.getSize(), fixedItems);
         page = Math.min(page, pageCount - 1);
 
         slotMapping.put(SlotOption.LANGUAGE_SERVER_DEFAULT, 0);
@@ -90,26 +112,47 @@ public final class LanguageMenu extends Menu {
                 "language",
                 serverLanguage
             ),
-            preferences.getLanguageMode() == LanguageMode.SERVER_DEFAULT
-                ? language.text(ownerId, "language-menu.selected")
-                : language.text(ownerId, "language-menu.select")
+            selectionLore(language, preferences.getLanguageMode() == LanguageMode.SERVER_DEFAULT)
         );
+
+        if (language.isClientDetectionEnabled()) {
+            String clientLocale = language.clientLocale(ownerId);
+            slotMapping.put(SlotOption.LANGUAGE_CLIENT, 1);
+            addItemAndLore(
+                Material.SPYGLASS,
+                1,
+                language.text(ownerId, "language-menu.use-client"),
+                1,
+                clientLocale != null
+                    ? language.text(
+                        ownerId,
+                        "language-menu.client-description",
+                        "language",
+                        names.get(clientLocale)
+                    )
+                    : language.text(
+                        ownerId,
+                        "language-menu.client-unavailable",
+                        "language",
+                        serverLanguage
+                    ),
+                selectionLore(language, preferences.getLanguageMode() == LanguageMode.CLIENT)
+            );
+        }
 
         int from = page * localeCapacity;
         int to = Math.min(locales.size(), from + localeCapacity);
-        int slot = 1;
-        for (Map.Entry<String, String> locale : locales.subList(from, to)) {
-            localeBySlot.put(slot, locale.getKey());
+        int slot = fixedItems;
+        for (String locale : locales.subList(from, to)) {
+            localeBySlot.put(slot, locale);
             boolean selected = preferences.getLanguageMode() == LanguageMode.EXPLICIT
-                && locale.getKey().equals(preferences.getExplicitLanguage());
+                && locale.equals(preferences.getExplicitLanguage());
             addItemAndLore(
                 Material.PAPER,
                 1,
-                locale.getValue(),
+                names.get(locale),
                 slot,
-                selected
-                    ? language.text(ownerId, "language-menu.selected")
-                    : language.text(ownerId, "language-menu.select")
+                selectionLore(language, selected)
             );
             slot++;
         }
@@ -149,6 +192,12 @@ public final class LanguageMenu extends Menu {
         }
     }
 
+    private String selectionLore(LocalizationService language, boolean selected) {
+        return selected
+            ? language.text(ownerId, "language-menu.selected")
+            : language.text(ownerId, "language-menu.select");
+    }
+
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
         String locale = localeBySlot.get(slot);
@@ -182,6 +231,12 @@ public final class LanguageMenu extends Menu {
         Preferences preferences = plugin.getPreferences(player.getUniqueId());
         if (option == SlotOption.LANGUAGE_SERVER_DEFAULT) {
             preferences.useServerDefaultLanguage();
+            refresh();
+            playDefaultSound(player);
+            return;
+        }
+        if (option == SlotOption.LANGUAGE_CLIENT) {
+            preferences.useClientLanguage();
             refresh();
             playDefaultSound(player);
             return;

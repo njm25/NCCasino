@@ -49,6 +49,7 @@ import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.helpers.Metrics;
 import org.nc.nccasino.helpers.Preferences;
+import org.nc.nccasino.listeners.ClientLanguageListener;
 import org.nc.nccasino.listeners.DealerDeathHandler;
 import org.nc.nccasino.listeners.DealerEventListener;
 import org.nc.nccasino.listeners.DealerInitializeListener;
@@ -78,6 +79,8 @@ import org.bukkit.Chunk;
 import org.bukkit.entity.EntityType;
 
 public final class Nccasino extends JavaPlugin implements Listener {
+    /** Bumped when client-language detection added {@link LanguageMode#CLIENT}. */
+    private static final int LANGUAGE_PREFERENCES_VERSION = 2;
     private final Set<String> currentlyDeletingChunks = new HashSet<>();
     private Map<UUID, Preferences> playerPreferences = new HashMap<>();
     private File preferencesFile;
@@ -173,6 +176,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new DealerEventListener(), this);
         getServer().getPluginManager().registerEvents(new DealerInitializeListener(this), this); // Register the chunk listener
         getServer().getPluginManager().registerEvents(new PlayerSessionListener(this), this);
+        getServer().getPluginManager().registerEvents(new ClientLanguageListener(this), this);
 
 
         // Register the command executor
@@ -244,11 +248,18 @@ public final class Nccasino extends JavaPlugin implements Listener {
             LanguageMode languageMode = parseEnum(
                 LanguageMode.class,
                 preferencesConfig.getString(key + ".language-mode"),
-                LanguageMode.SERVER_DEFAULT
+                LanguageMode.CLIENT
             );
+            // Before client-language detection, every player who never opened
+            // the language menu was saved as SERVER_DEFAULT; move them to CLIENT once.
+            if (preferencesConfig.getInt(key + ".language-version", 1) < LANGUAGE_PREFERENCES_VERSION
+                && languageMode == LanguageMode.SERVER_DEFAULT) {
+                languageMode = LanguageMode.CLIENT;
+            }
             preferences.loadLanguage(
                 languageMode,
-                preferencesConfig.getString(key + ".language")
+                preferencesConfig.getString(key + ".language"),
+                preferencesConfig.getString(key + ".client-language")
             );
             preferences.loadOverflowPreference(
                 preferencesConfig.getString(key + ".overflow-preference", null)
@@ -438,6 +449,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
                     ? preferences.getExplicitLanguage()
                     : null
             );
+            preferencesConfig.set(entry.getKey() + ".client-language", preferences.getClientLanguage());
+            preferencesConfig.set(entry.getKey() + ".language-version", LANGUAGE_PREFERENCES_VERSION);
             preferencesConfig.set(
                 entry.getKey() + ".overflow-preference",
                 preferences.getOverflowPreference() == null ? null : preferences.getOverflowPreference().name());

@@ -38,6 +38,7 @@ public final class LocalizationService {
     private final Map<String, YamlConfiguration> bundled = new LinkedHashMap<>();
     private final Map<String, YamlConfiguration> overrides = new LinkedHashMap<>();
     private String serverDefault = ENGLISH;
+    private boolean clientDetection = true;
 
     public LocalizationService(Nccasino plugin) {
         this.plugin = plugin;
@@ -79,6 +80,7 @@ public final class LocalizationService {
         } else {
             serverDefault = configured;
         }
+        clientDetection = plugin.getConfig().getBoolean("language.detect-client", true);
 
         validateLanguages();
     }
@@ -95,12 +97,41 @@ public final class LocalizationService {
         return supported;
     }
 
+    /** Whether {@code language.detect-client} lets players follow their Minecraft language. */
+    public boolean isClientDetectionEnabled() {
+        return clientDetection;
+    }
+
+    /** Maps a raw {@code Player#getLocale()} value to a registered locale, or {@code null}. */
+    public String resolveClientLocale(String rawClientLocale) {
+        return ClientLocaleResolver.resolve(rawClientLocale, supported.keySet());
+    }
+
+    /** The catalog a player following their client would get right now, or {@code null} for the server default. */
+    public String clientLocale(UUID playerId) {
+        if (!clientDetection) {
+            return null;
+        }
+        String client = plugin.getPreferences(playerId).getClientLanguage();
+        return client != null && supported.containsKey(client) ? client : null;
+    }
+
     public String effectiveLocale(UUID playerId) {
         Preferences preferences = plugin.getPreferences(playerId);
-        if (preferences.getLanguageMode() == LanguageMode.EXPLICIT) {
-            String explicit = preferences.getExplicitLanguage();
-            if (explicit != null && supported.containsKey(explicit)) {
-                return explicit;
+        switch (preferences.getLanguageMode()) {
+            case EXPLICIT -> {
+                String explicit = preferences.getExplicitLanguage();
+                if (explicit != null && supported.containsKey(explicit)) {
+                    return explicit;
+                }
+            }
+            case CLIENT -> {
+                String client = clientLocale(playerId);
+                if (client != null) {
+                    return client;
+                }
+            }
+            case SERVER_DEFAULT -> {
             }
         }
         return serverDefault;

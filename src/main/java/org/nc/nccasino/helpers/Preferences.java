@@ -4,6 +4,7 @@ import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.localization.LanguageMode;
 import org.nc.nccasino.localization.LocaleIds;
 import org.nc.nccasino.payout.OverflowPreference;
+import java.util.Objects;
 import java.util.UUID;
 
 public class Preferences {
@@ -15,6 +16,7 @@ public class Preferences {
     private MessageSetting messageSetting;
     private LanguageMode languageMode;
     private String explicitLanguage;
+    private String clientLanguage;
     private boolean blackjackChairGuidanceSeen;
     private boolean blackjackWagerGuidanceSeen;
     /** Null means "never chose" -- such a player inherits the server default, and keeps inheriting it if the default later changes. */
@@ -25,8 +27,9 @@ public class Preferences {
        // this.playerId = playerId;
         this.soundSetting = SoundSetting.ON; // Default
         this.messageSetting = MessageSetting.STANDARD; // Default
-        this.languageMode = LanguageMode.SERVER_DEFAULT;
+        this.languageMode = LanguageMode.CLIENT;
         this.explicitLanguage = null;
+        this.clientLanguage = null;
         this.blackjackChairGuidanceSeen = false;
         this.blackjackWagerGuidanceSeen = false;
         this.overflowPreference = null;
@@ -71,6 +74,31 @@ public class Preferences {
 
     public String getExplicitLanguage() {
         return explicitLanguage;
+    }
+
+    /**
+     * The catalog this player's Minecraft client language last resolved to,
+     * or {@code null} when it gave no usable signal. Kept up to date in every
+     * mode so switching to {@link LanguageMode#CLIENT} takes effect at once.
+     */
+    public String getClientLanguage() {
+        return clientLanguage;
+    }
+
+    /** Records a newly resolved client language; returns whether it changed (and was saved). */
+    public boolean updateClientLanguage(String locale) {
+        if (Objects.equals(clientLanguage, locale)) {
+            return false;
+        }
+        clientLanguage = locale;
+        plugin.savePreferences();
+        return true;
+    }
+
+    public void useClientLanguage() {
+        languageMode = LanguageMode.CLIENT;
+        explicitLanguage = null;
+        plugin.savePreferences();
     }
 
     public void useServerDefaultLanguage() {
@@ -145,9 +173,14 @@ public class Preferences {
             : OverflowPreference.parse(stored, null);
     }
 
+    /**
+     * Used only by {@link Nccasino#loadPreferences()}. An explicit language
+     * that is no longer registered falls back to following the client.
+     */
     public void loadLanguage(
         LanguageMode mode,
-        String language
+        String language,
+        String clientLanguage
     ) {
         String normalized = LocaleIds.normalize(language);
         if (mode == LanguageMode.EXPLICIT
@@ -156,9 +189,12 @@ public class Preferences {
             languageMode = LanguageMode.EXPLICIT;
             explicitLanguage = normalized;
         } else {
-            languageMode = LanguageMode.SERVER_DEFAULT;
+            languageMode = mode == LanguageMode.SERVER_DEFAULT
+                ? LanguageMode.SERVER_DEFAULT
+                : LanguageMode.CLIENT;
             explicitLanguage = null;
         }
+        this.clientLanguage = LocaleIds.normalize(clientLanguage);
     }
 
 }
