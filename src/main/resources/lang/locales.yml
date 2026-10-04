@@ -121,3 +121,53 @@ locales:
     name: "Norsk nynorsk"
   eo_UY:
     name: "Esperanto"
+  tt_RU:
+    name: "Татарча"
+  ba_RU:
+    name: "Башҡортса"
+  ky_KG:
+    name: "Кыргызча"
+  cv_CU:
+    name: "Чӑвашла"
+  mt_MT:
+    name: "Malti"
+  gd_GB:
+    name: "Gàidhlig"
+  kw_GB:
+    name: "Kernewek"
+  br_FR:
+    name: "Brezhoneg"
+  lb_LU:
+    name: "Lëtzebuergesch"
+  fo_FO:
+    name: "Føroyskt"
+  fy_NL:
+    name: "Frysk"
+  nds_DE:
+    name: "Plattdüütsch"
+  li_LI:
+    name: "Limburgs"
+  oc_FR:
+    name: "Occitan"
+  ast_ES:
+    name: "Asturianu"
+  vec_IT:
+    name: "Vèneto"
+  szl:
+    name: "Ślōnski"
+  yo_NG:
+    name: "Yorùbá"
+  ig_NG:
+    name: "Igbo"
+  so_SO:
+    name: "Soomaali"
+  lo_LA:
+    name: "ລາວ"
+  kn_IN:
+    name: "ಕನ್ನಡ"
+  haw_US:
+    name: "ʻŌlelo Hawaiʻi"
+  se_NO:
+    name: "Davvisámegiella"
+  la_LA:
+    name: "Latina"
