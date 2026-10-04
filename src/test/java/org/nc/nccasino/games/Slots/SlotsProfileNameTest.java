@@ -48,6 +48,23 @@ class SlotsProfileNameTest {
     }
 
     @Test
+    void lettersWithVowelSignsPointsOrAPersianNonJoinerAreAccepted() {
+        String[] accepted = {
+            "राम", "ไทย", "தமிழ்", "אַלץ", "می‌روم",
+        };
+        for (String name : accepted) {
+            assertNull(SlotsProfileName.validate(name), name + " must be a legal name");
+        }
+    }
+
+    @Test
+    void aMarkOrNonJoinerWithNoLetterBeforeItIsRejected() {
+        for (String name : new String[] {"ַabc", "‌abc", "a ́"}) {
+            assertEquals(SlotsProfileName.Rejection.ILLEGAL_CHARACTERS, SlotsProfileName.validate(name));
+        }
+    }
+
+    @Test
     void aDecomposedAccentedLetterIsAcceptedJustLikeItsPrecomposedForm() {
         // Some keyboards/IMEs (Vietnamese input methods in particular) can
         // hand this class an accented letter as a base letter plus a separate

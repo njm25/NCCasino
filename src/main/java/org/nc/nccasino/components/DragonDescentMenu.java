@@ -213,7 +213,7 @@ public class DragonDescentMenu extends Menu {
     }
 
     private void handleNumericInput(Player player, String input, String configPath, long min, long max) {
-        if (input.isEmpty() || !input.matches("\\d+")) {
+        if (input.isEmpty() || !input.matches("\\p{Nd}+")) {
             denyAction(player, text("blackjack-settings.valid-positive-integer"));
             return;
         }

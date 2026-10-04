@@ -72,19 +72,39 @@ public final class SlotsProfileName {
         // real letter (rare CJK extension ideographs, for instance) must be
         // classified as the one letter it is, never as two lone, illegal
         // surrogate halves.
+        int previous = -1;
         for (int i = 0; i < trimmed.length(); ) {
             int codePoint = trimmed.codePointAt(i);
             boolean allowed = Character.isLetter(codePoint)
                 || Character.isDigit(codePoint)
                 || codePoint == ' '
                 || codePoint == '-'
-                || codePoint == '_';
+                || codePoint == '_'
+                || (isCombiningMark(codePoint) && (Character.isLetter(previous) || isCombiningMark(previous)))
+                || (codePoint == ZERO_WIDTH_NON_JOINER && Character.isLetter(previous));
             if (!allowed) {
                 return Rejection.ILLEGAL_CHARACTERS;
             }
+            previous = codePoint;
             i += Character.charCount(codePoint);
         }
         return null;
+    }
+
+    /** Persian and other Arabic-script names use it to keep two letters unjoined. */
+    private static final int ZERO_WIDTH_NON_JOINER = 0x200C;
+
+    /**
+     * Vowel signs and points that have no precomposed form (Devanagari, Thai,
+     * Hebrew/Yiddish points) survive NFC as separate marks; they are part of
+     * the letter they follow, so they are allowed there and nowhere else.
+     */
+    private static boolean isCombiningMark(int codePoint) {
+        if (codePoint < 0) {
+            return false;
+        }
+        int type = Character.getType(codePoint);
+        return type == Character.NON_SPACING_MARK || type == Character.COMBINING_SPACING_MARK;
     }
 
     public static boolean isValid(String raw) {
