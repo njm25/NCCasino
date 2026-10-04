@@ -1032,17 +1032,17 @@ roulette-settings:
   dealer-not-found: "&cНе вдалося знайти круп'є для налаштувань Рулетки."
 
 baccarat-settings:
-  title: "Налаштування Бакара круп'є {dealer}"
+  title: "Налаштування Бакари круп'є {dealer}"
   edit-decks: "Змінити кількість колод"
   edit-timer: "Змінити таймер"
   invalid-option: "&cВибрано недійсний варіант."
-  invalid-settings-option: "&cВибрано недійсний пункт налаштувань Бакара."
+  invalid-settings-option: "&cВибрано недійсний пункт налаштувань Бакари."
   prompt-number: "&aВведіть у чаті нове число."
   prompt-timer: "&aВведіть у чаті нове значення таймера."
   prompt-decks: "&aВведіть нову кількість колод."
   timer-updated: "&aТаймер круп'є оновлено."
   decks-updated: "&aКількість колод круп'є оновлено."
-  dealer-not-found: "&cНе вдалося знайти круп'є для налаштувань Бакара."
+  dealer-not-found: "&cНе вдалося знайти круп'є для налаштувань Бакари."
 
 blackjack-settings:
   title: "Налаштування Блекджеку круп'є {dealer}"

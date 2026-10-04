@@ -695,7 +695,7 @@ roulette:
   invalid-action: "&cAção inválida."
   no-funds: "&cSem dinheiro.\n"
   no-currency: "&cSem {currency}\n"
-  all-in-ready: "&aAposta total de {amount} pronta a ser feita."
+  all-in-ready: "&aApostar tudo: aposta de {amount} pronta a ser feita."
   all-in-display: "Apostar tudo ({amount})"
   wager-selected: "&aAposta: {amount}"
   invalid-wager-selected: "&cO valor de aposta escolhido é inválido."

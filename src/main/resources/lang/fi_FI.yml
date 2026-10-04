@@ -820,7 +820,7 @@ blackjack:
   turn-timer-lore: "Aikaa päättää: {seconds}"
   turn-timer-expired: "&cAika loppui! Kätesi jäi automaattisesti."
   closed-during-turn: "&cSinun täytyy palata ja valita toiminto {seconds} sekunnin kuluessa, tai kätesi jää automaattisesti."
-  closed-before-turn: "&eSinun täytyy palata ennen kuin vuorosi ajastin loppuu, tai kätesi jää automaattisesti."
+  closed-before-turn: "&eSinun täytyy palata, ennen kuin vuorosi ajastin loppuu, tai kätesi jää automaattisesti."
   closed-during-insurance: "&cSinun täytyy palata ja päättää vakuutuksesta {seconds} sekunnin kuluessa, tai valinnaksi tulee automaattisesti Ei."
   turn-started-while-away: "&aBlackjack-vuorosi alkoi! {seconds} s!"
   insurance-available-while-away: "&aVakuutusta tarjotaan! Sinulla on {seconds} s aikaa päättää."
@@ -1231,7 +1231,7 @@ interaction:
   dealer-died: "&cJakaja '&e{dealer}&c' on kuollut, ja kaikki siihen liittyvät tiedot on poistettu."
   no-game-permission: "&cSinulla ei ole oikeutta pelata peliä {game}."
   shift-click-disabled: "&cShift-klikkaus on pois käytöstä."
-  click-cooldown: "&cOdota hetki ennen kuin klikkaat uudelleen!"
+  click-cooldown: "&cOdota hetki, ennen kuin klikkaat uudelleen!"
   drag-disabled: "&cTänne ei voi vetää."
 
 occupations:

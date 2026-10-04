@@ -1200,7 +1200,7 @@ admin:
   current-pattern-lore: "Patrón actual: &a{value}"
   current-body-color-lore: "Color del cuerpo actual: &a{value}"
   current-pattern-color-lore: "Color del patrón actual: &a{value}"
-  none: "Ninguno"
+  none: "Ninguna"
   size-lore: "Tamaño: &a{value}"
   age-lore: "Edad: &a{value}"
   adult: "Adulto"

@@ -926,7 +926,7 @@ jockey-options:
 mob-selection:
   giant: "Fathach"
   illusioner: "Seachmallóir"
-  title: "Socruithe chréatúr an déileálaí"
+  title: "Socruithe créatúr an déileálaí"
   data-file-not-found: "&cNíor aimsíodh comhad sonraí na ndéileálaithe!"
   location-not-found: "&cNíorbh fhéidir suíomh an déileálaí a fháil."
   world-not-found: "&cNíl an domhan “{world}” ann."

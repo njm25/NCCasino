@@ -731,7 +731,7 @@ blackjack:
   welcome: "&a歡迎來到21點。"
   dealer: "荷官"
   click-sit: "點擊在這裡入座"
-  seat-taken-elsewhere: "想坐這個位子，請先離開你自己的椅子"
+  seat-taken-elsewhere: "想坐這個座位，請先離開你自己的椅子"
   click-bet: "點擊這裡下注"
   other-betting-circle: "{name} 的下注區"
   hit: "要牌"

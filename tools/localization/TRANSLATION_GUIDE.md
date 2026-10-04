@@ -464,6 +464,41 @@ Java inspection, add it here with the exact affected key family and a short
 "verified: <file/method>" note, so the next translation pass does not have
 to re-derive it.
 
+- **Mob names must not borrow culturally or religiously significant
+  figures.**
+  - se_NO had labelled `mob-selection.illusioner` (a hostile Minecraft mob)
+    with *noaidi*, the Sámi religious specialist. Use a neutral loan or a
+    descriptive coinage.
+  - Same family: `mob-selection.evoker`, `witch`, `illusioner`, `vindicator`.
+- **Exclamations stay neutral.**
+  - `roulette.hit-green` and similar EN interjections ("WOW!") must not
+    become religious oaths (li_LI had *GOEDJEZUS!*).
+  - Mild conventional minced forms are acceptable (vec_IT *OSTREGA!*).
+- **Failure messages blame the system, not the admin.**
+  - `admin.move-failed(-detailed)`, `mob-selection.save-failed`,
+    `mob-selection.location-not-found`, `jockey-mob.change-failed` and
+    `mob-settings.jockey-not-found` report what could not happen.
+  - A first- or second-person "I/you failed" is a meaning error (mt_MT
+    *Fallejt*).
+- **`slots.auto-rule-profit` = stop once profit reaches the target.**
+  - It is not "exceeds" (verified via its siblings
+    `auto-profit-target-description` / `-set`; szl had *przekroczy*).
+- **Baccarat odds labels are noun phrases.**
+  - `baccarat.player-win-odds` / `banker-win-odds` label a bet type
+    ("Banker Win - 0.95:1"), not an event that happened (ig_NG had used
+    the past tense).
+- **`dragon-settings.updated-detailed` / `blackjack-settings.updated-detailed`
+  are a §K source defect.**
+  - Every call site (`DragonDescentMenu`, `BlackjackMenu`, `BaccaratMenu`,
+    `CoinFlipMenu`, `MinesMenu`, `RockPaperScissorsMenu`) passes an
+    already-finished localized sentence (`text(settingUpdatedKey(…))` /
+    `text(messageKey)`) as `{setting}`.
+  - The result in every locale, English included, is "<finished sentence>
+    to <value>."
+  - Translate the template faithfully. Do not score the doubled sentence
+    against a candidate; fix it in Java (pass a setting *name*, or use
+    dedicated per-setting detailed keys).
+
 ## D. Protected-token classes
 
 Protected material is not all the same kind of "do not touch." Classify it:
@@ -573,6 +608,13 @@ hand-edited catalog value; also do this by hand for every changed value:
 5. **Confirm the `-1` sentinel and `/ncc <subcommand>` tokens** are present
    verbatim wherever the English source has them.
 
+Locale-specific mechanical checks:
+
+- lo_LA: missing final punctuation is the norm, not a dropped-clause signal.
+- kn_IN: ZWNJ (U+200C) between a loanword and a suffix is standard.
+- haw_US: check the ʻokina code point (U+02BB) mechanically. Visually similar
+  substitutes (U+2018, U+0027) are defects.
+
 ## F. Source-language residue detection
 
 A structurally valid translation can still be wrong in the worst possible
@@ -605,6 +647,11 @@ missed by structural validation because the values were still valid strings
 If the repository's localization tooling can run this deterministically
 (see `README.md`), prefer that over a purely manual pass — but a manual
 scan is still required wherever the tool doesn't cover the exact case.
+
+- `blackjack.round-summary-hand-blackjack` byte-identical to English
+  (`&aHand {number}: Blackjack! +{amount}`) is legitimate where *Hand* is the
+  native word: lb_LU, nds_DE, li_LI (and the existing de_DE, nl_NL). The
+  residue warning on it is advisory only.
 
 ## G. Preserve instruction/action-location clauses
 
@@ -852,6 +899,90 @@ Seventh continuation for later locales (same concept rows; split so neither tabl
 | seat | plass (stol = chair) | sidloko (seĝo = chair) |
 | banked winnings (overflow bank) | lagra gevinstar | konservitaj gajnoj |
 | overflow: hold vs. drop nearby | Ta vare på dei for meg / Legg dei på bakken i nærleiken | Konservu ilin por mi / Demetu ilin proksime |
+
+Eighth continuation for later locales (same concept rows; split so neither table grows too wide to read):
+
+| Concept (continued 8) | tt_RU | ba_RU | ky_KG | cv_CU | mt_MT | gd_GB | kw_GB | br_FR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | дилер | дилер | дилер | дилер | dealer | roinneadair | kroupyer | kroupier |
+| Baccarat banker/bank side | Банкир (Уенчы / Банкир) | Банкир (Уйынсы / Банкир) | Банкир (Оюнчу / Банкир) | Банкир (Вӑйӑҫӑ / Банкир) | Bankier (Plejer / Bankier) | Bancair (Cluicheadair / Bancair) | Bankyer (Gwarier / Bankyer) | Bankour (C'hoarier / Bankour) |
+| bet / wager amount | ставка | ставка | коюм | ставка | imħatra | geall | gweystel | klaoustre |
+| all in | Барысын кую | Барыһын ҡуйыу | Баарын коюу | Пӗтӗмпех хурасси | All-in | Cuir na h-uile | Gorra oll | Lakaat pep tra |
+| rebet (repeat previous wager) | Ставканы кабатлау | Ставканы ҡабатлау | Коюмду кайталоо | Ставкӑна тепӗр хут хурасси | Ripetizzjoni tal-Imħatra | Ath-gheall | Arta-gweystla | Adklaoustrañ |
+| chip denomination/value | фишка кыйммәте | фишка ҡиммәте | фишканын наркы | фишка хакӗ | valur taċ-ċippa | luach an tòcain | talvos an chyp | talvoud ar jeton |
+| win streak / chain (PvE) | җиңүләр сериясе (сериядәге иң күп раунд саны) | серия (сериялағы иң күп раунд һаны) | серия (сериядагы эң көп раунд саны) | сери | serje ta' rebħ | sreath bhuannachdan | kevres gwayn | heuliad gounidoù |
+| cash out / payout | Отышны алу / түләү | Отошто алыу / түләү | Утушту алуу / төлөм | Укҫана илесси / тӳлев | Iġbor ir-Rebħ / ħlas | Tog na buannachdan / pàigheadh | Kemmeres an gwaynyans / tal | Tennañ ar gounidoù / paeamant |
+| Blackjack: shoe | карта тартмасы | карта тартмаһы | карта кутусу | карта ещӗкӗ | kaxxa tal-karti | bogsa nan cairtean | boks an kartennow | boest ar c'hartennoù |
+| Blackjack: hit | Карта алу | Карта алыу | Карта алуу | Карта илесси | Karta | Cairt eile | Karten moy | Ur gartenn all |
+| Blackjack: stand | Туктау | Туҡтау | Токтоо | Чарӑнасси | Ieqaf | Seas | Sevel | Chom |
+| Blackjack: split | Бүлү | Бүлеү | Бөлүү | Уйӑрасси | Aqsam | Sgoilt | Ranna | Rannañ |
+| Blackjack: insurance | страховка | страховка | камсыздандыруу | страховка | assigurazzjoni | àrachas | surheans | asurañs |
+| Blackjack: same-rank vs. same-value split rule | Бер үк дәрәҗә / Бер үк кыйммәт | Бер үк дәрәжә / Бер үк ҡиммәт | Бирдей даража / Бирдей нарк | Пӗр пек ранг / Пӗр пек хак | Grad Ugwali / Valur Ugwali | An aon inbhe / An aon luach | An keth renk / An keth talvos | Memes renk / Memes talvoud |
+| RPS: throw/action (not generic "turn") | йөреш | йөрөш | жүрүш | суйлав | għażla | tilgeadh | tewl | taoladenn (≠ taol = table) |
+| Dragon Descent: vine mechanic | чырмавык | сырмауыҡ | чырмоок | лианӑсем | pjanti li jixxebilku | lusan-streap | plansow krambla | plant-pign |
+| ON/OFF display state | КАБЫЗЫЛГАН / СҮНДЕРЕЛГӘН | ҠАБЫҘЫЛҒАН / ҺҮНДЕРЕЛГӘН | КҮЙҮК / ӨЧҮК | ҪУТНӐ / СӲНТЕРНӖ | MIXGĦULA / MITFIJA | AIR / DHETH | GWEYTHRESEK / ANWEYTHRESEK | ENAOUET / LAZHET |
+| Slots: variance (risk preset, not the RTP) | үзгәрүчәнлек | үҙгәреүсәнлек | өзгөрмөлүүлүк | улшӑнуллӑх | varjanza | caochlaideachd | varians | varians |
+| Slots: house edge | казино өстенлеге | казино өҫтөнлөгө | казинонун артыкчылыгы | казино пайӗ | vantaġġ tal-każinò | brath an taighe | avauntach an chi | avantaj an ti |
+| Slots: return/RTP verb | Уенчыга кайтарым (RTP) | Уйынсыға ҡайтарым (RTP) | Оюнчуга кайтарым (RTP) | Вӑйӑҫӑна тавӑрни (RTP) | Ritorn lill-plejer | Tilleadh don chluicheadair (RTP) | Dehwelans dhe'n gwarier (RTP) | Distro d'ar c'hoarier (RTP) |
+| seat | урын (урындык = chair) | урын (ултырғыс = chair) | орун (отургуч = chair) | вырӑн (пукан = chair) | post (siġġu = chair) | àite (cathair = chair) | esedh (kador = chair) | plas (kador = chair) |
+| banked winnings (overflow bank) | сакланган отыш | һаҡланған отош | сакталган утуш | упранӑ укҫа | rebħ merfugħ | buannachdan glèidhte | gwaynyans gwithys | gounid miret |
+| overflow: hold vs. drop nearby | Минем өчен саклау / Янәшәгә төшерү | Минең өсөн һаҡлау / Яҡынға ташлау | Мага сактап коюу / Жаныма таштоо | Ман валли упраса хурӑр / Ҫывӑха ӳкерӗр | Żommhom Għalija / Waqqagħhom Fil-Qrib | Glèidh dhomh iad / Leig às faisg orm | Gwithewgh ragov / Gasa dhe goedha yn ogas | Mirit anezho evidon / Lezel da gouezhañ e-kichen |
+
+Ninth continuation for later locales (same concept rows; split so neither table grows too wide to read):
+
+| Concept (continued 9) | lb_LU | fo_FO | fy_NL | nds_DE | li_LI | oc_FR | ast_ES | vec_IT | szl |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | Croupier | býtari | dealer | Croupier | dealer | cropièr | crupier | crupier | krupier |
+| Baccarat banker/bank side | Bank (Spiller / Bank) | Banki (Leikari / Banki) | Bank (Spiler / Bank) | Bank (Speler / Bank) | Bank (Speler / Bank) | Banca (Jogaire / Banca) | Banca (Xugador / Banca) | Banco (Zogador / Banco) | Bankier (Grŏcz / Bankier) |
+| bet / wager amount | Asaz | vedding | ynset | Insatz | inzèt | escomesa | apuesta | scomesa | zakład |
+| all in | Alles setzen | Seta alt | Alles ynsette | Allens setten | Alles inzètte | Tot metre | Apostalo too | Tuto drento | Wszyjsko |
+| rebet (repeat previous wager) | Asaz widderhuelen | Endurtaka vedding | Ynset werhelje | Insatz wedderhalen | Inzèt herhaole | Repetir l'escomesa | Repetir apuesta | Ripeti scomesa | Powtōrz zakład |
+| chip denomination/value | Wäert vum Jeton | virði á spælpeningi | fichewearde | Weert vun de Spelmark | fichewaerde | valor del geton | valor de la ficha | valor del getón | wertość żetonu |
+| win streak / chain (PvE) | Gewënnserie (count label: Ronnen) | vinningsfylgi | winreeks | Winnserie | winreeks | seria de victòrias | racha | serie de vitorie | seryjŏ (wygranych) |
+| cash out / payout | Gewënn huelen / Auszuelung | Taka vinningin / útgjald | Winst ophelje / útbetelling | Winst afhalen / Utbetahlung | Winst ophaole / oetbetaoling | Recuperar los ganhs / pagament | Cobrar les ganancies / pagu | Incasa le vìnsite / pagamento | Wypłać wygrane / wypłata |
+| Blackjack: shoe | Kaarteschong | kortakassi | kaartskoech | Koortenschoh | kaartesjoon | sabòt de cartas | zapatu de cartes | sabot de le carte | but na karty |
+| Blackjack: hit | Kaart huelen | Eitt kort afturat | Kaart | Koort nehmen | Kaart | Carta | Carta | Carta | Karta |
+| Blackjack: stand | Halen | Steðga | Passe | Blieven | Pas | Demorar | Plantase | Star | Stoj |
+| Blackjack: split | Deelen | Deila | Splitse | Delen | Splits | Separar | Dividir | Dividar | Podziel |
+| Blackjack: insurance | Versécherung | trygging | fersekering | Versekern | verzekering | assegurança | seguru | sicurasion | ubezpieczynie |
+| Blackjack: same-rank vs. same-value split rule | Selwechte Rang / Selwechte Wäert | Sama stig / Sama virði | Gelikense rang / Gelikense wearde | Gliek Rang / Gliek Weert | Zelfde rang / Zelfde waerde | Meteis reng / Meteissa valor | Mesmu rangu / Mesmu valor | Stesso grado / Stesso valor | Ta sama ranga / Ta sama wertość |
+| RPS: throw/action (not generic "turn") | Wuerf | kast | kar | Wahl | keus | causida | eleición | sielta | wybōr |
+| Dragon Descent: vine mechanic | Lianen | klivurplantur | klimplanten | Klatterplanten | klumplante | plantas grimpairas | enredaderes | piante rampeganti | pnōncza |
+| ON/OFF display state | UN / AUS | TENDRAÐ / SLØKT | OAN / ÚT | AN / UT | AAN / OET | ACTIVAT / DESACTIVAT | ACTIVÁU / DESACTIVÁU | ATIVO / DESATIVO | ZAŁŌNCZŌNE / WYŁŌNCZŌNE |
+| Slots: variance (risk preset, not the RTP) | Varianz | sveiggj | fariânsje | Varianz | variantie | volatilitat | volatilidá | volatilità | zmiynność |
+| Slots: house edge | Hausvirdeel | fyrimunur hjá húsinum | hûsfoardiel | Huusvördeel | hoesvoordeil | avantatge del casino | ventaya de la casa | vantajo de la casa | przewaga kasyna |
+| Slots: return/RTP verb | Retour un de Spiller (RTP) | Útgjaldsprosent til leikaran (RTP) | Útbetellingspersintaazje (RTP) | Utbetahlquote (RTP) | Oetbetaolingspercentage (RTP) | Retorn al jogaire (RTP) | Retornu al xugador (RTP) | Ritorno al zogador (RTP) | Zwrot dlŏ grŏcza (RTP) |
+| seat | Plaz (Stull = chair) | sæti (stólur = chair) | plak (stoel = chair) | Platz (Stohl = chair) | plaats (stool = chair) | plaça (cadièra = chair) | asientu (silla = chair) | posto (carega = chair) | plac (krzesło = chair) |
+| banked winnings (overflow bank) | ofgeluechte Gewënn | goymdur vinningur | bewarre winst | opbewohrte Winst | bewaorde winst | ganh gardat | ganancies guardaes | vìnsite tegnùe da parte | schowane wygrane |
+| overflow: hold vs. drop nearby | Fir mech ophalen / Nobäi fale loossen | Goym fyri meg / Slepp nær við meg | Foar my bewarje / Yn 'e buert falle litte | För mi opbewohren / In de Neegde fallen laten | Veur mich bewaore / In de buurt laote valle | Gardatz-los per ieu / Daissatz-los tombar a prèp | Guárdameles / Déxales cayer cerca | Tegnìmele da parte / Làsale cascar vissin | Trzim je dlŏ mie / Puść je kole mie |
+
+Tenth continuation for later locales (same concept rows; split so neither table grows too wide to read):
+
+| Concept (continued 10) | yo_NG | ig_NG | so_SO | lo_LA | kn_IN | haw_US | se_NO | la_LA |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| generic physical dealer/croupier | olùpín | onye nkesa | qaybiye | ເຈົ້າມື | ಡೀಲರ್ | mea hoʻokele | juogadeaddji | dispensator |
+| Baccarat banker/bank side | Báńkì (Òṣèré / Báńkì) | Ụlọ akụ (Onye egwuregwu / Ụlọ akụ) | Bangiga (Ciyaartoy / Bangiga) | ແບັງເກີ (ຜູ້ຫຼິ້ນ / ແບັງເກີ) | ಬ್ಯಾಂಕರ್ (ಆಟಗಾರ / ಬ್ಯಾಂಕರ್) | Panakō (Mea pāʻani / Panakō) | Báŋku (Speallejeaddji / Báŋku) | Argentaria (Lusor / Argentaria) |
+| bet / wager amount | tẹ́tẹ́ (ta tẹ́tẹ́) | nzọ (gbaa nzọ) | sharad (dhig sharad) | ເດີມພັນ | ಪಣ | pili | veađđu | pignus |
+| all in | Gbogbo rẹ̀ | Ha niile | Dhammaan | ທຸ່ມໝົດໜ້າຕັກ | ಎಲ್ಲವನ್ನೂ ಪಣಕ್ಕಿಡಿ | Kau pau loa | Buot sisa | Omnia in medium |
+| rebet (repeat previous wager) | Tún tẹ́tẹ́ ta | Gbaa nzọ ọzọ | Ku celi sharadka | ເດີມພັນຊ້ຳ | ಮರು ಪಣ | Pili hou | Veađđo ođđasit | Pignus iterare |
+| chip denomination/value | iye ẹyọ | uru mkpụrụ | qiimaha jajabka | ມູນຄ່າຊິບ | ಚಿಪ್ ಮೌಲ್ಯ | waiwai pihi | mearkka árvu | valor tesserae |
+| win streak / chain (PvE) | ìtẹ̀léra ìborí | usoro mmeri | guulo isku xigta | ການຊະນະຕິດຕໍ່ກັນ | ಸತತ ಗೆಲುವು | lanakila hoʻomau | vuoitoráidu | victoriae continuae |
+| cash out / payout | Gba owó ìborí / ìsanwó | Were ego mmeri / ịkwụ ụgwọ | Qaado lacagta guusha / bixinta | ຮັບເງິນລາງວັນ / ການຈ່າຍເງິນ | ಗೆಲುವಿನ ಹಣ ಪಡೆಯಿರಿ / ಪಾವತಿ | Lawe i ke kālā eo / uku | Váldde vuittuid / máksu | Lucra cape / solutio |
+| Blackjack: shoe | àpótí káàdì | igbe kaadị | Sanduuqa kaararku | ກ່ອງແຈກໄພ່ | ಕಾರ್ಡ್ ಪೆಟ್ಟಿಗೆ | pahu kāleka | kortaboksa | capsa chartarum |
+| Blackjack: hit | Káàdì kan sí i | Kaadị ọzọ | Kaar kale | ຈົ່ວ | ಇನ್ನೊಂದು ಕಾರ್ಡ್ | Kāleka hou | Ođđa kortta | Chartam pete |
+| Blackjack: stand | Dúró | Kwụsị | Joogso | ຢຸດ | ನಿಲ್ಲಿ | Kū | Bisán | Consiste |
+| Blackjack: split | Pín | Kewaa | Kala qaad | ແຍກ | ವಿಭಜಿಸಿ | Māhele | Juoge | Divide |
+| Blackjack: insurance | ìdánilójú | mkpuchi | caymis | ປະກັນ | ವಿಮೆ | ʻinikua | dáhkádus | cautio |
+| Blackjack: same-rank vs. same-value split rule | Ipò kan náà / Iye kan náà | Otu ọkwa / Otu uru | Darajo isku mid ah / Qiime isku mid ah | ອັນດັບດຽວກັນ / ຄ່າດຽວກັນ | ಒಂದೇ ಶ್ರೇಣಿ / ಒಂದೇ ಮೌಲ್ಯ | Kūlana like / Waiwai like | Seamma dássi / Seamma árvu | Idem gradus / Idem valor |
+| RPS: throw/action (not generic "turn") | àṣàyàn | nhọrọ | doorasho | ການເລືອກ | ಆಯ್ಕೆ | koho | válljejupmi | electio |
+| Dragon Descent: vine mechanic | ìtàkùn | osisi na-arị elu | geed fuulaa | ເຄືອໄມ້ | ಬಳ್ಳಿಗಳು | nā hihi | goarggŋunšattut | vites |
+| ON/OFF display state | TÀN / PA | GBANYERE / GBANYỤRỤ | SHIDAN / DEMAN | ເປີດ / ປິດ | ಆನ್ / ಆಫ್ | HOʻĀ ʻIA / HOʻOPIO ʻIA | ALDE / ERET | ACTIVUM / INACTIVUM |
+| Slots: variance (risk preset, not the RTP) | ìyàtọ̀ ewu | ọdịiche ihe egwu | kala duwanaanshaha khatarta | ຄວາມຜັນຜວນ | ಏರಿಳಿತ | loli pōʻino | variánsa | variantia |
+| Slots: house edge | àǹfààní ilé | uru ụlọ | faa'iidada guriga | ຂໍ້ໄດ້ປຽບຂອງຄາສິໂນ | ಕ್ಯಾಸಿನೊ ಲಾಭಾಂಶ | pōmaikaʻi o ka hale | kasiinno ovdamunni | commodum domus |
+| Slots: return/RTP verb | Ìdápadà fún òṣèré (RTP) | Nlọghachi nye onye egwuregwu (RTP) | Celinta ciyaartoyga (RTP) | ອັດຕາຄືນໃຫ້ຜູ້ຫຼິ້ນ (RTP) | ಆಟಗಾರರಿಗೆ ಹಿಂದಿರುಗುವ ಪ್ರಮಾಣ (RTP) | Hoʻihoʻi i ka mea pāʻani (RTP) | Máksu speallejeaddjái (RTP) | Reditus lusori (RTP) |
+| seat | ìjókòó (àga = chair) | ebe nọdụ (oche = chair) | boos (kursi = chair) | ບ່ອນນັ່ງ (ຕັ່ງ = chair) | ಆಸನ (ಕುರ್ಚಿ = chair) | wahi noho (noho = chair) | sadji (stuollu = chair) | sedes (sella = chair) |
+| banked winnings (overflow bank) | owó ìborí tí a pa mọ́ | ego mmeri e debere | lacag guul ah oo la kaydiyay | ເງິນລາງວັນທີ່ເກັບໄວ້ | ಇಟ್ಟುಕೊಂಡ ಗೆಲುವಿನ ಹಣ | kālā eo i mālama ʻia | vurkejuvvon vuoitu | lucra servata |
+| overflow: hold vs. drop nearby | Pa wọ́n mọ́ fún mi / Jẹ́ kí wọ́n já sílẹ̀ nítòsí | Debere ha maka m / Hapụ ha ka ha daa n'akụkụ | Ii kaydi / Ku ag dhig | ເກັບໄວ້ໃຫ້ຂ້ອຍ / ປ່ອຍໃຫ້ຕົກໃກ້ໆ | ನನಗಾಗಿ ಇಟ್ಟುಕೊಳ್ಳಿ / ಹತ್ತಿರದಲ್ಲಿ ಬೀಳಲಿ | E mālama no ʻu / E hoʻokuʻu ma kahi kokoke | Vurke munnje / Luoitte lahka | Serva mihi / Sine iuxta te cadere |
 
 Where a terminology decision is genuinely unresolved, leave the cell marked
 as such and require review before the next translation pass treats it as
@@ -1551,6 +1682,212 @@ a real, previously-observed defect, not a hypothetical risk.
 
 Do not mix registers inside one catalog. A deliberate register change is a
 full-catalog review, not an incidental edit.
+
+- `tt_RU`: literary Tatar (Cyrillic). Address and form:
+  - polite `Сез` with `-ыгыз/-егез` imperatives; verbal-noun button labels;
+  - placeholders never take case suffixes (governing noun or colon label);
+  - clicks spelled out (`сул/уң төймә белән басыгыз`), never ЛКМ/ПКМ;
+  - decimal comma.
+
+  Terms:
+  - `пункт` = menu option, `вариант` = mob variant; default `килешү буенча`;
+  - slots run `тезмә` vs PvE `серия`.
+- `ba_RU`: literary Bashkir (`ә ө ү ң һ ҡ ғ ҙ ҫ`). Address and form:
+  - polite `Һеҙ` (`-ығыҙ/-егеҙ`); unsuffixed placeholders;
+  - clicks spelled out (`һул/уң төймә`); decimal comma.
+
+  Terms:
+  - `cards.name` = `{rank} ({suit})`; default `килешеү буйынса`;
+  - run `теҙмә` vs `серия`.
+- `ky_KG`: literary Kyrgyz (no Kazakh letters). Address and form:
+  - polite `Сиз` (`-ңыз`); unsuffixed placeholders;
+  - clicks spelled out (`сол/оң баскыч`); decimal comma.
+
+  Terms:
+  - toggle state `КҮЙҮК/ӨЧҮК`, but setting values `Күйгүзүлгөн/Өчүрүлгөн`;
+  - run `тизмек` vs `серия`.
+- `cv_CU`: modern literary Chuvash, Cyrillic `ӑ ӗ ҫ ӳ`. Address and form:
+  - check for Latin look-alikes;
+  - polite `Эсир`; labels as `-асси/-ни` action nouns;
+  - unsuffixed placeholders; decimal comma; « ».
+
+  Terms:
+  - default `яланхи`; run `ярӑм` vs `сери`.
+  - Minecraft's region code `cv_CU` is kept for client auto-detect.
+- `mt_MT`: standard Maltese. Address and form:
+  - informal 2sg imperatives (`Ikklikkja`, `Ikteb`);
+  - no gendered predicates on the player;
+  - placeholders behind a governing noun or colon label;
+  - decimal point.
+
+  Terms:
+  - established loans kept (`dealer`, `All-in`, `Slots`, `Mines`);
+  - `cards.name` = `{rank} ta' {suit}`; run `sekwenza` vs `serje ta' rebħ`.
+
+  System failures are impersonal (`ma setax jiġi …`), never `Fallejt`
+  ("you failed").
+- `gd_GB`: Scottish Gaelic (GOC grave accents). Address and form:
+  - informal `thu`;
+  - no mutating word directly before a placeholder (colon labels,
+    parentheses, invariant prepositions); counts as labels;
+  - decimal point; “ ”.
+
+  Terms:
+  - `cards.name` = `{rank} ({suit})`;
+  - run `ruith` vs row `sreath` vs streak `sreath bhuannachdan`.
+- `kw_GB`: Standard Written Form Cornish. Address and form:
+  - polite plural `hwi` (`-ewgh` imperatives, `agas`);
+  - participle-based reports; no mutating word before a placeholder;
+  - decimal point; “ ”.
+
+  Terms:
+  - "no X" is `Nyns eus X vyth` / `heb X`, never a bare `X vyth`;
+  - run `resek` vs `kevres gwayn`.
+- `br_FR`: peurunvan Breton. Address and form:
+  - polite `c'hwi` (`-it` imperatives);
+  - no article or mutating word before a placeholder;
+  - decimal comma; « ».
+
+  Terms:
+  - RPS throw `taoladenn` kept apart from table `taol`;
+  - run `steudad` vs `heuliad gounidoù`.
+
+  A passive `gant X` means "by X". Do not use it for the dealer whose
+  settings changed.
+- `lb_LU`: Luxembourgish 2019 orthography with the n-rule. Address and form:
+  - informal `du`; capitalised nouns;
+  - no article before a placeholder; decimal comma; „“.
+
+  Terms:
+  - `sécher` = safe (not `séier`); row `Zeil`;
+  - run `Sequenz` vs `Serie`.
+- `fo_FO`: written Faroese. Address and form:
+  - informal `tú` imperatives (`Trýst`, `Vel`, `Skriva`);
+  - placeholders only after colon labels or parentheses;
+  - gender-neutral toward the player (welcome = `Góða hugnan!`, not
+    `vælkomin`);
+  - decimal comma; „“.
+
+  Terms: row `rað`, run `keta`, streak `vinningsfylgi`.
+- `fy_NL`: West Frisian (current spelling; accents kept on capitals
+  `Û Ô Ú`). Address and form:
+  - polite `jo`; gender-neutral generics; decimal comma; „”.
+  - Dutch-interference checks: `loftsklik`, `jild`, `net`, `gjin`,
+    `besykje`.
+
+  Terms: row `rige`, run `searje`, streak `winreeks`; `ûnbeheind`
+  everywhere.
+- `nds_DE`: Northern Low Saxon, Sass-based spelling. Address and form:
+  - informal `du`; capitalised nouns; decimal comma; „“.
+
+  Terms:
+  - "reached" = `ankamen` (never `rekent` = calculated);
+  - row `Reeg`, run `Keed`, streak `Winnserie`.
+- `li_LI`: general Limburgish in Veldeke-style spelling (Dutch `ij` →
+  `ie`). Address and form:
+  - informal `doe`; decimal comma; „”.
+
+  Terms:
+  - Mines = `Miene`; row `rie`, run `serie`, streak `winreeks`;
+  - refund `trökbetaold`, kept apart from the Slots return.
+- `oc_FR`: Occitan, classical norm, Languedocien. Address and form:
+  - 2pl `vos` imperatives; gender-neutral address;
+  - no article or elidable word before a placeholder; decimal comma; « ».
+
+  Terms: row `rengada`, run `seguida`, streak `seria de victòrias`.
+- `ast_ES`: ALLA standard Asturian. Address and form:
+  - informal 2sg; Asturian simple preterite (`Ganasti` / `Perdisti`);
+  - gender-neutral; no article before a placeholder;
+  - decimal comma; « » ¡ ¿.
+
+  Terms:
+  - row `fila`, run `riestra`, streak `racha`;
+  - `Nenguna` (admin.none) vs `Res` (mob-settings.none) is deliberate.
+- `vec_IT`: Venetian central koiné, simplified GVU-style spelling without
+  `ƚ`. Address and form:
+  - informal 2sg with subject clitics; gender-neutral;
+  - no article before a placeholder; decimal comma; « ».
+
+  Terms:
+  - Venetian `-al`, not Italian `-ale`; timer `cronometro`;
+  - row `riga`, run `sequensa`, streak `serie`.
+- `szl`: Silesian in the Ślabikŏrzowy szrajbōnek. Address and form:
+  - informal 2sg; gender-neutral (no player-directed past tense);
+  - colon labels; decimal comma; „ ”.
+  - Feminine accusative: adjective `-õ` + noun `-ã`.
+
+  Terms:
+  - turn `kolej` (not `kolejka` = queue); avoid `podwiela` for "before";
+  - row `rzōnd`, run `ciōng`, streak `seryjŏ`.
+- `yo_NG`: standard Yoruba with full tone marks and subdots, NFC. Address
+  and form:
+  - 2sg `o`; gender-neutral pronouns;
+  - decimal point (the parser accepts `2.5%`); “ ”.
+
+  Terms:
+  - click `tẹ̀` (low tone); refuse `kọ̀` (not `kọ` = write);
+  - turn `ìgbà` vs session `àsìkò eré`;
+  - row `ọ̀wọ́`, run `ìsopọ̀`, streak `ìtẹ̀léra ìborí`.
+- `ig_NG`: Standard Igbo, Ọnwụ orthography with dotted vowels and no tone
+  marks. Address and form:
+  - 2sg `ị/i`; gender-neutral; decimal point; “ ”.
+  - The impersonal subject `E/A` is a separate word before perfect verbs;
+    the joined form is a negative imperative.
+
+  Terms:
+  - Baccarat odds labels are nouns (`Mmeri …`), not past tense;
+  - row `ahịrị`, run `njikọ`, streak `usoro mmeri`.
+- `so_SO`: Standard Somali (1972 Latin orthography). Address and form:
+  - 2sg; generic third-person player references pluralised or impersonal
+    (no masculine default);
+  - decimal point; “ ”.
+
+  Terms:
+  - move a thing = `guuri` (not `guur`); never `guddi` (committee) for a
+    board;
+  - row `saf`, run `silsilad`, streak `guulo isku xigta`.
+- `lo_LA`: Standard Lao (Vientiane). Address and form:
+  - polite neutral `ທ່ານ`; clause spacing;
+  - **no sentence-final full stop** (Lao convention, so most values lack
+    final punctuation by design);
+  - no Lao letter directly after a placeholder; decimal point; “ ”.
+
+  Terms: row `ແຖວ`, run `ລຽນຕິດ`, streak `ການຊະນະຕິດຕໍ່ກັນ`.
+- `kn_IN`: standard written Kannada (software register, established loans).
+  Address and form:
+  - polite `ನೀವು`; generic player plural;
+  - no Kannada letter directly after a placeholder;
+  - ZWNJ only where standard (loan + suffix, e.g. `ಡೀಲರ್‌ಗೆ`), so it is
+    not an invisible-character defect;
+  - decimal point; “ ”.
+
+  Terms:
+  - Baccarat side labels as nouns;
+  - row `ಸಾಲು`, run `ಸರಣಿ`, streak `ಸತತ ಗೆಲುವು`.
+- `haw_US`: modern standard Hawaiian. Address and form:
+  - ʻokina is U+02BB, never an apostrophe or ‘; kahakō; NFC;
+  - 2sg `ʻoe`, a/o-class possessives; gender-neutral; decimal point; “ ”.
+
+  Terms:
+  - win `eo` / lose `pio`; chance `pākēneka` (not `manawa`);
+  - row `lālani`, run `kaʻina`, streak `lanakila hoʻomau`.
+- `se_NO`: Northern Sámi standard orthography, NFC. Address and form:
+  - 2sg `don`; passive `-juvvo-` status messages;
+  - no case ending on a placeholder; decimal comma; « ».
+
+  Terms:
+  - "cost" must not use `máksit` (pay); server `bálvá`, menu `fállu`,
+    click `coahkkal`;
+  - row `ráidu`, run `joavku`, streak `vuoitoráidu`.
+- `la_LA`: classical-based Latin with Vicipaedia-style coinages and no
+  macrons. Address and form:
+  - 2sg imperatives; no participle agreeing with the player;
+  - Arabic digits for game numbers; decimal comma; « ».
+
+  Terms:
+  - refund button `Pignora recipe` (not `Redde`); "nearby" `iuxta te`
+    (`prope` + verb = "almost");
+  - row `ordo`, run `series`, streak `victoriae continuae`.
 
 ## I. Consistency lookup for targeted work
 

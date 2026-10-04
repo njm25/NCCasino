@@ -614,7 +614,7 @@ mines:
   select-mines: "Escolle o número de minas"
   mine-option: "Minas: {count}"
   start-game: "Comezar a partida"
-  hidden: "Agochado"
+  hidden: "Agochada"
   cash-out: "Cobrar"
   potential-winnings: "Gañancia posible: {amount}"
   instrument-set: "&bInstrumento: {instrument}"

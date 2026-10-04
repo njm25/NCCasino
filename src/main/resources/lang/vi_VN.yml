@@ -568,7 +568,7 @@ slots:
   prompt-unavailable: "&cHiện không thể nhập qua khung chat."
 
 slots-settings:
-  title: "Cài đặt máy xèng của {dealer}"
+  title: "Cài đặt Máy Xèng của {dealer}"
   house-edge: "&bLợi thế nhà cái"
   house-edge-current: "&7Hiện tại: &e{edge} &7(hoàn trả &a{rtp}&7)"
   house-edge-hint: "&7Nhấp, rồi gõ phần trăm bất kỳ từ {min} đến {max} trong khung chat."
@@ -598,9 +598,9 @@ slots-settings:
   variance-tradeoff: "&7Độ biến động càng cao thì các dòng càng ít khi trúng, nhưng giải độc đắc từ dãy dài lớn hơn nhiều."
   variance-same-rtp: "&7Mọi mức biến động đều giữ cùng tỷ lệ hoàn trả đã cấu hình: &a{rtp}"
   variance-hint: "&7Nhấp trái/phải để đổi mức rủi ro của người chia bài."
-  variance-updated: "&aĐã đặt độ biến động của máy xèng là {variance}."
+  variance-updated: "&aĐã đặt độ biến động của Máy Xèng là {variance}."
   invalid-option: "&cLựa chọn không hợp lệ."
-  invalid-settings-option: "&cLựa chọn trong cài đặt máy xèng không hợp lệ."
+  invalid-settings-option: "&cLựa chọn trong cài đặt Máy Xèng không hợp lệ."
 
 mines:
   title: "Dò Mìn"

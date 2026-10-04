@@ -741,7 +741,7 @@ blackjack:
   undo-last: "Angre siste innsats"
   all-in: "All-in"
   leave-exit: "Reis deg/Avslutt"
-  leave-exit-forfeit-warning: "&c(Du taper innsatsen din)"
+  leave-exit-forfeit-warning: "&c(Du tapar innsatsen din)"
   invalid-action: "&cUgyldig handling."
   betting-closed: "&cDu kan ikkje satse under eit spel."
   left-chair: "&aDu reiste deg frå stolen."

@@ -736,7 +736,7 @@ blackjack:
   other-betting-circle: "Бооцооны тойрог: {name}"
   hit: "Карт авах"
   stand: "Зогсох"
-  double-down: "Хоёр дахин"
+  double-down: "Хоёр дахин нэмэгдүүлэх"
   undo-all: "Бүх бооцоог цуцлах"
   undo-last: "Сүүлийн бооцоог цуцлах"
   all-in: "Бүгдийг тавих"
