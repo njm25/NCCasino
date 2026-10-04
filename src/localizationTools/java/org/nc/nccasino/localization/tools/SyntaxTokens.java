@@ -11,11 +11,13 @@ final class SyntaxTokens {
     /**
      * Class A executable command/subcommand tokens (translation-guide §D):
      * the `/ncc` prefix and the exact subcommand words the parser matches on
-     * (`CreateCommand`/`ListCommand`/`DeleteCommand`/`ReloadCommand`/help).
-     * Matched case-sensitively since these are parsed literals, not prose.
+     * (`CreateCommand`/`ListCommand`/`DeleteCommand`/`ReloadCommand`/
+     * `ClaimCommand`/help), plus the Citizens-owned `/npc` command referenced
+     * by the optional integration's player-visible guidance. Matched case-
+     * sensitively since these are executable literals, not prose.
      */
     private static final Pattern COMMAND_TOKEN = Pattern.compile(
-        "/ncc(?:\\s+(?:help|create|delete|list|reload))?"
+        "(?:/ncc(?:\\s+(?:help|create|delete|list|reload|claim))?|/npc)(?![\\p{L}\\p{N}_-])"
     );
     /**
      * Class A parser sentinel (translation-guide §D/§J): the standalone

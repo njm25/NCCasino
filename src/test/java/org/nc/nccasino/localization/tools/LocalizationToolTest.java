@@ -170,6 +170,32 @@ class LocalizationToolTest {
     }
 
     @Test
+    void claimAndCitizensCommandsAreProtectedAsCompleteTokens() {
+        assertEquals(
+            List.of("/ncc claim", "/npc"),
+            SyntaxTokens.structural("Use /ncc claim for payouts and /npc for appearance.")
+        );
+        assertTrue(SyntaxTokens.structural("The /npcguide is unrelated prose.").isEmpty());
+
+        assertThrows(
+            IllegalStateException.class,
+            () -> LocalizationCli.ensureSyntaxMatches(
+                "Use /ncc claim to collect winnings.",
+                "Usa /ncc reclamar para recoger ganancias.",
+                "es_ES:common.bank-reminder"
+            )
+        );
+        assertThrows(
+            IllegalStateException.class,
+            () -> LocalizationCli.ensureSyntaxMatches(
+                "Use /npc commands for appearance.",
+                "Usa comandos /pnj para la apariencia.",
+                "es_ES:admin.citizens-npc-lore"
+            )
+        );
+    }
+
+    @Test
     void syntaxOrderChecksRejectReorderedTokensAndFormatting() {
         assertThrows(
             IllegalStateException.class,
