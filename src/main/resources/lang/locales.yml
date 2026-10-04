@@ -171,3 +171,11 @@ locales:
     name: "Davvisámegiella"
   la_LA:
     name: "Latina"
+  ar_SA:
+    name: "العربية"
+  fa_IR:
+    name: "فارسی"
+  he_IL:
+    name: "עברית"
+  yi_DE:
+    name: "ייִדיש"

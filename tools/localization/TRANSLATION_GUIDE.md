@@ -1889,6 +1889,34 @@ full-catalog review, not an incidental edit.
     (`prope` + verb = "almost");
   - row `ordo`, run `series`, streak `victoriae continuae`.
 
+### Right-to-left locales (ar_SA, fa_IR, he_IL, yi_DE)
+
+Minecraft's client bidi-reorders and Arabic-shapes every line itself (see
+`benchmarks/RTL-INVESTIGATION.md`). `LocalizationCli` enforces the rules
+below for RTL locales (`RtlRules`):
+
+- **Each line must start with an RTL word.** The client takes a line's
+  direction from its first strong character, and placeholders count as
+  left-to-right (they are often player/dealer names). Put a word before a
+  leading `{placeholder}`, `Vault` or `/ncc`; never reorder Class A tokens.
+- **No bidi controls** (RLM/LRM/ALM, isolates, embeddings, ZWJ) in any
+  catalog: Minecraft draws them as visible boxes. ZWNJ is allowed (zero
+  width; Persian needs it).
+- **No combining diacritics in ar/fa/he** (harakat, niqqud): Minecraft's
+  font has no mark positioning. Yiddish writes pointed letters as
+  Alphabetic Presentation Forms (U+FB1D–FB4F), which is NFC-unstable by
+  design.
+- In Hebrew, a hyphen before `1` reads as the `-1` sentinel (Java `\w` is
+  ASCII-only): write `מ־1` with a maqaf, not `מ-1`.
+
+Voices: `ar_SA` Modern Standard Arabic, masculine generic imperatives;
+`fa_IR` Iranian Persian, formal `شما`; `he_IL` gender-neutral infinitive
+or impersonal UI (`לחיצה ל…`, `יש ל…`); `yi_DE` YIVO spelling, `דו`.
+Terms: dealer `الموزع` / `دیلر` / `דילר` / `דילער`; banker `المصرف` /
+`بانکدار` / `בנקאי` / `באַנקיר`; vines `النباتات المتسلقة` / `پیچک` /
+`מטפסים` / `ליאַנעס`; Slots run vs PvE streak: ar `تتابع`/`سلسلة`, fa
+`توالی`/`زنجیره`, he `רצף` (both), yi `קײט`/`סעריע`.
+
 ## I. Consistency lookup for targeted work
 
 Reading physically nearby YAML entries is not sufficient — real defects in

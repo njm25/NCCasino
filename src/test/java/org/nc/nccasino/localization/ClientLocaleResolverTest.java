@@ -22,7 +22,7 @@ class ClientLocaleResolverTest {
      * "no signal, use the server default".
      */
     private static final List<String> MINECRAFT_LANGUAGES = List.of(
-        "af_za=af_ZA", "ar_sa=-", "ast_es=ast_ES", "az_az=az_AZ", "ba_ru=ba_RU",
+        "af_za=af_ZA", "ar_sa=ar_SA", "ast_es=ast_ES", "az_az=az_AZ", "ba_ru=ba_RU",
         "bar=de_DE", "be_by=be_BY", "be_latn=be_BY", "bg_bg=bg_BG", "br_fr=br_FR",
         "brb=nl_NL", "bs_ba=bs_BA", "ca_es=ca_ES", "cs_cz=cs_CZ", "cv_cu=cv_CU",
         "cy_gb=cy_GB", "da_dk=da_DK", "de_at=de_DE", "de_ch=de_DE", "de_de=de_DE",
@@ -30,10 +30,10 @@ class ClientLocaleResolverTest {
         "en_pt=en_US", "en_ud=en_US", "en_us=-", "enp=en_US", "enws=en_US",
         "eo_uy=eo_UY", "es_ar=es_MX", "es_cl=es_MX", "es_ec=es_MX", "es_es=es_ES",
         "es_mx=es_MX", "es_uy=es_MX", "es_ve=es_MX", "esan=es_ES", "et_ee=et_EE",
-        "eu_es=eu_ES", "fa_ir=-", "fi_fi=fi_FI", "fil_ph=fil_PH", "fo_fo=fo_FO",
+        "eu_es=eu_ES", "fa_ir=fa_IR", "fi_fi=fi_FI", "fil_ph=fil_PH", "fo_fo=fo_FO",
         "fr_ca=fr_FR", "fr_ch=fr_FR", "fr_fr=fr_FR", "fra_de=de_DE", "fur_it=it_IT",
         "fy_nl=fy_NL", "ga_ie=ga_IE", "gd_gb=gd_GB", "gl_es=gl_ES", "go_fr=fr_FR",
-        "got_de=-", "hal_ua=uk_UA", "haw_us=haw_US", "he_il=-", "hi_in=hi_IN",
+        "got_de=-", "hal_ua=uk_UA", "haw_us=haw_US", "he_il=he_IL", "hi_in=hi_IN",
         "hn_no=nn_NO", "hr_hr=hr_HR", "hu_hu=hu_HU", "hy_am=hy_AM", "id_id=id_ID",
         "ig_ng=ig_NG", "io_en=-", "is_is=is_IS", "isv=-", "it_it=it_IT",
         "ja_jp=ja_JP", "jbo_en=-", "ka_ge=ka_GE", "kk_kz=kk_KZ", "kn_in=kn_IN",
@@ -49,7 +49,7 @@ class ClientLocaleResolverTest {
         "sxu=de_DE", "szl=szl", "ta_in=ta_IN", "th_th=th_TH", "tl_ph=fil_PH",
         "tlh_aa=-", "tok=-", "tr_tr=tr_TR", "tt_ru=tt_RU", "tzo_mx=es_MX",
         "uk_ua=uk_UA", "uz_uz=uz_UZ", "val_es=ca_ES", "vec_it=vec_IT", "vi_vn=vi_VN",
-        "vp_vl=-", "vro=et_EE", "yi_de=-", "yo_ng=yo_NG", "zh_cn=zh_CN",
+        "vp_vl=-", "vro=et_EE", "yi_de=yi_DE", "yo_ng=yo_NG", "zh_cn=zh_CN",
         "zh_hk=zh_TW", "zh_tw=zh_TW", "zlm_arab=ms_MY"
     );
 
