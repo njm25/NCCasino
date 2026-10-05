@@ -764,13 +764,13 @@ public class BaccaratServer extends Server {
 			// the raw fractional amount while delivery independently re-rounds.
 			payout = applyProbabilisticRoundingIfDiscrete(payout);
 
-    		// The dealer's books close here, at the moment the result is known --
-    		// before delivery, which may still queue the amount if the player is
-    		// offline. Whether the player is online only changes how the payout
-    		// is delivered, not whether the dealer has already paid it.
-    		if (clients.get(playerId) instanceof BaccaratClient baccaratClient) {
-    			baccaratClient.settlePortfolio(MoneyHelper.clampNonNegative(MoneyHelper.bd(payout)));
-    		}
+			// The dealer's books close here, at the moment the result is known --
+			// before delivery, which may still queue the amount if the player is
+			// offline. Whether the player is online only changes how the payout
+			// is delivered, not whether the dealer has already paid it.
+			if (clients.get(playerId) instanceof BaccaratClient baccaratClient) {
+				baccaratClient.settlePortfolio(MoneyHelper.clampNonNegative(MoneyHelper.bd(payout)));
+			}
 
 			CurrencyProvider provider = plugin.getCurrencyManager() != null ? plugin.getCurrencyManager().getProvider(internalName) : null;
 			boolean isVault = provider != null && provider.getMode() == CurrencyMode.VAULT && provider instanceof VaultCurrencyProvider;
@@ -928,9 +928,9 @@ public class BaccaratServer extends Server {
     	}
 
     	double total = bets.values().stream().mapToDouble(Double::doubleValue).sum();
-    	if (clients.get(playerId) instanceof BaccaratClient baccaratClient) {
-    		baccaratClient.refundPortfolio(MoneyHelper.clampNonNegative(MoneyHelper.bd(total)));
-    	}
+		if (clients.get(playerId) instanceof BaccaratClient baccaratClient) {
+			baccaratClient.refundPortfolio(MoneyHelper.clampNonNegative(MoneyHelper.bd(total)));
+		}
     	for (Map.Entry<BaccaratClient.BetOption, Double> entry : bets.entrySet()) {
     		double amount = entry.getValue();
     		totalBets.computeIfPresent(entry.getKey(), (k, v) -> (v - amount) <= 0 ? null : v - amount);
