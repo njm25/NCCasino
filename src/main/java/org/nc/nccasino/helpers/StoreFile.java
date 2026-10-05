@@ -47,6 +47,18 @@ public final class StoreFile {
         this.logger = logger;
     }
 
+    /**
+     * For files that are read, changed in one place and saved whole (such as
+     * {@code dealers.yaml}): returns the parsed file, an empty one if it does
+     * not exist yet, or {@code null} if it exists but cannot be parsed -- in
+     * which case the caller must not save, or it would erase every entry.
+     */
+    public static FileConfiguration loadForUpdate(File file, Logger logger) {
+        StoreFile store = new StoreFile(file, logger);
+        FileConfiguration loaded = store.load();
+        return store.isReadOnly() ? null : loaded;
+    }
+
     /** Strictly parses the file; an unreadable file yields an empty, read-only store. */
     public FileConfiguration load() {
         readOnly = false;

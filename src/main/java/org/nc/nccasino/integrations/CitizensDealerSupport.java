@@ -12,6 +12,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.nc.nccasino.helpers.StoreFile;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.components.AdminMenu;
 import org.nc.nccasino.entities.Dealer;
@@ -470,14 +471,19 @@ public final class CitizensDealerSupport {
         if (!dealersFile.getParentFile().exists()) {
             dealersFile.getParentFile().mkdirs();
         }
-        FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
+        FileConfiguration dealersConfig = StoreFile.loadForUpdate(dealersFile, plugin.getLogger());
+        // An unreadable file is left alone rather than saved over with one entry.
+        boolean dealersWritable = dealersConfig != null;
+        if (!dealersWritable) {
+            dealersConfig = new YamlConfiguration();
+        }
         String path = "dealers." + internalName;
         dealersConfig.set(path + ".world", location.getWorld().getName());
         dealersConfig.set(path + ".X", location.getX());
         dealersConfig.set(path + ".Y", location.getY());
         dealersConfig.set(path + ".Z", location.getZ());
         try {
-            dealersConfig.save(dealersFile);
+            if (dealersWritable) dealersConfig.save(dealersFile);
         } catch (IOException e) {
             plugin.getLogger().severe("Failed to save dealer location to " + dealersFile.getPath());
         }

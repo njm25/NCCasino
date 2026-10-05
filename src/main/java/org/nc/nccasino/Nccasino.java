@@ -36,6 +36,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.nc.nccasino.helpers.StoreFile;
 import org.nc.nccasino.commands.CommandExecution;
 import org.nc.nccasino.commands.CommandTabCompleter;
 import org.nc.nccasino.components.AnimationMessage;
@@ -1274,7 +1275,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
     
     private void removeDealerData(String internalName) {
         File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
-        FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile); // Reload fresh config
+        FileConfiguration dealersConfig = StoreFile.loadForUpdate(dealersFile, getLogger());
+        // An unreadable file is left alone rather than saved over with one entry.
+        boolean dealersWritable = dealersConfig != null;
+        if (!dealersWritable) {
+            dealersConfig = new YamlConfiguration();
+        }
     
         internalName = internalName.trim(); // Sanitize input
         String path = "dealers." + internalName;
@@ -1286,7 +1292,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         dealersConfig.set(path, null); // Remove dealer
     
         try {
-            dealersConfig.save(dealersFile); // Save updated YAML
+            if (dealersWritable) dealersConfig.save(dealersFile); // Save updated YAML
         } catch (IOException e) {
             getLogger().severe("Failed to save dealers.yaml while removing dealer: " + internalName);
             e.printStackTrace();
