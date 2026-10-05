@@ -5,6 +5,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
@@ -130,8 +131,11 @@ public class DealerInventory implements InventoryHolder, Listener {
         // handleClick(slot, player);
     }
 
-    public static void unregisterAllListeners(Mob mob) {
-        HandlerList.unregisterAll(inventories.get(mob.getUniqueId()));
+    public static void unregisterAllListeners(LivingEntity mob) {
+        DealerInventory inventory = inventories.get(Dealer.getUniqueId(mob));
+        if (inventory != null) {
+            HandlerList.unregisterAll(inventory);
+        }
     }
 
     // Add item with a custom name to the inventory

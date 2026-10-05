@@ -13,6 +13,7 @@ import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -38,7 +39,7 @@ public class BlackjackMenu extends Menu {
     private UUID dealerId;
     private Nccasino plugin;
     private String returnName;
-    private Mob dealer;
+    private LivingEntity dealer;
     /**
      * True while {@link #layoutMenuAnimated()}'s slide is still running --
      * gates {@link #handleCustomClick} so a click can never land on a

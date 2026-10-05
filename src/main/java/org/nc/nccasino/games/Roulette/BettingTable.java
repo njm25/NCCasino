@@ -9,6 +9,7 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 
@@ -49,7 +50,7 @@ public class BettingTable extends DealerInventory {
     public static final Set<UUID> switchingPlayers = new HashSet<>();
     private final UUID playerId;
     public final UUID dealerId;
-    private final Mob dealer;
+    private final LivingEntity dealer;
     private final Nccasino plugin;
     private final String internalName;
     private final CurrencyMode currencyMode;
@@ -75,7 +76,7 @@ public class BettingTable extends DealerInventory {
     private long budgetOperationCounter = 0;
     private BukkitTask bettingMusicHandoffTask;
     private final WagerActionGuard wagerActionGuard = new WagerActionGuard();
-    public BettingTable(Player player, Mob dealer, Nccasino plugin, Stack<Pair<String, Integer>> existingBets, String internalName,RouletteInventory rouletteInventory,int countdown) {
+    public BettingTable(Player player, LivingEntity dealer, Nccasino plugin, Stack<Pair<String, Integer>> existingBets, String internalName,RouletteInventory rouletteInventory,int countdown) {
         super(player.getUniqueId(), 54, plugin.getLocalization().text(player, "roulette.table-title"));
         this.countdown1=countdown;
         this.playerId = player.getUniqueId();
@@ -1617,7 +1618,7 @@ private boolean isValidSlotPage2(int slot) {
 		return false;
     }
 
-    private void openRouletteInventory(Mob dealer, Player player) {
+    private void openRouletteInventory(LivingEntity dealer, Player player) {
         saveBetsToRoulette(player);
         UUID dealerId = Dealer.getUniqueId(dealer);
         DealerInventory dealerInventory = DealerInventory.getInventory(dealerId);

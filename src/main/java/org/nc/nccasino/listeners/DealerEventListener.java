@@ -67,14 +67,14 @@ public class DealerEventListener implements Listener {
 
     private boolean isPartOfDealerStack(Mob mob) {
         // First check if this mob is a dealer
-        if (Dealer.isDealer(mob)) {
+        if (isVanillaDealer(mob)) {
             return true;
         }
 
         // Check if this mob is a passenger of any dealer
         Entity vehicle = mob.getVehicle();
         while (vehicle != null) {
-            if (vehicle instanceof Mob vehicleMob && Dealer.isDealer(vehicleMob)) {
+            if (vehicle instanceof Mob vehicleMob && isVanillaDealer(vehicleMob)) {
                 return true;
             }
             vehicle = vehicle.getVehicle();
@@ -82,7 +82,7 @@ public class DealerEventListener implements Listener {
 
         // Check if this mob has a dealer as a passenger
         for (Entity passenger : mob.getPassengers()) {
-            if (passenger instanceof Mob passengerMob && Dealer.isDealer(passengerMob)) {
+            if (passenger instanceof Mob passengerMob && isVanillaDealer(passengerMob)) {
                 return true;
             }
         }
@@ -92,7 +92,7 @@ public class DealerEventListener implements Listener {
         // Check upward chain (passengers)
         while (!current.getPassengers().isEmpty()) {
             current = current.getPassengers().get(0);
-            if (current instanceof Mob passengerMob && Dealer.isDealer(passengerMob)) {
+            if (current instanceof Mob passengerMob && isVanillaDealer(passengerMob)) {
                 return true;
             }
         }
@@ -100,12 +100,16 @@ public class DealerEventListener implements Listener {
         current = mob;
         while (current.getVehicle() != null) {
             current = current.getVehicle();
-            if (current instanceof Mob vehicleMob && Dealer.isDealer(vehicleMob)) {
+            if (current instanceof Mob vehicleMob && isVanillaDealer(vehicleMob)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private boolean isVanillaDealer(Mob mob) {
+        return Dealer.isDealer(mob) && Dealer.getBackend(mob) != Dealer.Backend.CITIZENS;
     }
 
     @EventHandler

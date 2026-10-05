@@ -31,7 +31,7 @@ public class DealerInitializeListener implements Listener {
                     if(entity instanceof Villager || entity instanceof PiglinBrute){
                         //plugin.getLogger().info("[villager/piglinBrute] in chunk " + chunk.getX() + "," + chunk.getZ() + ": " + mob.getType()+" isDealer:"+Dealer.isDealer(mob));
                     }
-                    if (Dealer.isDealer(mob)) {
+                    if (Dealer.isDealer(mob) && Dealer.getBackend(mob) != Dealer.Backend.CITIZENS) {
                        // plugin.getLogger().info("[Debug] Found dealer in chunk " + chunk.getX() + "," + chunk.getZ() + ": " + mob.getType());
                         plugin.reloadDealer(mob);
                         new JockeyManager(mob);

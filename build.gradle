@@ -22,6 +22,10 @@ repositories {
         name = 'jitpack'
         url = 'https://www.jitpack.io'
     }
+    maven {
+        name = 'citizens-repo'
+        url = 'https://maven.citizensnpcs.co/repo'
+    }
 }
 
 dependencies {
@@ -30,7 +34,16 @@ dependencies {
     compileOnly ('com.github.MilkBowl:VaultAPI:1.7') {
         exclude group: 'org.bukkit'
     }
-    implementation files('libs/lib-1.0-SNAPSHOT.jar')  
+    // Citizens is an optional soft-dependency (see plugin.yml). Everything we
+    // touch -- CitizensAPI, NPC and the NPC events -- lives in the public API
+    // artifact, so the plugin jar itself is deliberately not a dependency.
+    // Pinned to a concrete release line rather than a floating '2.0.+' so a
+    // published Citizens build cannot silently change what we compile against.
+    compileOnly('net.citizensnpcs:citizensapi:2.0.43-SNAPSHOT') {
+        exclude group: 'org.bukkit'
+        exclude group: 'org.spigotmc'
+    }
+    implementation files('libs/lib-1.0-SNAPSHOT.jar')
 
     testImplementation platform("org.junit:junit-bom:5.11.4")
     testImplementation "org.junit.jupiter:junit-jupiter"
@@ -39,6 +52,13 @@ dependencies {
     testImplementation("org.jetbrains:annotations:24.1.0")
     testImplementation('com.github.MilkBowl:VaultAPI:1.7') {
         exclude group: 'org.bukkit'
+    }
+    // Same artifact/pin as the main compileOnly dependency above, so
+    // CitizensDealerSupport/CitizensDealerListener lifecycle tests can compile
+    // against NPC/NPCRegistry/CitizensAPI without bundling the plugin jar.
+    testImplementation('net.citizensnpcs:citizensapi:2.0.43-SNAPSHOT') {
+        exclude group: 'org.bukkit'
+        exclude group: 'org.spigotmc'
     }
 }
 

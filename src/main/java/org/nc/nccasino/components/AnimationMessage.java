@@ -4,7 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
-import org.bukkit.entity.Mob;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -39,7 +39,7 @@ public class AnimationMessage extends DealerInventory {
 
    
 
-    public AnimationMessage(Mob dealer, Player player, Nccasino plugin, String animationMessage, int index) {
+    public AnimationMessage(LivingEntity dealer, Player player, Nccasino plugin, String animationMessage, int index) {
         super(player.getUniqueId(), 54, "");
 
         this.playerId = player.getUniqueId();
