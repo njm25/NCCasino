@@ -1,3 +1,6 @@
+# Managed by NCCasino: lets an upgrade add new options to this file. Do not edit.
+config-version: 2
+
 language:
   # Language used by players who have not selected one, and by players whose
   # Minecraft language has no NCCasino translation.

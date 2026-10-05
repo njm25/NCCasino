@@ -48,6 +48,7 @@ import org.nc.nccasino.games.Roulette.BettingTable;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.helpers.ConfigMigration;
 import org.nc.nccasino.helpers.Metrics;
 import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.listeners.ClientLanguageListener;
@@ -135,6 +136,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         INTERNAL_NAME_KEY = new NamespacedKey(this, "internal_name");
         checkForUpdates();
         saveDefaultConfig();
+        ConfigMigration.apply(this);
         localizationService = new LocalizationService(this);
         localizationService.load();
         loadPreferences();
