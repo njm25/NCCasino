@@ -483,7 +483,7 @@ public class DealerInteractListener implements Listener {
 
     private String getGamePermission(String gameType) {
         if (gameType == null) return null;
-        switch (gameType.toLowerCase()) {
+        switch (gameType.toLowerCase(java.util.Locale.ROOT)) {
             case "roulette": return "nccasino.games.roulette";
             case "mines": return "nccasino.games.mines";
             case "blackjack": return "nccasino.games.blackjack";

@@ -388,7 +388,7 @@ public class SlotsMenu extends Menu {
     }
 
     private static String varianceKey(SlotsVariance variance) {
-        return "slots.variance-" + variance.name().toLowerCase();
+        return "slots.variance-" + variance.name().toLowerCase(java.util.Locale.ROOT);
     }
 
     private void announce(Player player, String message) {
@@ -406,13 +406,13 @@ public class SlotsMenu extends Menu {
     }
 
     private static String formatPercent(double fraction) {
-        return String.format("%.2f%%", fraction * 100.0);
+        return String.format(java.util.Locale.ROOT, "%.2f%%", fraction * 100.0);
     }
 
     private static String formatMultiplier(double multiplier) {
         return multiplier >= 100.0
             ? Long.toString(Math.round(multiplier))
-            : String.format("%.2f", multiplier);
+            : String.format(java.util.Locale.ROOT, "%.2f", multiplier);
     }
 
     @EventHandler

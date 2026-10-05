@@ -2,6 +2,8 @@ package org.nc.nccasino.games.Slots;
 
 import java.util.OptionalDouble;
 
+import org.nc.nccasino.helpers.NumericInput;
+
 /** Parses the two natural ways administrators write a Slots house edge. */
 public final class SlotsHouseEdgeInput {
 
@@ -18,7 +20,7 @@ public final class SlotsHouseEdgeInput {
         if (raw == null) {
             return OptionalDouble.empty();
         }
-        String input = raw.trim();
+        String input = NumericInput.normalize(raw);
         boolean explicitPercent = input.endsWith("%");
         if (explicitPercent) {
             input = input.substring(0, input.length() - 1).trim();

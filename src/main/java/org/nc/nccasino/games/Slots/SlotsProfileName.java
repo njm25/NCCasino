@@ -52,7 +52,7 @@ public final class SlotsProfileName {
 
         /** This rejection's {@code slots.profile-name-*} localization key. */
         public String messageKey() {
-            return "slots.profile-name-" + name().toLowerCase().replace('_', '-');
+            return "slots.profile-name-" + name().toLowerCase(java.util.Locale.ROOT).replace('_', '-');
         }
     }
 
@@ -65,7 +65,9 @@ public final class SlotsProfileName {
         if (trimmed.length() < MIN_LENGTH) {
             return Rejection.EMPTY;
         }
-        if (trimmed.length() > MAX_LENGTH) {
+        // Counted in code points, so a name in a supplementary-plane script is
+        // not cut to half the length of a Latin one.
+        if (trimmed.codePointCount(0, trimmed.length()) > MAX_LENGTH) {
             return Rejection.TOO_LONG;
         }
         // Walked by code point, not by char: a surrogate pair encoding one
@@ -81,7 +83,8 @@ public final class SlotsProfileName {
                 || codePoint == '-'
                 || codePoint == '_'
                 || (isCombiningMark(codePoint) && (Character.isLetter(previous) || isCombiningMark(previous)))
-                || (codePoint == ZERO_WIDTH_NON_JOINER && Character.isLetter(previous));
+                || (codePoint == ZERO_WIDTH_NON_JOINER
+                    && (Character.isLetter(previous) || isCombiningMark(previous)));
             if (!allowed) {
                 return Rejection.ILLEGAL_CHARACTERS;
             }
@@ -91,7 +94,7 @@ public final class SlotsProfileName {
         return null;
     }
 
-    /** Persian and other Arabic-script names use it to keep two letters unjoined. */
+    /** Persian names use it to keep two letters unjoined; Indic names place it after a virama. */
     private static final int ZERO_WIDTH_NON_JOINER = 0x200C;
 
     /**

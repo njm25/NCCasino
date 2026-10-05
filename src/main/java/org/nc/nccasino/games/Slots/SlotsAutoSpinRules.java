@@ -36,7 +36,7 @@ public final class SlotsAutoSpinRules {
 
         /** This reason's {@code slots.auto-stop-*} localization key. */
         public String messageKey() {
-            return "slots.auto-stop-" + name().toLowerCase().replace('_', '-');
+            return "slots.auto-stop-" + name().toLowerCase(java.util.Locale.ROOT).replace('_', '-');
         }
     }
 

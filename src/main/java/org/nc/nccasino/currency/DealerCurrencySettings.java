@@ -17,7 +17,7 @@ public final class DealerCurrencySettings {
 			return CurrencyMode.STANDARD;
 		}
 
-		String normalized = raw.trim().toUpperCase();
+		String normalized = raw.trim().toUpperCase(java.util.Locale.ROOT);
 
 		// Legacy alias support: Admin UI previously wrote "VANILLA" for item currency.
 		if (normalized.equals("VANILLA")) {

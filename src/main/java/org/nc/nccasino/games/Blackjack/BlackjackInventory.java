@@ -4885,7 +4885,7 @@ private void handleAllIn(Player player) {
                             player,
                             "blackjack.no-currency",
                             "currency",
-                            plugin.getCurrencyName(internalName).toLowerCase() + "s"
+                            plugin.getCurrencyName(internalName).toLowerCase(java.util.Locale.ROOT) + "s"
                         )
                 );
                 break;}

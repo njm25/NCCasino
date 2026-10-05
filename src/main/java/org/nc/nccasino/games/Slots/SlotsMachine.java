@@ -1054,7 +1054,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     }
 
     private String varianceKey(SlotsVariance variance) {
-        return "slots.variance-" + variance.name().toLowerCase();
+        return "slots.variance-" + variance.name().toLowerCase(java.util.Locale.ROOT);
     }
 
     private String shapeKey(SlotsPaylineCatalog.Line line) {
@@ -1454,18 +1454,18 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     }
 
     private String formatPercent(double fraction) {
-        return String.format("%.2f%%", fraction * 100.0);
+        return String.format(java.util.Locale.ROOT, "%.2f%%", fraction * 100.0);
     }
 
     private String formatMultiplier(double multiplier) {
         if (multiplier >= 100.0) {
             return String.valueOf(Math.round(multiplier));
         }
-        return String.format("%.1f", multiplier);
+        return String.format(java.util.Locale.ROOT, "%.1f", multiplier);
     }
 
     private String symbolKey(SlotsSymbol symbol) {
-        return "slots.symbol-" + symbol.name().toLowerCase();
+        return "slots.symbol-" + symbol.name().toLowerCase(java.util.Locale.ROOT);
     }
 
     // ---- click handling --------------------------------------------------

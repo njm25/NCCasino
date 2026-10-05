@@ -92,7 +92,7 @@ public enum SlotsSpinSpeed {
 
     /** This speed's {@code slots.spin-speed-*} localization key. */
     public String labelKey() {
-        return "slots.spin-speed-" + name().toLowerCase();
+        return "slots.spin-speed-" + name().toLowerCase(java.util.Locale.ROOT);
     }
 
     /**

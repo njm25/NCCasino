@@ -3,6 +3,8 @@ package org.nc.nccasino.games.Slots;
 import java.math.BigDecimal;
 import java.util.Locale;
 
+import org.nc.nccasino.helpers.NumericInput;
+
 /**
  * The pure parsers behind every Slots chat prompt, so the accepted syntax is
  * one testable definition rather than a per-prompt regex.
@@ -96,10 +98,11 @@ public final class SlotsPromptValues {
         if (isCancel(trimmed)) {
             return new SpinLimit(Kind.CANCEL, 0L);
         }
-        if (matches(trimmed, UNLIMITED)) {
+        String normalized = NumericInput.normalize(trimmed);
+        if (matches(normalized, UNLIMITED)) {
             return new SpinLimit(Kind.UNLIMITED, SlotsAutoSpinSettings.UNLIMITED_SPINS);
         }
-        String digits = stripLeadingZeros(trimmed);
+        String digits = stripLeadingZeros(normalized);
         if (digits == null || digits.length() > MAX_NUMERIC_LENGTH) {
             return new SpinLimit(Kind.INVALID, 0L);
         }
@@ -129,6 +132,8 @@ public final class SlotsPromptValues {
         if (matches(trimmed, OFF)) {
             return new Amount(Kind.OFF, 0.0);
         }
+        // Native digits and a lone decimal comma ("2,5") are read as typed.
+        trimmed = NumericInput.normalizeDecimal(trimmed);
         if (trimmed.isEmpty() || trimmed.length() > MAX_NUMERIC_LENGTH) {
             return new Amount(Kind.INVALID, 0.0);
         }

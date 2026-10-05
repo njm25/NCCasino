@@ -79,7 +79,7 @@ public class AnimationMessage extends DealerInventory {
             message="Error";
         }
         // Convert message to uppercase to handle lowercase letters
-        //message = message.toUpperCase();
+        //message = message.toUpperCase(java.util.Locale.ROOT);
     
         // CalcuWlate total width needed, including padding for the front and back
         int totalColumns = 0;

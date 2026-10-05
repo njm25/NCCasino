@@ -391,8 +391,8 @@ public class ComplexVariantMenu extends Menu {
 
     private String formatName(String raw) {
         if (raw == null) return "None";
-        return Arrays.stream(raw.toLowerCase().split("_"))
-                     .map(str -> str.substring(0,1).toUpperCase() + str.substring(1))
+        return Arrays.stream(raw.toLowerCase(java.util.Locale.ROOT).split("_"))
+                     .map(str -> str.substring(0,1).toUpperCase(java.util.Locale.ROOT) + str.substring(1))
                      .collect(Collectors.joining(" "));
     }
 

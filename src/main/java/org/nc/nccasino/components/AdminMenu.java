@@ -61,6 +61,7 @@ import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.games.Slots.SlotsConfig;
+import org.nc.nccasino.helpers.NumericInput;
 import org.nc.nccasino.helpers.Preferences;
 import org.nc.nccasino.helpers.SoundHelper;
 import org.nc.nccasino.listeners.DealerEventListener;
@@ -885,7 +886,7 @@ public class AdminMenu extends Menu {
         String internalName = Dealer.getInternalName(dealer);
         String raw = plugin.getConfig().getString("dealers." + internalName + ".currency.mode", "STANDARD");
         if (raw == null) return CurrencyMode.VANILLA;
-        String normalized = raw.trim().toUpperCase();
+        String normalized = raw.trim().toUpperCase(java.util.Locale.ROOT);
         if ("VAULT".equals(normalized)) return CurrencyMode.VAULT;
         return CurrencyMode.VANILLA; // VANILLA, STANDARD, CUSTOM (for now), or any other value
     }
@@ -1273,7 +1274,7 @@ public class AdminMenu extends Menu {
                     
             // Convert underscore to spaces and apply Pascal Case
             String displayName = Arrays.stream(rawName.split("_"))
-                    .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
+                    .map(word -> word.substring(0, 1).toUpperCase(java.util.Locale.ROOT) + word.substring(1).toLowerCase(java.util.Locale.ROOT))
                     .collect(Collectors.joining(" "));
                     
             if (selectedItem.getItemMeta() != null && selectedItem.getItemMeta().hasDisplayName()) {
@@ -1403,13 +1404,14 @@ public class AdminMenu extends Menu {
             event.setCancelled(true);
             String newTimer = event.getMessage().trim();
 
-            if (newTimer.isEmpty() || !newTimer.matches("\\p{Nd}+") || Integer.parseInt(newTimer) <= 0) {
+            java.util.OptionalLong newTimerValue = NumericInput.parseNonNegativeLong(newTimer);
+            if (newTimerValue.isEmpty() || newTimerValue.getAsLong() <= 0 || newTimerValue.getAsLong() > Integer.MAX_VALUE) {
                 denyAction(player, text("admin.positive-number"));
                 return;
             }
             if (dealer != null) {
                 String internalName = Dealer.getInternalName(dealer);
-                plugin.getConfig().set("dealers." + internalName + ".timer", Integer.parseInt(newTimer));
+                plugin.getConfig().set("dealers." + internalName + ".timer", (int) newTimerValue.getAsLong());
                 plugin.saveConfig();
                 plugin.reloadDealer(dealer);
                 
@@ -1420,7 +1422,7 @@ public class AdminMenu extends Menu {
                     player.sendMessage(text("admin.timer-updated"));
                         break;}
                     case VERBOSE:{
-                    player.sendMessage(text("admin.timer-updated-detailed", "timer", newTimer));
+                    player.sendMessage(text("admin.timer-updated-detailed", "timer", newTimerValue.getAsLong()));
                         break;}
                     case NONE:{break;
                     }
@@ -1497,13 +1499,14 @@ public class AdminMenu extends Menu {
             event.setCancelled(true);
             String newChipSize = event.getMessage().trim();
 
-            if (newChipSize.isEmpty() || !newChipSize.matches("\\p{Nd}+") || Integer.parseInt(newChipSize) <= 0) {
+            java.util.OptionalLong newChipSizeValue = NumericInput.parseNonNegativeLong(newChipSize);
+            if (newChipSizeValue.isEmpty() || newChipSizeValue.getAsLong() <= 0 || newChipSizeValue.getAsLong() > Integer.MAX_VALUE) {
                 denyAction(player, text("admin.positive-number"));
                 return;
             }
             if (dealer != null) {
                 String internalName = Dealer.getInternalName(dealer);
-                plugin.getConfig().set("dealers." + internalName + ".chip-sizes.size" + chipIndex,Integer.parseInt(newChipSize));
+                plugin.getConfig().set("dealers." + internalName + ".chip-sizes.size" + chipIndex,(int) newChipSizeValue.getAsLong());
                 plugin.saveConfig();
                 plugin.reloadDealer(dealer);
                 
@@ -1519,7 +1522,7 @@ public class AdminMenu extends Menu {
                         "index",
                         chipIndex,
                         "size",
-                        newChipSize
+                        newChipSizeValue.getAsLong()
                     ));
                         break;}
                     case NONE:{break;
@@ -1901,7 +1904,7 @@ public class AdminMenu extends Menu {
     }
 
     private static String formatEntityName(String entityName) {
-        return Arrays.stream(entityName.toLowerCase().replace("_", " ").split(" "))
+        return Arrays.stream(entityName.toLowerCase(java.util.Locale.ROOT).replace("_", " ").split(" "))
                      .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1))
                      .collect(Collectors.joining(" "));
     }

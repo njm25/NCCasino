@@ -84,13 +84,19 @@ class SlotsPromptValuesTest {
     @Test
     void spinLimitRejectsAnythingThatIsNotAPlainPositiveInteger() {
         String[] rejected = {
-            "", "   ", "-5", "5.5", "1e6", "5 spins", "five", "off", "1,000", "+5", "0x10", "١٢٣"
+            "", "   ", "-5", "5.5", "1e6", "5 spins", "five", "off", "1,000", "+5", "0x10", "١٢,٣"
         };
         for (String input : rejected) {
             assertEquals(SlotsPromptValues.Kind.INVALID, SlotsPromptValues.parseSpinLimit(input).kind(),
                 "must reject " + input);
         }
         assertEquals(SlotsPromptValues.Kind.INVALID, SlotsPromptValues.parseSpinLimit(null).kind());
+    }
+
+    @Test
+    void spinLimitAcceptsTheDigitsAPlayersKeyboardTypes() {
+        assertEquals(123L, SlotsPromptValues.parseSpinLimit("١٢٣").value());
+        assertEquals(123L, SlotsPromptValues.parseSpinLimit("۱۲۳").value());
     }
 
     @Test
@@ -109,6 +115,8 @@ class SlotsPromptValuesTest {
         assertEquals(12.5, SlotsPromptValues.parsePositiveAmount("12.5").value(), 1e-9);
         assertEquals(0.25, SlotsPromptValues.parsePositiveAmount("0.25").value(), 1e-9);
         assertEquals(SlotsPromptValues.Kind.VALUE, SlotsPromptValues.parsePositiveAmount(" 7 ").kind());
+        // A lone decimal comma is the decimal separator in most locales.
+        assertEquals(1.5, SlotsPromptValues.parsePositiveAmount("1,5").value(), 1e-9);
     }
 
     @Test
@@ -120,7 +128,7 @@ class SlotsPromptValuesTest {
 
     @Test
     void amountsRejectZeroNegativeAndMalformedInput() {
-        String[] rejected = {"", "  ", "0", "0.0", "-1", "-0.5", "abc", "1,5", "1.2.3", ".5", "5.", "1e3", "unlimited"};
+        String[] rejected = {"", "  ", "0", "0.0", "-1", "-0.5", "abc", "1,2,3", "1,234.5", "1.2.3", ".5", "5.", "1e3", "unlimited"};
         for (String input : rejected) {
             assertEquals(SlotsPromptValues.Kind.INVALID, SlotsPromptValues.parsePositiveAmount(input).kind(),
                 "must reject " + input);

@@ -87,7 +87,7 @@ public enum SlotsVariance {
             return fallback;
         }
         try {
-            return valueOf(raw.trim().toUpperCase());
+            return valueOf(raw.trim().toUpperCase(java.util.Locale.ROOT));
         } catch (IllegalArgumentException ignored) {
             return fallback;
         }

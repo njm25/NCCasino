@@ -53,7 +53,7 @@ public class CommandExecution implements CommandExecutor {
         }
 
         // The first argument is the subcommand name
-        String commandName = args[0].toLowerCase();
+        String commandName = args[0].toLowerCase(java.util.Locale.ROOT);
         CasinoCommand commandHandler = commands.get(commandName);
         String requiredPermission = commandPermissions.get(commandName);
 

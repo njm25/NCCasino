@@ -519,7 +519,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     // Load currency material and name from config
     public void loadCurrencyFromConfig() {
-        String currencyMaterialName = getConfig().getString("currency.material", "EMERALD").toUpperCase();
+        String currencyMaterialName = getConfig().getString("currency.material", "EMERALD").toUpperCase(java.util.Locale.ROOT);
         currency = Material.matchMaterial(currencyMaterialName);
 
         if (currency == null) {
@@ -768,7 +768,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
     }
 
     public Material getCurrency(String internalName) {
-        String materialName = getConfig().getString("dealers." + internalName + ".currency.material", "EMERALD").toUpperCase();
+        String materialName = getConfig().getString("dealers." + internalName + ".currency.material", "EMERALD").toUpperCase(java.util.Locale.ROOT);
         return Material.matchMaterial(materialName);
     }
 
@@ -802,7 +802,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
             return "$" + MoneyHelper.roundDisplay(MoneyHelper.bd(amount)).toPlainString();
         }
         int n = (int) amount;
-        String name = currencyName != null ? currencyName.toLowerCase() : "emerald";
+        String name = currencyName != null ? currencyName.toLowerCase(java.util.Locale.ROOT) : "emerald";
         return n + " " + name + (n != 1 ? "s" : "");
     }
 

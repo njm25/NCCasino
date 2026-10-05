@@ -178,13 +178,29 @@ public final class LocalizationService {
         // Parse template formatting before substitution so dynamic values
         // remain opaque and cannot inject color codes.
         value = ChatColor.translateAlternateColorCodes('&', value);
-        for (Map.Entry<String, ?> entry : placeholders.entrySet()) {
-            value = value.replace(
-                "{" + entry.getKey() + "}",
-                String.valueOf(entry.getValue())
-            );
+        return substitute(value, placeholders);
+    }
+
+    /**
+     * Fills every {@code {name}} in one pass, so an inserted value that itself
+     * looks like a placeholder (a dealer called "{amount}") is never filled
+     * again. Unknown names are left as written.
+     */
+    static String substitute(String template, Map<String, ?> placeholders) {
+        if (placeholders.isEmpty()) {
+            return template;
         }
-        return value;
+        Matcher matcher = PLACEHOLDER.matcher(template);
+        StringBuilder out = new StringBuilder(template.length());
+        while (matcher.find()) {
+            String name = matcher.group(1);
+            String replacement = placeholders.containsKey(name)
+                ? String.valueOf(placeholders.get(name))
+                : matcher.group();
+            matcher.appendReplacement(out, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(out);
+        return out.toString();
     }
 
     public static Set<String> placeholders(String value) {

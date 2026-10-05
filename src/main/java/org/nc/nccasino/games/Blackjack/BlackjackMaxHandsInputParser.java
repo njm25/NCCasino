@@ -2,6 +2,8 @@ package org.nc.nccasino.games.Blackjack;
 
 import java.util.Optional;
 
+import org.nc.nccasino.helpers.NumericInput;
+
 /**
  * Pure parser for the admin max-hands chat prompt (see
  * {@code BlackjackMenu#handleMaxHandsInput}) -- accepts {@code -1}, an
@@ -22,11 +24,11 @@ public final class BlackjackMaxHandsInputParser {
         if (input == null) {
             return Optional.empty();
         }
-        String trimmed = input.trim();
+        String trimmed = NumericInput.normalize(input);
         if (trimmed.isEmpty()) {
             return Optional.empty();
         }
-        if ("-1".equals(trimmed) || "unbounded".equalsIgnoreCase(trimmed)) {
+        if ("-1".equals(trimmed) || "unbounded".equals(trimmed.toLowerCase(java.util.Locale.ROOT))) {
             return Optional.of("UNBOUNDED");
         }
         if (!trimmed.matches("\\d+")) {

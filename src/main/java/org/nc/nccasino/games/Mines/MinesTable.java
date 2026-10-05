@@ -574,7 +574,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                                 : text(
                                     "mines.no-currency",
                                     "currency",
-                                    plugin.getCurrencyName(internalName).toLowerCase() + (Math.abs(count) == 1 ? "" : "s")
+                                    plugin.getCurrencyName(internalName).toLowerCase(java.util.Locale.ROOT) + (Math.abs(count) == 1 ? "" : "s")
                                 )
                         );
                         break;     
@@ -718,7 +718,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                                     : text(
                                         "mines.insufficient-currency",
                                         "currency",
-                                        plugin.getCurrencyName(internalName).toLowerCase() + "s"
+                                        plugin.getCurrencyName(internalName).toLowerCase(java.util.Locale.ROOT) + "s"
                                     )
                             );
                             break;

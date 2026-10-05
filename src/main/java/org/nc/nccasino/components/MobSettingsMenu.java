@@ -240,7 +240,7 @@ public class MobSettingsMenu extends Menu {
     }
 
     private String formatEntityName(String name) {
-        String[] words = name.toLowerCase().split("_");
+        String[] words = name.toLowerCase(java.util.Locale.ROOT).split("_");
         StringBuilder result = new StringBuilder();
         for (String word : words) {
             if (word.length() > 0) {

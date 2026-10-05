@@ -423,7 +423,7 @@ public abstract class Client extends DealerInventory {
     }
 
     protected static String formatCurrencyName(String entityName) {
-        return Arrays.stream(entityName.toLowerCase().replace("_", " ").split(" "))
+        return Arrays.stream(entityName.toLowerCase(java.util.Locale.ROOT).replace("_", " ").split(" "))
                      .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1))
                      .collect(Collectors.joining(" "));
     }

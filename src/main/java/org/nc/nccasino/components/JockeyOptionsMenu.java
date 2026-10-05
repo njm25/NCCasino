@@ -826,7 +826,7 @@ public class JockeyOptionsMenu extends Menu {
     }
 
     private String formatEntityName(String name) {
-        return Arrays.stream(name.toLowerCase().replace("_", " ").split(" "))
+        return Arrays.stream(name.toLowerCase(java.util.Locale.ROOT).replace("_", " ").split(" "))
                      .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1))
                      .collect(Collectors.joining(" "));
     }

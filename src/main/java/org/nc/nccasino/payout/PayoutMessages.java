@@ -98,7 +98,7 @@ public final class PayoutMessages {
         }
         int whole = (int) payout.amount();
         String name = payout.currencyName() != null && !payout.currencyName().isBlank()
-            ? payout.currencyName().toLowerCase()
+            ? payout.currencyName().toLowerCase(java.util.Locale.ROOT)
             : "currency";
         return whole + " " + name + (whole != 1 ? "s" : "");
     }

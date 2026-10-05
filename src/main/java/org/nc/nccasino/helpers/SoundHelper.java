@@ -12,7 +12,7 @@ public class SoundHelper {
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
         if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
                     // Convert to lowercase and ensure proper namespaced format
-        NamespacedKey key = NamespacedKey.minecraft(name.toLowerCase());
+        NamespacedKey key = NamespacedKey.minecraft(name.toLowerCase(java.util.Locale.ROOT));
 
         // Try to fetch from the sound registry
         Sound sound = Registry.SOUNDS.get(key);

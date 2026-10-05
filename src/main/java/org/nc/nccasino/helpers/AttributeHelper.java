@@ -10,7 +10,7 @@ public class AttributeHelper {
             return (Attribute) Attribute.class.getField(name).get(null);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             // Fallback for versions before 1.21.4
-            NamespacedKey key = NamespacedKey.minecraft("generic." + name.toLowerCase());
+            NamespacedKey key = NamespacedKey.minecraft("generic." + name.toLowerCase(java.util.Locale.ROOT));
             return Registry.ATTRIBUTE.get(key); // Use Registry instead of valueOf
         }
     }

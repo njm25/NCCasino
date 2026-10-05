@@ -695,7 +695,7 @@ public class BettingTable extends DealerInventory {
                                 : text(
                                     "roulette.no-currency",
                                     "currency",
-                                    plugin.getCurrencyName(internalName).toLowerCase()
+                                    plugin.getCurrencyName(internalName).toLowerCase(java.util.Locale.ROOT)
                                         + (Math.abs(count) == 1 ? "" : "s")
                                 )
                         );
@@ -914,7 +914,7 @@ public class BettingTable extends DealerInventory {
                                     : text(
                                         "roulette.not-enough-currency",
                                         "currency",
-                                        plugin.getCurrencyName(internalName).toLowerCase() + "s"
+                                        plugin.getCurrencyName(internalName).toLowerCase(java.util.Locale.ROOT) + "s"
                                     )
                             );
                             break;

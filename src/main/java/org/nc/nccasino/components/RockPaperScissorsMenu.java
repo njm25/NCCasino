@@ -91,7 +91,7 @@ public class RockPaperScissorsMenu extends Menu {
             : text(
                 "rock-paper-scissors-settings.max-chain-current",
                 "rounds", maxChain,
-                "multiplier", String.format("%.2f", Math.pow(1.98, maxChain))
+                "multiplier", String.format(java.util.Locale.ROOT, "%.2f", Math.pow(1.98, maxChain))
             );
         addItemAndLore(Material.IRON_CHAIN, 1, text("rock-paper-scissors-settings.edit-max-chain"), slotMapping.get(SlotOption.EDIT_RPS_MAX_CHAIN), subtitle);
     }

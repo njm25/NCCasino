@@ -58,6 +58,20 @@ class SlotsProfileNameTest {
     }
 
     @Test
+    void anIndicNonJoinerAfterAViramaIsAccepted() {
+        // Devanagari ka + virama + ZWNJ + ssa: a half-form name cluster.
+        assertNull(SlotsProfileName.validate("क्‌ष"));
+    }
+
+    @Test
+    void lengthIsCountedInCodePoints() {
+        // 24 supplementary-plane ideographs are 48 UTF-16 units but 24 characters.
+        String name = "𠀀".repeat(SlotsProfileName.MAX_LENGTH);
+        assertNull(SlotsProfileName.validate(name));
+        assertEquals(SlotsProfileName.Rejection.TOO_LONG, SlotsProfileName.validate(name + "𠀀"));
+    }
+
+    @Test
     void aMarkOrNonJoinerWithNoLetterBeforeItIsRejected() {
         for (String name : new String[] {"ַabc", "‌abc", "a ́"}) {
             assertEquals(SlotsProfileName.Rejection.ILLEGAL_CHARACTERS, SlotsProfileName.validate(name));

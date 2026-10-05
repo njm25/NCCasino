@@ -180,6 +180,6 @@ public final class SlotsChatPrompt {
         if (type == Type.HOUSE_EDGE) {
             return "slots-settings.house-edge-prompt";
         }
-        return "slots.prompt-" + type.name().toLowerCase().replace('_', '-');
+        return "slots.prompt-" + type.name().toLowerCase(java.util.Locale.ROOT).replace('_', '-');
     }
 }
