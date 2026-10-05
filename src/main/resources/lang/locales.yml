@@ -11,3 +11,171 @@ locales:
     name: "Français"
   zh_CN:
     name: "简体中文"
+  nl_NL:
+    name: "Nederlands"
+  fi_FI:
+    name: "Suomi"
+  ja_JP:
+    name: "日本語"
+  ru_RU:
+    name: "Русский"
+  th_TH:
+    name: "ไทย"
+  tr_TR:
+    name: "Türkçe"
+  vi_VN:
+    name: "Tiếng Việt"
+  ko_KR:
+    name: "한국어"
+  pl_PL:
+    name: "Polski"
+  it_IT:
+    name: "Italiano"
+  id_ID:
+    name: "Bahasa Indonesia"
+  zh_TW:
+    name: "繁體中文"
+  uk_UA:
+    name: "Українська"
+  cs_CZ:
+    name: "Čeština"
+  sv_SE:
+    name: "Svenska"
+  hu_HU:
+    name: "Magyar"
+  ro_RO:
+    name: "Română"
+  pt_PT:
+    name: "Português (Portugal)"
+  da_DK:
+    name: "Dansk"
+  nb_NO:
+    name: "Norsk bokmål"
+  el_GR:
+    name: "Ελληνικά"
+  sk_SK:
+    name: "Slovenčina"
+  bg_BG:
+    name: "Български"
+  es_MX:
+    name: "Español (México)"
+  hr_HR:
+    name: "Hrvatski"
+  sl_SI:
+    name: "Slovenščina"
+  sr_RS:
+    name: "Српски"
+  lt_LT:
+    name: "Lietuvių"
+  lv_LV:
+    name: "Latviešu"
+  et_EE:
+    name: "Eesti"
+  ca_ES:
+    name: "Català"
+  ms_MY:
+    name: "Bahasa Melayu"
+  fil_PH:
+    name: "Filipino"
+  gl_ES:
+    name: "Galego"
+  af_ZA:
+    name: "Afrikaans"
+  be_BY:
+    name: "Беларуская"
+  hi_IN:
+    name: "हिन्दी"
+  mk_MK:
+    name: "Македонски"
+  az_AZ:
+    name: "Azərbaycanca"
+  eu_ES:
+    name: "Euskara"
+  sq_AL:
+    name: "Shqip"
+  is_IS:
+    name: "Íslenska"
+  kk_KZ:
+    name: "Қазақша"
+  ka_GE:
+    name: "ქართული"
+  cy_GB:
+    name: "Cymraeg"
+  bs_BA:
+    name: "Bosanski"
+  hy_AM:
+    name: "Հայերեն"
+  uz_UZ:
+    name: "Oʻzbekcha"
+  sw_KE:
+    name: "Kiswahili"
+  ga_IE:
+    name: "Gaeilge"
+  mn_MN:
+    name: "Монгол"
+  bn_BD:
+    name: "বাংলা"
+  ta_IN:
+    name: "தமிழ்"
+  nn_NO:
+    name: "Norsk nynorsk"
+  eo_UY:
+    name: "Esperanto"
+  tt_RU:
+    name: "Татарча"
+  ba_RU:
+    name: "Башҡортса"
+  ky_KG:
+    name: "Кыргызча"
+  cv_CU:
+    name: "Чӑвашла"
+  mt_MT:
+    name: "Malti"
+  gd_GB:
+    name: "Gàidhlig"
+  kw_GB:
+    name: "Kernewek"
+  br_FR:
+    name: "Brezhoneg"
+  lb_LU:
+    name: "Lëtzebuergesch"
+  fo_FO:
+    name: "Føroyskt"
+  fy_NL:
+    name: "Frysk"
+  nds_DE:
+    name: "Plattdüütsch"
+  li_LI:
+    name: "Limburgs"
+  oc_FR:
+    name: "Occitan"
+  ast_ES:
+    name: "Asturianu"
+  vec_IT:
+    name: "Vèneto"
+  szl:
+    name: "Ślōnski"
+  yo_NG:
+    name: "Yorùbá"
+  ig_NG:
+    name: "Igbo"
+  so_SO:
+    name: "Soomaali"
+  lo_LA:
+    name: "ລາວ"
+  kn_IN:
+    name: "ಕನ್ನಡ"
+  haw_US:
+    name: "ʻŌlelo Hawaiʻi"
+  se_NO:
+    name: "Davvisámegiella"
+  la_LA:
+    name: "Latina"
+  ar_SA:
+    name: "العربية"
+  fa_IR:
+    name: "فارسی"
+  he_IL:
+    name: "עברית"
+  yi_DE:
+    name: "ייִדיש"

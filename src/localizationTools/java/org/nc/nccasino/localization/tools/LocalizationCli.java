@@ -144,6 +144,7 @@ public final class LocalizationCli {
                 problems.add(locale + " is missing " + entry.getKey());
                 continue;
             }
+            problems.addAll(RtlRules.problems(locale, entry.getKey(), value));
             try {
                 ensureSyntaxMatches(entry.getValue(), value, locale + ":" + entry.getKey());
                 if (strictFormattingOrder) {

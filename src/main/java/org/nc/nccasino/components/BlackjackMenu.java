@@ -999,7 +999,7 @@ public class BlackjackMenu extends Menu {
      * thread.
      */
     private void handleNumericInput(Player player, String input, String configPath, long min, long max, String messageKey) {
-        if (input.isEmpty() || !input.matches("\\d+")) {
+        if (input.isEmpty() || !input.matches("\\p{Nd}+")) {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (!isLiveMenuForOwner() || !hasAnyActiveEditSession()) {
                     return;

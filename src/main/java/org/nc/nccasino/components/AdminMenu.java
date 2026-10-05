@@ -1403,7 +1403,7 @@ public class AdminMenu extends Menu {
             event.setCancelled(true);
             String newTimer = event.getMessage().trim();
 
-            if (newTimer.isEmpty() || !newTimer.matches("\\d+") || Integer.parseInt(newTimer) <= 0) {
+            if (newTimer.isEmpty() || !newTimer.matches("\\p{Nd}+") || Integer.parseInt(newTimer) <= 0) {
                 denyAction(player, text("admin.positive-number"));
                 return;
             }
@@ -1497,7 +1497,7 @@ public class AdminMenu extends Menu {
             event.setCancelled(true);
             String newChipSize = event.getMessage().trim();
 
-            if (newChipSize.isEmpty() || !newChipSize.matches("\\d+") || Integer.parseInt(newChipSize) <= 0) {
+            if (newChipSize.isEmpty() || !newChipSize.matches("\\p{Nd}+") || Integer.parseInt(newChipSize) <= 0) {
                 denyAction(player, text("admin.positive-number"));
                 return;
             }

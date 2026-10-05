@@ -76,6 +76,23 @@ class LocalizationToolTest {
     }
 
     @Test
+    void rightToLeftValuesMustStartWithARightToLeftWord() {
+        assertTrue(RtlRules.problems("ar_SA", "k", "&7اللاعب {player}").isEmpty());
+        assertTrue(RtlRules.problems("ar_SA", "k", "&a{amount}").isEmpty());
+        assertEquals(1, RtlRules.problems("ar_SA", "k", "&o{player}&o دور").size());
+        assertEquals(1, RtlRules.problems("he_IL", "k", "Vault לא נמצא").size());
+    }
+
+    @Test
+    void bidiControlsAreRejectedEverywhereAndDiacriticsInArabicHebrewAndPersian() {
+        assertEquals(1, RtlRules.problems("de_DE", "k", "Hallo‏").size());
+        assertTrue(RtlRules.problems("kn_IN", "k", "ಕ‌ಕ").isEmpty());
+        assertEquals(1, RtlRules.problems("ar_SA", "k", "بَ").size());
+        assertTrue(RtlRules.problems("yi_DE", "k", "אַ").isEmpty());
+        assertTrue(RtlRules.problems("fa_IR", "k", "می‌شود").isEmpty());
+    }
+
+    @Test
     void protectedLiteralDetectionSurvivesFormattingCodeAdjacency() {
         assertEquals(Map.of("Vault", 1), SyntaxTokens.protectedLiteralCounts("&cVault not found."));
     }

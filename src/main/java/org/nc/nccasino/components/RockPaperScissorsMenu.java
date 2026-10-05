@@ -399,7 +399,7 @@ public class RockPaperScissorsMenu extends Menu {
         // "unbounded" sentinel for max-chain-rounds) -- the timer's own
         // min=1 call rejects it via the normal range check below.
         boolean isUnboundedSentinel = min < 0 && input.equals("-1");
-        if (!isUnboundedSentinel && (input.isEmpty() || !input.matches("\\d+"))) {
+        if (!isUnboundedSentinel && (input.isEmpty() || !input.matches("\\p{Nd}+"))) {
             denyAction(player, text("blackjack-settings.valid-positive-integer"));
             return;
         }
