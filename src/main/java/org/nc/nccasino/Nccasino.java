@@ -303,9 +303,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
             File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
             if (dealersFile.exists()) {
                 FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
-                if (dealersConfig.contains("dealers")) {
+                if (dealersConfig.isConfigurationSection("dealers")) {
                     for (String internalName : dealersConfig.getConfigurationSection("dealers").getKeys(false)) {
-                        if (dealersConfig.getString("dealers." + internalName + ".world").equals(world.getName())) {
+                        // A hand-edited entry without a world is skipped, not a startup crash.
+                        if (world.getName().equals(dealersConfig.getString("dealers." + internalName + ".world"))) {
                             double x = dealersConfig.getDouble("dealers." + internalName + ".X");
                             double z = dealersConfig.getDouble("dealers." + internalName + ".Z");
                             int chunkX = (int) x >> 4;
@@ -1142,7 +1143,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
         FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile);
     
-        if (!dealersConfig.contains("dealers")||dealersConfig.getConfigurationSection("dealers").getKeys(false).isEmpty()) {
+        if (!dealersConfig.isConfigurationSection("dealers")||dealersConfig.getConfigurationSection("dealers").getKeys(false).isEmpty()) {
             sender.sendMessage(getLocalization().text(sender, "commands.no-dealers"));
             return;
         }

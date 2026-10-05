@@ -7,6 +7,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.nc.nccasino.helpers.StoreFile;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.MoneyHelper;
@@ -45,6 +46,8 @@ public class PendingPayoutStore {
 
     private final Nccasino plugin;
     private final File file;
+    /** Guards the file against being rebuilt over unreadable or skipped data. */
+    private StoreFile storeFile;
     private final Map<UUID, PendingPayout> byId = new LinkedHashMap<>();
     private final Map<UUID, List<PendingPayout>> byPlayer = new HashMap<>();
 
@@ -68,7 +71,7 @@ public class PendingPayoutStore {
             return;
         }
 
-        FileConfiguration config = YamlConfiguration.loadConfiguration(file);
+        FileConfiguration config = storeFile().load();
         ConfigurationSection section = config.getConfigurationSection("payouts");
         if (section == null) {
             return;
@@ -92,9 +95,18 @@ public class PendingPayoutStore {
                 indexAdd(payout);
             } catch (IllegalArgumentException | NullPointerException e) {
                 plugin.getLogger().log(Level.WARNING,
-                    "[NCCasino] Skipping malformed pending payout record '" + idKey + "' in pending-payouts.yml", e);
+                    "[NCCasino] Skipping malformed pending payout record '" + idKey
+                        + "' in pending-payouts.yml; it is kept under 'unloaded'", e);
+                storeFile().preserve("payouts." + idKey);
             }
         }
+    }
+
+    private StoreFile storeFile() {
+        if (storeFile == null) {
+            storeFile = new StoreFile(file, plugin != null ? plugin.getLogger() : null);
+        }
+        return storeFile;
     }
 
     private synchronized boolean persist() {
@@ -113,8 +125,7 @@ public class PendingPayoutStore {
         }
 
         try {
-            config.save(file);
-            return true;
+            return storeFile().save(config);
         } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "[NCCasino] Failed to save pending-payouts.yml", e);
             return false;

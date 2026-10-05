@@ -3,6 +3,7 @@ package org.nc.nccasino.payout;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.nc.nccasino.helpers.StoreFile;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.currency.CurrencyMode;
 
@@ -49,6 +50,8 @@ public class OverflowBankStore {
 
     private final Nccasino plugin;
     private final File file;
+    /** Guards the file against being rebuilt over unreadable or skipped data. */
+    private StoreFile storeFile;
     /** playerId -&gt; storageKey -&gt; entry. Insertion-ordered for stable files. */
     private final Map<UUID, Map<String, Entry>> balances = new LinkedHashMap<>();
 
@@ -74,7 +77,7 @@ public class OverflowBankStore {
             return;
         }
 
-        FileConfiguration config = YamlConfiguration.loadConfiguration(file);
+        FileConfiguration config = storeFile().load();
         ConfigurationSection root = config.getConfigurationSection("banks");
         if (root == null) {
             return;
@@ -86,7 +89,8 @@ public class OverflowBankStore {
                 playerId = UUID.fromString(playerKey);
             } catch (IllegalArgumentException e) {
                 plugin.getLogger().warning("[NCCasino] Skipping malformed overflow-bank player id '"
-                    + playerKey + "' in overflow-bank.yml");
+                    + playerKey + "' in overflow-bank.yml; it is kept under 'unloaded'");
+                storeFile().preserve("banks." + playerKey);
                 continue;
             }
 
@@ -110,10 +114,18 @@ public class OverflowBankStore {
                         .put(currency.storageKey(), new Entry(currency, amount));
                 } catch (IllegalArgumentException e) {
                     plugin.getLogger().log(Level.WARNING, "[NCCasino] Skipping malformed overflow-bank entry '"
-                        + playerKey + "." + currencyKey + "' in overflow-bank.yml", e);
+                        + playerKey + "." + currencyKey + "' in overflow-bank.yml; it is kept under 'unloaded'", e);
+                    storeFile().preserve("banks." + playerKey + "." + currencyKey);
                 }
             }
         }
+    }
+
+    private StoreFile storeFile() {
+        if (storeFile == null) {
+            storeFile = new StoreFile(file, plugin != null ? plugin.getLogger() : null);
+        }
+        return storeFile;
     }
 
     private synchronized boolean persist() {
@@ -130,8 +142,7 @@ public class OverflowBankStore {
         }
 
         try {
-            config.save(file);
-            return true;
+            return storeFile().save(config);
         } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "[NCCasino] Failed to save overflow-bank.yml", e);
             return false;

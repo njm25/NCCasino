@@ -3,6 +3,7 @@ package org.nc.nccasino.games.Slots;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.nc.nccasino.helpers.StoreFile;
 import org.nc.nccasino.Nccasino;
 
 import java.io.File;
@@ -46,6 +47,8 @@ public class SlotsProfileStore {
 
     private final Nccasino plugin;
     private final File file;
+    /** Guards the file against being rebuilt over unreadable or skipped data. */
+    private StoreFile storeFile;
     /** playerId -&gt; that player's profiles, in display order. */
     private final Map<UUID, List<SlotsProfile>> profiles = new LinkedHashMap<>();
 
@@ -67,7 +70,7 @@ public class SlotsProfileStore {
             return;
         }
 
-        FileConfiguration config = YamlConfiguration.loadConfiguration(file);
+        FileConfiguration config = storeFile().load();
         ConfigurationSection root = config.getConfigurationSection(ROOT);
         if (root == null) {
             return;
@@ -79,7 +82,8 @@ public class SlotsProfileStore {
                 playerId = UUID.fromString(playerKey);
             } catch (IllegalArgumentException e) {
                 plugin.getLogger().warning("[NCCasino] Skipping malformed Slots profile owner '"
-                    + playerKey + "' in slots-profiles.yml");
+                    + playerKey + "' in slots-profiles.yml; it is kept under 'unloaded'");
+                storeFile().preserve(ROOT + "." + playerKey);
                 continue;
             }
 
@@ -92,6 +96,7 @@ public class SlotsProfileStore {
             indexKeys.sort(SlotsProfileStore::compareNumericKeys);
 
             List<SlotsProfile> loaded = new ArrayList<>();
+            boolean overCapWarned = false;
             for (String indexKey : indexKeys) {
                 ConfigurationSection entry = playerSection.getConfigurationSection(indexKey);
                 if (entry == null) {
@@ -99,18 +104,24 @@ public class SlotsProfileStore {
                 }
                 SlotsProfile profile = readProfile(playerKey, indexKey, entry);
                 if (profile == null) {
+                    storeFile().preserve(ROOT + "." + playerKey + "." + indexKey);
                     continue;
                 }
                 if (indexOfName(loaded, profile.name()) >= 0) {
                     plugin.getLogger().warning("[NCCasino] Skipping duplicate Slots profile name '"
-                        + profile.name() + "' for " + playerKey + " in slots-profiles.yml");
+                        + profile.name() + "' for " + playerKey + " in slots-profiles.yml; it is kept under 'unloaded'");
+                    storeFile().preserve(ROOT + "." + playerKey + "." + indexKey);
                     continue;
                 }
                 if (loaded.size() >= MAX_PROFILES_PER_PLAYER) {
-                    plugin.getLogger().warning("[NCCasino] Player " + playerKey
-                        + " has more than " + MAX_PROFILES_PER_PLAYER
-                        + " stored Slots profiles; the extras were not loaded.");
-                    break;
+                    if (!overCapWarned) {
+                        overCapWarned = true;
+                        plugin.getLogger().warning("[NCCasino] Player " + playerKey
+                            + " has more than " + MAX_PROFILES_PER_PLAYER
+                            + " stored Slots profiles; the extras were not loaded and are kept under 'unloaded'.");
+                    }
+                    storeFile().preserve(ROOT + "." + playerKey + "." + indexKey);
+                    continue;
                 }
                 loaded.add(profile);
             }
@@ -151,6 +162,13 @@ public class SlotsProfileStore {
         }
     }
 
+    private StoreFile storeFile() {
+        if (storeFile == null) {
+            storeFile = new StoreFile(file, plugin != null ? plugin.getLogger() : null);
+        }
+        return storeFile;
+    }
+
     private synchronized boolean persist() {
         FileConfiguration config = new YamlConfiguration();
         for (Map.Entry<UUID, List<SlotsProfile>> playerEntry : profiles.entrySet()) {
@@ -173,8 +191,7 @@ public class SlotsProfileStore {
         }
 
         try {
-            config.save(file);
-            return true;
+            return storeFile().save(config);
         } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "[NCCasino] Failed to save slots-profiles.yml", e);
             return false;

@@ -3,6 +3,7 @@ package org.nc.nccasino.budget;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.nc.nccasino.helpers.StoreFile;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.payout.BankedCurrency;
@@ -93,6 +94,8 @@ public class DealerBudgetStore {
 
     private final Nccasino plugin;
     private final File file;
+    /** Guards the file against being rebuilt over unreadable or skipped data. */
+    private StoreFile storeFile;
     private final Map<String, DealerBudgetState> states = new LinkedHashMap<>();
 
     public DealerBudgetStore(Nccasino plugin) {
@@ -120,7 +123,7 @@ public class DealerBudgetStore {
             return;
         }
 
-        FileConfiguration config = YamlConfiguration.loadConfiguration(file);
+        FileConfiguration config = storeFile().load();
         ConfigurationSection root = config.getConfigurationSection("dealers");
         if (root == null) {
             return;
@@ -129,6 +132,7 @@ public class DealerBudgetStore {
         for (String dealer : root.getKeys(false)) {
             ConfigurationSection section = root.getConfigurationSection(dealer);
             if (section == null) {
+                storeFile().preserve("dealers." + dealer);
                 continue;
             }
             BigDecimal balance = Money.parse(section.getString("live-balance"));
@@ -251,6 +255,13 @@ public class DealerBudgetStore {
 
     // ---- persistence --------------------------------------------------
 
+    private StoreFile storeFile() {
+        if (storeFile == null) {
+            storeFile = new StoreFile(file, plugin != null ? plugin.getLogger() : null);
+        }
+        return storeFile;
+    }
+
     private synchronized boolean persist() {
         FileConfiguration config = new YamlConfiguration();
         config.set("version", SCHEMA_VERSION);
@@ -306,6 +317,10 @@ public class DealerBudgetStore {
             }
             config.set(base + ".shortfalls", shortfalls);
         }
+        if (!storeFile().canWrite()) {
+            return false;
+        }
+        storeFile().addPreserved(config);
         return writeAtomically(config);
     }
 
