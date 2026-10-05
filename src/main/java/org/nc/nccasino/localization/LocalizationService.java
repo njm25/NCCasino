@@ -36,7 +36,8 @@ public final class LocalizationService {
     private final Nccasino plugin;
     private Map<String, String> supported = Map.of(ENGLISH, "English");
     private final Map<String, YamlConfiguration> bundled = new LinkedHashMap<>();
-    private final Map<String, YamlConfiguration> overrides = new LinkedHashMap<>();
+    private final Map<String, Map<String, String>> overrides = new LinkedHashMap<>();
+    private int overrideProblems;
     private String serverDefault = ENGLISH;
     private boolean clientDetection = true;
 
@@ -44,32 +45,36 @@ public final class LocalizationService {
         this.plugin = plugin;
     }
 
+    /**
+     * Bundled catalogs are authoritative. Administrators change individual
+     * strings in sparse {@code lang/overrides/<locale>.yml} files, which are
+     * validated key by key; {@code lang/reference/} holds read-only copies of
+     * the bundled catalogs to copy keys from. Full catalog copies written by
+     * earlier development builds are moved aside once, because as overrides
+     * they would hide every later wording fix.
+     */
     public void load() {
         bundled.clear();
         overrides.clear();
+        overrideProblems = 0;
         loadLocaleRegistry();
-
-        File languageDirectory = new File(plugin.getDataFolder(), "lang");
-        try {
-            Files.createDirectories(languageDirectory.toPath());
-        } catch (IOException exception) {
-            plugin.getLogger().log(Level.SEVERE, "Could not create NCCasino lang directory.", exception);
-        }
-
         for (String locale : supported.keySet()) {
             loadBundled(locale);
-            File external = new File(languageDirectory, locale + ".yml");
-            if (!external.exists()) {
-                try {
-                    plugin.saveResource("lang/" + locale + ".yml", false);
-                } catch (IllegalArgumentException exception) {
-                    plugin.getLogger().warning("Missing bundled language resource: " + locale);
-                }
-            }
-            if (external.isFile()) {
-                overrides.put(locale, YamlConfiguration.loadConfiguration(external));
-            }
         }
+
+        File languageDirectory = new File(plugin.getDataFolder(), "lang");
+        File overrideDirectory = new File(languageDirectory, "overrides");
+        File referenceDirectory = new File(languageDirectory, "reference");
+        try {
+            Files.createDirectories(overrideDirectory.toPath());
+            Files.createDirectories(referenceDirectory.toPath());
+            moveLegacyExports(languageDirectory);
+            writeOverrideReadme(overrideDirectory);
+            writeReferenceCopies(referenceDirectory);
+        } catch (IOException exception) {
+            plugin.getLogger().log(Level.SEVERE, "Could not prepare the NCCasino lang directory.", exception);
+        }
+        loadOverrides(overrideDirectory);
 
         String configured = LocaleIds.normalize(
             plugin.getConfig().getString("language.default", ENGLISH)
@@ -161,12 +166,12 @@ public final class LocalizationService {
             normalized = ENGLISH;
         }
 
-        String value = validValue(overrides.get(normalized), key);
+        String value = overrides.getOrDefault(normalized, Map.of()).get(key);
         if (value == null) {
             value = validValue(bundled.get(normalized), key);
         }
         if (value == null) {
-            value = validValue(overrides.get(ENGLISH), key);
+            value = overrides.getOrDefault(ENGLISH, Map.of()).get(key);
         }
         if (value == null) {
             value = value(bundled.get(ENGLISH), key);
@@ -252,6 +257,107 @@ public final class LocalizationService {
                 } else if (!placeholders(english.getString(key)).equals(placeholders(translated))) {
                     plugin.getLogger().warning(language.getKey() + " has mismatched placeholders for " + key + ".");
                 }
+            }
+        }
+    }
+
+    /** How many override values the last load or reload rejected. */
+    public int overrideProblemCount() {
+        return overrideProblems;
+    }
+
+    private void moveLegacyExports(File languageDirectory) throws IOException {
+        File[] legacy = languageDirectory.listFiles(file -> file.isFile() && file.getName().endsWith(".yml"));
+        if (legacy == null || legacy.length == 0) {
+            return;
+        }
+        String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.ROOT).format(new java.util.Date());
+        File backup = new File(languageDirectory, "legacy-backup-" + stamp);
+        Files.createDirectories(backup.toPath());
+        for (File file : legacy) {
+            Files.move(file.toPath(), backup.toPath().resolve(file.getName()));
+        }
+        plugin.getLogger().warning(
+            "Moved " + legacy.length + " full language file(s) from an earlier build to "
+                + backup.getPath() + ". NCCasino now uses its bundled text; copy only the strings you "
+                + "changed into lang/overrides/<locale>.yml to keep them."
+        );
+    }
+
+    private void writeOverrideReadme(File overrideDirectory) throws IOException {
+        File readme = new File(overrideDirectory, "README.txt");
+        if (readme.exists()) {
+            return;
+        }
+        Files.writeString(readme.toPath(), String.join(System.lineSeparator(),
+            "NCCasino language overrides",
+            "",
+            "Create <locale>.yml here (for example de_DE.yml) containing only the keys you want",
+            "to change, copied from ../reference/<locale>.yml with the same nesting. Everything",
+            "you leave out keeps NCCasino's bundled text, including future fixes.",
+            "",
+            "Each value must keep the English placeholders, such as {amount}, in the same order.",
+            "Invalid values are ignored and listed in the console on startup and /ncc reload.",
+            ""
+        ), StandardCharsets.UTF_8);
+    }
+
+    private void writeReferenceCopies(File referenceDirectory) throws IOException {
+        for (String locale : supported.keySet()) {
+            try (InputStream stream = plugin.getResource("lang/" + locale + ".yml")) {
+                if (stream == null) {
+                    continue;
+                }
+                byte[] bundledBytes = stream.readAllBytes();
+                java.nio.file.Path target = referenceDirectory.toPath().resolve(locale + ".yml");
+                if (!Files.exists(target) || !java.util.Arrays.equals(Files.readAllBytes(target), bundledBytes)) {
+                    Files.write(target, bundledBytes);
+                }
+            }
+        }
+    }
+
+    private void loadOverrides(File overrideDirectory) {
+        File[] files = overrideDirectory.listFiles(file -> file.isFile() && file.getName().endsWith(".yml"));
+        if (files == null) {
+            return;
+        }
+        YamlConfiguration english = bundled.get(ENGLISH);
+        java.util.List<String> problems = new java.util.ArrayList<>();
+        int acceptedCount = 0;
+        for (File file : files) {
+            String locale = LocaleIds.normalize(file.getName().substring(0, file.getName().length() - 4));
+            if (locale == null || !supported.containsKey(locale)) {
+                problems.add(file.getName() + " is not a registered locale");
+                continue;
+            }
+            YamlConfiguration configuration = YamlConfiguration.loadConfiguration(file);
+            Map<String, Object> values = new LinkedHashMap<>();
+            for (String key : configuration.getKeys(true)) {
+                if (!configuration.isConfigurationSection(key)) {
+                    values.put(key, configuration.get(key));
+                }
+            }
+            LanguageOverrides.Result result = LanguageOverrides.validate(
+                locale,
+                values,
+                key -> english != null && english.isString(key) ? english.getString(key) : null
+            );
+            if (!result.accepted().isEmpty()) {
+                overrides.put(locale, result.accepted());
+                acceptedCount += result.accepted().size();
+            }
+            problems.addAll(result.problems());
+        }
+        overrideProblems = problems.size();
+        if (acceptedCount > 0) {
+            plugin.getLogger().info("Loaded " + acceptedCount + " language override value(s) for " + overrides.size() + " locale(s).");
+        }
+        if (!problems.isEmpty()) {
+            plugin.getLogger().warning("Ignored " + problems.size() + " language override value(s); bundled text is used instead:");
+            problems.stream().limit(20).forEach(problem -> plugin.getLogger().warning("  " + problem));
+            if (problems.size() > 20) {
+                plugin.getLogger().warning("  ... and " + (problems.size() - 20) + " more.");
             }
         }
     }

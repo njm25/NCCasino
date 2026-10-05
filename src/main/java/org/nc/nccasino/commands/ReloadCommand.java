@@ -22,6 +22,12 @@ public class ReloadCommand implements CasinoCommand {
         sender.sendMessage(
             ((Nccasino) plugin).getLocalization().text(sender, "commands.reload-success")
         );
+        int ignored = ((Nccasino) plugin).getLocalization().overrideProblemCount();
+        if (ignored > 0) {
+            sender.sendMessage(((Nccasino) plugin).getLocalization().text(
+                sender, "commands.reload-override-warnings", "count", ignored
+            ));
+        }
 
         return true;
     }

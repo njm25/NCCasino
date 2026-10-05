@@ -1279,6 +1279,7 @@ commands:
   list-header: "&d&lDealers (Page {page} of {pages}):"
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO configuration reloaded successfully."
+  reload-override-warnings: "&e{count} language override value(s) were ignored; see the console for details."
   dealer-not-found: "&cDealer '&e{name}&c' was not found."
   dealer-deleted: "&aDealer '&e{name}&a' and all associated components were deleted."
   help-title: "&d&lNCCASINO HELP"
