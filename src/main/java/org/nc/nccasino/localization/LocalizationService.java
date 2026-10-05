@@ -129,6 +129,11 @@ public final class LocalizationService {
                 if (explicit != null && supported.containsKey(explicit)) {
                     return explicit;
                 }
+                // The chosen language is not in this build: use the client's.
+                String client = clientLocale(playerId);
+                if (client != null) {
+                    return client;
+                }
             }
             case CLIENT -> {
                 String client = clientLocale(playerId);

@@ -237,6 +237,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         preferencesConfig = YamlConfiguration.loadConfiguration(preferencesFile);
     
         // Read stored preferences into memory
+        int unsupportedLanguages = 0;
         for (String key : preferencesConfig.getKeys(false)) {
             UUID playerId;
             try {
@@ -247,23 +248,21 @@ public final class Nccasino extends JavaPlugin implements Listener {
             }
     
             Preferences preferences = new Preferences(playerId);
-            preferences.setSoundSetting(Preferences.SoundSetting.valueOf(
-                preferencesConfig.getString(key + ".sound", "ON")
-            ));
-            preferences.setMessageSetting(Preferences.MessageSetting.valueOf(
-                preferencesConfig.getString(key + ".messages", "STANDARD")
-            ));
+            // Loading never saves: a bad value falls back with a warning
+            // instead of aborting startup, and the file is written once below.
+            preferences.loadSettings(
+                parseEnum(Preferences.SoundSetting.class, preferencesConfig.getString(key + ".sound"), Preferences.SoundSetting.ON),
+                parseEnum(Preferences.MessageSetting.class, preferencesConfig.getString(key + ".messages"), Preferences.MessageSetting.STANDARD)
+            );
+            // A missing mode means the player never chose: follow their client.
+            // A saved SERVER_DEFAULT is kept, whichever build wrote it.
             LanguageMode languageMode = parseEnum(
                 LanguageMode.class,
                 preferencesConfig.getString(key + ".language-mode"),
                 LanguageMode.CLIENT
             );
-            // Before client-language detection, every player who never opened
-            // the language menu was saved as SERVER_DEFAULT; move them to CLIENT once.
-            if (preferencesConfig.getInt(key + ".language-version", 1) < LANGUAGE_PREFERENCES_VERSION
-                && languageMode == LanguageMode.SERVER_DEFAULT) {
-                languageMode = LanguageMode.CLIENT;
-            }
+            // Written by an abandoned development detector; carries no choice.
+            preferencesConfig.set(key + ".auto-language-attempted", null);
             preferences.loadLanguage(
                 languageMode,
                 preferencesConfig.getString(key + ".language"),
@@ -276,8 +275,17 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 preferencesConfig.getBoolean(key + ".blackjack-chair-guidance-seen", false),
                 preferencesConfig.getBoolean(key + ".blackjack-wager-guidance-seen", false)
             );
+            if (preferences.getLanguageMode() == LanguageMode.EXPLICIT
+                && !localizationService.supportedLanguages().containsKey(preferences.getExplicitLanguage())) {
+                unsupportedLanguages++;
+            }
             playerPreferences.put(playerId, preferences);
         }
+        if (unsupportedLanguages > 0) {
+            getLogger().warning(unsupportedLanguages + " player(s) chose a language this build does not include; "
+                + "they see their game language or the server default until it returns or they pick another.");
+        }
+        savePreferences();
     }
     
     private void initializeDealersIfLoaded() {
@@ -467,7 +475,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
                     : null
             );
             preferencesConfig.set(entry.getKey() + ".client-language", preferences.getClientLanguage());
-            preferencesConfig.set(entry.getKey() + ".language-version", LANGUAGE_PREFERENCES_VERSION);
+            // Never lower a version written by a newer build.
+            preferencesConfig.set(entry.getKey() + ".language-version", Math.max(
+                LANGUAGE_PREFERENCES_VERSION,
+                preferencesConfig.getInt(entry.getKey() + ".language-version", LANGUAGE_PREFERENCES_VERSION)
+            ));
             preferencesConfig.set(
                 entry.getKey() + ".overflow-preference",
                 preferences.getOverflowPreference() == null ? null : preferences.getOverflowPreference().name());

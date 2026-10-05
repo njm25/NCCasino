@@ -40,6 +40,12 @@ public class Preferences {
         return soundSetting;
     }
 
+    /** Used only by {@link Nccasino#loadPreferences()}: restores both settings without saving. */
+    public void loadSettings(SoundSetting sound, MessageSetting messages) {
+        this.soundSetting = sound;
+        this.messageSetting = messages;
+    }
+
     public void setSoundSetting(SoundSetting setting) {
         this.soundSetting = setting;
         plugin.savePreferences(); // Save immediately when changed
@@ -183,9 +189,9 @@ public class Preferences {
         String clientLanguage
     ) {
         String normalized = LocaleIds.normalize(language);
-        if (mode == LanguageMode.EXPLICIT
-            && normalized != null
-            && plugin.getLocalization().supportedLanguages().containsKey(normalized)) {
+        // An explicit choice is kept even if this build lacks that language,
+        // so it comes back when the language does (see effectiveLocale).
+        if (mode == LanguageMode.EXPLICIT && normalized != null) {
             languageMode = LanguageMode.EXPLICIT;
             explicitLanguage = normalized;
         } else {
