@@ -837,7 +837,7 @@ blackjack:
   shoe-exhausted-refunded: "&eLo sabòt de cartas s'es voidat al mitan de la ronda -- remborsat: {amount}."
   start-transition-failed-refunded: "&eLa ronda a pas pogut començar -- remborsat: {amount}."
   table-reset-refunded: "&eLa taula es estada reïnicializada per un administrator -- remborsat: {amount}."
-  round-error-refunded: "&eQuicòm a mal virat al mièg de la manca -- remborsat: {amount}."
+  round-error-refunded: "&eQuicòm a mal virat al mitan de la ronda -- remborsat: {amount}."
 
 dragon-settings:
   title: "Paramètres de la Davalada del Dragon ({dealer})"

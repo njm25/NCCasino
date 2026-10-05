@@ -837,7 +837,7 @@ blackjack:
   shoe-exhausted-refunded: "&eIl sabot ha finito le carte a metà round: rimborso di {amount}."
   start-transition-failed-refunded: "&eNon è stato possibile iniziare il round: rimborso di {amount}."
   table-reset-refunded: "&eUn amministratore ha reimpostato il tavolo: rimborso di {amount}."
-  round-error-refunded: "&eQualcosa è andato storto a metà mano: rimborso di {amount}."
+  round-error-refunded: "&eQualcosa è andato storto a metà round: rimborso di {amount}."
 
 dragon-settings:
   title: "Impostazioni Discesa del Drago di {dealer}"

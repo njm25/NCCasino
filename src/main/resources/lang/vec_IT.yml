@@ -837,7 +837,7 @@ blackjack:
   shoe-exhausted-refunded: "&eEl sabot de le carte el xe restà vodo a metà partìa -- rimborsà: {amount}."
   start-transition-failed-refunded: "&eLa partìa no la xe podesta scominsiar -- rimborsà: {amount}."
   table-reset-refunded: "&eLa tòla la xe stada riinpostada da un aministrador -- rimborsà: {amount}."
-  round-error-refunded: "&eQualcosa la xe 'ndada storta a metà man -- rimborsà: {amount}."
+  round-error-refunded: "&eQualcosa la xe 'ndada storta a metà partìa -- rimborsà: {amount}."
 
 dragon-settings:
   title: "Inpostasion de la Discesa del Dragon ({dealer})"

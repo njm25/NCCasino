@@ -837,7 +837,7 @@ blackjack:
   shoe-exhausted-refunded: "&eKortaboksa guorranii joru gaskkas -- máksojuvvon ruovttoluotta: {amount}."
   start-transition-failed-refunded: "&eJorru ii sáhttán álgit -- máksojuvvon ruovttoluotta: {amount}."
   table-reset-refunded: "&eHálddašeaddji álggahii beavddi ođđasit -- máksojuvvon ruovttoluotta: {amount}."
-  round-error-refunded: "&eJuoga manai boasttu gaskkamuttus vuoru -- máksojuvvon ruovttoluotta: {amount}."
+  round-error-refunded: "&eJuoga manai boasttu joru gaskkas -- máksojuvvon ruovttoluotta: {amount}."
 
 dragon-settings:
   title: "Draka vulosmannama heivehusat ({dealer})"

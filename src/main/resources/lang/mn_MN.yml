@@ -837,7 +837,7 @@ blackjack:
   shoe-exhausted-refunded: "&eТойргийн дундуур картын хайрцаг дууслаа -- буцаан олгосон: {amount}."
   start-transition-failed-refunded: "&eТойрог эхэлж чадсангүй -- буцаан олгосон: {amount}."
   table-reset-refunded: "&eАдмин ширээг анхны төлөвт нь буцаасан -- буцаан олгосон: {amount}."
-  round-error-refunded: "&eҮеийн дундуур алдаа гарлаа -- буцаан олгосон: {amount}."
+  round-error-refunded: "&eТойргийн дундуур алдаа гарлаа -- буцаан олгосон: {amount}."
 
 dragon-settings:
   title: "Лууны уруудалтын тохиргоо: {dealer}"
