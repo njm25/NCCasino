@@ -33,6 +33,8 @@ preferences:
     effective: "&7Langue active : &f{language}"
     server-default: "Langue du serveur"
     explicit: "Sélectionnée"
+    client: "Langue du jeu"
+    client-applied: "&7La langue du casino a été réglée sur &f{language}&7 pour correspondre à votre jeu. Changez-la dans Préférences > Langue."
   overflow:
     title: "&eGains qui ne rentrent pas"
     bank: "&aLes garder pour moi"
@@ -46,6 +48,9 @@ language-menu:
   title: "Choisir la langue"
   use-server-default: "&eUtiliser la langue du serveur"
   default-description: "&7Suivre la langue du serveur : &f{language}"
+  use-client: "&eSuivre la langue de mon jeu"
+  client-description: "&7Suivre la langue de votre Minecraft : &f{language}"
+  client-unavailable: "&7Langue du serveur utilisée pour l'instant : &f{language}"
   selected: "&aSélectionnée"
   select: "&8Cliquez pour sélectionner."
 
@@ -1274,6 +1279,7 @@ commands:
   list-header: "&d&lCroupiers (Page {page} sur {pages}) :"
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aLa configuration de NCCASINO a été rechargée."
+  reload-override-warnings: "&eValeurs de langue personnalisées ignorées : {count}. Consultez la console pour les détails."
   dealer-not-found: "&cLe croupier '&e{name}&c' est introuvable."
   dealer-deleted: "&aLe croupier '&e{name}&a' et tous ses composants ont été supprimés."
   help-title: "&d&lAIDE NCCASINO"
