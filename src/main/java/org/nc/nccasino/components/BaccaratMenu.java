@@ -209,21 +209,30 @@ public class BaccaratMenu extends Menu {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        if (!RAInventories.containsKey(playerId)) {
-            cleanup();
+        // Only this menu's owner, and only while this instance is still the
+        // live one for them: every open menu receives every chat message on
+        // the server, and tearing this menu down because someone else spoke
+        // used to cancel the owner's edit. Cancelling must happen here,
+        // synchronously; the edit itself touches config, entities and
+        // inventories, so it runs on the main thread after re-checking.
+        if (!playerId.equals(ownerId) || RAInventories.get(ownerId) != this) {
             return;
         }
-        
+        if (!(AdminMenu.timerEditMode.get(playerId) != null || AdminMenu.decksEditMode.get(playerId) != null)) {
+            return;
+        }
+        event.setCancelled(true);
         String message = event.getMessage().trim();
-
-        if (AdminMenu.timerEditMode.get(playerId) != null) {
-            event.setCancelled(true);
-            handleNumericInput(player, message, "timer", 1, 10000, "baccarat-settings.timer-updated");
-        }
-        else if (AdminMenu.decksEditMode.get(playerId) != null) {
-            event.setCancelled(true);
-            handleNumericInput(player, message, "number-of-decks", 1, 10000, "baccarat-settings.decks-updated");
-        }
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (RAInventories.get(ownerId) != this) {
+                return;
+            }
+            if (AdminMenu.timerEditMode.get(playerId) != null) {
+                handleNumericInput(player, message, "timer", 1, 10000, "baccarat-settings.timer-updated");
+            } else if (AdminMenu.decksEditMode.get(playerId) != null) {
+                handleNumericInput(player, message, "number-of-decks", 1, 10000, "baccarat-settings.decks-updated");
+            }
+        });
     }
 
     private void handleNumericInput(Player player, String input, String configPath, long min, long max, String messageKey) {

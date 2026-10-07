@@ -379,18 +379,30 @@ public class CoinFlipMenu extends Menu {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        if (!RAInventories.containsKey(playerId)) {
-            cleanup();
+        // Only this menu's owner, and only while this instance is still the
+        // live one for them: every open menu receives every chat message on
+        // the server, and tearing this menu down because someone else spoke
+        // used to cancel the owner's edit. Cancelling must happen here,
+        // synchronously; the edit itself touches config, entities and
+        // inventories, so it runs on the main thread after re-checking.
+        if (!playerId.equals(ownerId) || RAInventories.get(ownerId) != this) {
             return;
         }
-
-        if (AdminMenu.timerEditMode.get(playerId) != null) {
-            event.setCancelled(true);
-            handleNumericInput(player, event.getMessage().trim(), "timer", 1, 10000);
-        } else if (AdminMenu.editCoinFlipChainMode.get(playerId) != null) {
-            event.setCancelled(true);
-            handleNumericInput(player, event.getMessage().trim(), "coin-flip-max-chain-rounds", -1, 9999);
+        if (!(AdminMenu.timerEditMode.get(playerId) != null || AdminMenu.editCoinFlipChainMode.get(playerId) != null)) {
+            return;
         }
+        event.setCancelled(true);
+        String message = event.getMessage().trim();
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (RAInventories.get(ownerId) != this) {
+                return;
+            }
+            if (AdminMenu.timerEditMode.get(playerId) != null) {
+                handleNumericInput(player, message, "timer", 1, 10000);
+            } else if (AdminMenu.editCoinFlipChainMode.get(playerId) != null) {
+                handleNumericInput(player, message, "coin-flip-max-chain-rounds", -1, 9999);
+            }
+        });
     }
 
     private void handleNumericInput(Player player, String input, String configPath, long min, long max) {

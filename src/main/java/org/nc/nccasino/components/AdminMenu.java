@@ -1320,24 +1320,46 @@ public class AdminMenu extends Menu {
 
     @EventHandler
     public void onPlayerChat(AsyncPlayerChatEvent event) {
-        Player player = event.getPlayer();
-        UUID playerId = player.getUniqueId();
+        Player chatter = event.getPlayer();
+        UUID playerId = chatter.getUniqueId();
 
-        if (this.player.getUniqueId() != playerId) {
+        // Only this menu's owner, and only while this instance is still the
+        // live admin menu for them -- every open AdminMenu receives every
+        // chat message on the server.
+        if (!playerId.equals(ownerId) || adminInventories.get(playerId) != this) {
+            return;
+        }
+        if (!hasActiveChatEdit(playerId)) {
             return;
         }
 
-        if (!adminInventories.containsKey(playerId)) {
-            return;
-        }
-        if (adminInventories.get(playerId) == null){
-            return;
-        }
+        // Cancelling has to happen here, synchronously, or the input would be
+        // broadcast as chat. Everything else touches config, entities and
+        // inventories, which are main-thread-only, so it runs on the next tick
+        // -- after re-checking that the session is still the one that asked.
+        event.setCancelled(true);
+        String message = event.getMessage().trim();
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (adminInventories.get(playerId) != this || !hasActiveChatEdit(playerId)) {
+                return;
+            }
+            handleChatEdit(chatter, playerId, message);
+        });
+    }
 
+    /** Whether this owner is currently being asked to type a value into chat. */
+    private static boolean hasActiveChatEdit(UUID playerId) {
+        return nameEditMode.get(playerId) != null
+            || timerEditMode.get(playerId) != null
+            || amsgEditMode.get(playerId) != null
+            || chipEditMode.get(playerId) != null;
+    }
+
+    /** Applies one chat-entered admin value. Main thread only -- see {@link #onPlayerChat}. */
+    private void handleChatEdit(Player player, UUID playerId, String message) {
         // Editing dealer name
         if (nameEditMode.get(playerId) != null) {
-            event.setCancelled(true);
-            String newName = event.getMessage().trim();
+            String newName = message;
             if (newName.isEmpty()) {
                 denyAction(player, text("admin.invalid-name"));
                 return;
@@ -1402,8 +1424,7 @@ public class AdminMenu extends Menu {
         }
         // Editing dealer timer
         else if (timerEditMode.get(playerId) != null) {
-            event.setCancelled(true);
-            String newTimer = event.getMessage().trim();
+            String newTimer = message;
 
             java.util.OptionalLong newTimerValue = NumericInput.parseNonNegativeLong(newTimer);
             if (newTimerValue.isEmpty() || newTimerValue.getAsLong() <= 0 || newTimerValue.getAsLong() > Integer.MAX_VALUE) {
@@ -1450,8 +1471,7 @@ public class AdminMenu extends Menu {
         }
         // Editing dealer animation message
         else if (amsgEditMode.get(playerId) != null) {
-            event.setCancelled(true);
-            String newAmsg = event.getMessage().trim();
+            String newAmsg = message;
 
             if (newAmsg.isEmpty()) {
                 denyAction(player, text("admin.invalid-input"));
@@ -1497,8 +1517,7 @@ public class AdminMenu extends Menu {
             cleanup();
         }
         else if (chipEditMode.get(playerId) != null) {
-            event.setCancelled(true);
-            String newChipSize = event.getMessage().trim();
+            String newChipSize = message;
 
             java.util.OptionalLong newChipSizeValue = NumericInput.parseNonNegativeLong(newChipSize);
             if (newChipSizeValue.isEmpty() || newChipSizeValue.getAsLong() <= 0 || newChipSizeValue.getAsLong() > Integer.MAX_VALUE) {

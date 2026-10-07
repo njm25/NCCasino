@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -186,31 +187,46 @@ public class DragonDescentMenu extends Menu {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        if (!dragonInventories.containsKey(playerId)) {
-            cleanup();
+        // Only this menu's owner, and only while this instance is still the
+        // live one for them: every open menu receives every chat message on
+        // the server, and tearing this menu down because someone else spoke
+        // used to cancel the owner's edit. Cancelling must happen here,
+        // synchronously; the edit itself touches config, entities and
+        // inventories, so it runs on the main thread after re-checking.
+        if (!playerId.equals(ownerId) || dragonInventories.get(ownerId) != this) {
             return;
         }
-
-        if (editDragonSetting.containsKey(playerId)) {
-            event.setCancelled(true);
-            String configKey = editDragonSetting.get(playerId);
-            
-            int min = 1;
-            int max = 100;
-            
-            if (configKey.equals("default-columns")) {
-                min = 2;
-                max = 9;
-            } else if (configKey.equals("default-vines")) {
-                min = 1;
-                max = 8;
-            } else if (configKey.equals("default-floors")) {
-                min = 1;
-                max = 100;
-            }
-            
-            handleNumericInput(player, event.getMessage().trim(), configKey, min, max);
+        if (!(editDragonSetting.containsKey(playerId))) {
+            return;
         }
+        event.setCancelled(true);
+        String message = event.getMessage().trim();
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (dragonInventories.get(ownerId) != this) {
+                return;
+            }
+            if (editDragonSetting.containsKey(playerId)) {
+                handleDragonSettingInput(player, message);
+            }
+        });
+    }
+
+    /** Range-checks a Dragon Descent setting against its own bounds. Main thread only. */
+    private void handleDragonSettingInput(Player player, String message) {
+        String configKey = editDragonSetting.get(player.getUniqueId());
+        if (configKey == null) {
+            return;
+        }
+        int min = 1;
+        int max = 100;
+        if (configKey.equals("default-columns")) {
+            min = 2;
+            max = 9;
+        } else if (configKey.equals("default-vines")) {
+            min = 1;
+            max = 8;
+        }
+        handleNumericInput(player, message, configKey, min, max);
     }
 
     private void handleNumericInput(Player player, String input, String configPath, long min, long max) {

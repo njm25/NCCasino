@@ -177,15 +177,28 @@ public class MinesMenu extends Menu {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        if (!MAInventories.containsKey(playerId)) {
-            cleanup();
+        // Only this menu's owner, and only while this instance is still the
+        // live one for them: every open menu receives every chat message on
+        // the server, and tearing this menu down because someone else spoke
+        // used to cancel the owner's edit. Cancelling must happen here,
+        // synchronously; the edit itself touches config, entities and
+        // inventories, so it runs on the main thread after re-checking.
+        if (!playerId.equals(ownerId) || MAInventories.get(ownerId) != this) {
             return;
         }
-
-        if (AdminMenu.editMinesMode.get(playerId) != null) {
-            event.setCancelled(true);
-            handleNumericInput(player, event.getMessage().trim(), "default-mines", 1, 24);
+        if (!(AdminMenu.editMinesMode.get(playerId) != null)) {
+            return;
         }
+        event.setCancelled(true);
+        String message = event.getMessage().trim();
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (MAInventories.get(ownerId) != this) {
+                return;
+            }
+            if (AdminMenu.editMinesMode.get(playerId) != null) {
+                handleNumericInput(player, message, "default-mines", 1, 24);
+            }
+        });
     }
 
     private void handleNumericInput(Player player, String input, String configPath, long min, long max) {
