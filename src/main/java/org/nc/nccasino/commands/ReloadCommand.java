@@ -17,6 +17,7 @@ public class ReloadCommand implements CasinoCommand {
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
         plugin.reloadConfig();
         ((Nccasino) plugin).reloadLocalization();
+        ((Nccasino) plugin).reloadServiceSettings();
         // Reinitialize dealer configurations
         ((Nccasino) plugin).reloadDealerConfigurations();
         sender.sendMessage(

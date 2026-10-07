@@ -538,6 +538,19 @@ public final class Nccasino extends JavaPlugin implements Listener {
     public void reloadLocalization() {
         localizationService.reload();
     }
+
+    /**
+     * Re-applies config.yml settings that services read once: the bank
+     * reminder period, and the once-per-session budget problem reports.
+     */
+    public void reloadServiceSettings() {
+        if (dealerBudgetService != null) {
+            dealerBudgetService.onConfigReloaded();
+        }
+        if (overflowBankReminder != null) {
+            overflowBankReminder.start();
+        }
+    }
     
 
     public void addInventory(UUID mobId, DealerInventory inv) {
