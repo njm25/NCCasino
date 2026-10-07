@@ -40,6 +40,25 @@ class StoreFileTest {
     }
 
     @Test
+    void saveReplacesTheFileWholeAndLeavesNoTempFile() throws IOException {
+        File file = directory.resolve("overflow-bank.yml").toFile();
+        Files.writeString(file.toPath(), "banks:\n  old: 1\n", StandardCharsets.UTF_8);
+
+        StoreFile store = new StoreFile(file, null);
+        store.load();
+        FileConfiguration rebuilt = new YamlConfiguration();
+        rebuilt.set("banks.new", 2);
+        assertTrue(store.save(rebuilt));
+
+        FileConfiguration reread = YamlConfiguration.loadConfiguration(file);
+        assertEquals(2, reread.getInt("banks.new"));
+        assertFalse(reread.isSet("banks.old"));
+        try (var files = Files.list(directory)) {
+            assertEquals(1, files.count(), "only the store file itself remains");
+        }
+    }
+
+    @Test
     void skippedRecordsSurviveEverySave() throws IOException {
         File file = directory.resolve("pending-payouts.yml").toFile();
         Files.writeString(file.toPath(), """

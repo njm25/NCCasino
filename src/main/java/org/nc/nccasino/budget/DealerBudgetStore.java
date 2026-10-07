@@ -11,9 +11,6 @@ import org.nc.nccasino.payout.BankedCurrency;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -317,35 +314,15 @@ public class DealerBudgetStore {
             }
             config.set(base + ".shortfalls", shortfalls);
         }
-        if (!storeFile().canWrite()) {
-            return false;
-        }
-        storeFile().addPreserved(config);
-        return writeAtomically(config);
-    }
-
-    /**
-     * Writes through a temp file and moves it into place, so an interrupted
-     * write cannot leave a half-written economic record. Falls back to a
-     * non-atomic replace only where the filesystem refuses an atomic move.
-     */
-    private boolean writeAtomically(FileConfiguration config) {
-        File temp = new File(file.getParentFile(), file.getName() + ".tmp");
+        // StoreFile.save writes through a temp file, so an interrupted write
+        // cannot leave a half-written economic record.
         try {
-            config.save(temp);
-            try {
-                Files.move(temp.toPath(), file.toPath(),
-                    StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException e) {
-                Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            }
-            return true;
+            return storeFile().save(config);
         } catch (IOException e) {
             if (plugin != null && plugin.getLogger() != null) {
                 plugin.getLogger().log(Level.SEVERE,
                     "[NCCasino] Failed to save dealer-budgets.yml; the change was rolled back.", e);
             }
-            temp.delete();
             return false;
         }
     }

@@ -2,6 +2,7 @@ package org.nc.nccasino.helpers;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
@@ -102,7 +103,10 @@ public final class StoreFile {
     }
 
     /**
-     * Saves {@code config} plus every preserved record.
+     * Saves {@code config} plus every preserved record, through a temp file
+     * moved into place, so an interrupted write cannot leave a half-written
+     * file behind. Falls back to a non-atomic replace only where the
+     * filesystem refuses an atomic move.
      *
      * @return {@code false} without writing if the original could not be read
      */
@@ -111,7 +115,19 @@ public final class StoreFile {
             return false;
         }
         addPreserved(config);
-        config.save(file);
+        File temp = new File(file.getParentFile(), file.getName() + ".tmp");
+        try {
+            config.save(temp);
+            try {
+                Files.move(temp.toPath(), file.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException e) {
+            temp.delete();
+            throw e;
+        }
         return true;
     }
 
