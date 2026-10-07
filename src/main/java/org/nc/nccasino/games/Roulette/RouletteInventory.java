@@ -2062,7 +2062,7 @@ private void fillDecorativeSlots(int[] slots, Material material) {
             currencyName,
             amount,
             reason == ExitReason.PLUGIN_DISABLE
-                ? "The server restarted after your Roulette result was determined. Your payout was saved."
+                ? PayoutMessages.committedResultContext("Roulette")
                 : PayoutMessages.disconnectedMidGameContext("Roulette")
         );
         boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
