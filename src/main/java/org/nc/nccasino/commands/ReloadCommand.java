@@ -1,5 +1,6 @@
 package org.nc.nccasino.commands;
 
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
@@ -26,6 +27,11 @@ public class ReloadCommand implements CasinoCommand {
         ((Nccasino) plugin).reloadServiceSettings();
         // Reinitialize dealer configurations
         ((Nccasino) plugin).reloadDealerConfigurations();
+        // Rebuilding the dealers settled every table's players and saved what
+        // they are owed; hand it over now rather than at their next login.
+        // Two ticks, so the rebuilt tables' windows (closed next tick) are
+        // gone first.
+        Bukkit.getScheduler().runTaskLater(plugin, ((Nccasino) plugin)::deliverOwedWinningsToOnlinePlayers, 2L);
         sender.sendMessage(
             ((Nccasino) plugin).getLocalization().text(sender, "commands.reload-success")
         );

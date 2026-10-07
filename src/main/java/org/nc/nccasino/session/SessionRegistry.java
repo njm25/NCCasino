@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 
 /**
@@ -74,6 +75,29 @@ public final class SessionRegistry {
         });
         if (claimed.get()) {
             invokeTermination(playerId, session, reason);
+        }
+    }
+
+    /**
+     * Terminates every registration of every session {@code belongsTo}
+     * accepts, whichever players it is registered for, leaving all other
+     * sessions untouched. Used when one table is torn down while the plugin
+     * keeps running (a dealer rebuilt by {@code /ncc reload}), so that table
+     * can settle its own players the way a shutdown would, before the state
+     * those settlements read is cleared. Each claim is atomic, exactly as in
+     * {@link #terminateSession}, so a session is still resolved at most once.
+     */
+    public static void terminateMatching(Predicate<TerminableSession> belongsTo, ExitReason reason) {
+        for (UUID playerId : new ArrayList<>(activeSessions.keySet())) {
+            Set<TerminableSession> sessions = activeSessions.get(playerId);
+            if (sessions == null) {
+                continue;
+            }
+            for (TerminableSession session : new ArrayList<>(sessions)) {
+                if (belongsTo.test(session)) {
+                    terminateSession(playerId, session, reason);
+                }
+            }
         }
     }
 

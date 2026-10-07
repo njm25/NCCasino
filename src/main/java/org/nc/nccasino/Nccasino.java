@@ -31,8 +31,10 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -110,6 +112,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
     private SlotsProfileStore slotsProfileStore;
     private SlotsChatPromptService slotsChatPromptService;
     private DealerInteractListener dealerInteractListener;
+    private PlayerSessionListener playerSessionListener;
     private LocalizationService localizationService;
 
     /**
@@ -131,11 +134,51 @@ public final class Nccasino extends JavaPlugin implements Listener {
         if (slotsChatPromptService != null) {
             slotsChatPromptService.shutdown();
         }
+        // Every session is settled now. Nothing will listen to a casino
+        // window once this plugin is disabled -- and a reloaded instance does
+        // not recognise the old one's -- so a window left open would let its
+        // items be taken. Close them, with this plugin's listeners already
+        // gone: their close handlers have nothing left to settle, and most of
+        // them schedule a task, which a disabling plugin is refused (Bukkit
+        // marks it disabled before calling onDisable).
+        HandlerList.unregisterAll((org.bukkit.plugin.Plugin) this);
+        closeCasinoWindows();
         if (overflowBankReminder != null) {
             overflowBankReminder.stop();
         }
         CitizensDealerSupport.shutdown();
         savePreferences();
+    }
+
+    /**
+     * Closes every open window whose holder is one of this plugin's classes --
+     * including a previous instance's, after a plugin reload.
+     */
+    private void closeCasinoWindows() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.getOpenInventory() == null) {
+                continue;
+            }
+            Inventory top = player.getOpenInventory().getTopInventory();
+            InventoryHolder holder = top == null ? null : top.getHolder();
+            if (holder != null && holder.getClass().getName().startsWith("org.nc.nccasino.")) {
+                player.closeInventory();
+            }
+        }
+    }
+
+    /**
+     * Settles what every online player is owed. Settlements saved while their
+     * players stay online -- a dealer rebuilt by /ncc reload, or this plugin
+     * reloading -- would otherwise wait for each player's next login.
+     */
+    public void deliverOwedWinningsToOnlinePlayers() {
+        if (playerSessionListener == null) {
+            return;
+        }
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            playerSessionListener.deliverOwedWinnings(player);
+        }
     }
 
     @Override
@@ -198,7 +241,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new DealerDeathHandler(this), this);
         getServer().getPluginManager().registerEvents(new DealerEventListener(), this);
         getServer().getPluginManager().registerEvents(new DealerInitializeListener(this), this); // Register the chunk listener
-        getServer().getPluginManager().registerEvents(new PlayerSessionListener(this), this);
+        playerSessionListener = new PlayerSessionListener(this);
+        getServer().getPluginManager().registerEvents(playerSessionListener, this);
         getServer().getPluginManager().registerEvents(new ClientLanguageListener(this), this);
 
         // Optional Citizens integration. No-op when Citizens is not installed.
@@ -218,7 +262,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
         //bStats support
         @SuppressWarnings("unused")
         Metrics metrics = new Metrics(this, pluginId);
-        
+
+        // A plugin reload leaves players online: close any casino window the
+        // previous instance left open (none at a normal startup), and hand
+        // over what its shutdown saved for them once everything is running.
+        closeCasinoWindows();
+        Bukkit.getScheduler().runTask(this, this::deliverOwedWinningsToOnlinePlayers);
 
         getLogger().info("NCCasino plugin enabled!");
     }

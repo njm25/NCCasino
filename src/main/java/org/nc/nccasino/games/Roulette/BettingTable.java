@@ -62,6 +62,8 @@ public class BettingTable extends DealerInventory {
     private final Map<Integer, Double> chipValues;
     private final Stack<Pair<String, Integer>> betStack;
     private Stack<Pair<String, Integer>> testStack;
+    /** Set once this table's dealer was torn down and its stake settled -- see {@link #retireForTeardown}. */
+    private boolean retired = false;
     private boolean betsClosed=false;
     private int countdown1=30;
     /**
@@ -620,7 +622,7 @@ public class BettingTable extends DealerInventory {
 
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
-        if (event.getInventory().getHolder() != this) return;
+        if (retired || event.getInventory().getHolder() != this) return;
 
 
         if (betsClosed) {
@@ -1473,6 +1475,24 @@ private boolean isValidSlotPage2(int slot) {
     void cleanupListener() {
         stopBettingMusic();
         HandlerList.unregisterAll(this);
+    }
+
+    /**
+     * Called when this table's dealer is torn down after the stake on it was
+     * already settled. Stops listening, so closing the window cannot write
+     * these chips back into the dealer's bets, empties the chip stack, so an
+     * undo cannot refund a settled chip a second time, and ignores any click
+     * that lands before the window closes.
+     */
+    void retireForTeardown() {
+        retired = true;
+        cleanupListener();
+        betStack.clear();
+    }
+
+    @Override
+    public boolean isRetired() {
+        return retired;
     }
 
     void startBettingMusic(Player player) {

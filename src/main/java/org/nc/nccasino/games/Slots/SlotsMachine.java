@@ -1470,9 +1470,20 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
 
     // ---- click handling --------------------------------------------------
 
+    /**
+     * Whether this machine's session has ended (see {@link #onSessionTerminated}).
+     * Its window can outlive it -- a dealer rebuilt by /ncc reload terminates
+     * every machine at once -- and a terminated machine accepts no input.
+     * Note that this is false while a chat prompt has merely suspended it.
+     */
+    @Override
+    public boolean isRetired() {
+        return closeFlag;
+    }
+
     @Override
     public void handleClick(int slot, Player clicker, InventoryClickEvent event) {
-        if (!(event.getInventory().getHolder() instanceof SlotsMachine) || !clicker.getUniqueId().equals(playerId)) {
+        if (closeFlag || !(event.getInventory().getHolder() instanceof SlotsMachine) || !clicker.getUniqueId().equals(playerId)) {
             return;
         }
         if (openingActive) {

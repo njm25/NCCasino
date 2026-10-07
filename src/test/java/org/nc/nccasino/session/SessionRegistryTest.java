@@ -138,4 +138,53 @@ class SessionRegistryTest {
         assertFalse(SessionRegistry.hasActiveSession(first));
         assertFalse(SessionRegistry.hasActiveSession(second));
     }
+
+    @Test
+    void terminateMatchingResolvesOnlyMatchingSessionsForEveryPlayer() {
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        AtomicInteger tableCalls = new AtomicInteger();
+        AtomicInteger otherCalls = new AtomicInteger();
+        TerminableSession table = (id, reason) -> {
+            assertEquals(ExitReason.PLUGIN_DISABLE, reason);
+            tableCalls.incrementAndGet();
+        };
+        TerminableSession otherGame = (id, reason) -> otherCalls.incrementAndGet();
+
+        SessionRegistry.register(first, table);
+        SessionRegistry.register(second, table);
+        SessionRegistry.register(first, otherGame);
+
+        SessionRegistry.terminateMatching(session -> session == table, ExitReason.PLUGIN_DISABLE);
+
+        assertEquals(2, tableCalls.get(), "once for each player the table holds");
+        assertEquals(0, otherCalls.get());
+        assertFalse(SessionRegistry.isRegistered(first, table));
+        assertFalse(SessionRegistry.isRegistered(second, table));
+        assertTrue(SessionRegistry.isRegistered(first, otherGame), "another game's session survives");
+
+        SessionRegistry.terminateMatching(session -> session == table, ExitReason.PLUGIN_DISABLE);
+        assertEquals(2, tableCalls.get(), "a second teardown finds nothing left to settle");
+
+        SessionRegistry.terminatePlayerSession(first, ExitReason.DISCONNECTED);
+        assertEquals(1, otherCalls.get());
+    }
+
+    @Test
+    void terminateMatchingDoesNotRevisitASessionThatReRegistersItself() {
+        UUID playerId = UUID.randomUUID();
+        AtomicInteger calls = new AtomicInteger();
+        TerminableSession[] self = new TerminableSession[1];
+        self[0] = (id, reason) -> {
+            calls.incrementAndGet();
+            SessionRegistry.register(id, self[0]);
+        };
+        SessionRegistry.register(playerId, self[0]);
+
+        SessionRegistry.terminateMatching(session -> session == self[0], ExitReason.PLUGIN_DISABLE);
+
+        assertEquals(1, calls.get());
+        assertTrue(SessionRegistry.isRegistered(playerId, self[0]));
+        SessionRegistry.unregister(playerId, self[0]);
+    }
 }

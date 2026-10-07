@@ -194,6 +194,27 @@ public class RockPaperScissorsServer extends Server {
         matchFor(playerId).refundForShutdown();
     }
 
+    @Override
+    protected boolean ownsSession(TerminableSession session) {
+        if (super.ownsSession(session) || sharedMatch.ownsRidingSession(session)) {
+            return true;
+        }
+        for (RpsMatch match : pveMatches.values()) {
+            if (match.ownsRidingSession(session)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    protected void cancelScheduledTasks() {
+        sharedMatch.cancelCountdown();
+        for (RpsMatch match : pveMatches.values()) {
+            match.cancelCountdown();
+        }
+    }
+
     void registerRidingSession(UUID playerId) {
         matchFor(playerId).registerRidingSession(playerId);
     }
@@ -811,7 +832,7 @@ public class RockPaperScissorsServer extends Server {
             chainWins = 0;
             exitSettlementPending = false;
             timeLeft = 0;
-            countdownTaskId = -1;
+            cancelCountdown();
             picks.clear();
 
             if (payout > 0 && !forfeited.contains(playerId)) {
@@ -875,7 +896,7 @@ public class RockPaperScissorsServer extends Server {
             chainWins = 0;
             exitSettlementPending = false;
             timeLeft = 0;
-            countdownTaskId = -1;
+            cancelCountdown();
             picks.clear();
             handlePayout(payoutOne, payoutTwo, payout, winner, wager, cappedWin);
             if (payoutOne != null) {
@@ -906,7 +927,7 @@ public class RockPaperScissorsServer extends Server {
             committedWinner = null;
             betAmount = 0;
             timeLeft = 0;
-            countdownTaskId = -1;
+            cancelCountdown();
             picks.clear();
 
             refundStakeIfDue(payoutOne, stake);
@@ -1050,7 +1071,7 @@ public class RockPaperScissorsServer extends Server {
             chainWins = 0;
             exitSettlementPending = false;
             timeLeft = 0;
-            countdownTaskId = -1;
+            cancelCountdown();
             picks.clear();
 
             if (winner != null) {
@@ -1175,6 +1196,18 @@ public class RockPaperScissorsServer extends Server {
                 chairTwoOccupant = null;
                 send("PLAYER_LEAVE_TWO", null);
             }
+        }
+
+        /** Stops this match's pick countdown, if one is running. */
+        private void cancelCountdown() {
+            if (countdownTaskId != -1) {
+                Bukkit.getScheduler().cancelTask(countdownTaskId);
+                countdownTaskId = -1;
+            }
+        }
+
+        private boolean ownsRidingSession(TerminableSession session) {
+            return ridingSessions.containsValue(session);
         }
 
         private void registerRidingSession(UUID playerId) {

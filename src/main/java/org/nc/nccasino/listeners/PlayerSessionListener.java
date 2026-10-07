@@ -148,8 +148,17 @@ public class PlayerSessionListener implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
+        deliverOwedWinnings(event.getPlayer());
+    }
 
+    /**
+     * Settles whatever this player is owed: pending payouts first, then the
+     * overflow bank. Runs on join, and also for players who are already online
+     * when settlements are saved without them leaving -- a dealer rebuilt by
+     * /ncc reload, or the plugin itself reloading -- who would otherwise wait
+     * until their next login.
+     */
+    public void deliverOwedWinnings(Player player) {
         PendingPayoutStore store = plugin.getPendingPayoutStore();
         if (store == null) {
             deliverBankedWinnings(player);

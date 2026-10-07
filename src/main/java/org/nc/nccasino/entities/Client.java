@@ -51,6 +51,13 @@ public abstract class Client extends DealerInventory {
     protected boolean betSlip = false; 
     protected int bettingPaperSlot=53;
     protected int rebetSlot=44;
+    /**
+     * Set once this client has been removed from its table. Its window can
+     * stay open for a tick after that (a dealer rebuilt by /ncc reload closes
+     * windows on the next tick), and a click in that gap must not place a bet
+     * on a table that has already settled and let go of this player.
+     */
+    private boolean retired = false;
 
     public Client(Server server, Player player, String title,
                   Nccasino plugin, String internalName)
@@ -164,7 +171,7 @@ public abstract class Client extends DealerInventory {
 
     @Override
     public void handleClick(int slot, Player clicker, InventoryClickEvent event) {
-        if (!clicker.getUniqueId().equals(player.getUniqueId())) return;
+        if (retired || !clicker.getUniqueId().equals(player.getUniqueId())) return;
 
         // If it's one of the bet slots (chips, rebet, etc.), handle it:
         if (bettingEnabled && isBetSlot(slot)) {
@@ -969,7 +976,13 @@ public abstract class Client extends DealerInventory {
     }
 
     public void cleanup() {
+        retired = true;
         unregisterListener();
+    }
+
+    @Override
+    public boolean isRetired() {
+        return retired;
     }
 
     public UUID getOwnerId() {

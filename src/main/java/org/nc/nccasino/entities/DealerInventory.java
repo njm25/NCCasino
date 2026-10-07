@@ -17,6 +17,7 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.helpers.SoundHelper;
@@ -52,6 +53,41 @@ public class DealerInventory implements InventoryHolder, Listener {
             di.delete();  // each .delete() handles removing references
         }
         inventories.clear();
+    }
+
+    /**
+     * Whether the game behind this window has let go of it: its player was
+     * settled and removed because the table was torn down. A retired window
+     * accepts no input and is closed by {@link #closeRetiredWindowsNextTick}.
+     */
+    public boolean isRetired() {
+        return false;
+    }
+
+    /**
+     * Closes, on the next tick, every open window whose game retired it. A
+     * table torn down while the plugin keeps running -- a dealer rebuilt by
+     * /ncc reload, a Citizens NPC respawning, an admin rebuilding a table --
+     * settles its players, but their windows stay open until something
+     * closes them, and closing them from inside the event that caused the
+     * teardown is unsafe, hence the tick.
+     */
+    public static void closeRetiredWindowsNextTick(Plugin plugin) {
+        if (plugin == null || !plugin.isEnabled()) {
+            return;
+        }
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                if (player.getOpenInventory() == null) {
+                    continue;
+                }
+                Inventory top = player.getOpenInventory().getTopInventory();
+                if (top != null && top.getHolder() instanceof DealerInventory dealerInventory
+                    && dealerInventory.isRetired()) {
+                    player.closeInventory();
+                }
+            }
+        });
     }
 
     /**

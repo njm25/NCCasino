@@ -268,6 +268,22 @@ public class RouletteInventory extends DealerInventory implements TerminableSess
 
     @Override
     public void delete() {
+        // A dealer rebuilt while the plugin keeps running -- /ncc reload
+        // rebuilds every dealer -- ends here, and the tasks that would resolve
+        // the round are cancelled below. Settle every player with a stake on
+        // this table first, through the same policy a server stop uses: an
+        // unresolved bet is refunded, a win already decided is saved. That
+        // has to happen while Bets and Tables still describe those stakes.
+        SessionRegistry.terminateMatching(session -> session == this, ExitReason.PLUGIN_DISABLE);
+        // Those stakes are settled now. Retire every betting table before any
+        // of their windows close, so none can write its chips back into Bets
+        // (re-registering a stake that was just refunded) or refund a chip
+        // again through an undo in the tick before its window closes.
+        for (BettingTable bettingTable : new ArrayList<>(Tables.values())) {
+            bettingTable.retireForTeardown();
+        }
+        closeRetiredWindowsNextTick(plugin);
+
         super.delete();
          for (int taskId : activeTaskIds) {
             if(taskId!=1){

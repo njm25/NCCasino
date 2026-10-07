@@ -3,9 +3,11 @@ package org.nc.nccasino.games.Baccarat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
@@ -14,6 +16,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.CurrencyProvider;
@@ -38,6 +41,13 @@ public class BaccaratServer extends Server {
     private final Map<UUID, TerminableSession> ridingSessions = new HashMap<>();
 
     private int countdownTaskId = -1;
+    /**
+     * Every pending one-shot step of the current round (deal, draw, evaluate,
+     * reset). Tracked so a table torn down mid-hand -- a dealer rebuilt by
+     * /ncc reload -- can stop the hand after its players were refunded,
+     * instead of leaving it to deal on in the background.
+     */
+    private final Set<BukkitTask> roundTasks = new HashSet<>();
     private int timeLeft;
     private Deck deck;
     private List<Card> playerHand = new ArrayList<>();
@@ -342,6 +352,33 @@ public class BaccaratServer extends Server {
         sendSeatUpdates();
     }
 
+    /** Schedules one step of the round, remembered until it runs so a teardown can cancel it. */
+    private void later(Runnable step, long delayTicks) {
+        BukkitTask[] self = new BukkitTask[1];
+        self[0] = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            roundTasks.remove(self[0]);
+            step.run();
+        }, delayTicks);
+        roundTasks.add(self[0]);
+    }
+
+    @Override
+    protected boolean ownsSession(TerminableSession session) {
+        return super.ownsSession(session) || ridingSessions.containsValue(session);
+    }
+
+    @Override
+    protected void cancelScheduledTasks() {
+        if (countdownTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(countdownTaskId);
+            countdownTaskId = -1;
+        }
+        for (BukkitTask task : new ArrayList<>(roundTasks)) {
+            task.cancel();
+        }
+        roundTasks.clear();
+    }
+
     void registerRidingSession(UUID playerId) {
         TerminableSession session = ridingSessions.computeIfAbsent(
             playerId,
@@ -545,7 +582,7 @@ public class BaccaratServer extends Server {
         }
     
         updateTimerDisplay(-1); // Remove timer UI
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        later(() -> {
             dealInitialCards();
         }, 20L);
         //evaluateHands();
@@ -558,36 +595,36 @@ public class BaccaratServer extends Server {
         bankerHand.clear();
     
         // Correct Baccarat draw order
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        later(() -> {
             playerHand.add(deck.dealCard());
             broadcastUpdate("DEAL_CARDS", Arrays.asList(playerHand.get(0)));
             updateHandTotals();
         }, 20L);
     
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        later(() -> {
             bankerHand.add(deck.dealCard());
             broadcastUpdate("DEAL_CARDS", Arrays.asList(bankerHand.get(0)));
             updateHandTotals();
         }, 40L);
     
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        later(() -> {
             playerHand.add(deck.dealCard());
             broadcastUpdate("DEAL_CARDS", Arrays.asList(playerHand.get(1)));
             updateHandTotals();
         }, 60L);
     
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        later(() -> {
             bankerHand.add(deck.dealCard());
             broadcastUpdate("DEAL_CARDS", Arrays.asList(bankerHand.get(1)));
             updateHandTotals();
         }, 80L);
 
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        later(() -> {
             if (playerHand.size() >= 2 && bankerHand.size() >= 2) {
                 evaluateHands();
             } else {
                 Bukkit.getLogger().warning("evaluateHands() called too early, retrying...");
-                Bukkit.getScheduler().runTaskLater(plugin, this::evaluateHands, 20L);
+                later(this::evaluateHands, 20L);
             }
         }, 100L);
     
@@ -598,10 +635,10 @@ public class BaccaratServer extends Server {
     private void evaluateHands() {
          if (playerHand.size() < 2 || bankerHand.size() < 2) {
             Bukkit.getLogger().warning("evaluateHands called too early! Delaying...");
-            Bukkit.getScheduler().runTaskLater(plugin, this::evaluateHands, 20L);
+            later(this::evaluateHands, 20L);
             return;
         }
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        later(() -> {
             int playerTotal = getBaccaratHandValue(playerHand);
             int bankerTotal = getBaccaratHandValue(bankerHand);
     
@@ -614,7 +651,7 @@ public class BaccaratServer extends Server {
     
             if (playerDraws) {
                 // Player draws a third card
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                later(() -> {
                     playerHand.add(deck.dealCard());
                     broadcastUpdate("PLAYER_DRAW", playerHand.get(playerHand.size() - 1));
                     updateHandTotals();
@@ -644,7 +681,7 @@ public class BaccaratServer extends Server {
     
     
     private void drawBankerCard() {
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        later(() -> {
             bankerHand.add(deck.dealCard());
             broadcastUpdate("BANKER_DRAW", bankerHand.get(bankerHand.size() - 1));
             updateHandTotals();
@@ -976,7 +1013,7 @@ public class BaccaratServer extends Server {
     }
 
 private void resetGame() {
-    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+    later(() -> {
         currentWinString=null;
         playerBets.clear();
         totalBets.clear();
@@ -999,7 +1036,7 @@ private void resetGame() {
         }
         sendSeatUpdates();
         
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        later(() -> {
         startTimer();
         }, 10L);
     }, 70L); // Delay before resetting for UI effects

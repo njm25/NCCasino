@@ -9541,6 +9541,11 @@ public void delete() {
     // would have nothing left to read.
     for (UUID seatedPlayerId : new ArrayList<>(playerSeats.keySet())) {
         refundRoundDebit(seatedPlayerId, totalRoundRefundForPlayer(seatedPlayerId), "blackjack.table-reset-refunded");
+        // Hand each refunded stake back off the dealer's books too, exactly
+        // as abortRoundAndRefund does -- otherwise every reservation open at
+        // teardown (/ncc reload rebuilds every dealer) stays reserved forever
+        // and shrinks what a LIMITED dealer can cover.
+        releaseAllBudgetCommitments(seatedPlayerId, true);
     }
 
     // Stop any ongoing game operations

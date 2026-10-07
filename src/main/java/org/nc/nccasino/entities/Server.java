@@ -1,5 +1,6 @@
 package org.nc.nccasino.entities;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -25,6 +26,9 @@ import org.nc.nccasino.payout.BankedCurrency;
 import org.nc.nccasino.payout.OverflowBankService;
 import org.nc.nccasino.payout.ItemDeliveryOutcome;
 import org.nc.nccasino.payout.UnsettledPayouts;
+import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.SessionRegistry;
+import org.nc.nccasino.session.TerminableSession;
 
 public abstract class Server extends DealerInventory {
 
@@ -214,11 +218,20 @@ public abstract class Server extends DealerInventory {
 
     @Override
     public void delete() {
+        // A table is deleted while the plugin keeps running whenever its dealer
+        // is rebuilt -- /ncc reload rebuilds every dealer. Settle every player
+        // this table still holds through the same policy a server stop uses
+        // (refund an unresolved stake, save a decided result) while the state
+        // those settlements read still exists, then stop the round so nothing
+        // scheduled can act on a table whose players were already settled.
+        SessionRegistry.terminateMatching(this::ownsSession, ExitReason.PLUGIN_DISABLE);
+        cancelScheduledTasks();
+
         // Let the parent class handle any standard cleanup
         super.delete();
 
         // Clean up each client
-        for (Client client : clients.values()) {
+        for (Client client : new ArrayList<>(clients.values())) {
             client.cleanup();
         }
         clients.clear();
@@ -226,6 +239,22 @@ public abstract class Server extends DealerInventory {
 
         // Unregister from Bukkit events
         unregisterListener();
+
+        // Every client is retired now; close the windows still showing them.
+        closeRetiredWindowsNextTick(plugin);
+    }
+
+    /**
+     * Whether {@code session} is one of this table's players: a client it
+     * created, or -- in subclasses -- a stake still riding a round after its
+     * player left.
+     */
+    protected boolean ownsSession(TerminableSession session) {
+        return session instanceof Client client && client.server == this;
+    }
+
+    /** Stops every task this table has scheduled. Called once its players are settled. */
+    protected void cancelScheduledTasks() {
     }
 
     protected void playCountdownSound() {

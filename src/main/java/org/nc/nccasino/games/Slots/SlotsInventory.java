@@ -41,6 +41,8 @@ public class SlotsInventory extends DealerInventory {
         for (Map.Entry<UUID, SlotsMachine> entry : new ArrayList<>(machines.entrySet())) {
             SessionRegistry.terminateSession(entry.getKey(), entry.getValue(), ExitReason.PLUGIN_DISABLE);
         }
+        // Each terminated machine accepts no more input; close its window.
+        closeRetiredWindowsNextTick(plugin);
         super.delete();
         machines.clear();
         HandlerList.unregisterAll(this);

@@ -167,6 +167,27 @@ public class CoinFlipServer extends Server {
         matchFor(playerId).refundForShutdown();
     }
 
+    @Override
+    protected boolean ownsSession(TerminableSession session) {
+        if (super.ownsSession(session) || sharedMatch.ownsRidingSession(session)) {
+            return true;
+        }
+        for (CoinFlipMatch match : pveMatches.values()) {
+            if (match.ownsRidingSession(session)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    protected void cancelScheduledTasks() {
+        sharedMatch.cancelCountdown();
+        for (CoinFlipMatch match : pveMatches.values()) {
+            match.cancelCountdown();
+        }
+    }
+
     void registerRidingSession(UUID playerId) {
         matchFor(playerId).registerRidingSession(playerId);
     }
@@ -652,7 +673,7 @@ public class CoinFlipServer extends Server {
             exitSettlementPending = false;
             playerPick = null;
             timeLeft = 0;
-            countdownTaskId = -1;
+            cancelCountdown();
 
             if (payout > 0 && !forfeited.contains(playerId)) {
                 Player onlinePlayer = Bukkit.getPlayer(playerId);
@@ -715,7 +736,7 @@ public class CoinFlipServer extends Server {
             exitSettlementPending = false;
             playerPick = null;
             timeLeft = 0;
-            countdownTaskId = -1;
+            cancelCountdown();
             handlePayout(payoutOne, payoutTwo, payout, winner, wager, pveWin);
             if (payoutOne != null) {
                 clearRidingSession(payoutOne.getUniqueId());
@@ -878,7 +899,7 @@ public class CoinFlipServer extends Server {
             exitSettlementPending = false;
             playerPick = null;
             timeLeft = 0;
-            countdownTaskId = -1;
+            cancelCountdown();
 
             if (winner != null) {
                 // settleRound() applies this flip's chain multiplier before
@@ -1011,6 +1032,18 @@ public class CoinFlipServer extends Server {
                 chairTwoOccupant = null;
                 send("PLAYER_LEAVE_TWO", null);
             }
+        }
+
+        /** Stops this match's pick countdown, if one is running. */
+        private void cancelCountdown() {
+            if (countdownTaskId != -1) {
+                Bukkit.getScheduler().cancelTask(countdownTaskId);
+                countdownTaskId = -1;
+            }
+        }
+
+        private boolean ownsRidingSession(TerminableSession session) {
+            return ridingSessions.containsValue(session);
         }
 
         private void registerRidingSession(UUID playerId) {
