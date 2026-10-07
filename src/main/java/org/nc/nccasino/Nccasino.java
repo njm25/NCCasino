@@ -89,6 +89,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
     private Map<UUID, Preferences> playerPreferences = new HashMap<>();
     private File preferencesFile;
     private FileConfiguration preferencesConfig;
+    /** Keeps an unreadable preferences.yml from being saved over. */
+    private StoreFile preferencesStore;
     private NamespacedKey INTERNAL_NAME_KEY; // Declare it here
 
     private Material currency;    // Material used for betting currency
@@ -236,8 +238,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
             }
         }
     
-        // Load YAML configuration
-        preferencesConfig = YamlConfiguration.loadConfiguration(preferencesFile);
+        // Strict load: an unreadable file is copied aside and never saved
+        // over, so a typo in a hand edit cannot erase every player's settings.
+        preferencesStore = new StoreFile(preferencesFile, getLogger());
+        preferencesConfig = preferencesStore.load();
     
         // Read stored preferences into memory
         int unsupportedLanguages = 0;
@@ -466,6 +470,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
             getLogger().severe("preferencesConfig is null! Skipping save.");
             return;
         }
+        if (preferencesStore != null && !preferencesStore.canWrite()) {
+            return;
+        }
     
         for (Map.Entry<UUID, Preferences> entry : playerPreferences.entrySet()) {
             Preferences preferences = entry.getValue();
@@ -492,7 +499,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
         }
     
         try {
-            preferencesConfig.save(preferencesFile);
+            if (preferencesStore != null) {
+                preferencesStore.save(preferencesConfig);
+            } else {
+                preferencesConfig.save(preferencesFile);
+            }
             //getLogger().info("Saved player preferences.");
         } catch (IOException e) {
             getLogger().severe("Could not save data/preferences.yml!");
