@@ -239,6 +239,28 @@ class PendingPayoutStoreTest {
     }
 
     @Test
+    void fractionalItemPayoutThatMovesNothingIsKeptWhole() {
+        // 2.5 rounds to 2 or 3 at random. Whichever way it rounds, a delivery
+        // that moved nothing must leave the full 2.5 owed, never 2.
+        OverflowBankService refusingBank = mock(OverflowBankService.class);
+        when(refusingBank.deliver(any(Player.class), any(BankedCurrency.class), org.mockito.ArgumentMatchers.anyLong()))
+            .thenAnswer(call -> ItemDeliveryOutcome.allUnsettled(call.getArgument(2)));
+        when(plugin.getOverflowBankService()).thenReturn(refusingBank);
+        UUID playerId = UUID.randomUUID();
+        Player player = player(playerId);
+        PendingPayout payout = itemPayout(playerId, "EMERALD", 2.5);
+        PendingPayoutStore store = new PendingPayoutStore(plugin);
+        assertTrue(store.addPendingPayout(payout));
+
+        for (int attempt = 0; attempt < 40; attempt++) {
+            DeliveryResult result = store.attemptDeliver(player);
+            assertTrue(result.delivered().isEmpty());
+            assertEquals(java.util.List.of(payout), store.getPending(playerId));
+        }
+        assertEquals(java.util.List.of(payout), new PendingPayoutStore(plugin).getPending(playerId));
+    }
+
+    @Test
     void invalidSnapshottedMaterialLeavesPayoutPending() {
         UUID playerId = UUID.randomUUID();
         Player player = player(playerId);

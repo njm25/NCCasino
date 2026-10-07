@@ -372,6 +372,12 @@ public class PendingPayoutStore {
             player,
             new BankedCurrency(payout.currencyMode(), material.name(), payout.currencyName()),
             wholeAmount);
+        if (outcome.unsettled() >= wholeAmount) {
+            // Nothing moved. Report the original amount, not the rounded
+            // one, so a fractional record is retried whole instead of being
+            // shrunk to its rounded-down value.
+            return payout.amount();
+        }
         return outcome.unsettled();
     }
 }
