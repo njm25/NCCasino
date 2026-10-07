@@ -26,6 +26,7 @@ import org.nc.nccasino.payout.PendingPayout;
 import org.nc.nccasino.payout.PendingPayoutStore;
 import org.nc.nccasino.payout.WagerGate;
 import org.nc.nccasino.session.ExitReason;
+import org.nc.nccasino.session.KickClassifier;
 import org.nc.nccasino.session.SessionRegistry;
 
 import java.util.UUID;
@@ -42,7 +43,8 @@ import java.util.UUID;
  * it sees the final cancellation state after every other plugin has had a
  * chance to cancel it) to classify the quit that follows it as
  * {@link ExitReason#KICKED} instead — it does not run a separate cleanup
- * path of its own.
+ * path of its own. Only punitive kicks are marked; a timeout, AFK kick,
+ * duplicate login or restart stays a disconnect (see {@link KickClassifier}).
  *
  * <p>Every quit or kick also unconditionally releases any admin edit-mode
  * lock and stale intro-animation tracking for that player, regardless of
@@ -69,6 +71,14 @@ public class PlayerSessionListener implements Listener {
             return;
         }
 
+        // A timeout, AFK kick, duplicate login or restart is routed through
+        // the kick path by the server but is not a judgement about the
+        // player; leaving it unmarked lets the quit that follows be handled
+        // as an ordinary disconnect, so a committed win is still honored.
+        if (!KickClassifier.isPunitive(paperKickCause(event), event.getReason(), spigotRestartMessage())) {
+            return;
+        }
+
         UUID playerId = event.getPlayer().getUniqueId();
         SessionRegistry.markKicked(playerId);
 
@@ -79,6 +89,25 @@ public class PlayerSessionListener implements Listener {
         // refund they are entitled to.
         Bukkit.getScheduler().runTaskLater(plugin,
             () -> SessionRegistry.clearKickMarker(playerId), 5L);
+    }
+
+    /** Paper's structured kick cause, or {@code null} on Spigot, which has none. */
+    private static String paperKickCause(PlayerKickEvent event) {
+        try {
+            Object cause = event.getClass().getMethod("getCause").invoke(event);
+            return cause instanceof Enum<?> value ? value.name() : null;
+        } catch (ReflectiveOperationException | RuntimeException notPaper) {
+            return null;
+        }
+    }
+
+    /** spigot.yml's restart kick message, or {@code null} where it is unavailable. */
+    private static String spigotRestartMessage() {
+        try {
+            return Bukkit.spigot().getConfig().getString("messages.restart");
+        } catch (RuntimeException | LinkageError unavailable) {
+            return null;
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

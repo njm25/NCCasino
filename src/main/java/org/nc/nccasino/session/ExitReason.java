@@ -7,15 +7,16 @@ package org.nc.nccasino.session;
 public enum ExitReason {
     /**
      * Player disconnected: voluntary quit, client crash, Alt+F4, Wi-Fi
-     * loss, timeout, or a Geyser/Bedrock drop. NCCasino cannot and does
-     * not try to distinguish these at the API level — they all surface as
-     * the same {@code PlayerQuitEvent}.
+     * loss, or a Geyser/Bedrock drop -- plus the server-originated kicks
+     * that are not the player's fault (keep-alive timeout, AFK kick,
+     * duplicate login, restart), which {@link KickClassifier} folds in here.
      */
     DISCONNECTED,
 
     /**
-     * Player was removed by a (non-cancelled) kick. Never entitled to a
-     * refund, deferred payout, or cash-out, regardless of game phase.
+     * Player was removed by a punitive (non-cancelled) kick -- a command,
+     * ban, or moderation/anti-cheat plugin. Never entitled to a refund,
+     * deferred payout, or cash-out, regardless of game phase.
      */
     KICKED,
 
