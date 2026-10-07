@@ -184,7 +184,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         INTERNAL_NAME_KEY = new NamespacedKey(this, "internal_name");
-        checkForUpdates();
+        // A network request: off the main thread, so a slow site never holds
+        // up the server start.
+        Bukkit.getScheduler().runTaskAsynchronously(this, this::checkForUpdates);
         saveDefaultConfig();
         reloadConfig();
         if (configProblem != null) {
@@ -1187,7 +1189,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
     }
 
     private String parseVersionFromHtml(String htmlContent) {
-        Pattern pattern = Pattern.compile("nccasino-(\\d+\\.\\d+\\.\\d+)\\.jar");
+        // Uploads have been named both ways (nccasino-1.4.8.jar, NCCasino-1.4.9.jar).
+        Pattern pattern = Pattern.compile("nccasino-(\\d+\\.\\d+\\.\\d+)\\.jar", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(htmlContent);
         return matcher.find() ? matcher.group(1) : null;
     }
