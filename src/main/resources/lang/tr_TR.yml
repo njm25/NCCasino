@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO yapılandırması başarıyla yeniden yüklendi."
   reload-override-warnings: "&eYok sayılan dil geçersiz kılmaları: {count}. Ayrıntılar için konsola bak."
+  reload-config-unreadable: "&cconfig.yml okunamadı, bu yüzden hiçbir şey yeniden yüklenmedi. Konsolda gösterilen hatayı düzelt, ardından /ncc reload komutunu yeniden çalıştır."
   dealer-not-found: "&cKrupiye '&e{name}&c' bulunamadı."
   dealer-deleted: "&aKrupiye '&e{name}&a' ve ilgili tüm bileşenleri silindi."
   help-title: "&d&lNCCASINO YARDIM"

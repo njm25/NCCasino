@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO-konfigurationen er genindlæst."
   reload-override-warnings: "&eIgnorerede sprogtilsidesættelser: {count}. Se konsollen for detaljer."
+  reload-config-unreadable: "&cKunne ikke læse config.yml, så intet blev genindlæst. Ret fejlen, der vises i konsollen, og kør derefter /ncc reload igen."
   dealer-not-found: "&cDealeren '&e{name}&c' blev ikke fundet."
   dealer-deleted: "&aDealeren '&e{name}&a' og alle tilknyttede komponenter er slettet."
   help-title: "&d&lNCCASINO-HJÆLP"

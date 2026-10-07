@@ -1276,6 +1276,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aIl-konfigurazzjoni tan-NCCASINO ġiet imgħobbija mill-ġdid b'suċċess."
   reload-override-warnings: "&eSostituzzjonijiet tal-lingwa injorati: {count}. Ara l-console għad-dettalji."
+  reload-config-unreadable: "&cMa setax jinqara config.yml, għalhekk xejn ma ġie mgħobbi mill-ġdid. Irranġa l-iżball muri fil-console, imbagħad erġa' ħaddem /ncc reload."
   dealer-not-found: "&cId-dealer '&e{name}&c' ma nstabx."
   dealer-deleted: "&aId-dealer '&e{name}&a' u l-komponenti assoċjati kollha tħassru."
   help-title: "&d&lGĦAJNUNA TAN-NCCASINO"

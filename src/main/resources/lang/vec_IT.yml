@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aConfigurasion de NCCASINO ricargada."
   reload-override-warnings: "&eSostitusion de léngua ignorà: {count}. Varda la console par i detaji."
+  reload-config-unreadable: "&cNo se ga podesto lèzar config.yml, cuindi no xe stà ricargà gnente. Coregi l'eror mostrà ne la console, dopo fa partir de novo /ncc reload."
   dealer-not-found: "&cEl crupier «&e{name}&c» no 'l xe stà catà."
   dealer-deleted: "&aEl crupier «&e{name}&a» e tuti i so conponenti i xe stài scancelài."
   help-title: "&d&lAIUTO DE NCCASINO"

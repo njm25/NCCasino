@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aAil-lwythwyd ffurfweddiad NCCASINO yn llwyddiannus."
   reload-override-warnings: "&eAnwybyddwyd gwerthoedd iaith amgen: {count}. Gweler y consol am fanylion."
+  reload-config-unreadable: "&cMethwyd darllen config.yml, felly ni chafodd dim ei ail-lwytho. Trwsiwch y gwall a ddangosir yn y consol, yna rhedwch /ncc reload eto."
   dealer-not-found: "&cHeb ddod o hyd i'r deliwr “&e{name}&c”."
   dealer-deleted: "&aDilëwyd y deliwr “&e{name}&a” a'r holl gydrannau cysylltiedig."
   help-title: "&d&lCYMORTH NCCASINO"

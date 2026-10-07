@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aĐã tải lại cấu hình NCCASINO thành công."
   reload-override-warnings: "&eGhi đè ngôn ngữ bị bỏ qua: {count}. Xem bảng điều khiển để biết chi tiết."
+  reload-config-unreadable: "&cKhông thể đọc config.yml nên không có gì được tải lại. Hãy sửa lỗi hiển thị trong bảng điều khiển, rồi chạy lại /ncc reload."
   dealer-not-found: "&cKhông tìm thấy người chia bài '&e{name}&c'."
   dealer-deleted: "&aĐã xóa người chia bài '&e{name}&a' và mọi thành phần liên quan."
   help-title: "&d&lTRỢ GIÚP NCCASINO"

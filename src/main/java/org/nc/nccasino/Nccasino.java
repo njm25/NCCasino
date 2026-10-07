@@ -49,6 +49,7 @@ import org.nc.nccasino.games.Roulette.BettingTable;
 import org.nc.nccasino.games.Roulette.RouletteInventory;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Dealer;
+import org.nc.nccasino.helpers.ConfigFileCheck;
 import org.nc.nccasino.helpers.ConfigMigration;
 import org.nc.nccasino.helpers.Metrics;
 import org.nc.nccasino.helpers.Preferences;
@@ -91,6 +92,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
     private FileConfiguration preferencesConfig;
     /** Keeps an unreadable preferences.yml from being saved over. */
     private StoreFile preferencesStore;
+    /** Why config.yml could not be read at the last load, or {@code null}. */
+    private String configProblem;
+    private boolean configLoaded;
     private NamespacedKey INTERNAL_NAME_KEY; // Declare it here
 
     private Material currency;    // Material used for betting currency
@@ -139,6 +143,15 @@ public final class Nccasino extends JavaPlugin implements Listener {
         INTERNAL_NAME_KEY = new NamespacedKey(this, "internal_name");
         checkForUpdates();
         saveDefaultConfig();
+        reloadConfig();
+        if (configProblem != null) {
+            // Every dealer would be rebuilt from defaults and saved over the
+            // admin's file. Stop instead, leaving config.yml untouched.
+            getLogger().severe("NCCasino is disabled until config.yml is fixed; the file was not changed. "
+                + "Fix the error above, then restart the server.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
         ConfigMigration.apply(this);
         localizationService = new LocalizationService(this);
         localizationService.load();
@@ -467,7 +480,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     public void savePreferences() {
         if (preferencesConfig == null || preferencesFile == null) {
-            getLogger().severe("preferencesConfig is null! Skipping save.");
+            if (configProblem == null) {
+                getLogger().severe("preferencesConfig is null! Skipping save.");
+            }
             return;
         }
         if (preferencesStore != null && !preferencesStore.canWrite()) {
@@ -543,6 +558,43 @@ public final class Nccasino extends JavaPlugin implements Listener {
      * Re-applies config.yml settings that services read once: the bank
      * reminder period, and the once-per-session budget problem reports.
      */
+    /**
+     * Loads config.yml only if it parses. Bukkit's loader turns a YAML error
+     * into an empty config, which dealer setup would then save over the
+     * admin's file. On an error the settings already in use are kept (none
+     * yet at startup, which then disables the plugin) and saving is refused
+     * until a later load succeeds.
+     */
+    @Override
+    public void reloadConfig() {
+        String problem = ConfigFileCheck.problem(new File(getDataFolder(), "config.yml"));
+        if (problem != null) {
+            configProblem = problem;
+            getLogger().severe("config.yml could not be read, so it was not loaded and will not be saved: " + problem);
+            if (configLoaded) {
+                return;
+            }
+        } else {
+            configProblem = null;
+        }
+        super.reloadConfig();
+        configLoaded = true;
+    }
+
+    @Override
+    public void saveConfig() {
+        if (configProblem != null) {
+            getLogger().warning("Not saving config.yml while it has an error; this change is kept in memory only.");
+            return;
+        }
+        super.saveConfig();
+    }
+
+    /** Whether config.yml failed to parse at the last load attempt. */
+    public boolean hasConfigProblem() {
+        return configProblem != null;
+    }
+
     public void reloadServiceSettings() {
         if (dealerBudgetService != null) {
             dealerBudgetService.onConfigReloaded();

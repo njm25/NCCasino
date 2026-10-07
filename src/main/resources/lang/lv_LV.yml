@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO konfigurācija veiksmīgi pārlādēta."
   reload-override-warnings: "&eIgnorētas valodas aizstāšanas: {count}. Sīkāka informācija konsolē."
+  reload-config-unreadable: "&cNevarēja nolasīt config.yml, tāpēc nekas netika pārlādēts. Izlabo konsolē parādīto kļūdu un pēc tam vēlreiz izpildi /ncc reload."
   dealer-not-found: "&cDīleris „&e{name}&c“ nav atrasts."
   dealer-deleted: "&aDīleris „&e{name}&a“ un visi saistītie komponenti izdzēsti."
   help-title: "&d&lNCCASINO PALĪDZĪBA"

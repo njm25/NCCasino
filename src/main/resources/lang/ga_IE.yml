@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aAthlódáladh cumraíocht NCCASINO go rathúil."
   reload-override-warnings: "&eLuachanna sáraithe teanga neamhairde: {count}. Féach an consól le haghaidh sonraí."
+  reload-config-unreadable: "&cNíorbh fhéidir config.yml a léamh, mar sin níor athlódáladh aon rud. Ceartaigh an earráid a thaispeántar sa chonsól, ansin rith /ncc reload arís."
   dealer-not-found: "&cNíor aimsíodh an déileálaí “&e{name}&c”."
   dealer-deleted: "&aScriosadh an déileálaí “&e{name}&a” agus a chomhpháirteanna gaolmhara go léir."
   help-title: "&d&lCABHAIR NCCASINO"

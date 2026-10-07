@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aأعيد تحميل إعدادات NCCASINO بنجاح."
   reload-override-warnings: "&eتم تجاهل قيم بديلة للغة (العدد: {count}). راجع وحدة التحكم للتفاصيل."
+  reload-config-unreadable: "&cتعذرت قراءة الملف config.yml، لذلك لم يعد تحميل أي شيء. أصلح الخطأ الظاهر في وحدة التحكم، ثم نفذ /ncc reload مرة أخرى."
   dealer-not-found: "&cلم يعثر على الموزع '&e{name}&c'."
   dealer-deleted: "&aتم حذف الموزع '&e{name}&a' وكل مكوناته المرتبطة."
   help-title: "&d&lمساعدة NCCASINO"

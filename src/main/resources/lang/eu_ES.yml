@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO konfigurazioa behar bezala birkargatu da."
   reload-override-warnings: "&eBaztertutako hizkuntza-ordezpenak: {count}. Ikusi kontsola xehetasunetarako."
+  reload-config-unreadable: "&cEzin izan da config.yml irakurri, beraz, ez da ezer birkargatu. Konpondu kontsolan agertzen den errorea, eta exekutatu berriro /ncc reload."
   dealer-not-found: "&cEz da «&e{name}&c» krupierra aurkitu."
   dealer-deleted: "&a«&e{name}&a» krupierra eta lotutako osagai guztiak ezabatu dira."
   help-title: "&d&lNCCASINO LAGUNTZA"

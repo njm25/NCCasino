@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO-ի կազմաձևումը հաջողությամբ վերաբեռնվեց։"
   reload-override-warnings: "&eԱնտեսված լեզվի փոխարինումներ՝ {count}։ Մանրամասները՝ կոնսոլում։"
+  reload-config-unreadable: "&cՀնարավոր չեղավ կարդալ config.yml-ը, ուստի ոչինչ չվերաբեռնվեց։ Ուղղեք կոնսոլում ցուցադրված սխալը, ապա նորից գործարկեք /ncc reload։"
   dealer-not-found: "&c«&e{name}&c» դիլերը չի գտնվել։"
   dealer-deleted: "&a«&e{name}&a» դիլերը և դրա հետ կապված բոլոր բաղադրիչները ջնջվեցին։"
   help-title: "&d&lNCCASINO ՕԳՆՈՒԹՅՈՒՆ"

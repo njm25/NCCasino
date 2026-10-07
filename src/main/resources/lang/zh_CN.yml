@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO配置重载成功。"
   reload-override-warnings: "&e已忽略的语言覆盖：{count} 项。详情请查看控制台。"
+  reload-config-unreadable: "&c无法读取 config.yml，因此没有重新加载任何内容。请修正控制台中显示的错误，然后再次运行 /ncc reload。"
   dealer-not-found: "&c未找到荷官“&e{name}&c”。"
   dealer-deleted: "&a荷官“&e{name}&a”及其所有相关组件均已删除。"
   help-title: "&d&lNCCASINO帮助"

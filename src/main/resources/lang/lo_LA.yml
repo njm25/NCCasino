@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aໂຫຼດການຕັ້ງຄ່າ NCCASINO ຄືນໃໝ່ແລ້ວ"
   reload-override-warnings: "&eການແທນທີ່ພາສາທີ່ຖືກຂ້າມ: {count}. ເບິ່ງລາຍລະອຽດໃນຄອນໂຊລ."
+  reload-config-unreadable: "&cບໍ່ສາມາດອ່ານ config.yml ໄດ້ ຈຶ່ງບໍ່ມີຫຍັງຖືກໂຫຼດຄືນໃໝ່. ແກ້ໄຂຂໍ້ຜິດພາດທີ່ສະແດງໃນຄອນໂຊລ ແລ້ວແລ່ນ /ncc reload ອີກຄັ້ງ"
   dealer-not-found: "&cບໍ່ພົບເຈົ້າມື “&e{name}&c”"
   dealer-deleted: "&aລຶບເຈົ້າມື “&e{name}&a” ແລະ ສ່ວນປະກອບທີ່ກ່ຽວຂ້ອງທັງໝົດແລ້ວ"
   help-title: "&d&lຄວາມຊ່ວຍເຫຼືອ NCCASINO"

@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aΟι ρυθμίσεις του NCCASINO φορτώθηκαν ξανά με επιτυχία."
   reload-override-warnings: "&eΑγνοήθηκαν παρακάμψεις γλώσσας: {count}. Δες την κονσόλα για λεπτομέρειες."
+  reload-config-unreadable: "&cΔεν ήταν δυνατή η ανάγνωση του config.yml, οπότε δεν φορτώθηκε ξανά τίποτα. Διόρθωσε το σφάλμα που εμφανίζεται στην κονσόλα και μετά εκτέλεσε ξανά /ncc reload."
   dealer-not-found: "&cΟ ντίλερ «&e{name}&c» δεν βρέθηκε."
   dealer-deleted: "&aΟ ντίλερ «&e{name}&a» και όλα τα σχετικά στοιχεία διαγράφηκαν."
   help-title: "&d&lΒΟΗΘΕΙΑ NCCASINO"

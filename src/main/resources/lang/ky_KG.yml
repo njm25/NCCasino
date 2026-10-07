@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO конфигурациясы ийгиликтүү кайра жүктөлдү."
   reload-override-warnings: "&eЭске алынбаган тил алмаштыруулары: {count}. Кененирээк консолдон караңыз."
+  reload-config-unreadable: "&cconfig.yml окулган жок, ошондуктан эч нерсе кайра жүктөлгөн жок. Консолдо көрсөтүлгөн катаны оңдоп, анан /ncc reload буйругун кайра аткарыңыз."
   dealer-not-found: "&c«&e{name}&c» дилери табылган жок."
   dealer-deleted: "&a«&e{name}&a» дилери жана ага байланыштуу бардык компоненттер жок кылынды."
   help-title: "&d&lNCCASINO ЖАРДАМЫ"

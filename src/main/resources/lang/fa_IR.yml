@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aپیکربندی NCCASINO با موفقیت دوباره بارگذاری شد."
   reload-override-warnings: "&eمقادیر جایگزین زبان که نادیده گرفته شد: {count}. جزئیات را در کنسول ببینید."
+  reload-config-unreadable: "&cفایل config.yml خوانده نشد، پس چیزی دوباره بارگذاری نشد. خطای نشان‌داده‌شده در کنسول را برطرف کنید و سپس دوباره /ncc reload را اجرا کنید."
   dealer-not-found: "&cدیلر '&e{name}&c' پیدا نشد."
   dealer-deleted: "&aدیلر '&e{name}&a' و همه‌ی اجزای مرتبط با آن حذف شدند."
   help-title: "&d&lراهنمای NCCASINO"

@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aKonfigurimi i NCCASINO u ringarkua me sukses."
   reload-override-warnings: "&eZëvendësime të injoruara të gjuhës: {count}. Shih konsolën për hollësi."
+  reload-config-unreadable: "&cconfig.yml nuk u lexua dot, ndaj nuk u ringarkua asgjë. Rregulloni gabimin që shfaqet në konsolë, pastaj ekzekutoni sërish /ncc reload."
   dealer-not-found: "&cKrupieri „&e{name}&c” nuk u gjet."
   dealer-deleted: "&aKrupieri „&e{name}&a” dhe të gjithë përbërësit e lidhur u fshinë."
   help-title: "&d&lNDIHMË PËR NCCASINO"

@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO-ს კონფიგურაცია წარმატებით გადაიტვირთა."
   reload-override-warnings: "&eუგულებელყოფილი ენის ჩანაცვლებები: {count}. დეტალები იხილეთ კონსოლში."
+  reload-config-unreadable: "&cconfig.yml-ის წაკითხვა ვერ მოხერხდა, ამიტომ არაფერი გადაიტვირთა. გაასწორეთ კონსოლში ნაჩვენები შეცდომა და შემდეგ ხელახლა გაუშვით /ncc reload."
   dealer-not-found: "&cდილერი „&e{name}&c“ ვერ მოიძებნა."
   dealer-deleted: "&aდილერი „&e{name}&a“ და მასთან დაკავშირებული ყველა კომპონენტი წაიშალა."
   help-title: "&d&lNCCASINO — დახმარება"

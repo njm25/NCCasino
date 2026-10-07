@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO конфигурациясе уңышлы яңадан йөкләнде."
   reload-override-warnings: "&eИгътибарга алынмаган тел алмаштырулары: {count}. Җентеклерәк консольдә карагыз."
+  reload-config-unreadable: "&cconfig.yml укылмады, шуңа күрә бернәрсә дә яңадан йөкләнмәде. Консольдә күрсәтелгән хатаны төзәтегез, аннары /ncc reload боерыгын яңадан башкарыгыз."
   dealer-not-found: "&c«&e{name}&c» дилеры табылмады."
   dealer-deleted: "&a«&e{name}&a» дилеры һәм аңа бәйле барлык өлешләр бетерелде."
   help-title: "&d&lNCCASINO ЯРДӘМЕ"

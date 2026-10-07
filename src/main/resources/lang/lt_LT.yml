@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO konfigūracija sėkmingai įkelta iš naujo."
   reload-override-warnings: "&eNepaisyti kalbos pakeitimai: {count}. Išsamiau – konsolėje."
+  reload-config-unreadable: "&cNepavyko perskaityti config.yml, todėl niekas nebuvo įkeltas iš naujo. Ištaisyk konsolėje rodomą klaidą ir vėl paleisk /ncc reload."
   dealer-not-found: "&cDalytojas „&e{name}&c“ nerastas."
   dealer-deleted: "&aDalytojas „&e{name}&a“ ir visi susiję komponentai ištrinti."
   help-title: "&d&lNCCASINO PAGALBA"

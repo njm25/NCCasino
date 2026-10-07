@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aLa configuration de NCCASINO a été rechargée."
   reload-override-warnings: "&eValeurs de langue personnalisées ignorées : {count}. Consultez la console pour les détails."
+  reload-config-unreadable: "&cImpossible de lire config.yml, rien n'a donc été rechargé. Corrigez l'erreur affichée dans la console, puis relancez /ncc reload."
   dealer-not-found: "&cLe croupier '&e{name}&c' est introuvable."
   dealer-deleted: "&aLe croupier '&e{name}&a' et tous ses composants ont été supprimés."
   help-title: "&d&lAIDE NCCASINO"

@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO konfiguratsioon laaditi edukalt uuesti."
   reload-override-warnings: "&eEiratud keeleülekirjutused: {count}. Üksikasjad on konsoolis."
+  reload-config-unreadable: "&cFaili config.yml ei õnnestunud lugeda, seega midagi uuesti ei laaditud. Paranda konsoolis näidatud viga ja käivita siis uuesti /ncc reload."
   dealer-not-found: "&cDiilerit „&e{name}&c“ ei leitud."
   dealer-deleted: "&aDiiler „&e{name}&a“ ja kõik seotud komponendid kustutati."
   help-title: "&d&lNCCASINO ABI"

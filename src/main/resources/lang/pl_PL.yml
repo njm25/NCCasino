@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aPomyślnie przeładowano konfigurację NCCASINO."
   reload-override-warnings: "&eZignorowane zastąpienia tekstów języka: {count}. Szczegóły znajdziesz w konsoli."
+  reload-config-unreadable: "&cNie udało się odczytać config.yml, więc nic nie zostało przeładowane. Popraw błąd pokazany w konsoli, a potem ponownie uruchom /ncc reload."
   dealer-not-found: "&cNie znaleziono krupiera '&e{name}&c'."
   dealer-deleted: "&aUsunięto krupiera '&e{name}&a' i wszystkie powiązane elementy."
   help-title: "&d&lPOMOC NCCASINO"

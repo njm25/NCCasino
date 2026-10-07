@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&a已成功重新載入 NCCASINO 設定。"
   reload-override-warnings: "&e已忽略的語言覆寫：{count} 項。詳情請查看主控台。"
+  reload-config-unreadable: "&c無法讀取 config.yml，因此沒有重新載入任何內容。請修正主控台中顯示的錯誤，然後再次執行 /ncc reload。"
   dealer-not-found: "&c找不到荷官「&e{name}&c」。"
   dealer-deleted: "&a已刪除荷官「&e{name}&a」及所有相關元件。"
   help-title: "&d&lNCCASINO 說明"

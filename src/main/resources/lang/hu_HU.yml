@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aAz NCCASINO konfigurációja sikeresen újratöltve."
   reload-override-warnings: "&eFigyelmen kívül hagyott nyelvi felülírások: {count}. A részletek a konzolon láthatók."
+  reload-config-unreadable: "&cA config.yml nem olvasható, ezért semmi sem lett újratöltve. Javítsd a konzolon látható hibát, majd futtasd újra a /ncc reload parancsot."
   dealer-not-found: "&cAz osztó nem található: '&e{name}&c'."
   dealer-deleted: "&aA(z) '&e{name}&a' osztó és minden kapcsolódó összetevője törölve."
   help-title: "&d&lNCCASINO SÚGÓ"

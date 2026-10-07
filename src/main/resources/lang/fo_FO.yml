@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aUppsetingin hjá NCCASINO er innlisin av nýggjum."
   reload-override-warnings: "&eÚtihýst mályvirskrivingar: {count}. Sí konsolina fyri smálutir."
+  reload-config-unreadable: "&cTað bar ikki til at lesa config.yml, so einki varð innlisið av nýggjum. Rætta feilin, sum víst verður í konsolini, og koyr so /ncc reload aftur."
   dealer-not-found: "&cBýtarin „&e{name}&c“ varð ikki funnin."
   dealer-deleted: "&aBýtarin „&e{name}&a“ og allir tilknýttir lutir eru strikaðir."
   help-title: "&d&lNCCASINO-HJÁLP"

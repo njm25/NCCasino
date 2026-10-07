@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO-konfigurasie suksesvol herlaai."
   reload-override-warnings: "&eTaaloorskrywings geïgnoreer: {count}. Sien die konsole vir besonderhede."
+  reload-config-unreadable: "&cKon nie config.yml lees nie, dus is niks herlaai nie. Herstel die fout in die konsole en voer dan /ncc reload weer uit."
   dealer-not-found: "&cKroepier “&e{name}&c” is nie gevind nie."
   dealer-deleted: "&aKroepier “&e{name}&a” en al die verwante komponente is geskrap."
   help-title: "&d&lNCCASINO-HULP"

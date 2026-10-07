@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aA ti tún ètò NCCASINO gbé wọlé."
   reload-override-warnings: "&eÀwọn àyípadà èdè tí a fojú fò: {count}. Wo console fún àlàyé."
+  reload-config-unreadable: "&cA kò lè ka config.yml, nítorí náà kò sí nǹkan tí a tún gbé wọlé. Ṣe àtúnṣe àṣìṣe tí ó hàn lórí console, lẹ́yìn náà tún ṣe /ncc reload."
   dealer-not-found: "&cA kò rí olùpín “&e{name}&c”."
   dealer-deleted: "&aA ti pa olùpín “&e{name}&a” àti gbogbo ohun tó jẹ mọ́ ọn rẹ́."
   help-title: "&d&lÌRÀNLỌ́WỌ́ NCCASINO"

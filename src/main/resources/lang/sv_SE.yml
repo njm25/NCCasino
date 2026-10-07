@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aKonfigurationen för NCCASINO har lästs in igen."
   reload-override-warnings: "&eIgnorerade språköverskrivningar: {count}. Se konsolen för detaljer."
+  reload-config-unreadable: "&cKunde inte läsa config.yml, så inget lästes in igen. Rätta felet som visas i konsolen och kör sedan /ncc reload igen."
   dealer-not-found: "&cCroupiern '&e{name}&c' hittades inte."
   dealer-deleted: "&aCroupiern '&e{name}&a' och alla tillhörande komponenter har tagits bort."
   help-title: "&d&lNCCASINO-HJÄLP"

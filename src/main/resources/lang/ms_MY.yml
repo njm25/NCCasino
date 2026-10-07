@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aKonfigurasi NCCASINO berjaya dimuat semula."
   reload-override-warnings: "&eNilai gantian bahasa yang diabaikan: {count}. Lihat konsol untuk butiran."
+  reload-config-unreadable: "&cTidak dapat membaca config.yml, jadi tiada apa-apa yang dimuat semula. Betulkan ralat yang dipaparkan dalam konsol, kemudian jalankan /ncc reload sekali lagi."
   dealer-not-found: "&cPengendali '&e{name}&c' tidak ditemui."
   dealer-deleted: "&aPengendali '&e{name}&a' dan semua komponen berkaitan telah dipadam."
   help-title: "&d&lBANTUAN NCCASINO"

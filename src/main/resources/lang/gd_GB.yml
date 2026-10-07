@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aChaidh rèiteachadh NCCASINO ath-luchdadh."
   reload-override-warnings: "&eLuachan cànain a chaidh a leigeil seachad: {count}. Faic an consoil airson mion-fhiosrachadh."
+  reload-config-unreadable: "&cCha b' urrainn dhuinn config.yml a leughadh, mar sin cha deach dad ath-luchdadh. Càraich a' mhearachd a chithear san consoil, an uairsin ruith /ncc reload a-rithist."
   dealer-not-found: "&cCha deach an roinneadair “&e{name}&c” a lorg."
   dealer-deleted: "&aChaidh an roinneadair “&e{name}&a” agus a h-uile co-phàirt co-cheangailte a sguabadh às."
   help-title: "&d&lCOBHAIR NCCASINO"

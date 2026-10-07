@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO அமைப்புகள் வெற்றிகரமாக மீண்டும் ஏற்றப்பட்டன."
   reload-override-warnings: "&eபுறக்கணிக்கப்பட்ட மொழி மாற்றங்கள்: {count}. விவரங்களுக்கு கன்சோலைப் பாருங்கள்."
+  reload-config-unreadable: "&cconfig.yml-ஐப் படிக்க முடியவில்லை, எனவே எதுவும் மீண்டும் ஏற்றப்படவில்லை. கன்சோலில் காட்டப்பட்ட பிழையைச் சரிசெய்து, பிறகு /ncc reload கட்டளையை மீண்டும் இயக்குங்கள்."
   dealer-not-found: "&cடீலர் “&e{name}&c” கிடைக்கவில்லை."
   dealer-deleted: "&aடீலர் “&e{name}&a” மற்றும் தொடர்புடைய எல்லாக் கூறுகளும் நீக்கப்பட்டன."
   help-title: "&d&lNCCASINO உதவி"

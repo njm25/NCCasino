@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aKonfiguratschoon vun NCCASINO nee laadt."
   reload-override-warnings: "&eIgnoreerte Spraak-Överschrievungen: {count}. Kiek in de Konsool för Enkelheiten."
+  reload-config-unreadable: "&cconfig.yml kunn nich leest warrn, dorüm is nix nee laadt worrn. Maak den Fehler heel, de in de Konsool steiht, un föhr denn /ncc reload noch eenmal ut."
   dealer-not-found: "&cCroupier „&e{name}&c“ nich funnen."
   dealer-deleted: "&aCroupier „&e{name}&a“ un all Delen, de dorto höört, sünd löscht worrn."
   help-title: "&d&lNCCASINO-HÜLP"

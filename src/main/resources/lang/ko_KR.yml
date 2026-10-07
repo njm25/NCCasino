@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO 설정을 다시 불러왔습니다."
   reload-override-warnings: "&e무시된 언어 덮어쓰기 수: {count}. 자세한 내용은 콘솔을 확인하세요."
+  reload-config-unreadable: "&cconfig.yml 파일을 읽을 수 없어 아무것도 다시 불러오지 않았습니다. 콘솔에 표시된 오류를 고친 뒤 /ncc reload 명령을 다시 실행하세요."
   dealer-not-found: "&c딜러 '&e{name}&c'을(를) 찾을 수 없습니다."
   dealer-deleted: "&a딜러 '&e{name}&a' 및 관련된 모든 구성 요소를 삭제했습니다."
   help-title: "&d&lNCCASINO 도움말"

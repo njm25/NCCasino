@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aKonfiguraasje fan NCCASINO mei sukses opnij laden."
   reload-override-warnings: "&eNegearre taalferfangings: {count}. Sjoch de konsole foar details."
+  reload-config-unreadable: "&cconfig.yml koe net lêzen wurde, dus der is neat opnij laden. Ferhelp de flater dy't yn de konsole stiet en fier dan /ncc reload nochris út."
   dealer-not-found: "&cDealer „&e{name}&c” is net fûn."
   dealer-deleted: "&aDealer „&e{name}&a” en alle byhearrende ûnderdielen binne fuortsmiten."
   help-title: "&d&lNCCASINO-HELP"

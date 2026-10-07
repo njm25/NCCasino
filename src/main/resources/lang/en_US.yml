@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO configuration reloaded successfully."
   reload-override-warnings: "&e{count} language override value(s) were ignored; see the console for details."
+  reload-config-unreadable: "&cCould not read config.yml, so nothing was reloaded. Fix the error shown in the console, then run /ncc reload again."
   dealer-not-found: "&cDealer '&e{name}&c' was not found."
   dealer-deleted: "&aDealer '&e{name}&a' and all associated components were deleted."
   help-title: "&d&lNCCASINO HELP"

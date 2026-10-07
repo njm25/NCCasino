@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO конфигурацине ӑнӑҫлӑ ҫӗнӗрен тиенӗ."
   reload-override-warnings: "&eШута илмен чӗлхе улӑштарӑвӗсем: {count}. Тӗплӗнрех консольре пӑхӑр."
+  reload-config-unreadable: "&cconfig.yml вулаймарӗ, ҫавӑнпа нимӗн те ҫӗнӗрен тиенмерӗ. Консольре кӑтартнӑ йӑнӑша тӳрлетӗр, унтан /ncc reload командӑна тепӗр хут пурнӑҫлӑр."
   dealer-not-found: "&c«&e{name}&c» дилера тупман."
   dealer-deleted: "&a«&e{name}&a» дилера тата унпа ҫыхӑннӑ пур компонентсене те пӗтернӗ."
   help-title: "&d&lNCCASINO ПУЛӐШӐВӖ"

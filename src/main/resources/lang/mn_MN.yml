@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO тохиргоог амжилттай дахин ачааллаа."
   reload-override-warnings: "&eҮл тоосон хэлний орлуулалт: {count}. Дэлгэрэнгүйг консолоос харна уу."
+  reload-config-unreadable: "&cconfig.yml-г уншиж чадсангүй, тиймээс юу ч дахин ачаалагдсангүй. Консолд харагдсан алдааг засаад /ncc reload командыг дахин ажиллуулна уу."
   dealer-not-found: "&c«&e{name}&c» дилер олдсонгүй."
   dealer-deleted: "&a«&e{name}&a» дилер болон холбогдох бүх бүрэлдэхүүнийг устгалаа."
   help-title: "&d&lNCCASINO ТУСЛАМЖ"

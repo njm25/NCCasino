@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aКанфігурацыя NCCASINO паспяхова перазагружана."
   reload-override-warnings: "&eПрапушчана замен тэкстаў мовы: {count}. Падрабязнасці ў кансолі."
+  reload-config-unreadable: "&cНе ўдалося прачытаць config.yml, таму нічога не перазагружана. Выпраўце памылку, паказаную ў кансолі, і зноў выканайце /ncc reload."
   dealer-not-found: "&cКрупье «&e{name}&c» не знойдзены."
   dealer-deleted: "&aКрупье «&e{name}&a» і ўсе звязаныя кампаненты выдалены."
   help-title: "&d&lДАВЕДКА NCCASINO"

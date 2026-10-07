@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aMatagumpay na na-reload ang configuration ng NCCASINO."
   reload-override-warnings: "&eMga in-ignore na override ng wika: {count}. Tingnan ang console para sa detalye."
+  reload-config-unreadable: "&cHindi mabasa ang config.yml, kaya walang na-reload. Ayusin ang error na ipinapakita sa console, saka patakbuhin muli ang /ncc reload."
   dealer-not-found: "&cHindi nakita ang dealer na '&e{name}&c'."
   dealer-deleted: "&aNabura ang dealer na '&e{name}&a' at lahat ng kaugnay na bahagi nito."
   help-title: "&d&lTULONG SA NCCASINO"

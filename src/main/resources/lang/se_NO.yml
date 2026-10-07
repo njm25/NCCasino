@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO heivehusat leat viežžojuvvon ođđasit."
   reload-override-warnings: "&eGiellabuhtadusat mat eai váldojuvvon vuhtii: {count}. Geahča konsolla dárkilet dieđuid várás."
+  reload-config-unreadable: "&cconfig.yml ii sáhttán lohkkojuvvot, nu ahte mihkkege ii viežžojuvvon ođđasit. Divo meattáhusa mii čájehuvvo konsollas, ja vuoje dasto /ncc reload ođđasit."
   dealer-not-found: "&cJuogadeaddji «&e{name}&c» ii gávdnon."
   dealer-deleted: "&aJuogadeaddji «&e{name}&a» ja buot dasa gullevaš oasit leat sihkkojuvvon."
   help-title: "&d&lNCCASINO VEAHKKI"

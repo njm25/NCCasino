@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO konfiguratsiyasi muvaffaqiyatli qayta yuklandi."
   reload-override-warnings: "&eE'tiborga olinmagan til almashtirishlari: {count}. Batafsil konsolda."
+  reload-config-unreadable: "&cconfig.yml oʻqib boʻlmadi, shuning uchun hech narsa qayta yuklanmadi. Konsolda koʻrsatilgan xatoni tuzating, soʻng /ncc reload buyrugʻini qayta ishga tushiring."
   dealer-not-found: "&c«&e{name}&c» dileri topilmadi."
   dealer-deleted: "&a«&e{name}&a» dileri va unga tegishli barcha komponentlar oʻchirildi."
   help-title: "&d&lNCCASINO YORDAMI"

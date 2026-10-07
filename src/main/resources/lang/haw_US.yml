@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aUa hoʻouka hou ʻia ka hoʻonohonoho NCCASINO."
   reload-override-warnings: "&eNā hoʻololi ʻōlelo i haʻalele ʻia: {count}. E nānā i ka console no nā kikoʻī."
+  reload-config-unreadable: "&cʻAʻole hiki ke heluhelu ʻia ʻo config.yml, no laila ʻaʻohe mea i hoʻouka hou ʻia. E hoʻoponopono i ka hewa i hōʻike ʻia ma ka console, a laila e holo hou iā /ncc reload."
   dealer-not-found: "&cʻAʻole i loaʻa ka mea hoʻokele “&e{name}&c”."
   dealer-deleted: "&aUa holoi ʻia ka mea hoʻokele “&e{name}&a” a me nā ʻāpana pili a pau."
   help-title: "&d&lKŌKUA NCCASINO"

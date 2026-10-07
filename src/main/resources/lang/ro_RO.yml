@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aConfigurația NCCASINO a fost reîncărcată cu succes."
   reload-override-warnings: "&eÎnlocuiri de limbă ignorate: {count}. Vezi consola pentru detalii."
+  reload-config-unreadable: "&cconfig.yml nu a putut fi citit, așa că nu s-a reîncărcat nimic. Corectează eroarea afișată în consolă, apoi rulează din nou /ncc reload."
   dealer-not-found: "&cCrupierul „&e{name}&c” nu a fost găsit."
   dealer-deleted: "&aCrupierul „&e{name}&a” și toate componentele asociate au fost șterse."
   help-title: "&d&lAJUTOR NCCASINO"

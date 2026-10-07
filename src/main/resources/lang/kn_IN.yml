@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO ಸಂರಚನೆಯನ್ನು ಮರುಲೋಡ್ ಮಾಡಲಾಗಿದೆ."
   reload-override-warnings: "&eನಿರ್ಲಕ್ಷಿಸಲಾದ ಭಾಷಾ ಬದಲಿಗಳು: {count}. ವಿವರಗಳಿಗೆ ಕನ್ಸೋಲ್ ನೋಡಿ."
+  reload-config-unreadable: "&cconfig.yml ಓದಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ, ಆದ್ದರಿಂದ ಏನನ್ನೂ ಮರುಲೋಡ್ ಮಾಡಲಾಗಿಲ್ಲ. ಕನ್ಸೋಲ್‌ನಲ್ಲಿ ತೋರಿಸಿರುವ ದೋಷವನ್ನು ಸರಿಪಡಿಸಿ, ನಂತರ /ncc reload ಅನ್ನು ಮತ್ತೆ ಚಲಾಯಿಸಿ."
   dealer-not-found: "&cಡೀಲರ್ “&e{name}&c” ಕಂಡುಬಂದಿಲ್ಲ."
   dealer-deleted: "&aಡೀಲರ್ “&e{name}&a” ಮತ್ತು ಸಂಬಂಧಿಸಿದ ಎಲ್ಲಾ ಘಟಕಗಳನ್ನು ಅಳಿಸಲಾಗಿದೆ."
   help-title: "&d&lNCCASINO ಸಹಾಯ"

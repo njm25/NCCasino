@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aUsanidi wa NCCASINO umepakiwa upya kwa mafanikio."
   reload-override-warnings: "&eMabadiliko ya lugha yaliyopuuzwa: {count}. Angalia koni kwa maelezo."
+  reload-config-unreadable: "&cImeshindwa kusoma config.yml, kwa hivyo hakuna kilichopakiwa upya. Rekebisha hitilafu inayoonyeshwa kwenye koni, kisha endesha /ncc reload tena."
   dealer-not-found: "&cMgawaji “&e{name}&c” hakupatikana."
   dealer-deleted: "&aMgawaji “&e{name}&a” na vipengele vyote vinavyohusiana vimefutwa."
   help-title: "&d&lMSAADA WA NCCASINO"

@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aConfiguratie van NCCASINO succesvol herladen."
   reload-override-warnings: "&eGenegeerde taalvervangingen: {count}. Zie de console voor details."
+  reload-config-unreadable: "&cconfig.yml kon niet worden gelezen, dus er is niets herladen. Herstel de fout die in de console staat en voer daarna /ncc reload opnieuw uit."
   dealer-not-found: "&cDealer '&e{name}&c' niet gevonden."
   dealer-deleted: "&aDealer '&e{name}&a' en alle bijbehorende onderdelen zijn verwijderd."
   help-title: "&d&lNCCASINO HULP"

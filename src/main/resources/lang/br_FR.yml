@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aAdkarget eo bet kefluniadur NCCASINO."
   reload-override-warnings: "&eTalvoudoù erlec'hiañ yezh ankouaet: {count}. Gwelit ar c'hoñsol evit ar munudoù."
+  reload-config-unreadable: "&cN'eus ket bet gallet lenn config.yml, n'eo bet adkarget netra eta. Reizhit ar fazi diskouezet er c'hoñsol, ha goude-se lañsit /ncc reload en-dro."
   dealer-not-found: "&cN'eo ket bet kavet ar c'hroupier «&e{name}&c»."
   dealer-deleted: "&aDilamet eo bet ar c'hroupier «&e{name}&a» hag an holl elfennoù liammet."
   help-title: "&d&lSKOAZELL NCCASINO"

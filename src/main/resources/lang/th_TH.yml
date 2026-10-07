@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aโหลดการตั้งค่า NCCASINO ใหม่สำเร็จแล้ว"
   reload-override-warnings: "&eการแทนที่ภาษาที่ถูกข้าม: {count} รายการ ดูรายละเอียดในคอนโซล"
+  reload-config-unreadable: "&cอ่าน config.yml ไม่ได้ จึงไม่มีการโหลดสิ่งใดใหม่ แก้ไขข้อผิดพลาดที่แสดงในคอนโซล แล้วเรียกใช้ /ncc reload อีกครั้ง"
   dealer-not-found: "&cไม่พบดีลเลอร์ '&e{name}&c'"
   dealer-deleted: "&aลบดีลเลอร์ '&e{name}&a' และส่วนประกอบที่เกี่ยวข้องทั้งหมดแล้ว"
   help-title: "&d&lวิธีใช้ NCCASINO"

@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aKonfiguracija dodatka NCCASINO uspješno je ponovno učitana."
   reload-override-warnings: "&eZanemarene zamjene jezičnih tekstova: {count}. Pojedinosti su u konzoli."
+  reload-config-unreadable: "&cNije moguće pročitati config.yml, pa ništa nije ponovno učitano. Ispravite pogrešku prikazanu u konzoli, a zatim ponovno pokrenite /ncc reload."
   dealer-not-found: "&cDjelitelj „&e{name}&c” nije pronađen."
   dealer-deleted: "&aDjelitelj „&e{name}&a” i sve povezane komponente su izbrisani."
   help-title: "&d&lPOMOĆ ZA NCCASINO"

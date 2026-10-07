@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aההגדרות של NCCASINO נטענו מחדש בהצלחה."
   reload-override-warnings: "&eערכי החלפת שפה שהתעלמו מהם: {count}. הפרטים במסוף."
+  reload-config-unreadable: "&cלא ניתן לקרוא את הקובץ config.yml, ולכן שום דבר לא נטען מחדש. יש לתקן את השגיאה שמוצגת במסוף ואז להריץ שוב /ncc reload."
   dealer-not-found: "&cהדילר '&e{name}&c' לא נמצא."
   dealer-deleted: "&aהדילר '&e{name}&a' וכל הרכיבים הקשורים אליו נמחקו."
   help-title: "&d&lעזרה של NCCASINO"

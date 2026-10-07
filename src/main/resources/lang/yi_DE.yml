@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aדי NCCASINO קאָנפֿיגוראַציע איז מצליחדיק איבערגעלאָדן."
   reload-override-warnings: "&eאיגנאָרירטע שפּראַך־פֿאַרבײַטן: {count}. די פּרטים זײַנען אין דער קאָנסאָל."
+  reload-config-unreadable: "&cמע קען נישט לײענען config.yml, דערפֿאַר איז גאָרנישט איבערגעלאָדן געװאָרן. פֿאַרריכט דעם טעות װאָס מע זעט אין דער קאָנסאָל, און דערנאָך לאָז נאָך אַ מאָל /ncc reload."
   dealer-not-found: "&cדער דילער '&e{name}&c' איז נישט געפֿונען."
   dealer-deleted: "&aדער דילער '&e{name}&a' און אַלע פֿאַרבונדענע טײלן זײַנען אויסגעמעקט."
   help-title: "&d&lהילף פֿאַר NCCASINO"

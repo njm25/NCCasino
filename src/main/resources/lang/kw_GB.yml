@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aKonfigurans NCCASINO dasgargys yn sewen."
   reload-override-warnings: "&eGerys yeth disprederys: {count}. Gwelewgh an konsolya rag manylyon."
+  reload-config-unreadable: "&cNy veu possybyl redya config.yml, ytho ny veu travydh dasgargys. Ewnewgh an gwall diskwedhys y'n konsolya, ha gorrewgh /ncc reload arta."
   dealer-not-found: "&cNy veu kevys an kroupyer “&e{name}&c”."
   dealer-deleted: "&aAn kroupyer “&e{name}&a” hag oll y rannow kelmys a veu dileys."
   help-title: "&d&lGWERES NCCASINO"

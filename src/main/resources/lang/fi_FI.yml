@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO-asetukset ladattiin uudelleen onnistuneesti."
   reload-override-warnings: "&eOhitettuja kieliohituksia: {count}. Katso tiedot konsolista."
+  reload-config-unreadable: "&cTiedostoa config.yml ei voitu lukea, joten mitään ei ladattu uudelleen. Korjaa konsolissa näkyvä virhe ja suorita sitten /ncc reload uudelleen."
   dealer-not-found: "&cJakajaa '&e{name}&c' ei löytynyt."
   dealer-deleted: "&aJakaja '&e{name}&a' ja kaikki siihen liittyvät osat poistettiin."
   help-title: "&d&lNCCASINO-OHJE"

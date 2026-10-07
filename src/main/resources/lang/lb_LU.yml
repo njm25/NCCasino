@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aKonfiguratioun vun NCCASINO erfollegräich nei gelueden."
   reload-override-warnings: "&eIgnoréiert Sproochiwwerschreiwungen: {count}. Kuck an d'Konsol fir Detailer."
+  reload-config-unreadable: "&cconfig.yml konnt net gelies ginn, dofir gouf näischt nei gelueden. Behief de Feeler, deen an der Konsol steet, a féier dann /ncc reload nach eng Kéier aus."
   dealer-not-found: "&cDe Croupier „&e{name}&c“ gouf net fonnt."
   dealer-deleted: "&aDe Croupier „&e{name}&a“ an all zougehéiereg Komponente goufe geläscht."
   help-title: "&d&lNCCASINO-HËLLEF"

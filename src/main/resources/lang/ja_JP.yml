@@ -1280,6 +1280,7 @@ commands:
   list-entry: "&b- {name} &e[{game}]"
   reload-success: "&aNCCASINO の設定を再読み込みしました。"
   reload-override-warnings: "&e無視された言語の上書き：{count} 件。詳細はコンソールを確認してください。"
+  reload-config-unreadable: "&cconfig.yml を読み込めなかったため、何も再読み込みされませんでした。コンソールに表示されたエラーを修正してから、もう一度 /ncc reload を実行してください。"
   dealer-not-found: "&cディーラー '&e{name}&c' が見つかりません。"
   dealer-deleted: "&aディーラー '&e{name}&a' と関連するすべての要素を削除しました。"
   help-title: "&d&lNCCASINO ヘルプ"
