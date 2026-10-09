@@ -345,6 +345,8 @@ final class BlackjackControllerTestSupport {
         }
 
         Nccasino plugin = mock(Nccasino.class);
+        // A running server: the shutdown-only paths are opted into per test.
+        when(plugin.isEnabled()).thenReturn(true);
         when(plugin.getConfig()).thenReturn(config);
         when(plugin.getLogger()).thenReturn(java.util.logging.Logger.getLogger("BlackjackControllerTest"));
         when(plugin.getCurrencyMode(anyString())).thenReturn(currencyMode);
@@ -727,7 +729,13 @@ final class BlackjackControllerTestSupport {
             return mock;
         }
 
+        /** Set to behave like Bukkit for a disabling plugin, which refuses every new task. */
+        boolean refuseNewTasks = false;
+
         private synchronized int schedule(Runnable runnable, long delay, long period) {
+            if (refuseNewTasks) {
+                throw new IllegalStateException("Plugin attempted to register task while disabled");
+            }
             int id = nextTaskId++;
             long fireAt = currentTick + Math.max(delay, 0);
             pending.add(new ScheduledTask(id, fireAt, period, runnable, sequenceCounter++));

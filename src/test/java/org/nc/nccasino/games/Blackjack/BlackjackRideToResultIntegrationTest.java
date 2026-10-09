@@ -92,6 +92,32 @@ class BlackjackRideToResultIntegrationTest {
     }
 
     @Test
+    void shutdownMidHandRefundsEveryoneWithoutSchedulingAnything() {
+        // /reload or a server stop while a hand is dealt: Bukkit refuses new
+        // tasks from a disabling plugin, so ending the round must not start
+        // the cards-return animation.
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            Player bob = h.seatOnlinePlayer(UUID.randomUUID(), "Bob");
+            seatTwoAndReachActionableTurn(h, alice, bob);
+
+            when(h.plugin.isEnabled()).thenReturn(false);
+            h.scheduler.refuseNewTasks = true;
+            org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> {
+                h.inventory.onSessionTerminated(alice.getUniqueId(), ExitReason.PLUGIN_DISABLE);
+                h.inventory.onSessionTerminated(bob.getUniqueId(), ExitReason.PLUGIN_DISABLE);
+            });
+
+            for (Player p : List.of(alice, bob)) {
+                double owed = h.pendingPayoutStore.getPending(p.getUniqueId()).stream()
+                    .mapToDouble(org.nc.nccasino.payout.PendingPayout::amount).sum();
+                assertEquals(10.0, owed, "each stake is owed back exactly once");
+                assertFalse(h.inventory.isSeatedForTest(p.getUniqueId()));
+            }
+        }
+    }
+
+    @Test
     void closingWhileOnlineBeforeOwnTurnAlsoRidesToResult() {
         try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
             Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");

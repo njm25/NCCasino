@@ -9670,6 +9670,14 @@ public void delete() {
         // identity guard needs playerSeats to still list every departing
         // player for the whole animation, not already emptied out from
         // under it.
+        if (!plugin.isEnabled()) {
+            // Shutting down (/reload or a server stop): Bukkit refuses new
+            // tasks from a disabling plugin, and nobody will see the cards
+            // return. End the round without the animation.
+            playerSeats.clear();
+            roundEndAnimationActive = false;
+            return;
+        }
         animateCardsReturnToDeck(returningCards, deckSlotForReturn, myRoundGeneration, () ->
             runDealerAndDeckSlideUpToLobby(myRoundGeneration, () ->
                 finishRoundEndBoardWipe(myRoundGeneration, true)));
