@@ -959,7 +959,9 @@ public class RockPaperScissorsServer extends Server {
         /** Post-round seat cleanup for whichever occupant's client already disconnected. */
         private void reseatDisconnectedOccupants() {
             if (chairOneOccupant != null && !hasClient(chairOneOccupant.getUniqueId())) {
-                if (chairTwoOccupant != null) {
+                // Only a chair-2 player who is still here moves up; one who
+                // also left is cleared below instead of taking chair 1.
+                if (chairTwoOccupant != null && hasClient(chairTwoOccupant.getUniqueId())) {
                     chairOneOccupant = chairTwoOccupant;
                     chairTwoOccupant = null;
                     betAmount = 0;
