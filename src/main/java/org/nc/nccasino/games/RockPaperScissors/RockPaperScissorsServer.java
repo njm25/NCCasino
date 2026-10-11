@@ -603,6 +603,9 @@ public class RockPaperScissorsServer extends Server {
                 // nothing to notify and no opponent client to look up.
                 if (!ensureBudgetCoversNextRound()) {
                     picks.remove(chooserId);
+                    // The client already locked this choice -- let it put the
+                    // choices and Cash Out back so the player can act.
+                    client.onServerUpdate("CHOICE_REFUSED", null);
                     return;
                 }
                 picks.put(DEALER_ID, randomThrow());

@@ -427,6 +427,18 @@ public class CoinFlipClient extends Client implements TerminableSession {
         player.updateInventory();
     }
 
+    /**
+     * The dealer could not cover this flip (a LIMITED budget), so the server
+     * refused the pick: unlock it and put the pick buttons and Cash Out back,
+     * so "cash out or try again later" is something the player can do.
+     */
+    private void handlePickRefused() {
+        playerPick = null;
+        renderPveSeats();
+        updatePotChest();
+        player.updateInventory();
+    }
+
     /*
      *
      *
@@ -461,6 +473,9 @@ public class CoinFlipClient extends Client implements TerminableSession {
                 break;
             case "PLAYER_ACCEPT_REJECTED":
                 handleAcceptRejected();
+                break;
+            case "PICK_REFUSED":
+                handlePickRefused();
                 break;
             case "UPDATE_TIMER":
                 updateTimerUI((int) data);

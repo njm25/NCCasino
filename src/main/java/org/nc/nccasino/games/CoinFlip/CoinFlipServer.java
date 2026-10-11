@@ -555,6 +555,9 @@ public class CoinFlipServer extends Server {
             if (chairOneOccupant == null || !chairOneOccupant.getUniqueId().equals(playerId)) return;
 
             if (!ensureBudgetCoversNextFlip()) {
+                // The client already showed this pick as locked in -- let it
+                // unlock, so its Cash Out (or a later retry) is clickable.
+                client.onServerUpdate("PICK_REFUSED", null);
                 return;
             }
             playerPick = pick;

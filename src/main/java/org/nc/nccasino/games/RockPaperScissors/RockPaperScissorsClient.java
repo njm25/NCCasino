@@ -82,6 +82,8 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
     private final String clickHereToSit;
     private boolean gameActive = false;
     private boolean myChoiceLocked = false;
+    /** Set when the server refuses this player's throw (see handleChoiceRefused). */
+    private boolean choiceRefused = false;
     private boolean opponentLockedIn = false;
     private boolean sessionResolved = false;
     /** Seeded from the config default at construction; mutable afterward via the in-game toggle button, independent of every other viewer of this dealer. */
@@ -434,7 +436,13 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         if (!seated) return;
 
         myChoiceLocked = true;
+        choiceRefused = false;
         sendUpdateToServer("PLAYER_CHOOSE", choice);
+        if (choiceRefused) {
+            // Refused synchronously; handleChoiceRefused already put the
+            // choices back, and locking the view here would hide them again.
+            return;
+        }
         clearChoiceButtons();
         updateStatusIndicator();
         renderModeToggleButton();
@@ -445,6 +453,21 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         // within this same click before Bukkit finishes processing it --
         // force a resync so the clicking player's own view doesn't stall
         // on stale slots the way it would without this.
+        player.updateInventory();
+    }
+
+    /**
+     * The dealer could not cover this round (a LIMITED budget), so the server
+     * refused the throw: unlock it and put the choices and Cash Out back, so
+     * "cash out or try again later" is something the player can do.
+     */
+    private void handleChoiceRefused() {
+        choiceRefused = true;
+        myChoiceLocked = false;
+        showChoiceButtonsIfSeated();
+        updateStatusIndicator();
+        renderModeToggleButton();
+        updatePotChest();
         player.updateInventory();
     }
 
@@ -482,6 +505,9 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                 break;
             case "PLAYER_ACCEPT_REJECTED":
                 handleAcceptRejected();
+                break;
+            case "CHOICE_REFUSED":
+                handleChoiceRefused();
                 break;
             case "UPDATE_TIMER":
                 updateTimerUI((int) data);
