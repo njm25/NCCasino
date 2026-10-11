@@ -1414,16 +1414,18 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
         addItemAndLore(materialFor(cadenceThrow), 1, throwLabel(cadenceThrow), CHAIR_ONE_THROW_SLOTS[row]);
         addItemAndLore(materialFor(cadenceThrow), 1, throwLabel(cadenceThrow), CHAIR_TWO_THROW_SLOTS[row]);
 
-        Sound sound = switch (cadenceThrow) {
-            case ROCK -> Sound.BLOCK_STONE_PLACE;
-            case PAPER -> Sound.ITEM_BOOK_PAGE_TURN;
-            case SCISSORS -> Sound.ITEM_SHEARS_SNIP;
-        };
+        // getSoundSafely returns null for a player who turned Sound off.
+        Sound sound = SoundHelper.getSoundSafely(switch (cadenceThrow) {
+            case ROCK -> "block.stone.place";
+            case PAPER -> "item.book.page_turn";
+            case SCISSORS -> "item.shears.snip";
+        }, player);
         float pitch = switch (cadenceThrow) {
             case ROCK -> 0.8f;
             case PAPER, SCISSORS -> 1.1f;
         };
-        player.playSound(player.getLocation(), sound, SoundCategory.MASTER, 1.0f, pitch);
+        if (sound != null)
+            player.playSound(player.getLocation(), sound, SoundCategory.MASTER, 1.0f, pitch);
     }
 
     private void showFinalThrows(Throw chairOneThrow, Throw chairTwoThrow, int winner, boolean tie) {
@@ -1485,7 +1487,8 @@ public class RockPaperScissorsClient extends Client implements TerminableSession
                 renderWinnerOrbit(orbitSlots, cometIndex, cometItem);
                 if (isWinner) {
                     float pitch = WINNER_ORBIT_DING_PITCHES[dingStep];
-                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.MASTER, 1.0f, pitch);
+                    if (SoundHelper.getSoundSafely("entity.experience_orb.pickup", player) != null)
+                        player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.MASTER, 1.0f, pitch);
                     dingStep = (dingStep + 1) % WINNER_ORBIT_DING_PITCHES.length;
                 }
             }

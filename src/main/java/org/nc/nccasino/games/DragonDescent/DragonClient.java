@@ -447,7 +447,8 @@ public class DragonClient extends Client implements TerminableSession {
                     restoreTile(lastPlacedSlot.get(), actualFloor+1);
                 }
                 inventory.setItem(slot, createCustomItem(Material.DRAGON_HEAD, text("dragon-descent.sweep"), 1));
-                player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_FLAP, SoundCategory.MASTER, 1.0f, 1.0f);
+                if (SoundHelper.getSoundSafely("entity.ender_dragon.flap", player) != null)
+                    player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_FLAP, SoundCategory.MASTER, 1.0f, 1.0f);
     
                 if (slot == playerX) {
                     triggerGameOver();
