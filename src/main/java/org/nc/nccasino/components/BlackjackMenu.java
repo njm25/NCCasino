@@ -984,6 +984,10 @@ public class BlackjackMenu extends Menu {
      * just because one input was rejected. Must run on the main thread.
      */
     private void endEditSession(Player player) {
+        // Also on invalid input: a leftover localMob keeps AdminMenu
+        // "occupied", so the next settings visit's delayed close cleanup
+        // deletes that AdminMenu and wipes the new prompt's edit state.
+        AdminMenu.localMob.remove(ownerId);
         plugin.deleteAssociatedInventories(dealer);
         cleanup();
     }
