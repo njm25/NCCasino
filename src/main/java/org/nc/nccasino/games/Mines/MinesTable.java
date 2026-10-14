@@ -1885,13 +1885,11 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             }
             betStack.clear();
         }
-        
-        InventoryView openInventory = player.getOpenInventory();
-        boolean playerStillInMines = (openInventory != null && openInventory.getTopInventory().getHolder() instanceof MinesTable);
 
-        if (wagerPlaced && rebetEnabled && previousWager > 0 && !playerStillInMines) {
-            refundBet(player, (int) previousWager);
-        }
+        // No separate Rebet refund: resetGame puts the re-placed stake in
+        // betStack, which refundAllBets above already returned. Refunding
+        // previousWager again paid it twice, and after a mine hit it handed
+        // back the stake that was just lost.
 
         betStack.clear();
     
