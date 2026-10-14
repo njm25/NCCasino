@@ -8983,8 +8983,11 @@ private void resetGame() {
     // Gameplay stopped the pre-deal score at the dealer transition. Resume it
     // as soon as this round settles so the return-to-lobby animation and the
     // next betting window share the same continuous per-viewer loop.
+    // A seat whose player closed the table mid-round has no view to hear it.
     for (UUID playerId : playerSeats.keySet()) {
-        startBlackjackMusic(playerId);
+        if (views.containsKey(playerId)) {
+            startBlackjackMusic(playerId);
+        }
     }
 
     // Cancel any ongoing countdown
@@ -9037,6 +9040,8 @@ private void finishRoundEndBoardWipe(long myRoundGeneration, boolean clearSeats)
 
     if (clearSeats) {
         playerSeats.clear();
+    } else {
+        releaseSeatsOfPlayersWhoLeft();
     }
 
     // initializeGameMenu() clears every inventory (legacy + every open
@@ -9058,6 +9063,23 @@ private void finishRoundEndBoardWipe(long myRoundGeneration, boolean clearSeats)
                 ? createPlayerHeadItem(seatOwnerPlayer, 1)
                 : createPlayerHead(playerId, Bukkit.getOfflinePlayer(playerId).getName(), null);
         renderToAllViews(seatSlot, headItem);
+    }
+}
+
+/**
+ * Frees the seat of every player who closed the table or disconnected
+ * during the round and hasn't reopened it. RIDE_TO_RESULT kept the seat
+ * only so their hand could settle (see onSessionTerminated); it has now,
+ * and without this the seat would stay taken for every later round.
+ */
+private void releaseSeatsOfPlayersWhoLeft() {
+    for (UUID playerId : new ArrayList<>(playerSeats.keySet())) {
+        if (views.containsKey(playerId)) {
+            continue;
+        }
+        playerSeats.remove(playerId);
+        selectedWager.remove(playerId);
+        SessionRegistry.unregister(playerId, this);
     }
 }
 

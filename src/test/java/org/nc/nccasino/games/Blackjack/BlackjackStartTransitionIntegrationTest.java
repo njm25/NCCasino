@@ -138,11 +138,12 @@ class BlackjackStartTransitionIntegrationTest {
 
             assertFalse(h.inventory.isGameActiveForTest(), "an unsatisfiable readiness gate must never deal");
             assertFalse(h.inventory.isStartTransitionActiveForTest(), "the round must abort out of START_TRANSITION rather than hang in it forever");
-            // resetGame() deliberately does not clear playerSeats (matches
-            // its normal end-of-round behavior -- seated players stay
-            // seated between rounds); the fix's job is refunding the
-            // committed wager and abandoning the stuck round, not evicting anyone.
-            assertEquals(2, h.inventory.playerSeatsSizeForTest());
+            // The fix's job is refunding the committed wager and abandoning
+            // the stuck round, not evicting Alice, who is still at the
+            // table. The synthetic stuck seat never had the table open, so
+            // the round-end wipe frees it like any seat whose player left.
+            assertTrue(h.inventory.isSeatedForTest(alice.getUniqueId()));
+            assertEquals(1, h.inventory.playerSeatsSizeForTest());
             assertEquals(1, h.currencyProvider.depositAttempts.size(), "the legitimately seated player's wager must be refunded exactly once");
             assertEquals(0, java.math.BigDecimal.valueOf(25.0).compareTo(h.currencyProvider.depositAttempts.get(0)), "the exact wagered amount must be refunded");
         }

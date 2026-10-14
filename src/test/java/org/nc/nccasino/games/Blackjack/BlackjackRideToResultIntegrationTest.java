@@ -70,6 +70,21 @@ class BlackjackRideToResultIntegrationTest {
         h.scheduler.advance(1);
     }
 
+    /** Runs the timers until the round has settled and the board is back in the lobby. */
+    private static void playOutRound(BlackjackControllerTestSupport.Harness h) {
+        for (int i = 0; i < 400 && h.inventory.capturePhaseForTest() != BlackjackFrame.Phase.LOBBY; i++) {
+            h.scheduler.advance(20);
+        }
+        assertEquals(BlackjackFrame.Phase.LOBBY, h.inventory.capturePhaseForTest(), "test setup: the round must finish and return to the lobby");
+    }
+
+    /** Opens the table for a newcomer and has them click {@code seatSlot}; true if they got the seat. */
+    private static boolean newcomerCanSit(BlackjackControllerTestSupport.Harness h, int seatSlot) {
+        Player newcomer = h.seatOnlinePlayer(UUID.randomUUID(), "Newcomer");
+        h.click(newcomer, seatSlot);
+        return h.inventory.isSeatedForTest(newcomer.getUniqueId());
+    }
+
     @Test
     void closingWhileOnlineDuringOwnTurnRidesToResultInsteadOfForfeiting() {
         try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
@@ -433,6 +448,61 @@ class BlackjackRideToResultIntegrationTest {
             assertTrue(h.inventory.isSeatedForTest(aliceId), "right after bets are accepted, closing must ride to result, not refund");
             assertEquals(wagerBefore, h.inventory.totalRoundRefundForPlayerForTest(aliceId));
             assertEquals(depositsBefore, h.currencyProvider.depositAttempts.size());
+        }
+    }
+
+    @Test
+    void aPlayerWhoDisconnectsMidHandGetsTheirSeatFreedOnceTheRoundSettles() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            Player bob = h.seatOnlinePlayer(UUID.randomUUID(), "Bob");
+            seatTwoAndReachActionableTurn(h, alice, bob);
+            UUID aliceId = alice.getUniqueId();
+
+            h.setOnline(alice, false);
+            closeView(h, alice);
+            assertTrue(h.inventory.isSeatedForTest(aliceId), "test setup: Alice rides the hand she already paid for");
+
+            playOutRound(h);
+
+            assertFalse(h.inventory.isSeatedForTest(aliceId), "the seat must not stay taken by a player who is gone");
+            assertFalse(SessionRegistry.isRegistered(aliceId, h.inventory));
+            assertTrue(h.inventory.isSeatedForTest(bob.getUniqueId()), "a player still at the table keeps their seat");
+            assertTrue(newcomerCanSit(h, BlackjackSlotLayout.SEAT_SLOTS[0]), "the freed seat must be free for someone else");
+        }
+    }
+
+    @Test
+    void aPlayerWhoClosesTheTableMidHandAndStaysAwayGetsTheirSeatFreed() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            Player bob = h.seatOnlinePlayer(UUID.randomUUID(), "Bob");
+            seatTwoAndReachActionableTurn(h, alice, bob);
+            UUID bobId = bob.getUniqueId();
+
+            closeView(h, bob);
+            playOutRound(h);
+
+            assertFalse(h.inventory.isSeatedForTest(bobId));
+            assertFalse(SessionRegistry.isRegistered(bobId, h.inventory));
+            assertTrue(newcomerCanSit(h, BlackjackSlotLayout.SEAT_SLOTS[1]));
+        }
+    }
+
+    @Test
+    void aPlayerWhoReopensTheTableBeforeTheRoundEndsKeepsTheirSeat() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            Player bob = h.seatOnlinePlayer(UUID.randomUUID(), "Bob");
+            seatTwoAndReachActionableTurn(h, alice, bob);
+            UUID bobId = bob.getUniqueId();
+
+            closeView(h, bob);
+            h.inventory.getOrCreateView(bob);
+            playOutRound(h);
+
+            assertTrue(h.inventory.isSeatedForTest(bobId), "a player back at the table stays seated for the next round");
+            assertTrue(SessionRegistry.isRegistered(bobId, h.inventory));
         }
     }
 }
