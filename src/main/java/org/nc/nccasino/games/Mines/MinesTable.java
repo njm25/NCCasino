@@ -157,6 +157,19 @@ public class MinesTable extends DealerInventory implements TerminableSession {
 
     private final String[] modeNames = {"All", "Jazz", "Chords"};
 
+    /** "block.note_block.iron_xylophone" -> "Iron Xylophone" (Sound.toString() is a raw id, and junk on Paper). */
+    private String instrumentName(int index) {
+        String id = instrumentstrings[index];
+        StringBuilder name = new StringBuilder();
+        for (String word : id.substring(id.lastIndexOf('.') + 1).split("_")) {
+            if (name.length() > 0) {
+                name.append(' ');
+            }
+            name.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return name.toString();
+    }
+
     private final Map<Integer, float[]> tileNotes = new HashMap<>();
 
 
@@ -444,7 +457,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 case STANDARD:{
                     break;}
                 case VERBOSE:{
-                    player.sendMessage(text("mines.instrument-set", "instrument", instruments[instrumentIndex].toString()));
+                    player.sendMessage(text("mines.instrument-set", "instrument", instrumentName(instrumentIndex)));
                     break;     
                 }
                     case NONE:{
