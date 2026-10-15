@@ -54,6 +54,8 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.nc.nccasino.helpers.CopperGolemState;
+import org.nc.nccasino.helpers.VariantNames;
 import org.nc.nccasino.helpers.StoreFile;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Dealer;
@@ -1971,29 +1973,29 @@ public class AdminMenu extends Menu {
 
     private String getCurrentVariant(Mob mob) {
     if (mob instanceof Cat cat) {
-        return formatEntityName(cat.getCatType().toString());
+        return formatEntityName(VariantNames.id(cat.getCatType()));
     } else if (mob instanceof Fox fox) {
-        return formatEntityName(fox.getFoxType().toString());
+        return formatEntityName(VariantNames.id(fox.getFoxType()));
     } else if (mob instanceof Frog frog) {
-        return formatEntityName(frog.getVariant().toString());
+        return formatEntityName(VariantNames.id(frog.getVariant()));
     } else if (mob instanceof Parrot parrot) {
-        return formatEntityName(parrot.getVariant().toString());
+        return formatEntityName(VariantNames.id(parrot.getVariant()));
     } else if (mob instanceof Rabbit rabbit) {
-        return formatEntityName(rabbit.getRabbitType().toString());
+        return formatEntityName(VariantNames.id(rabbit.getRabbitType()));
     } else if (mob instanceof Axolotl axolotl) {
-        return formatEntityName(axolotl.getVariant().toString());
+        return formatEntityName(VariantNames.id(axolotl.getVariant()));
     } else if (mob instanceof MushroomCow mooshroom) {
-        return formatEntityName(mooshroom.getVariant().toString());
+        return formatEntityName(VariantNames.id(mooshroom.getVariant()));
     } else if (mob instanceof Panda panda) {
-        return formatEntityName(panda.getMainGene().toString());
+        return formatEntityName(VariantNames.id(panda.getMainGene()));
     } else if (mob instanceof Villager villager) {
-        return formatEntityName(villager.getVillagerType().toString());
+        return formatEntityName(VariantNames.id(villager.getVillagerType()));
     } else if (mob instanceof ZombieVillager zombieVillager) {
-        return formatEntityName(zombieVillager.getVillagerType().toString());
+        return formatEntityName(VariantNames.id(zombieVillager.getVillagerType()));
     } else if (mob instanceof Sheep sheep) {
-        return formatEntityName(sheep.getColor().toString());
+        return formatEntityName(VariantNames.id(sheep.getColor()));
     } else if (mob instanceof CopperGolem copperGolem) {
-        return formatEntityName(copperGolem.getWeatherState().toString());
+        return formatEntityName(VariantNames.id(CopperGolemState.get(copperGolem)));
     }
     return "";
     }

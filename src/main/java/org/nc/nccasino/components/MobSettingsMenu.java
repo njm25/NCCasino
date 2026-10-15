@@ -11,6 +11,8 @@ import org.bukkit.entity.ArmorStand;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.nc.nccasino.helpers.CopperGolemState;
+import org.nc.nccasino.helpers.VariantNames;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
@@ -724,7 +726,7 @@ public class MobSettingsMenu extends Menu {
         // Send feedback to player
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
             case STANDARD -> player.sendMessage(text("mob-settings.jockey-deleted"));
-            case VERBOSE -> player.sendMessage(text("mob-settings.jockey-deleted-detailed", "mob", jockey.getMob().getType().name()));
+            case VERBOSE -> player.sendMessage(text("mob-settings.jockey-deleted-detailed", "mob", formatEntityName(jockey.getMob().getType().name())));
             default -> {}
         }
     }
@@ -839,31 +841,31 @@ public class MobSettingsMenu extends Menu {
 
     private String getVariantName(Mob mob) {
         if (mob instanceof Cat cat) {
-            return formatEntityName(cat.getCatType().toString());
+            return formatEntityName(VariantNames.id(cat.getCatType()));
         } else if (mob instanceof Fox fox) {
-            return formatEntityName(fox.getFoxType().toString());
+            return formatEntityName(VariantNames.id(fox.getFoxType()));
         } else if (mob instanceof Frog frog) {
-            return formatEntityName(frog.getVariant().toString());
+            return formatEntityName(VariantNames.id(frog.getVariant()));
         } else if (mob instanceof Parrot parrot) {
-            return formatEntityName(parrot.getVariant().toString());
+            return formatEntityName(VariantNames.id(parrot.getVariant()));
         } else if (mob instanceof Rabbit rabbit) {
-            return formatEntityName(rabbit.getRabbitType().toString());
+            return formatEntityName(VariantNames.id(rabbit.getRabbitType()));
         } else if (mob instanceof Axolotl axolotl) {
-            return formatEntityName(axolotl.getVariant().toString());
+            return formatEntityName(VariantNames.id(axolotl.getVariant()));
         } else if (mob instanceof MushroomCow mooshroom) {
-            return formatEntityName(mooshroom.getVariant().toString());
+            return formatEntityName(VariantNames.id(mooshroom.getVariant()));
         } else if (mob instanceof Panda panda) {
-            return formatEntityName(panda.getMainGene().toString());
+            return formatEntityName(VariantNames.id(panda.getMainGene()));
         } else if (mob instanceof Villager villager) {
-            return formatEntityName(villager.getVillagerType().toString());
+            return formatEntityName(VariantNames.id(villager.getVillagerType()));
         } else if (mob instanceof ZombieVillager zombieVillager) {
-            return formatEntityName(zombieVillager.getVillagerType().toString());
+            return formatEntityName(VariantNames.id(zombieVillager.getVillagerType()));
         } else if (mob instanceof Sheep sheep) {
-            return formatEntityName(sheep.getColor().toString());
+            return formatEntityName(VariantNames.id(sheep.getColor()));
         } else if (mob instanceof Wolf wolf) {
-            return formatEntityName(wolf.getCollarColor().toString());
+            return formatEntityName(VariantNames.id(wolf.getCollarColor()));
         } else if (mob instanceof CopperGolem copperGolem) {
-            return formatEntityName(copperGolem.getWeatherState().toString());
+            return formatEntityName(VariantNames.id(CopperGolemState.get(copperGolem)));
         }
         return "";
     }

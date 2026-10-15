@@ -11,6 +11,8 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.nc.nccasino.helpers.CopperGolemState;
+import org.nc.nccasino.helpers.VariantNames;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.JockeyNode;
@@ -518,7 +520,7 @@ public class JockeyOptionsMenu extends Menu {
                 1,
                 text("jockey-options.edit-variant", "mob", formatEntityName(mob.getType().toString())),
                 slot,
-                text("jockey-options.current", "value", formatEntityName(vt.toString()))
+                text("jockey-options.current", "value", formatEntityName(VariantNames.id(vt)))
             );
             return;
         }
@@ -530,7 +532,7 @@ public class JockeyOptionsMenu extends Menu {
                 1,
                 text("jockey-options.edit-variant", "mob", formatEntityName(mob.getType().toString())),
                 slot,
-                text("jockey-options.current", "value", formatEntityName(vt.toString()))
+                text("jockey-options.current", "value", formatEntityName(VariantNames.id(vt)))
             );
             return;
         }
@@ -689,19 +691,19 @@ public class JockeyOptionsMenu extends Menu {
     }
 
     private String getVariantName(Mob mob) {
-        if (mob instanceof Fox fox) return formatEntityName(fox.getFoxType().toString());
-        if (mob instanceof Frog frog) return formatEntityName(frog.getVariant().toString());
-        if (mob instanceof Cat cat) return formatEntityName(cat.getCatType().toString());
-        if (mob instanceof Parrot parrot) return formatEntityName(parrot.getVariant().toString());
-        if (mob instanceof Rabbit rabbit) return formatEntityName(rabbit.getRabbitType().toString());
-        if (mob instanceof Axolotl axolotl) return formatEntityName(axolotl.getVariant().toString());
-        if (mob instanceof MushroomCow mooshroom) return formatEntityName(mooshroom.getVariant().toString());
-        if (mob instanceof Panda panda) return formatEntityName(panda.getMainGene().toString());
-        if (mob instanceof Villager villager) return formatEntityName(villager.getVillagerType().toString());
-        if (mob instanceof ZombieVillager zombie) return formatEntityName(zombie.getVillagerType().toString());
-        if (mob instanceof Sheep sheep) return formatEntityName(sheep.getColor().toString());
-        if (mob instanceof Wolf wolf) return formatEntityName(wolf.getCollarColor().toString());
-        if (mob instanceof CopperGolem copperGolem) return formatEntityName(copperGolem.getWeatherState().toString());
+        if (mob instanceof Fox fox) return formatEntityName(VariantNames.id(fox.getFoxType()));
+        if (mob instanceof Frog frog) return formatEntityName(VariantNames.id(frog.getVariant()));
+        if (mob instanceof Cat cat) return formatEntityName(VariantNames.id(cat.getCatType()));
+        if (mob instanceof Parrot parrot) return formatEntityName(VariantNames.id(parrot.getVariant()));
+        if (mob instanceof Rabbit rabbit) return formatEntityName(VariantNames.id(rabbit.getRabbitType()));
+        if (mob instanceof Axolotl axolotl) return formatEntityName(VariantNames.id(axolotl.getVariant()));
+        if (mob instanceof MushroomCow mooshroom) return formatEntityName(VariantNames.id(mooshroom.getVariant()));
+        if (mob instanceof Panda panda) return formatEntityName(VariantNames.id(panda.getMainGene()));
+        if (mob instanceof Villager villager) return formatEntityName(VariantNames.id(villager.getVillagerType()));
+        if (mob instanceof ZombieVillager zombie) return formatEntityName(VariantNames.id(zombie.getVillagerType()));
+        if (mob instanceof Sheep sheep) return formatEntityName(VariantNames.id(sheep.getColor()));
+        if (mob instanceof Wolf wolf) return formatEntityName(VariantNames.id(wolf.getCollarColor()));
+        if (mob instanceof CopperGolem copperGolem) return formatEntityName(VariantNames.id(CopperGolemState.get(copperGolem)));
         return "Unknown";
     }
 
@@ -784,14 +786,7 @@ public class JockeyOptionsMenu extends Menu {
     }
 
     private void sendVariantUpdateMessage(Player player, Object variantObj, Mob mob) {
-        String variantName;
-        if (variantObj instanceof Enum<?> e) {
-            // True Enum, so we can do .name()
-            variantName = e.name();
-        } else {
-            // Might be CraftCat$CraftType, so fallback to .toString()
-            variantName = variantObj.toString();
-        }
+        String variantName = VariantNames.id(variantObj);
     
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
             case VERBOSE -> player.sendMessage(text(
