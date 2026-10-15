@@ -266,10 +266,14 @@ public class JockeyManager {
                     bodyYaw = lerpAngle(bodyYaw, targetBodyYaw, turnSpeed);
                     headYaw = lerpAngle(headYaw, targetHeadYaw, turnSpeed);
 
-                    // Apply rotations to the entire stack
-                    Location loc = dealer.getLocation();
-                    loc.setYaw(bodyYaw);
-                    dealer.teleport(loc);
+                    // Apply rotations to the entire stack. Not by teleporting a
+                    // dealer that rides a vehicle: on Paper that dismounts it
+                    // (see Dealer.setBodyYaw); setRotation below turns it instead.
+                    if (!dealer.isInsideVehicle()) {
+                        Location loc = dealer.getLocation();
+                        loc.setYaw(bodyYaw);
+                        dealer.teleport(loc);
+                    }
                     
                     // Update head rotations for all entities in the stack. Each
                     // mob's eyes sit at a different height, so each tilts its

@@ -251,6 +251,13 @@ public class Dealer {
     }
     
     private static void setBodyYaw(Mob mob, float yaw) {
+        // Teleporting a mob that rides another dismounts it on Paper (Spigot
+        // refuses the teleport instead), which knocked a dealer off its
+        // vehicle on the next tick. A rider only needs its rotation set.
+        if (mob.isInsideVehicle()) {
+            mob.setRotation(yaw, mob.getLocation().getPitch());
+            return;
+        }
         Location mobLoc = mob.getLocation();
         mobLoc.setYaw(yaw);
         mob.teleport(mobLoc);
