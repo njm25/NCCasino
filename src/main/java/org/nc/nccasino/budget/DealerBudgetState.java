@@ -33,11 +33,15 @@ public final class DealerBudgetState {
      * dealer's memory/file does not grow without limit; oldest-settled ids
      * are evicted first once the cap is reached. Recreating an id that has
      * aged out of this bound is the one residual gap this leaves -- accepted
-     * because retaining every settlement ever made is not proportionate, and
-     * 5,000 outstanding ids is already far more than any real game keeps a
-     * commitment key "hot" for.
+     * because every id carries its table's random session id, so a replay can
+     * only come from the same session within moments of the original, long
+     * before 256 later settlements on the same dealer push it out.
+     *
+     * <p>Kept small on purpose: the store rewrites the whole budget file on
+     * every mutation, on the main thread, and these ids are most of it. At
+     * 5,000 a single busy dealer's save took ~34 ms (most of a 50 ms tick).
      */
-    static final int MAX_TOMBSTONES = 5_000;
+    static final int MAX_TOMBSTONES = 256;
 
     private final String dealerInternalName;
     private BigDecimal liveBalance;
@@ -314,18 +318,27 @@ public final class DealerBudgetState {
         }
         settledTombstones.remove(id);
         settledTombstones.put(id, System.currentTimeMillis() / 1000L);
-        while (settledTombstones.size() > MAX_TOMBSTONES) {
-            String oldest = settledTombstones.keySet().iterator().next();
-            settledTombstones.remove(oldest);
-        }
+        evictOldestTombstones();
     }
 
-    /** Test/load seam: restores a tombstone with its original settled-at time. */
+    /**
+     * Test/load seam: restores a tombstone with its original settled-at time.
+     * Ids are restored oldest first, so a file written under a larger cap
+     * keeps its newest {@link #MAX_TOMBSTONES}.
+     */
     void restoreTombstone(String id, long settledAtEpochSeconds) {
         if (id == null) {
             return;
         }
         settledTombstones.put(id, settledAtEpochSeconds);
+        evictOldestTombstones();
+    }
+
+    private void evictOldestTombstones() {
+        while (settledTombstones.size() > MAX_TOMBSTONES) {
+            String oldest = settledTombstones.keySet().iterator().next();
+            settledTombstones.remove(oldest);
+        }
     }
 
     boolean isTombstoned(String id) {

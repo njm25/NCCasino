@@ -416,6 +416,29 @@ class DealerBudgetStoreTest {
     }
 
     @Test
+    void onlyTheNewestSettledIdsAreKeptAndTheyStillBlockARecreateAfterReload() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("100000"));
+        int settledCount = DealerBudgetState.MAX_TOMBSTONES + 10;
+        for (int i = 0; i < settledCount; i++) {
+            Reservation open = store.creditAndReserve(reservation("spin-" + i, "1"), money("1"));
+            assertNotNull(open);
+            assertEquals(Settlement.Status.SETTLED, store.settle(DEALER, open.id(), money("0")).status());
+        }
+
+        DealerBudgetStore reloaded = store();
+        assertNull(reloaded.creditAndReserve(reservation("spin-" + (settledCount - 1), "1"), money("1")),
+            "the newest settled id must still be refused after a reload");
+        org.bukkit.configuration.file.YamlConfiguration file =
+            org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
+                new File(tempDir.toFile(), "data/dealer-budgets.yml"));
+        assertEquals(DealerBudgetState.MAX_TOMBSTONES,
+            file.getMapList("dealers." + DEALER + ".settled").size(),
+            "the budget file must not keep more settled ids than the cap");
+        assertInvariant(reloaded);
+    }
+
+    @Test
     void reusingACommitmentIdWithADifferentPayloadIsRefused() {
         DealerBudgetStore store = store();
         store.deposit(DEALER, money("1000"));
