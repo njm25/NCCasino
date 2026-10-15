@@ -2,6 +2,7 @@ package org.nc.nccasino.entities;
 
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.Location;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -197,7 +198,7 @@ public class JockeyManager {
                 private Entity currentTarget = null;
                 private float bodyYaw = dealer.getLocation().getYaw();
                 private float headYaw = bodyYaw;
-                private float headPitch = 0;
+                private final Map<UUID, Float> headPitches = new HashMap<>();
                 private static final float MIN_TURN_SPEED = 0.5f;
                 private static final float MAX_TURN_SPEED = 4.0f;
                 private static final float SMOOTH_FACTOR = 0.2f;
@@ -235,7 +236,6 @@ public class JockeyManager {
                     // Calculate target rotation
                     float targetBodyYaw;
                     float targetHeadYaw;
-                    float targetPitch = 0;
 
                     if (idleMode) {
                         targetBodyYaw = idleYaw;
@@ -249,11 +249,6 @@ public class JockeyManager {
                         double dz = targetLoc.getZ() - dealerLoc.getZ();
                         targetBodyYaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
                         
-                        // Calculate head pitch (vertical angle)
-                        double dy = targetLoc.getY() - (dealerLoc.getY() + 1.6); // Add eye height
-                        double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
-                        targetPitch = (float) -Math.toDegrees(Math.atan2(dy, horizontalDistance));
-                        
                         // Head can look slightly to the sides (within 45 degrees of body)
                         targetHeadYaw = targetBodyYaw;
                     } else {
@@ -263,7 +258,6 @@ public class JockeyManager {
                     // Smoothly interpolate rotations
                     float bodyDiff = ((targetBodyYaw - bodyYaw + 540) % 360) - 180;
                     float headDiff = ((targetHeadYaw - headYaw + 540) % 360) - 180;
-                    //float pitchDiff = targetPitch - headPitch;
 
                     float turnSpeed = Math.max(MIN_TURN_SPEED, 
                         Math.max(Math.abs(bodyDiff), Math.abs(headDiff)) * SMOOTH_FACTOR);
@@ -271,17 +265,24 @@ public class JockeyManager {
 
                     bodyYaw = lerpAngle(bodyYaw, targetBodyYaw, turnSpeed);
                     headYaw = lerpAngle(headYaw, targetHeadYaw, turnSpeed);
-                    headPitch = lerpAngle(headPitch, targetPitch, turnSpeed);
 
                     // Apply rotations to the entire stack
                     Location loc = dealer.getLocation();
                     loc.setYaw(bodyYaw);
                     dealer.teleport(loc);
                     
-                    // Update head rotations for all entities in the stack
+                    // Update head rotations for all entities in the stack. Each
+                    // mob's eyes sit at a different height, so each tilts its
+                    // own head to meet the target's eyes.
                     for (JockeyNode jockey : jockeys) {
                         Mob mob = jockey.getMob();
-                        mob.setRotation(bodyYaw, headPitch);
+                        float targetPitch = idleMode ? 0 : pitchToward(mob.getEyeLocation(), gazePoint(currentTarget));
+                        float pitch = headPitches.getOrDefault(mob.getUniqueId(), mob.getLocation().getPitch());
+                        float pitchSpeed = Math.min(MAX_TURN_SPEED,
+                            Math.max(MIN_TURN_SPEED, Math.abs(targetPitch - pitch) * SMOOTH_FACTOR));
+                        pitch = lerpAngle(pitch, targetPitch, pitchSpeed);
+                        headPitches.put(mob.getUniqueId(), pitch);
+                        mob.setRotation(bodyYaw, pitch);
                     }
                 }
 
@@ -315,6 +316,19 @@ public class JockeyManager {
 
             lookTasks.put(dealer.getUniqueId(), task);
         }, 5L); // Reduced from 20L to 5L ticks
+    }
+
+    /** Where a dealer looks on a target: its eyes, or its position if it has none. */
+    static Location gazePoint(Entity target) {
+        return target instanceof LivingEntity living ? living.getEyeLocation() : target.getLocation();
+    }
+
+    /** Head pitch that points from one position at another; positive looks down, as in Minecraft. */
+    static float pitchToward(Location from, Location to) {
+        double dx = to.getX() - from.getX();
+        double dy = to.getY() - from.getY();
+        double dz = to.getZ() - from.getZ();
+        return (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
     }
 
     public JockeyNode addJockey(Mob mob, int position) {
