@@ -13,6 +13,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.JockeyManager;
 import org.nc.nccasino.entities.JockeyNode;
@@ -46,8 +47,8 @@ public class JockeyMobMenu extends Menu {
                     String entityName = material.name().replace("_SPAWN_EGG", "");
                     EntityType entityType = EntityType.valueOf(entityName);
     
-                    // Exclude Wither & Ender Dragon
-                    if (entityType != EntityType.ENDER_DRAGON && entityType != EntityType.WITHER) {
+                    // Exclude Wither & Ender Dragon, and mobs this server can't spawn
+                    if (entityType != EntityType.ENDER_DRAGON && entityType != EntityType.WITHER && Dealer.isSpawnable(entityType)) {
                         spawnEggToEntity.put(material, entityType);
                         spawnEggList.add(material);
                         entityToSpawnEgg.put(entityType, material);

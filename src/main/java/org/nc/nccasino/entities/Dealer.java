@@ -382,6 +382,19 @@ public class Dealer {
         }
     }
 
+    // A mob behind a disabled experimental feature (the Creaking before 1.21.4)
+    // has a spawn egg but can't be spawned; swapping a dealer to it loses the dealer.
+    public static boolean isSpawnable(EntityType type) {
+        try {
+            java.util.List<org.bukkit.World> worlds = org.bukkit.Bukkit.getWorlds();
+            return worlds.isEmpty() || type.isEnabledByFeature(worlds.get(0));
+        } catch (RuntimeException | LinkageError e) {
+            // No server (unit tests), or Paper 1.21.9+, which dropped this method
+            // (no experimental mob there has a spawn egg).
+            return true;
+        }
+    }
+
     public static boolean isDealer(LivingEntity mob) {
         PersistentDataContainer dataContainer = mob.getPersistentDataContainer();
         return dataContainer.has(DEALER_KEY, PersistentDataType.BYTE);
