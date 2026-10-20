@@ -1,10 +1,12 @@
 package org.nc.nccasino.helpers;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -13,7 +15,9 @@ import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class StoreFileTest {
     @TempDir
@@ -87,5 +91,59 @@ class StoreFileTest {
         again.load();
         assertTrue(again.save(new YamlConfiguration()));
         assertEquals(12.5, YamlConfiguration.loadConfiguration(file).getDouble("unloaded.payouts.not-a-uuid.amount"));
+    }
+
+    // Windows-only: there an open FileInputStream blocks replacing the file,
+    // as an antivirus scan of the freshly written file does.
+    @Test
+    void saveWaitsOutABriefLockOnTheFile() throws Exception {
+        assumeTrue(isWindows());
+        File file = directory.resolve("pending-payouts.yml").toFile();
+        Files.writeString(file.toPath(), "payouts:\n  old: 1\n", StandardCharsets.UTF_8);
+        StoreFile store = new StoreFile(file, null);
+        store.load();
+
+        FileInputStream lock = new FileInputStream(file);
+        Thread release = new Thread(() -> {
+            try {
+                Thread.sleep(60);
+                lock.close();
+            } catch (Exception ignored) {
+            }
+        });
+        release.start();
+        FileConfiguration rebuilt = new YamlConfiguration();
+        rebuilt.set("payouts.new", 2);
+        assertTrue(store.save(rebuilt));
+        release.join();
+
+        assertEquals(2, YamlConfiguration.loadConfiguration(file).getInt("payouts.new"));
+        try (var files = Files.list(directory)) {
+            assertEquals(1, files.count(), "only the store file itself remains");
+        }
+    }
+
+    @Test
+    void aLockThatNeverLiftsStillFailsAndKeepsTheOriginal() throws IOException {
+        assumeTrue(isWindows());
+        File file = directory.resolve("pending-payouts.yml").toFile();
+        Files.writeString(file.toPath(), "payouts:\n  old: 1\n", StandardCharsets.UTF_8);
+        StoreFile store = new StoreFile(file, null);
+        store.load();
+
+        try (FileInputStream lock = new FileInputStream(file)) {
+            FileConfiguration rebuilt = new YamlConfiguration();
+            rebuilt.set("payouts.new", 2);
+            assertThrows(IOException.class, () -> store.save(rebuilt));
+        }
+
+        assertEquals("payouts:\n  old: 1\n", Files.readString(file.toPath(), StandardCharsets.UTF_8));
+        try (var files = Files.list(directory)) {
+            assertEquals(1, files.count(), "the temp file is cleaned up");
+        }
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("windows");
     }
 }

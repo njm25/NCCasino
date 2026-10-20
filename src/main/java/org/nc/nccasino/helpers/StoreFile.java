@@ -3,7 +3,10 @@ package org.nc.nccasino.helpers;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -34,6 +37,9 @@ import org.bukkit.configuration.file.YamlConfiguration;
  */
 public final class StoreFile {
     public static final String UNLOADED = "unloaded";
+    /** Up to about a quarter second in total, only while the target is locked. */
+    private static final int MOVE_ATTEMPTS = 10;
+    private static final long MOVE_RETRY_DELAY_MILLIS = 25;
 
     private final File file;
     private final Logger logger;
@@ -118,17 +124,44 @@ public final class StoreFile {
         File temp = new File(file.getParentFile(), file.getName() + ".tmp");
         try {
             config.save(temp);
-            try {
-                Files.move(temp.toPath(), file.toPath(),
-                    StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException e) {
-                Files.move(temp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            }
+            moveIntoPlace(temp.toPath(), file.toPath());
         } catch (IOException e) {
             temp.delete();
             throw e;
         }
         return true;
+    }
+
+    /**
+     * Windows refuses to replace a file that another process holds open --
+     * typically an antivirus or search indexer reading the file just
+     * written -- and that process lets go within milliseconds. Retrying
+     * briefly keeps such a lock from failing the save (a failed pending
+     * payout save loses the payout).
+     */
+    private static void moveIntoPlace(Path from, Path to) throws IOException {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                try {
+                    Files.move(from, to, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+                } catch (AtomicMoveNotSupportedException e) {
+                    Files.move(from, to, StandardCopyOption.REPLACE_EXISTING);
+                }
+                return;
+            } catch (NoSuchFileException e) {
+                throw e;
+            } catch (FileSystemException e) {
+                if (attempt >= MOVE_ATTEMPTS) {
+                    throw e;
+                }
+                try {
+                    Thread.sleep(MOVE_RETRY_DELAY_MILLIS);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+            }
+        }
     }
 
     /** {@code false}, logged once, while the store must not overwrite its unreadable original. */
