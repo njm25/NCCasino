@@ -12,6 +12,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -35,7 +36,10 @@ public final class LocalizationService {
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z][A-Za-z0-9_-]*)}");
     private final Nccasino plugin;
     private Map<String, String> supported = Map.of(ENGLISH, "English");
-    private final Map<String, YamlConfiguration> bundled = new LinkedHashMap<>();
+    // Flat key -> text per locale, loaded on first use: holding all 91 parsed
+    // catalogs cost ~110 MB, which every /reload added again on servers that
+    // keep the old plugin's classes (Paper 1.21.0-1.21.3 ran out of heap).
+    private final Map<String, Map<String, String>> bundled = new ConcurrentHashMap<>();
     private final Map<String, Map<String, String>> overrides = new LinkedHashMap<>();
     private int overrideProblems;
     private String serverDefault = ENGLISH;
@@ -58,8 +62,10 @@ public final class LocalizationService {
         overrides.clear();
         overrideProblems = 0;
         loadLocaleRegistry();
-        for (String locale : supported.keySet()) {
-            loadBundled(locale);
+        // English first: every other catalog falls back to and is checked against it.
+        bundled.put(ENGLISH, readBundled(ENGLISH));
+        if (bundled.get(ENGLISH).isEmpty()) {
+            plugin.getLogger().severe("Bundled en_US.yml is missing; localization fallback is unavailable.");
         }
 
         File languageDirectory = new File(plugin.getDataFolder(), "lang");
@@ -87,7 +93,7 @@ public final class LocalizationService {
         }
         clientDetection = plugin.getConfig().getBoolean("language.detect-client", true);
 
-        validateLanguages();
+        catalog(serverDefault);
     }
 
     public void reload() {
@@ -173,13 +179,13 @@ public final class LocalizationService {
 
         String value = overrides.getOrDefault(normalized, Map.of()).get(key);
         if (value == null) {
-            value = validValue(bundled.get(normalized), key);
+            value = validValue(catalog(normalized), key);
         }
         if (value == null) {
             value = overrides.getOrDefault(ENGLISH, Map.of()).get(key);
         }
         if (value == null) {
-            value = value(bundled.get(ENGLISH), key);
+            value = english().get(key);
         }
         if (value == null) {
             return "§c[missing:" + key + "]";
@@ -225,43 +231,60 @@ public final class LocalizationService {
         return Collections.unmodifiableSet(names);
     }
 
-    private void loadBundled(String locale) {
+    private Map<String, String> english() {
+        return bundled.getOrDefault(ENGLISH, Map.of());
+    }
+
+    /** A registered locale's bundled text, read and checked against English the first time it's needed. */
+    private Map<String, String> catalog(String locale) {
+        return bundled.computeIfAbsent(locale, id -> {
+            Map<String, String> catalog = readBundled(id);
+            validate(id, catalog);
+            return catalog;
+        });
+    }
+
+    /** Which catalogs are in memory; for tests. */
+    Set<String> loadedLocales() {
+        return Collections.unmodifiableSet(bundled.keySet());
+    }
+
+    private Map<String, String> readBundled(String locale) {
         try (InputStream stream = plugin.getResource("lang/" + locale + ".yml")) {
             if (stream == null) {
                 plugin.getLogger().warning("Missing bundled language resource: " + locale);
-                return;
+                return Map.of();
             }
-            bundled.put(
-                locale,
-                YamlConfiguration.loadConfiguration(
-                    new InputStreamReader(stream, StandardCharsets.UTF_8)
-                )
+            YamlConfiguration configuration = YamlConfiguration.loadConfiguration(
+                new InputStreamReader(stream, StandardCharsets.UTF_8)
             );
+            Map<String, String> values = new LinkedHashMap<>();
+            for (String key : configuration.getKeys(true)) {
+                if (configuration.isString(key)) {
+                    values.put(key, configuration.getString(key));
+                }
+            }
+            return values;
         } catch (IOException exception) {
             plugin.getLogger().log(Level.SEVERE, "Could not read bundled language " + locale + ".", exception);
+            return Map.of();
         }
     }
 
-    private void validateLanguages() {
-        YamlConfiguration english = bundled.get(ENGLISH);
-        if (english == null) {
-            plugin.getLogger().severe("Bundled en_US.yml is missing; localization fallback is unavailable.");
+    private void validate(String locale, Map<String, String> catalog) {
+        if (locale.equals(ENGLISH)) {
             return;
         }
-        for (Map.Entry<String, YamlConfiguration> language : bundled.entrySet()) {
-            if (language.getKey().equals(ENGLISH)) {
+        for (Map.Entry<String, String> entry : english().entrySet()) {
+            String key = entry.getKey();
+            if (key.startsWith("_meta")) {
                 continue;
             }
-            for (String key : english.getKeys(true)) {
-                if (key.startsWith("_meta") || !english.isString(key)) {
-                    continue;
-                }
-                String translated = language.getValue().getString(key);
-                if (translated == null) {
-                    plugin.getLogger().warning(language.getKey() + " is missing translation key " + key + ".");
-                } else if (!placeholders(english.getString(key)).equals(placeholders(translated))) {
-                    plugin.getLogger().warning(language.getKey() + " has mismatched placeholders for " + key + ".");
-                }
+            String translated = catalog.get(key);
+            if (translated == null) {
+                plugin.getLogger().warning(locale + " is missing translation key " + key + ".");
+            } else if (!placeholders(entry.getValue()).equals(placeholders(translated))) {
+                plugin.getLogger().warning(locale + " has mismatched placeholders for " + key + ".");
             }
         }
     }
@@ -327,7 +350,7 @@ public final class LocalizationService {
         if (files == null) {
             return;
         }
-        YamlConfiguration english = bundled.get(ENGLISH);
+        Map<String, String> english = english();
         java.util.List<String> problems = new java.util.ArrayList<>();
         int acceptedCount = 0;
         for (File file : files) {
@@ -346,7 +369,7 @@ public final class LocalizationService {
             LanguageOverrides.Result result = LanguageOverrides.validate(
                 locale,
                 values,
-                key -> english != null && english.isString(key) ? english.getString(key) : null
+                english::get
             );
             if (!result.accepted().isEmpty()) {
                 overrides.put(locale, result.accepted());
@@ -367,10 +390,6 @@ public final class LocalizationService {
         }
     }
 
-    private static String value(YamlConfiguration configuration, String key) {
-        return configuration != null ? configuration.getString(key) : null;
-    }
-
     private void loadLocaleRegistry() {
         try (InputStream stream = plugin.getResource(LocaleRegistry.RESOURCE)) {
             Map<String, String> names = new LinkedHashMap<>();
@@ -388,9 +407,9 @@ public final class LocalizationService {
         }
     }
 
-    private String validValue(YamlConfiguration configuration, String key) {
-        String candidate = value(configuration, key);
-        String canonical = value(bundled.get(ENGLISH), key);
+    private String validValue(Map<String, String> catalog, String key) {
+        String candidate = catalog.get(key);
+        String canonical = english().get(key);
         if (candidate == null || canonical == null) {
             return candidate;
         }

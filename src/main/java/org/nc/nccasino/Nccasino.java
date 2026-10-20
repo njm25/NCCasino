@@ -114,6 +114,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
     private DealerInteractListener dealerInteractListener;
     private PlayerSessionListener playerSessionListener;
     private LocalizationService localizationService;
+    private Metrics metrics;
 
     /**
      * This local map was used in your code. If you still need it,
@@ -148,6 +149,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
         }
         CitizensDealerSupport.shutdown();
         savePreferences();
+        // bStats' timer thread holds this plugin; left running, every /reload
+        // keeps the old instance (and everything it loaded) alive.
+        if (metrics != null) {
+            metrics.shutdown();
+            metrics = null;
+        }
     }
 
     /**
@@ -262,8 +269,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
         int pluginId = 24579;
         //bStats support
-        @SuppressWarnings("unused")
-        Metrics metrics = new Metrics(this, pluginId);
+        metrics = new Metrics(this, pluginId);
 
         // A plugin reload leaves players online: close any casino window the
         // previous instance left open (none at a normal startup), and hand
