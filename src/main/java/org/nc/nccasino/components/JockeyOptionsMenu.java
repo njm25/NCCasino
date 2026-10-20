@@ -15,6 +15,7 @@ import org.nc.nccasino.helpers.CopperGolemState;
 import org.nc.nccasino.helpers.MenuIcons;
 import org.nc.nccasino.helpers.VariantNames;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.JockeyNode;
 import org.nc.nccasino.entities.JockeyManager;
@@ -485,6 +486,7 @@ public class JockeyOptionsMenu extends Menu {
             } else {
                 ageable.setAdult();
             }
+            Dealer.lockAge(mob);
             switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
                 case VERBOSE -> player.sendMessage(text(
                     "jockey-options.age-set",

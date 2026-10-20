@@ -3,6 +3,7 @@ package org.nc.nccasino.entities;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.entity.Breedable;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -358,6 +359,27 @@ public class Dealer {
 
         DealerInventory.updateInventory(uniqueId, inventory);
         setName(mob, name);
+    }
+
+    /**
+     * Ageing ticks on even with AI off, so a baby dealer (or a baby in its
+     * jockey stack) would grow up after 20 loaded minutes; lock every age.
+     * (A tadpole has no age lock; its frog transformation is cancelled.)
+     */
+    public static void lockStackAges(Entity dealer) {
+        Entity bottom = dealer;
+        while (bottom.getVehicle() != null) {
+            bottom = bottom.getVehicle();
+        }
+        for (Entity entity = bottom; entity != null; entity = entity.getPassengers().isEmpty() ? null : entity.getPassengers().get(0)) {
+            lockAge(entity);
+        }
+    }
+
+    public static void lockAge(Entity entity) {
+        if (entity instanceof Breedable breedable) {
+            breedable.setAgeLock(true);
+        }
     }
 
     public static boolean isDealer(LivingEntity mob) {

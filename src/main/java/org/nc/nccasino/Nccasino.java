@@ -791,6 +791,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         // Citizens NPCs have no NCCasino-managed jockey stack to rebuild.
         if (mob instanceof Mob mobEntity && Dealer.getBackend(mob) != Dealer.Backend.CITIZENS) {
             new JockeyManager(mobEntity);
+            Dealer.lockStackAges(mobEntity);
         }
     }
     

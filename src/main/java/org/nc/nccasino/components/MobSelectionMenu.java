@@ -1070,6 +1070,7 @@ public class MobSelectionMenu extends Menu {
         // It's Ageable, so cast and toggle
         
         org.bukkit.entity.Ageable ageable = (org.bukkit.entity.Ageable) dealer;
+        Dealer.lockAge(dealer);
         if (ageable.isAdult()) {
             
             ageable.setBaby();

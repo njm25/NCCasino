@@ -1,8 +1,13 @@
 package org.nc.nccasino.listeners;
 
+import org.bukkit.Location;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockShearEntityEvent;
+import org.bukkit.event.block.EntityBlockFormEvent;
 import org.bukkit.event.entity.AreaEffectCloudApplyEvent;
+import org.bukkit.event.entity.CreeperPowerEvent;
+import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityCombustEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDropItemEvent;
@@ -11,7 +16,10 @@ import org.bukkit.event.entity.EntityPortalEvent;
 import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.event.entity.EntityTeleportEvent;
 import org.bukkit.event.entity.EntityTransformEvent;
+import org.bukkit.event.entity.PigZapEvent;
 import org.bukkit.event.entity.PotionSplashEvent;
+import org.bukkit.event.weather.LightningStrikeEvent;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -28,8 +36,10 @@ import org.bukkit.entity.Endermite;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
+import org.bukkit.entity.MushroomCow;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Shulker;
+import org.bukkit.entity.Tadpole;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.entities.JockeyManager;
 
@@ -132,6 +142,83 @@ public class DealerEventListener implements Listener {
     public void onEntityTransform(EntityTransformEvent event) {
         Entity entity = event.getEntity();
         if (entity instanceof Mob mob && isPartOfDealerStack(mob)) {
+            event.setCancelled(true);
+            // A grown tadpole retries becoming a frog every tick; restart its clock.
+            if (mob instanceof Tadpole tadpole) {
+                tadpole.setAge(0);
+            }
+        }
+    }
+
+    // A pig's lightning transformation fires PigZapEvent, which has its own
+    // handler list, so onEntityTransform never sees it.
+    @EventHandler
+    public void onPigZap(PigZapEvent event) {
+        if (isPartOfDealerStack(event.getEntity())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onCreeperPower(CreeperPowerEvent event) {
+        if (isPartOfDealerStack(event.getEntity())) {
+            event.setCancelled(true);
+        }
+    }
+
+    // Lightning recolours a mooshroom without an event to cancel, so its
+    // colour is put back for as long as the bolt can still hit it.
+    @EventHandler(ignoreCancelled = true)
+    public void onLightningStrike(LightningStrikeEvent event) {
+        Location strike = event.getLightning().getLocation();
+        Map<MushroomCow, MushroomCow.Variant> colours = new HashMap<>();
+        // A bolt hits entities up to 3 blocks around it and 9 above.
+        for (Entity nearby : strike.getWorld().getNearbyEntities(strike.clone().add(0, 3, 0), 4, 7, 4)) {
+            if (nearby instanceof MushroomCow cow && isPartOfDealerStack(cow)) {
+                colours.put(cow, cow.getVariant());
+            }
+        }
+        if (colours.isEmpty()) {
+            return;
+        }
+        new BukkitRunnable() {
+            private int ticks;
+
+            @Override
+            public void run() {
+                colours.forEach((cow, colour) -> {
+                    if (cow.isValid() && cow.getVariant() != colour) {
+                        cow.setVariant(colour);
+                    }
+                });
+                if (++ticks >= 40) {
+                    cancel();
+                }
+            }
+        }.runTaskTimer(JavaPlugin.getProvidingPlugin(DealerEventListener.class), 1L, 1L);
+    }
+
+    // A dispenser with shears shears sheep, snow golems and bogged, and turns
+    // a mooshroom into a cow.
+    @EventHandler
+    public void onBlockShearEntity(BlockShearEntityEvent event) {
+        if (event.getEntity() instanceof Mob mob && isPartOfDealerStack(mob)) {
+            event.setCancelled(true);
+        }
+    }
+
+    // Dealers never change the world around them (a snow golem's trail, an
+    // enderman's block, a copper golem turning into a statue).
+    @EventHandler
+    public void onEntityChangeBlock(EntityChangeBlockEvent event) {
+        if (event.getEntity() instanceof Mob mob && isPartOfDealerStack(mob)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onEntityBlockForm(EntityBlockFormEvent event) {
+        if (event.getEntity() instanceof Mob mob && isPartOfDealerStack(mob)) {
             event.setCancelled(true);
         }
     }
