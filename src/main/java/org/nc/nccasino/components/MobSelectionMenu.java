@@ -49,6 +49,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.helpers.CopperGolemState;
+import org.nc.nccasino.helpers.DealerSettingsSnapshot;
 import org.nc.nccasino.helpers.MenuIcons;
 import org.nc.nccasino.helpers.VariantNames;
 import org.nc.nccasino.Nccasino;
@@ -386,7 +387,8 @@ public class MobSelectionMenu extends Menu {
         int timer = plugin.getConfig().getInt("dealers." + internalName + ".timer", 30);
         String anmsg = plugin.getConfig().getString("dealers." + internalName + ".animation-message");
 
-        Map<String, Object> gameSettings = getGameSpecificSettings(plugin.getConfig(), internalName, gameType);
+        // Removing the old dealer deletes its config section; "keep settings" puts all of it back.
+        DealerSettingsSnapshot savedSettings = DealerSettingsSnapshot.capture(plugin.getConfig(), "dealers." + internalName);
 
         List<Integer> chipSizes = new ArrayList<>();
 
@@ -607,8 +609,9 @@ public class MobSelectionMenu extends Menu {
                                 
                                 // Spawn new dealer and rebuild stack
                                 Mob newDealer = Dealer.spawnDealer(plugin, loc, name, internalName, gameType, selectedType);
+                                // Restore before updateGameType builds the game, which reads these settings.
+                                savedSettings.restore(plugin.getConfig(), "dealers." + internalName);
                                 Dealer.updateGameType(newDealer, gameType, timer, anmsg, name, chipSizes, currencyMaterial, currencyName);
-                                restoreGameSpecificSettings(plugin.getConfig(), internalName, gameType, gameSettings);
 
                                 // Update names of all mobs in the stack
                                 JockeyManager jockeyManager = new JockeyManager(newDealer);
@@ -732,63 +735,6 @@ public class MobSelectionMenu extends Menu {
         );
         
         player.openInventory(confirmInventory.getInventory());
-    }
-
-    private Map<String, Object> getGameSpecificSettings(FileConfiguration config, String internalName, String gameType) {
-        Map<String, Object> settings = new HashMap<>();
-        String basePath = "dealers." + internalName + ".";
-
-        switch (gameType) {
-            case "Blackjack" -> {
-
-                settings.put("stand-on-17", config.getInt(basePath + "stand-on-17", 100));
-                settings.put("number-of-decks", config.getInt(basePath + "number-of-decks", 6));
-            }
-            case "Roulette" -> {
-
-            }
-            case "Mines" -> {
-                settings.put("default-mines", config.getInt(basePath + "default-mines", 3));
-            }
-            case "Baccarat" -> {
-
-                settings.put("number-of-decks", config.getInt(basePath + "number-of-decks", 8));
-            }
-            case "Coin Flip" -> {
-                settings.put("coin-flip-mode", config.getString(basePath + "coin-flip-mode", "PLAYER_VS_PLAYER"));
-                settings.put("coin-flip-max-chain-rounds", config.getInt(basePath + "coin-flip-max-chain-rounds", -1));
-                settings.put("coin-flip-mode-switching-enabled", config.getBoolean(basePath + "coin-flip-mode-switching-enabled", true));
-            }
-            case "Dragon Descent" -> {
-                settings.put("default-columns", config.getInt(basePath + "default-columns", 7));
-                settings.put("default-vines", config.getInt(basePath + "default-vines", 5));
-                settings.put("default-floors", config.getInt(basePath + "default-floors", 4));
-            }
-            case "Rock Paper Scissors" -> {
-                settings.put("rps-mode", config.getString(basePath + "rps-mode", "PLAYER_VS_PLAYER"));
-                settings.put("rps-max-chain-rounds", config.getInt(basePath + "rps-max-chain-rounds", -1));
-                settings.put("rps-mode-switching-enabled", config.getBoolean(basePath + "rps-mode-switching-enabled", true));
-            }
-            case "Slots" -> {
-                // No game-specific config beyond the shared chip-sizes/currency
-                // keys already preserved elsewhere -- the paytable is fixed.
-            }
-        }
-        return settings;
-    }
-
-    private void restoreGameSpecificSettings(FileConfiguration config, String internalName, String gameType, Map<String, Object> settings) {
-        String basePath = "dealers." + internalName + ".";
-
-        settings.forEach((key, value) -> {
-            config.set(basePath + key, value);
-        });
-
-        try {
-            plugin.saveConfig();
-        } catch (Exception e) {
-            Bukkit.getLogger().warning("Failed to save dealer settings: " + e.getMessage());
-        }
     }
 
     private void handleVariantClick(Player player) {
