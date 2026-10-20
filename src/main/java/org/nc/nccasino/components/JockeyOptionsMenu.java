@@ -12,6 +12,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.nc.nccasino.helpers.CopperGolemState;
+import org.nc.nccasino.helpers.MenuIcons;
 import org.nc.nccasino.helpers.VariantNames;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
@@ -49,7 +50,7 @@ public class JockeyOptionsMenu extends Menu {
         put(Villager.Type.JUNGLE, Material.JUNGLE_LOG);
         put(Villager.Type.PLAINS, Material.OAK_LOG);
         put(Villager.Type.SAVANNA, Material.ACACIA_LOG);
-        put(Villager.Type.SNOW, Material.PALE_OAK_LOG);
+        put(Villager.Type.SNOW, MenuIcons.SNOWY_VILLAGER);
         put(Villager.Type.SWAMP, Material.MANGROVE_LOG);
         put(Villager.Type.TAIGA, Material.SPRUCE_LOG);
     }};
@@ -703,7 +704,7 @@ public class JockeyOptionsMenu extends Menu {
         if (mob instanceof ZombieVillager zombie) return formatEntityName(VariantNames.id(zombie.getVillagerType()));
         if (mob instanceof Sheep sheep) return formatEntityName(VariantNames.id(sheep.getColor()));
         if (mob instanceof Wolf wolf) return formatEntityName(VariantNames.id(wolf.getCollarColor()));
-        if (mob instanceof CopperGolem copperGolem) return formatEntityName(VariantNames.id(CopperGolemState.get(copperGolem)));
+        if (CopperGolemState.is(mob)) return formatEntityName(VariantNames.id(CopperGolemState.get(mob)));
         return "Unknown";
     }
 

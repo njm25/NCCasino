@@ -22,6 +22,7 @@ import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Menu;
 import org.nc.nccasino.entities.Dealer;
 import org.nc.nccasino.games.RockPaperScissors.RpsMode;
+import org.nc.nccasino.helpers.MenuIcons;
 import org.nc.nccasino.helpers.SoundHelper;
 
 public class RockPaperScissorsMenu extends Menu {
@@ -93,7 +94,7 @@ public class RockPaperScissorsMenu extends Menu {
                 "rounds", maxChain,
                 "multiplier", String.format(java.util.Locale.ROOT, "%.2f", Math.pow(1.98, maxChain))
             );
-        addItemAndLore(Material.IRON_CHAIN, 1, text("rock-paper-scissors-settings.edit-max-chain"), slotMapping.get(SlotOption.EDIT_RPS_MAX_CHAIN), subtitle);
+        addItemAndLore(MenuIcons.CHAIN, 1, text("rock-paper-scissors-settings.edit-max-chain"), slotMapping.get(SlotOption.EDIT_RPS_MAX_CHAIN), subtitle);
     }
 
     private void addModeItem(String internalName) {

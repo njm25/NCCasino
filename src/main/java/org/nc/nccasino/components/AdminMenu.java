@@ -22,7 +22,6 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Axolotl;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Cat;
-import org.bukkit.entity.CopperGolem;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fox;
@@ -1994,8 +1993,8 @@ public class AdminMenu extends Menu {
         return formatEntityName(VariantNames.id(zombieVillager.getVillagerType()));
     } else if (mob instanceof Sheep sheep) {
         return formatEntityName(VariantNames.id(sheep.getColor()));
-    } else if (mob instanceof CopperGolem copperGolem) {
-        return formatEntityName(VariantNames.id(CopperGolemState.get(copperGolem)));
+    } else if (CopperGolemState.is(mob)) {
+        return formatEntityName(VariantNames.id(CopperGolemState.get(mob)));
     }
     return "";
     }

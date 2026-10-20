@@ -864,8 +864,8 @@ public class MobSettingsMenu extends Menu {
             return formatEntityName(VariantNames.id(sheep.getColor()));
         } else if (mob instanceof Wolf wolf) {
             return formatEntityName(VariantNames.id(wolf.getCollarColor()));
-        } else if (mob instanceof CopperGolem copperGolem) {
-            return formatEntityName(VariantNames.id(CopperGolemState.get(copperGolem)));
+        } else if (CopperGolemState.is(mob)) {
+            return formatEntityName(VariantNames.id(CopperGolemState.get(mob)));
         }
         return "";
     }

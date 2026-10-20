@@ -23,7 +23,6 @@ import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Axolotl;
 import org.bukkit.entity.Cat;
 import org.bukkit.entity.Cat.Type;
-import org.bukkit.entity.CopperGolem;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fox;
@@ -50,6 +49,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.nc.nccasino.helpers.CopperGolemState;
+import org.nc.nccasino.helpers.MenuIcons;
 import org.nc.nccasino.helpers.VariantNames;
 import org.nc.nccasino.Nccasino;
 import org.nc.nccasino.entities.Dealer;
@@ -85,7 +85,7 @@ public class MobSelectionMenu extends Menu {
         put(Villager.Type.JUNGLE, Material.JUNGLE_LOG);
         put(Villager.Type.PLAINS, Material.OAK_LOG);
         put(Villager.Type.SAVANNA, Material.ACACIA_LOG);
-        put(Villager.Type.SNOW, Material.PALE_OAK_LOG);
+        put(Villager.Type.SNOW, MenuIcons.SNOWY_VILLAGER);
         put(Villager.Type.SWAMP, Material.MANGROVE_LOG);
         put(Villager.Type.TAIGA, Material.SPRUCE_LOG);
     }};
@@ -185,12 +185,13 @@ public class MobSelectionMenu extends Menu {
             Material.LIGHT_GRAY_WOOL, Material.CYAN_WOOL, Material.PURPLE_WOOL, Material.BLUE_WOOL,
             Material.BROWN_WOOL, Material.GREEN_WOOL, Material.RED_WOOL, Material.BLACK_WOOL
         }); // 16 colors
-        
-        put(CopperGolem.class, new Material[]{
-            Material.COPPER_BLOCK, Material.EXPOSED_COPPER, Material.WEATHERED_COPPER, Material.OXIDIZED_COPPER,
-            Material.WAXED_COPPER_BLOCK, Material.WAXED_EXPOSED_COPPER, Material.WAXED_WEATHERED_COPPER, Material.WAXED_OXIDIZED_COPPER
-        }); // 8 weather states (4 unwaxed + 4 waxed)
     }};
+
+    // Not in VARIANT_ITEMS: CopperGolem.class doesn't exist before 1.21.9 (see CopperGolemState)
+    private static final Material[] COPPER_GOLEM_ITEMS = {
+        Material.COPPER_BLOCK, Material.EXPOSED_COPPER, Material.WEATHERED_COPPER, Material.OXIDIZED_COPPER,
+        Material.WAXED_COPPER_BLOCK, Material.WAXED_EXPOSED_COPPER, Material.WAXED_WEATHERED_COPPER, Material.WAXED_OXIDIZED_COPPER
+    }; // 8 weather states (4 unwaxed + 4 waxed)
 
     static {
         for (Material material : Material.values()) {
@@ -924,8 +925,8 @@ public class MobSelectionMenu extends Menu {
                 }
             }
         }
-        else if (mob instanceof CopperGolem copperGolem) {
-            Enum<?> nextState = CopperGolemState.cycle(copperGolem);
+        else if (CopperGolemState.is(mob)) {
+            Enum<?> nextState = CopperGolemState.cycle(mob);
             if (nextState != null) {
                 sendVariantUpdateMessage(player, nextState, mob);
             } else {
@@ -1092,10 +1093,10 @@ public class MobSelectionMenu extends Menu {
             DyeColor color = sheep.getColor();
             if (color == null) return null;
             return VARIANT_ITEMS.get(Sheep.class)[indexOf(DyeColor.values(), color)];
-        } else if (mob instanceof CopperGolem copperGolem) {
-            Enum<?> weatherState = CopperGolemState.get(copperGolem);
+        } else if (CopperGolemState.is(mob)) {
+            Enum<?> weatherState = CopperGolemState.get(mob);
             if (weatherState == null) return Material.BARRIER;
-            return VARIANT_ITEMS.get(CopperGolem.class)[weatherState.ordinal()];
+            return COPPER_GOLEM_ITEMS[weatherState.ordinal()];
         }
     
         return Material.BARRIER; // Default if not found
@@ -1264,8 +1265,8 @@ public class MobSelectionMenu extends Menu {
             return formatEntityName(VariantNames.id(sheep.getColor()));
         }else if (mob instanceof Wolf wolf) {
             return formatEntityName(VariantNames.id(wolf.getCollarColor()));
-        } else if (mob instanceof CopperGolem copperGolem) {
-            return formatEntityName(VariantNames.id(CopperGolemState.get(copperGolem)));
+        } else if (CopperGolemState.is(mob)) {
+            return formatEntityName(VariantNames.id(CopperGolemState.get(mob)));
         }
 
         return "Unknown";
@@ -1284,7 +1285,7 @@ public class MobSelectionMenu extends Menu {
             || (mob instanceof ZombieVillager)
             || (mob instanceof Sheep)
             || (mob instanceof Wolf)
-            || (mob instanceof CopperGolem);
+            || CopperGolemState.is(mob);
             
     }
 

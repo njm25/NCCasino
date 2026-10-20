@@ -2,10 +2,13 @@ package org.nc.nccasino.helpers;
 
 import org.bukkit.entity.CopperGolem;
 import org.bukkit.entity.CopperGolem.CopperWeatherState;
+import org.bukkit.entity.Zombie;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -28,6 +31,15 @@ class CopperGolemStateTest {
         when(golem.getWeatherState()).thenReturn(CopperWeatherState.OXIDIZED);
         assertEquals(CopperWeatherState.UNAFFECTED, CopperGolemState.cycle(golem));
         verify(golem).setWeatherState(CopperWeatherState.UNAFFECTED);
+    }
+
+    @Test
+    void anotherMobIsNotAGolemAndHasNoState() {
+        Zombie zombie = mock(Zombie.class);
+        assertFalse(CopperGolemState.is(zombie));
+        assertNull(CopperGolemState.get(zombie));
+        assertNull(CopperGolemState.cycle(zombie));
+        assertTrue(CopperGolemState.is(mock(CopperGolem.class)));
     }
 
     @Test
