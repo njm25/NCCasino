@@ -705,7 +705,7 @@ public class BaccaratServer extends Server {
         return total % 10; // Baccarat rule: only last digit matters
     }
     
-    private boolean shouldBankerDraw(int playerTotal, int bankerTotal, Integer playerThirdCard) {
+    static boolean shouldBankerDraw(int playerTotal, int bankerTotal, Integer playerThirdCard) {
         if (bankerTotal <= 2) return true; // Banker always draws if total is 0, 1, or 2
         if (bankerTotal >= 7) return false; // Banker stands on 7+
     
