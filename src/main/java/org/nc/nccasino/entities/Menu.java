@@ -294,8 +294,11 @@ public abstract class Menu extends DealerInventory {
             }
 
             if (player.getOpenInventory().getTopInventory().getHolder() instanceof Menu menu) {
+                // The dealer's entity may be gone (deleted, or its chunk unloaded):
+                // match the menu's own id too, and never stop the loop on a missing one.
                 LivingEntity dealer = Dealer.findDealer(menu.dealerId, player.getLocation());
-                if (Dealer.getUniqueId(dealer).equals(dealerId) || dealer.getUniqueId().equals(dealerId)) {
+                if (dealerId.equals(menu.dealerId)
+                        || (dealer != null && (dealerId.equals(Dealer.getUniqueId(dealer)) || dealerId.equals(dealer.getUniqueId())))) {
                     players.add(player);
                 }
             }
