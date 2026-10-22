@@ -125,8 +125,10 @@ public class DealerInteractListener implements Listener {
         // working, and stops the menu from opening twice.
         if (Dealer.getBackend(resolved) == Dealer.Backend.CITIZENS) return;
 
-        if (!handleDealerClick(player, resolved)) return;
-
+        // Cancel even when the click is refused or is the other hand's copy of
+        // it: a dealer must never run its vanilla interaction (villager trading,
+        // a camel's or horse's inventory on sneak-click, mounting).
+        handleDealerClick(player, resolved);
         event.setCancelled(true);
     }
 
