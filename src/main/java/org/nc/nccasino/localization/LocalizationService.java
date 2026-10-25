@@ -82,9 +82,15 @@ public final class LocalizationService {
         }
         loadOverrides(overrideDirectory);
 
-        String configured = LocaleIds.normalize(
-            plugin.getConfig().getString("language.default", ENGLISH)
-        );
+        String raw = plugin.getConfig().getString("language.default", ENGLISH);
+        String configured = LocaleIds.normalize(raw);
+        if (configured == null || !supported.containsKey(configured)) {
+            // "de" or "pt" means the registered catalog for that language, as it does for a client.
+            configured = ClientLocaleResolver.resolve(raw, supported.keySet());
+            if (configured != null) {
+                plugin.getLogger().info("language.default '" + raw + "' uses " + configured + ".");
+            }
+        }
         if (configured == null || !supported.containsKey(configured)) {
             plugin.getLogger().warning("Unsupported language.default; falling back to " + ENGLISH + ".");
             serverDefault = ENGLISH;
@@ -359,7 +365,14 @@ public final class LocalizationService {
                 problems.add(file.getName() + " is not a registered locale");
                 continue;
             }
-            YamlConfiguration configuration = YamlConfiguration.loadConfiguration(file);
+            YamlConfiguration configuration = new YamlConfiguration();
+            try {
+                configuration.load(file);
+            } catch (IOException | org.bukkit.configuration.InvalidConfigurationException exception) {
+                // Counted, so /ncc reload reports it instead of quietly using none of the file.
+                problems.add(file.getName() + " could not be read: " + firstLine(exception.getMessage()));
+                continue;
+            }
             Map<String, Object> values = new LinkedHashMap<>();
             for (String key : configuration.getKeys(true)) {
                 if (!configuration.isConfigurationSection(key)) {
@@ -388,6 +401,14 @@ public final class LocalizationService {
                 plugin.getLogger().warning("  ... and " + (problems.size() - 20) + " more.");
             }
         }
+    }
+
+    private static String firstLine(String message) {
+        if (message == null || message.isBlank()) {
+            return "invalid YAML";
+        }
+        int end = message.indexOf('\n');
+        return (end < 0 ? message : message.substring(0, end)).trim();
     }
 
     private void loadLocaleRegistry() {
