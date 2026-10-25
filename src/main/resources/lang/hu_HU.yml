@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(oldal) &b- Kilistázza az osztókat"
   help-delete: "&b/ncc delete &e<név> &b- Törli a megadott osztót"
   help-reload: "&b/ncc reload &b- Újratölti a konfigurációt"
+  help-claim: "&b/ncc claim &b- Felveszi a tárolt nyereményeidet"

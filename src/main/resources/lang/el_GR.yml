@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(σελίδα) &b- Εμφανίζει τους ντίλερ"
   help-delete: "&b/ncc delete &e<όνομα> &b- Διαγράφει τον συγκεκριμένο ντίλερ"
   help-reload: "&b/ncc reload &b- Φορτώνει ξανά τις ρυθμίσεις"
+  help-claim: "&b/ncc claim &b- Παραλαμβάνει τα φυλαγμένα κέρδη σου"

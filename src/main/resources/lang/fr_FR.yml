@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(page) &b- Affiche les croupiers"
   help-delete: "&b/ncc delete &e<nom> &b- Supprime le croupier indiqué"
   help-reload: "&b/ncc reload &b- Recharge la configuration"
+  help-claim: "&b/ncc claim &b- Récupère vos gains conservés"

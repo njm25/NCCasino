@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(หน้า) &b- แสดงรายชื่อดีลเลอร์"
   help-delete: "&b/ncc delete &e<ชื่อ> &b- ลบดีลเลอร์ที่ระบุ"
   help-reload: "&b/ncc reload &b- โหลดการตั้งค่าใหม่"
+  help-claim: "&b/ncc claim &b- รับเงินรางวัลที่เก็บไว้ของคุณ"

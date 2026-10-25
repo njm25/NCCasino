@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(stran) &b- Prikaže seznam delivcev"
   help-delete: "&b/ncc delete &e<ime> &b- Izbriše navedenega delivca"
   help-reload: "&b/ncc reload &b- Znova naloži konfiguracijo"
+  help-claim: "&b/ncc claim &b- Prevzame tvoje shranjene dobitke"

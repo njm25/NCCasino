@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(страница) &b- Показва списък с крупиетата"
   help-delete: "&b/ncc delete &e<име> &b- Изтрива посоченото крупие"
   help-reload: "&b/ncc reload &b- Презарежда конфигурацията"
+  help-claim: "&b/ncc claim &b- Взема запазените ти печалби"

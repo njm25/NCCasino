@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(síða) &b- Sýnir lista yfir gjafara"
   help-delete: "&b/ncc delete &e<heiti> &b- Eyðir tilgreindum gjafara"
   help-reload: "&b/ncc reload &b- Endurhleður stillingarnar"
+  help-claim: "&b/ncc claim &b- Sækir geymdu vinningana þína"

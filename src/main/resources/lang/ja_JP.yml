@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(ページ) &b- ディーラーの一覧を表示"
   help-delete: "&b/ncc delete &e<名前> &b- 指定したディーラーを削除"
   help-reload: "&b/ncc reload &b- 設定を再読み込み"
+  help-claim: "&b/ncc claim &b- 保管中の配当を受け取り"

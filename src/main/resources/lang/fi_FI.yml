@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(sivu) &b- Listaa jakajat"
   help-delete: "&b/ncc delete &e<nimi> &b- Poistaa määritetyn jakajan"
   help-reload: "&b/ncc reload &b- Lataa asetukset uudelleen"
+  help-claim: "&b/ncc claim &b- Noutaa säilytetyt voittosi"

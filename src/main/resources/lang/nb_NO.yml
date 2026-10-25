@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(side) &b- Viser dealerne"
   help-delete: "&b/ncc delete &e<navn> &b- Sletter den angitte dealeren"
   help-reload: "&b/ncc reload &b- Laster inn konfigurasjonen på nytt"
+  help-claim: "&b/ncc claim &b- Henter de lagrede gevinstene dine"

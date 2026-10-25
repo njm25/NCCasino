@@ -1288,3 +1288,4 @@ commands:
   help-list: "&bفرمان /ncc list &e(صفحه) &b- دیلرها را فهرست می‌کند"
   help-delete: "&bفرمان /ncc delete &e<نام> &b- دیلر مشخص‌شده را حذف می‌کند"
   help-reload: "&bفرمان /ncc reload &b- پیکربندی را دوباره بارگذاری می‌کند"
+  help-claim: "&bفرمان /ncc claim &b- بردهای نگه‌داشته‌شده شما را دریافت می‌کند"

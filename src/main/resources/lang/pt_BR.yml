@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(página) &b- Lista os crupiês"
   help-delete: "&b/ncc delete &e<nome> &b- Exclui o crupiê indicado"
   help-reload: "&b/ncc reload &b- Recarrega a configuração"
+  help-claim: "&b/ncc claim &b- Resgata seus ganhos guardados"

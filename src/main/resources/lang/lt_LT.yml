@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(puslapis) &b- Parodo dalytojų sąrašą"
   help-delete: "&b/ncc delete &e<vardas> &b- Ištrina nurodytą dalytoją"
   help-reload: "&b/ncc reload &b- Iš naujo įkelia konfigūraciją"
+  help-claim: "&b/ncc claim &b- Atiduoda tavo išsaugotus laimėjimus"

@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e（頁碼） &b- 列出荷官"
   help-delete: "&b/ncc delete &e<名稱> &b- 刪除指定的荷官"
   help-reload: "&b/ncc reload &b- 重新載入設定"
+  help-claim: "&b/ncc claim &b- 領取你的暫存獎金"

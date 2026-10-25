@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(хуудас) &b- Дилерүүдийг жагсаана"
   help-delete: "&b/ncc delete &e<нэр> &b- Заасан дилерийг устгана"
   help-reload: "&b/ncc reload &b- Тохиргоог дахин ачаална"
+  help-claim: "&b/ncc claim &b- Таны хадгалсан хожлыг авна"

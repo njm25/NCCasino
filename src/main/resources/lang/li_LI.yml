@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(pagina) &b- Tuint de dealers"
   help-delete: "&b/ncc delete &e<naam> &b- Wis de geneumde dealer"
   help-reload: "&b/ncc reload &b- Luujt de configuratie opnuuj"
+  help-claim: "&b/ncc claim &b- Haolt dien bewaorde winst op"

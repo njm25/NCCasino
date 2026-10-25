@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(страна) &b- Приказује списак делилаца"
   help-delete: "&b/ncc delete &e<име> &b- Брише наведеног делиоца"
   help-reload: "&b/ncc reload &b- Поново учитава конфигурацију"
+  help-claim: "&b/ncc claim &b- Преузима твоје сачуване добитке"

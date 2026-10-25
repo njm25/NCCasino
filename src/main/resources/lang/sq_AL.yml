@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(faqja) &b- Shfaq listën e krupierëve"
   help-delete: "&b/ncc delete &e<emri> &b- Fshin krupierin e treguar"
   help-reload: "&b/ncc reload &b- Ringarkon konfigurimin"
+  help-claim: "&b/ncc claim &b- Merr fitimet tuaja të ruajtura"

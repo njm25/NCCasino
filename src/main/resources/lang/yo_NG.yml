@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(ojú-ìwé) &b- Ó ń ṣe àkójọ àwọn olùpín"
   help-delete: "&b/ncc delete &e<orúkọ> &b- Ó ń pa olùpín tí a sọ rẹ́"
   help-reload: "&b/ncc reload &b- Ó ń tún ètò gbé wọlé"
+  help-claim: "&b/ncc claim &b- Ó ń gba owó ìborí rẹ tí a pa mọ́"

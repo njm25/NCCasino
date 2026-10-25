@@ -1288,3 +1288,4 @@ commands:
   help-list: "&bהפקודה /ncc list &e(עמוד) &b- מציגה את רשימת הדילרים"
   help-delete: "&bהפקודה /ncc delete &e<שם> &b- מוחקת את הדילר שצוין"
   help-reload: "&bהפקודה /ncc reload &b- טוענת מחדש את ההגדרות"
+  help-claim: "&bהפקודה /ncc claim &b- אוספת את הזכיות השמורות שלך"

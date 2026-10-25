@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(Siet) &b- Wiest de Croupiers"
   help-delete: "&b/ncc delete &e<Naam> &b- Löskt den nöömten Croupier"
   help-reload: "&b/ncc reload &b- Laadt de Konfiguratschoon nee"
+  help-claim: "&b/ncc claim &b- Haalt dien opbewohrte Winst af"

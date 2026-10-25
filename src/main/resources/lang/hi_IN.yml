@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(पेज) &b- डीलरों की सूची दिखाता है"
   help-delete: "&b/ncc delete &e<नाम> &b- बताए गए डीलर को हटाता है"
   help-reload: "&b/ncc reload &b- कॉन्फ़िगरेशन फिर से लोड करता है"
+  help-claim: "&b/ncc claim &b- आपकी सहेजी गई जीत दिलाता है"

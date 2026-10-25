@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(pagina) &b- Lista los cropièrs"
   help-delete: "&b/ncc delete &e<nom> &b- Suprimís lo cropièr indicat"
   help-reload: "&b/ncc reload &b- Recarga la configuracion"
+  help-claim: "&b/ncc claim &b- Recupèra vòstres ganhs gardats"

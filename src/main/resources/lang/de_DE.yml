@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(Seite) &b- Listet die Dealer auf"
   help-delete: "&b/ncc delete &e<Name> &b- Löscht den angegebenen Dealer"
   help-reload: "&b/ncc reload &b- Lädt die Konfiguration neu"
+  help-claim: "&b/ncc claim &b- Holt deine verwahrten Gewinne ab"

@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(bladsy) &b- Lys die kroepiers"
   help-delete: "&b/ncc delete &e<naam> &b- Skrap die gegewe kroepier"
   help-reload: "&b/ncc reload &b- Herlaai die konfigurasie"
+  help-claim: "&b/ncc claim &b- Haal jou bewaarde winste af"

@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(page) &b- 列出所有荷官"
   help-delete: "&b/ncc delete &e<name> &b- 删除指定的荷官"
   help-reload: "&b/ncc reload &b- 重载配置"
+  help-claim: "&b/ncc claim &b- 领取你存放的奖金"

@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(페이지) &b- 딜러 목록을 표시합니다"
   help-delete: "&b/ncc delete &e<이름> &b- 지정한 딜러를 삭제합니다"
   help-reload: "&b/ncc reload &b- 설정을 다시 불러옵니다"
+  help-claim: "&b/ncc claim &b- 보관 중인 당첨금을 받습니다"

@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(stranica) &b- Prikazuje spisak dilera"
   help-delete: "&b/ncc delete &e<ime> &b- Briše navedenog dilera"
   help-reload: "&b/ncc reload &b- Ponovo učitava konfiguraciju"
+  help-claim: "&b/ncc claim &b- Preuzima tvoje sačuvane dobitke"

@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(tudalen) &b- Yn rhestru'r delwyr"
   help-delete: "&b/ncc delete &e<enw> &b- Yn dileu'r deliwr a nodwyd"
   help-reload: "&b/ncc reload &b- Yn ail-lwytho'r ffurfweddiad"
+  help-claim: "&b/ncc claim &b- Yn casglu'ch enillion a gadwyd"

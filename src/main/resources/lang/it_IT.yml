@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(pagina) &b- Elenca i croupier"
   help-delete: "&b/ncc delete &e<nome> &b- Elimina il croupier indicato"
   help-reload: "&b/ncc reload &b- Ricarica la configurazione"
+  help-claim: "&b/ncc claim &b- Riscuote le tue vincite custodite"

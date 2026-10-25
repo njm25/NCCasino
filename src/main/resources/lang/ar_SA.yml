@@ -1288,3 +1288,4 @@ commands:
   help-list: "&bالأمر /ncc list &e(الصفحة) &b- يعرض قائمة الموزعين"
   help-delete: "&bالأمر /ncc delete &e<الاسم> &b- يحذف الموزع المحدد"
   help-reload: "&bالأمر /ncc reload &b- يعيد تحميل الإعدادات"
+  help-claim: "&bالأمر /ncc claim &b- يسلمك أرباحك المحفوظة"

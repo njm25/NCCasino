@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(leht) &b- Kuvab diilerite loendi"
   help-delete: "&b/ncc delete &e<nimi> &b- Kustutab määratud diileri"
   help-reload: "&b/ncc reload &b- Laadib konfiguratsiooni uuesti"
+  help-claim: "&b/ncc claim &b- Väljastab sinu hoiustatud võidud"

@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(барак) &b- Дилерлердин тизмесин көрсөтөт"
   help-delete: "&b/ncc delete &e<аталыш> &b- Көрсөтүлгөн дилерди жок кылат"
   help-reload: "&b/ncc reload &b- Конфигурацияны кайра жүктөйт"
+  help-claim: "&b/ncc claim &b- Сакталган утушуңузду алат"

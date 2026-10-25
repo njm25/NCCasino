@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(bog) &b- Wuxuu taxaa qaybiyayaasha"
   help-delete: "&b/ncc delete &e<magac> &b- Wuxuu tirtiraa qaybiyaha la magacaabay"
   help-reload: "&b/ncc reload &b- Wuxuu dib u soo raraa habaynta"
+  help-claim: "&b/ncc claim &b- Wuxuu qaataa lacagtaada guusha ee la kaydiyay"

@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(duilleag) &b- Seallaidh seo na roinneadairean"
   help-delete: "&b/ncc delete &e<ainm> &b- Sguabaidh seo às an roinneadair a chaidh ainmeachadh"
   help-reload: "&b/ncc reload &b- Ath-luchdaichidh seo an rèiteachadh"
+  help-claim: "&b/ncc claim &b- Togaidh seo na buannachdan glèidhte agad"

@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(orria) &b- Krupierren zerrenda erakusten du"
   help-delete: "&b/ncc delete &e<izena> &b- Adierazitako krupierra ezabatzen du"
   help-reload: "&b/ncc reload &b- Konfigurazioa birkargatzen du"
+  help-claim: "&b/ncc claim &b- Zure gordetako irabaziak jasotzen ditu"

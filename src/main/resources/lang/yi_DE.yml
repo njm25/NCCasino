@@ -1288,3 +1288,4 @@ commands:
   help-list: "&bדער באַפֿעל /ncc list &e(זײַט) &b- װײַזט די דילערס"
   help-delete: "&bדער באַפֿעל /ncc delete &e<נאָמען> &b- מעקט אויס דעם באַשטימטן דילער"
   help-reload: "&bדער באַפֿעל /ncc reload &b- לאָדט איבער די קאָנפֿיגוראַציע"
+  help-claim: "&bדער באַפֿעל /ncc claim &b- נעמט אָפּ דײַנע אָפּגעהיטע געװינסן"

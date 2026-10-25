@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(pagina) &b- Dispensatores enumerat"
   help-delete: "&b/ncc delete &e<nomen> &b- Dispensatorem nominatum delet"
   help-reload: "&b/ncc reload &b- Configurationem iterum onerat"
+  help-claim: "&b/ncc claim &b- Lucra tua servata accipit"

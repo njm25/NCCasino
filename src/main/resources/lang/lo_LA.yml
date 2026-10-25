@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(ໜ້າ) &b- ສະແດງລາຍຊື່ເຈົ້າມື"
   help-delete: "&b/ncc delete &e<ຊື່> &b- ລຶບເຈົ້າມືທີ່ລະບຸ"
   help-reload: "&b/ncc reload &b- ໂຫຼດການຕັ້ງຄ່າຄືນໃໝ່"
+  help-claim: "&b/ncc claim &b- ຮັບເງິນລາງວັນທີ່ເກັບໄວ້ຂອງທ່ານ"

@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(folen) &b- Ow rolya an kroupyers"
   help-delete: "&b/ncc delete &e<hanow> &b- Ow tilea an kroupyer henwys"
   help-reload: "&b/ncc reload &b- Ow tasgarga an konfigurans"
+  help-claim: "&b/ncc claim &b- Ow kemmeres agas gwaynyans gwithys"

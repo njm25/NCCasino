@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(səhifə) &b- Dilerlərin siyahısını göstərir"
   help-delete: "&b/ncc delete &e<ad> &b- Göstərilən dileri silir"
   help-reload: "&b/ncc reload &b- Konfiqurasiyanı yenidən yükləyir"
+  help-claim: "&b/ncc claim &b- Saxlanılan uduşunuzu götürür"

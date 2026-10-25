@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(páxina) &b- Llista los crupieres"
   help-delete: "&b/ncc delete &e<nome> &b- Desanicia'l crupier indicáu"
   help-reload: "&b/ncc reload &b- Recarga la configuración"
+  help-claim: "&b/ncc claim &b- Recueye les tos ganancies guardaes"

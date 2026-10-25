@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(sida) &b- Listar croupiererna"
   help-delete: "&b/ncc delete &e<namn> &b- Tar bort den angivna croupiern"
   help-reload: "&b/ncc reload &b- Läser in konfigurationen igen"
+  help-claim: "&b/ncc claim &b- Hämtar dina sparade vinster"

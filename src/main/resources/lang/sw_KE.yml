@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(ukurasa) &b- Huorodhesha wagawaji"
   help-delete: "&b/ncc delete &e<jina> &b- Hufuta mgawaji aliyetajwa"
   help-reload: "&b/ncc reload &b- Hupakia upya usanidi"
+  help-claim: "&b/ncc claim &b- Huchukua ushindi wako uliohifadhiwa"

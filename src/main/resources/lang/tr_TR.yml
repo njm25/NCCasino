@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(sayfa) &b- Krupiyeleri listeler"
   help-delete: "&b/ncc delete &e<ad> &b- Belirtilen krupiyeyi siler"
   help-reload: "&b/ncc reload &b- Yapılandırmayı yeniden yükler"
+  help-claim: "&b/ncc claim &b- Saklanan kazançlarını alır"

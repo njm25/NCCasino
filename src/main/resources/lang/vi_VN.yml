@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(trang) &b- Liệt kê người chia bài"
   help-delete: "&b/ncc delete &e<tên> &b- Xóa người chia bài đã chỉ định"
   help-reload: "&b/ncc reload &b- Tải lại cấu hình"
+  help-claim: "&b/ncc claim &b- Nhận tiền thưởng đang giữ của bạn"

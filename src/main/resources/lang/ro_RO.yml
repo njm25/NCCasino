@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(pagină) &b- Afișează lista crupierilor"
   help-delete: "&b/ncc delete &e<nume> &b- Șterge crupierul specificat"
   help-reload: "&b/ncc reload &b- Reîncarcă configurația"
+  help-claim: "&b/ncc claim &b- Ridică câștigurile tale păstrate"

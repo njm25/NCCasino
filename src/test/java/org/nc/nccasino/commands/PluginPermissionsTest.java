@@ -43,10 +43,17 @@ class PluginPermissionsTest {
     }
 
     @Test
+    void helpDefaultsToTrueSoTheHintEveryPlayerIsGivenWorks() throws Exception {
+        // The bare /ncc reply and the unknown-subcommand reply point every player
+        // to /ncc help; HelpCommand lists only the commands the player may use.
+        assertEquals("true", defaultFor("nccasino.commands.help"));
+    }
+
+    @Test
     void adminSubcommandsRemainOpOnlyAfterTheFix() throws Exception {
         for (String node : new String[] {
             "nccasino.commands.create", "nccasino.commands.delete",
-            "nccasino.commands.reload", "nccasino.commands.list", "nccasino.commands.help"
+            "nccasino.commands.reload", "nccasino.commands.list"
         }) {
             assertEquals("op", defaultFor(node),
                 node + " must remain op-only -- raising nccasino.use to default:true must not"

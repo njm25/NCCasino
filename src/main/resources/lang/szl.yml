@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(strōna) &b- Pokazuje krupierōw"
   help-delete: "&b/ncc delete &e<miano> &b- Kasuje podanego krupiera"
   help-reload: "&b/ncc reload &b- Przeładowanie kōnfiguracyje"
+  help-claim: "&b/ncc claim &b- Ôdbiyro twoje schowane wygrane"

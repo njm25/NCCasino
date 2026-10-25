@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(lapa) &b- Parāda dīleru sarakstu"
   help-delete: "&b/ncc delete &e<vārds> &b- Izdzēš norādīto dīleri"
   help-reload: "&b/ncc reload &b- Pārlādē konfigurāciju"
+  help-claim: "&b/ncc claim &b- Izsniedz tavus saglabātos laimestus"

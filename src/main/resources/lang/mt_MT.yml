@@ -1284,3 +1284,4 @@ commands:
   help-list: "&b/ncc list &e(page) &b- Turi lista tad-dealers"
   help-delete: "&b/ncc delete &e<name> &b- Tħassar id-dealer speċifikat"
   help-reload: "&b/ncc reload &b- Tgħabbi mill-ġdid il-konfigurazzjoni"
+  help-claim: "&b/ncc claim &b- Tiġbor ir-rebħ merfugħ tiegħek"

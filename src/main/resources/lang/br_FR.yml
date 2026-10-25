@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(pajenn) &b- Rollañ a ra ar groupierien"
   help-delete: "&b/ncc delete &e<anv> &b- Dilemel a ra ar c'hroupier meneget"
   help-reload: "&b/ncc reload &b- Adkargañ a ra ar c'hefluniadur"
+  help-claim: "&b/ncc claim &b- Tennañ a ra ho kounidoù miret"

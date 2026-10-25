@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(sahifa) &b- Dilerlar roʻyxatini koʻrsatadi"
   help-delete: "&b/ncc delete &e<nom> &b- Koʻrsatilgan dilerni oʻchiradi"
   help-reload: "&b/ncc reload &b- Konfiguratsiyani qayta yuklaydi"
+  help-claim: "&b/ncc claim &b- Saqlangan yutuqlaringizni oladi"

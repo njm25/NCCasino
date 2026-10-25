@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(страница) &b- Ги прикажува дилерите"
   help-delete: "&b/ncc delete &e<име> &b- Го брише наведениот дилер"
   help-reload: "&b/ncc reload &b- Ја превчитува конфигурацијата"
+  help-claim: "&b/ncc claim &b- Ја подига вашата зачувана добивка"

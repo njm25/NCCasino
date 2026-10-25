@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(сторінка) &b- Показує список круп'є"
   help-delete: "&b/ncc delete &e<назва> &b- Видаляє вказаного круп'є"
   help-reload: "&b/ncc reload &b- Перезавантажує конфігурацію"
+  help-claim: "&b/ncc claim &b- Видає ваші збережені виграші"

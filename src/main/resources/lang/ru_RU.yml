@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(страница) &b- Показывает список дилеров"
   help-delete: "&b/ncc delete &e<имя> &b- Удаляет указанного дилера"
   help-reload: "&b/ncc reload &b- Перезагружает конфигурацию"
+  help-claim: "&b/ncc claim &b- Выдаёт ваши отложенные выигрыши"

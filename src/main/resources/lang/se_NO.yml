@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(siidu) &b- Čájeha juogadeaddjiid"
   help-delete: "&b/ncc delete &e<namma> &b- Sihkku addojuvvon juogadeaddji"
   help-reload: "&b/ncc reload &b- Viežžá heivehusaid ođđasit"
+  help-claim: "&b/ncc claim &b- Viežžá du vurkejuvvon vuoittu"

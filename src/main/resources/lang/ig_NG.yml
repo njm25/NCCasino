@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(peeji) &b- Ọ na-edepụta ndị nkesa"
   help-delete: "&b/ncc delete &e<aha> &b- Ọ na-ehichapụ onye nkesa a kpọrọ aha"
   help-reload: "&b/ncc reload &b- Ọ na-ebugharị nhazi"
+  help-claim: "&b/ncc claim &b- Ọ na-ewere ego mmeri gị e debere"

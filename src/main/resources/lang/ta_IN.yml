@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(பக்கம்) &b- டீலர்களைப் பட்டியலிடும்"
   help-delete: "&b/ncc delete &e<பெயர்> &b- குறிப்பிட்ட டீலரை நீக்கும்"
   help-reload: "&b/ncc reload &b- அமைப்புகளை மீண்டும் ஏற்றும்"
+  help-claim: "&b/ncc claim &b- உங்கள் சேமிக்கப்பட்ட வெற்றித் தொகையைப் பெறும்"

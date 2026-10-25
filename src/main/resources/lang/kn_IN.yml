@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(ಪುಟ) &b- ಡೀಲರ್‌ಗಳ ಪಟ್ಟಿ ತೋರಿಸುತ್ತದೆ"
   help-delete: "&b/ncc delete &e<ಹೆಸರು> &b- ಸೂಚಿಸಿದ ಡೀಲರ್ ಅನ್ನು ಅಳಿಸುತ್ತದೆ"
   help-reload: "&b/ncc reload &b- ಸಂರಚನೆಯನ್ನು ಮರುಲೋಡ್ ಮಾಡುತ್ತದೆ"
+  help-claim: "&b/ncc claim &b- ನಿಮ್ಮ ಇಟ್ಟುಕೊಂಡ ಗೆಲುವಿನ ಹಣವನ್ನು ಪಡೆಯುತ್ತದೆ"

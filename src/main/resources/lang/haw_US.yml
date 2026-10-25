@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(ʻaoʻao) &b- Hōʻike i ka papa inoa o nā mea hoʻokele"
   help-delete: "&b/ncc delete &e<inoa> &b- Holoi i ka mea hoʻokele i haʻi ʻia"
   help-reload: "&b/ncc reload &b- Hoʻouka hou i ka hoʻonohonoho"
+  help-claim: "&b/ncc claim &b- Lawe i kāu kālā eo i mālama ʻia"

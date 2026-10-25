@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(halaman) &b- Menampilkan daftar bandar"
   help-delete: "&b/ncc delete &e<nama> &b- Menghapus bandar yang ditentukan"
   help-reload: "&b/ncc reload &b- Memuat ulang konfigurasi"
+  help-claim: "&b/ncc claim &b- Mengambil kemenanganmu yang disimpan"

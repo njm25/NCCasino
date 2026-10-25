@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(бит) &b- Дилерлар исемлеген күрсәтә"
   help-delete: "&b/ncc delete &e<исем> &b- Күрсәтелгән дилерны бетерә"
   help-reload: "&b/ncc reload &b- Конфигурацияне яңадан йөкли"
+  help-claim: "&b/ncc claim &b- Сакланган отышыгызны ала"

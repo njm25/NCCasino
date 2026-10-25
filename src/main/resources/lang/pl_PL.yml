@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(strona) &b- Wyświetla listę krupierów"
   help-delete: "&b/ncc delete &e<nazwa> &b- Usuwa wskazanego krupiera"
   help-reload: "&b/ncc reload &b- Przeładowuje konfigurację"
+  help-claim: "&b/ncc claim &b- Odbiera twoje przechowywane wygrane"

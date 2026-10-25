@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(leathanach) &b- Liostaíonn sé na déileálaithe"
   help-delete: "&b/ncc delete &e<ainm> &b- Scriosann sé an déileálaí sonraithe"
   help-reload: "&b/ncc reload &b- Athlódálann sé an chumraíocht"
+  help-claim: "&b/ncc claim &b- Bailíonn sé an t-airgead buaite atá sábháilte agat"

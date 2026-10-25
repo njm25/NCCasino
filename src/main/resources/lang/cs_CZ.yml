@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(stránka) &b- Vypíše seznam krupiérů"
   help-delete: "&b/ncc delete &e<název> &b- Smaže zadaného krupiéra"
   help-reload: "&b/ncc reload &b- Znovu načte konfiguraci"
+  help-claim: "&b/ncc claim &b- Vyzvedne tvé uschované výhry"

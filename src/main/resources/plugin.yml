@@ -38,8 +38,8 @@ permissions:
     default: op
 
   nccasino.commands.help:
-    description: Allows using the help command in NCCasino
-    default: op
+    description: Allows using the help command in NCCasino (it lists only the commands the player may use)
+    default: true
 
   nccasino.commands.list:
     description: Allows listing dealers in NCCasino

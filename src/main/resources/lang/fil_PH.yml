@@ -1288,3 +1288,4 @@ commands:
   help-list: "&b/ncc list &e(pahina) &b- Inililista ang mga dealer"
   help-delete: "&b/ncc delete &e<pangalan> &b- Binubura ang tinukoy na dealer"
   help-reload: "&b/ncc reload &b- Nire-reload ang configuration"
+  help-claim: "&b/ncc claim &b- Kinukuha ang mga nakatabi mong panalo"
