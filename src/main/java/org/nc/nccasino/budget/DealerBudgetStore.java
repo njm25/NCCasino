@@ -373,6 +373,29 @@ public class DealerBudgetStore {
         return state(dealer).reservedTotal();
     }
 
+    /**
+     * Drops a deleted dealer's ledger, so a new dealer later given the same name
+     * starts from its own baseline instead of the old balance. A ledger that still
+     * holds a reservation is kept: a promise outlives the dealer that made it.
+     *
+     * @return true if nothing is left for this dealer
+     */
+    public synchronized boolean forgetDealer(String dealer) {
+        DealerBudgetState state = states.get(dealer);
+        if (state == null) {
+            return true;
+        }
+        if (Money.isPositive(state.reservedTotal())) {
+            return false;
+        }
+        states.remove(dealer);
+        if (persist()) {
+            return true;
+        }
+        states.put(dealer, state);
+        return false;
+    }
+
     // ---- administrative funding ---------------------------------------
 
     /**

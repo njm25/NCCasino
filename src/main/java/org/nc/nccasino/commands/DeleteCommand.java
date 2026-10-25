@@ -133,6 +133,7 @@ public class DeleteCommand implements CasinoCommand {
                     Dealer.removeDealer(mob);
                     DealerInventory.unregisterAllListeners(mob);
                     removeDealerData(internalName);
+                    plugin.forgetDealerBudget(internalName);
                     
                     // Clear any remaining references
                     AdminMenu.clearAllEditModes(mob);

@@ -99,6 +99,41 @@ class DealerBudgetStoreTest {
         assertTrue(new File(tempDir.toFile(), "data/dealer-budgets.yml").isFile());
     }
 
+    // ---- deleted dealers ---------------------------------------------------
+
+    @Test
+    void aDeletedDealersLedgerIsForgottenSoANewDealerOfTheSameNameStartsFresh() {
+        DealerBudgetStore store = store();
+        assertTrue(store.ensureInitialFunding(DEALER, money("500"), 1L));
+        Reservation open = store.creditAndReserve(reservation("spin-1", "250"), money("10"));
+        assertEquals(Settlement.Status.SETTLED, store.settle(DEALER, open.id(), money("250")).status());
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("260")), "test setup: the old dealer lost money");
+
+        assertTrue(store.forgetDealer(DEALER));
+
+        DealerBudgetStore reloaded = store();
+        assertFalse(reloaded.dealers().contains(DEALER), "the forgotten ledger stays gone after a restart");
+        assertTrue(reloaded.ensureInitialFunding(DEALER, money("500"), 2L));
+        assertEquals(0, reloaded.liveBalance(DEALER).compareTo(money("500")),
+            "a new dealer of the same name is funded from its own baseline");
+    }
+
+    @Test
+    void aLedgerStillHoldingAReservationIsKept() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("1000"));
+        assertNotNull(store.creditAndReserve(reservation("spin-1", "250"), money("10")));
+
+        assertFalse(store.forgetDealer(DEALER));
+
+        assertEquals(0, store().reservedTotal(DEALER).compareTo(money("250")), "the promise survives");
+    }
+
+    @Test
+    void forgettingADealerWithNoLedgerIsANoOp() {
+        assertTrue(store().forgetDealer("never-limited"));
+    }
+
     @Test
     void anAwardedSettlementIntentSurvivesReloadAndCompletesExactlyOnce() {
         DealerBudgetStore store = store();

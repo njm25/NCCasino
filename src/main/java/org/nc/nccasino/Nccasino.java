@@ -1481,7 +1481,15 @@ public final class Nccasino extends JavaPlugin implements Listener {
     }
     
     
+    /** Forgets a deleted dealer's budget ledger; see {@link DealerBudgetStore#forgetDealer}. */
+    public void forgetDealerBudget(String internalName) {
+        if (dealerBudgetService != null && internalName != null) {
+            dealerBudgetService.store().forgetDealer(internalName);
+        }
+    }
+
     private void removeDealerData(String internalName) {
+        forgetDealerBudget(internalName);
         File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
         FileConfiguration dealersConfig = StoreFile.loadForUpdate(dealersFile, getLogger());
         // An unreadable file is left alone rather than saved over with one entry.
