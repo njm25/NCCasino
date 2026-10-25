@@ -552,7 +552,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         return;
     }
         // Handle rebet toggle
-        if (slot == 43&& clickedItem != null && clickedItem.getType() ==Material.RED_WOOL||clickedItem.getType() ==Material.GREEN_WOOL) {
+        if (slot == 43 && clickedItem != null && (clickedItem.getType() == Material.RED_WOOL || clickedItem.getType() == Material.GREEN_WOOL)) {
             rebetEnabled = !rebetEnabled;
             if (SoundHelper.getSoundSafely("ui.button.click", player) != null)
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
@@ -912,6 +912,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 }
                 if (totalBet < 0) totalBet = 0;
                 updateBetLore(53, totalBet);
+                wager = totalBet; // Start must not play a round on a stake that was just refunded
                 wagerPlaced = totalBet > 0;
                  if (SoundHelper.getSoundSafely("ui.toast.in", player) != null)player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);
                  if (SoundHelper.getSoundSafely("ui.toast.out", player) != null)player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 3f, 1.0f);
@@ -1579,6 +1580,11 @@ public class MinesTable extends DealerInventory implements TerminableSession {
     
     
     private void resetGame() {
+        // A reset still scheduled when the table closed must not touch the player:
+        // its Rebet would take a stake into a table nobody can settle any more.
+        if (Boolean.TRUE.equals(closeFlag)) {
+            return;
+        }
         // Cancel ongoing tasks
         for (int taskId : scheduledTasks) {
             Bukkit.getScheduler().cancelTask(taskId);
@@ -1610,7 +1616,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             if (hasEnoughCurrency(player, (int) previousWager)) {
                 // Check if the player still has the MinesTable open before deducting the bet
                 InventoryView openInventory = player.getOpenInventory();
-                if (openInventory != null && openInventory.getTopInventory().getHolder() instanceof MinesTable) {
+                if (isRebetDebitAllowed(closeFlag, openInventory == null ? null : openInventory.getTopInventory().getHolder(), this)) {
                     boolean removed = removeWagerFromInventory(player, (int) previousWager);
 					if (!removed) {
 						return;
@@ -1865,6 +1871,11 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             }
         } 
         }
+    }
+
+    /** Rebet may take a stake only for this live table, never for another table the player opened since. */
+    static boolean isRebetDebitAllowed(Boolean closed, Object openHolder, Object table) {
+        return !Boolean.TRUE.equals(closed) && openHolder != null && openHolder == table;
     }
 
     // CurrencyProvider helper for this dealer/game
