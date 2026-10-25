@@ -11,6 +11,7 @@ import org.nc.nccasino.economy.VaultHook;
 import java.math.BigDecimal;
 import java.util.logging.Logger;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
@@ -138,5 +139,55 @@ class VaultCurrencyProviderTest {
 
         assertFalse(provider.deposit(player, "table", BigDecimal.TEN));
         assertTrue(provider.deposit(other, "table", BigDecimal.TEN));
+    }
+
+    // --- An economy plugin that throws (a database outage, or one disabled behind a stale reference) ---
+
+    @Test
+    void aDepositThatThrowsIsReportedAsNotDeliveredSoTheCallerQueuesIt() {
+        when(economy.depositPlayer(player, 10.0)).thenThrow(new IllegalStateException("database down"));
+        assertFalse(provider.deposit(player, "table", BigDecimal.TEN));
+        assertFalse(provider.deposit(player, "table", 10));
+    }
+
+    @Test
+    void aWithdrawalThatThrowsTakesNothing() {
+        when(economy.getBalance(player)).thenReturn(100.0);
+        when(economy.withdrawPlayer(eq(player), org.mockito.ArgumentMatchers.anyDouble()))
+            .thenThrow(new IllegalStateException("database down"));
+        assertEquals(0, provider.withdraw(player, "table", 10));
+        assertFalse(provider.withdrawDecimal(player, "table", BigDecimal.TEN));
+    }
+
+    @Test
+    void aBalanceCheckThatThrowsMeansNoFunds() {
+        when(economy.getBalance(player)).thenThrow(new IllegalStateException("database down"));
+        assertEquals(0, provider.getBalance(player, "table"));
+        assertFalse(provider.has(player, "table", 1));
+        assertFalse(provider.hasAtLeastDecimal(player, "table", BigDecimal.ONE));
+        assertEquals(0, provider.withdraw(player, "table", 10));
+        verify(economy, times(0)).withdrawPlayer(eq(player), org.mockito.ArgumentMatchers.anyDouble());
+    }
+
+    @Test
+    void aLaterDifferentFailureOnTheSameDealerIsStillLogged() {
+        java.util.List<String> logged = new java.util.ArrayList<>();
+        Logger logger = Logger.getLogger("VaultCurrencyProviderTest.warnings");
+        logger.setUseParentHandlers(false);
+        logger.addHandler(new java.util.logging.Handler() {
+            @Override public void publish(java.util.logging.LogRecord record) { logged.add(record.getMessage()); }
+            @Override public void flush() { }
+            @Override public void close() { }
+        });
+        when(plugin.getLogger()).thenReturn(logger);
+        when(economy.getBalance(player)).thenReturn(100.0);
+        when(economy.withdrawPlayer(player, 10.0)).thenReturn(failure());
+        when(economy.depositPlayer(player, 10.0)).thenReturn(failure());
+
+        provider.withdraw(player, "table", 10);
+        provider.withdraw(player, "table", 10);
+        provider.deposit(player, "table", BigDecimal.TEN);
+
+        assertEquals(2, logged.size(), "one withdraw warning, then the deposit failure: " + logged);
     }
 }

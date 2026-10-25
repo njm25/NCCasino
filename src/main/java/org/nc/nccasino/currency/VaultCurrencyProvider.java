@@ -35,7 +35,10 @@ public class VaultCurrencyProvider implements CurrencyProvider {
 			return 0;
 		}
 
-		BigDecimal bal = MoneyHelper.clampNonNegative(MoneyHelper.bd(economy.getBalance(player)));
+		BigDecimal bal = balanceOf(economy, player, internalName);
+		if (bal == null) {
+			return 0;
+		}
 		long floored = MoneyHelper.floorToLong(bal);
 		if (floored <= 0) {
 			return 0;
@@ -67,17 +70,23 @@ public class VaultCurrencyProvider implements CurrencyProvider {
 			return 0;
 		}
 
-		BigDecimal bal = MoneyHelper.clampNonNegative(MoneyHelper.bd(economy.getBalance(player)));
-		if (MoneyHelper.floorToLong(bal) < amount) {
+		BigDecimal bal = balanceOf(economy, player, internalName);
+		if (bal == null || MoneyHelper.floorToLong(bal) < amount) {
 			return 0;
 		}
 
-		EconomyResponse resp = economy.withdrawPlayer(player, (double) amount);
+		EconomyResponse resp;
+		try {
+			resp = economy.withdrawPlayer(player, (double) amount);
+		} catch (RuntimeException e) {
+			warnOnce(internalName, "withdraw-error", "Vault withdraw threw for dealer '" + internalName + "': " + e);
+			return 0;
+		}
 		if (resp != null && resp.transactionSuccess()) {
 			return amount;
 		}
 
-		warnOnce(internalName, "Vault withdraw failed for dealer '" + internalName + "': " + (resp != null ? resp.errorMessage : "unknown error"));
+		warnOnce(internalName, "withdraw", "Vault withdraw failed for dealer '" + internalName + "': " + (resp != null ? resp.errorMessage : "unknown error"));
 		return 0;
 	}
 
@@ -116,12 +125,19 @@ public class VaultCurrencyProvider implements CurrencyProvider {
 		}
 
 		double depositValue = MoneyHelper.toVaultDouble(safeAmount);
-		EconomyResponse resp = economy.depositPlayer(player, depositValue);
+		EconomyResponse resp;
+		try {
+			resp = economy.depositPlayer(player, depositValue);
+		} catch (RuntimeException e) {
+			// Reported as not delivered, so the caller queues the payout instead of losing it.
+			warnOnce(internalName, "deposit-error", "Vault deposit threw for dealer '" + internalName + "': " + e);
+			return false;
+		}
 		if (resp != null && resp.transactionSuccess()) {
 			return true;
 		}
 
-		warnOnce(internalName, "Vault deposit failed for dealer '" + internalName + "': " + (resp != null ? resp.errorMessage : "unknown error"));
+		warnOnce(internalName, "deposit", "Vault deposit failed for dealer '" + internalName + "': " + (resp != null ? resp.errorMessage : "unknown error"));
 		return false;
 	}
 
@@ -141,8 +157,8 @@ public class VaultCurrencyProvider implements CurrencyProvider {
 		if (economy == null) {
 			return false;
 		}
-		BigDecimal bal = MoneyHelper.clampNonNegative(MoneyHelper.bd(economy.getBalance(player)));
-		return bal.compareTo(amount) >= 0;
+		BigDecimal bal = balanceOf(economy, player, internalName);
+		return bal != null && bal.compareTo(amount) >= 0;
 	}
 
 	/**
@@ -158,15 +174,21 @@ public class VaultCurrencyProvider implements CurrencyProvider {
 		if (economy == null) {
 			return false;
 		}
-		BigDecimal bal = MoneyHelper.clampNonNegative(MoneyHelper.bd(economy.getBalance(player)));
-		if (bal.compareTo(amount) < 0) {
+		BigDecimal bal = balanceOf(economy, player, internalName);
+		if (bal == null || bal.compareTo(amount) < 0) {
 			return false;
 		}
-		EconomyResponse resp = economy.withdrawPlayer(player, amount.doubleValue());
+		EconomyResponse resp;
+		try {
+			resp = economy.withdrawPlayer(player, amount.doubleValue());
+		} catch (RuntimeException e) {
+			warnOnce(internalName, "withdraw-error", "Vault withdraw threw for dealer '" + internalName + "': " + e);
+			return false;
+		}
 		if (resp != null && resp.transactionSuccess()) {
 			return true;
 		}
-		warnOnce(internalName, "Vault withdraw failed for dealer '" + internalName + "': " + (resp != null ? resp.errorMessage : "unknown error"));
+		warnOnce(internalName, "withdraw", "Vault withdraw failed for dealer '" + internalName + "': " + (resp != null ? resp.errorMessage : "unknown error"));
 		return false;
 	}
 
@@ -182,21 +204,32 @@ public class VaultCurrencyProvider implements CurrencyProvider {
 
 	private Economy getEconomyOrWarn(String internalName) {
 		if (plugin == null || plugin.getVaultHook() == null) {
-			warnOnce(internalName, "Vault mode selected for dealer '" + internalName + "', but VaultHook is not available.");
+			warnOnce(internalName, "no-hook", "Vault mode selected for dealer '" + internalName + "', but VaultHook is not available.");
 			return null;
 		}
 
 		Economy economy = plugin.getVaultHook().getEconomy();
 		if (economy == null) {
-			warnOnce(internalName, "Vault mode selected for dealer '" + internalName + "', but no Vault Economy provider is available (install an economy plugin).");
+			warnOnce(internalName, "no-economy", "Vault mode selected for dealer '" + internalName + "', but no Vault Economy provider is available (install an economy plugin).");
 			return null;
 		}
 
 		return economy;
 	}
 
-	private void warnOnce(String internalName, String message) {
-		String key = (internalName == null || internalName.isBlank()) ? "<unknown>" : internalName;
+	/** The player's balance, or null when the economy throws (treated as no funds). */
+	private BigDecimal balanceOf(Economy economy, Player player, String internalName) {
+		try {
+			return MoneyHelper.clampNonNegative(MoneyHelper.bd(economy.getBalance(player)));
+		} catch (RuntimeException e) {
+			warnOnce(internalName, "balance-error", "Vault balance check threw for dealer '" + internalName + "': " + e);
+			return null;
+		}
+	}
+
+	/** Logs each kind of problem once per dealer, so a later, different failure is still reported. */
+	private void warnOnce(String internalName, String kind, String message) {
+		String key = ((internalName == null || internalName.isBlank()) ? "<unknown>" : internalName) + "|" + kind;
 		if (warnedDealers.add(key)) {
 			plugin.getLogger().warning(message);
 		}
