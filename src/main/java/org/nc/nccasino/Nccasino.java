@@ -1277,7 +1277,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
             double x = dealersConfig.getDouble("dealers." + internalName + ".X");
             double z = dealersConfig.getDouble("dealers." + internalName + ".Z");
 
-            World world = Bukkit.getWorld(worldName);
+            World world = worldName == null ? null : Bukkit.getWorld(worldName);
             if (world == null) {
                 getLogger().warning("World '" + worldName + "' not found for dealer '" + internalName + "'.");
                 return;
@@ -1361,7 +1361,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
         
             World world = Bukkit.getWorld(worldName);
             if (world == null) {
+                // Kept, not deleted: the world may only be unloaded. Still counted,
+                // so the completion message is sent.
                 getLogger().warning("World '" + worldName + "' not found for chunk " + entry.getKey());
+                finishDeletingChunk(sender, totalChunks, processedChunks, sendMessageOnCompletion, totalDeleted);
                 continue;
             }
         
@@ -1373,6 +1376,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 if (!world.isChunkLoaded(chunkX, chunkZ)) {
                     getLogger().warning("Chunk (" + chunkX + ", " + chunkZ + ") did not load in time.");
                     removeDeletingChunk(world, chunkX, chunkZ); // Cleanup after deletion
+                    finishDeletingChunk(sender, totalChunks, processedChunks, sendMessageOnCompletion, totalDeleted);
                     return;
                 }
                 deleteDealersInChunk(world, chunkX, chunkZ, internalNames, sender, totalChunks, processedChunks, sendMessageOnCompletion, totalDeleted, entitiesLoaded);
@@ -1442,7 +1446,12 @@ public final class Nccasino extends JavaPlugin implements Listener {
             }
             removeDeletingChunk(world, chunkX, chunkZ); // Cleanup after deletion
         }, 40L);
-    
+
+        finishDeletingChunk(sender, totalChunks, processedChunks, sendMessageOnCompletion, totalDeleted);
+    }
+
+    /** Counts one chunk of a delete-all as done, skipped or not, and reports once the last one is. */
+    private void finishDeletingChunk(CommandSender sender, int totalChunks, int[] processedChunks, boolean sendMessageOnCompletion, int[] totalDeleted) {
         synchronized (processedChunks) {
             processedChunks[0]++;
             if (processedChunks[0] == totalChunks && sendMessageOnCompletion) {
