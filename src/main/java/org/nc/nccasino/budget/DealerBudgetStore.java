@@ -931,7 +931,7 @@ public class DealerBudgetStore {
      * Outstanding shortfall records for a dealer, for administrative
      * reconciliation. Never auto-cleared -- an operator resolves them
      * deliberately (e.g. by depositing the missing amount), the same way
-     * {@link #staleReservations} are reported, never auto-released.
+     * {@link #staleReservations} are reported.
      */
     public synchronized List<DealerBudgetState.Shortfall> shortfalls(String dealer) {
         return state(dealer).shortfalls();
@@ -941,7 +941,7 @@ public class DealerBudgetStore {
      * Marks a shortfall resolved once an administrator has restored the
      * missing backing (e.g. via {@link #deposit}) -- a deliberate, explicit
      * operator action, mirroring the design's rule that a stale reservation
-     * is reported, never auto-released. Persisted atomically: if the write
+     * of a live session is reported, never auto-released. Persisted atomically: if the write
      * fails, the shortfall record is restored exactly as it was, so a caller
      * can never believe a shortfall is resolved when it is not durably so.
      *
@@ -971,6 +971,36 @@ public class DealerBudgetStore {
             }
         }
         return stale;
+    }
+
+    /**
+     * Closes every reservation left by an earlier run of the server. Each
+     * reservation id carries the random id of the game session that made it,
+     * so after a crash nothing can ever settle one, and each would lock its
+     * worst case out of the dealer's capacity for good. Called once when the
+     * plugin starts, before any game can open, so every reservation still here
+     * belongs to a session that is gone. One with a recorded settlement intent
+     * was already awarded and is completed at that amount; any other is
+     * released with nothing paid, so its stake stays with the dealer.
+     *
+     * @return one line per reservation closed, for the console
+     */
+    public synchronized List<String> closeReservationsFromEarlierRuns() {
+        List<String> closed = new ArrayList<>();
+        for (String dealer : new ArrayList<>(states.keySet())) {
+            for (Reservation reservation : new ArrayList<>(states.get(dealer).reservations())) {
+                BigDecimal intent = states.get(dealer).settlementIntent(reservation.id());
+                BigDecimal payout = intent == null ? Money.ZERO : intent;
+                Settlement result = settle(dealer, reservation.id(), payout);
+                String what = intent == null
+                    ? "released it (the " + reservation.gameType() + " stake stays with the dealer)"
+                    : "completed its awarded payout of " + Money.store(intent);
+                closed.add("Dealer '" + dealer + "': a reservation of " + Money.store(reservation.amount())
+                    + " for player " + reservation.playerId() + " was left by an earlier run; "
+                    + (result.status() == Settlement.Status.FAILED ? "could not close it (will retry next start)" : what) + ".");
+            }
+        }
+        return closed;
     }
 
     /** Forces a reload from disk. Test and administrative use. */

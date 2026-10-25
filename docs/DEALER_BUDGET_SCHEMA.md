@@ -286,8 +286,19 @@ temporarily over-funded dealer is a far better failure than a cancelled
 payout, and silently deleting economically meaningful state is forbidden
 outright by the design.
 
-Stale reservations (`staleReservations`) are **reported**, never
-auto-released. Releasing a promise is an operator decision.
+While the server runs, stale reservations (`staleReservations`) are
+**reported**, never auto-released. Releasing a live promise is an operator
+decision.
+
+At startup it is different. Every reservation id carries the random id of
+the game session that made it, so a reservation still in the file when the
+plugin starts belongs to a session that is gone (the server crashed or was
+killed mid-round); nothing can ever settle it, and it would lock its worst
+case out of the dealer for good. NCCasino closes each one before any game
+opens and logs it: one with a recorded settlement intent is completed at
+that amount, any other is released with nothing paid, so its stake stays
+with the dealer. A clean stop or `/reload` settles every round first, so
+this only happens after a crash.
 
 ## RESET and active reservations
 

@@ -283,6 +283,9 @@ public final class Nccasino extends JavaPlugin implements Listener {
         // constructing this changes no behavior until an administrator opts a
         // dealer into LIMITED mode; the store simply loads an empty file.
         dealerBudgetStore = new DealerBudgetStore(this);
+        for (String line : dealerBudgetStore.closeReservationsFromEarlierRuns()) {
+            getLogger().warning(line);
+        }
         dealerBudgetService = new DealerBudgetService(this, dealerBudgetStore);
 
         // Globally portable per-player Slots profiles, plus the single chat

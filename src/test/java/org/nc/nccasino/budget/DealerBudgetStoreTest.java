@@ -939,4 +939,46 @@ class DealerBudgetStoreTest {
         assertEquals(0, store.liveBalance(DEALER).compareTo(money("600")));
         assertInvariant(store);
     }
+
+    // ---- reservations left by a crash ---------------------------------------
+
+    @Test
+    void aReservationLeftByAnEarlierRunIsReleasedAtStartAndItsStakeStaysWithTheDealer() {
+        DealerBudgetStore crashed = store();
+        crashed.deposit(DEALER, money("1000"));
+        assertNotNull(crashed.creditAndReserve(reservation("spin-1", "250"), money("10")));
+        // The server dies here: nothing settles the round.
+
+        DealerBudgetStore restarted = store();
+        List<String> closed = restarted.closeReservationsFromEarlierRuns();
+
+        assertEquals(1, closed.size(), "each closed reservation is reported: " + closed);
+        assertEquals(0, restarted.reservedTotal(DEALER).compareTo(Money.ZERO), "capacity is free again");
+        assertEquals(0, restarted.liveBalance(DEALER).compareTo(money("1010")), "the stake stays with the dealer");
+        assertEquals(0, store().reservedTotal(DEALER).compareTo(Money.ZERO), "and stays released after another restart");
+        assertInvariant(restarted);
+    }
+
+    @Test
+    void anAwardedResultLeftByAnEarlierRunIsCompletedAtItsAmount() {
+        DealerBudgetStore crashed = store();
+        crashed.deposit(DEALER, money("1000"));
+        Reservation open = crashed.creditAndReserve(reservation("spin-1", "600"), money("100"));
+        crashed.state(DEALER).recordSettlementIntent(open.id(), money("600"));
+        assertTrue(crashed.deposit(DEALER, money("1")));
+
+        DealerBudgetStore restarted = store();
+        restarted.closeReservationsFromEarlierRuns();
+
+        assertEquals(0, restarted.liveBalance(DEALER).compareTo(money("501")), "the awarded 600 is debited once");
+        assertTrue(restarted.settlementIntents(DEALER).isEmpty());
+        assertEquals(Settlement.Status.ALREADY_SETTLED, restarted.settle(DEALER, open.id(), money("600")).status());
+    }
+
+    @Test
+    void aCleanStartClosesNothing() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("1000"));
+        assertTrue(store().closeReservationsFromEarlierRuns().isEmpty());
+    }
 }
