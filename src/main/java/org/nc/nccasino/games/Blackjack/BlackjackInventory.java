@@ -866,7 +866,9 @@ private void registerListener() {
 
     /** Moves a fully-built opening-wager reservation onto the hand it was building toward, the moment that hand exists. */
     private void claimPendingOpeningCommitment(UUID playerId, BlackjackHand hand) {
-        org.nc.nccasino.budget.Commitment commitment = pendingOpeningBudgetCommitment.get(playerId);
+        // Removed, not copied: once the hand owns it, a settled reservation left
+        // here made the next round's first wager try to grow it and be refused.
+        org.nc.nccasino.budget.Commitment commitment = pendingOpeningBudgetCommitment.remove(playerId);
         if (commitment != null) {
             handBudgetCommitments.put(hand.getHandId(), commitment);
         }

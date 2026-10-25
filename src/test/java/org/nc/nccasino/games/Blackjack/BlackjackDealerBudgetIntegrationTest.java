@@ -6,9 +6,14 @@ import org.junit.jupiter.api.io.TempDir;
 import org.nc.nccasino.budget.DealerBudgetService;
 import org.nc.nccasino.budget.DealerBudgetStore;
 import org.nc.nccasino.budget.Money;
+import org.nc.nccasino.objects.Card;
+import org.nc.nccasino.objects.Rank;
+import org.nc.nccasino.objects.Suit;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -215,5 +220,56 @@ class BlackjackDealerBudgetIntegrationTest {
             assertEquals(1000, h.currencyProvider.getBalance(alice, h.internalName),
                 "undo-all must return every committed chip to the player");
         }
+    }
+
+    // ---- consecutive rounds -------------------------------------------------
+
+    @Test
+    void aSecondRoundAfterASettledOneIsStillAccepted() {
+        // The first round's reservation stayed behind as the "pending opening"
+        // commitment after it moved onto the hand. Once that round settled, the
+        // next wager tried to grow the settled reservation and was refused as
+        // "the dealer cannot cover", so a LIMITED Blackjack dealer played one
+        // round per player and then refused every bet.
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            DealerBudgetService service = attachLimitedBudget(h, "1000", 1, 100L);
+            h.currencyProvider.setBalance(1000);
+            List<Card> sevens = new ArrayList<>();
+            for (int i = 0; i < 120; i++) {
+                sevens.add(new Card(Suit.SPADES, Rank.SEVEN));
+            }
+            h.inventory.stackDeckForTest(sevens);
+
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]);
+            h.inventory.commitWagerForTest(alice, 10.0, "round-one");
+            h.inventory.beginStartTransitionForTest();
+            playOutRound(h);
+
+            // Seven-seven stands on 14 (the turn timer), the dealer draws to 21.
+            assertEquals(990, h.currencyProvider.getBalance(alice, h.internalName), "round one is lost");
+            assertEquals(0, service.store().reservedTotal(h.internalName).compareTo(Money.ZERO),
+                "round one's reservation is settled");
+            assertEquals(0, service.store().liveBalance(h.internalName).compareTo(Money.of(110L)),
+                "the dealer keeps the lost stake");
+
+            int attempts = h.currencyProvider.withdrawAttempts.size();
+            assertTrue(h.inventory.isSeatedForTest(alice.getUniqueId()), "test setup: still seated for round two");
+            h.inventory.commitWagerForTest(alice, 10.0, "round-two");
+
+            assertEquals(attempts + 1, h.currencyProvider.withdrawAttempts.size(), "round two's wager is debited");
+            assertEquals(980, h.currencyProvider.getBalance(alice, h.internalName));
+            assertEquals(0, service.store().reservedTotal(h.internalName).compareTo(Money.of(25L)),
+                "round two reserves its own 10 stake (2.5x ceiling)");
+        }
+    }
+
+    /** Runs the timers until the round has settled and the board is back in the lobby. */
+    private static void playOutRound(BlackjackControllerTestSupport.Harness h) {
+        for (int i = 0; i < 400 && h.inventory.capturePhaseForTest() != BlackjackFrame.Phase.LOBBY; i++) {
+            h.scheduler.advance(20);
+        }
+        assertEquals(BlackjackFrame.Phase.LOBBY, h.inventory.capturePhaseForTest(),
+            "test setup: the round must finish and return to the lobby");
     }
 }
