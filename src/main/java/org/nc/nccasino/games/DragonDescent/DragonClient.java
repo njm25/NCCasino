@@ -920,10 +920,12 @@ public class DragonClient extends Client implements TerminableSession {
     }
 
     private void resetGame() {
-        // Cancel all delayed tasks to prevent conflicts
-        if (this.inventory == null) {
+        // A reset scheduled before the player left must not run: its Rebet would
+        // take a stake into a session that nothing settles any more.
+        if (!mayReset(this.inventory != null, sessionResolved, isRetired())) {
             return;
         }
+        // Cancel all delayed tasks to prevent conflicts
         for (int taskID : taskIDs) {
             Bukkit.getScheduler().cancelTask(taskID);
         }
@@ -976,6 +978,10 @@ public class DragonClient extends Client implements TerminableSession {
         setupPregame();
     }
 
+    static boolean mayReset(boolean hasInventory, boolean sessionResolved, boolean retired) {
+        return hasInventory && !sessionResolved && !retired;
+    }
+
     @Override
     protected void handleClientInventoryClose() {
         // Defer one tick so PlayerQuitEvent can claim a true disconnect or
@@ -995,6 +1001,12 @@ public class DragonClient extends Client implements TerminableSession {
             SessionRegistry.unregister(playerId, this);
             sessionResolved = true;
             if (!bettingEnabled && !playerLost) {
+                // A safe step clicked just before closing is already decided; count it,
+                // as a disconnect does, before its animation would have.
+                if (Boolean.TRUE.equals(pendingMoveSafe)) {
+                    floorsCleared++;
+                }
+                pendingMoveSafe = null;
                 cashOut();
             } else if (bettingEnabled && !betStack.isEmpty()) {
                 undoAllBets();
