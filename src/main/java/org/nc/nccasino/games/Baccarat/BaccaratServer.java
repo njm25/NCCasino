@@ -933,7 +933,7 @@ public class BaccaratServer extends Server {
                                 "amount",
                                 plugin.formatWagerDisplay(currencyMode, currencyName, payout),
                                 "profit",
-                                (int) (payout - totalBet)
+                                plugin.formatWagerDisplay(currencyMode, currencyName, payout - totalBet)
                             ));
 		    				break;
 		    			}
