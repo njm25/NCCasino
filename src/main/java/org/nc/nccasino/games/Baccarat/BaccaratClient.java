@@ -892,6 +892,10 @@ public class BaccaratClient extends Client implements TerminableSession {
         }
     }
 
+    boolean holdsBudgetCommitment() {
+        return budgetCommitment != null;
+    }
+
     /** Pays the round's result and releases the portfolio reservation, exactly once. */
     void settlePortfolio(java.math.BigDecimal payout) {
         DealerBudgetService budget = plugin.getDealerBudgetService();

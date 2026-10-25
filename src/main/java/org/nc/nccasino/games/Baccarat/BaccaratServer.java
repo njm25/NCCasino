@@ -39,6 +39,12 @@ public class BaccaratServer extends Server {
     private final Map<Integer, UUID> seatMap = new HashMap<>(); // Maps seat slot to player UUID
     private final List<UUID> seatedPlayers = new ArrayList<>();
     private final Map<UUID, TerminableSession> ridingSessions = new HashMap<>();
+    /**
+     * The client of a player whose bets still ride after they closed the window or
+     * disconnected mid-hand. It holds that hand's dealer-budget reservation, which
+     * the hand's result must still settle.
+     */
+    private final Map<UUID, BaccaratClient> departedBudgetHolders = new HashMap<>();
 
     private int countdownTaskId = -1;
     /**
@@ -340,8 +346,9 @@ public class BaccaratServer extends Server {
         // A forfeit keeps the stake with the house -- a loss, not a refund --
         // so the reservation is released with nothing paid, exactly like an
         // ordinary loss settlement.
-        if (clients.get(playerId) instanceof BaccaratClient baccaratClient) {
-            baccaratClient.settlePortfolio(java.math.BigDecimal.ZERO);
+        BaccaratClient budgetHolder = takeBudgetHolder(playerId);
+        if (budgetHolder != null) {
+            budgetHolder.settlePortfolio(java.math.BigDecimal.ZERO);
         }
 
         Map<BaccaratClient.BetOption, Double> bets = playerBets.remove(playerId);
@@ -396,6 +403,29 @@ public class BaccaratServer extends Server {
             task.cancel();
         }
         roundTasks.clear();
+    }
+
+    @Override
+    public void removeClient(UUID uuid) {
+        if (clients.get(uuid) instanceof BaccaratClient leaving
+            && leaving.holdsBudgetCommitment() && playerBets.containsKey(uuid)) {
+            departedBudgetHolders.put(uuid, leaving);
+        }
+        super.removeClient(uuid);
+    }
+
+    /**
+     * The client whose reservation covers {@code playerId}'s bets: the open one, or
+     * the one they left mid-hand (a player who reopens the table gets a new client
+     * with no reservation of its own). Forgets the departed one, since each
+     * reservation is settled exactly once.
+     */
+    private BaccaratClient takeBudgetHolder(UUID playerId) {
+        BaccaratClient departed = departedBudgetHolders.remove(playerId);
+        if (clients.get(playerId) instanceof BaccaratClient open && (departed == null || open.holdsBudgetCommitment())) {
+            return open;
+        }
+        return departed;
     }
 
     void registerRidingSession(UUID playerId) {
@@ -824,8 +854,9 @@ public class BaccaratServer extends Server {
 			// before delivery, which may still queue the amount if the player is
 			// offline. Whether the player is online only changes how the payout
 			// is delivered, not whether the dealer has already paid it.
-			if (clients.get(playerId) instanceof BaccaratClient baccaratClient) {
-				baccaratClient.settlePortfolio(MoneyHelper.clampNonNegative(MoneyHelper.bd(payout)));
+			BaccaratClient budgetHolder = takeBudgetHolder(playerId);
+			if (budgetHolder != null) {
+				budgetHolder.settlePortfolio(MoneyHelper.clampNonNegative(MoneyHelper.bd(payout)));
 			}
 
 			CurrencyProvider provider = plugin.getCurrencyManager() != null ? plugin.getCurrencyManager().getProvider(internalName) : null;
@@ -984,8 +1015,9 @@ public class BaccaratServer extends Server {
     	}
 
     	double total = bets.values().stream().mapToDouble(Double::doubleValue).sum();
-		if (clients.get(playerId) instanceof BaccaratClient baccaratClient) {
-			baccaratClient.refundPortfolio(MoneyHelper.clampNonNegative(MoneyHelper.bd(total)));
+		BaccaratClient budgetHolder = takeBudgetHolder(playerId);
+		if (budgetHolder != null) {
+			budgetHolder.refundPortfolio(MoneyHelper.clampNonNegative(MoneyHelper.bd(total)));
 		}
     	for (Map.Entry<BaccaratClient.BetOption, Double> entry : bets.entrySet()) {
     		double amount = entry.getValue();
