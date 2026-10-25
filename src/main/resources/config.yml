@@ -37,7 +37,7 @@ payouts:
   # only means the player must claim manually with /ncc claim first.
   clear-bank-before-wager: true
 
-# Per-dealer bounded-liability budget (Phase 2). Configured per dealer under
+# Per-dealer bounded-liability budget. Configured per dealer under
 # dealers.<internal-name>.budget -- there is no global default block here
 # because a missing budget section already means UNLIMITED, identical to
 # every dealer's behavior before this feature existed.
@@ -51,7 +51,7 @@ payouts:
 #       underwriting-baseline: 5000  # LIMITED only. The fixed risk capacity;
 #                                    # does not shrink as the dealer loses or
 #                                    # grow as it profits. See
-#                                    # docs/DEALER_BUDGET_SCHEMA.md.
+#                                    # https://github.com/njm25/NCCasino/blob/main/docs/DEALER_BUDGET_SCHEMA.md
 #       guaranteed-worst-case-rounds: 1   # How many consecutive worst-case
 #                                         # results the baseline must absorb.
 #       refill-mode: NONE            # NONE | ADD | RESET. Default: NONE.
@@ -63,11 +63,12 @@ payouts:
 #                                    # below its active reservations).
 #
 # The live balance and active reservations are NOT stored here -- they are
-# persistent economic data in data/dealer-budgets.yml, documented in
-# docs/DEALER_BUDGET_SCHEMA.md. Editing this block never moves money, and a
-# balance change never rewrites this file.
+# persistent economic data in data/dealer-budgets.yml, documented at
+# https://github.com/njm25/NCCasino/blob/main/docs/DEALER_BUDGET_SCHEMA.md
+# Editing this block never moves money, and a balance change never rewrites
+# this file.
 
-# Slots variance (Phase 2). Per-dealer, under dealers.<internal-name> directly
+# Slots variance. Per-dealer, under dealers.<internal-name> directly
 # (alongside slots-columns/slots-lines/slots-house-edge, not under budget:).
 # Independent of house edge: variance changes how a machine's return arrives
 # (frequent smaller payouts vs. rarer larger ones), never the edge itself.
