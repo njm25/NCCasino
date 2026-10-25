@@ -549,30 +549,9 @@ public abstract class Client extends DealerInventory {
 				int leftoverAmount = toGive - actuallyAdded;
 
 				if (leftoverAmount > 0) {
-					switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
-						case STANDARD:{
-							player.sendMessage(plugin.getLocalization().text(
-								player,
-								"betting.inventory-full",
-								"amount",
-								plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount)
-							));
-
-							break;}
-						case VERBOSE:{
-							player.sendMessage(plugin.getLocalization().text(
-								player,
-								"betting.inventory-full",
-								"amount",
-								plugin.formatWagerDisplay(currencyMode, currencyName, leftoverAmount)
-							));
-							break;     
-						}
-							case NONE:{
-							break;
-						}
-					} 
-					dropExcessItems(player, leftoverAmount, currencyMaterial);
+					// The deposit is all or nothing, so leftoverAmount is the whole payout:
+					// report what the delivery below actually dropped and banked.
+					reportOverflow(player, dropExcessItems(player, leftoverAmount, currencyMaterial));
 				}
 				return;
 			}
@@ -637,14 +616,14 @@ public abstract class Client extends DealerInventory {
 		}
     }
     
-    private void dropExcessItems(Player player, int amount, Material currencyMaterial) {
+    private ItemDeliveryOutcome dropExcessItems(Player player, int amount, Material currencyMaterial) {
         if (amount <= 0 || currencyMaterial == null) {
-            return;
+            return null;
         }
         OverflowBankService bank = plugin.getOverflowBankService();
         if (bank == null) {
             retainUnsettledPayout(player, amount, currencyMaterial);
-            return;
+            return null;
         }
         // Deliver what fits, drop only within the configured cap, bank the
         // rest. Anything the bank could not record becomes a durable pending
@@ -653,6 +632,22 @@ public abstract class Client extends DealerInventory {
             player, new BankedCurrency(currencyMode, currencyMaterial.name(), currencyName), amount);
         if (!outcome.settled()) {
             retainUnsettledPayout(player, outcome.unsettled(), currencyMaterial);
+        }
+        return outcome;
+    }
+
+    /** Tells the player what of a payout did not fit: what was dropped, and what was banked. */
+    private void reportOverflow(Player player, ItemDeliveryOutcome outcome) {
+        if (outcome == null || plugin.getPreferences(player.getUniqueId()).getMessageSetting() == org.nc.nccasino.helpers.Preferences.MessageSetting.NONE) {
+            return;
+        }
+        if (outcome.dropped() > 0) {
+            player.sendMessage(plugin.getLocalization().text(player, "betting.inventory-full", "amount",
+                plugin.formatWagerDisplay(currencyMode, currencyName, outcome.dropped())));
+        }
+        if (outcome.banked() > 0) {
+            player.sendMessage(plugin.getLocalization().text(player, "payout.bank-reminder", "amount",
+                plugin.formatWagerDisplay(currencyMode, currencyName, outcome.banked())));
         }
     }
 
