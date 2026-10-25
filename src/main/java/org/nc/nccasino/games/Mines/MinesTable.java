@@ -663,11 +663,10 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         if (slot == 53 && clickedItem.getType() == Material.PAPER) {
             // Check if the player is holding the currency item
             ItemStack heldItem = player.getItemOnCursor();
-            Material currencyType = plugin.getCurrency(internalName);
             double wagerAmount = 0;
             boolean usedHeldItem = false;
-        
-            if (heldItem != null && heldItem.getType() == currencyType) {
+
+            if (isCursorCurrency(heldItem)) {
                 wagerAmount = heldItem.getAmount();
                 usedHeldItem = true;
             } else {
@@ -1875,7 +1874,22 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         }
         return plugin.getCurrencyManager().getProvider(internalName);
     }
-    
+
+    // A Vault dealer has no currency item, so a stack of its display material must not count as a wager.
+    private boolean isCursorCurrency(ItemStack heldItem) {
+        return isCursorCurrency(getCurrencyProvider(), plugin.getCurrency(internalName), heldItem, internalName);
+    }
+
+    static boolean isCursorCurrency(CurrencyProvider provider, Material fallbackMaterial, ItemStack heldItem, String internalName) {
+        if (heldItem == null || heldItem.getType() == Material.AIR) {
+            return false;
+        }
+        if (provider != null) {
+            return provider.isCurrencyItem(heldItem, internalName);
+        }
+        return fallbackMaterial != null && heldItem.getType() == fallbackMaterial;
+    }
+
 
     void endGame() {
         // Safety net for a mid-game exit (e.g. the Exit door clicked while
