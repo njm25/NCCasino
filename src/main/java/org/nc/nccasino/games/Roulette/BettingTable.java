@@ -1450,6 +1450,14 @@ private boolean isValidSlotPage2(int slot) {
     }
     }
 
+    /** Takes over the reservation of the table this one replaces, which shared the same bets. */
+    void adoptBudgetCommitment(BettingTable previous) {
+        if (budgetCommitment == null) {
+            budgetCommitment = previous.budgetCommitment;
+        }
+        previous.budgetCommitment = null;
+    }
+
     void cleanupListener() {
         stopBettingMusic();
         HandlerList.unregisterAll(this);

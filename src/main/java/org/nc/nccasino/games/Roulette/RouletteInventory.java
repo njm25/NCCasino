@@ -753,7 +753,13 @@ private void openBettingTable(Player player) {
             Stack<Pair<String, Integer>> bets = getPlayerBets(player.getUniqueId());
             String internalName = Dealer.getInternalName(dealer);
             BettingTable bettingTable = new BettingTable(player, dealer, plugin, bets, internalName, this, globalCountdown);
-            Tables.put(player.getUniqueId(), bettingTable);
+            // The bets carry over, so their dealer-budget reservation must too: a fresh
+            // table would reserve (and credit) the whole stack again.
+            BettingTable previous = Tables.put(player.getUniqueId(), bettingTable);
+            if (previous != null && previous != bettingTable) {
+                bettingTable.adoptBudgetCommitment(previous);
+                previous.cleanupListener();
+            }
             player.openInventory(bettingTable.getInventory());
              if (SoundHelper.getSoundSafely("item.book.page_turn", player) != null)player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, SoundCategory.MASTER, 5.0f, 1.0f);
             if (plugin.getPreferences(player.getUniqueId()).getSoundSetting() == Preferences.SoundSetting.ON) {
