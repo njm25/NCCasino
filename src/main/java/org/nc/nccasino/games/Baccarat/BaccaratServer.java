@@ -259,6 +259,20 @@ public class BaccaratServer extends Server {
 
         if (seatMap.containsKey(slot)) {
             if (seatMap.get(slot).equals(playerId)) {
+                // Leaving refunds every bet, so it is only allowed while bets are open.
+                if (!mayLeaveSeat(gameState, playerBets.containsKey(playerId))) {
+                    switch (plugin.getPreferences(playerId).getMessageSetting()) {
+                        case STANDARD:
+                            player.sendMessage(text(player, "baccarat.invalid-action"));
+                            break;
+                        case VERBOSE:
+                            player.sendMessage(text(player, "baccarat.bets-closed"));
+                            break;
+                        case NONE:
+                            break;
+                    }
+                    return;
+                }
                 // Player clicked their own seat -> Leave and refund
                 removeFromSeat(player);
                 if (SoundHelper.getSoundSafely("block.wooden_door.close", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOODEN_DOOR_CLOSE,SoundCategory.MASTER, 1.0f, 1.0f); 
@@ -278,6 +292,11 @@ public class BaccaratServer extends Server {
             if (SoundHelper.getSoundSafely("block.wood.place", player) != null)player.playSound(player.getLocation(), Sound.BLOCK_WOOD_PLACE,SoundCategory.MASTER, 1.0f, 1.0f); 
             seatPlayer(player, slot);
         }
+    }
+
+    /** A seated player with live bets may stand up only before the hand is dealt. */
+    static boolean mayLeaveSeat(GameState state, boolean hasBets) {
+        return !hasBets || state != GameState.RUNNING;
     }
 
     private void seatPlayer(Player player, int slot) {
