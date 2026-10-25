@@ -237,6 +237,29 @@ public final class Nccasino extends JavaPlugin implements Listener {
         }
     }
 
+    /**
+     * A dealer set to Vault money plays for its item currency while no economy
+     * is available (DealerCurrencySettings). Say so for each one, so an admin
+     * whose economy plugin is missing, or loaded after NCCasino, can tell.
+     */
+    private void warnVaultDealersWithoutEconomy() {
+        if (vaultHook != null && vaultHook.isEconomyAvailable()) {
+            return;
+        }
+        org.bukkit.configuration.ConfigurationSection dealers = getConfig().getConfigurationSection("dealers");
+        if (dealers == null) {
+            return;
+        }
+        for (String name : dealers.getKeys(false)) {
+            String mode = getConfig().getString("dealers." + name + ".currency.mode", "");
+            if ("VAULT".equalsIgnoreCase(mode.trim())) {
+                getLogger().warning("Dealer '" + name + "' is set to Vault money, but no Vault economy was found."
+                    + " It plays for its item currency (" + getConfig().getString("dealers." + name + ".currency.material", "EMERALD")
+                    + ") until an economy plugin is installed and the server restarts.");
+            }
+        }
+    }
+
     @Override
     public void onEnable() {
         INTERNAL_NAME_KEY = new NamespacedKey(this, "internal_name");
@@ -265,8 +288,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
         vaultHook = new VaultHook(this);
         vaultHook.hookAndLog();
 
-        // Phase 0 currency scaffolding (unused by gameplay until wired into games)
         currencyManager = new CurrencyManager(this);
+        warnVaultDealersWithoutEconomy();
 
         // Durable pending-payout storage (delivered on join once wired up)
         pendingPayoutStore = new PendingPayoutStore(this);
