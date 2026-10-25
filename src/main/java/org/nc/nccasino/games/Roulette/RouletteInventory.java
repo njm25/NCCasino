@@ -742,6 +742,12 @@ private void openBettingTable(Player player) {
     switchingPlayers.add(player.getUniqueId()); // Mark the player as switching inventories
 
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        if (betsClosed) {
+            // Betting closed during this one-tick switch. A table opened now would
+            // take bets the closing snapshot never saw, and the next round clears them.
+            switchingPlayers.remove(player.getUniqueId());
+            return;
+        }
         LivingEntity dealer = Dealer.findDealer(dealerId, player.getLocation());
         if (dealer != null) {
             Stack<Pair<String, Integer>> bets = getPlayerBets(player.getUniqueId());
