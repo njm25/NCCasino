@@ -149,6 +149,16 @@ public class DeleteCommand implements CasinoCommand {
                     ));
                 });
             });
+        }, () -> {
+            // Its mob or NPC is gone, so only its records are left to delete.
+            if (plugin.removeOrphanDealer(internalName)) {
+                sender.sendMessage(plugin.getLocalization().text(
+                    sender,
+                    "commands.dealer-deleted",
+                    "name",
+                    internalName
+                ));
+            }
         });
 
         return true;

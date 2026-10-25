@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -70,6 +71,7 @@ class CitizensDealerSupportTest {
         javaPluginStatic.when(() -> JavaPlugin.getProvidingPlugin(any())).thenReturn(providingPlugin);
 
         plugin = mock(Nccasino.class);
+        when(plugin.getLogger()).thenReturn(Logger.getLogger("CitizensDealerSupportTest"));
         setPrivateStatic("plugin", plugin);
         setPrivateStatic("available", true);
         lastKnownBodyMap().clear();
@@ -341,6 +343,57 @@ class CitizensDealerSupportTest {
         new CitizensDealerListener().onNpcDespawn(new NPCDespawnEvent(npc, DespawnReason.PLUGIN));
 
         verify(plugin).deleteAssociatedInventories(dealerId, internalName);
+    }
+
+    @Test
+    @DisplayName("releaseNpcsBoundTo frees only the NPC still naming a deleted orphan dealer")
+    void releaseNpcsBoundToFreesOnlyThatDealersNpc() {
+        UUID dealerId = UUID.randomUUID();
+        String internalName = "highroller";
+
+        // Despawned or unloaded: the binding lives only in the NPC's data.
+        Map<String, Object> boundData = new HashMap<>();
+        boundData.put("nccasino-dealer-id", dealerId.toString());
+        boundData.put("nccasino-internal-name", internalName);
+        NPC bound = mock(NPC.class);
+        UUID boundId = UUID.randomUUID();
+        when(bound.getUniqueId()).thenReturn(boundId);
+        when(bound.getEntity()).thenReturn(null);
+        MetadataStore boundStore = wireStore(boundData);
+        when(bound.data()).thenReturn(boundStore);
+
+        Map<String, Object> otherData = new HashMap<>();
+        otherData.put("nccasino-dealer-id", UUID.randomUUID().toString());
+        otherData.put("nccasino-internal-name", "lowroller");
+        NPC other = mock(NPC.class);
+        MetadataStore otherStore = wireStore(otherData);
+        when(other.data()).thenReturn(otherStore);
+
+        NPCRegistry registry = mock(NPCRegistry.class);
+        when(registry.iterator()).thenReturn(Arrays.asList(bound, other).iterator());
+        when(registry.getByUniqueId(boundId)).thenReturn(bound);
+
+        try (MockedStatic<CitizensAPI> citizensApi = Mockito.mockStatic(CitizensAPI.class)) {
+            citizensApi.when(CitizensAPI::getNPCRegistry).thenReturn(registry);
+
+            CitizensDealerSupport.releaseNpcsBoundTo(internalName);
+        }
+
+        verify(plugin).deleteAssociatedInventories(dealerId, internalName);
+        assertFalse(boundData.containsKey("nccasino-dealer-id"));
+        assertFalse(boundData.containsKey("nccasino-internal-name"),
+            "a later dealer with this name must not be claimed by the old NPC");
+        assertTrue(otherData.containsKey("nccasino-internal-name"), "other dealers' NPCs stay bound");
+    }
+
+    @Test
+    @DisplayName("releaseNpcsBoundTo is a no-op without Citizens installed")
+    void releaseNpcsBoundToWithoutCitizens() throws Exception {
+        setPrivateStatic("available", false);
+
+        CitizensDealerSupport.releaseNpcsBoundTo("highroller");
+
+        verify(plugin, never()).deleteAssociatedInventories(any(UUID.class), anyString());
     }
 
     private static void setPrivateStatic(String field, Object value) throws Exception {

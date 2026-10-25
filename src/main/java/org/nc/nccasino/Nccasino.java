@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -1202,7 +1203,13 @@ public final class Nccasino extends JavaPlugin implements Listener {
         return matcher.find() ? matcher.group(1) : null;
     }
 
-    public void executeOnDealer(String internalName, Runnable action) {
+    /**
+     * Runs {@code action} once the named dealer's body is found, loading its
+     * chunk if needed. If the chunk's entities have loaded and the body still
+     * isn't there, the dealer is an orphan -- records whose mob or NPC is
+     * gone -- and {@code onOrphan} runs instead.
+     */
+    public void executeOnDealer(String internalName, Runnable action, Runnable onOrphan) {
         // A Citizens NPC can walk away from the location saved at bind time.
         // If its body is already loaded, use that live identity directly.
         if (Dealer.findDealerByInternalName(internalName) != null) {
@@ -1212,67 +1219,67 @@ public final class Nccasino extends JavaPlugin implements Listener {
         Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
             File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
             FileConfiguration dealersConfig = YamlConfiguration.loadConfiguration(dealersFile); // Reload fresh config
-        
+
             if (!dealersConfig.contains("dealers." + internalName)) {
                 getLogger().warning("Dealer '" + internalName + "' not found in YAML.");
                 return;
             }
-        
+
             String worldName = dealersConfig.getString("dealers." + internalName + ".world");
             double x = dealersConfig.getDouble("dealers." + internalName + ".X");
             double z = dealersConfig.getDouble("dealers." + internalName + ".Z");
-        
+
             World world = Bukkit.getWorld(worldName);
             if (world == null) {
                 getLogger().warning("World '" + worldName + "' not found for dealer '" + internalName + "'.");
                 return;
             }
-        
+
             int chunkX = (int) x >> 4;
             int chunkZ = (int) z >> 4;
-        
-            world.setChunkForceLoaded(chunkX, chunkZ, true);
-        
-            Bukkit.getScheduler().runTaskLater(this, () -> {
-                if (world.isChunkLoaded(chunkX, chunkZ)) {
+
+            Bukkit.getScheduler().runTask(this, () -> {
+                world.setChunkForceLoaded(chunkX, chunkZ, true);
+
+                whenEntitiesLoaded(world, chunkX, chunkZ, entitiesLoaded -> {
                     LivingEntity mob = getDealerByInternalName(internalName);
                     if (mob != null) {
                         action.run();
+                    } else if (entitiesLoaded) {
+                        onOrphan.run();
                     } else {
-                        getLogger().warning("Dealer '" + internalName + "' could not be found in chunk.");
+                        getLogger().warning("Dealer '" + internalName + "' could not be found: its chunk did not load in time. Skipping.");
                     }
                     Bukkit.getScheduler().runTaskLater(this, () -> {
                         if (world.isChunkForceLoaded(chunkX, chunkZ)) {
                             world.setChunkForceLoaded(chunkX, chunkZ, false);
                         }
                     }, 100L);
-                
-                } else {
-                    Bukkit.getScheduler().runTaskLater(this, () -> {
-                        if (world.isChunkLoaded(chunkX, chunkZ)) {
-                            LivingEntity mob = getDealerByInternalName(internalName);
-                            if (mob != null) {
-                                action.run();
-                            } else {
-                                getLogger().warning("Dealer '" + internalName + "' could not be found in chunk.");
-                            }
-                        
-                        
-                        } else {
-                            getLogger().warning("Chunk could not be loaded for dealer '" + internalName + "'. Skipping.");
-                        }
-                        Bukkit.getScheduler().runTaskLater(this, () -> {
-                            if (world.isChunkForceLoaded(chunkX, chunkZ)) {
-                                world.setChunkForceLoaded(chunkX, chunkZ, false);
-                            }
-                        }, 40L);
-                    
-                    }, 10L);
-                }
-            
-            
-            }, 1L);
+                });
+            });
         });
+    }
+
+    /**
+     * Calls {@code then} on the main thread once the chunk's entities have
+     * loaded, or with {@code false} if they haven't within about five seconds.
+     * Entities load after the chunk itself, so a dealer missing straight
+     * after a chunk load may simply not be there yet.
+     */
+    private void whenEntitiesLoaded(World world, int chunkX, int chunkZ, Consumer<Boolean> then) {
+        whenEntitiesLoaded(world, chunkX, chunkZ, then, 20);
+    }
+
+    private void whenEntitiesLoaded(World world, int chunkX, int chunkZ, Consumer<Boolean> then, int triesLeft) {
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            boolean loaded = world.isChunkLoaded(chunkX, chunkZ)
+                && world.getChunkAt(chunkX, chunkZ).isEntitiesLoaded();
+            if (loaded || triesLeft <= 1) {
+                then.accept(loaded);
+            } else {
+                whenEntitiesLoaded(world, chunkX, chunkZ, then, triesLeft - 1);
+            }
+        }, 5L);
     }
     
     public void executeOnAllDealers(CommandSender sender, boolean sendMessageOnCompletion) {
@@ -1314,24 +1321,18 @@ public final class Nccasino extends JavaPlugin implements Listener {
             addDeletingChunk(world, chunkX, chunkZ);
             world.setChunkForceLoaded(chunkX, chunkZ, true);
         
-            Bukkit.getScheduler().runTaskLater(this, () -> {
+            whenEntitiesLoaded(world, chunkX, chunkZ, entitiesLoaded -> {
                 if (!world.isChunkLoaded(chunkX, chunkZ)) {
-                    Bukkit.getScheduler().runTaskLater(this, () -> {
-                        if (!world.isChunkLoaded(chunkX, chunkZ)) {
-                            getLogger().warning("Chunk (" + chunkX + ", " + chunkZ + ") did not load in time.");
-                            removeDeletingChunk(world, chunkX, chunkZ); // Cleanup after deletion
-                            return;
-                        }
-                        deleteDealersInChunk(world, chunkX, chunkZ, internalNames, sender, totalChunks, processedChunks, sendMessageOnCompletion, totalDeleted);
-                    }, 10L);
-                } else {
-                    deleteDealersInChunk(world, chunkX, chunkZ, internalNames, sender, totalChunks, processedChunks, sendMessageOnCompletion, totalDeleted);
+                    getLogger().warning("Chunk (" + chunkX + ", " + chunkZ + ") did not load in time.");
+                    removeDeletingChunk(world, chunkX, chunkZ); // Cleanup after deletion
+                    return;
                 }
-            }, 1L);
+                deleteDealersInChunk(world, chunkX, chunkZ, internalNames, sender, totalChunks, processedChunks, sendMessageOnCompletion, totalDeleted, entitiesLoaded);
+            });
         }
     }
     
-    private void deleteDealersInChunk(World world, int chunkX, int chunkZ, List<String> internalNames, CommandSender sender, int totalChunks, int[] processedChunks, boolean sendMessageOnCompletion, int[] totalDeleted) {
+    private void deleteDealersInChunk(World world, int chunkX, int chunkZ, List<String> internalNames, CommandSender sender, int totalChunks, int[] processedChunks, boolean sendMessageOnCompletion, int[] totalDeleted, boolean entitiesLoaded) {
         for (String internalName : internalNames) {
             LivingEntity mob = getDealerByInternalName(internalName);
             if (mob != null) {
@@ -1380,6 +1381,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 
                 // Remove from jockey manager cache
                 DealerEventListener.clearJockeyManagerCache(mob.getUniqueId());
+            } else if (entitiesLoaded && removeOrphanDealer(internalName)) {
+                totalDeleted[0]++;
             } else {
                 getLogger().warning("Dealer '" + internalName + "' could not be found in chunk.");
             }
@@ -1405,6 +1408,28 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 );
             }
         }
+    }
+
+    /**
+     * Deletes a dealer whose mob or NPC is gone: its settings in config.yml,
+     * its location in data/dealers.yaml, and the binding on any Citizens NPC
+     * still naming it. Without this such a dealer could never be deleted,
+     * and its name never reused.
+     *
+     * @return false if the dealer's body has turned up after all
+     */
+    public boolean removeOrphanDealer(String internalName) {
+        if (getDealerByInternalName(internalName) != null) {
+            return false;
+        }
+        getLogger().info("Dealer '" + internalName + "' has no mob or NPC left; removing its records.");
+        CitizensDealerSupport.releaseNpcsBoundTo(internalName);
+        if (getConfig().contains("dealers." + internalName)) {
+            getConfig().set("dealers." + internalName, null);
+            saveConfig();
+        }
+        removeDealerData(internalName);
+        return true;
     }
     
     

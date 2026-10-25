@@ -203,6 +203,36 @@ public final class CitizensDealerSupport {
         }
     }
 
+    /**
+     * Releases every NPC still bound to {@code internalName}, for a dealer
+     * deleted while it had no live body (its NPC despawned, or standing in an
+     * unloaded chunk). Otherwise that NPC would claim a later dealer created
+     * under the same name the next time it spawns.
+     */
+    public static void releaseNpcsBoundTo(String internalName) {
+        if (!available || internalName == null) {
+            return;
+        }
+        var registry = CitizensAPI.getNPCRegistry();
+        if (registry == null) {
+            return;
+        }
+        for (NPC npc : registry) {
+            if (!internalName.equals(readNpcString(npc, META_INTERNAL_NAME))) {
+                continue;
+            }
+            String rawId = readNpcString(npc, META_DEALER_ID);
+            if (rawId != null) {
+                try {
+                    plugin.deleteAssociatedInventories(UUID.fromString(rawId), internalName);
+                } catch (IllegalArgumentException e) {
+                    plugin.getLogger().warning("Malformed dealer id on Citizens NPC " + npc.getUniqueId());
+                }
+            }
+            releaseNpc(npc.getUniqueId());
+        }
+    }
+
     /** Whether {@code entity} is the body of a Citizens NPC. */
     public static boolean isCitizensNpc(Entity entity) {
         if (!available || entity == null) {
@@ -508,6 +538,8 @@ public final class CitizensDealerSupport {
         String dealerIdRaw = readNpcString(npc, META_DEALER_ID);
         npc.data().remove(META_DEALER_ID);
         npc.data().remove(META_INTERNAL_NAME);
+        plugin.getLogger().info("The Citizens NPC hosting dealer '" + internalName
+            + "' was removed; the dealer's settings are kept. Use /ncc delete " + internalName + " to remove them.");
 
         UUID lastBody = lastKnownBody.remove(npc.getUniqueId());
         Entity entity = npc.getEntity();
