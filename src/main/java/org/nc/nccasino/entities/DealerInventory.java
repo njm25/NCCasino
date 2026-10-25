@@ -144,7 +144,9 @@ public class DealerInventory implements InventoryHolder, Listener {
                     }
                 }
             }, 1L);
+            Map<UUID, Integer> owedBefore = plugin.owedPayoutCountsOfOnlinePlayers();
             existing.delete();
+            plugin.deliverNewlyOwedSoon(owedBefore);
         }
     
         inventories.put(dealerId, newInventory);

@@ -8,6 +8,7 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -180,6 +181,53 @@ public final class Nccasino extends JavaPlugin implements Listener {
      * players stay online -- a dealer rebuilt by /ncc reload, or this plugin
      * reloading -- would otherwise wait for each player's next login.
      */
+    /** How many payouts each online player is owed right now; see {@link #deliverNewlyOwedSoon}. */
+    public Map<UUID, Integer> owedPayoutCountsOfOnlinePlayers() {
+        Map<UUID, Integer> counts = new HashMap<>();
+        if (pendingPayoutStore == null) {
+            return counts;
+        }
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            counts.put(player.getUniqueId(), pendingPayoutStore.getPending(player.getUniqueId()).size());
+        }
+        return counts;
+    }
+
+    /**
+     * Delivers, a moment from now, to each online player who is owed more than in
+     * {@code before}. A settlement saved while its player stays online (a dealer
+     * deleted or rebuilt mid-round) would otherwise wait for their next login.
+     */
+    public void deliverNewlyOwedSoon(Map<UUID, Integer> before) {
+        if (pendingPayoutStore == null) {
+            return;
+        }
+        List<UUID> newlyOwed = new ArrayList<>();
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            UUID id = player.getUniqueId();
+            if (pendingPayoutStore.getPending(id).size() > before.getOrDefault(id, 0)) {
+                newlyOwed.add(id);
+            }
+        }
+        deliverOwedWinningsSoon(newlyOwed);
+    }
+
+    /** Delivers what these players are owed a moment from now, if they are still online. */
+    public void deliverOwedWinningsSoon(Collection<UUID> playerIds) {
+        if (playerIds.isEmpty() || !isEnabled() || playerSessionListener == null) {
+            return;
+        }
+        List<UUID> ids = new ArrayList<>(playerIds);
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            for (UUID id : ids) {
+                Player player = Bukkit.getPlayer(id);
+                if (player != null && player.isOnline()) {
+                    playerSessionListener.deliverOwedWinnings(player);
+                }
+            }
+        }, 2L);
+    }
+
     public void deliverOwedWinningsToOnlinePlayers() {
         if (playerSessionListener == null) {
             return;
@@ -838,8 +886,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
         DealerInventory inv = DealerInventory.getInventory(dealerId);
         if (inv != null) {
+            Map<UUID, Integer> owedBefore = owedPayoutCountsOfOnlinePlayers();
             inv.delete();
             DealerInventory.inventories.remove(dealerId);
+            deliverNewlyOwedSoon(owedBefore);
         }
 
         // Close inventories on the main thread
@@ -890,8 +940,6 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 }
             }
         });
-
-
     }
 
     // Utility method to create NamespacedKey instances

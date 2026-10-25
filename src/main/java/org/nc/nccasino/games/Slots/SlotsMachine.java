@@ -4163,6 +4163,10 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             context
         );
         boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
+        if (persisted && player != null && player.isOnline()) {
+            // Closed mid-spin while still online: pay now, not at the next login.
+            plugin.deliverOwedWinningsSoon(java.util.List.of(playerId));
+        }
         if (!persisted) {
             plugin.getLogger().severe("[NCCasino] Slots pending payout failed to persist for " + playerId
                 + " at dealer " + internalName + " (amount=" + amount
