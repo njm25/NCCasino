@@ -112,6 +112,32 @@ class NewlyOwedDeliveryTest {
         verify(listener, never()).deliverOwedWinnings(any());
     }
 
+    @Test
+    void tearingDownADealerMidRoundPaysItsOnlinePlayerAMomentLater() {
+        // The path /ncc delete, an admin rebuild and a dying dealer all share.
+        doCallRealMethod().when(plugin).deleteAssociatedInventories(any(UUID.class), any());
+        PendingPayout owed = mock(PendingPayout.class);
+        java.util.List<PendingPayout> alicesRecords = new java.util.ArrayList<>();
+        when(store.getPending(alice.getUniqueId())).thenAnswer(call -> List.copyOf(alicesRecords));
+        when(store.getPending(bob.getUniqueId())).thenReturn(List.of());
+        UUID dealerId = UUID.randomUUID();
+        org.nc.nccasino.entities.DealerInventory table = mock(org.nc.nccasino.entities.DealerInventory.class);
+        // Tearing the table down settles Alice's riding stake into a saved payout.
+        Mockito.doAnswer(call -> alicesRecords.add(owed)).when(table).delete();
+        org.nc.nccasino.entities.DealerInventory.inventories.put(dealerId, table);
+        try {
+            plugin.deleteAssociatedInventories(dealerId, "table");
+        } finally {
+            org.nc.nccasino.entities.DealerInventory.inventories.remove(dealerId);
+        }
+
+        ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runTaskLater(any(Plugin.class), task.capture(), anyLong());
+        task.getValue().run();
+        verify(listener, times(1)).deliverOwedWinnings(alice);
+        verify(listener, never()).deliverOwedWinnings(bob);
+    }
+
     private static Player player() {
         Player player = mock(Player.class);
         when(player.getUniqueId()).thenReturn(UUID.randomUUID());
