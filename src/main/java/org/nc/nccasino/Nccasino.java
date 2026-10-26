@@ -1082,7 +1082,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
             return 30; 
         }
     
-        if (timer < 0) return 0;      
+        if (timer < 1) return 1; // 0 left no betting window at all
         if (timer > 10000) return 10000; 
     
         return (int) timer;
@@ -1168,7 +1168,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 columns = 7; // Default value if parsing fails
             }
         }
-        return columns;
+        // The admin menu's range: a hand-edited value outside it broke the board.
+        return Math.max(2, Math.min(9, columns));
     }
 
     public int getDragonDescentVines(String internalName) {
@@ -1186,7 +1187,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 vines = 5; // Default value if parsing fails
             }
         }
-        return vines;
+        // At least one vine, and at least one dragon per row: vines < columns.
+        return Math.max(1, Math.min(vines, getDragonDescentColumns(internalName) - 1));
     }
 
     public int getDragonDescentFloors(String internalName) {
@@ -1204,7 +1206,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 floors = 4; // Default value if parsing fails
             }
         }
-        return floors;
+        // 0 or negative threw on the first click; a huge value ran the server out of memory.
+        return Math.max(1, Math.min(100, floors));
     }
 
     public void reinitializeDealerConfigurations() {
