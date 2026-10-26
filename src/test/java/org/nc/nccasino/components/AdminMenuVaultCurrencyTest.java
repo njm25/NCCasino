@@ -49,9 +49,13 @@ class AdminMenuVaultCurrencyTest {
         ItemStack dirt = mock(ItemStack.class);
         when(dirt.getType()).thenReturn(Material.DIRT);
 
-        menu.handleDrag(dirt, admin, mock(InventoryClickEvent.class));
+        InventoryClickEvent shiftClick = mock(InventoryClickEvent.class);
+        menu.handleDrag(dirt, admin, shiftClick);
 
         assertEquals("EMERALD", config.getString("dealers.vaultdealer.currency.material"));
+        // Refused or not, the click must be cancelled: otherwise vanilla moves the
+        // stack into the menu, which deletes it when the menu closes.
+        org.mockito.Mockito.verify(shiftClick).setCancelled(true);
     }
 
     private static void set(Object target, Class<?> owner, String name, Object value) throws Exception {

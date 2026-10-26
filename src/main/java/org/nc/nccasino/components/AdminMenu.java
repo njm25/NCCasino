@@ -1271,8 +1271,13 @@ public class AdminMenu extends Menu {
     }
 
     public void handleDrag(ItemStack item, Player player, InventoryClickEvent event){
-
-        if (item != null && item.getType() != Material.AIR && !refuseCurrencyItemInVault(player)) {
+        if (item == null || item.getType() == Material.AIR) {
+            return;
+        }
+        // Always cancelled, refused or not: an uncancelled shift-click moves the
+        // admin's stack into this menu, which clears it on close.
+        event.setCancelled(true);
+        if (!refuseCurrencyItemInVault(player)) {
             ItemStack selectedItem = item.clone();
             selectedItem.setAmount(1); // Store a single reference item
     
