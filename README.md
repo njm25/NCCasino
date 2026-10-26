@@ -36,7 +36,7 @@ A full restart is the safest way to update. `/reload` and `/ncc reload` are supp
 - **/ncc claim**: Collect winnings that were banked because they did not fit in your inventory.
 - **/ncc help**: List the commands you can use.
 
-Sneak + right-click a dealer to open its admin menu (game, mob, currency, chip sizes, per-game settings, budget). To make a Citizens NPC a dealer, bind it from a dealer's admin menu.
+After `/ncc create`, pick the dealer's game from the menu that opens. Sneak + right-click a dealer to open its admin menu (game, mob, currency, chip sizes, per-game settings, budget); players without the admin permission get their own menu (preferences and language) instead. To make a Citizens NPC a dealer, bind it from a dealer's admin menu.
 
 ## Permissions
 
@@ -78,6 +78,7 @@ dealers:
       size5: 50
 ```
 
+- **Item currency** is matched by material only: any emerald counts as an emerald chip, whatever its name. Pick a material players can't get cheaply.
 - **Money dealers**: with Vault and an economy plugin installed, set a dealer's currency to Vault in its admin menu (`currency.mode: VAULT`). Without an economy, such a dealer plays for its item currency, and the console says so at startup.
 - **Dealer budgets**: by default a dealer can pay out without limit. `budget.mode: LIMITED` gives it a bankroll, with optional refills; wagers it could not cover are refused up front. See [docs/DEALER_BUDGET_SCHEMA.md](docs/DEALER_BUDGET_SCHEMA.md).
 - **Winnings that do not fit**: the `payouts` section decides whether item winnings that do not fit in a player's inventory are banked (claimed with `/ncc claim` or delivered automatically) or dropped. Nothing is ever deleted.
