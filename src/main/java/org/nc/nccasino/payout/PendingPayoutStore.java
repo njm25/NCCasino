@@ -170,6 +170,14 @@ public class PendingPayoutStore {
         indexAdd(payout);
 
         boolean ok = persist();
+        if (!ok && storeFile().isReadOnly()) {
+            // The file on disk could not be read and must not be overwritten
+            // (StoreFile says so once). Keep what is owed in memory for this
+            // session, where join delivery can still pay it, instead of losing it.
+            plugin.getLogger().severe("[NCCasino] pending-payouts.yml is unreadable; payout " + payout.id()
+                + " of " + payout.amount() + " for " + payout.playerId() + " is held in memory only until the file is fixed.");
+            return true;
+        }
         if (!ok) {
             indexRemove(payout);
         }

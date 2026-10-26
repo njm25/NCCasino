@@ -87,6 +87,21 @@ class PendingPayoutStoreTest {
     }
 
     @Test
+    void aPayoutOwedWhileTheFileIsUnreadableIsKeptInMemoryNotLost() throws Exception {
+        File file = new File(tempDir.toFile(), "data/pending-payouts.yml");
+        file.getParentFile().mkdirs();
+        java.nio.file.Files.writeString(file.toPath(), "payouts: [unclosed\n");
+        String original = java.nio.file.Files.readString(file.toPath());
+        UUID playerId = UUID.randomUUID();
+        PendingPayoutStore store = new PendingPayoutStore(plugin);
+
+        assertTrue(store.addPendingPayout(payout(playerId, UUID.randomUUID(), 25)),
+            "the payout is still owed, not dropped");
+        assertTrue(store.hasPending(playerId));
+        assertEquals(original, java.nio.file.Files.readString(file.toPath()), "the unreadable file is left alone");
+    }
+
+    @Test
     void zeroValueOutcomeIsDeliveredAndRemovedWithoutTouchingEconomy() {
         UUID playerId = UUID.randomUUID();
         Player player = player(playerId);
