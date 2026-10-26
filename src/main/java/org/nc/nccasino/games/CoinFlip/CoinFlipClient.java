@@ -756,7 +756,8 @@ public class CoinFlipClient extends Client implements TerminableSession {
         int units = org.nc.nccasino.currency.MoneyHelper.toWagerUnits(wagerAmount);
         boolean removed = units > 0 && tryRemoveCurrencyFromInventory(player, units);
 		if (!removed) {
-			switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+			// The bank gate already said why; don't add "not enough" on top.
+			switch (org.nc.nccasino.payout.WagerGate.refusedLastCheck(player) ? org.nc.nccasino.helpers.Preferences.MessageSetting.NONE : plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
 				case STANDARD:
 				case VERBOSE:
 					player.sendMessage(text("coin-flip.insufficient-currency"));

@@ -134,6 +134,24 @@ class WagerGateTest {
     }
 
     @Test
+    void aGameCanTellItsDebitWasRefusedByTheGateSoItSaysNothingMore() {
+        // The gate's own "make room for your banked winnings" notice explains a
+        // refused debit; a game adding "not enough currency" on top contradicts it.
+        OverflowTestSupport.Fixture fixture = OverflowTestSupport.fixture();
+        fixture.fillCompletely();
+        assertTrue(store.credit(fixture.playerId, DIAMONDS, 900L));
+        WagerGate.clearPlayerState(fixture.playerId);
+
+        assertFalse(WagerGate.allowsWager(plugin, fixture.player));
+        assertTrue(WagerGate.refusedLastCheck(fixture.player));
+
+        assertTrue(store.debitBeforeDelivery(fixture.playerId, DIAMONDS, 900L));
+        assertTrue(WagerGate.allowsWager(plugin, fixture.player));
+        assertFalse(WagerGate.refusedLastCheck(fixture.player),
+            "a later refusal for lack of funds is the game's to explain again");
+    }
+
+    @Test
     void anEmptyBankNeverBlocksAnyone() {
         OverflowTestSupport.Fixture fixture = OverflowTestSupport.fixture();
         WagerGate.clearPlayerState(fixture.playerId);

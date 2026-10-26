@@ -4,6 +4,7 @@ import org.bukkit.entity.Player;
 import org.nc.nccasino.Nccasino;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -31,6 +32,8 @@ public final class WagerGate {
      */
     private static final Map<UUID, Long> LAST_NOTICE = new ConcurrentHashMap<>();
     private static final long NOTICE_COOLDOWN_MILLIS = 3_000L;
+    /** Players whose most recent gate check refused them; see {@link #refusedLastCheck}. */
+    private static final Set<UUID> REFUSED = ConcurrentHashMap.newKeySet();
 
     private WagerGate() {
     }
@@ -71,16 +74,28 @@ public final class WagerGate {
             // not brick every game: refuse this one attempt and log it.
             plugin.getLogger().severe("[NCCasino] Overflow-bank wager gate failed for "
                 + player.getUniqueId() + "; refusing the wager. " + e);
+            REFUSED.add(player.getUniqueId());
             return false;
         }
 
         if (WagerAdmissionPolicy.admits(remaining, funding)) {
             LAST_NOTICE.remove(player.getUniqueId());
+            REFUSED.remove(player.getUniqueId());
             return true;
         }
 
+        REFUSED.add(player.getUniqueId());
         notifyBlocked(plugin, player, remaining);
         return false;
+    }
+
+    /**
+     * Whether the player's most recent gate check refused them. A debit that
+     * failed because of the gate has already been explained by the gate's own
+     * notice, so the game must not add "not enough currency" on top of it.
+     */
+    public static boolean refusedLastCheck(Player player) {
+        return player != null && REFUSED.contains(player.getUniqueId());
     }
 
     private static void notifyBlocked(Nccasino plugin, Player player, long remaining) {
@@ -98,5 +113,6 @@ public final class WagerGate {
     /** Drops debounce state for a player who has left. */
     public static void clearPlayerState(UUID playerId) {
         LAST_NOTICE.remove(playerId);
+        REFUSED.remove(playerId);
     }
 }

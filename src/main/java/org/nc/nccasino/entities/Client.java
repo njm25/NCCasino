@@ -330,7 +330,8 @@ public abstract class Client extends DealerInventory {
             int units = MoneyHelper.toWagerUnits(wagerAmount);
             boolean removed = units > 0 && tryRemoveCurrencyFromInventory(player, units);
 			if (!removed) {
-				switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+				// The bank gate already said why; don't add "not enough" on top.
+				switch (WagerGate.refusedLastCheck(player) ? org.nc.nccasino.helpers.Preferences.MessageSetting.NONE : plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
 					case STANDARD:
 					case VERBOSE:
 						player.sendMessage(plugin.getLocalization().text(player, "betting.insufficient-funds"));

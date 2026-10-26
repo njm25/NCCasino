@@ -2673,7 +2673,7 @@ private void registerListener() {
                 case NONE:
                     break;
                 default:
-                    player.sendMessage(text(player, "blackjack.wager-transaction-failed"));
+                    if (!WagerGate.refusedLastCheck(player)) player.sendMessage(text(player, "blackjack.wager-transaction-failed")); // the bank gate already said why
             }
             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
@@ -5290,10 +5290,10 @@ private void handleDoubleDown(Player player) {
             rollbackDoubleGrowth(hand, beforeDouble, currentBet);
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
-                    player.sendMessage(text(player, "blackjack.wager-transaction-failed"));
+                    if (!WagerGate.refusedLastCheck(player)) player.sendMessage(text(player, "blackjack.wager-transaction-failed")); // the bank gate already said why
                     break;}
                 case VERBOSE:{
-                    player.sendMessage(text(player, "blackjack.wager-transaction-failed"));
+                    if (!WagerGate.refusedLastCheck(player)) player.sendMessage(text(player, "blackjack.wager-transaction-failed")); // the bank gate already said why
                     break;}
                 case NONE:{
                     break;
@@ -5754,7 +5754,7 @@ private void handleDoubleDown(Player player) {
                     case NONE:
                         break;
                     default:
-                        player.sendMessage(text(player, "blackjack.wager-transaction-failed"));
+                        if (!WagerGate.refusedLastCheck(player)) player.sendMessage(text(player, "blackjack.wager-transaction-failed")); // the bank gate already said why
                 }
                 if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
                     player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
@@ -7647,7 +7647,7 @@ private void handleInsuranceDecision(Player player, boolean takeInsurance) {
                 case NONE:
                     break;
                 default:
-                    player.sendMessage(text(player, "blackjack.wager-transaction-failed"));
+                    if (!WagerGate.refusedLastCheck(player)) player.sendMessage(text(player, "blackjack.wager-transaction-failed")); // the bank gate already said why
             }
             if (SoundHelper.getSoundSafely("entity.villager.no", player) != null) {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
