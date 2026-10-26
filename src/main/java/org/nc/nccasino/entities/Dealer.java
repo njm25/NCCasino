@@ -675,9 +675,32 @@ public class Dealer {
         };
     }
 
+    private static final List<String> GAME_NAMES = List.of(
+        "Blackjack", "Roulette", "Mines", "Baccarat", "Test Game", "Coin Flip",
+        "Rock Paper Scissors", "Dragon Descent", "Slots");
+
+    /**
+     * A game name as the plugin spells it, matched case-insensitively. A
+     * hand-edited "roulette" used to open Blackjack (the switch below is
+     * case-sensitive) while the permission check, which lower-cases, asked for
+     * the Roulette permission. Unknown names are returned unchanged.
+     */
+    public static String canonicalGameName(String gameName) {
+        if (gameName == null) {
+            return null;
+        }
+        for (String known : GAME_NAMES) {
+            if (known.equalsIgnoreCase(gameName.trim())) {
+                return known;
+            }
+        }
+        return gameName;
+    }
+
     public static void updateGameType(LivingEntity mob, String gameName, int timer, String anmsg, String newName, List<Integer> chipSizes, String currencyMaterial, String currencyName) {
         UUID dealerId = getUniqueId(mob);
         if (dealerId == null) return;
+        gameName = canonicalGameName(gameName);
 
         Nccasino plugin = (Nccasino) JavaPlugin.getProvidingPlugin(Dealer.class);
         DealerInventory newInventory;
