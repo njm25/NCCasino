@@ -659,6 +659,11 @@ public class BaccaratServer extends Server {
     private void dealInitialCards() {
         playerHand.clear();
         bankerHand.clear();
+        // Reshuffle at the cut card: a shoe dealt to its last cards lets a
+        // player who tracks them bet the pairs with an edge.
+        if (deck.shouldReshuffleBeforeRound(2)) {
+            deck.resetDeck();
+        }
     
         // Correct Baccarat draw order
         later(() -> {
