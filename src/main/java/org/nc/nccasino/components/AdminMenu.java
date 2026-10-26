@@ -1240,17 +1240,7 @@ public class AdminMenu extends Menu {
         AdminMenu adminInv = adminInventories.get(playerId);
         
         Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
-        if (adminInv.currencyMode == CurrencyMode.VAULT) {
-            switch(messPref){
-                case STANDARD:{
-                    player.sendMessage(text("admin.currency-selection-disabled"));
-                    break;}
-                case VERBOSE:{
-                    player.sendMessage(text("admin.currency-selection-disabled-future"));
-                    break;}
-                case NONE:{break;
-                }
-            } 
+        if (adminInv.refuseCurrencyItemInVault(player)) {
             return;
         }
 
@@ -1264,9 +1254,25 @@ public class AdminMenu extends Menu {
     }
 
 
+    /**
+     * A Vault dealer plays for money, so its currency item can't be changed: the
+     * button refuses it, and so must a shift-click from the admin's own inventory.
+     */
+    private boolean refuseCurrencyItemInVault(Player player) {
+        if (currencyMode != CurrencyMode.VAULT) {
+            return false;
+        }
+        switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+            case STANDARD -> player.sendMessage(text("admin.currency-selection-disabled"));
+            case VERBOSE -> player.sendMessage(text("admin.currency-selection-disabled-future"));
+            case NONE -> { }
+        }
+        return true;
+    }
+
     public void handleDrag(ItemStack item, Player player, InventoryClickEvent event){
 
-        if (item != null && item.getType() != Material.AIR) {
+        if (item != null && item.getType() != Material.AIR && !refuseCurrencyItemInVault(player)) {
             ItemStack selectedItem = item.clone();
             selectedItem.setAmount(1); // Store a single reference item
     
