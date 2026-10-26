@@ -38,7 +38,12 @@ public class MinesInventory extends DealerInventory {
 
     @Override
     public void delete() {
-
+        // Settle each open table now, while the dealer's config (currency, mode)
+        // still exists: closing the windows settles them a tick later, after a
+        // deleted dealer's config is gone.
+        for (Map.Entry<UUID, MinesTable> entry : new java.util.ArrayList<>(Tables.entrySet())) {
+            SessionRegistry.terminateSession(entry.getKey(), entry.getValue(), ExitReason.PLUGIN_DISABLE);
+        }
         super.delete();
         Tables.clear();
         interactionLocks.clear();
