@@ -408,6 +408,12 @@ public class DealerInteractListener implements Listener {
         UUID playerId = player.getUniqueId();
 
         if(!(event.getInventory().getHolder() instanceof DealerInventory)) return;
+        // A double-click in the player's own inventory gathers matching stacks
+        // from the casino window too, pulling out its plain items (spawn eggs).
+        if (event.getAction() == org.bukkit.event.inventory.InventoryAction.COLLECT_TO_CURSOR) {
+            event.setCancelled(true);
+            return;
+        }
         if (event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
             // By default, SHIFT-click will attempt to move items into the top inventory
 
