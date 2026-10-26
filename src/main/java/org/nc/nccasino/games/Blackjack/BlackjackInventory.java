@@ -8847,10 +8847,9 @@ private double payOut(
     }
 
     ItemDeliveryOutcome delivery = deliverCurrencyItems(player, totalAmount);
-    // Kept as "how much did not fit in the inventory" so the existing
-    // inventory-full notice still reports the right figure -- it is now
-    // banked or capped-dropped rather than scattered on the ground.
-    int totalDropped = (int) Math.min(Integer.MAX_VALUE, delivery.dropped() + delivery.banked());
+    // Dropped and banked are reported apart: "dropping" a banked amount was wrong.
+    int totalDropped = (int) Math.min(Integer.MAX_VALUE, delivery.dropped());
+    long totalBanked = delivery.banked();
 
     // Single retention point for winnings, matching every other Blackjack
     // payout path. A remainder that cannot be banked is recorded once here.
@@ -8922,6 +8921,10 @@ private double payOut(
                 break;
             }
         }
+    }
+    if (totalBanked > 0 && plugin.getPreferences(playerId).getMessageSetting() != Preferences.MessageSetting.NONE) {
+        player.sendMessage(text(player, "payout.bank-reminder", "amount",
+            plugin.formatWagerDisplay(currencyMode, currencyName, totalBanked)));
     }
     return totalAmount;
 }

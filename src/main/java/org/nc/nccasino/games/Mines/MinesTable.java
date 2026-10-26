@@ -1853,9 +1853,12 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         int totalAmount = (int) Math.floor(amount);
 
         ItemDeliveryOutcome delivery = deliverCurrencyItems(player, totalAmount);
-        // Still "how much did not fit", so the existing inventory-full
-        // notice keeps its meaning -- the overflow is banked now, not lost.
-        int totalDropped = (int) Math.min(Integer.MAX_VALUE, delivery.dropped() + delivery.banked());
+        // Dropped and banked are reported apart: "dropping" a banked amount was wrong.
+        int totalDropped = (int) Math.min(Integer.MAX_VALUE, delivery.dropped());
+        if (delivery.banked() > 0 && plugin.getPreferences(player.getUniqueId()).getMessageSetting() != org.nc.nccasino.helpers.Preferences.MessageSetting.NONE) {
+            player.sendMessage(text("payout.bank-reminder", "amount",
+                plugin.formatWagerDisplay(currencyMode, currencyName, delivery.banked())));
+        }
 
         if (totalDropped > 0) {     
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){

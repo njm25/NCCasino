@@ -1298,9 +1298,12 @@ private boolean isValidSlotPage2(int slot) {
 		ItemDeliveryOutcome outcome = bank.deliver(
 			player, new BankedCurrency(currencyMode, currencyMaterial.name(), currencyName), amount);
 
-		// Preserve the existing "some of this did not fit" notice, now covering
-		// what was banked or capped-dropped rather than scattered on the floor.
-		long didNotFit = outcome.dropped() + outcome.banked();
+		// Dropped and banked are reported apart: "dropping" a banked amount was wrong.
+		long didNotFit = outcome.dropped();
+		if (outcome.banked() > 0 && plugin.getPreferences(player.getUniqueId()).getMessageSetting() != Preferences.MessageSetting.NONE) {
+			player.sendMessage(text("payout.bank-reminder", "amount",
+				plugin.formatWagerDisplay(currencyMode, currencyName, outcome.banked())));
+		}
 		if (didNotFit > 0) {
 			switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
 				case STANDARD:
