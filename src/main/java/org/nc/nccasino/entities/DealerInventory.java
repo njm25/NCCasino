@@ -139,7 +139,7 @@ public class DealerInventory implements InventoryHolder, Listener {
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     if (player == null) 
                         continue;
-                    if (player.getOpenInventory().getTopInventory().getHolder().equals(existing)) {
+                    if (existing.equals(player.getOpenInventory().getTopInventory().getHolder())) { // a null holder (another plugin's window) used to throw and stop the loop
                         player.closeInventory();
                     }
                 }
