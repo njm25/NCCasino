@@ -386,6 +386,9 @@ public class DealerBudgetStore {
             return true;
         }
         if (Money.isPositive(state.reservedTotal())) {
+            warn("Dealer '" + dealer + "' was deleted while " + Money.store(state.reservedTotal())
+                + " was still reserved for a round in progress; its budget is kept until the next"
+                + " server start, which releases the reservation and then removes the budget.");
             return false;
         }
         states.remove(dealer);
@@ -1001,6 +1004,24 @@ public class DealerBudgetStore {
             }
         }
         return closed;
+    }
+
+    /**
+     * Forgets the ledger of every dealer not in {@code existingDealers}: a dealer
+     * deleted while a round still held a reservation, or removed by hand from
+     * config.yml. Run at startup after {@link #closeReservationsFromEarlierRuns},
+     * so no reservation keeps such a ledger alive.
+     *
+     * @return the dealers whose ledger was removed
+     */
+    public synchronized List<String> forgetDealersNotIn(java.util.Set<String> existingDealers) {
+        List<String> forgotten = new ArrayList<>();
+        for (String dealer : new ArrayList<>(states.keySet())) {
+            if (!existingDealers.contains(dealer) && forgetDealer(dealer)) {
+                forgotten.add(dealer);
+            }
+        }
+        return forgotten;
     }
 
     /** Forces a reload from disk. Test and administrative use. */

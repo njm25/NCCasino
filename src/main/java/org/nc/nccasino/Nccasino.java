@@ -309,6 +309,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
         for (String line : dealerBudgetStore.closeReservationsFromEarlierRuns()) {
             getLogger().warning(line);
         }
+        org.bukkit.configuration.ConfigurationSection configuredDealers = getConfig().getConfigurationSection("dealers");
+        for (String gone : dealerBudgetStore.forgetDealersNotIn(
+                configuredDealers == null ? Set.of() : configuredDealers.getKeys(false))) {
+            getLogger().info("Removed the budget of dealer '" + gone + "', which no longer exists.");
+        }
         dealerBudgetService = new DealerBudgetService(this, dealerBudgetStore);
 
         // Globally portable per-player Slots profiles, plus the single chat

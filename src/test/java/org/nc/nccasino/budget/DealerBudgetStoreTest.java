@@ -981,4 +981,28 @@ class DealerBudgetStoreTest {
         store.deposit(DEALER, money("1000"));
         assertTrue(store().closeReservationsFromEarlierRuns().isEmpty());
     }
+
+    @Test
+    void aDealerDeletedMidRoundLosesItsBudgetAtTheNextStart() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("1000"));
+        assertNotNull(store.creditAndReserve(reservation("spin-1", "250"), money("10")));
+        assertFalse(store.forgetDealer(DEALER), "kept while the round still holds a reservation");
+
+        DealerBudgetStore restarted = store();
+        restarted.closeReservationsFromEarlierRuns();
+        List<String> forgotten = restarted.forgetDealersNotIn(java.util.Set.of("another-dealer"));
+
+        assertEquals(List.of(DEALER), forgotten);
+        assertFalse(store().dealers().contains(DEALER), "and it stays gone");
+    }
+
+    @Test
+    void aDealerThatStillExistsKeepsItsBudgetAtStart() {
+        DealerBudgetStore store = store();
+        store.deposit(DEALER, money("1000"));
+
+        assertTrue(store().forgetDealersNotIn(java.util.Set.of(DEALER)).isEmpty());
+        assertEquals(0, store().liveBalance(DEALER).compareTo(money("1000")));
+    }
 }
