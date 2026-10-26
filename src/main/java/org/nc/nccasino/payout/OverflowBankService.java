@@ -62,6 +62,13 @@ public class OverflowBankService {
             return ItemDeliveryOutcome.allUnsettled(amount);
         }
 
+        if (currency.mode() == CurrencyMode.VAULT) {
+            // Vault money is never banked: /ncc claim only hands out items, so a
+            // banked Vault amount could never be claimed and would block every
+            // wager. The caller keeps it as a pending payout, paid through Vault.
+            return ItemDeliveryOutcome.allUnsettled(amount);
+        }
+
         UUID playerId = player.getUniqueId();
         Material material = resolveMaterial(currency);
         if (material == null) {

@@ -92,6 +92,21 @@ class OverflowBankServiceTest {
     }
 
     @Test
+    void vaultMoneyIsNeverBankedSoItCanNeverBeStuckThere() {
+        // /ncc claim only hands out items, so a banked Vault amount could never be
+        // claimed and would block every wager. It stays the game's to keep as a
+        // pending payout, which is paid through Vault.
+        OverflowTestSupport.Fixture fixture = OverflowTestSupport.fixture();
+        BankedCurrency dollars = new BankedCurrency(org.nc.nccasino.currency.CurrencyMode.VAULT, "EMERALD", "Dollars");
+
+        ItemDeliveryOutcome outcome = service.deliver(fixture.player, dollars, 500L);
+
+        assertEquals(500L, outcome.unsettled());
+        assertEquals(0, outcome.banked());
+        assertFalse(store.hasAnyBalance(fixture.playerId));
+    }
+
+    @Test
     void bankPreferenceNeverDropsAnything() {
         usePreference(OverflowPreference.BANK);
         OverflowTestSupport.Fixture fixture = OverflowTestSupport.fixture();
