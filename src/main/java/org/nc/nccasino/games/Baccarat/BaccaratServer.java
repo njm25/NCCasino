@@ -420,7 +420,7 @@ public class BaccaratServer extends Server {
      * with no reservation of its own). Forgets the departed one, since each
      * reservation is settled exactly once.
      */
-    private BaccaratClient takeBudgetHolder(UUID playerId) {
+    BaccaratClient takeBudgetHolder(UUID playerId) {
         BaccaratClient departed = departedBudgetHolders.remove(playerId);
         if (clients.get(playerId) instanceof BaccaratClient open && (departed == null || open.holdsBudgetCommitment())) {
             return open;
