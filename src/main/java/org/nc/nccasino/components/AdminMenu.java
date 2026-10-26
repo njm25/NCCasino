@@ -894,6 +894,7 @@ public class AdminMenu extends Menu {
     }
 
     private void handleToggleCurrencyMode(Player player) {
+        this.currencyMode = loadCurrencyModeFromConfig();
 
         CurrencyMode next;
         switch (this.currencyMode) {
@@ -1259,6 +1260,8 @@ public class AdminMenu extends Menu {
      * button refuses it, and so must a shift-click from the admin's own inventory.
      */
     private boolean refuseCurrencyItemInVault(Player player) {
+        // Re-read: another admin's menu may have switched this dealer since this one opened.
+        currencyMode = loadCurrencyModeFromConfig();
         if (currencyMode != CurrencyMode.VAULT) {
             return false;
         }
