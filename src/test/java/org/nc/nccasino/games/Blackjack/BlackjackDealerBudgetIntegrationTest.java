@@ -6,6 +6,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.nc.nccasino.budget.DealerBudgetService;
 import org.nc.nccasino.budget.DealerBudgetStore;
 import org.nc.nccasino.budget.Money;
+import org.nc.nccasino.session.ExitReason;
 import org.nc.nccasino.objects.Card;
 import org.nc.nccasino.objects.Rank;
 import org.nc.nccasino.objects.Suit;
@@ -262,6 +263,123 @@ class BlackjackDealerBudgetIntegrationTest {
             assertEquals(0, service.store().reservedTotal(h.internalName).compareTo(Money.of(25L)),
                 "round two reserves its own 10 stake (2.5x ceiling)");
         }
+    }
+
+    // ---- split, double and insurance keep the dealer's books exact ----------
+
+    @Test
+    void aFailedDoubleDownDebitRollsTheReservationBack() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            DealerBudgetService service = attachLimitedBudget(h, "1000", 1, 100L);
+            h.currencyProvider.setBalance(1000);
+            h.inventory.stackDeckForTest(flat(Rank.FIVE));
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]);
+            h.inventory.commitWagerForTest(alice, 10.0, "double-fail-open");
+            h.inventory.beginStartTransitionForTest();
+            h.advanceToActionableTurn(20, 40);
+            BigDecimal reservedBefore = service.store().reservedTotal(h.internalName);
+
+            h.currencyProvider.setNextWithdrawSucceeds(false);
+            h.click(alice, BlackjackSlotLayout.ACTION_DOUBLE_SLOT);
+
+            assertEquals(990, h.currencyProvider.getBalance(alice, h.internalName), "the failed debit took nothing");
+            assertEquals(0, service.store().reservedTotal(h.internalName).compareTo(reservedBefore),
+                "the reservation is back to the undoubled hand's ceiling");
+            assertEquals(0, service.store().liveBalance(h.internalName).compareTo(Money.of(110L)),
+                "the dealer is not credited a stake it never received");
+            playOutRound(h);
+            assertBooksBalanced(h, service, alice);
+        }
+    }
+
+    @Test
+    void aDoubledHandTornDownMidRoundRefundsWithExactBooks() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            DealerBudgetService service = attachLimitedBudget(h, "1000", 1, 100L);
+            h.currencyProvider.setBalance(1000);
+            h.inventory.stackDeckForTest(flat(Rank.FIVE));
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]);
+            h.inventory.commitWagerForTest(alice, 10.0, "double-teardown-open");
+            h.inventory.beginStartTransitionForTest();
+            h.advanceToActionableTurn(20, 40);
+            h.click(alice, BlackjackSlotLayout.ACTION_DOUBLE_SLOT);
+            assertEquals(980, h.currencyProvider.getBalance(alice, h.internalName), "test setup: the double was paid");
+
+            // /reload or a stop before the doubled hand resolves.
+            when(h.plugin.isEnabled()).thenReturn(false);
+            h.scheduler.refuseNewTasks = true;
+            h.inventory.onSessionTerminated(alice.getUniqueId(), ExitReason.PLUGIN_DISABLE);
+
+            double owed = h.pendingPayoutStore.getPending(alice.getUniqueId()).stream()
+                .mapToDouble(org.nc.nccasino.payout.PendingPayout::amount).sum();
+            assertEquals(20.0, owed, "both stakes are owed back");
+            assertEquals(0, service.store().reservedTotal(h.internalName).compareTo(Money.ZERO));
+            assertEquals(0, service.store().liveBalance(h.internalName).compareTo(Money.of(100L)),
+                "the dealer gives back exactly the 20 it was credited");
+        }
+    }
+
+    @Test
+    void aSplitRoundLeavesTheBooksExact() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            DealerBudgetService service = attachLimitedBudget(h, "1000", 1, 100L);
+            h.currencyProvider.setBalance(1000);
+            h.inventory.stackDeckForTest(flat(Rank.EIGHT));
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]);
+            h.inventory.commitWagerForTest(alice, 10.0, "split-open");
+            h.inventory.beginStartTransitionForTest();
+            h.advanceToActionableTurn(20, 40);
+            h.click(alice, BlackjackSlotLayout.ACTION_SPLIT_SLOT);
+            assertEquals(980, h.currencyProvider.getBalance(alice, h.internalName), "test setup: the split was paid");
+
+            playOutRound(h);
+            assertBooksBalanced(h, service, alice);
+        }
+    }
+
+    @Test
+    void anInsuredRoundLeavesTheBooksExact() {
+        try (BlackjackControllerTestSupport.Harness h = BlackjackControllerTestSupport.newHarness()) {
+            DealerBudgetService service = attachLimitedBudget(h, "1000", 1, 100L);
+            h.currencyProvider.setBalance(1000);
+            List<Card> deck = new ArrayList<>(List.of(
+                new Card(Suit.SPADES, Rank.SEVEN), new Card(Suit.HEARTS, Rank.ACE),
+                new Card(Suit.CLUBS, Rank.SEVEN), new Card(Suit.HEARTS, Rank.SEVEN)));
+            deck.addAll(flat(Rank.SEVEN));
+            h.inventory.stackDeckForTest(deck);
+            Player alice = h.seatOnlinePlayer(UUID.randomUUID(), "Alice");
+            h.click(alice, BlackjackSlotLayout.SEAT_SLOTS[0]);
+            h.inventory.commitWagerForTest(alice, 10.0, "insurance-open");
+            h.inventory.beginStartTransitionForTest();
+            for (int i = 0; i < 40 && h.inventory.capturePhaseForTest() != BlackjackFrame.Phase.INSURANCE; i++) {
+                h.scheduler.advance(20);
+            }
+            assertEquals(BlackjackFrame.Phase.INSURANCE, h.inventory.capturePhaseForTest(), "test setup: insurance offered");
+            h.click(alice, BlackjackSlotLayout.INSURANCE_YES_SLOT);
+            assertEquals(985, h.currencyProvider.getBalance(alice, h.internalName), "test setup: insurance of 5 bought");
+
+            playOutRound(h);
+            assertBooksBalanced(h, service, alice);
+        }
+    }
+
+    /** After a settled round: nothing reserved, and the dealer moved by exactly what the player lost or won. */
+    private static void assertBooksBalanced(BlackjackControllerTestSupport.Harness h, DealerBudgetService service, Player player) {
+        assertEquals(0, service.store().reservedTotal(h.internalName).compareTo(Money.ZERO), "no reservation left");
+        BigDecimal playerLoss = BigDecimal.valueOf(1000 - h.currencyProvider.getBalance(player, h.internalName));
+        assertEquals(0, service.store().liveBalance(h.internalName).compareTo(Money.of(100L).add(playerLoss)),
+            "dealer " + service.store().liveBalance(h.internalName) + " = 100 + the player's net loss " + playerLoss);
+    }
+
+    private static List<Card> flat(Rank rank) {
+        List<Card> cards = new ArrayList<>();
+        for (int i = 0; i < 120; i++) {
+            cards.add(new Card(Suit.SPADES, rank));
+        }
+        return cards;
     }
 
     /** Runs the timers until the round has settled and the board is back in the lobby. */

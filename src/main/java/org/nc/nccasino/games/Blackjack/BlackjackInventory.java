@@ -264,6 +264,7 @@ public class BlackjackInventory extends DealerInventory implements TerminableSes
     /** One dealer-budget promise per player who currently has insurance down this round. */
     private final Map<UUID, org.nc.nccasino.budget.Commitment> insuranceBudgetCommitments = new HashMap<>();
     private final String budgetSessionId = java.util.UUID.randomUUID().toString();
+    private long doubleBudgetAttempts = 0;
     /**
      * Bounded at-most-once guard for opening-wager click actions (chip
      * commit and cursor-drag commit). The durable budget store also rejects
@@ -864,6 +865,30 @@ private void registerListener() {
         return true;
     }
 
+    /**
+     * Undoes the growth {@link #ensureDoubleCovered} applied for a double whose
+     * debit then failed: the reservation goes back to its pre-double ceiling and
+     * the stake it credited the dealer for is taken back, in one persisted step.
+     */
+    private void rollbackDoubleGrowth(BlackjackHand hand, org.nc.nccasino.budget.Commitment beforeDouble, double failedStake) {
+        org.nc.nccasino.budget.DealerBudgetService budget = plugin.getDealerBudgetService();
+        org.nc.nccasino.budget.Commitment grown = handBudgetCommitments.get(hand.getHandId());
+        if (budget == null || beforeDouble == null || grown == null || grown.unlimited() || grown == beforeDouble) {
+            return;
+        }
+        org.nc.nccasino.budget.Exposure previous = org.nc.nccasino.budget.Exposure.of(
+            org.nc.nccasino.budget.Money.of(hand.getWager()), beforeDouble.reservedAmount());
+        org.nc.nccasino.budget.Commitment adjusted = budget.reduce(
+            internalName, grown, previous, org.nc.nccasino.budget.Money.of(failedStake),
+            hand.getHandId() + "-double-rollback-" + doubleBudgetAttempts);
+        if (adjusted.isAccepted()) {
+            handBudgetCommitments.put(hand.getHandId(), adjusted.requiresSettlement() ? adjusted : beforeDouble);
+        } else {
+            plugin.getLogger().severe("[NCCasino] Blackjack could not roll back a failed Double Down's"
+                + " dealer-budget growth for '" + internalName + "'. The grown reservation was kept.");
+        }
+    }
+
     /** Moves a fully-built opening-wager reservation onto the hand it was building toward, the moment that hand exists. */
     private void claimPendingOpeningCommitment(UUID playerId, BlackjackHand hand) {
         // Removed, not copied: once the hand owns it, a settled reservation left
@@ -967,14 +992,10 @@ private void registerListener() {
         }
         org.nc.nccasino.budget.Exposure totalExposure = itemSafeExposure(
             org.nc.nccasino.games.Blackjack.BlackjackLiability.doubledHand(hand.getWager() + additionalStake));
-        // A hand can be doubled at most once (a doubled hand is fixed at
-        // three cards), so hand id + "double" is already a unique, stable
-        // identity for this exact action -- this guards a duplicated event
-        // the same way the legacy exposure-only path already did here (a
-        // double always changes the hand's ceiling, so there is no
-        // legitimate second call that could collide on newAmount), making
-        // this belt-and-suspenders rather than a behavior change.
-        String operationId = hand.getHandId() + "-double";
+        // One id per attempt: a double whose debit then fails is rolled back
+        // (rollbackDoubleGrowth), and a retry must grow the reservation again
+        // rather than be taken for a replay of the failed attempt.
+        String operationId = hand.getHandId() + "-double-" + (++doubleBudgetAttempts);
         org.nc.nccasino.budget.Commitment result = budget.increase(
             internalName, existing, totalExposure, org.nc.nccasino.budget.Money.of(additionalStake), operationId);
         if (!result.isAccepted()) {
@@ -5250,6 +5271,7 @@ private void handleDoubleDown(Player player) {
             return;
         }
 
+        org.nc.nccasino.budget.Commitment beforeDouble = handBudgetCommitments.get(hand.getHandId());
         if (!ensureDoubleCovered(player, playerId, hand, currentBet)) {
             playerTurnActive.put(playerId, true);
             repaintActionsForCurrentPlayer();
@@ -5265,6 +5287,7 @@ private void handleDoubleDown(Player player) {
         // (or any other provider) can still fail here. Nothing about the
         // hand may change unless this actually succeeds.
         if (!tryRemoveWager(player, currentBet)) {
+            rollbackDoubleGrowth(hand, beforeDouble, currentBet);
             switch(plugin.getPreferences(player.getUniqueId()).getMessageSetting()){
                 case STANDARD:{
                     player.sendMessage(text(player, "blackjack.wager-transaction-failed"));
