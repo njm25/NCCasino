@@ -23,6 +23,10 @@ public class CreateCommand implements CasinoCommand {
         this.plugin = (Nccasino) plugin;
     }
 
+    static boolean isValidDealerName(String name) {
+        return name != null && !name.isBlank() && name.indexOf('.') < 0;
+    }
+
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
         if (!(sender instanceof Player)) {
@@ -68,6 +72,11 @@ public class CreateCommand implements CasinoCommand {
         }
 
         String internalName = args[1];
+        // A dot would split the name into nested config paths (dealers.a.b).
+        if (!isValidDealerName(internalName)) {
+            sender.sendMessage(plugin.getLocalization().text(sender, "commands.usage-create"));
+            return true;
+        }
 
         // Check if the internal name already exists
         if (plugin.getConfig().contains("dealers." + internalName)) {
