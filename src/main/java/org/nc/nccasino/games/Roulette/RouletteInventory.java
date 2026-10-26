@@ -738,6 +738,10 @@ private void handleGameMenuClick(int slot, Player player) {
 }
 }
 
+boolean areBetsClosed() {
+    return betsClosed;
+}
+
 private void openBettingTable(Player player) {
     switchingPlayers.add(player.getUniqueId()); // Mark the player as switching inventories
 

@@ -88,6 +88,10 @@ public class BettingTable extends DealerInventory {
         this.currencyMode = plugin.getCurrencyMode(internalName);
         this.currencyName = plugin.getCurrencyName(internalName);
         this.rouletteInventory = rouletteInventory;
+        // A table opened in the tick betting closed must not take bets: the
+        // spin's settlement copy shares this stack, so a bet or an Undo All
+        // made during the spin would be paid twice or never.
+        this.betsClosed = initialBetsClosed(rouletteInventory);
         this.pageNum = 1;
     
         this.chipValues = new HashMap<>();
@@ -1448,6 +1452,10 @@ private boolean isValidSlotPage2(int slot) {
         if (closedInventory != null && closedInventory.getTopInventory().getHolder() == this) {
         rouletteInventory.getMCE().removePlayerFromAllChannels(player);
     }
+    }
+
+    static boolean initialBetsClosed(RouletteInventory wheel) {
+        return wheel != null && wheel.areBetsClosed();
     }
 
     /** Takes over the reservation of the table this one replaces, which shared the same bets. */
