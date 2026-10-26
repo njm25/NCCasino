@@ -498,9 +498,21 @@ public class BaccaratServer extends Server {
         }
     }
     
-    void undoLastBet(Player player, BaccaratClient.BetOption betType, double amount) {
+    /**
+     * Takes back up to {@code amount} of this player's bet on {@code betType}.
+     *
+     * @return what was actually removed: the only amount the client may refund,
+     *     since its own bet history can be stale (a chair-leave already refunded
+     *     the bets, or a past round's history)
+     */
+    double undoLastBet(Player player, BaccaratClient.BetOption betType, double amount) {
         UUID playerId = player.getUniqueId();
-        if (!playerBets.containsKey(playerId) || !playerBets.get(playerId).containsKey(betType)) return;
+        if (gameState != GameState.WAITING || amount <= 0
+            || !playerBets.containsKey(playerId) || !playerBets.get(playerId).containsKey(betType)) {
+            return 0.0;
+        }
+        amount = Math.min(amount, playerBets.get(playerId).get(betType));
+        double removed = amount;
     
         double remaining = playerBets.get(playerId).get(betType) - amount;
         if (remaining <= 0) {
@@ -513,7 +525,7 @@ public class BaccaratServer extends Server {
             playerBets.get(playerId).put(betType, remaining);
         }
     
-        totalBets.computeIfPresent(betType, (k, v) -> (v - amount) <= 0 ? null : v - amount);
+        totalBets.computeIfPresent(betType, (k, v) -> (v - removed) <= 0 ? null : v - removed);
     
         // Update bet displays correctly for EACH player
         for (Client c : clients.values()) {
@@ -527,6 +539,7 @@ public class BaccaratServer extends Server {
                 ));
             }
         }
+        return removed;
     }
     
     

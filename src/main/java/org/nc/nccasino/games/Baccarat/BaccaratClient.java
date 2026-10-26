@@ -257,6 +257,9 @@ public class BaccaratClient extends Client implements TerminableSession {
             break;
 
             case "RESET_BETS":
+                // The server no longer holds these bets (round over, or a refund),
+                // so Undo Last must have nothing left to refund.
+                betHistory.clear();
                 betStacks.clear();
                 refreshAllBetDisplays();
                 resetBetSlots(); // Cal
@@ -660,10 +663,26 @@ public class BaccaratClient extends Client implements TerminableSession {
             for (Map.Entry<BetOption, Deque<Double>> entry : betStacks.entrySet()) {
                 remaining.put(entry.getKey(), entry.getValue().stream().mapToDouble(Double::doubleValue).sum());
             }
-            shrinkPortfolioReservationTo(remaining, lastBetAmount, undoLastActionId);
+            // Refund only what the server actually takes back: this history can be
+            // stale, and crediting it blindly paid out bets nobody had staked.
+            double removed = ((BaccaratServer) server).undoLastBet(player, lastBetType, lastBetAmount);
+            if (removed <= 0) {
+                refreshAllBetDisplays();
+                switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
+                    case STANDARD:
+                        player.sendMessage(text("baccarat.invalid-action"));
+                        break;
+                    case VERBOSE:
+                        player.sendMessage(text("baccarat.no-bets-to-undo"));
+                        break;
+                    case NONE:
+                        break;
+                }
+                return;
+            }
+            shrinkPortfolioReservationTo(remaining, removed, undoLastActionId);
 
-            creditPlayer(player, lastBetAmount);
-            sendUpdateToServer("UNDO_BET", new BetData(lastBetType, lastBetAmount));
+            creditPlayer(player, removed);
             updateBetDisplay(lastBetType,((BaccaratServer) server).getTotalBetForType(lastBetType));
             if (SoundHelper.getSoundSafely("ui.toast.in", player) != null)
                 player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 3f, 1.0f);

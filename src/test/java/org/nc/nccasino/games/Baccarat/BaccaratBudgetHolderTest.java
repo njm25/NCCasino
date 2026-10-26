@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
@@ -78,10 +79,38 @@ class BaccaratBudgetHolderTest {
         org.bukkit.entity.Player bukkitPlayer = mock(org.bukkit.entity.Player.class);
         when(bukkitPlayer.getUniqueId()).thenReturn(player);
 
-        server.undoLastBet(bukkitPlayer, BaccaratClient.BetOption.PLAYER, 10.0);
+        assertEquals(10.0, server.undoLastBet(bukkitPlayer, BaccaratClient.BetOption.PLAYER, 10.0));
 
         // Otherwise the hand's result "paid" them 0 with a push sound.
         org.junit.jupiter.api.Assertions.assertFalse(playerBets(server).containsKey(player));
+    }
+
+    @Test
+    void undoRefundsOnlyWhatTheServerStillHolds() throws Exception {
+        // The client's history can be stale: a chair-leave already refunded the
+        // bets, or the history is a past round's. Crediting it blindly paid out
+        // bets nobody had staked, again and again.
+        BaccaratServer server = server();
+        org.bukkit.entity.Player bukkitPlayer = mock(org.bukkit.entity.Player.class);
+        when(bukkitPlayer.getUniqueId()).thenReturn(player);
+
+        assertEquals(0.0, server.undoLastBet(bukkitPlayer, BaccaratClient.BetOption.PLAYER, 10.0),
+            "no bet held: nothing to refund");
+
+        playerBets(server).put(player, new HashMap<>(Map.of(BaccaratClient.BetOption.PLAYER, 1.0)));
+        assertEquals(1.0, server.undoLastBet(bukkitPlayer, BaccaratClient.BetOption.PLAYER, 10.0),
+            "a stale 10 in the history refunds only the 1 actually staked");
+    }
+
+    @Test
+    void noUndoOnceTheHandIsDealt() throws Exception {
+        BaccaratServer server = server();
+        set(server, org.nc.nccasino.entities.Server.class, "gameState", org.nc.nccasino.entities.Server.GameState.RUNNING);
+        playerBets(server).put(player, new HashMap<>(Map.of(BaccaratClient.BetOption.PLAYER, 10.0)));
+        org.bukkit.entity.Player bukkitPlayer = mock(org.bukkit.entity.Player.class);
+        when(bukkitPlayer.getUniqueId()).thenReturn(player);
+
+        assertEquals(0.0, server.undoLastBet(bukkitPlayer, BaccaratClient.BetOption.PLAYER, 10.0));
     }
 
     /** A server built without its constructor (which needs a live plugin and inventory). */
@@ -92,6 +121,7 @@ class BaccaratBudgetHolderTest {
         set(server, BaccaratServer.class, "playerBets", new HashMap<>());
         set(server, BaccaratServer.class, "departedBudgetHolders", new HashMap<>());
         set(server, BaccaratServer.class, "totalBets", new HashMap<>());
+        set(server, org.nc.nccasino.entities.Server.class, "gameState", org.nc.nccasino.entities.Server.GameState.WAITING);
         return server;
     }
 
