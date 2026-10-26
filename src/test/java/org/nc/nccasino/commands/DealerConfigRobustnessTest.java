@@ -26,6 +26,8 @@ class DealerConfigRobustnessTest {
     void aDealerNameWithADotIsRefused() {
         assertFalse(CreateCommand.isValidDealerName("vip.table"));
         assertFalse(CreateCommand.isValidDealerName(" "));
+        assertFalse(CreateCommand.isValidDealerName("*"), "its admin-menu Delete would delete every dealer");
+        assertFalse(CreateCommand.isValidDealerName("vip*"));
         assertTrue(CreateCommand.isValidDealerName("vip_table-2"));
     }
 

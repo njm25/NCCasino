@@ -24,7 +24,10 @@ public class CreateCommand implements CasinoCommand {
     }
 
     static boolean isValidDealerName(String name) {
-        return name != null && !name.isBlank() && name.indexOf('.') < 0;
+        // '*' means every dealer to /ncc delete (the admin menu's Delete runs
+        // "ncc delete <name>"), so a dealer called '*' deleted them all.
+        return name != null && !name.isBlank() && name.indexOf('.') < 0 && name.indexOf('*') < 0
+            && name.chars().noneMatch(Character::isWhitespace);
     }
 
     @Override
