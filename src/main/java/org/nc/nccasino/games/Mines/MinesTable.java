@@ -212,13 +212,15 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             }
         
             // Check if the value is greater than 100 or less than 0
+            // Clamp the value used here too, not only the config: 25 or more mines on
+            // 25 tiles made placeMines loop forever and froze the server.
             if (defMines > 24 ) {
-                // Reset the value to 100
                 plugin.getConfig().set("dealers." + internalName + ".default-mines", 24);
+                defMines = 24;
             }
             else if(defMines < 1){
                 plugin.getConfig().set("dealers." + internalName + ".default-mines", 1);
-
+                defMines = 1;
             }
         }
         
@@ -1030,10 +1032,16 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         }
     }
 
+    /** At least one tile stays safe, so placing mines always ends. */
+    static int placeableMines(int mines, int tiles) {
+        return Math.max(0, Math.min(mines, tiles - 1));
+    }
+
     private void placeMines() {
         Random random = new Random();
         int minesPlaced = 0;
-        while (minesPlaced < minesCount) {
+        int placeable = placeableMines(minesCount, gridSize * gridSize);
+        while (minesPlaced < placeable) {
             int x = random.nextInt(gridSize);
             int y = random.nextInt(gridSize);
             if (!mineGrid[x][y]) {
