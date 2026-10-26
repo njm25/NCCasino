@@ -8,6 +8,9 @@ public class Deck {
 
     private List<Card> cards; // The list of cards in the deck
     private final int numberOfDecks; // The number of decks this deck contains
+    /** Most cards one hand (a player's, with splits and hits, or the dealer's) is assumed to need. */
+    static final int CARDS_PER_HAND_ALLOWANCE = 12;
+    private boolean stackedForTest;
 
     // Constructor that initializes the deck with a specific number of decks (default 1)
     public Deck(int numberOfDecks) {
@@ -49,8 +52,25 @@ public class Deck {
         return !cards.isEmpty();
     }
 
+    /**
+     * Whether the shoe has reached its cut card and must be reshuffled before
+     * the next round is dealt: below a quarter of the shoe, or too few cards
+     * left for {@code handsToDeal} hands. Dealing to the last card let players
+     * count the end of the shoe, and a shoe that ran dry mid-round refunded the
+     * round. A deck a test stacked keeps its exact order.
+     */
+    public boolean shouldReshuffleBeforeRound(int handsToDeal) {
+        if (stackedForTest) {
+            return false;
+        }
+        int shoe = numberOfDecks * 52;
+        int cut = Math.min(shoe, Math.max(shoe / 4, handsToDeal * CARDS_PER_HAND_ALLOWANCE));
+        return cards.size() < cut;
+    }
+
     // Reset the deck with the initial number of decks
     public void resetDeck() {
+        stackedForTest = false;
         cards.clear();
         for (int i = 0; i < numberOfDecks; i++) {
             addStandardDeck();
@@ -76,6 +96,7 @@ public class Deck {
      * code.
      */
     public void stackForTest(List<Card> cardsInDealOrder) {
+        this.stackedForTest = true;
         this.cards = new ArrayList<>(cardsInDealOrder);
     }
 }

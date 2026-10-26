@@ -7360,6 +7360,12 @@ private void dealInitialCards() {
         }
     }
 
+    // Reshuffle at the cut card, between rounds, so the shoe never runs dry
+    // mid-round (which refunded the round) and its end can't be counted.
+    if (deck.shouldReshuffleBeforeRound(bettingPlayerOrder.size() + 1)) {
+        deck.resetDeck();
+    }
+
     // Every seated bettor needs 2 cards, the dealer needs 2 -- if the shoe
     // can't immediately supply the whole initial deal, abort the round and
     // refund every already-committed wager rather than let Deck silently
