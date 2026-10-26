@@ -181,6 +181,15 @@ public final class Nccasino extends JavaPlugin implements Listener {
      * players stay online -- a dealer rebuilt by /ncc reload, or this plugin
      * reloading -- would otherwise wait for each player's next login.
      */
+    /**
+     * The chunk a block coordinate is in. Dealers are saved at block centres, so
+     * on negative coordinates (x = -0.5 is block -1) a plain (int) cast rounded
+     * toward zero and named the neighbouring chunk.
+     */
+    static int chunkOf(double coordinate) {
+        return Math.floorDiv((int) Math.floor(coordinate), 16);
+    }
+
     /** How many payouts each online player is owed right now; see {@link #deliverNewlyOwedSoon}. */
     public Map<UUID, Integer> owedPayoutCountsOfOnlinePlayers() {
         Map<UUID, Integer> counts = new HashMap<>();
@@ -464,8 +473,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
                         if (world.getName().equals(dealersConfig.getString("dealers." + internalName + ".world"))) {
                             double x = dealersConfig.getDouble("dealers." + internalName + ".X");
                             double z = dealersConfig.getDouble("dealers." + internalName + ".Z");
-                            int chunkX = (int) x >> 4;
-                            int chunkZ = (int) z >> 4;
+                            int chunkX = chunkOf(x);
+                            int chunkZ = chunkOf(z);
                             world.loadChunk(chunkX, chunkZ);
                         }
                     }
@@ -1326,8 +1335,8 @@ public final class Nccasino extends JavaPlugin implements Listener {
                 return;
             }
 
-            int chunkX = (int) x >> 4;
-            int chunkZ = (int) z >> 4;
+            int chunkX = chunkOf(x);
+            int chunkZ = chunkOf(z);
 
             Bukkit.getScheduler().runTask(this, () -> {
                 world.setChunkForceLoaded(chunkX, chunkZ, true);
@@ -1388,7 +1397,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
             double x = dealersConfig.getDouble("dealers." + internalName + ".X");
             double z = dealersConfig.getDouble("dealers." + internalName + ".Z");
         
-            String chunkKey = worldName + ":" + ((int) x >> 4) + "," + ((int) z >> 4);
+            String chunkKey = worldName + ":" + chunkOf(x) + "," + chunkOf(z);
             dealersByChunk.computeIfAbsent(chunkKey, k -> new ArrayList<>()).add(internalName);
         }
     
