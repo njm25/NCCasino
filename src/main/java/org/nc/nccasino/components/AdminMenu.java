@@ -1587,10 +1587,14 @@ public class AdminMenu extends Menu {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
     
-        if (!moveMode.containsKey(playerId)) {
+        // Every registered admin menu hears this event: only the menu of the
+        // admin who is moving this very dealer may act, or another admin's (or
+        // an older) menu teleported its own dealer to the clicked block.
+        if (!isMoveForThisMenu(playerId, ownerId, moveMode.get(playerId), dealer, adminInventories.get(playerId) == this)) {
             return;
         }
-        if (adminInventories.get(playerId) == null) {
+        if (event.getAction() == org.bukkit.event.block.Action.PHYSICAL
+            || event.getHand() == org.bukkit.inventory.EquipmentSlot.OFF_HAND) {
             return;
         }
     
@@ -1614,6 +1618,10 @@ public class AdminMenu extends Menu {
         }
     }
     
+    static boolean isMoveForThisMenu(UUID playerId, UUID menuOwner, Object movingDealer, Object menuDealer, boolean registeredMenu) {
+        return playerId.equals(menuOwner) && registeredMenu && movingDealer != null && movingDealer == menuDealer;
+    }
+
     private void attemptTeleport(Player player, Location newLocation, UUID dealerId, int attempt) {
         // Ensure dealer is still in moving state
         if (!movingDealers.containsKey(dealerId)) {
