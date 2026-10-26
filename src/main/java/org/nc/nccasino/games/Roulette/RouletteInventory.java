@@ -2032,6 +2032,12 @@ private void fillDecorativeSlots(int[] slots, Material material) {
         switch (GameTerminationPolicy.roulette(reason, knownPayoutPending)) {
         case FORFEIT:
             pendingOnlineDeposits.remove(terminatedPlayerId);
+            if (knownPayoutPending && plugin.getDealerBudgetService() != null) {
+                // The win was settled against the dealer when the ball landed;
+                // the kick forfeits it before the deposit, so the dealer keeps it.
+                plugin.getDealerBudgetService().returnUndeliveredPayout(
+                    internalName, org.nc.nccasino.budget.Money.of(java.math.BigDecimal.valueOf(pendingDeposit)));
+            }
             forfeitBet(terminatedPlayerId);
             break;
         case QUEUE_KNOWN_PAYOUT:

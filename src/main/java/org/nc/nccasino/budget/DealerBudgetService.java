@@ -417,6 +417,26 @@ public class DealerBudgetService {
         return settle(dealerInternalName, commitment, Money.ZERO);
     }
 
+    /**
+     * Gives the dealer back a payout it was already debited for but that will
+     * never be delivered: a win settled the moment the result was known, then
+     * forfeited by a kick before the delayed deposit ran. No-op for an
+     * UNLIMITED dealer, which keeps no ledger.
+     *
+     * @return false only if a LIMITED dealer's ledger could not be written
+     */
+    public boolean returnUndeliveredPayout(String dealerInternalName, BigDecimal payout) {
+        if (payout == null || !Money.isPositive(payout) || isUnlimited(dealerInternalName)) {
+            return true;
+        }
+        boolean written = store.deposit(dealerInternalName, Money.of(payout));
+        if (!written) {
+            plugin.getLogger().severe("[NCCasino] Could not return a forfeited payout of "
+                + Money.store(payout) + " to dealer '" + dealerInternalName + "'s budget.");
+        }
+        return written;
+    }
+
     /** A push or cancellation: the stake goes back and the reservation is released. */
     public Settlement refund(String dealerInternalName, Commitment commitment, BigDecimal stake) {
         return settle(dealerInternalName, commitment, stake);

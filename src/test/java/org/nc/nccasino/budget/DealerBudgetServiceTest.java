@@ -160,6 +160,28 @@ class DealerBudgetServiceTest {
     }
 
     @Test
+    void aWinForfeitedByAKickAfterSettlementGoesBackToTheDealer() {
+        // Roulette settles a win the moment the ball lands and deposits it a
+        // moment later; a kick in between forfeits the win, so the dealer must
+        // not stay debited for a payout nobody receives.
+        makeLimited("10000", 1);
+        store.deposit(DEALER, money("1000"));
+        Commitment commitment = reserve("spin-1", Exposure.of(money("100"), money("600")));
+        service.settle(DEALER, commitment, money("600"));
+
+        assertTrue(service.returnUndeliveredPayout(DEALER, money("600")));
+
+        assertEquals(0, store.liveBalance(DEALER).compareTo(money("1100")),
+            "the dealer ends up with the forfeited stake and nothing paid");
+    }
+
+    @Test
+    void anUnlimitedDealerGetsNoLedgerFromAForfeitedWin() {
+        assertTrue(service.returnUndeliveredPayout(DEALER, money("600")));
+        assertTrue(store.dealers().isEmpty());
+    }
+
+    @Test
     void claimingABankedPayoutLaterHasNoDealerBudgetEffect() {
         // The design's rule: a payout that moves to the overflow bank leaves
         // the dealer at settlement. Claiming it later is a delivery event, not
