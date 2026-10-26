@@ -33,6 +33,10 @@ public class DealerDeathHandler implements Listener {
                 String internalName = dataContainer.get(new NamespacedKey(plugin, "internal_name"), PersistentDataType.STRING);
                 String uniqueId = dataContainer.get(new NamespacedKey(plugin, "dealer_unique_id"), PersistentDataType.STRING);
 
+                // The same teardown as /ncc delete: settle the dealer's players and
+                // deliver what they are owed at once, then drop its records and budget.
+                plugin.deleteAssociatedInventories(mob);
+
                 // Remove the Dealer object from any tracking collections
                 if (uniqueId != null) {
                     Dealer.removeDealer(mob); // Custom method to remove the Dealer instance
@@ -42,6 +46,7 @@ public class DealerDeathHandler implements Listener {
                 if (internalName != null) {
                     plugin.getConfig().set("dealers." + internalName, null);
                     plugin.saveConfig();
+                    plugin.removeDealerRecords(internalName);
                 }
 
                 // Get the player who killed the mob, if applicable

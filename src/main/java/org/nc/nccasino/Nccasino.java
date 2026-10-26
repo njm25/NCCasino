@@ -1523,6 +1523,11 @@ public final class Nccasino extends JavaPlugin implements Listener {
         }
     }
 
+    /** Removes a gone dealer's location from dealers.yaml and its budget, as /ncc delete does. */
+    public void removeDealerRecords(String internalName) {
+        removeDealerData(internalName);
+    }
+
     private void removeDealerData(String internalName) {
         forgetDealerBudget(internalName);
         File dealersFile = new File(getDataFolder(), "data/dealers.yaml");
