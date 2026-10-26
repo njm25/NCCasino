@@ -498,13 +498,17 @@ public class BaccaratServer extends Server {
         }
     }
     
-    private void undoLastBet(Player player, BaccaratClient.BetOption betType, double amount) {
+    void undoLastBet(Player player, BaccaratClient.BetOption betType, double amount) {
         UUID playerId = player.getUniqueId();
         if (!playerBets.containsKey(playerId) || !playerBets.get(playerId).containsKey(betType)) return;
     
         double remaining = playerBets.get(playerId).get(betType) - amount;
         if (remaining <= 0) {
             playerBets.get(playerId).remove(betType);
+            // Every bet undone: no longer a bettor, so the hand doesn't "pay" them 0.
+            if (playerBets.get(playerId).isEmpty()) {
+                playerBets.remove(playerId);
+            }
         } else {
             playerBets.get(playerId).put(betType, remaining);
         }

@@ -71,6 +71,19 @@ class BaccaratBudgetHolderTest {
         assertSame(open, server.takeBudgetHolder(player));
     }
 
+    @Test
+    void aPlayerWhoUndoesEveryBetIsNoLongerABettor() throws Exception {
+        BaccaratServer server = server();
+        playerBets(server).put(player, new HashMap<>(Map.of(BaccaratClient.BetOption.PLAYER, 10.0)));
+        org.bukkit.entity.Player bukkitPlayer = mock(org.bukkit.entity.Player.class);
+        when(bukkitPlayer.getUniqueId()).thenReturn(player);
+
+        server.undoLastBet(bukkitPlayer, BaccaratClient.BetOption.PLAYER, 10.0);
+
+        // Otherwise the hand's result "paid" them 0 with a push sound.
+        org.junit.jupiter.api.Assertions.assertFalse(playerBets(server).containsKey(player));
+    }
+
     /** A server built without its constructor (which needs a live plugin and inventory). */
     private static BaccaratServer server() throws Exception {
         BaccaratServer server = mock(BaccaratServer.class, CALLS_REAL_METHODS);
@@ -78,6 +91,7 @@ class BaccaratBudgetHolderTest {
         set(server, org.nc.nccasino.entities.Server.class, "clientStates", new HashMap<>());
         set(server, BaccaratServer.class, "playerBets", new HashMap<>());
         set(server, BaccaratServer.class, "departedBudgetHolders", new HashMap<>());
+        set(server, BaccaratServer.class, "totalBets", new HashMap<>());
         return server;
     }
 
