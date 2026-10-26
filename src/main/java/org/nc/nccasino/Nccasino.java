@@ -999,8 +999,20 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     public Material getCurrency(String internalName) {
         String materialName = getConfig().getString("dealers." + internalName + ".currency.material", "EMERALD").toUpperCase(java.util.Locale.ROOT);
-        return Material.matchMaterial(materialName);
+        Material material = Material.matchMaterial(materialName);
+        if (material == null || material == Material.AIR) {
+            // A hand-edited or removed material: play for emeralds rather than
+            // failing every payout that builds an item from it.
+            if (invalidCurrencyWarned.add(internalName)) {
+                getLogger().warning("Dealer '" + internalName + "' has an invalid currency.material '"
+                    + materialName + "'; using EMERALD until it is fixed.");
+            }
+            return Material.EMERALD;
+        }
+        return material;
     }
+
+    private final Set<String> invalidCurrencyWarned = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     public String getCurrencyName(String internalName) {
         return getConfig().getString("dealers." + internalName + ".currency.name", "Emerald");
