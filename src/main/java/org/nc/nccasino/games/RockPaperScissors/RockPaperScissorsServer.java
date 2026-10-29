@@ -12,6 +12,7 @@ import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.ChainPot;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
 import org.nc.nccasino.helpers.SoundHelper;
@@ -274,8 +275,11 @@ public class RockPaperScissorsServer extends Server {
      * player in PvE ({@code owningPlayerId} set, updates go only to that
      * player's own client -- chair 2 is always the house).
      */
-    /** Fixed compounding multiplier for a PvE chain win -- bakes in the same 1% house edge convention as Mines/Dragon Descent's 0.99 multiplier. */
-    private static final double CHAIN_MULTIPLIER = 1.98;
+    /**
+     * The roll that decides a chain win's fractional unit (see
+     * {@link ChainPot#compound}); a field so tests can fix it.
+     */
+    java.util.function.DoubleSupplier roundingRoll = () -> ThreadLocalRandom.current().nextDouble();
 
     private final class RpsMatch {
 
@@ -392,7 +396,7 @@ public class RockPaperScissorsServer extends Server {
                     if (gameActive) return;
                     if (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(client.getPlayer().getUniqueId())) {
                         if (betAmount == 0) {
-                            betAmount = (long) data;
+                            betAmount = ChainPot.fromStake((long) data, currencyMode);
                             if (isPve()) {
                                 // No second human to accept -- the house
                                 // takes the other side of the bet immediately.
@@ -450,7 +454,7 @@ public class RockPaperScissorsServer extends Server {
             Object[] chairs = {
                 chairOneOccupant,
                 chairTwoOccupant,
-                betAmount,
+                ChainPot.toAmount(betAmount, currencyMode),
                 gameActive,
                 timeLeft,
                 picks.containsKey(viewerId),
@@ -473,7 +477,7 @@ public class RockPaperScissorsServer extends Server {
          * Shared tail of both "player 2 accepted" and "the house
          * auto-accepted" -- opens the pick phase. PvP doubles the pot (the
          * opponent/house matches the stake, fair 2x on a win); PvE does not
-         * -- the whole payout curve there is CHAIN_MULTIPLIER itself
+         * -- the whole payout curve there is the chain multiplier itself
          * (wager, then wager*1.98 on the first win, wager*1.98^2 on the
          * second, ...), so starting from an already-doubled pot would pay
          * 3.96x on a single win instead of the intended 1.98x.
@@ -503,7 +507,7 @@ public class RockPaperScissorsServer extends Server {
          * chain here instead of offering another round -- either the
          * admin-configured cap (a cap <= 0, the -1 default, means
          * unbounded), or offering one more round could produce a win that
-         * exceeds RpsPayoutMath.MAX_SAFE_POT, the currency system's
+         * exceeds ChainPot.MAX_SAFE_POT, the currency system's
          * representable ceiling.
          *
          * <p>This is deliberately a forward-looking check on the round that
@@ -528,9 +532,10 @@ public class RockPaperScissorsServer extends Server {
             if (budget == null) {
                 return true;
             }
-            org.nc.nccasino.budget.Exposure updatedExposure =
-                org.nc.nccasino.budget.ProgressiveLiability.chainExposureAfterNextRound(
-                    originalWager, betAmount, CHAIN_MULTIPLIER);
+            // The most the next win can pay: its fractional unit rounded up.
+            org.nc.nccasino.budget.Exposure updatedExposure = org.nc.nccasino.budget.Exposure.of(
+                org.nc.nccasino.budget.Money.of(ChainPot.toMoney(originalWager, currencyMode)),
+                org.nc.nccasino.budget.Money.of(ChainPot.toMoney(ChainPot.maxCompound(betAmount), currencyMode)));
 
             org.nc.nccasino.budget.Commitment result;
             if (budgetCommitment == null) {
@@ -582,7 +587,7 @@ public class RockPaperScissorsServer extends Server {
             if (cap > 0 && chainWins >= cap) {
                 return true;
             }
-            return RpsPayoutMath.wouldExceedSafeMaxIfCompoundedAgain(betAmount, CHAIN_MULTIPLIER);
+            return ChainPot.wouldExceedSafeMax(betAmount);
         }
 
         private void handlePlayerChoose(Client client, Object data) {
@@ -752,7 +757,7 @@ public class RockPaperScissorsServer extends Server {
 
             if (isPve() && winner == 0) {
                 chainWins++;
-                betAmount = RpsPayoutMath.compound(betAmount, CHAIN_MULTIPLIER);
+                betAmount = ChainPot.compound(betAmount, roundingRoll.getAsDouble());
                 boolean cappedWin = chainCapped();
                 RpsExitSettlementPolicy.Action action = RpsExitSettlementPolicy.afterReveal(
                     RpsExitSettlementPolicy.Outcome.WIN,
@@ -800,7 +805,7 @@ public class RockPaperScissorsServer extends Server {
             committedWinner = null;
             roundToken++;
             picks.clear();
-            send("CHAIN_WIN", new Object[]{chainWins, betAmount});
+            send("CHAIN_WIN", new Object[]{chainWins, ChainPot.toAmount(betAmount, currencyMode)});
         }
 
         /**
@@ -824,9 +829,9 @@ public class RockPaperScissorsServer extends Server {
             if (chairOneOccupant == null || !chairOneOccupant.getUniqueId().equals(playerId)) return;
 
             send("ANIMATION_FINISHED", 0);
-            long wager = originalWager;
-            long payout = betAmount;
-            settleBudget(org.nc.nccasino.budget.Money.of(payout));
+            double wager = ChainPot.toAmount(originalWager, currencyMode);
+            double payout = ChainPot.toAmount(betAmount, currencyMode);
+            settleBudget(org.nc.nccasino.budget.Money.of(ChainPot.toMoney(betAmount, currencyMode)));
             gameActive = false;
             revealInProgress = false;
             committedWinner = null;
@@ -886,11 +891,13 @@ public class RockPaperScissorsServer extends Server {
             send("ANIMATION_FINISHED", winner);
             Player payoutOne = chairOneOccupant;
             Player payoutTwo = chairTwoOccupant;
-            long payout = betAmount;
+            boolean overSafeMax = cappedWin && ChainPot.wouldExceedSafeMax(betAmount);
+            double payout = ChainPot.toAmount(betAmount, currencyMode);
             if (isPve()) {
-                settleBudget(org.nc.nccasino.budget.Money.of(cappedWin ? payout : 0L));
+                settleBudget(org.nc.nccasino.budget.Money.of(
+                    cappedWin ? ChainPot.toMoney(betAmount, currencyMode) : java.math.BigDecimal.ZERO));
             }
-            long wager = originalWager;
+            double wager = ChainPot.toAmount(originalWager, currencyMode);
             gameActive = false;
             revealInProgress = false;
             committedWinner = null;
@@ -901,7 +908,7 @@ public class RockPaperScissorsServer extends Server {
             timeLeft = 0;
             cancelCountdown();
             picks.clear();
-            handlePayout(payoutOne, payoutTwo, payout, winner, wager, cappedWin);
+            handlePayout(payoutOne, payoutTwo, payout, winner, wager, cappedWin, overSafeMax);
             if (payoutOne != null) {
                 clearRidingSession(payoutOne.getUniqueId());
             }
@@ -924,7 +931,7 @@ public class RockPaperScissorsServer extends Server {
             send("ROUND_VOID", null);
             Player payoutOne = chairOneOccupant;
             Player payoutTwo = chairTwoOccupant;
-            long stake = betAmount / 2;
+            double stake = ChainPot.toAmount(betAmount / 2, currencyMode);
             gameActive = false;
             revealInProgress = false;
             committedWinner = null;
@@ -947,7 +954,7 @@ public class RockPaperScissorsServer extends Server {
             cleanupPrivateMatchIfAbandoned();
         }
 
-        private void refundStakeIfDue(Player seatedPlayer, long stake) {
+        private void refundStakeIfDue(Player seatedPlayer, double stake) {
             if (seatedPlayer == null || stake <= 0 || forfeited.contains(seatedPlayer.getUniqueId())) {
                 return;
             }
@@ -983,7 +990,7 @@ public class RockPaperScissorsServer extends Server {
             }
         }
 
-        private void handlePayout(Player one, Player two, long payout, int winner, long wager, boolean cappedWin) {
+        private void handlePayout(Player one, Player two, double payout, int winner, double wager, boolean cappedWin, boolean overSafeMax) {
             UUID winnerId = (winner == 0)
                 ? (one != null ? one.getUniqueId() : null)
                 : (two != null ? two.getUniqueId() : null);
@@ -1010,7 +1017,7 @@ public class RockPaperScissorsServer extends Server {
                                 // exceeded the representable ceiling doesn't
                                 // claim it hit an admin-configured round
                                 // count instead (which may not even be set).
-                                if (RpsPayoutMath.wouldExceedSafeMaxIfCompoundedAgain(payout, CHAIN_MULTIPLIER)) {
+                                if (overSafeMax) {
                                     winnerPlayer.sendMessage(plugin.getLocalization().text(
                                         winnerPlayer, "rock-paper-scissors.max-pot-hit"));
                                 } else {
@@ -1060,11 +1067,12 @@ public class RockPaperScissorsServer extends Server {
                 return;
             }
 
-            long payout = betAmount;
+            long pot = betAmount;
             // In PvE there's no second real party to split the pot with --
             // a chain's compounded pot is entirely the player's own stake
             // and winnings, so the whole thing is refunded rather than half.
-            long stake = isPve() ? payout : payout / 2;
+            long stakePot = isPve() ? pot : pot / 2;
+            double stake = ChainPot.toAmount(stakePot, currencyMode);
             Integer winner = committedWinner;
             Player payoutOne = chairOneOccupant;
             Player payoutTwo = chairTwoOccupant;
@@ -1086,11 +1094,13 @@ public class RockPaperScissorsServer extends Server {
                 // apply that same multiplier itself, or the saved payout is
                 // short by 1.98x.
                 boolean pveWin = isPve() && winner == 0;
+                // Rolled once: the budget books and the saved payout must agree.
+                long winnerPot = pveWin ? ChainPot.compound(pot, roundingRoll.getAsDouble()) : pot;
                 if (isPve()) {
                     settleBudget(org.nc.nccasino.budget.Money.of(
-                        pveWin ? RpsPayoutMath.compound(payout, CHAIN_MULTIPLIER) : 0L));
+                        pveWin ? ChainPot.toMoney(winnerPot, currencyMode) : java.math.BigDecimal.ZERO));
                 }
-                long winnerPayout = pveWin ? RpsPayoutMath.compound(payout, CHAIN_MULTIPLIER) : payout;
+                double winnerPayout = ChainPot.toAmount(winnerPot, currencyMode);
                 Player winningPlayer = winner == 0 ? payoutOne : payoutTwo;
                 if (winningPlayer != null && winnerPayout > 0
                     && !forfeited.contains(winningPlayer.getUniqueId())) {
@@ -1127,7 +1137,7 @@ public class RockPaperScissorsServer extends Server {
                 }
             } else {
                 if (isPve()) {
-                    settleBudget(org.nc.nccasino.budget.Money.of(stake));
+                    settleBudget(org.nc.nccasino.budget.Money.of(ChainPot.toMoney(stakePot, currencyMode)));
                 }
                 if (payoutOne != null && stake > 0 && !forfeited.contains(payoutOne.getUniqueId())) {
                     queuePendingPayout(payoutOne.getUniqueId(), stake, PayoutMessages.serverRestartRefundContext("Rock Paper Scissors"));

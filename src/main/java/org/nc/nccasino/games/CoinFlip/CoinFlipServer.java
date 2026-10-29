@@ -12,6 +12,7 @@ import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.nc.nccasino.Nccasino;
+import org.nc.nccasino.currency.ChainPot;
 import org.nc.nccasino.entities.Client;
 import org.nc.nccasino.entities.Server;
 import org.nc.nccasino.helpers.SoundHelper;
@@ -30,8 +31,13 @@ import org.nc.nccasino.session.TerminableSession;
  */
 public class CoinFlipServer extends Server {
 
-    /** Fixed compounding multiplier for a PvE chain win -- same 1% house edge convention as RPS/Mines/Dragon Descent. */
-    private static final double CHAIN_MULTIPLIER = 1.98;
+    /**
+     * The roll that decides a chain win's fractional unit (see
+     * {@link ChainPot#compound}); a field so tests can fix it.
+     */
+    java.util.function.DoubleSupplier roundingRoll = () -> ThreadLocalRandom.current().nextDouble();
+    /** Which side the coin lands on, 0 or 1; a field so tests can fix it. */
+    java.util.function.IntSupplier coin = () -> ThreadLocalRandom.current().nextInt(2);
     /**
      * PvE's own pacing for the fallback flip resolution -- there's no
      * second human to keep pace with. Coin Flip's client-side flip
@@ -262,7 +268,12 @@ public class CoinFlipServer extends Server {
 
         private Player chairOneOccupant;
         private Player chairTwoOccupant;
-        /** Long, not int -- a PvP pot doubles two accepted stakes together, which can exceed Integer.MAX_VALUE even though neither individual stake does. */
+        /**
+         * The pot in the currency's smallest unit (whole items, or cents for
+         * Vault; see {@link ChainPot}). Long, not int -- a PvP pot doubles
+         * two accepted stakes together, which can exceed Integer.MAX_VALUE
+         * even though neither individual stake does.
+         */
         private long betAmount;
         /**
          * The single dealer-budget promise covering this PvE chain,
@@ -273,7 +284,7 @@ public class CoinFlipServer extends Server {
         private org.nc.nccasino.budget.Commitment budgetCommitment;
         private final String budgetSessionId = java.util.UUID.randomUUID().toString();
         private long budgetRoundCounter = 0;
-        /** The player's own stake before any chain compounding, captured once per accepted bet. */
+        /** The player's own stake before any chain compounding, captured once per accepted bet, in the pot's unit. */
         private long originalWager;
         /** PvE-only: consecutive chain wins since the bet was accepted. */
         private int chainWins;
@@ -356,7 +367,7 @@ public class CoinFlipServer extends Server {
                     if (gameActive) return;
                     if (chairOneOccupant != null && chairOneOccupant.getUniqueId().equals(client.getPlayer().getUniqueId())) {
                         if (betAmount == 0) {
-                            betAmount = (long) data;
+                            betAmount = ChainPot.fromStake((long) data, currencyMode);
                             if (isPve()) {
                                 // No second human to accept -- the round
                                 // starts the instant the bet is placed.
@@ -415,7 +426,7 @@ public class CoinFlipServer extends Server {
             Object[] chairs = {
                 chairOneOccupant,
                 chairTwoOccupant,
-                betAmount,
+                ChainPot.toAmount(betAmount, currencyMode),
                 gameActive,
                 timeLeft,
                 playerPick,
@@ -467,7 +478,7 @@ public class CoinFlipServer extends Server {
          * chain here instead of offering another pick -- either the
          * admin-configured cap (a cap <= 0, the -1 default, means
          * unbounded), or offering one more round could produce a win that
-         * exceeds CoinFlipPayoutMath.MAX_SAFE_POT, the currency system's
+         * exceeds ChainPot.MAX_SAFE_POT, the currency system's
          * representable ceiling.
          *
          * <p>This is deliberately a forward-looking check on the round that
@@ -492,9 +503,10 @@ public class CoinFlipServer extends Server {
             if (budget == null) {
                 return true;
             }
-            org.nc.nccasino.budget.Exposure updatedExposure =
-                org.nc.nccasino.budget.ProgressiveLiability.chainExposureAfterNextRound(
-                    originalWager, betAmount, CHAIN_MULTIPLIER);
+            // The most the next win can pay: its fractional unit rounded up.
+            org.nc.nccasino.budget.Exposure updatedExposure = org.nc.nccasino.budget.Exposure.of(
+                org.nc.nccasino.budget.Money.of(ChainPot.toMoney(originalWager, currencyMode)),
+                org.nc.nccasino.budget.Money.of(ChainPot.toMoney(ChainPot.maxCompound(betAmount), currencyMode)));
 
             org.nc.nccasino.budget.Commitment result;
             if (budgetCommitment == null) {
@@ -546,7 +558,7 @@ public class CoinFlipServer extends Server {
             if (cap > 0 && chainWins >= cap) {
                 return true;
             }
-            return CoinFlipPayoutMath.wouldExceedSafeMaxIfCompoundedAgain(betAmount, CHAIN_MULTIPLIER);
+            return ChainPot.wouldExceedSafeMax(betAmount);
         }
 
         private void handlePick(Client client, int pick) {
@@ -571,7 +583,7 @@ public class CoinFlipServer extends Server {
          * with no countdown at all.
          */
         private void beginFlip() {
-            int winner = ThreadLocalRandom.current().nextInt(2);
+            int winner = coin.getAsInt();
             committedWinner = winner;
             int token = roundToken;
             send("WINNER", new Object[]{winner, token});
@@ -607,7 +619,7 @@ public class CoinFlipServer extends Server {
 
             if (isPve() && playerPick != null && winner == playerPick) {
                 chainWins++;
-                betAmount = CoinFlipPayoutMath.compound(betAmount, CHAIN_MULTIPLIER);
+                betAmount = ChainPot.compound(betAmount, roundingRoll.getAsDouble());
                 boolean cappedWin = chainCapped();
                 CoinFlipExitSettlementPolicy.Action action = CoinFlipExitSettlementPolicy.afterReveal(
                     CoinFlipExitSettlementPolicy.Outcome.WIN, exitSettlementPending, cappedWin);
@@ -641,7 +653,7 @@ public class CoinFlipServer extends Server {
             committedWinner = null;
             roundToken++;
             playerPick = null;
-            send("CHAIN_WIN", new Object[]{chainWins, betAmount});
+            send("CHAIN_WIN", new Object[]{chainWins, ChainPot.toAmount(betAmount, currencyMode)});
         }
 
         /**
@@ -664,9 +676,9 @@ public class CoinFlipServer extends Server {
             if (chairOneOccupant == null || !chairOneOccupant.getUniqueId().equals(playerId)) return;
 
             send("ANIMATION_FINISHED", 0);
-            long wager = originalWager;
-            long payout = betAmount;
-            settleBudget(org.nc.nccasino.budget.Money.of(payout));
+            double wager = ChainPot.toAmount(originalWager, currencyMode);
+            double payout = ChainPot.toAmount(betAmount, currencyMode);
+            settleBudget(org.nc.nccasino.budget.Money.of(ChainPot.toMoney(betAmount, currencyMode)));
             gameActive = false;
             revealInProgress = false;
             committedWinner = null;
@@ -725,11 +737,13 @@ public class CoinFlipServer extends Server {
             send("ANIMATION_FINISHED", winner);
             Player payoutOne = chairOneOccupant;
             Player payoutTwo = chairTwoOccupant;
-            long payout = betAmount;
+            boolean capped = isPve() && ChainPot.wouldExceedSafeMax(betAmount);
+            double payout = ChainPot.toAmount(betAmount, currencyMode);
             if (isPve()) {
-                settleBudget(org.nc.nccasino.budget.Money.of(pveWin ? payout : 0L));
+                settleBudget(org.nc.nccasino.budget.Money.of(
+                    pveWin ? ChainPot.toMoney(betAmount, currencyMode) : java.math.BigDecimal.ZERO));
             }
-            long wager = originalWager;
+            double wager = ChainPot.toAmount(originalWager, currencyMode);
             gameActive = false;
             revealInProgress = false;
             committedWinner = null;
@@ -740,7 +754,7 @@ public class CoinFlipServer extends Server {
             playerPick = null;
             timeLeft = 0;
             cancelCountdown();
-            handlePayout(payoutOne, payoutTwo, payout, winner, wager, pveWin);
+            handlePayout(payoutOne, payoutTwo, payout, winner, wager, pveWin, capped);
             if (payoutOne != null) {
                 clearRidingSession(payoutOne.getUniqueId());
             }
@@ -784,7 +798,7 @@ public class CoinFlipServer extends Server {
          * RPS's null-occupant-is-a-no-op pattern but simplified since
          * there's no second UUID to look up in the first place.
          */
-        private void handlePayout(Player one, Player two, long payout, int winner, long wager, boolean pveWin) {
+        private void handlePayout(Player one, Player two, double payout, int winner, double wager, boolean pveWin, boolean capped) {
             if (isPve()) {
                 if (one == null) return;
                 UUID playerId = one.getUniqueId();
@@ -816,7 +830,7 @@ public class CoinFlipServer extends Server {
                                 // exceeded the representable ceiling doesn't
                                 // claim it hit an admin-configured round
                                 // count instead (which may not even be set).
-                                if (CoinFlipPayoutMath.wouldExceedSafeMaxIfCompoundedAgain(payout, CHAIN_MULTIPLIER)) {
+                                if (capped) {
                                     onlinePlayer.sendMessage(plugin.getLocalization().text(
                                         onlinePlayer, "coin-flip.max-pot-hit"));
                                 } else {
@@ -889,8 +903,10 @@ public class CoinFlipServer extends Server {
                 return;
             }
 
-            long payout = betAmount;
-            long stake = isPve() ? payout : payout / 2;
+            long pot = betAmount;
+            double payout = ChainPot.toAmount(pot, currencyMode);
+            long stakePot = isPve() ? pot : pot / 2;
+            double stake = ChainPot.toAmount(stakePot, currencyMode);
             Integer winner = committedWinner;
             Integer pick = playerPick;
             Player payoutOne = chairOneOccupant;
@@ -913,14 +929,15 @@ public class CoinFlipServer extends Server {
                 // apply that same multiplier itself, or the saved payout is
                 // short by 1.98x.
                 boolean pveWin = isPve() && pick != null && winner.intValue() == pick.intValue();
+                // Rolled once: the budget books and the saved payout must agree.
+                long winnerPot = pveWin ? ChainPot.compound(pot, roundingRoll.getAsDouble()) : 0L;
                 if (isPve()) {
-                    settleBudget(org.nc.nccasino.budget.Money.of(
-                        pveWin ? CoinFlipPayoutMath.compound(payout, CHAIN_MULTIPLIER) : 0L));
+                    settleBudget(org.nc.nccasino.budget.Money.of(ChainPot.toMoney(winnerPot, currencyMode)));
                 }
                 if (isPve()) {
                     if (payoutOne != null && !forfeited.contains(payoutOne.getUniqueId())) {
                         if (pveWin) {
-                            long winnerPayout = CoinFlipPayoutMath.compound(payout, CHAIN_MULTIPLIER);
+                            double winnerPayout = ChainPot.toAmount(winnerPot, currencyMode);
                             if (winnerPayout > 0) {
                                 queuePendingPayout(
                                     payoutOne.getUniqueId(),
@@ -967,7 +984,7 @@ public class CoinFlipServer extends Server {
                 }
             } else {
                 if (isPve()) {
-                    settleBudget(org.nc.nccasino.budget.Money.of(stake));
+                    settleBudget(org.nc.nccasino.budget.Money.of(ChainPot.toMoney(stakePot, currencyMode)));
                 }
                 if (payoutOne != null && stake > 0 && !forfeited.contains(payoutOne.getUniqueId())) {
                     queuePendingPayout(payoutOne.getUniqueId(), stake, PayoutMessages.serverRestartRefundContext("Coin Flip"));

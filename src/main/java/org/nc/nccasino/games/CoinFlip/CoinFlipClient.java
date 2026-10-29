@@ -40,8 +40,12 @@ public class CoinFlipClient extends Client implements TerminableSession {
     protected Player chairOneOccupant;
     protected Player chairTwoOccupant;
 
-    /** Long, not int -- mirrors CoinFlipServer.CoinFlipMatch.betAmount, which is long specifically so a PvP pot can't overflow/clamp past what was actually withdrawn from both wallets. */
-    protected long betAmount = 0;
+    /**
+     * The pot as an amount of currency, as the server reports it: a whole
+     * stake before the round, and for a dealer chain the compounded pot, which
+     * on Vault can have cents (19.80).
+     */
+    protected double betAmount = 0;
     /** PvE chain display only -- authoritative count lives server-side. */
     private int chainWins = 0;
 
@@ -323,7 +327,7 @@ public class CoinFlipClient extends Client implements TerminableSession {
             }
         } else if (chairTwoOccupant !=null && chairTwoOccupant.getUniqueId().equals(player.getUniqueId())) {
             if(betAmount>0){
-                long amount = betAmount;
+                long amount = (long) betAmount;
                 betAccepted = handlePlayerTwoAccept(amount);
                 if (betAccepted){
                     pendingAcceptAmount = amount;
@@ -809,7 +813,7 @@ public class CoinFlipClient extends Client implements TerminableSession {
      */
     private void handleChainWin(Object[] data) {
         chainWins = (data.length > 0 && data[0] instanceof Integer) ? (int) data[0] : chainWins;
-        betAmount = (data.length > 1 && data[1] instanceof Long) ? (long) data[1] : betAmount;
+        betAmount = (data.length > 1 && data[1] instanceof Number pot) ? pot.doubleValue() : betAmount;
 
         playerPick = null;
         switch (plugin.getPreferences(player.getUniqueId()).getMessageSetting()) {
@@ -869,7 +873,7 @@ public class CoinFlipClient extends Client implements TerminableSession {
         Object[] dataArr = (Object[]) data;
         Player chairOne = (dataArr.length > 0 && dataArr[0] instanceof Player) ? (Player) dataArr[0] : null;
         Player chairTwo = (dataArr.length > 1 && dataArr[1] instanceof Player) ? (Player) dataArr[1] : null;
-        long betAmountValue = (dataArr.length > 2 && dataArr[2] instanceof Long) ? (long) dataArr[2] : 0L;
+        double betAmountValue = (dataArr.length > 2 && dataArr[2] instanceof Number pot) ? pot.doubleValue() : 0.0;
         gameActive = (dataArr.length > 3 && dataArr[3] instanceof Boolean) ? (boolean) dataArr[3] : false;
         int timeLeft = (dataArr.length > 4 && dataArr[4] instanceof Integer) ? (int) dataArr[4] : 0;
         Integer pick = (dataArr.length > 5 && dataArr[5] instanceof Integer) ? (Integer) dataArr[5] : null;
