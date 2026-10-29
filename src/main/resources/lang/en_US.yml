@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault not found. Install Vault to use with NCCasino."
   economy-missing: "&cNo economy plugin. Install an economy plugin to use Vault."
   currency-mode-switched: "&eSwitched currency mode to: &a{mode}&e."
+  currency-change-players: "&ePlayers mid-game at this dealer: &a{count}&e. Their games end now, and what they are owed is paid and their stakes refunded in &a{currency}&e."
+  currency-change-confirm-title: "Settle and change currency?"
   prompt-chip-size: "&aType new chip size value in chat."
   prompt-chip-index: "&aType new value for chip #{index} in chat."
   prompt-new-value: "&aType new value."

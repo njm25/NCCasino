@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault тупӑнмарӗ. Vault-а NCCasino плагинӗпе пӗрле усӑ курма лартӑр."
   economy-missing: "&cЭкономика плагинӗ ҫук. Vault-па усӑ курма экономика плагинне лартӑр."
   currency-mode-switched: "&eВалюта режимне улӑштарнӑ: &a{mode}&e."
+  currency-change-players: "&eҪак дилер патӗнче вӑйӑ варринчи вӑйӑҫӑсем: &a{count}&e. Вӗсен вӑййисем халех вӗҫленеҫҫӗ; вӗсене тивӗҫлӗ укҫана тӳлеҫҫӗ, ставкисене каялла тавӑраҫҫӗ. Валюта: &a{currency}&e."
+  currency-change-confirm-title: "Шутлашса валюта улӑштармалла-и?"
   prompt-chip-size: "&aЧата фишкӑн ҫӗнӗ хакне ҫырӑр."
   prompt-chip-index: "&aЧата {index}-мӗш фишкӑн ҫӗнӗ хакне ҫырӑр."
   prompt-new-value: "&aҪӗнӗ пӗлтерӗш ҫырӑр."

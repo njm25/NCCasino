@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault nie gevind nie. Installeer Vault om dit saam met NCCasino te gebruik."
   economy-missing: "&cGeen ekonomie-inprop nie. Installeer 'n ekonomie-inprop om Vault te gebruik."
   currency-mode-switched: "&eGeldeenheidmodus verander na: &a{mode}&e."
+  currency-change-players: "&eSpelers halfpad deur 'n spel by hierdie kroepier: &a{count}&e. Hulle spelle eindig nou; wat hulle toekom, word uitbetaal en hulle insette word terugbetaal, alles in &a{currency}&e."
+  currency-change-confirm-title: "Afreken en geldeenheid verander?"
   prompt-chip-size: "&aTik die nuwe skyfiewaarde in die klets."
   prompt-chip-index: "&aTik die nuwe waarde vir skyfie #{index} in die klets."
   prompt-new-value: "&aTik die nuwe waarde."

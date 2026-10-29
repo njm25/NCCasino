@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault tidak ditemui. Pasang Vault untuk digunakan dengan NCCasino."
   economy-missing: "&cTiada plugin ekonomi. Pasang plugin ekonomi untuk menggunakan Vault."
   currency-mode-switched: "&eMod mata wang ditukar kepada: &a{mode}&e."
+  currency-change-players: "&ePemain yang sedang bermain dengan pengendali ini: &a{count}&e. Permainan mereka tamat sekarang; apa yang terhutang kepada mereka dibayar dan taruhan mereka dipulangkan, semuanya dalam &a{currency}&e."
+  currency-change-confirm-title: "Selesaikan dan tukar mata wang?"
   prompt-chip-size: "&aTaip nilai cip baharu dalam sembang."
   prompt-chip-index: "&aTaip nilai baharu untuk cip #{index} dalam sembang."
   prompt-new-value: "&aTaip nilai baharu."

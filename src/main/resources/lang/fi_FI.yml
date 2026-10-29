@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault-lisäosaa ei löytynyt. Asenna Vault, jotta voit käyttää sitä NCCasino-lisäosan kanssa."
   economy-missing: "&cTalouslisäosaa ei ole. Asenna talouslisäosa käyttääksesi Vault-lisäosaa."
   currency-mode-switched: "&eValuuttatila vaihdettu: &a{mode}&e."
+  currency-change-players: "&ePelaajia kesken pelin tämän jakajan luona: &a{count}&e. Heidän pelinsä päättyvät nyt; heille kuuluva summa maksetaan ja panokset palautetaan, kaikki valuuttana &a{currency}&e."
+  currency-change-confirm-title: "Tilitä ja vaihda valuutta?"
   prompt-chip-size: "&aKirjoita chattiin pelimerkin uusi arvo."
   prompt-chip-index: "&aKirjoita chattiin uusi arvo pelimerkille #{index}."
   prompt-new-value: "&aKirjoita uusi arvo."

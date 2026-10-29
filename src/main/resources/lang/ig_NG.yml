@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cAhụghị Vault. Wụnye Vault ka iji ya na NCCasino."
   economy-missing: "&cEnweghị plugin akụ na ụba. Wụnye plugin akụ na ụba ka iji Vault."
   currency-mode-switched: "&eE gbanwela ụdị ego gaa na: &a{mode}&e."
+  currency-change-players: "&eNdị egwuregwu nọ n'etiti egwuregwu n'aka onye nkesa a: &a{count}&e. Egwuregwu ha na-akwụsị ugbu a; a na-akwụ ha ihe e ji ha, a na-eweghachikwa ha nzọ ha. Ego: &a{currency}&e."
+  currency-change-confirm-title: "Kwụọ ụgwọ ma gbanwee ego?"
   prompt-chip-size: "&aDee uru mkpụrụ ọhụrụ na mkparịta ụka."
   prompt-chip-index: "&aDee uru ọhụrụ maka mkpụrụ #{index} na mkparịta ụka."
   prompt-new-value: "&aDee uru ọhụrụ."

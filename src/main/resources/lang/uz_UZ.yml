@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault topilmadi. NCCasino bilan ishlashi uchun Vault plaginini oʻrnating."
   economy-missing: "&cIqtisod plagini yoʻq. Vault plaginidan foydalanish uchun iqtisod plaginini oʻrnating."
   currency-mode-switched: "&eValyuta rejimi almashtirildi: &a{mode}&e."
+  currency-change-players: "&eUshbu dilerda oʻyin oʻrtasidagi oʻyinchilar: &a{count}&e. Ularning oʻyinlari hozir tugaydi; ularga tegishli summa toʻlanadi, stavkalari esa qaytariladi. Valyuta: &a{currency}&e."
+  currency-change-confirm-title: "Hisoblashib, valyuta almashsinmi?"
   prompt-chip-size: "&aChatga fishkaning yangi qiymatini yozing."
   prompt-chip-index: "&aChatga {index}-fishkaning yangi qiymatini yozing."
   prompt-new-value: "&aYangi qiymatni yozing."

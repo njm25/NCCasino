@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cʻAʻole i loaʻa ʻo Vault. E hoʻokomo iā Vault e hoʻohana ai me NCCasino."
   economy-missing: "&cʻAʻohe polokalamu hoʻokele waiwai. E hoʻokomo i polokalamu hoʻokele waiwai e hoʻohana ai iā Vault."
   currency-mode-switched: "&eUa hoʻololi ʻia ke ʻano kālā i: &a{mode}&e."
+  currency-change-players: "&eNā mea pāʻani i waenakonu o ka pāʻani me kēia mea hoʻokele: &a{count}&e. Pau ko lākou pāʻani i kēia manawa; e uku ʻia ka mea e pono ai iā lākou, a e hoʻihoʻi ʻia kā lākou mau pili. Kālā: &a{currency}&e."
+  currency-change-confirm-title: "E uku a hoʻololi i ke kālā?"
   prompt-chip-size: "&aE kikokiko i ka waiwai pihi hou ma ke kamaʻilio."
   prompt-chip-index: "&aE kikokiko i ka waiwai hou no ka pihi #{index} ma ke kamaʻilio."
   prompt-new-value: "&aE kikokiko i ka waiwai hou."

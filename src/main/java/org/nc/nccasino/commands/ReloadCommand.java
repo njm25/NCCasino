@@ -16,6 +16,9 @@ public class ReloadCommand implements CasinoCommand {
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
+        // Each dealer's currency before the reload: a hand-edited one must not
+        // re-denominate the stakes its tables still hold.
+        var playedIn = ((Nccasino) plugin).currencySnapshots();
         plugin.reloadConfig();
         if (((Nccasino) plugin).hasConfigProblem()) {
             // The settings in use were kept. Reload nothing else, so the
@@ -26,7 +29,7 @@ public class ReloadCommand implements CasinoCommand {
         ((Nccasino) plugin).reloadLocalization();
         ((Nccasino) plugin).reloadServiceSettings();
         // Reinitialize dealer configurations
-        ((Nccasino) plugin).reloadDealerConfigurations();
+        ((Nccasino) plugin).reloadDealerConfigurations(playedIn);
         // Rebuilding the dealers settled every table's players and saved what
         // they are owed; hand it over now rather than at their next login.
         // Two ticks, so the rebuilt tables' windows (closed next tick) are

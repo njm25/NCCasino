@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault не е пронајден. Инсталирајте Vault за да го користите со NCCasino."
   economy-missing: "&cНема економски приклучок. Инсталирајте економски приклучок за да го користите Vault."
   currency-mode-switched: "&eРежимот на валута е променет во: &a{mode}&e."
+  currency-change-players: "&eИграчи среде игра кај овој дилер: &a{count}&e. Нивните игри завршуваат сега; она што им се должи се исплаќа, а облозите им се враќаат, сѐ во валутата &a{currency}&e."
+  currency-change-confirm-title: "Пресметка и промена на валута?"
   prompt-chip-size: "&aВнесете нова вредност на жетонот во чатот."
   prompt-chip-index: "&aВнесете нова вредност за жетон бр. {index} во чатот."
   prompt-new-value: "&aВнесете нова вредност."

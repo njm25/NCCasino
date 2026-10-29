@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cHeb ddod o hyd i Vault. Gosodwch Vault i'w ddefnyddio gyda NCCasino."
   economy-missing: "&cDim ategyn economi. Gosodwch ategyn economi i ddefnyddio Vault."
   currency-mode-switched: "&eNewidiwyd modd yr arian cyfred i: &a{mode}&e."
+  currency-change-players: "&eChwaraewyr ar ganol gêm gyda'r deliwr hwn: &a{count}&e. Mae eu gemau'n dod i ben nawr; telir yr hyn sy'n ddyledus iddynt ac ad-delir eu betiau. Arian cyfred: &a{currency}&e."
+  currency-change-confirm-title: "Setlo a newid yr arian cyfred?"
   prompt-chip-size: "&aTeipiwch werth newydd y sglodyn yn y sgwrs."
   prompt-chip-index: "&aTeipiwch werth newydd sglodyn rhif {index} yn y sgwrs."
   prompt-new-value: "&aTeipiwch werth newydd."

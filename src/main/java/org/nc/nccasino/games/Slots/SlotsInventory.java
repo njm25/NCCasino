@@ -48,6 +48,17 @@ public class SlotsInventory extends DealerInventory {
         HandlerList.unregisterAll(this);
     }
 
+    @Override
+    public java.util.Set<UUID> playersMidGame() {
+        java.util.Set<UUID> players = new java.util.HashSet<>();
+        for (Map.Entry<UUID, SlotsMachine> entry : machines.entrySet()) {
+            if (SessionRegistry.isRegistered(entry.getKey(), entry.getValue())) {
+                players.add(entry.getKey());
+            }
+        }
+        return players;
+    }
+
     @EventHandler
     public void handleInventoryOpen(InventoryOpenEvent event) {
         if (event.getInventory() != this.getInventory()) {

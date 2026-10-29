@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault नहीं मिला। NCCasino के साथ इस्तेमाल के लिए Vault इंस्टॉल करें।"
   economy-missing: "&cकोई इकॉनमी प्लगइन नहीं है। Vault इस्तेमाल करने के लिए कोई इकॉनमी प्लगइन इंस्टॉल करें।"
   currency-mode-switched: "&eमुद्रा मोड बदला गया: &a{mode}&e।"
+  currency-change-players: "&eइस डीलर पर बीच गेम में खिलाड़ी: &a{count}&e। उनके गेम अभी खत्म होते हैं; उनका बकाया चुकाया जाता है और उनके दांव लौटाए जाते हैं। मुद्रा: &a{currency}&e।"
+  currency-change-confirm-title: "हिसाब चुकाकर मुद्रा बदलें?"
   prompt-chip-size: "&aचैट में चिप का नया मूल्य लिखें।"
   prompt-chip-index: "&aचैट में चिप #{index} का नया मूल्य लिखें।"
   prompt-new-value: "&aनया मान लिखें।"

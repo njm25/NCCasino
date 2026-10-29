@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault табылманы. NCCasino менән ҡулланыу өсөн Vault урынлаштырығыҙ."
   economy-missing: "&cИҡтисад плагины юҡ. Vault ҡулланыу өсөн иҡтисад плагинын урынлаштырығыҙ."
   currency-mode-switched: "&eВалюта режимы алмаштырылды: &a{mode}&e."
+  currency-change-players: "&eБыл дилерҙа уйын уртаһындағы уйынсылар: &a{count}&e. Уларҙың уйындары хәҙер тамамлана; уларға тейешле сумма түләнә, ә ставкалары кире ҡайтарыла. Валюта: &a{currency}&e."
+  currency-change-confirm-title: "Иҫәпләшеү һәм валюта алмаштырыу?"
   prompt-chip-size: "&aЧатҡа фишканың яңы ҡиммәтен яҙығыҙ."
   prompt-chip-index: "&aЧатҡа №{index} фишканың яңы ҡиммәтен яҙығыҙ."
   prompt-new-value: "&aЯңы ҡиммәтте яҙығыҙ."

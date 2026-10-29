@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault haikupatikana. Sakinisha Vault ili kuitumia pamoja na NCCasino."
   economy-missing: "&cHakuna programu-jalizi ya uchumi. Sakinisha programu-jalizi ya uchumi ili kutumia Vault."
   currency-mode-switched: "&eHali ya sarafu imebadilishwa kuwa: &a{mode}&e."
+  currency-change-players: "&eWachezaji walio katikati ya mchezo kwa mgawaji huyu: &a{count}&e. Michezo yao inaisha sasa; wanalipwa wanachostahili na madau yao yanarejeshwa. Sarafu: &a{currency}&e."
+  currency-change-confirm-title: "Lipa na ubadilishe sarafu?"
   prompt-chip-size: "&aAndika thamani mpya ya chipu kwenye gumzo."
   prompt-chip-index: "&aAndika thamani mpya ya chipu namba {index} kwenye gumzo."
   prompt-new-value: "&aAndika thamani mpya."

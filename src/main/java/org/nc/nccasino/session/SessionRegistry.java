@@ -101,6 +101,23 @@ public final class SessionRegistry {
         }
     }
 
+    /**
+     * The players with at least one session {@code belongsTo} accepts: who a
+     * {@link #terminateMatching} with the same predicate would settle.
+     */
+    public static Set<UUID> playersMatching(Predicate<TerminableSession> belongsTo) {
+        Set<UUID> players = new java.util.HashSet<>();
+        for (Map.Entry<UUID, Set<TerminableSession>> entry : activeSessions.entrySet()) {
+            for (TerminableSession session : entry.getValue()) {
+                if (belongsTo.test(session)) {
+                    players.add(entry.getKey());
+                    break;
+                }
+            }
+        }
+        return players;
+    }
+
     public static boolean hasActiveSession(UUID playerId) {
         return activeSessions.containsKey(playerId);
     }

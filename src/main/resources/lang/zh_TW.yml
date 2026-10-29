@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&c找不到 Vault。請安裝 Vault 以搭配 NCCasino 使用。"
   economy-missing: "&c沒有經濟外掛。請安裝經濟外掛以使用 Vault。"
   currency-mode-switched: "&e貨幣模式已切換為：&a{mode}&e。"
+  currency-change-players: "&e在此荷官處遊戲中的玩家：&a{count}&e。他們的遊戲將立即結束，應得款項將會支付、下注將會退還，皆以 &a{currency}&e 結算。"
+  currency-change-confirm-title: "結算並變更貨幣？"
   prompt-chip-size: "&a請在聊天欄輸入新的籌碼面額。"
   prompt-chip-index: "&a請在聊天欄輸入第 {index} 號籌碼的新面額。"
   prompt-new-value: "&a請輸入新的數值。"

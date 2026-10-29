@@ -118,6 +118,41 @@ class PendingPayoutStoreTest {
     }
 
     @Test
+    void owedPayoutsKeepTheirCurrencyAcrossARestartAfterTheDealerSwitched() {
+        // Owed while the dealer played for diamonds and dollars ...
+        UUID playerId = UUID.randomUUID();
+        PendingPayout diamonds = new PendingPayout(UUID.randomUUID(), playerId, "Coin Flip", "cf",
+            CurrencyMode.STANDARD, "DIAMOND", "Diamond", 64, 1L, "refund");
+        PendingPayout dollars = new PendingPayout(UUID.randomUUID(), playerId, "Baccarat", "bac",
+            CurrencyMode.VAULT, null, "Dollar", 19.8, 2L, "refund");
+        PendingPayoutStore beforeRestart = new PendingPayoutStore(plugin);
+        assertTrue(beforeRestart.addPendingPayout(diamonds));
+        assertTrue(beforeRestart.addPendingPayout(dollars));
+        // ... then the dealers switched: cf to Vault, bac to emeralds.
+        plugin.getConfig().set("dealers.cf.currency.mode", "VAULT");
+        plugin.getConfig().set("dealers.bac.currency.mode", "STANDARD");
+        plugin.getConfig().set("dealers.bac.currency.material", "EMERALD");
+
+        PendingPayoutStore afterRestart = new PendingPayoutStore(plugin);
+        assertEquals(java.util.List.of(diamonds, dollars), afterRestart.getPending(playerId));
+        Player player = player(playerId);
+        PlayerInventory inventory = mock(PlayerInventory.class);
+        when(player.getInventory()).thenReturn(inventory);
+        when(inventory.getStorageContents()).thenReturn(new ItemStack[36]);
+        when(inventory.addItem(any(ItemStack[].class))).thenReturn(new HashMap<>());
+        when(economy.depositPlayer(player, 19.8)).thenReturn(success(19.8));
+
+        DeliveryResult result = afterRestart.attemptDeliver(player);
+
+        assertEquals(2, result.delivered().size());
+        verify(inventory).addItem(argThat((ItemStack item) ->
+            item.getType() == Material.DIAMOND && item.getAmount() == 64));
+        verify(economy, times(1)).depositPlayer(player, 19.8);
+        verify(economy, never()).depositPlayer(any(Player.class), eq(64.0));
+        verify(inventory, never()).addItem(argThat((ItemStack item) -> item.getType() == Material.EMERALD));
+    }
+
+    @Test
     void successfulVaultPayoutIsDepositedOnceAndDurablyRemoved() {
         UUID playerId = UUID.randomUUID();
         Player player = player(playerId);

@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cNo se encontró Vault. Instala Vault para usarlo con NCCasino."
   economy-missing: "&cNo hay un plugin de economía. Instala uno para usar Vault."
   currency-mode-switched: "&eModo de moneda cambiado a: &a{mode}&e."
+  currency-change-players: "&eJugadores en mitad de una partida con este crupier: &a{count}&e. Sus partidas terminan ahora; se les paga lo que se les debe y se les reembolsan las apuestas, todo en &a{currency}&e."
+  currency-change-confirm-title: "¿Liquidar y cambiar la moneda?"
   prompt-chip-size: "&aEscribe el nuevo valor de ficha en el chat."
   prompt-chip-index: "&aEscribe el nuevo valor de la ficha #{index} en el chat."
   prompt-new-value: "&aEscribe el nuevo valor."

@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault blev ikke fundet. Installer Vault for at bruge det med NCCasino."
   economy-missing: "&cIntet økonomiplugin. Installer et økonomiplugin for at bruge Vault."
   currency-mode-switched: "&eValutatilstand skiftet til: &a{mode}&e."
+  currency-change-players: "&eSpillere midt i et spil hos denne dealer: &a{count}&e. Deres spil slutter nu; det, de har til gode, udbetales, og deres indsatser refunderes, alt sammen i &a{currency}&e."
+  currency-change-confirm-title: "Gør op og skift valuta?"
   prompt-chip-size: "&aSkriv den nye jetonværdi i chatten."
   prompt-chip-index: "&aSkriv den nye værdi for jeton nr. {index} i chatten."
   prompt-new-value: "&aSkriv den nye værdi."

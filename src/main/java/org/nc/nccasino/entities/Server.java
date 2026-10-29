@@ -253,6 +253,11 @@ public abstract class Server extends DealerInventory {
         return session instanceof Client client && client.server == this;
     }
 
+    @Override
+    public java.util.Set<java.util.UUID> playersMidGame() {
+        return SessionRegistry.playersMatching(this::ownsSession);
+    }
+
     /** Stops every task this table has scheduled. Called once its players are settled. */
     protected void cancelScheduledTasks() {
     }

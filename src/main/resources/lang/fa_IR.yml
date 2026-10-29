@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cافزونه‌ی Vault پیدا نشد. برای استفاده با NCCasino، Vault را نصب کنید."
   economy-missing: "&cافزونه‌ی اقتصادی وجود ندارد. برای استفاده از Vault یک افزونه‌ی اقتصادی نصب کنید."
   currency-mode-switched: "&eحالت ارز تغییر کرد به: &a{mode}&e."
+  currency-change-players: "&eبازیکنان وسط بازی با این دیلر: &a{count}&e. بازی‌هایشان همین حالا تمام می‌شود؛ طلبشان پرداخت و شرط‌هایشان بازپرداخت می‌شود، با ارز &a{currency}&e."
+  currency-change-confirm-title: "تسویه و تغییر ارز انجام شود؟"
   prompt-chip-size: "&aارزش جدید ژتون را در چت بنویسید."
   prompt-chip-index: "&aارزش جدید ژتون شماره‌ی {index} را در چت بنویسید."
   prompt-new-value: "&aمقدار جدید را بنویسید."

@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault niy znojdziōny. Zainstaluj Vault, coby go używać z NCCasino."
   economy-missing: "&cNiy ma pluginu ekōnōmie. Zainstaluj plugin ekōnōmie, coby używać Vault."
   currency-mode-switched: "&eTryb waluty zmiyniōny na: &a{mode}&e."
+  currency-change-players: "&eGracze w postrzodku gry u tego krupiera: &a{count}&e. Ich gry sie terŏz kōńczōm; to, co sie im należy, je wypłŏcane, a zakłady zwracane w walucie &a{currency}&e."
+  currency-change-confirm-title: "Rozliczyć i zmiynić walutã?"
   prompt-chip-size: "&aNapisz nowõ wertość żetonu na czacie."
   prompt-chip-index: "&aNapisz nowõ wertość dlŏ żetonu #{index} na czacie."
   prompt-new-value: "&aNapisz nowõ wertość."

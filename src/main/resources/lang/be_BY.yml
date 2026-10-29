@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault не знойдзены. Усталюйце Vault, каб выкарыстоўваць яго з NCCasino."
   economy-missing: "&cНяма плагіна эканомікі. Усталюйце плагін эканомікі, каб выкарыстоўваць Vault."
   currency-mode-switched: "&eРэжым валюты зменены на: &a{mode}&e."
+  currency-change-players: "&eГульцоў пасярод гульні ў гэтага крупье: &a{count}&e. Іх гульні зараз завяршаюцца: належнае выплачваецца, а стаўкі вяртаюцца ў валюце &a{currency}&e."
+  currency-change-confirm-title: "Разлічыць і змяніць валюту?"
   prompt-chip-size: "&aУвядзіце ў чат новы намінал фішкі."
   prompt-chip-index: "&aУвядзіце ў чат новае значэнне для фішкі №{index}."
   prompt-new-value: "&aУвядзіце новае значэнне."

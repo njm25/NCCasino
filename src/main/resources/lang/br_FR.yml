@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cN'eo ket bet kavet Vault. Staliit Vault evit implijout anezhañ gant NCCasino."
   economy-missing: "&cN'eus astenn armerzh ebet. Staliit un astenn armerzh evit implijout Vault."
   currency-mode-switched: "&eMod ar moneiz cheñchet da: &a{mode}&e."
+  currency-change-players: "&eC'hoarierien e-kreiz ur c'hoari gant ar c'hroupier-mañ: &a{count}&e. Echuiñ a ra o c'hoarioù bremañ; paeet e vez dezho ar pezh a zo dleet dezho ha dasroet e vez o c'hlaoustreoù. Moneiz: &a{currency}&e."
+  currency-change-confirm-title: "Paeañ ha cheñch ar moneiz?"
   prompt-chip-size: "&aSkrivit talvoud nevez ar jeton er flap."
   prompt-chip-index: "&aSkrivit an talvoud nevez evit jeton #{index} er flap."
   prompt-new-value: "&aSkrivit an talvoud nevez."

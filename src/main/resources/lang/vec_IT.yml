@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault no catà. Instala Vault par dopararlo co NCCasino."
   economy-missing: "&cNisun plugin de economia. Instala un plugin de economia par doparar Vault."
   currency-mode-switched: "&eModo de la moneda canbià in: &a{mode}&e."
+  currency-change-players: "&eZogadori a metà partìa co sto crupier: &a{count}&e. Le so partìe le finisse desso; quel che ghe xe dovùo el vien pagà e le so scomese le vien rimborsade, tuto in &a{currency}&e."
+  currency-change-confirm-title: "Saldar e canbiar moneda?"
   prompt-chip-size: "&aScrivi el novo valor del getón in chat."
   prompt-chip-index: "&aScrivi el novo valor par el getón #{index} in chat."
   prompt-new-value: "&aScrivi el novo valor."

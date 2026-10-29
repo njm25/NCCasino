@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault олдсонгүй. NCCasino-той хамт ашиглахын тулд Vault суулгана уу."
   economy-missing: "&cЭдийн засгийн плагин алга. Vault ашиглахын тулд эдийн засгийн плагин суулгана уу."
   currency-mode-switched: "&eВалютын горимыг солилоо: &a{mode}&e."
+  currency-change-players: "&eЭнэ дилер дээр тоглолтын дунд байгаа тоглогчид: &a{count}&e. Тэдний тоглолт одоо дуусна; тэдэнд олгох ёстой мөнгийг төлж, бооцоог нь буцаан олгоно. Валют: &a{currency}&e."
+  currency-change-confirm-title: "Тооцоо хийж, валют солих уу?"
   prompt-chip-size: "&aЧатад фишкийн шинэ үнийг бичнэ үү."
   prompt-chip-index: "&aЧатад #{index} фишкийн шинэ үнийг бичнэ үү."
   prompt-new-value: "&aШинэ утга бичнэ үү."

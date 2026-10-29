@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault nuk u gjet. Instaloni Vault për ta përdorur me NCCasino."
   economy-missing: "&cNuk ka plugin ekonomie. Instaloni një plugin ekonomie për të përdorur Vault."
   currency-mode-switched: "&eMënyra e monedhës u ndryshua në: &a{mode}&e."
+  currency-change-players: "&eLojtarë në mes të lojës te ky krupier: &a{count}&e. Lojërat e tyre mbarojnë tani; atyre u paguhet ajo që u takon dhe u kthehen bastet, të gjitha në monedhën &a{currency}&e."
+  currency-change-confirm-title: "Paguaj dhe ndrysho monedhën?"
   prompt-chip-size: "&aShkruani në chat vlerën e re të fishës."
   prompt-chip-index: "&aShkruani në chat vlerën e re për fishën nr. {index}."
   prompt-new-value: "&aShkruani vlerën e re."

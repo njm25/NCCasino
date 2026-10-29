@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cNon se atopou Vault. Instala Vault para usalo con NCCasino."
   economy-missing: "&cNon hai ningún complemento de economía. Instala un para usar Vault."
   currency-mode-switched: "&eModo de moeda novo: &a{mode}&e."
+  currency-change-players: "&ePersoas en plena partida con este crupier: &a{count}&e. As súas partidas rematan agora; págaselles o que se lles debe e devólvenselles as apostas, todo en &a{currency}&e."
+  currency-change-confirm-title: "Liquidar e cambiar de moeda?"
   prompt-chip-size: "&aEscribe no chat o novo valor da ficha."
   prompt-chip-index: "&aEscribe no chat o novo valor da ficha n.º {index}."
   prompt-new-value: "&aEscribe o novo valor."

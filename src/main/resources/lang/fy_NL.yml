@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault net fûn. Ynstallearje Vault om it mei NCCasino te brûken."
   economy-missing: "&cGjin ekonomyplugin. Ynstallearje in ekonomyplugin om Vault te brûken."
   currency-mode-switched: "&eFalutamodus wiksele nei: &a{mode}&e."
+  currency-change-players: "&eSpilers midden yn in spul by dizze dealer: &a{count}&e. Harren spullen einigje no; wat se te goed hawwe, wurdt útbetelle en harren ynsetten wurde weromjûn, alles yn &a{currency}&e."
+  currency-change-confirm-title: "Ôfrekkenje en faluta wizigje?"
   prompt-chip-size: "&aTyp yn 'e chat de nije fichewearde."
   prompt-chip-index: "&aTyp yn 'e chat de nije wearde foar fiche #{index}."
   prompt-new-value: "&aTyp de nije wearde."

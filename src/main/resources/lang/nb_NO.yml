@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cFant ikke Vault. Installer Vault for å bruke det med NCCasino."
   economy-missing: "&cIngen økonomiutvidelse. Installer en økonomiutvidelse for å bruke Vault."
   currency-mode-switched: "&eValutamodus byttet til: &a{mode}&e."
+  currency-change-players: "&eSpillere midt i et spill hos denne dealeren: &a{count}&e. Spillene deres avsluttes nå; det de har til gode, utbetales, og innsatsene refunderes, alt i &a{currency}&e."
+  currency-change-confirm-title: "Gjør opp og bytt valuta?"
   prompt-chip-size: "&aSkriv den nye sjetongverdien i chatten."
   prompt-chip-index: "&aSkriv den nye verdien for sjetong nr. {index} i chatten."
   prompt-new-value: "&aSkriv den nye verdien."

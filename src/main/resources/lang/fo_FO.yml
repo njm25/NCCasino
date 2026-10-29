@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault varð ikki funnið. Legg Vault inn fyri at brúka tað saman við NCCasino."
   economy-missing: "&cEingin búskaparíbót. Legg eina búskaparíbót inn fyri at brúka Vault."
   currency-mode-switched: "&eGjaldoyraháttur skiftur til: &a{mode}&e."
+  currency-change-players: "&eLeikarar mitt í einum spæli hjá hesum býtaranum: &a{count}&e. Spælini hjá teimum enda nú; tað, sum tey eiga til góðar, verður goldið, og veddingarnar verða endurgoldnar. Gjaldoyra: &a{currency}&e."
+  currency-change-confirm-title: "Gera upp og skifta gjaldoyra?"
   prompt-chip-size: "&aSkriva nýggja virðið á spælpeninginum í kjattið."
   prompt-chip-index: "&aSkriva nýggja virðið á spælpeningi #{index} í kjattið."
   prompt-new-value: "&aSkriva nýggja virðið."

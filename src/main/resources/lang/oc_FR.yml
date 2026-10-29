@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault pas trobat. Installatz Vault per l'utilizar amb NCCasino."
   economy-missing: "&cCap d'extension d'economia. Installatz una extension d'economia per utilizar Vault."
   currency-mode-switched: "&eMòde de moneda cambiat per: &a{mode}&e."
+  currency-change-players: "&eJogaires al mitan d'una partida amb aqueste cropièr: &a{count}&e. Lors partidas s'acaban ara; çò que lor es degut es pagat e lors escomesas son remborsadas, tot en &a{currency}&e."
+  currency-change-confirm-title: "Reglar e cambiar de moneda?"
   prompt-chip-size: "&aEscrivètz la novèla valor del geton dins lo chat."
   prompt-chip-index: "&aEscrivètz la novèla valor pel geton #{index} dins lo chat."
   prompt-new-value: "&aEscrivètz la novèla valor."

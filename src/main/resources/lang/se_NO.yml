@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault ii gávdnon. Sajáiduhte Vault geavahit dan NCCasinoin."
   economy-missing: "&cIi leat ekonomiijalasáhus. Sajáiduhte ekonomiijalasáhusa geavahit Vault."
   currency-mode-switched: "&eValuhttavuohki molsojuvvon: &a{mode}&e."
+  currency-change-players: "&eSpeallejeaddjit gaskkas speallu dán juogadeaddji luhtte: &a{count}&e. Sin spealut nohket dál; dat maid sii galget oažžut máksojuvvo, ja sin veađut máksojuvvojit ruovttoluotta. Valuhtta: &a{currency}&e."
+  currency-change-confirm-title: "Máksit ja molsut valuhta?"
   prompt-chip-size: "&aČále mearkka ođđa árvvu čáttas."
   prompt-chip-index: "&aČále ođđa árvvu mearkii #{index} čáttas."
   prompt-new-value: "&aČále ođđa árvvu."

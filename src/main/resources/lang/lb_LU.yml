@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault net fonnt. Installéier Vault, fir et mat NCCasino ze benotzen."
   economy-missing: "&cKee Wirtschafts-Plugin. Installéier e Wirtschafts-Plugin, fir Vault ze benotzen."
   currency-mode-switched: "&eWärungsmodus gewiesselt op: &a{mode}&e."
+  currency-change-players: "&eSpiller matzen an enger Partie bei dësem Croupier: &a{count}&e. Hir Partien ginn elo op en Enn; wat hinnen zousteet, gëtt ausbezuelt, an hir Asätz ginn zeréckbezuelt, alles an der Wärung &a{currency}&e."
+  currency-change-confirm-title: "Ofrechnen a Wärung änneren?"
   prompt-chip-size: "&aSchreif den neie Wäert vum Jeton am Chat."
   prompt-chip-index: "&aSchreif den neie Wäert fir de Jeton #{index} am Chat."
   prompt-new-value: "&aSchreif den neie Wäert."

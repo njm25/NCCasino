@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVtičnika Vault ni bilo mogoče najti. Namesti Vault za uporabo z vtičnikom NCCasino."
   economy-missing: "&cNi vtičnika za ekonomijo. Za uporabo vtičnika Vault namesti vtičnik za ekonomijo."
   currency-mode-switched: "&eNačin valute je spremenjen v: &a{mode}&e."
+  currency-change-players: "&eIgralci sredi igre pri tem delivcu: &a{count}&e. Njihove igre se zdaj končajo; kar jim pripada, bo izplačano, vložki pa vrnjeni v valuti &a{currency}&e."
+  currency-change-confirm-title: "Poravnati in zamenjati valuto?"
   prompt-chip-size: "&aV klepet vpiši novo vrednost žetona."
   prompt-chip-index: "&aV klepet vpiši novo vrednost žetona št. {index}."
   prompt-new-value: "&aVpiši novo vrednost."

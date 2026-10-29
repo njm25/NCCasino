@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cNíor aimsíodh Vault. Suiteáil Vault chun é a úsáid le NCCasino."
   economy-missing: "&cNíl aon bhreiseán geilleagair ann. Suiteáil breiseán geilleagair chun Vault a úsáid."
   currency-mode-switched: "&eMód an airgeadra anois: &a{mode}&e."
+  currency-change-players: "&eImreoirí i lár cluiche leis an déileálaí seo: &a{count}&e. Críochnaíonn a gcluichí anois; íoctar a bhfuil ag dul dóibh agus aisíoctar a ngeallta. Airgeadra: &a{currency}&e."
+  currency-change-confirm-title: "Íoc agus athraigh an t-airgeadra?"
   prompt-chip-size: "&aClóscríobh luach nua an licín sa chomhrá."
   prompt-chip-index: "&aClóscríobh luach nua licín #{index} sa chomhrá."
   prompt-new-value: "&aClóscríobh luach nua."

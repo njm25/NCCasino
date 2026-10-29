@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault nich funnen. Installeer Vault, üm dat mit NCCasino to bruken."
   economy-missing: "&cKeen Weertschops-Plugin. Installeer en Weertschops-Plugin, üm Vault to bruken."
   currency-mode-switched: "&eGeldmodus wesselt na: &a{mode}&e."
+  currency-change-players: "&eSpelers merrn in en Speel bi dissen Croupier: &a{count}&e. Ehr Spelen hört nu op; wat se kriegen schöllt, warrt utbetahlt, un ehr Insätz warrt trüchbetahlt, allens in de Geldsoort &a{currency}&e."
+  currency-change-confirm-title: "Afreken un Geldsoort ännern?"
   prompt-chip-size: "&aSchriev in'n Chat den nee'n Weert vun de Spelmark."
   prompt-chip-index: "&aSchriev in'n Chat den nee'n Weert för Spelmark #{index}."
   prompt-new-value: "&aSchriev den nee'n Weert."

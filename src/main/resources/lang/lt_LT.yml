@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cPapildinys Vault nerastas. Įdiek Vault, kad jį naudotum su NCCasino."
   economy-missing: "&cNėra ekonomikos papildinio. Įdiek ekonomikos papildinį, kad galėtum naudoti Vault."
   currency-mode-switched: "&eValiutos režimas pakeistas į: &a{mode}&e."
+  currency-change-players: "&eŽaidėjų, kurių žaidimas pas šį dalytoją nebaigtas: &a{count}&e. Jų žaidimai baigiami dabar: tai, kas jiems priklauso, išmokama, o statymai grąžinami, viskas valiuta &a{currency}&e."
+  currency-change-confirm-title: "Atsiskaityti ir keisti valiutą?"
   prompt-chip-size: "&aPokalbyje įrašyk naują žetono vertę."
   prompt-chip-index: "&aPokalbyje įrašyk naują žetono Nr. {index} vertę."
   prompt-new-value: "&aĮrašyk naują reikšmę."

@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cHindi nakita ang Vault. I-install ang Vault para gamitin kasama ng NCCasino."
   economy-missing: "&cWalang economy plugin. Mag-install ng economy plugin para magamit ang Vault."
   currency-mode-switched: "&eNapalitan ang mode ng currency sa: &a{mode}&e."
+  currency-change-players: "&eMga manlalarong nasa gitna ng laro sa dealer na ito: &a{count}&e. Matatapos na ngayon ang mga laro nila; babayaran ang dapat sa kanila at ibabalik ang mga taya nila, lahat sa &a{currency}&e."
+  currency-change-confirm-title: "Bayaran at palitan ang currency?"
   prompt-chip-size: "&aI-type sa chat ang bagong halaga ng chip."
   prompt-chip-index: "&aI-type sa chat ang bagong halaga ng chip #{index}."
   prompt-new-value: "&aI-type ang bagong halaga."

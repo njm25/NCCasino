@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault табылган жок. NCCasino менен колдонуу үчүн Vault орнотуңуз."
   economy-missing: "&cЭкономика плагини жок. Vault колдонуу үчүн экономика плагинин орнотуңуз."
   currency-mode-switched: "&eВалюта режими которулду: &a{mode}&e."
+  currency-change-players: "&eБул дилерде оюн ортосундагы оюнчулар: &a{count}&e. Алардын оюндары азыр бүтөт; аларга тиешелүү сумма төлөнөт, ал эми коюмдары кайтарылат. Валюта: &a{currency}&e."
+  currency-change-confirm-title: "Эсептешип, валютаны алмаштыруу?"
   prompt-chip-size: "&aЧатка фишканын жаңы наркын жазыңыз."
   prompt-chip-index: "&aЧатка №{index} фишканын жаңы наркын жазыңыз."
   prompt-new-value: "&aЖаңы маанини жазыңыз."

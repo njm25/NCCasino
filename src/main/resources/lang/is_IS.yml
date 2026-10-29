@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault fannst ekki. Settu upp Vault til að nota það með NCCasino."
   economy-missing: "&cEngin hagkerfisviðbót. Settu upp hagkerfisviðbót til að nota Vault."
   currency-mode-switched: "&eGjaldmiðilsham breytt í: &a{mode}&e."
+  currency-change-players: "&eLeikmenn í miðjum leik hjá þessum gjafara: &a{count}&e. Leikjum þeirra lýkur núna; það sem þeir eiga inni er greitt og veðmál þeirra endurgreidd. Gjaldmiðill: &a{currency}&e."
+  currency-change-confirm-title: "Gera upp og skipta um gjaldmiðil?"
   prompt-chip-size: "&aSkrifaðu nýtt virði spilapenings í spjallið."
   prompt-chip-index: "&aSkrifaðu nýtt virði fyrir spilapening nr. {index} í spjallið."
   prompt-new-value: "&aSkrifaðu nýtt gildi."

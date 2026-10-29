@@ -65,6 +65,15 @@ public class DealerInventory implements InventoryHolder, Listener {
     }
 
     /**
+     * The players with money in play at this table: those {@link #delete}
+     * would settle. Tables that are themselves a player's session need no
+     * override.
+     */
+    public java.util.Set<UUID> playersMidGame() {
+        return org.nc.nccasino.session.SessionRegistry.playersMatching(session -> session == this);
+    }
+
+    /**
      * Closes, on the next tick, every open window whose game retired it. A
      * table torn down while the plugin keeps running -- a dealer rebuilt by
      * /ncc reload, a Citizens NPC respawning, an admin rebuilding a table --

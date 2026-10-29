@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault neet gevónde. Installeer Vault óm 't mèt NCCasino te gebroeke."
   economy-missing: "&cGein economieplugin. Installeer 'n economieplugin óm Vault te gebroeke."
   currency-mode-switched: "&eValutamodus gewisseld nao: &a{mode}&e."
+  currency-change-players: "&eSpelers midden in 'n spel bie dees dealer: &a{count}&e. Hun spelle eindige noe; wat ze tegood höbbe weurt oetbetaold en hun inzètte weure trökbetaold, alles in &a{currency}&e."
+  currency-change-confirm-title: "Aafrekene en valuta verangere?"
   prompt-chip-size: "&aTyp in de chat de nuuj fichewaerde."
   prompt-chip-index: "&aTyp in de chat de nuuj waerde veur fiche #{index}."
   prompt-new-value: "&aTyp de nuuj waerde."

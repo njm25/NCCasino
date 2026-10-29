@@ -49,6 +49,17 @@ public class MinesInventory extends DealerInventory {
         interactionLocks.clear();
         unregisterListener();  // Unregister listener when deleting the inventory
     }
+
+    @Override
+    public java.util.Set<UUID> playersMidGame() {
+        java.util.Set<UUID> players = new java.util.HashSet<>();
+        for (Map.Entry<UUID, MinesTable> entry : Tables.entrySet()) {
+            if (SessionRegistry.isRegistered(entry.getKey(), entry.getValue())) {
+                players.add(entry.getKey());
+            }
+        }
+        return players;
+    }
    
 
     @EventHandler

@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault bulunamadı. NCCasino ile kullanmak için Vault kur."
   economy-missing: "&cEkonomi eklentisi yok. Vault kullanmak için bir ekonomi eklentisi kur."
   currency-mode-switched: "&ePara birimi modu değiştirildi: &a{mode}&e."
+  currency-change-players: "&eBu krupiyede oyunun ortasındaki oyuncular: &a{count}&e. Oyunları şimdi sona eriyor; alacakları ödenir ve bahisleri iade edilir, hepsi &a{currency}&e para biriminde."
+  currency-change-confirm-title: "Ödeşip para birimi değişsin mi?"
   prompt-chip-size: "&aSohbete yeni fiş değerini yaz."
   prompt-chip-index: "&aSohbete #{index} fişi için yeni değeri yaz."
   prompt-new-value: "&aYeni değeri yaz."

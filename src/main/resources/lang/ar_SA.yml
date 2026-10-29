@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cلم يعثر على Vault. ثبت Vault لاستخدامه مع NCCasino."
   economy-missing: "&cلا توجد إضافة اقتصاد. ثبت إضافة اقتصاد لاستخدام Vault."
   currency-mode-switched: "&eتم تبديل وضع العملة إلى: &a{mode}&e."
+  currency-change-players: "&eاللاعبون في منتصف اللعب لدى هذا الموزع: &a{count}&e. تنتهي ألعابهم الآن، ويدفع لهم ما يستحقونه وتعاد إليهم رهاناتهم بعملة &a{currency}&e."
+  currency-change-confirm-title: "تسوية الحساب وتغيير العملة؟"
   prompt-chip-size: "&aاكتب في الدردشة القيمة الجديدة للرقاقة."
   prompt-chip-index: "&aاكتب في الدردشة القيمة الجديدة للرقاقة رقم {index}."
   prompt-new-value: "&aاكتب القيمة الجديدة."

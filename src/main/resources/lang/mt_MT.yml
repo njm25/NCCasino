@@ -1118,6 +1118,8 @@ admin:
   vault-missing: "&cVault ma nstabx. Installa Vault biex tużah man-NCCasino."
   economy-missing: "&cM'hemm l-ebda plugin tal-ekonomija. Installa plugin tal-ekonomija biex tuża Vault."
   currency-mode-switched: "&eIl-modalità tal-munita nbidlet għal: &a{mode}&e."
+  currency-change-players: "&ePlejers f'nofs logħba ma' dan id-dealer: &a{count}&e. Il-logħob tagħhom jintemm issa; dak li għandhom jieħdu jitħallas u l-imħatri tagħhom jingħataw lura bħala rifużjoni. Munita: &a{currency}&e."
+  currency-change-confirm-title: "Issalda u biddel il-munita?"
   prompt-chip-size: "&aIkteb il-valur il-ġdid taċ-ċippa fiċ-chat."
   prompt-chip-index: "&aIkteb il-valur il-ġdid għaċ-ċippa #{index} fiċ-chat."
   prompt-new-value: "&aIkteb il-valur il-ġdid."

@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault ne troviĝis. Instalu Vault por uzi ĝin kun NCCasino."
   economy-missing: "&cMankas ekonomia kromprogramo. Instalu ekonomian kromprogramon por uzi Vault."
   currency-mode-switched: "&eValuta reĝimo ŝanĝita al: &a{mode}&e."
+  currency-change-players: "&eLudantoj meze de ludo ĉe ĉi tiu krupiero: &a{count}&e. Iliaj ludoj finiĝas nun; kio estas ŝuldata al ili estas pagata, kaj iliaj vetoj estas repagataj, ĉio en la valuto &a{currency}&e."
+  currency-change-confirm-title: "Ĉu kvitigi kaj ŝanĝi la valuton?"
   prompt-chip-size: "&aTajpu la novan valoron de ĵetono en la babilejo."
   prompt-chip-index: "&aTajpu la novan valoron por ĵetono n-ro {index} en la babilejo."
   prompt-new-value: "&aTajpu novan valoron."

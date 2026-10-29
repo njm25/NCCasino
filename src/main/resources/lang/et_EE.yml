@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cPluginat Vault ei leitud. Paigalda Vault, et kasutada seda koos NCCasino-ga."
   economy-missing: "&cMajanduspluginat pole. Vault'i kasutamiseks paigalda majandusplugin."
   currency-mode-switched: "&eValuutarežiim on nüüd: &a{mode}&e."
+  currency-change-players: "&eMängijad keset mängu selle diileri juures: &a{count}&e. Nende mängud lõpevad nüüd; neile kuuluv makstakse välja ja panused tagastatakse, kõik valuutas &a{currency}&e."
+  currency-change-confirm-title: "Arveldada ja vahetada valuuta?"
   prompt-chip-size: "&aKirjuta vestlusesse žetooni uus väärtus."
   prompt-chip-index: "&aKirjuta vestlusesse žetooni nr {index} uus väärtus."
   prompt-new-value: "&aKirjuta uus väärtus."

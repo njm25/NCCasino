@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault পাওয়া যায়নি। NCCasino-র সঙ্গে ব্যবহার করতে Vault ইনস্টল করুন।"
   economy-missing: "&cকোনো ইকোনমি প্লাগইন নেই। Vault ব্যবহার করতে একটি ইকোনমি প্লাগইন ইনস্টল করুন।"
   currency-mode-switched: "&eমুদ্রার মোড বদলানো হয়েছে: &a{mode}&e।"
+  currency-change-players: "&eএই ডিলারের কাছে খেলার মাঝখানে থাকা খেলোয়াড়: &a{count}&e। তাঁদের খেলা এখনই শেষ হবে; তাঁদের পাওনা পরিশোধ করা হবে এবং বাজি ফেরত দেওয়া হবে। মুদ্রা: &a{currency}&e।"
+  currency-change-confirm-title: "হিসাব মিটিয়ে মুদ্রা বদলাবেন?"
   prompt-chip-size: "&aচ্যাটে চিপের নতুন মান লিখুন।"
   prompt-chip-index: "&aচিপ #{index}: চ্যাটে নতুন মান লিখুন।"
   prompt-new-value: "&aনতুন মান লিখুন।"

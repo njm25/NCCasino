@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault не е намерен. Инсталирай Vault, за да го използваш с NCCasino."
   economy-missing: "&cНяма икономически плъгин. Инсталирай икономически плъгин, за да използваш Vault."
   currency-mode-switched: "&eРежимът на валутата е сменен на: &a{mode}&e."
+  currency-change-players: "&eИграчи по средата на игра при това крупие: &a{count}&e. Игрите им приключват сега; дължимото им се изплаща, а залозите им се връщат във валутата &a{currency}&e."
+  currency-change-confirm-title: "Разплащане и смяна на валутата?"
   prompt-chip-size: "&aНапиши в чата новата стойност на чипа."
   prompt-chip-index: "&aНапиши в чата новата стойност за чип №{index}."
   prompt-new-value: "&aНапиши новата стойност."

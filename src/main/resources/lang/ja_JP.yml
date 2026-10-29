@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault が見つかりません。NCCasino で使うには Vault をインストールしてください。"
   economy-missing: "&c経済プラグインがありません。Vault を使うには経済プラグインをインストールしてください。"
   currency-mode-switched: "&e通貨モードを切り替えました：&a{mode}&e。"
+  currency-change-players: "&eこのディーラーでプレイ中のプレイヤー数：&a{count}&e。プレイ中のゲームは今すぐ終了し、受け取るべき配当の支払いとベットの返金を &a{currency}&e で行います。"
+  currency-change-confirm-title: "精算して通貨を変更しますか？"
   prompt-chip-size: "&a新しいチップの額面をチャットに入力してください。"
   prompt-chip-index: "&aチップ #{index} の新しい額面をチャットに入力してください。"
   prompt-new-value: "&a新しい値を入力してください。"

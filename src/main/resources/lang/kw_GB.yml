@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cNy veu kevys Vault. Ynstallyewgh Vault rag y usya gans NCCasino."
   economy-missing: "&cNyns eus ystynnans erbysieth. Ynstallyewgh ystynnans erbysieth rag usya Vault."
   currency-mode-switched: "&eModh an mona chanjys dhe: &a{mode}&e."
+  currency-change-players: "&eGwarioryon yn kres gwari gans an kroupyer ma: &a{count}&e. Aga gwariow a worfen lemmyn; an pyth yw kendon dhedha a vydh tylys ha'ga gweystlow a vydh attelys. Mona: &a{currency}&e."
+  currency-change-confirm-title: "Tyli ha chanjya an mona?"
   prompt-chip-size: "&aSkrifewgh talvos nowydh an chyp y'n kescows."
   prompt-chip-index: "&aSkrifewgh talvos nowydh rag chyp #{index} y'n kescows."
   prompt-new-value: "&aSkrifewgh talvos nowydh."

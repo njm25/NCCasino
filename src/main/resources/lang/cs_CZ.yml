@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault nenalezen. Nainstaluj Vault pro použití s NCCasino."
   economy-missing: "&cChybí ekonomický plugin. Pro použití pluginu Vault nainstaluj ekonomický plugin."
   currency-mode-switched: "&eRežim měny přepnut na: &a{mode}&e."
+  currency-change-players: "&ePočet hráčů uprostřed hry u tohoto krupiéra: &a{count}&e. Jejich hry nyní skončí; co jim náleží, bude vyplaceno a sázky vráceny v měně &a{currency}&e."
+  currency-change-confirm-title: "Vyúčtovat a změnit měnu?"
   prompt-chip-size: "&aNapiš do chatu novou hodnotu žetonu."
   prompt-chip-index: "&aNapiš do chatu novou hodnotu žetonu č. {index}."
   prompt-new-value: "&aNapiš novou hodnotu."

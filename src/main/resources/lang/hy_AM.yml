@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault-ը չի գտնվել։ NCCasino-ի հետ օգտագործելու համար տեղադրեք Vault։"
   economy-missing: "&cՏնտեսության պլագին չկա։ Vault-ն օգտագործելու համար տեղադրեք տնտեսության պլագին։"
   currency-mode-switched: "&eԱրժույթի ռեժիմը փոխվեց՝ &a{mode}&e։"
+  currency-change-players: "&eԱյս դիլերի մոտ խաղի կեսին գտնվող խաղացողներ՝ &a{count}&e։ Նրանց խաղերն այժմ ավարտվում են, նրանց հասանելիքը վճարվում է, իսկ խաղադրույքները վերադարձվում են։ Արժույթ՝ &a{currency}&e։"
+  currency-change-confirm-title: "Հաշիվը փակե՞լ և փոխել արժույթը։"
   prompt-chip-size: "&aԶրուցարանում գրեք ֆիշկայի նոր արժեքը։"
   prompt-chip-index: "&aԶրուցարանում գրեք №{index} ֆիշկայի նոր արժեքը։"
   prompt-new-value: "&aԳրեք նոր արժեքը։"

@@ -71,6 +71,7 @@ import org.nc.nccasino.currency.CurrencyManager;
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.CurrencyDisplay;
 import org.nc.nccasino.currency.DealerCurrencySettings;
+import org.nc.nccasino.currency.DealerCurrencySnapshot;
 import org.nc.nccasino.currency.MoneyHelper;
 import org.nc.nccasino.payout.OverflowBankReminder;
 import org.nc.nccasino.payout.OverflowBankService;
@@ -855,6 +856,15 @@ public final class Nccasino extends JavaPlugin implements Listener {
     }
 
     public void reloadDealer(LivingEntity mob) {
+        reloadDealer(mob, null);
+    }
+
+    /**
+     * Rebuilds a dealer from its config. Its tables are settled first, in
+     * {@code playedIn} when the config's currency may have changed under them
+     * (see {@link #settleDealerTables}).
+     */
+    public void reloadDealer(LivingEntity mob, DealerCurrencySnapshot playedIn) {
         if (!Dealer.isDealer(mob)) {
             return;
         }
@@ -862,7 +872,7 @@ public final class Nccasino extends JavaPlugin implements Listener {
         //getLogger().info("[Debug] Reloading dealer: " + mob.getType());
     
         // Delete the associated inventory for this dealer
-        deleteAssociatedInventories(mob);
+        settleDealerTables(mob, playedIn);
     
         String internalName = Dealer.getInternalName(mob);
         String name = getConfig().getString("dealers." + internalName + ".display-name", "Dealer");
@@ -890,13 +900,13 @@ public final class Nccasino extends JavaPlugin implements Listener {
         }
     }
     
-    private void reloadDealers() {
+    private void reloadDealers(Map<String, DealerCurrencySnapshot> playedIn) {
         Bukkit.getWorlds().forEach(world -> {
             for (Entity entity : world.getEntities()) {
                 // See reinitializeDealers: Citizens NPC dealers are living
                 // entities but not mobs, and must reload with everything else.
                 if (entity instanceof LivingEntity mob) {
-                    reloadDealer(mob); // Now calls the refactored function
+                    reloadDealer(mob, Dealer.isDealer(mob) ? playedIn.get(Dealer.getInternalName(mob)) : null);
                 }
             }
         });
@@ -1007,6 +1017,10 @@ public final class Nccasino extends JavaPlugin implements Listener {
     }
 
     public Material getCurrency(String internalName) {
+        DealerCurrencySnapshot settling = settlingCurrency(internalName);
+        if (settling != null) {
+            return settling.material();
+        }
         String materialName = getConfig().getString("dealers." + internalName + ".currency.material", "EMERALD").toUpperCase(java.util.Locale.ROOT);
         Material material = Material.matchMaterial(materialName);
         if (material == null || material == Material.AIR) {
@@ -1023,7 +1037,62 @@ public final class Nccasino extends JavaPlugin implements Listener {
 
     private final Set<String> invalidCurrencyWarned = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
+    /** Dealers whose tables are being settled in the currency they were played in; see {@link #settleDealerTables}. */
+    private final Map<String, DealerCurrencySnapshot> settlingCurrencies = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** The currency a dealer's tables are settling in right now, or null when they use the config's. */
+    public DealerCurrencySnapshot settlingCurrency(String internalName) {
+        return internalName == null || settlingCurrencies == null ? null : settlingCurrencies.get(internalName);
+    }
+
+    /** This dealer's currency as the config has it now. */
+    public DealerCurrencySnapshot currencySnapshot(String internalName) {
+        return new DealerCurrencySnapshot(getCurrencyMode(internalName), getCurrency(internalName), getCurrencyName(internalName));
+    }
+
+    /** Every dealer's currency as the config has it now, by internal name. */
+    public Map<String, DealerCurrencySnapshot> currencySnapshots() {
+        Map<String, DealerCurrencySnapshot> snapshots = new HashMap<>();
+        ConfigurationSection dealers = getConfig().getConfigurationSection("dealers");
+        if (dealers != null) {
+            for (String internalName : dealers.getKeys(false)) {
+                snapshots.put(internalName, currencySnapshot(internalName));
+            }
+        }
+        return snapshots;
+    }
+
+    /**
+     * Settles a dealer's tables the way a server stop does (games end, what is
+     * owed is paid, stakes still on the table are refunded), paying all of it
+     * in {@code playedIn}: the currency the games were played in, even when the
+     * config already names a new one. Null settles in the config's currency.
+     */
+    public void settleDealerTables(LivingEntity mob, DealerCurrencySnapshot playedIn) {
+        String internalName = Dealer.getInternalName(mob);
+        if (playedIn == null || internalName == null) {
+            deleteAssociatedInventories(mob);
+            return;
+        }
+        settlingCurrencies.put(internalName, playedIn);
+        try {
+            deleteAssociatedInventories(mob);
+        } finally {
+            settlingCurrencies.remove(internalName);
+        }
+    }
+
+    /** The players with money in play at this dealer right now. */
+    public Set<UUID> playersMidGame(LivingEntity mob) {
+        DealerInventory inv = DealerInventory.getInventory(Dealer.getUniqueId(mob));
+        return inv == null ? Set.of() : inv.playersMidGame();
+    }
+
     public String getCurrencyName(String internalName) {
+        DealerCurrencySnapshot settling = settlingCurrency(internalName);
+        if (settling != null) {
+            return settling.name();
+        }
         return getConfig().getString("dealers." + internalName + ".currency.name", "Emerald");
     }
 
@@ -1215,8 +1284,13 @@ public final class Nccasino extends JavaPlugin implements Listener {
         reinitializeDealers();
     }
 
-    public void reloadDealerConfigurations() {
-        reloadDealers();
+    /**
+     * Rebuilds every dealer from a config just reloaded. {@code playedIn} is
+     * each dealer's currency before the reload: a hand-edited currency must
+     * not re-denominate the stakes its tables still hold.
+     */
+    public void reloadDealerConfigurations(Map<String, DealerCurrencySnapshot> playedIn) {
+        reloadDealers(playedIn);
     }
 
     public static void sendErrorMessage(Player player, String msg){

@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cVault hittades inte. Installera Vault för att använda det med NCCasino."
   economy-missing: "&cInget ekonomiplugin. Installera ett ekonomiplugin för att använda Vault."
   currency-mode-switched: "&eValutaläget bytt till: &a{mode}&e."
+  currency-change-players: "&eSpelare mitt i ett spel hos den här croupiern: &a{count}&e. Deras spel avslutas nu; det de har att få betalas ut och deras insatser återbetalas, allt i &a{currency}&e."
+  currency-change-confirm-title: "Gör upp och byt valuta?"
   prompt-chip-size: "&aSkriv den nya markervalören i chatten."
   prompt-chip-index: "&aSkriv den nya valören för marker nr {index} i chatten."
   prompt-new-value: "&aSkriv det nya värdet."

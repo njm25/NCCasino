@@ -917,25 +917,75 @@ public class AdminMenu extends Menu {
             return;
         }
 
-        this.currencyMode = next;
-
-        // Update the config
-        if (dealer != null) {
-            String internalName = Dealer.getInternalName(dealer);
-            plugin.getConfig().set("dealers." + internalName + ".currency.mode", next.name());
-            plugin.saveConfig();
+        if (dealer == null) {
+            return;
         }
+        String internalName = Dealer.getInternalName(dealer);
+        changeCurrency(player,
+            () -> plugin.getConfig().set("dealers." + internalName + ".currency.mode", next.name()),
+            () -> {
+                this.currencyMode = next;
+                updateCurrencyButtons();
+                if (plugin.getPreferences(player.getUniqueId()).getMessageSetting() == Preferences.MessageSetting.VERBOSE) {
+                    player.sendMessage(text("admin.currency-mode-switched", "mode", next.name()));
+                }
+            });
+    }
 
-        updateCurrencyButtons();
-
-        Preferences.MessageSetting messPref = plugin.getPreferences(player.getUniqueId()).getMessageSetting();
-        switch (messPref) {
-            case VERBOSE:
-                player.sendMessage(text("admin.currency-mode-switched", "mode", this.currencyMode.name()));
-                break;
-            default:
-                break;
+    /**
+     * Changes this dealer's currency (item or Vault mode) without touching the
+     * money already in play. Its tables are settled first, the way a server
+     * stop settles them, while the config still names the currency they were
+     * played in: what is owed is paid and stakes are refunded in that currency.
+     * Only then does {@code change} write the new one, and the dealer is
+     * rebuilt with it. With anyone mid-game the admin confirms first.
+     */
+    private void changeCurrency(Player player, Runnable change, Runnable afterwards) {
+        java.util.Set<UUID> playing = plugin.playersMidGame(dealer);
+        if (playing.isEmpty()) {
+            applyCurrencyChange(change);
+            afterwards.run();
+            return;
         }
+        String internalName = Dealer.getInternalName(dealer);
+        player.sendMessage(text("admin.currency-change-players",
+            "count", playing.size(), "currency", plugin.currencySnapshot(internalName).label()));
+        confirmCurrencyChange(player, () -> {
+            applyCurrencyChange(change);
+            afterwards.run();
+        });
+    }
+
+    /** Opens the Yes/No prompt for a currency change; {@code confirmed} runs on Yes. */
+    void confirmCurrencyChange(Player player, Runnable confirmed) {
+        ConfirmMenu confirm = new ConfirmMenu(
+            player,
+            dealerId,
+            text("admin.currency-change-confirm-title"),
+            (uuid) -> {
+                player.closeInventory();
+                confirmed.run();
+            },
+            (uuid) -> {
+                AdminMenu adminMenu = AdminMenu.adminInventories.get(player.getUniqueId());
+                if (adminMenu == null) {
+                    adminMenu = new AdminMenu(dealerId, player, plugin);
+                }
+                player.openInventory(adminMenu.getInventory());
+            },
+            plugin
+        );
+        player.openInventory(confirm.getInventory());
+    }
+
+    private void applyCurrencyChange(Runnable change) {
+        String internalName = Dealer.getInternalName(dealer);
+        // Settle in the old currency before the config names the new one; the
+        // pin covers anything in the teardown that reads it.
+        plugin.settleDealerTables(dealer, plugin.currencySnapshot(internalName));
+        change.run();
+        plugin.saveConfig();
+        plugin.reloadDealer(dealer);
     }
 
     private void updateCurrencyButtons() {
@@ -1297,38 +1347,40 @@ public class AdminMenu extends Menu {
                 displayName = selectedItem.getItemMeta().getDisplayName();
             }
             
-            // Save to config
+            // Save to config, once the tables are settled in the old currency
             String internalName = Dealer.getInternalName(dealer);
-            plugin.getConfig().set("dealers." + internalName + ".currency.material", selectedMaterial.name());
-            plugin.getConfig().set("dealers." + internalName + ".currency.name", displayName);
-            plugin.saveConfig();
-    
-            // Update inventory display
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                updateCurrencyButtons();
-                player.updateInventory(); // Ensure client sees the change immediately
-            }, 1L);
-    
-            Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
-            plugin.reloadDealer(dealer);
-            switch(messPref){
-                case STANDARD:{
-                player.sendMessage(text("admin.currency-updated"));
-                    break;}
-                case VERBOSE:{
-                player.sendMessage(text(
-                    "admin.currency-updated-detailed",
-                    "name",
-                    displayName,
-                    "material",
-                    selectedMaterial.name()
-                ));
-                    break;}
-                case NONE:{break;
-                }
-            } 
-            event.setCancelled(true);
+            String selectedName = displayName;
+            changeCurrency(player, () -> {
+                plugin.getConfig().set("dealers." + internalName + ".currency.material", selectedMaterial.name());
+                plugin.getConfig().set("dealers." + internalName + ".currency.name", selectedName);
+            }, () -> currencyItemChanged(player, selectedMaterial, selectedName));
         }
+    }
+
+    private void currencyItemChanged(Player player, Material selectedMaterial, String displayName) {
+        // Update inventory display
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            updateCurrencyButtons();
+            player.updateInventory(); // Ensure client sees the change immediately
+        }, 1L);
+    
+        Preferences.MessageSetting messPref=plugin.getPreferences(player.getUniqueId()).getMessageSetting();
+        switch(messPref){
+            case STANDARD:{
+            player.sendMessage(text("admin.currency-updated"));
+                break;}
+            case VERBOSE:{
+            player.sendMessage(text(
+                "admin.currency-updated-detailed",
+                "name",
+                displayName,
+                "material",
+                selectedMaterial.name()
+            ));
+                break;}
+            case NONE:{break;
+            }
+        } 
     }
 
     // ----- Event handlers -----

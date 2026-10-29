@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cדער פּלאַגין Vault איז נישט געפֿונען. אינסטאַליר Vault אים צו נוצן מיט NCCasino."
   economy-missing: "&cקײן עקאָנאָמיע־פּלאַגין. אינסטאַליר אַן עקאָנאָמיע־פּלאַגין צו נוצן Vault."
   currency-mode-switched: "&eדער װאַלוטע־מאָדוס איז געביטן אויף: &a{mode}&e."
+  currency-change-players: "&eשפּילער אין מיטן אַ שפּיל בײַ דעם דילער: &a{count}&e. זײערע שפּילן ענדיקן זיך איצט; װאָס מע איז זײ שולדיק װערט באַצאָלט און זײערע אײַנזאַצן װערן צוריקגעצאָלט, אַלץ אין &a{currency}&e."
+  currency-change-confirm-title: "אָפּרעכענען און ביטן די װאַלוטע?"
   prompt-chip-size: "&aשרײַב אין טשאַט אַ נײַעם װערט פֿאַרן זשעטאָן."
   prompt-chip-index: "&aשרײַב אין טשאַט אַ נײַעם װערט פֿאַר זשעטאָן נומער {index}."
   prompt-new-value: "&aשרײַב אַ נײַעם װערט."

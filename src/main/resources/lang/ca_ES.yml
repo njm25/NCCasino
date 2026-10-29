@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cNo s'ha trobat Vault. Instal·la Vault per fer-lo servir amb NCCasino."
   economy-missing: "&cNo hi ha cap connector d'economia. Instal·la'n un per fer servir Vault."
   currency-mode-switched: "&eMode de moneda nou: &a{mode}&e."
+  currency-change-players: "&eJugadors a mitja partida amb aquest crupier: &a{count}&e. Les seves partides acaben ara; se'ls paga el que se'ls deu i se'ls retornen les apostes, tot en &a{currency}&e."
+  currency-change-confirm-title: "Liquidar i canviar de moneda?"
   prompt-chip-size: "&aEscriu al xat el nou valor de la fitxa."
   prompt-chip-index: "&aEscriu al xat el nou valor de la fitxa núm. {index}."
   prompt-new-value: "&aEscriu el valor nou."

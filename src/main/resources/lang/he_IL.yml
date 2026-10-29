@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cהתוסף Vault לא נמצא. יש להתקין את Vault כדי להשתמש בו עם NCCasino."
   economy-missing: "&cאין תוסף כלכלה. יש להתקין תוסף כלכלה כדי להשתמש ב-Vault."
   currency-mode-switched: "&eמצב המטבע הוחלף ל: &a{mode}&e."
+  currency-change-players: "&eשחקנים באמצע משחק אצל הדילר הזה: &a{count}&e. המשחקים שלהם מסתיימים עכשיו; מה שמגיע להם משולם וההימורים שלהם מוחזרים, הכול במטבע &a{currency}&e."
+  currency-change-confirm-title: "להסדיר ולהחליף מטבע?"
   prompt-chip-size: "&aיש להקליד בצ׳אט ערך חדש לאסימון."
   prompt-chip-index: "&aיש להקליד בצ׳אט ערך חדש לאסימון מס׳ {index}."
   prompt-new-value: "&aיש להקליד ערך חדש."

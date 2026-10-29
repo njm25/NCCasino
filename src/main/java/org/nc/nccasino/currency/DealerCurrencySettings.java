@@ -10,6 +10,11 @@ public final class DealerCurrencySettings {
 		if (plugin == null || internalName == null || internalName.isBlank()) {
 			return CurrencyMode.STANDARD;
 		}
+		// Tables settling after a currency change pay in what they were played in.
+		DealerCurrencySnapshot settling = plugin.settlingCurrency(internalName);
+		if (settling != null) {
+			return settling.mode();
+		}
 
 		String path = "dealers." + internalName + ".currency.mode";
 		String raw = plugin.getConfig().getString(path, "STANDARD");

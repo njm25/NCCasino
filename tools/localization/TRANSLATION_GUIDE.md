@@ -449,6 +449,16 @@ actual implementation, and update this section.
   (`AdminMenu.handleToggleCurrencyMode`, `updateCurrencyButtons`). Render "install
   Vault to use it with NCCasino", never "install Vault to use NCCasino", which
   would claim the plugin needs Vault.
+- **`admin.currency-change-players` / `currency-change-confirm-title` settle
+  games in the old currency.** An admin changing a dealer's currency mode or
+  currency item while players are mid-game gets the chat line, then a Yes/No
+  `ConfirmMenu` titled by the second key. On Yes the dealer's games end the way
+  a server shutdown ends them: decided winnings are paid and stakes still on
+  the table are refunded, in `{currency}` = the *old* currency (literal `Vault`
+  or the item's display name, so keep it behind a colon label or a governing
+  "currency" noun in inflecting locales). `{count}` is a number of players in
+  label-colon form. "Dealer" is the physical dealer. (Verified:
+  `AdminMenu.changeCurrency`/`confirmCurrencyChange`.)
 - **`dragon-descent.invalid-action-capitalized` differs from `invalid-action`
   only by English Title Case** (`DragonClient`). A script without letter case
   (Tamil, Thai, Devanagari, CJK, Georgian, Armenian) uses the same text for

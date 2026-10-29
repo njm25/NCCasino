@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cCha deach Vault a lorg. Stàlaich Vault gus a chleachdadh le NCCasino."
   economy-missing: "&cChan eil plugan eaconamaidh ann. Stàlaich plugan eaconamaidh gus Vault a chleachdadh."
   currency-mode-switched: "&eChaidh modh an airgid atharrachadh gu: &a{mode}&e."
+  currency-change-players: "&eCluicheadairean am meadhan geama aig an roinneadair seo: &a{count}&e. Thig na geamannan aca gu crìch a-nis; thèid na tha aca ri fhaighinn a phàigheadh agus na gill aca a thilleadh. Airgead: &a{currency}&e."
+  currency-change-confirm-title: "Pàigh is atharraich an t-airgead?"
   prompt-chip-size: "&aSgrìobh luach ùr an tòcain sa chabadaich."
   prompt-chip-index: "&aSgrìobh luach ùr an tòcain #{index} sa chabadaich."
   prompt-new-value: "&aSgrìobh luach ùr."

@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cKhông tìm thấy Vault. Hãy cài Vault để dùng với NCCasino."
   economy-missing: "&cChưa có plugin kinh tế. Hãy cài một plugin kinh tế để dùng Vault."
   currency-mode-switched: "&eĐã chuyển chế độ tiền tệ sang: &a{mode}&e."
+  currency-change-players: "&eNgười chơi đang giữa ván với người chia bài này: &a{count}&e. Ván chơi của họ kết thúc ngay bây giờ; khoản họ được nhận sẽ được trả và tiền cược sẽ được hoàn lại, tất cả bằng &a{currency}&e."
+  currency-change-confirm-title: "Thanh toán và đổi tiền tệ?"
   prompt-chip-size: "&aGõ mệnh giá chip mới trong khung chat."
   prompt-chip-index: "&aGõ mệnh giá mới cho chip #{index} trong khung chat."
   prompt-new-value: "&aGõ giá trị mới."

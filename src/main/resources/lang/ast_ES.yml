@@ -1122,6 +1122,8 @@ admin:
   vault-missing: "&cNun s'atopó Vault. Instala Vault pa usalu con NCCasino."
   economy-missing: "&cNun hai complementu d'economía. Instala un complementu d'economía pa usar Vault."
   currency-mode-switched: "&eMou de moneda camudáu a: &a{mode}&e."
+  currency-change-players: "&eXente a metá d'una partida con esti crupier: &a{count}&e. Les sos partíes terminen agora; págase-yos lo que se-yos debe y devuélvense-yos les apuestes, too en &a{currency}&e."
+  currency-change-confirm-title: "¿Liquidar y camudar la moneda?"
   prompt-chip-size: "&aEscribi'l nuevu valor de la ficha nel chat."
   prompt-chip-index: "&aEscribi'l nuevu valor pa la ficha #{index} nel chat."
   prompt-new-value: "&aEscribi'l nuevu valor."
