@@ -357,7 +357,7 @@ slots:
   wager-control-description: "&7مبلغ شرط روی هر خط فعال را تعیین می‌کند."
   wager-control-hint: "&7کلیک چپ برای ژتون بزرگ‌تر، کلیک راست برای ژتون کوچک‌تر."
   spin-lore-total: "&7کل شرط: &a{amount}"
-  spin-lore-breakdown: "&7هر خط {wager} &7× &a{lines} &7خط"
+  spin-lore-breakdown: "&7شرط {wager} برای هر خط &7× &a{lines} &7خط"
   spin-lore-balance: "&7موجودی: &a{amount}"
   spin-lore-balance-items: "&7موجودی: &7از آیتم‌های کوله‌ی شما پرداخت می‌شود."
   spin-lore-left-click: "&7کلیک چپ برای چرخاندن"

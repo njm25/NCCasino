@@ -357,7 +357,7 @@ slots:
   wager-control-description: "&7שטעלט די סומע װאָס מע שטעלט אויף יעדער אַקטיװער ליניע."
   wager-control-hint: "&7לינקער קליק פֿאַר אַ גרעסערן זשעטאָן, רעכטער קליק פֿאַר אַ קלענערן."
   spin-lore-total: "&7גאַנצער אײַנזאַץ: &a{amount}"
-  spin-lore-breakdown: "&7פּער ליניע {wager} &7× &a{lines} &7ליניעס"
+  spin-lore-breakdown: "&7אײַנזאַץ {wager} פּער ליניע &7× &a{lines} &7ליניעס"
   spin-lore-balance: "&7באַלאַנס: &a{amount}"
   spin-lore-balance-items: "&7באַלאַנס: &7באַצאָלט פֿון די זאַכן אין דײַן אינװענטאַר."
   spin-lore-left-click: "&7לינקער קליק צו דרײען"

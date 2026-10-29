@@ -357,7 +357,7 @@ slots:
   wager-control-description: "&7يحدد المبلغ المراهن به على كل خط نشط."
   wager-control-hint: "&7انقر بالزر الأيسر لرقاقة أكبر، وبالأيمن لرقاقة أصغر."
   spin-lore-total: "&7إجمالي الرهان: &a{amount}"
-  spin-lore-breakdown: "&7لكل خط {wager} &7× &a{lines} &7خطوط"
+  spin-lore-breakdown: "&7رهان {wager} لكل خط &7× &a{lines} &7خطوط"
   spin-lore-balance: "&7الرصيد: &a{amount}"
   spin-lore-balance-items: "&7الرصيد: &7يدفع من العناصر في مخزونك."
   spin-lore-left-click: "&7انقر بالزر الأيسر للتدوير"

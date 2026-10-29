@@ -357,7 +357,7 @@ slots:
   wager-control-description: "&7קובע את הסכום שמהמרים עליו בכל קו פעיל."
   wager-control-hint: "&7לחיצה שמאלית לאסימון גדול יותר, לחיצה ימנית לאסימון קטן יותר."
   spin-lore-total: "&7סך ההימור: &a{amount}"
-  spin-lore-breakdown: "&7לכל קו {wager} &7× &a{lines} &7קווים"
+  spin-lore-breakdown: "&7הימור {wager} לכל קו &7× &a{lines} &7קווים"
   spin-lore-balance: "&7יתרה: &a{amount}"
   spin-lore-balance-items: "&7יתרה: &7משולם מהפריטים שבתיק שלך."
   spin-lore-left-click: "&7לחיצה שמאלית לסיבוב"

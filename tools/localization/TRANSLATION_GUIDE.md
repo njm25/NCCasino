@@ -459,6 +459,12 @@ actual implementation, and update this section.
   "currency" noun in inflecting locales). `{count}` is a number of players in
   label-colon form. "Dealer" is the physical dealer. (Verified:
   `AdminMenu.changeCurrency`/`confirmCurrencyChange`.)
+- **`slots.spin-lore-breakdown` in RTL locales: keep an RTL word between
+  `{wager}` and `×`.** `{wager}` renders as `1 emerald` in item mode, a digit
+  followed by Latin text. In "per line {wager} × {lines} lines" order the
+  client's bidi pass glues `× 5` onto `emerald`, and the line displays as
+  "per-line 1 5 × emerald lines". The fa/ar/he/yi values use "bet {wager} per
+  line × {lines} lines" instead. (Checked with `java.text.Bidi`.)
 - **`dragon-descent.invalid-action-capitalized` differs from `invalid-action`
   only by English Title Case** (`DragonClient`). A script without letter case
   (Tamil, Thai, Devanagari, CJK, Georgian, Armenian) uses the same text for
