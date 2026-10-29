@@ -1918,6 +1918,10 @@ below for RTL locales (`RtlRules`):
   design.
 - In Hebrew, a hyphen before `1` reads as the `-1` sentinel (Java `\w` is
   ASCII-only): write `מ־1` with a maqaf, not `מ-1`.
+- Write a signed amount as English does (`-{amount}`, `+{amount}`). At run time
+  `RightToLeftSigns` moves a sign that follows RTL text to just after its
+  number (`5- emeralds`), which the client's bidi pass draws as `-5`; a sign
+  before the number would be drawn on its far side (`emeralds 5-`).
 
 Voices: `ar_SA` Modern Standard Arabic, masculine generic imperatives;
 `fa_IR` Iranian Persian, formal `شما`; `he_IL` gender-neutral infinitive

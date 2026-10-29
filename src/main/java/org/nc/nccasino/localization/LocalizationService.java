@@ -200,7 +200,7 @@ public final class LocalizationService {
         // Parse template formatting before substitution so dynamic values
         // remain opaque and cannot inject color codes.
         value = ChatColor.translateAlternateColorCodes('&', value);
-        return substitute(value, placeholders);
+        return RightToLeftSigns.apply(normalized, substitute(value, placeholders));
     }
 
     /**
