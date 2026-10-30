@@ -28,6 +28,20 @@ class PayoutMessagesTest {
     }
 
     @Test
+    void refundsDuringACurrencyChangeNameTheChangeAndTheOldCurrency() {
+        String[] stored = new String[1];
+        PayoutMessages.duringCurrencyChange("Emerald",
+            () -> stored[0] = PayoutMessages.serverRestartRefundContext("Coin Flip"));
+
+        PayoutMessages.StoredContext context = PayoutMessages.decodeContext(stored[0]);
+        assertEquals("payout.context-currency-change", context.localizationKey());
+        assertEquals("Coin Flip", context.gameType());
+        assertEquals("Emerald", context.currency());
+        assertEquals("payout.context-server-restart", PayoutMessages.decodeContext(
+            PayoutMessages.serverRestartRefundContext("Coin Flip")).localizationKey());
+    }
+
+    @Test
     void legacyEnglishContextsRemainBackwardCompatible() {
         assertNull(PayoutMessages.decodeContext(
             "You disconnected during an active Roulette game."

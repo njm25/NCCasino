@@ -53,6 +53,8 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.nc.nccasino.currency.DealerCurrencySnapshot;
+import org.nc.nccasino.payout.PayoutMessages;
 import org.nc.nccasino.helpers.CopperGolemState;
 import org.nc.nccasino.helpers.VariantNames;
 import org.nc.nccasino.helpers.StoreFile;
@@ -982,7 +984,9 @@ public class AdminMenu extends Menu {
         String internalName = Dealer.getInternalName(dealer);
         // Settle in the old currency before the config names the new one; the
         // pin covers anything in the teardown that reads it.
-        plugin.settleDealerTables(dealer, plugin.currencySnapshot(internalName));
+        DealerCurrencySnapshot playedIn = plugin.currencySnapshot(internalName);
+        PayoutMessages.duringCurrencyChange(playedIn.label(),
+            () -> plugin.settleDealerTables(dealer, playedIn));
         change.run();
         plugin.saveConfig();
         plugin.reloadDealer(dealer);

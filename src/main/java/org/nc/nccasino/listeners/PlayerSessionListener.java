@@ -235,7 +235,9 @@ public class PlayerSessionListener implements Listener {
             player,
             context.localizationKey(),
             "game",
-            game
+            game,
+            "currency",
+            context.currency() == null ? "" : context.currency()
         );
     }
 }

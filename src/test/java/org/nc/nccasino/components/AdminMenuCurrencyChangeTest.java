@@ -55,6 +55,7 @@ class AdminMenuCurrencyChangeTest {
     private Player admin;
     private final List<String> events = new ArrayList<>();
     private final List<String> messages = new ArrayList<>();
+    private final List<String> refundContexts = new ArrayList<>();
 
     @BeforeEach
     void setUp() {
@@ -94,6 +95,7 @@ class AdminMenuCurrencyChangeTest {
         when(data.get(any(), any())).thenReturn("cf");
         doAnswer(invocation -> {
             DealerCurrencySnapshot playedIn = invocation.getArgument(1);
+            refundContexts.add(org.nc.nccasino.payout.PayoutMessages.serverRestartRefundContext("Roulette"));
             events.add("settle in " + playedIn.mode() + "/" + playedIn.material()
                 + " while config says " + config.getString("dealers.cf.currency.mode") + "/" + config.getString("dealers.cf.currency.material"));
             return null;
@@ -160,6 +162,15 @@ class AdminMenuCurrencyChangeTest {
             "settle in VAULT/EMERALD while config says VAULT/EMERALD",
             "save",
             "rebuild with VANILLA/EMERALD"), events);
+        org.nc.nccasino.payout.PayoutMessages.StoredContext refund =
+            org.nc.nccasino.payout.PayoutMessages.decodeContext(refundContexts.get(0));
+        assertEquals("payout.context-currency-change", refund.localizationKey(),
+            "a refund from a currency change does not claim the server restarted");
+        assertEquals("Roulette", refund.gameType());
+        assertEquals("Vault", refund.currency(), "it names the old currency");
+        assertEquals("payout.context-server-restart", org.nc.nccasino.payout.PayoutMessages.decodeContext(
+            org.nc.nccasino.payout.PayoutMessages.serverRestartRefundContext("Roulette")).localizationKey(),
+            "restart refunds afterwards keep their message");
     }
 
     @Test

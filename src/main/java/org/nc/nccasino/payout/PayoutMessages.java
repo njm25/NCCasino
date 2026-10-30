@@ -12,7 +12,28 @@ public final class PayoutMessages {
 
     private static final String CONTEXT_PREFIX = "@nccasino:v1|";
 
+    /** Set while a dealer's tables settle for a currency change: the label of the currency they settle in. */
+    private static final ThreadLocal<String> currencyChangeLabel = new ThreadLocal<>();
+
     private PayoutMessages() {
+    }
+
+    /**
+     * Runs {@code settle} with refunds attributed to a currency change rather
+     * than a restart, naming {@code oldCurrencyLabel} as what they were paid in.
+     */
+    public static void duringCurrencyChange(String oldCurrencyLabel, Runnable settle) {
+        String previous = currencyChangeLabel.get();
+        currencyChangeLabel.set(oldCurrencyLabel);
+        try {
+            settle.run();
+        } finally {
+            if (previous == null) {
+                currencyChangeLabel.remove();
+            } else {
+                currencyChangeLabel.set(previous);
+            }
+        }
     }
 
     /**
@@ -28,9 +49,14 @@ public final class PayoutMessages {
      * The context line stored on a pending record created because the
      * server shut down while a round was still in flight — the game
      * couldn't be resolved to a real outcome, so the wager is refunded
-     * rather than played out.
+     * rather than played out. Inside {@link #duringCurrencyChange} the
+     * refund is attributed to the currency change instead.
      */
     public static String serverRestartRefundContext(String gameType) {
+        String currency = currencyChangeLabel.get();
+        if (currency != null) {
+            return encodeContext("currency-change", gameType) + "|" + currency;
+        }
         return encodeContext("server-restart", gameType);
     }
 
@@ -54,17 +80,19 @@ public final class PayoutMessages {
         if (storedContext == null || !storedContext.startsWith(CONTEXT_PREFIX)) {
             return null;
         }
-        String[] parts = storedContext.substring(CONTEXT_PREFIX.length()).split("\\|", 2);
-        if (parts.length != 2 || parts[1].isBlank()) {
+        String[] parts = storedContext.substring(CONTEXT_PREFIX.length()).split("\\|", 3);
+        if (parts.length < 2 || parts[1].isBlank()) {
             return null;
         }
+        String currency = parts.length == 3 ? parts[2] : null;
         String localizationKey = switch (parts[0]) {
             case "disconnected" -> "payout.context-disconnected";
             case "server-restart" -> "payout.context-server-restart";
             case "committed-result" -> "payout.context-committed-result";
+            case "currency-change" -> currency == null ? null : "payout.context-currency-change";
             default -> null;
         };
-        return localizationKey == null ? null : new StoredContext(localizationKey, parts[1]);
+        return localizationKey == null ? null : new StoredContext(localizationKey, parts[1], currency);
     }
 
     public static String gameLocalizationKey(String gameType) {
@@ -89,7 +117,8 @@ public final class PayoutMessages {
         return CONTEXT_PREFIX + reason + "|" + (gameType == null ? "" : gameType);
     }
 
-    public record StoredContext(String localizationKey, String gameType) {
+    /** {@code currency} is the old currency's label for a currency-change refund, null otherwise. */
+    public record StoredContext(String localizationKey, String gameType, String currency) {
     }
 
     public static String formatAmount(PendingPayout payout) {
