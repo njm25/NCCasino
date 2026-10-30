@@ -10,6 +10,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class LanguageMenuLayoutTest {
     @Test
+    void eachLanguagePaperIsSubtitledInItsOwnLanguage() {
+        org.nc.nccasino.localization.LocalizationService language =
+            org.mockito.Mockito.mock(org.nc.nccasino.localization.LocalizationService.class);
+        org.mockito.Mockito.when(language.text(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
+            .thenAnswer(call -> call.getArgument(0) + ":" + call.getArgument(1));
+
+        assertEquals("de_DE:language-menu.select", LanguageMenu.selectionLore(language, "de_DE", false));
+        assertEquals("ja_JP:language-menu.selected", LanguageMenu.selectionLore(language, "ja_JP", true));
+    }
+
+    @Test
     void currentLocaleCountUsesCompactTwoRowMenu() {
         assertEquals(18, LanguageMenu.menuSizeForLocaleCount(5, 2));
         assertEquals(7, LanguageMenu.localeCapacity(18, 2));

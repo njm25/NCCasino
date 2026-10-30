@@ -35,6 +35,16 @@ public final class LanguageMenu extends Menu {
         UUID dealerId,
         Consumer<Player> returnToPreferences
     ) {
+        this(player, plugin, dealerId, returnToPreferences, 0);
+    }
+
+    private LanguageMenu(
+        Player player,
+        Nccasino plugin,
+        UUID dealerId,
+        Consumer<Player> returnToPreferences,
+        int page
+    ) {
         super(
             player,
             plugin,
@@ -44,6 +54,7 @@ public final class LanguageMenu extends Menu {
             plugin.getLocalization().text(player, "common.return-preferences"),
             returnToPreferences
         );
+        this.page = page;
         initializeMenu();
     }
 
@@ -93,6 +104,7 @@ public final class LanguageMenu extends Menu {
         Preferences preferences = plugin.getPreferences(ownerId);
         Map<String, String> names = language.supportedLanguages();
         String serverLanguage = names.get(language.getServerDefault());
+        String ownerLocale = language.effectiveLocale(ownerId);
         int fixedItems = fixedItemCount(language);
         int controlRowStart = inventory.getSize() - 9;
         int localeCapacity = localeCapacity(inventory.getSize(), fixedItems);
@@ -112,7 +124,7 @@ public final class LanguageMenu extends Menu {
                 "language",
                 serverLanguage
             ),
-            selectionLore(language, preferences.getLanguageMode() == LanguageMode.SERVER_DEFAULT)
+            selectionLore(language, ownerLocale, preferences.getLanguageMode() == LanguageMode.SERVER_DEFAULT)
         );
 
         if (language.isClientDetectionEnabled()) {
@@ -136,7 +148,7 @@ public final class LanguageMenu extends Menu {
                         "language",
                         serverLanguage
                     ),
-                selectionLore(language, preferences.getLanguageMode() == LanguageMode.CLIENT)
+                selectionLore(language, ownerLocale, preferences.getLanguageMode() == LanguageMode.CLIENT)
             );
         }
 
@@ -152,7 +164,7 @@ public final class LanguageMenu extends Menu {
                 1,
                 names.get(locale),
                 slot,
-                selectionLore(language, selected)
+                selectionLore(language, locale, selected)
             );
             slot++;
         }
@@ -192,18 +204,18 @@ public final class LanguageMenu extends Menu {
         }
     }
 
-    private String selectionLore(LocalizationService language, boolean selected) {
-        return selected
-            ? language.text(ownerId, "language-menu.selected")
-            : language.text(ownerId, "language-menu.select");
+    /** Each language paper reads in its own language; the fixed items use the viewer's. */
+    static String selectionLore(LocalizationService language, String locale, boolean selected) {
+        return language.text(locale, selected ? "language-menu.selected" : "language-menu.select");
     }
 
     @Override
     public void handleClick(int slot, Player player, InventoryClickEvent event) {
         String locale = localeBySlot.get(slot);
         if (locale != null) {
+            String before = plugin.getLocalization().effectiveLocale(ownerId);
             plugin.getPreferences(player.getUniqueId()).useExplicitLanguage(locale);
-            refresh();
+            applyLanguagePick(player, before);
             playDefaultSound(player);
             return;
         }
@@ -230,14 +242,16 @@ public final class LanguageMenu extends Menu {
     ) {
         Preferences preferences = plugin.getPreferences(player.getUniqueId());
         if (option == SlotOption.LANGUAGE_SERVER_DEFAULT) {
+            String before = plugin.getLocalization().effectiveLocale(ownerId);
             preferences.useServerDefaultLanguage();
-            refresh();
+            applyLanguagePick(player, before);
             playDefaultSound(player);
             return;
         }
         if (option == SlotOption.LANGUAGE_CLIENT) {
+            String before = plugin.getLocalization().effectiveLocale(ownerId);
             preferences.useClientLanguage();
-            refresh();
+            applyLanguagePick(player, before);
             playDefaultSound(player);
             return;
         }
@@ -249,6 +263,20 @@ public final class LanguageMenu extends Menu {
         } else if (preferences.getMessageSetting() == Preferences.MessageSetting.STANDARD) {
             player.sendMessage(plugin.getLocalization().text(player, "errors.invalid-option"));
         }
+    }
+
+    /**
+     * An inventory title cannot change in place, so a pick that changes the
+     * viewer's language reopens the menu on the same page.
+     */
+    private void applyLanguagePick(Player player, String localeBefore) {
+        if (localeBefore.equals(plugin.getLocalization().effectiveLocale(ownerId))) {
+            refresh();
+            return;
+        }
+        LanguageMenu reopened = new LanguageMenu(player, plugin, dealerId, returnCallback, page);
+        player.openInventory(reopened.getInventory());
+        cleanup();
     }
 
     private void refresh() {
