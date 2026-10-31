@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Partida aktibo batean ({game}) deskonektatu zara. Konektatu gabe zeundela amaitu da partida."
   context-server-restart: "Zerbitzaria berrabiarazi da zure apustua ({game}) emaitzaren zain zegoela; beraz, itzuli egin zaizu."
   context-currency-change: "Krupier honen dibisa aldatu da zure apustua ({game}) oraindik jokoan zegoela; beraz, {currency} dibisan itzuli egin zaizu."
+  context-currency-change-committed: "Krupier honen dibisa aldatu da zure emaitza ({game}) erabakita zegoenean; beraz, {currency} dibisan ordaindu zaizu."
   context-committed-result: "Zerbitzaria zure emaitza ({game}) zehaztu ondoren berrabiarazi da. Emaitza gorde egin da."
   retry-one: "&6Oraindik entregatu ezin izan den ordainketa 1 duzu. Automatikoki saiatuko da berriro."
   retry-many: "&6Oraindik entregatu ezin izan diren {count} ordainketa dituzu zain. Automatikoki saiatuko dira berriro."

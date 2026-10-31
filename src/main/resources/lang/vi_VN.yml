@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Bạn đã mất kết nối khi đang chơi {game}. Ván đã kết thúc trong lúc bạn ngoại tuyến."
   context-server-restart: "Máy chủ đã khởi động lại khi cược {game} của bạn còn đang chờ kết quả, nên cược đã được hoàn lại."
   context-currency-change: "Tiền tệ của người chia bài này đã bị đổi khi cược {game} của bạn vẫn đang diễn ra, nên cược đã được hoàn lại bằng {currency}."
+  context-currency-change-committed: "Tiền tệ của người chia bài này đã bị đổi sau khi kết quả {game} của bạn đã được xác định, nên bạn đã được trả bằng {currency}."
   context-committed-result: "Máy chủ đã khởi động lại sau khi kết quả {game} của bạn đã được xác định. Kết quả của bạn vẫn được giữ nguyên."
   retry-one: "&6Bạn có 1 khoản trả thưởng đang chờ vì chưa thể giao. Hệ thống sẽ tự động thử lại."
   retry-many: "&6Bạn có {count} khoản trả thưởng đang chờ vì chưa thể giao. Hệ thống sẽ tự động thử lại."

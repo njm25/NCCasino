@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Ühendus katkes aktiivse mängu ajal ({game}). Mäng lõppes sinu äraolekul."
   context-server-restart: "Server taaskäivitus, kui sinu panus ({game}) ootas veel tulemust, seega see tagastati."
   context-currency-change: "Selle diileri valuutat muudeti, kui sinu panus ({game}) oli veel mängus, seega see tagastati valuutas {currency}."
+  context-currency-change-committed: "Selle diileri valuutat muudeti, kui sinu tulemus ({game}) oli juba selgunud, seega maksti sulle välja valuutas {currency}."
   context-committed-result: "Server taaskäivitus pärast seda, kui sinu tulemus ({game}) oli juba selgunud. Tulemus on säilitatud."
   retry-one: "&6Sul on 1 ootel väljamakse, mida ei õnnestunud veel kätte toimetada. Kättetoimetamist proovitakse automaatselt uuesti."
   retry-many: "&6Ootel väljamaksed, mida ei õnnestunud veel kätte toimetada: {count}. Kättetoimetamist proovitakse automaatselt uuesti."

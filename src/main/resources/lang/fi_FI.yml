@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Yhteytesi katkesi kesken käynnissä olevan pelin {game}. Peli päättyi, kun olit poissa."
   context-server-restart: "Palvelin käynnistyi uudelleen, kun panoksesi pelissä {game} odotti vielä ratkaisua, joten se on palautettu."
   context-currency-change: "Tämän jakajan valuutta vaihdettiin, kun panoksesi pelissä {game} oli vielä kesken, joten se on palautettu valuuttana {currency}."
+  context-currency-change-committed: "Tämän jakajan valuutta vaihdettiin, kun tuloksesi pelissä {game} oli jo ratkennut, joten sinulle maksettiin valuuttana {currency}."
   context-committed-result: "Palvelin käynnistyi uudelleen, kun tuloksesi pelissä {game} oli jo ratkennut. Tuloksesi säilytettiin."
   retry-one: "&6Sinulla on 1 odottava voitonmaksu, jota ei vielä voitu toimittaa. Sitä yritetään uudelleen automaattisesti."
   retry-many: "&6Sinulla on odottavia voitonmaksuja, joita ei vielä voitu toimittaa: {count}. Niitä yritetään uudelleen automaattisesti."

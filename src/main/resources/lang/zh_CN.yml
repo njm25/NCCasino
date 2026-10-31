@@ -91,6 +91,7 @@ payout:
   context-disconnected: "你在{game} 进行中断开了连接。这局游戏在你离线时已经结束。"
   context-server-restart: "你的{game} 赌注还未结算时服务器重启了，因此已退还给你。"
   context-currency-change: "你的 {game} 赌注仍在进行时，此荷官的货币已被更改，因此已以 {currency} 退还给你。"
+  context-currency-change-committed: "此荷官的货币在你的 {game} 结果确定后被更改，因此已以 {currency} 向你支付。"
   context-committed-result: "你的{game} 结果确定之后服务器重启了。你的结果已被保留。"
   retry-one: "&6你有1笔待发放的赔付尚未送达。系统会自动重试。"
   retry-many: "&6你有{count} 笔待发放的赔付尚未送达。系统会自动重试。"

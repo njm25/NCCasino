@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Fe wnaethoch chi ddatgysylltu yn ystod gêm weithredol ({game}). Daeth y gêm i ben tra oeddech chi all-lein."
   context-server-restart: "Ailgychwynnodd y gweinydd tra oedd eich bet ({game}) yn dal i aros am ganlyniad, felly rhoddwyd ad-daliad."
   context-currency-change: "Newidiwyd arian cyfred y deliwr hwn tra oedd eich bet ({game}) yn dal yn y fantol, felly rhoddwyd ad-daliad yn {currency}."
+  context-currency-change-committed: "Newidiwyd arian cyfred y deliwr hwn ar ôl i'ch canlyniad ({game}) gael ei benderfynu eisoes, felly cawsoch eich talu yn {currency}."
   context-committed-result: "Ailgychwynnodd y gweinydd ar ôl i ganlyniad eich gêm ({game}) gael ei bennu. Mae eich canlyniad wedi'i gadw."
   retry-one: "&6Mae gennych 1 taliad yn aros nad oedd modd ei ddosbarthu eto. Bydd yn ailgeisio'n awtomatig."
   retry-many: "&6Taliadau yn aros nad oedd modd eu dosbarthu eto: {count}. Byddant yn ailgeisio'n awtomatig."

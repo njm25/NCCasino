@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Muunganisho wako ulikatika wakati wa mchezo unaoendelea ({game}). Mchezo uliisha ulipokuwa nje ya mtandao."
   context-server-restart: "Seva ilizimwa na kuwashwa upya wakati dau lako ({game}) lilikuwa bado likisubiri matokeo, kwa hivyo umerejeshewa dau."
   context-currency-change: "Sarafu ya mgawaji huyu ilibadilishwa wakati dau lako ({game}) lilikuwa bado linachezwa, kwa hivyo umerejeshewa dau kwa sarafu ya {currency}."
+  context-currency-change-committed: "Sarafu ya mgawaji huyu ilibadilishwa baada ya matokeo yako ({game}) kuamuliwa tayari, kwa hivyo umelipwa kwa sarafu ya {currency}."
   context-committed-result: "Seva ilizimwa na kuwashwa upya baada ya matokeo yako ({game}) kuwa yameshaamuliwa. Matokeo yako yamehifadhiwa."
   retry-one: "&6Una malipo 1 yanayosubiri ambayo bado hayajaweza kufikishwa. Yatajaribiwa tena kiotomatiki."
   retry-many: "&6Malipo yanayosubiri ambayo bado hayajaweza kufikishwa: {count}. Yatajaribiwa tena kiotomatiki."

@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Il-konnessjoni tiegħek inqatgħet waqt logħba attiva ta' {game}. Il-logħba ntemmet waqt li kont offline."
   context-server-restart: "Is-server reġa' tela' waqt li l-imħatra tiegħek fil-logħba {game} kienet għadha tistenna r-riżultat, għalhekk ingħatat lura bħala rifużjoni."
   context-currency-change: "Il-munita ta' dan id-dealer inbidlet waqt li l-imħatra tiegħek fil-logħba {game} kienet għadha għaddejja, għalhekk ingħatat lura bħala rifużjoni fil-munita: {currency}."
+  context-currency-change-committed: "Il-munita ta' dan id-dealer inbidlet wara li r-riżultat tiegħek fil-logħba {game} kien diġà ġie deċiż, għalhekk tħallast fil-munita: {currency}."
   context-committed-result: "Is-server reġa' tela' wara li r-riżultat tiegħek fil-logħba {game} kien diġà ġie determinat. L-eżitu tiegħek inżamm."
   retry-one: "&6Għandek 1 ħlas pendenti li għadu ma setax jitwassal. Se jerġa' jiġi pprovat awtomatikament."
   retry-many: "&6Ħlasijiet pendenti li għadhom ma setgħux jitwasslu: {count}. Se jerġgħu jiġu pprovati awtomatikament."

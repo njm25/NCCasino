@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Te-ai deconectat în timpul unei partide active de {game}. Partida s-a încheiat cât ai fost offline."
   context-server-restart: "Serverul a repornit cât pariul tău la {game} încă aștepta rezultatul, așa că ți-a fost returnat."
   context-currency-change: "Moneda acestui crupier a fost schimbată cât pariul tău la {game} era încă în joc, așa că ți-a fost returnat în {currency}."
+  context-currency-change-committed: "Moneda acestui crupier a fost schimbată după ce rezultatul tău la {game} fusese deja stabilit, așa că plata s-a făcut în {currency}."
   context-committed-result: "Serverul a repornit după ce rezultatul tău la {game} fusese deja stabilit. Rezultatul a fost păstrat."
   retry-one: "&6Ai o plată în așteptare care nu a putut fi livrată încă. Se va reîncerca automat."
   retry-many: "&6Ai plăți în așteptare care nu au putut fi livrate încă (în total: {count}). Se vor reîncerca automat."

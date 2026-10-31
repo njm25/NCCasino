@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Dien Verbinnen is in en lopend Speel (Speel: {game}) afreten. Dat Speel is to Enn speelt worrn, as du nich online weerst."
   context-server-restart: "De Server is nee start worrn, as dien Insatz (Speel: {game}) noch op en Resultat töövt hett, dorüm is he di trüchbetahlt worrn."
   context-currency-change: "De Geldsoort vun dissen Croupier is ännert worrn, as dien Insatz (Speel: {game}) noch in't Speel weer, dorüm is he di in de ole Geldsoort trüchbetahlt worrn: {currency}."
+  context-currency-change-committed: "De Geldsoort vun dissen Croupier is ännert worrn, as dien Resultat (Speel: {game}) al fastleeg, dorüm is di in de ole Geldsoort utbetahlt worrn: {currency}."
   context-committed-result: "De Server is nee start worrn, nadem dien Resultat (Speel: {game}) al fastleeg. Dien Resultat is behollen worrn."
   retry-one: "&6Du hest 1 Utbetahlung, de noch nich utlevert warrn kunn. Dat warrt automaatsch noch mal versöcht."
   retry-many: "&6Utbetahlungen, de noch nich utlevert warrn kunnen: {count}. Dat warrt automaatsch noch mal versöcht."

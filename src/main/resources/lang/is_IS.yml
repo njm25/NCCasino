@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Tengingin rofnaði í virkum leik ({game}). Leiknum lauk á meðan tengingin var rofin."
   context-server-restart: "Þjónninn endurræsti sig á meðan veðmálið þitt ({game}) beið enn niðurstöðu og því var það endurgreitt."
   context-currency-change: "Skipt var um gjaldmiðil hjá þessum gjafara á meðan veðmálið þitt ({game}) var enn í gangi og því var það endurgreitt í gamla gjaldmiðlinum ({currency})."
+  context-currency-change-committed: "Skipt var um gjaldmiðil hjá þessum gjafara eftir að niðurstaða þín ({game}) lá þegar fyrir og því var greitt út í gamla gjaldmiðlinum ({currency})."
   context-committed-result: "Þjónninn endurræsti sig eftir að niðurstaða þín ({game}) hafði verið ákvörðuð. Niðurstaðan var varðveitt."
   retry-one: "&6Þú átt 1 útborgun í bið sem ekki tókst að afhenda enn. Reynt verður aftur sjálfkrafa."
   retry-many: "&6Útborganir í bið sem ekki tókst að afhenda enn: {count}. Reynt verður aftur sjálfkrafa."

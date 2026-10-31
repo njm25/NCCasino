@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Aktiv {game} oyunu zamanı bağlantınız kəsildi. Siz oflayn olarkən oyun başa çatdı."
   context-server-restart: "{game} oyunundakı mərciniz hələ nəticə gözləyərkən server yenidən başladı, ona görə mərciniz geri qaytarıldı."
   context-currency-change: "{game} oyunundakı mərciniz hələ davam edərkən bu dilerin valyutası dəyişdirildi, ona görə mərciniz {currency} ilə geri qaytarıldı."
+  context-currency-change-committed: "{game} oyunundakı nəticəniz artıq müəyyən olunduqdan sonra bu dilerin valyutası dəyişdirildi, ona görə sizə {currency} ilə ödəniş edildi."
   context-committed-result: "{game} oyunundakı nəticəniz artıq müəyyən olunduqdan sonra server yenidən başladı. Bu nəticə qorunub saxlanıldı."
   retry-one: "&6Hələ çatdırıla bilməyən 1 ödənişiniz var. Avtomatik yenidən cəhd ediləcək."
   retry-many: "&6Hələ çatdırıla bilməyən {count} ödənişiniz var. Avtomatik yenidən cəhd ediləcək."

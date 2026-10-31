@@ -91,6 +91,7 @@ payout:
   context-disconnected: "La to conesion la se ga interoto intanto che na partìa la jera in corso (zogo: {game}). La partìa la xe finìa intanto che no te jeri in linea."
   context-server-restart: "El server el se ga riavià intanto che la to scomesa (zogo: {game}) la spetava ancora el risultato, donca la xe stada rimborsada."
   context-currency-change: "La moneda de sto crupier la xe stada canbiada intanto che la to scomesa (zogo: {game}) la jera ancora in zogo, donca la xe stada rimborsada in {currency}."
+  context-currency-change-committed: "La moneda de sto crupier la xe stada canbiada dopo che el to rezultato (zogo: {game}) el jera xa deciso, donca el pagamento el xe stà fato in {currency}."
   context-committed-result: "El server el se ga riavià dopo che el to risultato (zogo: {game}) el jera zà stà stabilìo. El to risultato el xe stà conservà."
   retry-one: "&6Te ghè 1 pagamento in sospeso che no se ga ancora podesto consegnar. El vegnarà riprovà da solo."
   retry-many: "&6Pagamenti in sospeso che no se ga ancora podesto consegnar: {count}. I vegnarà riprovài da soli."

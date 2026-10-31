@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Kamu terputus saat permainan {game} sedang berlangsung. Permainan selesai saat kamu offline."
   context-server-restart: "Server dimulai ulang saat taruhan {game} milikmu masih menunggu hasil, jadi taruhan itu telah dikembalikan."
   context-currency-change: "Mata uang bandar ini diganti saat taruhan {game} milikmu masih berjalan, jadi taruhan itu telah dikembalikan dalam {currency}."
+  context-currency-change-committed: "Mata uang bandar ini diganti setelah hasil {game} milikmu sudah ditentukan, jadi kamu telah dibayar dalam {currency}."
   context-committed-result: "Server dimulai ulang setelah hasil {game} milikmu sudah ditentukan. Hasilmu tetap dipertahankan."
   retry-one: "&6Kamu punya 1 pembayaran tertunda yang belum dapat dikirim. Pengiriman akan dicoba lagi secara otomatis."
   retry-many: "&6Kamu punya {count} pembayaran tertunda yang belum dapat dikirim. Pengiriman akan dicoba lagi secara otomatis."

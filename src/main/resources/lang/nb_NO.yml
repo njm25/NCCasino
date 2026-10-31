@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Du koblet fra under et pågående spill i {game}. Spillet ble fullført mens du var frakoblet."
   context-server-restart: "Serveren startet på nytt mens innsatsen din i {game} fortsatt ventet på et resultat, så den er refundert."
   context-currency-change: "Valutaen til denne dealeren ble endret mens innsatsen din i {game} fortsatt var i spill, så den er refundert i {currency}."
+  context-currency-change-committed: "Valutaen til denne dealeren ble endret etter at resultatet ditt i {game} allerede var avgjort, så du har fått utbetalt i {currency}."
   context-committed-result: "Serveren startet på nytt etter at resultatet ditt i {game} allerede var avgjort. Resultatet ditt er bevart."
   retry-one: "&6Du har 1 ventende utbetaling som ikke kunne leveres ennå. Den prøves på nytt automatisk."
   retry-many: "&6Du har {count} ventende utbetalinger som ikke kunne leveres ennå. De prøves på nytt automatisk."

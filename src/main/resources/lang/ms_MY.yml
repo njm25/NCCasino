@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Sambungan anda terputus semasa permainan aktif ({game}). Permainan tamat semasa anda luar talian."
   context-server-restart: "Pelayan dimulakan semula semasa taruhan anda ({game}) masih menunggu keputusan, jadi taruhan itu dipulangkan."
   context-currency-change: "Mata wang pengendali ini telah ditukar semasa taruhan anda ({game}) masih berjalan, jadi taruhan itu dipulangkan dalam {currency}."
+  context-currency-change-committed: "Mata wang pengendali ini telah ditukar selepas keputusan anda ({game}) sudah ditentukan, jadi anda dibayar dalam {currency}."
   context-committed-result: "Pelayan dimulakan semula selepas keputusan anda ({game}) sudah ditentukan. Keputusan anda dikekalkan."
   retry-one: "&6Anda ada 1 bayaran tertunda yang belum dapat dihantar. Penghantaran akan dicuba semula secara automatik."
   retry-many: "&6Bayaran tertunda yang belum dapat dihantar: {count}. Penghantaran akan dicuba semula secara automatik."

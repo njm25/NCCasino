@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Ua moku kou pili pūnaewele i ka wā o kekahi pāʻani e holo ana (pāʻani: {game}). Ua pau ka pāʻani i kou wā ma waho o ka pūnaewele."
   context-server-restart: "Ua hoʻomaka hou ke kikowaena i ka wā e kali ana kāu pili (pāʻani: {game}) i ka hopena, no laila ua hoʻihoʻi ʻia ke kālā."
   context-currency-change: "Ua hoʻololi ʻia ke kālā o kēia mea hoʻokele i ka wā e pāʻani ana kāu pili (pāʻani: {game}), no laila ua hoʻihoʻi ʻia ia ma ke kālā kahiko: {currency}."
+  context-currency-change-committed: "Ua hoʻololi ʻia ke kālā o kēia mea hoʻokele ma hope o ka hoʻoholo ʻia ʻana o kāu hopena (pāʻani: {game}), no laila ua uku ʻia ʻoe ma ke kālā kahiko: {currency}."
   context-committed-result: "Ua hoʻomaka hou ke kikowaena ma hope o ka hoʻoholo ʻia ʻana o kāu hopena (pāʻani: {game}). Ua mālama ʻia kāu hopena."
   retry-one: "&6Hoʻokahi uku e kali nei i hiki ʻole ke hāʻawi ʻia. E hoʻāʻo hou ʻia ia me ka ʻakomi."
   retry-many: "&6Nā uku e kali nei i hiki ʻole ke hāʻawi ʻia: {count}. E hoʻāʻo hou ʻia lākou me ka ʻakomi."

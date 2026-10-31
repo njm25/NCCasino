@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Conexus tuus interruptus est dum ludus agebatur (ludus: {game}). Ludus finitus est dum aberas."
   context-server-restart: "Servitor iterum incepit dum pignus tuum (ludus: {game}) adhuc exitum exspectabat, itaque tibi redditum est."
   context-currency-change: "Moneta huius dispensatoris mutata est dum pignus tuum (ludus: {game}) adhuc in ludo erat, itaque tibi redditum est moneta vetere: {currency}."
+  context-currency-change-committed: "Moneta huius dispensatoris mutata est postquam exitus tuus (ludus: {game}) iam constitutus erat, itaque tibi solutum est moneta vetere: {currency}."
   context-committed-result: "Servitor iterum incepit postquam exitus tuus (ludus: {game}) iam decretus erat. Exitus tuus servatus est."
   retry-one: "&6Unam solutionem pendentem habes quae nondum tradi potuit. Iterum sponte temptabitur."
   retry-many: "&6Solutiones pendentes quae nondum tradi potuerunt: {count}. Iterum sponte temptabuntur."

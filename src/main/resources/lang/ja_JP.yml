@@ -91,6 +91,7 @@ payout:
   context-disconnected: "ゲーム（{game}）のプレイ中に接続が切れました。オフラインの間にゲームは終了しました。"
   context-server-restart: "ゲーム（{game}）のベットが決着待ちの間にサーバーが再起動したため、ベットは返金されました。"
   context-currency-change: "ゲーム（{game}）のベットが進行中にこのディーラーの通貨が変更されたため、ベットは {currency} で返金されました。"
+  context-currency-change-committed: "ゲーム（{game}）の結果が確定した後にこのディーラーの通貨が変更されたため、{currency} で支払われました。"
   context-committed-result: "ゲーム（{game}）の結果が確定した後にサーバーが再起動しました。結果はそのまま保持されています。"
   retry-one: "&6まだ受け取れていない保留中の支払いが1件あります。自動的に再試行されます。"
   retry-many: "&6まだ受け取れていない保留中の支払いが {count} 件あります。自動的に再試行されます。"

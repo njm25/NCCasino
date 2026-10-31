@@ -91,6 +91,7 @@ payout:
   context-disconnected: "你在進行中的 {game} 遊戲裡斷線了。你離線期間遊戲已結束。"
   context-server-restart: "伺服器重新啟動時，你在 {game} 的下注仍在等待結果，因此該筆下注已退還。"
   context-currency-change: "你在 {game} 的下注仍在進行中時，此荷官的貨幣已被變更，因此該筆下注已以 {currency} 退還。"
+  context-currency-change-committed: "此荷官的貨幣在你的 {game} 結果確定後被變更，因此已以 {currency} 向你支付。"
   context-committed-result: "伺服器在你的 {game} 結果確定之後才重新啟動。你的結果已保留。"
   retry-one: "&6你有 1 筆待發放的派彩尚未送達，系統會自動重試。"
   retry-many: "&6你有 {count} 筆待發放的派彩尚未送達，系統會自動重試。"

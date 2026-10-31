@@ -91,6 +91,7 @@ payout:
   context-disconnected: "La to conexón cortóse mientres una partida en cursu (xuegu: {game}). La partida acabó mientres nun tabes en llinia."
   context-server-restart: "El sirvidor reanicióse mientres la to apuesta (xuegu: {game}) entá esperaba'l resultáu, polo que se te devolvió."
   context-currency-change: "La moneda d'esti crupier camudóse mientres la to apuesta (xuegu: {game}) entá taba en xuegu, polo que se te devolvió en {currency}."
+  context-currency-change-committed: "La moneda d'esti crupier camudóse cuando'l to resultáu (xuegu: {game}) yá taba decidíu, polo que se te pagó en {currency}."
   context-committed-result: "El sirvidor reanicióse cuando'l to resultáu (xuegu: {game}) yá taba decidíu. El to resultáu caltúvose."
   retry-one: "&6Tienes 1 pagu pendiente que entá nun se pudo entregar. Va volver intentase automáticamente."
   retry-many: "&6Pagos pendientes que entá nun se pudieron entregar: {count}. Van volver intentase automáticamente."

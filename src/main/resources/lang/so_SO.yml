@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Xiriirkaagu wuu go'ay intii ciyaar socotay (ciyaar: {game}). Ciyaartu way dhammaatay intii aadan khadka ku jirin."
   context-server-restart: "Seerfarku dib ayuu u bilaabmay intii sharadkaagu (ciyaar: {game}) weli sugayay natiijadiisa, sidaas darteed waa laguu soo celiyay."
   context-currency-change: "Lacagta qaybiyahan waa la beddelay intii sharadkaagu (ciyaar: {game}) weli socday, sidaas darteed waa laguu soo celiyay. Lacagta: {currency}."
+  context-currency-change-committed: "Lacagta qaybiyahan waa la beddelay kadib markii natiijadaada (ciyaar: {game}) horey loo go'aamiyay, sidaas darteed waa laguu bixiyay. Lacagta: {currency}."
   context-committed-result: "Seerfarku dib ayuu u bilaabmay ka dib markii natiijadaada (ciyaar: {game}) horay loo go'aamiyay. Natiijadaada waa la ilaaliyay."
   retry-one: "&6Waxaad haysataa 1 bixin oo sugaysa oo aan weli la gaarsiin karin. Si toos ah ayaa dib loogu tijaabin doonaa."
   retry-many: "&6Bixinno sugaya oo aan weli la gaarsiin karin: {count}. Si toos ah ayaa dib loogu tijaabin doonaa."

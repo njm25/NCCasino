@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Twoje połōnczynie sie przerwało w czasie trwajōncyj partyje (szpil: {game}). Partyjŏ sie skōńczyła, jak niy było cie online."
   context-server-restart: "Serwer sie zrestartowoł, kej twōj zakład (szpil: {game}) jeszcze czekoł na wynik, tōż zakład zwrōcōno."
   context-currency-change: "Walutã tego krupiera zmiyniōno, kej twōj zakład (szpil: {game}) jeszcze trwoł, tōż zakład zwrōcōno w walucie {currency}."
+  context-currency-change-committed: "Walutã tego krupiera zmiyniōno, kej twōj wynik (szpil: {game}) już bōł postanowiōny, tōż wypłata poszła w walucie {currency}."
   context-committed-result: "Serwer sie zrestartowoł, jak twōj wynik (szpil: {game}) już był postanowiōny. Twōj wynik ôstoł zachowany."
   retry-one: "&6Je 1 czekajōncŏ wypłata, kerŏ jeszcze niy szła wydać. Bydzie sprōbowanŏ zaś autōmatycznie."
   retry-many: "&6Czekajōnce wypłaty, kere jeszcze niy szły wydać: {count}. Bydōm sprōbowane zaś autōmatycznie."

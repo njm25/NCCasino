@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Desconectácheste durante unha partida activa ({game}). A partida rematou mentres non estabas."
   context-server-restart: "O servidor reiniciouse mentres a túa aposta ({game}) aínda agardaba resultado, así que se che devolveu."
   context-currency-change: "Cambiouse a moeda deste crupier mentres a túa aposta ({game}) aínda estaba en xogo, así que se che devolveu na moeda anterior: {currency}."
+  context-currency-change-committed: "Cambiouse a moeda deste crupier cando o teu resultado ({game}) xa estaba decidido, así que se che pagou na moeda anterior: {currency}."
   context-committed-result: "O servidor reiniciouse cando o teu resultado ({game}) xa estaba decidido. Conservouse o resultado."
   retry-one: "&6Tes 1 pagamento pendente que aínda non se puido entregar. Volverase tentar automaticamente."
   retry-many: "&6Pagamentos pendentes que aínda non se puideron entregar: {count}. Volverase tentar automaticamente."

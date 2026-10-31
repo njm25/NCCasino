@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Ìsopọ̀ rẹ já nígbà tí eré kan ń lọ lọ́wọ́ (eré: {game}). Eré náà parí nígbà tí o kò sí lórí ayélujára."
   context-server-restart: "Sáfà tún bẹ̀rẹ̀ nígbà tí tẹ́tẹ́ rẹ (eré: {game}) ṣì ń dúró de àbájáde rẹ̀, nítorí náà a dá a padà fún ọ."
   context-currency-change: "Wọ́n yí owó olùpín yìí padà nígbà tí tẹ́tẹ́ rẹ (eré: {game}) ṣì ń lọ lọ́wọ́, nítorí náà a dá a padà fún ọ ní {currency}."
+  context-currency-change-committed: "Wọ́n yí owó olùpín yìí padà lẹ́yìn tí wọ́n ti pinnu àbájáde rẹ (eré: {game}), nítorí náà a sanwó fún ọ ní {currency}."
   context-committed-result: "Sáfà tún bẹ̀rẹ̀ lẹ́yìn tí a ti pinnu àbájáde rẹ (eré: {game}). A ti pa àbájáde rẹ mọ́."
   retry-one: "&6O ní ìsanwó 1 tó ń dúró tí a kò tíì lè fi ránṣẹ́. A ó tún gbìyànjú rẹ̀ fúnra wa."
   retry-many: "&6Àwọn ìsanwó tó ń dúró tí a kò tíì lè fi ránṣẹ́: {count}. A ó tún gbìyànjú wọn fúnra wa."

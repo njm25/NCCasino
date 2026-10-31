@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Sambandið við teg slitnaði meðan eitt spæl var í gongd (spæl: {game}). Spælið endaði, meðan tú vart ikki á linju."
   context-server-restart: "Ambætarin byrjaði av nýggjum, meðan veddingurin hjá tær (spæl: {game}) framvegis bíðaði eftir úrsliti, so hann er endurgoldin."
   context-currency-change: "Gjaldoyrað hjá hesum býtaranum varð skift, meðan veddingurin hjá tær (spæl: {game}) framvegis var í gongd, so hann er endurgoldin í {currency}."
+  context-currency-change-committed: "Gjaldoyrað hjá hesum býtaranum varð skift, eftir at úrslitið hjá tær (spæl: {game}) longu var avgjørt, so útgjaldið er goldið í {currency}."
   context-committed-result: "Ambætarin byrjaði av nýggjum, eftir at úrslitið hjá tær (spæl: {game}) longu var avgjørt. Úrslitið er varðveitt."
   retry-one: "&6Tú hevur 1 útgjald, sum ikki kundi verða latið enn. Roynt verður aftur sjálvvirkandi."
   retry-many: "&6Útgjøld, sum ikki kundu verða latin enn: {count}. Roynt verður aftur sjálvvirkandi."

@@ -42,6 +42,23 @@ class PayoutMessagesTest {
     }
 
     @Test
+    void decidedResultsPaidDuringACurrencyChangeNameTheChangeAndTheOldCurrency() {
+        String[] stored = new String[1];
+        PayoutMessages.duringCurrencyChange("Vault",
+            () -> stored[0] = PayoutMessages.committedResultContext("Roulette"));
+
+        PayoutMessages.StoredContext context = PayoutMessages.decodeContext(stored[0]);
+        assertEquals("payout.context-currency-change-committed", context.localizationKey());
+        assertEquals("Roulette", context.gameType());
+        assertEquals("Vault", context.currency());
+        PayoutMessages.StoredContext restart = PayoutMessages.decodeContext(
+            PayoutMessages.committedResultContext("Roulette"));
+        assertEquals("payout.context-committed-result", restart.localizationKey(),
+            "real restarts and reloads keep the restart message");
+        assertNull(restart.currency());
+    }
+
+    @Test
     void legacyEnglishContextsRemainBackwardCompatible() {
         assertNull(PayoutMessages.decodeContext(
             "You disconnected during an active Roulette game."

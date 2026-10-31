@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Dien verbinding is verbraoke tiedens e loupend spel (spel: {game}). 't Spel is aafgemaak wiels doe offline waors."
   context-server-restart: "De server is opnuuj gestart wiels dien inzèt (spel: {game}) nog op 'n oetslaag waachde, dus dae is trökbetaold."
   context-currency-change: "De valuta van dees dealer is verangerd wiels dien inzèt (spel: {game}) nog in 't spel waor, dus dae is trökbetaold in de aw valuta: {currency}."
+  context-currency-change-committed: "De valuta van dees dealer is verangerd nao datste oetslaag (spel: {game}) al vasstoond, dus biste oetbetaold in de aw valuta: {currency}."
   context-committed-result: "De server is opnuuj gestart nao't dien oetslaag (spel: {game}) al vasstóng. Dien oetslaag is bewaord gebleve."
   retry-one: "&6Doe höbs 1 oetbetaoling die nog neet geleverd kós waere. 't Weurt automatisch opnuuj perbeerd."
   retry-many: "&6Oetbetaolinge die nog neet geleverd kóste waere: {count}. 't Weurt automatisch opnuuj perbeerd."

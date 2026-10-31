@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Chaidh do cheangal a bhriseadh fhad 's a bha geama gnìomhach a' dol (geama: {game}). Chrìochnaich an geama fhad 's a bha thu far loidhne."
   context-server-restart: "Chaidh am frithealaiche ath-thòiseachadh fhad 's a bha do gheall (geama: {game}) fhathast a' feitheamh ri toradh, mar sin chaidh a thilleadh dhut."
   context-currency-change: "Chaidh airgead an roinneadair seo atharrachadh fhad 's a bha do gheall (geama: {game}) fhathast a' dol, mar sin chaidh a thilleadh dhut ann an {currency}."
+  context-currency-change-committed: "Chaidh airgead an roinneadair seo atharrachadh an dèidh do thoradh (geama: {game}) a bhith air a dhearbhadh mu thràth, mar sin chaidh do phàigheadh ann an {currency}."
   context-committed-result: "Chaidh am frithealaiche ath-thòiseachadh às dèidh do thoradh (geama: {game}) a bhith suidhichte mu thràth. Chaidh do thoradh a ghlèidheadh."
   retry-one: "&6Tha 1 pàigheadh a' feitheamh ort nach b' urrainnear a lìbhrigeadh fhathast. Thèid feuchainn ris a-rithist gu fèin-obrachail."
   retry-many: "&6Pàighidhean a' feitheamh nach b' urrainnear a lìbhrigeadh fhathast: {count}. Thèid feuchainn riutha a-rithist gu fèin-obrachail."

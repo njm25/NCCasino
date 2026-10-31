@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Vi malkonektiĝis dum aktiva ludo ({game}). La ludo finiĝis, dum vi estis eksterrete."
   context-server-restart: "La servilo rekomenciĝis, dum via veto ({game}) ankoraŭ atendis rezulton, do ĝi estis repagita."
   context-currency-change: "La valuto de ĉi tiu krupiero estis ŝanĝita, dum via veto ({game}) ankoraŭ estis en ludo, do ĝi estis repagita en {currency}."
+  context-currency-change-committed: "La valuto de ĉi tiu krupiero estis ŝanĝita, post kiam via rezulto ({game}) jam estis decidita, do vi estis pagita en {currency}."
   context-committed-result: "La servilo rekomenciĝis, post kiam via rezulto ({game}) jam estis decidita. Via rezulto estis konservita."
   retry-one: "&6Vi havas 1 atendantan elpagon, kiu ankoraŭ ne povis esti liverita. Ĝi estos aŭtomate reprovata."
   retry-many: "&6Atendantaj elpagoj, kiuj ankoraŭ ne povis esti liveritaj: {count}. Ili estos aŭtomate reprovataj."

@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Egy folyamatban lévő játék közben megszakadt a kapcsolatod ({game}). A játék véget ért, amíg offline voltál."
   context-server-restart: "A szerver újraindult, amíg a téted még eredményre várt ({game}), ezért visszakaptad."
   context-currency-change: "Ennek az osztónak megváltozott a pénzneme, amíg a téted még játékban volt ({game}), ezért visszakaptad a régi pénznemben: {currency}."
+  context-currency-change-committed: "Ennek az osztónak megváltozott a pénzneme, miután az eredményed ({game}) már eldőlt, ezért a kifizetés a régi pénznemben történt: {currency}."
   context-committed-result: "A szerver azután indult újra, hogy az eredményed már eldőlt ({game}). Az eredmény megmaradt."
   retry-one: "&6Van 1 függő kifizetésed, amelyet még nem sikerült kézbesíteni. Automatikusan újrapróbáljuk."
   retry-many: "&6Függő kifizetéseid, amelyeket még nem sikerült kézbesíteni: {count}. Automatikusan újrapróbáljuk."

@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Sambandet ditt vart brote under eit pågåande spel i {game}. Spelet vart fullført medan du var fråkopla."
   context-server-restart: "Serveren starta på nytt medan innsatsen din i {game} framleis venta på eit resultat, så han er refundert."
   context-currency-change: "Valutaen til denne dealeren vart endra medan innsatsen din i {game} framleis var i spel, så han er refundert i {currency}."
+  context-currency-change-committed: "Valutaen til denne dealeren vart endra etter at resultatet ditt i {game} alt var avgjort, så du har fått utbetalt i {currency}."
   context-committed-result: "Serveren starta på nytt etter at resultatet ditt i {game} alt var avgjort. Resultatet ditt er teke vare på."
   retry-one: "&6Du har 1 ventande utbetaling som ikkje kunne leverast enno. Ho blir prøvd på nytt automatisk."
   retry-many: "&6Du har {count} ventande utbetalingar som ikkje kunne leverast enno. Dei blir prøvde på nytt automatisk."

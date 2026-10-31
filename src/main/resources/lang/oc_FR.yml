@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Vòstra connexion s'es copada pendent una partida en cors (jòc: {game}). La partida s'es acabada pendent que èretz fòra linha."
   context-server-restart: "Lo servidor s'es reaviat pendent que vòstra escomesa (jòc: {game}) esperava encara son resultat, doncas es estada remborsada."
   context-currency-change: "La moneda d'aqueste cropièr es estada cambiada pendent que vòstra escomesa (jòc: {game}) èra encara en jòc, doncas es estada remborsada en {currency}."
+  context-currency-change-committed: "La moneda d'aqueste cropièr es estada cambiada aprèp que vòstre resultat (jòc: {game}) èra ja decidit, doncas lo pagament es estat fach en {currency}."
   context-committed-result: "Lo servidor s'es reaviat aprèp que vòstre resultat (jòc: {game}) foguèt ja determinat. Vòstre resultat es estat conservat."
   retry-one: "&6Avètz 1 pagament en espèra que se podiá pas encara liurar. Serà tornat ensajar automaticament."
   retry-many: "&6Pagaments en espèra que se podián pas encara liurar: {count}. Seràn tornats ensajar automaticament."

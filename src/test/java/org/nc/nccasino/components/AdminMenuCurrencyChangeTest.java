@@ -96,6 +96,7 @@ class AdminMenuCurrencyChangeTest {
         doAnswer(invocation -> {
             DealerCurrencySnapshot playedIn = invocation.getArgument(1);
             refundContexts.add(org.nc.nccasino.payout.PayoutMessages.serverRestartRefundContext("Roulette"));
+            refundContexts.add(org.nc.nccasino.payout.PayoutMessages.committedResultContext("Slots"));
             events.add("settle in " + playedIn.mode() + "/" + playedIn.material()
                 + " while config says " + config.getString("dealers.cf.currency.mode") + "/" + config.getString("dealers.cf.currency.material"));
             return null;
@@ -171,6 +172,13 @@ class AdminMenuCurrencyChangeTest {
         assertEquals("payout.context-server-restart", org.nc.nccasino.payout.PayoutMessages.decodeContext(
             org.nc.nccasino.payout.PayoutMessages.serverRestartRefundContext("Roulette")).localizationKey(),
             "restart refunds afterwards keep their message");
+        org.nc.nccasino.payout.PayoutMessages.StoredContext decided =
+            org.nc.nccasino.payout.PayoutMessages.decodeContext(refundContexts.get(1));
+        assertEquals("payout.context-currency-change-committed", decided.localizationKey(),
+            "an already-decided result paid out by a currency change does not claim the server restarted");
+        assertEquals("Vault", decided.currency());
+        assertEquals("payout.context-committed-result", org.nc.nccasino.payout.PayoutMessages.decodeContext(
+            org.nc.nccasino.payout.PayoutMessages.committedResultContext("Slots")).localizationKey());
     }
 
     @Test

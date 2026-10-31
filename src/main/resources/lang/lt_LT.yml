@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Ryšys nutrūko per aktyvų žaidimą ({game}). Žaidimas baigėsi, kol tavęs nebuvo."
   context-server-restart: "Serveris buvo paleistas iš naujo, kol tavo statymas ({game}) dar laukė rezultato, todėl jis grąžintas."
   context-currency-change: "Šio dalytojo valiuta buvo pakeista, kol tavo statymas ({game}) dar buvo žaidžiamas, todėl jis grąžintas senąja valiuta: {currency}."
+  context-currency-change-committed: "Šio dalytojo valiuta buvo pakeista, kai tavo rezultatas ({game}) jau buvo nulemtas, todėl tau išmokėta senąja valiuta: {currency}."
   context-committed-result: "Serveris buvo paleistas iš naujo, kai tavo rezultatas ({game}) jau buvo nustatytas. Rezultatas išsaugotas."
   retry-one: "&6Turi 1 laukiančią išmoką, kurios dar nepavyko pristatyti. Bus automatiškai bandoma dar kartą."
   retry-many: "&6Laukiančios išmokos, kurių dar nepavyko pristatyti: {count}. Bus automatiškai bandoma dar kartą."

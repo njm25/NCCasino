@@ -458,7 +458,14 @@ actual implementation, and update this section.
   or the item's display name, so keep it behind a colon label or a governing
   "currency" noun in inflecting locales). `{count}` is a number of players in
   label-colon form. "Dealer" is the physical dealer. (Verified:
-  `AdminMenu.changeCurrency`/`confirmCurrencyChange`.)
+  `AdminMenu.changeCurrency`/`confirmCurrencyChange`.) The title sits in a
+  one-row inventory title: keep it within ~32 characters (CJK/Hangul count
+  double; `LocalizationResourcesTest` enforces this). The matching chat lines
+  are `payout.context-currency-change` (open stake refunded) and
+  `payout.context-currency-change-committed` (result already decided, paid
+  out in `{currency}` = the old currency); restarts and `/ncc reload` keep
+  `context-server-restart` / `context-committed-result`
+  (`PayoutMessages.duringCurrencyChange`).
 - **`slots.spin-lore-breakdown` in RTL locales: keep an RTL word between
   `{wager}` and `×`.** `{wager}` renders as `1 emerald` in item mode, a digit
   followed by Latin text. In "per line {wager} × {lines} lines" order the

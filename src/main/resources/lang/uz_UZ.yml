@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Faol oʻyin ({game}) vaqtida aloqangiz uzildi. Siz oflayn boʻlganingizda oʻyin tugadi."
   context-server-restart: "Stavkangiz ({game}) hali natija kutayotganda server qayta ishga tushdi, shuning uchun stavka qaytarildi."
   context-currency-change: "Stavkangiz ({game}) hali oʻyinda boʻlganida ushbu dilerning valyutasi oʻzgartirildi, shuning uchun stavka qaytarildi. Valyuta: {currency}."
+  context-currency-change-committed: "Natijangiz ({game}) allaqachon aniqlangandan keyin ushbu dilerning valyutasi oʻzgartirildi, shuning uchun sizga toʻlov qilindi. Valyuta: {currency}."
   context-committed-result: "Natijangiz ({game}) allaqachon aniqlangandan keyin server qayta ishga tushdi. Natija saqlab qolindi."
   retry-one: "&6Sizda hali yetkazilmagan 1 ta kutilayotgan toʻlov bor. U avtomatik ravishda qayta yuboriladi."
   retry-many: "&6Sizda hali yetkazilmagan {count} ta kutilayotgan toʻlov bor. Ular avtomatik ravishda qayta yuboriladi."

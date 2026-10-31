@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Je verbinding werd verbroken tijdens een actief potje {game}. Het spel is afgerond terwijl je offline was."
   context-server-restart: "De server is opnieuw opgestart terwijl je inzet bij {game} nog op een uitslag wachtte, dus die is terugbetaald."
   context-currency-change: "De valuta van deze dealer is gewijzigd terwijl je inzet bij {game} nog liep, dus die is terugbetaald in {currency}."
+  context-currency-change-committed: "De valuta van deze dealer is gewijzigd nadat je resultaat bij {game} al vaststond, dus je bent uitbetaald in {currency}."
   context-committed-result: "De server is opnieuw opgestart nadat je uitslag bij {game} al vaststond. Je resultaat is behouden."
   retry-one: "&6Je hebt 1 openstaande uitbetaling die nog niet kon worden afgeleverd. Er wordt automatisch opnieuw geprobeerd."
   retry-many: "&6Je hebt {count} openstaande uitbetalingen die nog niet konden worden afgeleverd. Er wordt automatisch opnieuw geprobeerd."

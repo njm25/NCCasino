@@ -91,6 +91,7 @@ payout:
   context-disconnected: "You disconnected during an active {game} game. The game finished while you were offline."
   context-server-restart: "The server restarted while your {game} bet was still awaiting resolution, so it has been refunded."
   context-currency-change: "This dealer's currency was changed while your {game} bet was still in play, so it has been refunded in {currency}."
+  context-currency-change-committed: "This dealer's currency was changed after your {game} result had already been determined, so you were paid in {currency}."
   context-committed-result: "The server restarted after your {game} result had already been determined. Your outcome was preserved."
   retry-one: "&6You have 1 pending payout that could not be delivered yet. It will retry automatically."
   retry-many: "&6You have {count} pending payouts that could not be delivered yet. They will retry automatically."

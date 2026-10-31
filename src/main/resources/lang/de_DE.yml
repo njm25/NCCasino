@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Du hast während eines laufenden {game}-Spiels die Verbindung getrennt. Das Spiel wurde beendet, während du offline warst."
   context-server-restart: "Der Server wurde neu gestartet, während deine {game}-Wette noch nicht entschieden war, daher wurde sie zurückerstattet."
   context-currency-change: "Die Währung dieses Dealers wurde geändert, während deine {game}-Wette noch lief, daher wurde sie in {currency} zurückerstattet."
+  context-currency-change-committed: "Die Währung dieses Dealers wurde geändert, nachdem dein {game}-Ergebnis bereits feststand, daher wurdest du in {currency} ausgezahlt."
   context-committed-result: "Der Server wurde neu gestartet, nachdem das Ergebnis deines {game}-Spiels bereits feststand. Dein Ergebnis wurde beibehalten."
   retry-one: "&6Du hast 1 ausstehende Auszahlung, die noch nicht zugestellt werden konnte. Sie wird automatisch erneut versucht."
   retry-many: "&6Du hast {count} ausstehende Auszahlungen, die noch nicht zugestellt werden konnten. Sie werden automatisch erneut versucht."

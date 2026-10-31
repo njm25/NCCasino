@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Savienojums pārtrūka aktīvas spēles laikā ({game}). Spēle beidzās, kamēr tevis nebija."
   context-server-restart: "Serveris tika restartēts, kamēr tava likme ({game}) vēl gaidīja rezultātu, tāpēc tā tika atmaksāta."
   context-currency-change: "Šī dīlera valūta tika mainīta, kamēr tava likme ({game}) vēl bija spēlē, tāpēc tā tika atmaksāta vecajā valūtā: {currency}."
+  context-currency-change-committed: "Šī dīlera valūta tika mainīta, kad tavs rezultāts ({game}) jau bija noteikts, tāpēc tev tika izmaksāts vecajā valūtā: {currency}."
   context-committed-result: "Serveris tika restartēts, kad tavs rezultāts ({game}) jau bija noteikts. Rezultāts ir saglabāts."
   retry-one: "&6Tev ir 1 gaidoša izmaksa, ko vēl nevarēja piegādāt. Piegāde tiks automātiski atkārtota."
   retry-many: "&6Gaidošas izmaksas, ko vēl nevarēja piegādāt: {count}. Piegāde tiks automātiski atkārtota."

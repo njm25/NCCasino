@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Njikọ gị bịara ná njedebe mgbe egwuregwu na-aga n'ihu (egwuregwu: {game}). Egwuregwu ahụ gwụchara mgbe ị nọghị n'ịntanetị."
   context-server-restart: "Sava malitegharịrị mgbe nzọ gị (egwuregwu: {game}) ka na-eche nsonaazụ ya, ya mere e weghachiri ya."
   context-currency-change: "E gbanwere ego onye nkesa a mgbe nzọ gị (egwuregwu: {game}) ka nọ n'egwuregwu, ya mere e weghachiri ya n'ego ochie: {currency}."
+  context-currency-change-committed: "E gbanwere ego onye nkesa a mgbe e kpebiri nsonaazụ gị (egwuregwu: {game}), ya mere a kwụrụ gị n'ego ochie: {currency}."
   context-committed-result: "Sava malitegharịrị mgbe e kpebiworo nsonaazụ gị (egwuregwu: {game}). E chekwara nsonaazụ gị."
   retry-one: "&6Ị nwere ịkwụ ụgwọ 1 na-echere nke a na-enwebeghị ike inye. A ga-anwa ya ọzọ n'onwe ya."
   retry-many: "&6Ịkwụ ụgwọ na-echere nke a na-enwebeghị ike inye: {count}. A ga-anwa ha ọzọ n'onwe ha."

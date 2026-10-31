@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Veza ti je prekinuta tokom aktivne igre ({game}). Igra je završena u tvom odsustvu."
   context-server-restart: "Server je ponovo pokrenut dok je tvoja opklada ({game}) još čekala ishod, pa je vraćena."
   context-currency-change: "Valuta ovog dilera promijenjena je dok je tvoja opklada ({game}) još bila u igri, pa je vraćena u valuti {currency}."
+  context-currency-change-committed: "Valuta ovog dilera promijenjena je nakon što je tvoj rezultat ({game}) već bio određen, pa je isplata izvršena u valuti {currency}."
   context-committed-result: "Server je ponovo pokrenut nakon što je tvoj ishod ({game}) već bio određen. Ishod je sačuvan."
   retry-one: "&6Imaš 1 isplatu na čekanju koja još nije mogla biti dostavljena. Automatski će se pokušati ponovo."
   retry-many: "&6Isplate na čekanju koje još nisu mogle biti dostavljene: {count}. Automatski će se pokušati ponovo."

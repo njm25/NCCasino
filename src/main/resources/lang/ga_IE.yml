@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Dícheanglaíodh thú le linn cluiche ghníomhaigh ({game}). Chríochnaigh an cluiche fad a bhí tú as líne."
   context-server-restart: "Atosaíodh an freastalaí fad a bhí do gheall ({game}) fós ag fanacht ar thoradh, mar sin aisíocadh é."
   context-currency-change: "Athraíodh airgeadra an déileálaí seo fad a bhí do gheall ({game}) fós ar siúl, mar sin aisíocadh é san airgeadra {currency}."
+  context-currency-change-committed: "Athraíodh airgeadra an déileálaí seo tar éis do thoradh ({game}) a bheith socraithe cheana, mar sin íocadh thú san airgeadra {currency}."
   context-committed-result: "Atosaíodh an freastalaí tar éis do thoradh ({game}) a bheith socraithe cheana. Caomhnaíodh do thoradh."
   retry-one: "&6Tá 1 íocaíocht ar feitheamh agat nárbh fhéidir a sheachadadh fós. Déanfar iarracht arís go huathoibríoch."
   retry-many: "&6Íocaíochtaí ar feitheamh nárbh fhéidir a sheachadadh fós: {count}. Déanfar iarracht arís go huathoibríoch."

@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Během probíhající hry {game} došlo k odpojení. Hra skončila během tvé nepřítomnosti."
   context-server-restart: "Server se restartoval, zatímco tvoje sázka ve hře {game} ještě čekala na výsledek, proto byla vrácena."
   context-currency-change: "Měna tohoto krupiéra byla změněna, zatímco tvoje sázka ve hře {game} ještě nebyla vyhodnocena, proto ti byla vrácena v měně {currency}."
+  context-currency-change-committed: "Měna tohoto krupiéra byla změněna, když už byl tvůj výsledek ve hře {game} určen, proto ti bylo vyplaceno v měně {currency}."
   context-committed-result: "Server se restartoval až poté, co byl tvůj výsledek ve hře {game} určen. Výsledek zůstal zachován."
   retry-one: "&6Máš 1 čekající výplatu, kterou se zatím nepodařilo doručit. Pokus se automaticky zopakuje."
   retry-many: "&6Čekající výplaty, které se zatím nepodařilo doručit: {count}. Pokusy se automaticky zopakují."

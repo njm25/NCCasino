@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Jou verbinding is verbreek tydens 'n aktiewe spel ({game}). Die spel het geëindig terwyl jy weg was."
   context-server-restart: "Die bediener het herbegin terwyl jou weddenskap ({game}) nog op 'n uitslag gewag het, dus is dit terugbetaal."
   context-currency-change: "Die geldeenheid van hierdie kroepier is verander terwyl jou weddenskap ({game}) nog in spel was, dus is dit in {currency} terugbetaal."
+  context-currency-change-committed: "Die geldeenheid van hierdie kroepier is verander nadat jou uitslag ({game}) reeds bepaal is, dus is jy in {currency} uitbetaal."
   context-committed-result: "Die bediener het herbegin nadat jou uitslag ({game}) reeds bepaal is. Jou uitslag is behou."
   retry-one: "&6Jy het 1 uitstaande uitbetaling wat nog nie afgelewer kon word nie. Dit sal outomaties weer probeer word."
   retry-many: "&6Uitstaande uitbetalings wat nog nie afgelewer kon word nie: {count}. Dit sal outomaties weer probeer word."

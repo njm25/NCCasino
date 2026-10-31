@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Devam eden bir {game} oyunu sırasında bağlantın koptu. Sen çevrimdışıyken oyun sona erdi."
   context-server-restart: "{game} oyunundaki bahsin henüz sonuçlanmamışken sunucu yeniden başladı, bu yüzden bahsin iade edildi."
   context-currency-change: "Bu krupiyenin para birimi, {game} oyunundaki bahsin hâlâ oyundayken değiştirildi, bu yüzden bahsin {currency} para biriminde iade edildi."
+  context-currency-change-committed: "Bu krupiyenin para birimi, {game} oyunundaki sonucun belirlendikten sonra değiştirildi, bu yüzden ödemen {currency} para biriminde yapıldı."
   context-committed-result: "{game} oyunundaki sonucun belli olduktan sonra sunucu yeniden başladı. Sonucun korundu."
   retry-one: "&6Henüz teslim edilemeyen 1 bekleyen ödemen var. Otomatik olarak yeniden denenecek."
   retry-many: "&6Henüz teslim edilemeyen {count} bekleyen ödemen var. Otomatik olarak yeniden denenecek."

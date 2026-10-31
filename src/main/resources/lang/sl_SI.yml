@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Povezava se je prekinila med aktivno igro ({game}). Igra se je končala, medtem ko te ni bilo."
   context-server-restart: "Strežnik se je znova zagnal, ko je tvoja stava ({game}) še čakala na izid, zato je bila vrnjena."
   context-currency-change: "Valuta tega delivca je bila zamenjana, ko je bila tvoja stava ({game}) še v igri, zato je bila vrnjena v valuti {currency}."
+  context-currency-change-committed: "Valuta tega delivca je bila zamenjana, ko je bil tvoj izid ({game}) že določen, zato je bilo izplačilo v valuti {currency}."
   context-committed-result: "Strežnik se je znova zagnal, ko je bil tvoj izid ({game}) že določen. Izid je ohranjen."
   retry-one: "&6Imaš 1 čakajoče izplačilo, ki ga še ni bilo mogoče dostaviti. Dostava se bo samodejno ponovila."
   retry-many: "&6Čakajoča izplačila, ki jih še ni bilo mogoče dostaviti: {count}. Dostava se bo samodejno ponovila."

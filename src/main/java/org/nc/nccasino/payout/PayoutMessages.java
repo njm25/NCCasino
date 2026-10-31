@@ -66,9 +66,14 @@ public final class PayoutMessages {
      * decisive reveal/forfeit happened, but final settlement -- payout,
      * multiplier, loss notice -- hadn't run yet). Unlike
      * {@link #serverRestartRefundContext}, the round's outcome is honored
-     * rather than refunded.
+     * rather than refunded. Inside {@link #duringCurrencyChange} the payout
+     * is attributed to the currency change instead.
      */
     public static String committedResultContext(String gameType) {
+        String currency = currencyChangeLabel.get();
+        if (currency != null) {
+            return encodeContext("currency-change-committed", gameType) + "|" + currency;
+        }
         return encodeContext("committed-result", gameType);
     }
 
@@ -90,6 +95,7 @@ public final class PayoutMessages {
             case "server-restart" -> "payout.context-server-restart";
             case "committed-result" -> "payout.context-committed-result";
             case "currency-change" -> currency == null ? null : "payout.context-currency-change";
+            case "currency-change-committed" -> currency == null ? null : "payout.context-currency-change-committed";
             default -> null;
         };
         return localizationKey == null ? null : new StoredContext(localizationKey, parts[1], currency);

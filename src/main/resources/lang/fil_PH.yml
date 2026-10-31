@@ -91,6 +91,7 @@ payout:
   context-disconnected: "Nadiskonekta ka habang may aktibong laro ({game}). Natapos ang laro habang offline ka."
   context-server-restart: "Nag-restart ang server habang hinihintay pa ang resulta ng taya mo ({game}), kaya ibinalik ito."
   context-currency-change: "Pinalitan ang currency ng dealer na ito habang nasa laro pa ang taya mo ({game}), kaya ibinalik ito sa {currency}."
+  context-currency-change-committed: "Pinalitan ang currency ng dealer na ito matapos matukoy na ang resulta mo ({game}), kaya binayaran ka sa {currency}."
   context-committed-result: "Nag-restart ang server matapos matukoy ang resulta mo ({game}). Napanatili ang resulta mo."
   retry-one: "&6May 1 kang nakabinbing bayad na hindi pa naipapadala. Awtomatiko itong susubukang muli."
   retry-many: "&6Mga nakabinbing bayad na hindi pa naipapadala: {count}. Awtomatikong susubukang muli ang mga ito."
