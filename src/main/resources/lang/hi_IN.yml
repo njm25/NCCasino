@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cकोई इकॉनमी प्लगइन नहीं है। Vault इस्तेमाल करने के लिए कोई इकॉनमी प्लगइन इंस्टॉल करें।"
   currency-mode-switched: "&eमुद्रा मोड बदला गया: &a{mode}&e।"
   currency-change-players: "&eइस डीलर पर बीच गेम में खिलाड़ी: &a{count}&e। पुष्टि करने पर उनके गेम अभी खत्म हो जाएँगे और उनका हिसाब पुरानी मुद्रा &a{currency}&e में किया जाएगा: जीत की राशि चुकाई जाएगी, खुले दांव लौटाए जाएँगे। इसके बाद मुद्रा बदली जाएगी।"
-  currency-change-confirm-title: "पहले दांव निपटाएँ, फिर मुद्रा बदलें?"
+  currency-change-confirm-title: "निपटान और नई मुद्रा?"
   prompt-chip-size: "&aचैट में चिप का नया मूल्य लिखें।"
   prompt-chip-index: "&aचैट में चिप #{index} का नया मूल्य लिखें।"
   prompt-new-value: "&aनया मान लिखें।"

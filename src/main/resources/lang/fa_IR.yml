@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cافزونه‌ی اقتصادی وجود ندارد. برای استفاده از Vault یک افزونه‌ی اقتصادی نصب کنید."
   currency-mode-switched: "&eحالت ارز تغییر کرد به: &a{mode}&e."
   currency-change-players: "&eبازیکنان وسط بازی با این دیلر: &a{count}&e. اگر تأیید کنید، بازی‌هایشان همین حالا تمام می‌شود و با ارز قبلی، &a{currency}&e، تسویه می‌شود: بردها پرداخت و شرط‌های باز بازپرداخت می‌شوند. سپس ارز تغییر می‌کند."
-  currency-change-confirm-title: "تسویه و سپس تغییر ارز؟"
+  currency-change-confirm-title: "تسویه و تغییر ارز؟"
   prompt-chip-size: "&aارزش جدید ژتون را در چت بنویسید."
   prompt-chip-index: "&aارزش جدید ژتون شماره‌ی {index} را در چت بنویسید."
   prompt-new-value: "&aمقدار جدید را بنویسید."

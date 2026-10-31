@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cไม่มีปลั๊กอินเศรษฐกิจ ติดตั้งปลั๊กอินเศรษฐกิจเพื่อใช้ Vault"
   currency-mode-switched: "&eเปลี่ยนโหมดสกุลเงินเป็น: &a{mode}&e"
   currency-change-players: "&eผู้เล่นที่กำลังเล่นอยู่กับดีลเลอร์นี้: &a{count}&e หากยืนยัน เกมของพวกเขาจะจบลงทันทีและชำระบัญชีด้วยสกุลเงินเดิม &a{currency}&e โดยจ่ายเงินรางวัล และคืนเดิมพันที่ค้างอยู่ จากนั้นจึงเปลี่ยนสกุลเงิน"
-  currency-change-confirm-title: "ชำระเดิมพันแล้วเปลี่ยนสกุลเงินไหม?"
+  currency-change-confirm-title: "ชำระเดิมพันแล้วเปลี่ยนสกุลเงิน?"
   prompt-chip-size: "&aพิมพ์มูลค่าชิปใหม่ในแชท"
   prompt-chip-index: "&aพิมพ์มูลค่าใหม่ของชิป #{index} ในแชท"
   prompt-new-value: "&aพิมพ์ค่าใหม่"

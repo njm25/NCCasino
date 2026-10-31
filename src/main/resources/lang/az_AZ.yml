@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cİqtisadiyyat plagini yoxdur. Vault istifadə etmək üçün iqtisadiyyat plagini quraşdırın."
   currency-mode-switched: "&eValyuta rejimi dəyişdirildi: &a{mode}&e."
   currency-change-players: "&eBu dilerdə oyunun ortasında olan oyunçular: &a{count}&e. Təsdiq etsəniz, onların oyunları indi bitəcək və hesablaşma köhnə valyuta olan &a{currency}&e ilə aparılacaq: uduşlar ödəniləcək, açıq mərclər geri qaytarılacaq. Sonra valyuta dəyişəcək."
-  currency-change-confirm-title: "Hesablaşıb sonra valyutanı dəyişək?"
+  currency-change-confirm-title: "Hesablaşıb valyuta dəyişilsin?"
   prompt-chip-size: "&aÇata fişkanın yeni dəyərini yazın."
   prompt-chip-index: "&aÇata №{index} fişkanın yeni dəyərini yazın."
   prompt-new-value: "&aYeni dəyəri yazın."

@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cHakuna programu-jalizi ya uchumi. Sakinisha programu-jalizi ya uchumi ili kutumia Vault."
   currency-mode-switched: "&eHali ya sarafu imebadilishwa kuwa: &a{mode}&e."
   currency-change-players: "&eWachezaji walio katikati ya mchezo kwa mgawaji huyu: &a{count}&e. Ukithibitisha, michezo yao inaisha sasa na hesabu zao zinafungwa kwa sarafu ya zamani, &a{currency}&e: ushindi unalipwa, madau yaliyo wazi yanarejeshwa. Kisha sarafu inabadilika."
-  currency-change-confirm-title: "Lipa madau, kisha ubadilishe sarafu?"
+  currency-change-confirm-title: "Lipa madau, badilisha sarafu?"
   prompt-chip-size: "&aAndika thamani mpya ya chipu kwenye gumzo."
   prompt-chip-index: "&aAndika thamani mpya ya chipu namba {index} kwenye gumzo."
   prompt-new-value: "&aAndika thamani mpya."

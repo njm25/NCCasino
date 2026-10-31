@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cNi vtičnika za ekonomijo. Za uporabo vtičnika Vault namesti vtičnik za ekonomijo."
   currency-mode-switched: "&eNačin valute je spremenjen v: &a{mode}&e."
   currency-change-players: "&eIgralci sredi igre pri tem delivcu: &a{count}&e. Če potrdiš, se njihove igre zdaj končajo in poravnajo v stari valuti &a{currency}&e: dobitki izplačani, odprte stave vrnjene. Nato se valuta zamenja."
-  currency-change-confirm-title: "Poravnati stave in zamenjati valuto?"
+  currency-change-confirm-title: "Poravnava in menjava valute?"
   prompt-chip-size: "&aV klepet vpiši novo vrednost žetona."
   prompt-chip-index: "&aV klepet vpiši novo vrednost žetona št. {index}."
   prompt-new-value: "&aVpiši novo vrednost."

@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cEngin hagkerfisviðbót. Settu upp hagkerfisviðbót til að nota Vault."
   currency-mode-switched: "&eGjaldmiðilsham breytt í: &a{mode}&e."
   currency-change-players: "&eLeikmenn í miðjum leik hjá þessum gjafara: &a{count}&e. Ef þú staðfestir lýkur leikjum þeirra núna og þeir eru gerðir upp í gamla gjaldmiðlinum (&a{currency}&e): vinningar greiddir, opin veðmál endurgreidd. Síðan er skipt um gjaldmiðil."
-  currency-change-confirm-title: "Gera upp, svo skipta um gjaldmiðil?"
+  currency-change-confirm-title: "Uppgjör og nýr gjaldmiðill?"
   prompt-chip-size: "&aSkrifaðu nýtt virði spilapenings í spjallið."
   prompt-chip-index: "&aSkrifaðu nýtt virði fyrir spilapening nr. {index} í spjallið."
   prompt-new-value: "&aSkrifaðu nýtt gildi."

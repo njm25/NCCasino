@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cWalang economy plugin. Mag-install ng economy plugin para magamit ang Vault."
   currency-mode-switched: "&eNapalitan ang mode ng currency sa: &a{mode}&e."
   currency-change-players: "&eMga manlalarong nasa gitna ng laro sa dealer na ito: &a{count}&e. Kung kukumpirmahin mo, matatapos na ngayon ang mga laro nila at aayusin ang bayaran sa lumang currency, &a{currency}&e: babayaran ang mga panalo at ibabalik ang mga bukas na taya. Pagkatapos, papalitan ang currency."
-  currency-change-confirm-title: "Bayaran muna, saka palitan currency?"
+  currency-change-confirm-title: "Bayaran muna, palitan currency?"
   prompt-chip-size: "&aI-type sa chat ang bagong halaga ng chip."
   prompt-chip-index: "&aI-type sa chat ang bagong halaga ng chip #{index}."
   prompt-new-value: "&aI-type ang bagong halaga."

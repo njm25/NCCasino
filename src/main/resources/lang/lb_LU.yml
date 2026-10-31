@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cKee Wirtschafts-Plugin. Installéier e Wirtschafts-Plugin, fir Vault ze benotzen."
   currency-mode-switched: "&eWärungsmodus gewiesselt op: &a{mode}&e."
   currency-change-players: "&eSpiller matzen an enger Partie bei dësem Croupier: &a{count}&e. Wann s de confirméiers, ginn hir Partien elo op en Enn a ginn an der aler Wärung ofgerechent, &a{currency}&e: Gewënn ausbezuelt, oppen Asätz zeréckbezuelt. Duerno ännert d'Wärung."
-  currency-change-confirm-title: "Ofrechnen, dann Wärung änneren?"
+  currency-change-confirm-title: "Ofrechnen an Wärung änneren?"
   prompt-chip-size: "&aSchreif den neie Wäert vum Jeton am Chat."
   prompt-chip-index: "&aSchreif den neie Wäert fir de Jeton #{index} am Chat."
   prompt-new-value: "&aSchreif den neie Wäert."

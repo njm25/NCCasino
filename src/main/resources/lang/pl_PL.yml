@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cBrak pluginu ekonomii. Zainstaluj plugin ekonomii, aby używać Vault."
   currency-mode-switched: "&eZmieniono tryb waluty na: &a{mode}&e."
   currency-change-players: "&eLiczba graczy w trakcie gry u tego krupiera: &a{count}&e. Po potwierdzeniu ich gry kończą się teraz i zostają rozliczone w dotychczasowej walucie &a{currency}&e: wygrane wypłacone, otwarte zakłady zwrócone. Potem waluta się zmieni."
-  currency-change-confirm-title: "Rozliczyć, potem zmienić walutę?"
+  currency-change-confirm-title: "Rozliczyć i zmienić walutę?"
   prompt-chip-size: "&aWpisz na czacie nowy nominał żetonu."
   prompt-chip-index: "&aWpisz na czacie nowy nominał żetonu nr {index}."
   prompt-new-value: "&aWpisz nową wartość."

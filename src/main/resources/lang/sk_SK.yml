@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cChýba ekonomický plugin. Nainštaluj ekonomický plugin, aby bolo možné používať Vault."
   currency-mode-switched: "&eRežim meny prepnutý na: &a{mode}&e."
   currency-change-players: "&ePočet hráčov uprostred hry u tohto krupiéra: &a{count}&e. Ak potvrdíš, ich hry sa teraz skončia a vyúčtujú sa v starej mene &a{currency}&e: výhry vyplatené, otvorené stávky vrátené. Potom sa mena zmení."
-  currency-change-confirm-title: "Vyúčtovať stávky a zmeniť menu?"
+  currency-change-confirm-title: "Vyúčtovať a zmeniť menu?"
   prompt-chip-size: "&aNapíš do chatu novú hodnotu žetónu."
   prompt-chip-index: "&aNapíš do chatu novú hodnotu žetónu č. {index}."
   prompt-new-value: "&aNapíš novú hodnotu."

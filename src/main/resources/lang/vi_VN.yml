@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cChưa có plugin kinh tế. Hãy cài một plugin kinh tế để dùng Vault."
   currency-mode-switched: "&eĐã chuyển chế độ tiền tệ sang: &a{mode}&e."
   currency-change-players: "&eNgười chơi đang giữa ván với người chia bài này: &a{count}&e. Nếu bạn xác nhận, ván chơi của họ kết thúc ngay và được thanh toán bằng tiền tệ cũ, &a{currency}&e: trả tiền thắng, hoàn lại cược đang mở. Sau đó tiền tệ mới được đổi."
-  currency-change-confirm-title: "Thanh toán cược rồi đổi tiền tệ?"
+  currency-change-confirm-title: "Thanh toán cược, đổi tiền tệ?"
   prompt-chip-size: "&aGõ mệnh giá chip mới trong khung chat."
   prompt-chip-index: "&aGõ mệnh giá mới cho chip #{index} trong khung chat."
   prompt-new-value: "&aGõ giá trị mới."

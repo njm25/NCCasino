@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cلا توجد إضافة اقتصاد. ثبت إضافة اقتصاد لاستخدام Vault."
   currency-mode-switched: "&eتم تبديل وضع العملة إلى: &a{mode}&e."
   currency-change-players: "&eاللاعبون في منتصف اللعب لدى هذا الموزع: &a{count}&e. إذا أكدت، تنتهي ألعابهم الآن وتتم تسويتها بالعملة القديمة &a{currency}&e: تدفع الأرباح وتعاد الرهانات المفتوحة. ثم تتغير العملة."
-  currency-change-confirm-title: "تسوية الرهانات ثم تغيير العملة؟"
+  currency-change-confirm-title: "تسوية الرهانات وتغيير العملة؟"
   prompt-chip-size: "&aاكتب في الدردشة القيمة الجديدة للرقاقة."
   prompt-chip-index: "&aاكتب في الدردشة القيمة الجديدة للرقاقة رقم {index}."
   prompt-new-value: "&aاكتب القيمة الجديدة."

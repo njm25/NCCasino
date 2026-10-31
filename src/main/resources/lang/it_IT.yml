@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cNessun plugin di economia. Installa un plugin di economia per usare Vault."
   currency-mode-switched: "&eModalità valuta cambiata in: &a{mode}&e."
   currency-change-players: "&eGiocatori a metà partita con questo croupier: &a{count}&e. Se confermi, le loro partite terminano ora e vengono saldate nella vecchia valuta, &a{currency}&e: vincite pagate, puntate aperte rimborsate. Poi la valuta cambia."
-  currency-change-confirm-title: "Saldare, poi cambiare valuta?"
+  currency-change-confirm-title: "Saldare e cambiare valuta?"
   prompt-chip-size: "&aScrivi in chat il nuovo valore della fiche."
   prompt-chip-index: "&aScrivi in chat il nuovo valore della fiche n. {index}."
   prompt-new-value: "&aScrivi il nuovo valore."

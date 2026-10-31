@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cCap d'extension d'economia. Installatz una extension d'economia per utilizar Vault."
   currency-mode-switched: "&eMòde de moneda cambiat per: &a{mode}&e."
   currency-change-players: "&eJogaires al mitan d'una partida amb aqueste cropièr: &a{count}&e. Se confirmatz, lors partidas s'acaban ara e son regladas dins la moneda anciana, &a{currency}&e: ganhs pagats, escomesas dobèrtas remborsadas. Puèi la moneda cambia."
-  currency-change-confirm-title: "Reglar, puèi cambiar de moneda?"
+  currency-change-confirm-title: "Reglar e cambiar de moneda?"
   prompt-chip-size: "&aEscrivètz la novèla valor del geton dins lo chat."
   prompt-chip-index: "&aEscrivètz la novèla valor pel geton #{index} dins lo chat."
   prompt-new-value: "&aEscrivètz la novèla valor."

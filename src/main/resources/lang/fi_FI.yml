@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cTalouslisäosaa ei ole. Asenna talouslisäosa käyttääksesi Vault-lisäosaa."
   currency-mode-switched: "&eValuuttatila vaihdettu: &a{mode}&e."
   currency-change-players: "&ePelaajia kesken pelin tämän jakajan luona: &a{count}&e. Jos vahvistat, heidän pelinsä päättyvät nyt ja tilitetään vanhassa valuutassa &a{currency}&e: voitot maksetaan, avoimet panokset palautetaan. Sen jälkeen valuutta vaihtuu."
-  currency-change-confirm-title: "Tilitä ja vaihda sitten valuutta?"
+  currency-change-confirm-title: "Tilitä ja vaihda valuutta?"
   prompt-chip-size: "&aKirjoita chattiin pelimerkin uusi arvo."
   prompt-chip-index: "&aKirjoita chattiin uusi arvo pelimerkille #{index}."
   prompt-new-value: "&aKirjoita uusi arvo."

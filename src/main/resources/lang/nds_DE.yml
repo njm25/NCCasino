@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cKeen Weertschops-Plugin. Installeer en Weertschops-Plugin, üm Vault to bruken."
   currency-mode-switched: "&eGeldmodus wesselt na: &a{mode}&e."
   currency-change-players: "&eSpelers merrn in en Speel bi dissen Croupier: &a{count}&e. Wenn du dat bestätigst, hört ehr Spelen nu op un warrt in de ole Geldsoort afrekent, &a{currency}&e: Gewinnen utbetahlt, apen Insätz trüchbetahlt. Denn warrt de Geldsoort ännert."
-  currency-change-confirm-title: "Afreken, denn Geldsoort ännern?"
+  currency-change-confirm-title: "Afreken un Geldsoort ännern?"
   prompt-chip-size: "&aSchriev in'n Chat den nee'n Weert vun de Spelmark."
   prompt-chip-index: "&aSchriev in'n Chat den nee'n Weert för Spelmark #{index}."
   prompt-new-value: "&aSchriev den nee'n Weert."

@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cN'eus astenn armerzh ebet. Staliit un astenn armerzh evit implijout Vault."
   currency-mode-switched: "&eMod ar moneiz cheñchet da: &a{mode}&e."
   currency-change-players: "&eC'hoarierien e-kreiz ur c'hoari gant ar c'hroupier-mañ: &a{count}&e. Ma kadarnait, e vo echu o c'hoarioù bremañ ha paeet e vo pep tra er moneiz kozh, &a{currency}&e: paeet e vo o gounidoù ha dasroet o c'hlaoustreoù digor. Goude e vo cheñchet ar moneiz."
-  currency-change-confirm-title: "Paeañ, ha goude cheñch ar moneiz?"
+  currency-change-confirm-title: "Paeañ ha cheñch ar moneiz?"
   prompt-chip-size: "&aSkrivit talvoud nevez ar jeton er flap."
   prompt-chip-index: "&aSkrivit an talvoud nevez evit jeton #{index} er flap."
   prompt-new-value: "&aSkrivit an talvoud nevez."

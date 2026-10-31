@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cNo hi ha cap connector d'economia. Instal·la'n un per fer servir Vault."
   currency-mode-switched: "&eMode de moneda nou: &a{mode}&e."
   currency-change-players: "&eJugadors a mitja partida amb aquest crupier: &a{count}&e. Si confirmes, les seves partides acaben ara i es liquiden en la moneda antiga, &a{currency}&e: es paguen els guanys i es retornen les apostes obertes. Després canvia la moneda."
-  currency-change-confirm-title: "Liquidar i després canviar moneda?"
+  currency-change-confirm-title: "Liquidar i canviar moneda?"
   prompt-chip-size: "&aEscriu al xat el nou valor de la fitxa."
   prompt-chip-index: "&aEscriu al xat el nou valor de la fitxa núm. {index}."
   prompt-new-value: "&aEscriu el valor nou."

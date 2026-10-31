@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cNun hai complementu d'economía. Instala un complementu d'economía pa usar Vault."
   currency-mode-switched: "&eMou de moneda camudáu a: &a{mode}&e."
   currency-change-players: "&eXente a metá d'una partida con esti crupier: &a{count}&e. Si confirmes, les sos partíes terminen agora y liquídense na moneda antigua, &a{currency}&e: págense les ganancies y devuélvense les apuestes abiertes. Dempués camúdase la moneda."
-  currency-change-confirm-title: "¿Liquidar y dempués camudar moneda?"
+  currency-change-confirm-title: "¿Liquidar y camudar moneda?"
   prompt-chip-size: "&aEscribi'l nuevu valor de la ficha nel chat."
   prompt-chip-index: "&aEscribi'l nuevu valor pa la ficha #{index} nel chat."
   prompt-new-value: "&aEscribi'l nuevu valor."

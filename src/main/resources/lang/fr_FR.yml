@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cAucun plugin d'économie. Installez-en un pour utiliser Vault."
   currency-mode-switched: "&eMode de monnaie changé en : &a{mode}&e."
   currency-change-players: "&eJoueurs en pleine partie avec ce croupier : &a{count}&e. Si vous confirmez, leurs parties se terminent maintenant et sont réglées dans l'ancienne monnaie, &a{currency}&e : gains payés, mises en cours remboursées. Ensuite, la monnaie change."
-  currency-change-confirm-title: "Régler, puis changer de monnaie ?"
+  currency-change-confirm-title: "Régler et changer de monnaie ?"
   prompt-chip-size: "&aSaisissez la nouvelle valeur du jeton dans le chat."
   prompt-chip-index: "&aSaisissez la nouvelle valeur du jeton n°{index} dans le chat."
   prompt-new-value: "&aSaisissez la nouvelle valeur."

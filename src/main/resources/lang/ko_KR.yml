@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&c경제 플러그인이 없습니다. Vault를 사용하려면 경제 플러그인을 설치하세요."
   currency-mode-switched: "&e화폐 모드 전환: &a{mode}&e."
   currency-change-players: "&e이 딜러에서 게임 중인 플레이어: &a{count}&e. 확인하면 이들의 게임은 지금 종료되고 이전 화폐(&a{currency}&e)로 정산됩니다. 당첨금은 지급되고 진행 중인 베팅은 환불됩니다. 그 후 화폐가 변경됩니다."
-  currency-change-confirm-title: "베팅을 정산한 뒤 화폐를 변경할까요?"
+  currency-change-confirm-title: "정산 후 화폐를 변경할까요?"
   prompt-chip-size: "&a채팅에 새 칩 금액을 입력하세요."
   prompt-chip-index: "&a채팅에 칩 #{index} 새 금액을 입력하세요."
   prompt-new-value: "&a새 값을 입력하세요."

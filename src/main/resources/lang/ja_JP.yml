@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&c経済プラグインがありません。Vault を使うには経済プラグインをインストールしてください。"
   currency-mode-switched: "&e通貨モードを切り替えました：&a{mode}&e。"
   currency-change-players: "&eこのディーラーでプレイ中のプレイヤー数：&a{count}&e。確定すると、プレイ中のゲームは今すぐ終了し、旧通貨 &a{currency}&e で精算されます（配当は支払い、未決済のベットは返金）。その後、通貨が変更されます。"
-  currency-change-confirm-title: "ベットを精算して通貨を変更しますか？"
+  currency-change-confirm-title: "精算して通貨を変更しますか？"
   prompt-chip-size: "&a新しいチップの額面をチャットに入力してください。"
   prompt-chip-index: "&aチップ #{index} の新しい額面をチャットに入力してください。"
   prompt-new-value: "&a新しい値を入力してください。"

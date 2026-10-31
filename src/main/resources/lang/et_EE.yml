@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cMajanduspluginat pole. Vault'i kasutamiseks paigalda majandusplugin."
   currency-mode-switched: "&eValuutarežiim on nüüd: &a{mode}&e."
   currency-change-players: "&eMängijad keset mängu selle diileri juures: &a{count}&e. Kui kinnitad, lõpevad nende mängud kohe ja arveldatakse vanas valuutas &a{currency}&e: võidud makstakse välja, avatud panused tagastatakse. Seejärel valuuta vahetub."
-  currency-change-confirm-title: "Arvelda, siis vaheta valuuta?"
+  currency-change-confirm-title: "Arvelda ja vaheta valuuta?"
   prompt-chip-size: "&aKirjuta vestlusesse žetooni uus väärtus."
   prompt-chip-index: "&aKirjuta vestlusesse žetooni nr {index} uus väärtus."
   prompt-new-value: "&aKirjuta uus väärtus."

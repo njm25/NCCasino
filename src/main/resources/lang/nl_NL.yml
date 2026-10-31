@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cGeen economieplug-in. Installeer een economieplug-in om Vault te gebruiken."
   currency-mode-switched: "&eValutamodus overgeschakeld naar: &a{mode}&e."
   currency-change-players: "&eSpelers midden in een spel bij deze dealer: &a{count}&e. Als je bevestigt, eindigen hun spellen nu en worden ze afgerekend in de oude valuta, &a{currency}&e: winsten uitbetaald, openstaande inzetten terugbetaald. Daarna verandert de valuta."
-  currency-change-confirm-title: "Afrekenen en dan valuta wijzigen?"
+  currency-change-confirm-title: "Afrekenen en valuta wijzigen?"
   prompt-chip-size: "&aTyp de nieuwe fichewaarde in de chat."
   prompt-chip-index: "&aTyp de nieuwe waarde voor fiche #{index} in de chat."
   prompt-new-value: "&aTyp de nieuwe waarde."

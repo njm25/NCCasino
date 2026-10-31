@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cEingin búskaparíbót. Legg eina búskaparíbót inn fyri at brúka Vault."
   currency-mode-switched: "&eGjaldoyraháttur skiftur til: &a{mode}&e."
   currency-change-players: "&eLeikarar mitt í einum spæli hjá hesum býtaranum: &a{count}&e. Um tú váttar, enda spælini hjá teimum nú og verða gjørd upp í gamla gjaldoyranum, &a{currency}&e: vinningar verða goldnir, opnir veddingar endurgoldnir. Síðan verður gjaldoyrað skift."
-  currency-change-confirm-title: "Gera upp, síðan skifta gjaldoyra?"
+  currency-change-confirm-title: "Gera upp og skifta gjaldoyra?"
   prompt-chip-size: "&aSkriva nýggja virðið á spælpeninginum í kjattið."
   prompt-chip-index: "&aSkriva nýggja virðið á spælpeningi #{index} í kjattið."
   prompt-new-value: "&aSkriva nýggja virðið."

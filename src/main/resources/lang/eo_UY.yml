@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cMankas ekonomia kromprogramo. Instalu ekonomian kromprogramon por uzi Vault."
   currency-mode-switched: "&eValuta reĝimo ŝanĝita al: &a{mode}&e."
   currency-change-players: "&eLudantoj meze de ludo ĉe ĉi tiu krupiero: &a{count}&e. Se vi konfirmas, iliaj ludoj finiĝas nun kaj estas kvitigataj en la malnova valuto &a{currency}&e: gajnoj estas pagataj, malfermitaj vetoj repagataj. Poste la valuto ŝanĝiĝas."
-  currency-change-confirm-title: "Ĉu kvitigi, poste ŝanĝi la valuton?"
+  currency-change-confirm-title: "Ĉu kvitigi kaj ŝanĝi valuton?"
   prompt-chip-size: "&aTajpu la novan valoron de ĵetono en la babilejo."
   prompt-chip-index: "&aTajpu la novan valoron por ĵetono n-ro {index} en la babilejo."
   prompt-new-value: "&aTajpu novan valoron."

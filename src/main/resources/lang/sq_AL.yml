@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cNuk ka plugin ekonomie. Instaloni një plugin ekonomie për të përdorur Vault."
   currency-mode-switched: "&eMënyra e monedhës u ndryshua në: &a{mode}&e."
   currency-change-players: "&eLojtarë në mes të lojës te ky krupier: &a{count}&e. Nëse konfirmoni, lojërat e tyre mbarojnë tani dhe shlyhen në monedhën e vjetër, &a{currency}&e: fitimet paguhen, bastet e hapura kthehen. Pastaj monedha ndryshon."
-  currency-change-confirm-title: "Paguaj bastet dhe ndrysho monedhën?"
+  currency-change-confirm-title: "Shlyerje dhe ndryshim monedhe?"
   prompt-chip-size: "&aShkruani në chat vlerën e re të fishës."
   prompt-chip-index: "&aShkruani në chat vlerën e re për fishën nr. {index}."
   prompt-new-value: "&aShkruani vlerën e re."

@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cIi leat ekonomiijalasáhus. Sajáiduhte ekonomiijalasáhusa geavahit Vault."
   currency-mode-switched: "&eValuhttavuohki molsojuvvon: &a{mode}&e."
   currency-change-players: "&eSpeallejeaddjit gaskkas speallu dán juogadeaddji luhtte: &a{count}&e. Jus don dohkkehat, sin spealut nohket dál ja máksojuvvojit boares valuhtas, &a{currency}&e: vuoittut máksojuvvojit, rabas veađut máksojuvvojit ruovttoluotta. Dasto valuhtta molsašuvvá."
-  currency-change-confirm-title: "Máksit veađuid ja molsut valuhta?"
+  currency-change-confirm-title: "Máksit ja molsut valuhta?"
   prompt-chip-size: "&aČále mearkka ođđa árvvu čáttas."
   prompt-chip-index: "&aČále ođđa árvvu mearkii #{index} čáttas."
   prompt-new-value: "&aČále ođđa árvvu."

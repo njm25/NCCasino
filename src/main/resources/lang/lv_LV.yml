@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cNav ekonomikas spraudņa. Instalē ekonomikas spraudni, lai varētu izmantot Vault."
   currency-mode-switched: "&eValūtas režīms nomainīts. Jaunais režīms: &a{mode}&e."
   currency-change-players: "&eSpēlētāji, kas spēlē pie šī dīlera: &a{count}&e. Ja apstiprināsi, viņu spēles beigsies tagad un norēķins notiks vecajā valūtā &a{currency}&e: laimesti izmaksāti, atvērtās likmes atmaksātas. Pēc tam valūta mainīsies."
-  currency-change-confirm-title: "Norēķināties un tad mainīt valūtu?"
+  currency-change-confirm-title: "Norēķināties un mainīt valūtu?"
   prompt-chip-size: "&aIeraksti tērzēšanā jaunu žetona vērtību."
   prompt-chip-index: "&aIeraksti tērzēšanā jaunu žetona Nr. {index} vērtību."
   prompt-new-value: "&aIeraksti jaunu vērtību."

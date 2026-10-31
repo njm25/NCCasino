@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cTiada plugin ekonomi. Pasang plugin ekonomi untuk menggunakan Vault."
   currency-mode-switched: "&eMod mata wang ditukar kepada: &a{mode}&e."
   currency-change-players: "&ePemain yang sedang bermain dengan pengendali ini: &a{count}&e. Jika anda sahkan, permainan mereka tamat sekarang dan diselesaikan dalam mata wang lama, &a{currency}&e: kemenangan dibayar, taruhan terbuka dipulangkan. Kemudian mata wang ditukar."
-  currency-change-confirm-title: "Selesaikan dahulu, tukar mata wang?"
+  currency-change-confirm-title: "Selesaikan, tukar mata wang?"
   prompt-chip-size: "&aTaip nilai cip baharu dalam sembang."
   prompt-chip-index: "&aTaip nilai baharu untuk cip #{index} dalam sembang."
   prompt-new-value: "&aTaip nilai baharu."

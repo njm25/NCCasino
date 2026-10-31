@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cGein economieplugin. Installeer 'n economieplugin óm Vault te gebroeke."
   currency-mode-switched: "&eValutamodus gewisseld nao: &a{mode}&e."
   currency-change-players: "&eSpelers midden in 'n spel bie dees dealer: &a{count}&e. Es doe bevestigs, eindige hun spelle noe en weure ze aafgerekend in de aw valuta, &a{currency}&e: winste oetbetaold, aope inzètte trökbetaold. Dao-nao verangert de valuta."
-  currency-change-confirm-title: "Aafrekene, dan valuta verangere?"
+  currency-change-confirm-title: "Aafrekene en valuta verangere?"
   prompt-chip-size: "&aTyp in de chat de nuuj fichewaerde."
   prompt-chip-index: "&aTyp in de chat de nuuj waerde veur fiche #{index}."
   prompt-new-value: "&aTyp de nuuj waerde."

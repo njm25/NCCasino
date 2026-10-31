@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cNullum additamentum oeconomiae. Institue additamentum oeconomiae ut Vault utaris."
   currency-mode-switched: "&eModus monetae mutatus in: &a{mode}&e."
   currency-change-players: "&eLusores medio in ludo apud hunc dispensatorem: &a{count}&e. Si confirmas, ludi eorum nunc finiuntur et moneta vetere solvuntur, &a{currency}&e: lucra solvuntur, pignora aperta redduntur. Deinde moneta mutatur."
-  currency-change-confirm-title: "Solvere, deinde monetam mutare?"
+  currency-change-confirm-title: "Solvere et monetam mutare?"
   prompt-chip-size: "&aScribe novum valorem tesserae in colloquio."
   prompt-chip-index: "&aScribe novum valorem tesserae #{index} in colloquio."
   prompt-new-value: "&aScribe novum valorem."

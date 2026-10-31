@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cGjin ekonomyplugin. Ynstallearje in ekonomyplugin om Vault te brûken."
   currency-mode-switched: "&eFalutamodus wiksele nei: &a{mode}&e."
   currency-change-players: "&eSpilers midden yn in spul by dizze dealer: &a{count}&e. As jo befêstigje, einigje harren spullen no en wurde se ôfrekkene yn de âlde faluta, &a{currency}&e: winsten útbetelle, iepen ynsetten weromjûn. Dêrnei wurdt de faluta wizige."
-  currency-change-confirm-title: "Ôfrekkenje, dan faluta wizigje?"
+  currency-change-confirm-title: "Ôfrekkenje en faluta wizigje?"
   prompt-chip-size: "&aTyp yn 'e chat de nije fichewearde."
   prompt-chip-index: "&aTyp yn 'e chat de nije wearde foar fiche #{index}."
   prompt-new-value: "&aTyp de nije wearde."

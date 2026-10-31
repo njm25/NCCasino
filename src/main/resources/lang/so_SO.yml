@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cMa jiro plugin dhaqaale. Ku rakib plugin dhaqaale si aad u isticmaasho Vault."
   currency-mode-switched: "&eHabka lacagta waxaa loo beddelay: &a{mode}&e."
   currency-change-players: "&eCiyaartoyda ciyaar dhexdeeda ku jira qaybiyahan: &a{count}&e. Haddii aad xaqiijiso, ciyaarahoodu hadda way dhammaanayaan, waxaana lagu xisaabinayaa lacagtii hore, &a{currency}&e: guulaha waa la bixinayaa, sharadyada furanna waa la celinayaa. Kadib lacagta ayaa isbeddelaysa."
-  currency-change-confirm-title: "Xisaabta xir, kadib beddel lacagta?"
+  currency-change-confirm-title: "Xisaabi, kadib beddel lacagta?"
   prompt-chip-size: "&aKu qor sheekaysiga qiimaha cusub ee jajabka."
   prompt-chip-index: "&aKu qor sheekaysiga qiimaha cusub ee jajabka #{index}."
   prompt-new-value: "&aQor qiimaha cusub."

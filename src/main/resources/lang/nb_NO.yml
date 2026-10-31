@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cIngen økonomiutvidelse. Installer en økonomiutvidelse for å bruke Vault."
   currency-mode-switched: "&eValutamodus byttet til: &a{mode}&e."
   currency-change-players: "&eSpillere midt i et spill hos denne dealeren: &a{count}&e. Hvis du bekrefter, avsluttes spillene deres nå og gjøres opp i den gamle valutaen, &a{currency}&e: gevinster utbetales, åpne innsatser refunderes. Deretter byttes valutaen."
-  currency-change-confirm-title: "Gjør opp innsatser, så bytt valuta?"
+  currency-change-confirm-title: "Gjør opp og bytt valuta?"
   prompt-chip-size: "&aSkriv den nye sjetongverdien i chatten."
   prompt-chip-index: "&aSkriv den nye verdien for sjetong nr. {index} i chatten."
   prompt-new-value: "&aSkriv den nye verdien."

@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cKein Economy-Plugin vorhanden. Installiere eines, um Vault zu nutzen."
   currency-mode-switched: "&eWährungsmodus geändert zu: &a{mode}&e."
   currency-change-players: "&eSpieler mitten im Spiel bei diesem Dealer: &a{count}&e. Wenn du bestätigst, enden ihre Spiele jetzt und werden in der alten Währung &a{currency}&e abgerechnet: Gewinne werden ausgezahlt, offene Einsätze erstattet. Danach wird die Währung geändert."
-  currency-change-confirm-title: "Abrechnen, dann Währung ändern?"
+  currency-change-confirm-title: "Abrechnen, Währung ändern?"
   prompt-chip-size: "&aGib den neuen Chipwert im Chat ein."
   prompt-chip-index: "&aGib den neuen Wert für Chip #{index} im Chat ein."
   prompt-new-value: "&aGib den neuen Wert ein."

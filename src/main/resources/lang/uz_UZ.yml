@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cIqtisod plagini yoʻq. Vault plaginidan foydalanish uchun iqtisod plaginini oʻrnating."
   currency-mode-switched: "&eValyuta rejimi almashtirildi: &a{mode}&e."
   currency-change-players: "&eUshbu dilerda oʻyin oʻrtasidagi oʻyinchilar: &a{count}&e. Tasdiqlasangiz, ularning oʻyinlari hozir tugaydi va eski valyutada hisob-kitob qilinadi (&a{currency}&e): yutuqlar toʻlanadi, ochiq stavkalar qaytariladi. Soʻngra valyuta almashadi."
-  currency-change-confirm-title: "Hisoblashib, valyuta almashsinmi?"
+  currency-change-confirm-title: "Hisoblab, valyuta almashsinmi?"
   prompt-chip-size: "&aChatga fishkaning yangi qiymatini yozing."
   prompt-chip-index: "&aChatga {index}-fishkaning yangi qiymatini yozing."
   prompt-new-value: "&aYangi qiymatni yozing."

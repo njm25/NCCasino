@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cאין תוסף כלכלה. יש להתקין תוסף כלכלה כדי להשתמש ב-Vault."
   currency-mode-switched: "&eמצב המטבע הוחלף ל: &a{mode}&e."
   currency-change-players: "&eשחקנים באמצע משחק אצל הדילר הזה: &a{count}&e. באישור, המשחקים שלהם יסתיימו עכשיו ויוסדרו במטבע הקודם, &a{currency}&e: זכיות ישולמו והימורים פתוחים יוחזרו. לאחר מכן המטבע יוחלף."
-  currency-change-confirm-title: "להסדיר הימורים ואז להחליף מטבע?"
+  currency-change-confirm-title: "להסדיר הימורים ולהחליף מטבע?"
   prompt-chip-size: "&aיש להקליד בצ׳אט ערך חדש לאסימון."
   prompt-chip-index: "&aיש להקליד בצ׳אט ערך חדש לאסימון מס׳ {index}."
   prompt-new-value: "&aיש להקליד ערך חדש."

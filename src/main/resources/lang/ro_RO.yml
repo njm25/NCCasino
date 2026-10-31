@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cNiciun plugin de economie. Instalează un plugin de economie pentru a folosi Vault."
   currency-mode-switched: "&eModul monedei a fost schimbat în: &a{mode}&e."
   currency-change-players: "&eJucători în mijlocul unui joc la acest crupier: &a{count}&e. Dacă confirmi, jocurile lor se încheie acum și se decontează în moneda veche, &a{currency}&e: câștigurile sunt plătite, mizele deschise returnate. Apoi moneda se schimbă."
-  currency-change-confirm-title: "Decontezi, apoi schimbi moneda?"
+  currency-change-confirm-title: "Decontezi și schimbi moneda?"
   prompt-chip-size: "&aScrie în chat noua valoare a jetonului."
   prompt-chip-index: "&aScrie în chat noua valoare pentru jetonul nr. {index}."
   prompt-new-value: "&aScrie noua valoare."

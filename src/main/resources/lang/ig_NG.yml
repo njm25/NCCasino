@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cEnweghị plugin akụ na ụba. Wụnye plugin akụ na ụba ka iji Vault."
   currency-mode-switched: "&eE gbanwela ụdị ego gaa na: &a{mode}&e."
   currency-change-players: "&eNdị egwuregwu nọ n'etiti egwuregwu n'aka onye nkesa a: &a{count}&e. Ọ bụrụ na i kwado, egwuregwu ha ga-akwụsị ugbu a, a ga-akwụkwa ụgwọ ha n'ego ochie, &a{currency}&e: a ga-akwụ ihe ha meriri, a ga-eweghachi nzọ ndị ka mepere emepe. Mgbe nke ahụ gasịrị, a ga-agbanwe ego."
-  currency-change-confirm-title: "Kwụọ nzọ, wee gbanwee ego?"
+  currency-change-confirm-title: "Kwụọ nzọ, gbanwee ego?"
   prompt-chip-size: "&aDee uru mkpụrụ ọhụrụ na mkparịta ụka."
   prompt-chip-index: "&aDee uru ọhụrụ maka mkpụrụ #{index} na mkparịta ụka."
   prompt-new-value: "&aDee uru ọhụrụ."

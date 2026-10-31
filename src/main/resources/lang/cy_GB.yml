@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cDim ategyn economi. Gosodwch ategyn economi i ddefnyddio Vault."
   currency-mode-switched: "&eNewidiwyd modd yr arian cyfred i: &a{mode}&e."
   currency-change-players: "&eChwaraewyr ar ganol gêm gyda'r deliwr hwn: &a{count}&e. Os cadarnhewch, daw eu gemau i ben nawr a chânt eu setlo yn yr hen arian cyfred, &a{currency}&e: telir enillion ac ad-delir betiau agored. Yna bydd yr arian cyfred yn newid."
-  currency-change-confirm-title: "Setlo betiau, yna newid arian?"
+  currency-change-confirm-title: "Setlo betiau, newid arian?"
   prompt-chip-size: "&aTeipiwch werth newydd y sglodyn yn y sgwrs."
   prompt-chip-index: "&aTeipiwch werth newydd sglodyn rhif {index} yn y sgwrs."
   prompt-new-value: "&aTeipiwch werth newydd."

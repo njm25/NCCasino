@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cNíl aon bhreiseán geilleagair ann. Suiteáil breiseán geilleagair chun Vault a úsáid."
   currency-mode-switched: "&eMód an airgeadra anois: &a{mode}&e."
   currency-change-players: "&eImreoirí i lár cluiche leis an déileálaí seo: &a{count}&e. Má dhearbhaíonn tú, críochnaíonn a gcluichí anois agus socraítear iad san airgeadra a bhí ann roimhe, &a{currency}&e: íoctar buanna, aisíoctar geallta oscailte. Ansin athraítear an t-airgeadra."
-  currency-change-confirm-title: "Socraigh, ansin athraigh airgeadra?"
+  currency-change-confirm-title: "Socraigh is athraigh airgeadra?"
   prompt-chip-size: "&aClóscríobh luach nua an licín sa chomhrá."
   prompt-chip-index: "&aClóscríobh luach nua licín #{index} sa chomhrá."
   prompt-new-value: "&aClóscríobh luach nua."

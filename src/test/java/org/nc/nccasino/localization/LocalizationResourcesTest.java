@@ -62,6 +62,26 @@ class LocalizationResourcesTest {
     }
 
     @Test
+    void currencyChangeConfirmTitleFitsTheInventoryTitleInEveryLocale() {
+        for (String locale : LOCALES) {
+            String title = load(locale).getString("admin.currency-change-confirm-title");
+            assertNotNull(title, () -> locale + " is missing the currency-change confirm title");
+            int width = title.codePoints()
+                .filter(cp -> Character.getType(cp) != Character.NON_SPACING_MARK
+                    && Character.getType(cp) != Character.ENCLOSING_MARK
+                    && Character.getType(cp) != Character.FORMAT)
+                .map(cp -> Character.UnicodeScript.of(cp) == Character.UnicodeScript.HAN
+                    || Character.UnicodeScript.of(cp) == Character.UnicodeScript.HANGUL
+                    || Character.UnicodeScript.of(cp) == Character.UnicodeScript.HIRAGANA
+                    || Character.UnicodeScript.of(cp) == Character.UnicodeScript.KATAKANA
+                    || (cp >= 0xFF01 && cp <= 0xFF60) ? 2 : 1)
+                .sum();
+            assertTrue(width <= 32,
+                () -> locale + " currency-change confirm title runs past the inventory title (" + width + "): " + title);
+        }
+    }
+
+    @Test
     void currentlySelectedWagerLabelIsPresentInEveryLocale() {
         for (String locale : LOCALES) {
             YamlConfiguration translation = load(locale);

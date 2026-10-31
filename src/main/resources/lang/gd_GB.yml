@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cChan eil plugan eaconamaidh ann. Stàlaich plugan eaconamaidh gus Vault a chleachdadh."
   currency-mode-switched: "&eChaidh modh an airgid atharrachadh gu: &a{mode}&e."
   currency-change-players: "&eCluicheadairean am meadhan geama aig an roinneadair seo: &a{count}&e. Ma dhearbhaicheas tu, thig na geamannan aca gu crìch a-nis agus thèid an rèiteachadh anns an airgead a bh' ann roimhe, &a{currency}&e: thèid buannachdan a phàigheadh agus gill fhosgailte a thilleadh. An uairsin atharraichidh an t-airgead."
-  currency-change-confirm-title: "Rèitich, an uairsin atharraich airgead?"
+  currency-change-confirm-title: "Rèitich is atharraich airgead?"
   prompt-chip-size: "&aSgrìobh luach ùr an tòcain sa chabadaich."
   prompt-chip-index: "&aSgrìobh luach ùr an tòcain #{index} sa chabadaich."
   prompt-new-value: "&aSgrìobh luach ùr."

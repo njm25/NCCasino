@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cNincs gazdasági plugin. Telepíts egy gazdasági plugint a Vault használatához."
   currency-mode-switched: "&ePénznem-mód átváltva erre: &a{mode}&e."
   currency-change-players: "&eJátékosok játék közben ennél az osztónál: &a{count}&e. Ha megerősíted, a játékaik most véget érnek, és a régi pénznemben számoljuk el őket (&a{currency}&e): a nyereményeket kifizetjük, a nyitott téteket visszaadjuk. Ezután a pénznem megváltozik."
-  currency-change-confirm-title: "Elszámolás, aztán pénznemváltás?"
+  currency-change-confirm-title: "Elszámolás és pénznemváltás?"
   prompt-chip-size: "&aÍrd be a chatbe az új zsetoncímletet."
   prompt-chip-index: "&aÍrd be a chatbe a(z) {index}. zseton új címletét."
   prompt-new-value: "&aÍrd be az új értéket."

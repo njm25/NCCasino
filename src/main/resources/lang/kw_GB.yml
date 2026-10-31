@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cNyns eus ystynnans erbysieth. Ynstallyewgh ystynnans erbysieth rag usya Vault."
   currency-mode-switched: "&eModh an mona chanjys dhe: &a{mode}&e."
   currency-change-players: "&eGwarioryon yn kres gwari gans an kroupyer ma: &a{count}&e. Mar kwrewgh afydhya, aga gwariow a worfen lemmyn hag a vydh tylys y'n mona koth, &a{currency}&e: gwayn tylys, gweystlow ygor attelys. Ena an mona a vydh chanjys."
-  currency-change-confirm-title: "Tyli, ena chanjya an mona?"
+  currency-change-confirm-title: "Tyli ha chanjya an mona?"
   prompt-chip-size: "&aSkrifewgh talvos nowydh an chyp y'n kescows."
   prompt-chip-index: "&aSkrifewgh talvos nowydh rag chyp #{index} y'n kescows."
   prompt-new-value: "&aSkrifewgh talvos nowydh."

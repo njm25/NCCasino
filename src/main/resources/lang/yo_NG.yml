@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cKò sí plugin ọrọ̀ ajé. Fi plugin ọrọ̀ ajé kan sórí ẹ̀rọ láti lo Vault."
   currency-mode-switched: "&eA ti yí ọ̀nà irú owó padà sí: &a{mode}&e."
   currency-change-players: "&eÀwọn òṣèré tí wọ́n wà láàárín eré pẹ̀lú olùpín yìí: &a{count}&e. Tí o bá fọwọ́ sí i, eré wọn yóò parí báyìí, a ó sì ṣe ìṣirò wọn ní owó àtijọ́, &a{currency}&e: a ó san èrè, a ó sì dá tẹ́tẹ́ tí ó ṣí sílẹ̀ padà. Lẹ́yìn náà owó yóò yí padà."
-  currency-change-confirm-title: "Ṣe ìṣirò, lẹ́yìn náà yí owó padà?"
+  currency-change-confirm-title: "Ṣe ìṣirò, yí owó padà?"
   prompt-chip-size: "&aKọ iye ẹyọ tuntun nínú ìjíròrò."
   prompt-chip-index: "&aKọ iye tuntun fún ẹyọ #{index} nínú ìjíròrò."
   prompt-new-value: "&aKọ iye tuntun."

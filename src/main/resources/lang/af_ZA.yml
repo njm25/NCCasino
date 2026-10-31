@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cGeen ekonomie-inprop nie. Installeer 'n ekonomie-inprop om Vault te gebruik."
   currency-mode-switched: "&eGeldeenheidmodus verander na: &a{mode}&e."
   currency-change-players: "&eSpelers halfpad deur 'n spel by hierdie kroepier: &a{count}&e. As jy bevestig, eindig hulle spelle nou en word hulle in die ou geldeenheid, &a{currency}&e, afgereken: winste uitbetaal, oop weddenskappe terugbetaal. Daarna verander die geldeenheid."
-  currency-change-confirm-title: "Afreken, dan geldeenheid wissel?"
+  currency-change-confirm-title: "Afreken en geldeenheid wissel?"
   prompt-chip-size: "&aTik die nuwe skyfiewaarde in die klets."
   prompt-chip-index: "&aTik die nuwe waarde vir skyfie #{index} in die klets."
   prompt-new-value: "&aTik die nuwe waarde."

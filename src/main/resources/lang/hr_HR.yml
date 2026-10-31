@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cNema ekonomskog dodatka. Instaliraj ekonomski dodatak za korištenje Vaulta."
   currency-mode-switched: "&eNačin valute promijenjen je u: &a{mode}&e."
   currency-change-players: "&eIgrači usred igre kod ovog djelitelja: &a{count}&e. Ako potvrdiš, njihove igre sada završavaju i obračunavaju se u staroj valuti, &a{currency}&e: dobici se isplaćuju, a otvorene oklade vraćaju. Zatim se valuta mijenja."
-  currency-change-confirm-title: "Obračunati pa promijeniti valutu?"
+  currency-change-confirm-title: "Obračun i promjena valute?"
   prompt-chip-size: "&aUpiši u chat novu vrijednost žetona."
   prompt-chip-index: "&aUpiši u chat novu vrijednost žetona br. {index}."
   prompt-new-value: "&aUpiši novu vrijednost."

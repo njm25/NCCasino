@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cEz dago ekonomia-pluginik. Instalatu ekonomia-plugin bat Vault erabiltzeko."
   currency-mode-switched: "&eDibisa-modua aldatu da: &a{mode}&e."
   currency-change-players: "&eKrupier honekin jokoaren erdian dauden jokalariak: &a{count}&e. Berresten baduzu, haien jokoak orain amaitzen dira eta dibisa zaharrean (&a{currency}&e) kitatzen dira: irabaziak ordaintzen dira eta apustu irekiak itzultzen. Ondoren, dibisa aldatzen da."
-  currency-change-confirm-title: "Kitatu eta gero dibisa aldatu?"
+  currency-change-confirm-title: "Kitatu eta dibisa aldatu?"
   prompt-chip-size: "&aIdatzi txatean fitxaren balio berria."
   prompt-chip-index: "&aIdatzi txatean {index}. fitxaren balio berria."
   prompt-new-value: "&aIdatzi balio berria."

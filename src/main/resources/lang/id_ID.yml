@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cTidak ada plugin ekonomi. Pasang plugin ekonomi untuk menggunakan Vault."
   currency-mode-switched: "&eMode mata uang diganti ke: &a{mode}&e."
   currency-change-players: "&ePemain yang sedang bermain di bandar ini: &a{count}&e. Jika kamu mengonfirmasi, permainan mereka berakhir sekarang dan diselesaikan dalam mata uang lama, &a{currency}&e: kemenangan dibayarkan, taruhan terbuka dikembalikan. Setelah itu mata uang diganti."
-  currency-change-confirm-title: "Selesaikan dulu, ganti mata uang?"
+  currency-change-confirm-title: "Selesaikan, ganti mata uang?"
   prompt-chip-size: "&aKetik nilai keping baru di chat."
   prompt-chip-index: "&aKetik nilai baru untuk keping #{index} di chat."
   prompt-new-value: "&aKetik nilai baru."

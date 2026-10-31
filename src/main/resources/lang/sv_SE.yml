@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cInget ekonomiplugin. Installera ett ekonomiplugin för att använda Vault."
   currency-mode-switched: "&eValutaläget bytt till: &a{mode}&e."
   currency-change-players: "&eSpelare mitt i ett spel hos den här croupiern: &a{count}&e. Om du bekräftar avslutas deras spel nu och görs upp i den gamla valutan, &a{currency}&e: vinster betalas ut, öppna insatser återbetalas. Sedan byts valutan."
-  currency-change-confirm-title: "Gör upp insatserna och byt valuta?"
+  currency-change-confirm-title: "Gör upp och byt valuta?"
   prompt-chip-size: "&aSkriv den nya markervalören i chatten."
   prompt-chip-index: "&aSkriv den nya valören för marker nr {index} i chatten."
   prompt-new-value: "&aSkriv det nya värdet."

@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cNisun plugin de economia. Instala un plugin de economia par doparar Vault."
   currency-mode-switched: "&eModo de la moneda canbià in: &a{mode}&e."
   currency-change-players: "&eZogadori a metà partìa co sto crupier: &a{count}&e. Se te confermi, le so partìe le finisse desso e le vien saldade co la moneda vecia, &a{currency}&e: vincite pagae, scomese verte rimborsade. Dopo la moneda la canbia."
-  currency-change-confirm-title: "Saldar le scomese e canbiar moneda?"
+  currency-change-confirm-title: "Saldar e canbiar moneda?"
   prompt-chip-size: "&aScrivi el novo valor del getón in chat."
   prompt-chip-index: "&aScrivi el novo valor par el getón #{index} in chat."
   prompt-new-value: "&aScrivi el novo valor."

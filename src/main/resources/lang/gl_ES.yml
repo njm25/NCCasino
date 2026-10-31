@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cNon hai ningún complemento de economía. Instala un para usar Vault."
   currency-mode-switched: "&eModo de moeda novo: &a{mode}&e."
   currency-change-players: "&ePersoas en plena partida con este crupier: &a{count}&e. Se confirmas, as súas partidas rematan agora e liquídanse na moeda anterior, &a{currency}&e: págaselles o gañado e devólvenselles as apostas abertas. Despois cámbiase a moeda."
-  currency-change-confirm-title: "Liquidar e despois cambiar moeda?"
+  currency-change-confirm-title: "Liquidar e cambiar moeda?"
   prompt-chip-size: "&aEscribe no chat o novo valor da ficha."
   prompt-chip-index: "&aEscribe no chat o novo valor da ficha n.º {index}."
   prompt-new-value: "&aEscribe o novo valor."

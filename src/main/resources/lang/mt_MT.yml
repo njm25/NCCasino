@@ -1120,7 +1120,7 @@ admin:
   economy-missing: "&cM'hemm l-ebda plugin tal-ekonomija. Installa plugin tal-ekonomija biex tuża Vault."
   currency-mode-switched: "&eIl-modalità tal-munita nbidlet għal: &a{mode}&e."
   currency-change-players: "&ePlejers f'nofs logħba ma' dan id-dealer: &a{count}&e. Jekk tikkonferma, il-logħob tagħhom jintemm issa u jiġi saldat fil-munita l-qadima, &a{currency}&e: ir-rebħ jitħallas, l-imħatri miftuħa jingħataw lura. Imbagħad il-munita tinbidel."
-  currency-change-confirm-title: "Issalda, imbagħad biddel il-munita?"
+  currency-change-confirm-title: "Issalda u biddel il-munita?"
   prompt-chip-size: "&aIkteb il-valur il-ġdid taċ-ċippa fiċ-chat."
   prompt-chip-index: "&aIkteb il-valur il-ġdid għaċ-ċippa #{index} fiċ-chat."
   prompt-new-value: "&aIkteb il-valur il-ġdid."

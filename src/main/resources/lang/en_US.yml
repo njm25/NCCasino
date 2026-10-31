@@ -1124,7 +1124,7 @@ admin:
   economy-missing: "&cNo economy plugin. Install an economy plugin to use Vault."
   currency-mode-switched: "&eSwitched currency mode to: &a{mode}&e."
   currency-change-players: "&ePlayers mid-game at this dealer: &a{count}&e. If you confirm, their games end now and are settled in the old currency, &a{currency}&e: winnings paid, open bets refunded. Then the currency changes."
-  currency-change-confirm-title: "Settle bets, then change currency?"
+  currency-change-confirm-title: "Settle bets, change currency?"
   prompt-chip-size: "&aType new chip size value in chat."
   prompt-chip-index: "&aType new value for chip #{index} in chat."
   prompt-new-value: "&aType new value."
