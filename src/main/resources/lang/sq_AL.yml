@@ -89,6 +89,7 @@ payout:
   lost: "&c&lHumbët!"
   delivered: "&e{context}\n&aPagesa: {amount}"
   context-disconnected: "U shkëputët gjatë një loje aktive ({game}). Loja përfundoi ndërsa ishit jashtë linje."
+  context-left-mid-game: "E latë një lojë aktive ({game}) para se të përfundonte, ndaj ajo u shlye për ju."
   context-server-restart: "Serveri u rinis ndërsa basti juaj ({game}) ende priste rezultatin, ndaj ju është kthyer."
   context-currency-change: "Monedha e këtij krupieri u ndryshua ndërsa basti juaj ({game}) ishte ende në lojë, ndaj ju është kthyer në monedhën {currency}."
   context-currency-change-committed: "Monedha e këtij krupieri u ndryshua pasi rezultati juaj ({game}) ishte vendosur tashmë, ndaj ju është paguar në monedhën {currency}."

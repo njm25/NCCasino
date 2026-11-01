@@ -89,6 +89,7 @@ payout:
   lost: "&c&lRydych chi wedi colli!"
   delivered: "&e{context}\n&aTaliad: {amount}"
   context-disconnected: "Fe wnaethoch chi ddatgysylltu yn ystod gêm weithredol ({game}). Daeth y gêm i ben tra oeddech chi all-lein."
+  context-left-mid-game: "Gadawoch chi gêm weithredol ({game}) cyn iddi orffen, felly cafodd ei setlo ar eich rhan."
   context-server-restart: "Ailgychwynnodd y gweinydd tra oedd eich bet ({game}) yn dal i aros am ganlyniad, felly rhoddwyd ad-daliad."
   context-currency-change: "Newidiwyd arian cyfred y deliwr hwn tra oedd eich bet ({game}) yn dal yn y fantol, felly rhoddwyd ad-daliad yn {currency}."
   context-currency-change-committed: "Newidiwyd arian cyfred y deliwr hwn ar ôl i'ch canlyniad ({game}) gael ei benderfynu eisoes, felly cawsoch eich talu yn {currency}."

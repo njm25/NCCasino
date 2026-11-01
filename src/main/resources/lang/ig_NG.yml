@@ -89,6 +89,7 @@ payout:
   lost: "&c&lỊ tụfuru!"
   delivered: "&e{context}\n&aỊkwụ ụgwọ: {amount}"
   context-disconnected: "Njikọ gị bịara ná njedebe mgbe egwuregwu na-aga n'ihu (egwuregwu: {game}). Egwuregwu ahụ gwụchara mgbe ị nọghị n'ịntanetị."
+  context-left-mid-game: "Ị hapụrụ egwuregwu na-aga n'ihu (egwuregwu: {game}) tupu ọ gwụ, ya mere e mechiri ya maka gị."
   context-server-restart: "Sava malitegharịrị mgbe nzọ gị (egwuregwu: {game}) ka na-eche nsonaazụ ya, ya mere e weghachiri ya."
   context-currency-change: "E gbanwere ego onye nkesa a mgbe nzọ gị (egwuregwu: {game}) ka nọ n'egwuregwu, ya mere e weghachiri ya n'ego ochie: {currency}."
   context-currency-change-committed: "E gbanwere ego onye nkesa a mgbe e kpebiri nsonaazụ gị (egwuregwu: {game}), ya mere a kwụrụ gị n'ego ochie: {currency}."

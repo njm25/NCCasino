@@ -89,6 +89,7 @@ payout:
   lost: "&c&lTalo ka!"
   delivered: "&e{context}\n&aBayad: {amount}"
   context-disconnected: "Nadiskonekta ka habang may aktibong laro ({game}). Natapos ang laro habang offline ka."
+  context-left-mid-game: "Umalis ka sa aktibong laro ({game}) bago ito natapos, kaya inayos ito para sa iyo."
   context-server-restart: "Nag-restart ang server habang hinihintay pa ang resulta ng taya mo ({game}), kaya ibinalik ito."
   context-currency-change: "Pinalitan ang currency ng dealer na ito habang nasa laro pa ang taya mo ({game}), kaya ibinalik ito sa {currency}."
   context-currency-change-committed: "Pinalitan ang currency ng dealer na ito matapos matukoy na ang resulta mo ({game}), kaya binayaran ka sa {currency}."

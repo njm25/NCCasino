@@ -89,6 +89,7 @@ payout:
   lost: "&c&lDu tabte!"
   delivered: "&e{context}\n&aUdbetaling: {amount}"
   context-disconnected: "Du mistede forbindelsen under et igangværende spil {game}. Spillet blev afsluttet, mens du var offline."
+  context-left-mid-game: "Du forlod et igangværende spil {game}, før det var færdigt, så det blev gjort op for dig."
   context-server-restart: "Serveren genstartede, mens din indsats i {game} stadig ventede på et resultat, så den er blevet refunderet."
   context-currency-change: "Denne dealers valuta blev ændret, mens din indsats i {game} stadig var i spil, så den er blevet refunderet i {currency}."
   context-currency-change-committed: "Denne dealers valuta blev ændret, efter at dit resultat i {game} allerede var afgjort, så du er blevet udbetalt i {currency}."

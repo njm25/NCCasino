@@ -466,6 +466,11 @@ actual implementation, and update this section.
   out in `{currency}` = the old currency); restarts and `/ncc reload` keep
   `context-server-restart` / `context-committed-result`
   (`PayoutMessages.duringCurrencyChange`).
+- **`payout.context-left-mid-game` is not a disconnect.** The player was
+  still online and closed the game window (e.g. Slots mid-spin) before the
+  already-decided result was paid; the game was settled on their behalf and
+  the paid/lost line follows. Never word it as a lost connection
+  (`PayoutMessages.endedMidGameContext`).
 - **`slots.spin-lore-breakdown` in RTL locales: keep an RTL word between
   `{wager}` and `×`.** `{wager}` renders as `1 emerald` in item mode, a digit
   followed by Latin text. In "per line {wager} × {lines} lines" order the

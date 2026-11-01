@@ -89,6 +89,7 @@ payout:
   lost: "&c&lPrzegrana!"
   delivered: "&e{context}\n&aWypłata: {amount}"
   context-disconnected: "Twoje połączenie zostało przerwane w trakcie gry {game}. Gra zakończyła się pod twoją nieobecność."
+  context-left-mid-game: "Opuszczono trwającą grę {game} przed jej zakończeniem, więc została rozliczona za ciebie."
   context-server-restart: "Serwer został zrestartowany, gdy twój zakład w grze {game} wciąż czekał na rozstrzygnięcie, więc zakład został zwrócony."
   context-currency-change: "Waluta tego krupiera została zmieniona, gdy twój zakład w grze {game} wciąż trwał, więc został zwrócony w walucie {currency}."
   context-currency-change-committed: "Waluta tego krupiera została zmieniona, gdy twój wynik w grze {game} był już przesądzony, więc wypłata nastąpiła w walucie {currency}."

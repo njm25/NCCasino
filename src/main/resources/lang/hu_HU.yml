@@ -89,6 +89,7 @@ payout:
   lost: "&c&lVesztettél!"
   delivered: "&e{context}\n&aKifizetés: {amount}"
   context-disconnected: "Egy folyamatban lévő játék közben megszakadt a kapcsolatod ({game}). A játék véget ért, amíg offline voltál."
+  context-left-mid-game: "Elhagytál egy folyamatban lévő játékot ({game}), mielőtt véget ért, ezért helyetted elszámoltuk."
   context-server-restart: "A szerver újraindult, amíg a téted még eredményre várt ({game}), ezért visszakaptad."
   context-currency-change: "Ennek az osztónak megváltozott a pénzneme, amíg a téted még játékban volt ({game}), ezért visszakaptad a régi pénznemben: {currency}."
   context-currency-change-committed: "Ennek az osztónak megváltozott a pénzneme, miután az eredményed ({game}) már eldőlt, ezért a kifizetés a régi pénznemben történt: {currency}."

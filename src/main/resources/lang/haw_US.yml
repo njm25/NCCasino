@@ -89,6 +89,7 @@ payout:
   lost: "&c&lUa pio ʻoe!"
   delivered: "&e{context}\n&aUku: {amount}"
   context-disconnected: "Ua moku kou pili pūnaewele i ka wā o kekahi pāʻani e holo ana (pāʻani: {game}). Ua pau ka pāʻani i kou wā ma waho o ka pūnaewele."
+  context-left-mid-game: "Ua haʻalele ʻoe i kekahi pāʻani e holo ana (pāʻani: {game}) ma mua o kona pau ʻana, no laila ua hoʻopau ʻia nou."
   context-server-restart: "Ua hoʻomaka hou ke kikowaena i ka wā e kali ana kāu pili (pāʻani: {game}) i ka hopena, no laila ua hoʻihoʻi ʻia ke kālā."
   context-currency-change: "Ua hoʻololi ʻia ke kālā o kēia mea hoʻokele i ka wā e pāʻani ana kāu pili (pāʻani: {game}), no laila ua hoʻihoʻi ʻia ia ma ke kālā kahiko: {currency}."
   context-currency-change-committed: "Ua hoʻololi ʻia ke kālā o kēia mea hoʻokele ma hope o ka hoʻoholo ʻia ʻana o kāu hopena (pāʻani: {game}), no laila ua uku ʻia ʻoe ma ke kālā kahiko: {currency}."

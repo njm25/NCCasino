@@ -89,6 +89,7 @@ payout:
   lost: "&c&lKollet ho peus!"
   delivered: "&e{context}\n&aPaeamant: {amount}"
   context-disconnected: "Digevreet oc'h bet e-pad ur c'hoari war ober (c'hoari: {game}). Echu eo bet ar c'hoari pa oac'h ezlinenn."
+  context-left-mid-game: "Kuitaet hoc'h eus ur c'hoari war ober (c'hoari: {game}) a-raok ma oa echu, setu eo bet peurechuet evidoc'h."
   context-server-restart: "Adloc'het eo bet ar servijer pa oa c'hoazh ho klaoustre (c'hoari: {game}) o c'hortoz e zisoc'h, setu eo bet dasroet deoc'h."
   context-currency-change: "Cheñchet eo bet moneiz ar c'hroupier-mañ pa oa c'hoazh ho klaoustre (c'hoari: {game}) o c'hortoz e zisoc'h, setu eo bet dasroet deoc'h e {currency}."
   context-currency-change-committed: "Cheñchet eo bet moneiz ar c'hroupier-mañ goude ma oa bet divizet ho disoc'h (c'hoari: {game}) dija, setu oc'h bet paeet e {currency}."

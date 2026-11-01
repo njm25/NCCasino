@@ -89,6 +89,7 @@ payout:
   lost: "&c&lChaill tú!"
   delivered: "&e{context}\n&aÍocaíocht: {amount}"
   context-disconnected: "Dícheanglaíodh thú le linn cluiche ghníomhaigh ({game}). Chríochnaigh an cluiche fad a bhí tú as líne."
+  context-left-mid-game: "D'fhág tú cluiche gníomhach ({game}) sular chríochnaigh sé, mar sin socraíodh é ar do shon."
   context-server-restart: "Atosaíodh an freastalaí fad a bhí do gheall ({game}) fós ag fanacht ar thoradh, mar sin aisíocadh é."
   context-currency-change: "Athraíodh airgeadra an déileálaí seo fad a bhí do gheall ({game}) fós ar siúl, mar sin aisíocadh é san airgeadra {currency}."
   context-currency-change-committed: "Athraíodh airgeadra an déileálaí seo tar éis do thoradh ({game}) a bheith socraithe cheana, mar sin íocadh thú san airgeadra {currency}."

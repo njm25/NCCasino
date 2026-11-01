@@ -89,6 +89,7 @@ payout:
   lost: "&c&lAi pierdut!"
   delivered: "&e{context}\n&aPlată: {amount}"
   context-disconnected: "Te-ai deconectat în timpul unei partide active de {game}. Partida s-a încheiat cât ai fost offline."
+  context-left-mid-game: "Ai părăsit o partidă activă de {game} înainte să se termine, așa că a fost decontată în locul tău."
   context-server-restart: "Serverul a repornit cât pariul tău la {game} încă aștepta rezultatul, așa că ți-a fost returnat."
   context-currency-change: "Moneda acestui crupier a fost schimbată cât pariul tău la {game} era încă în joc, așa că ți-a fost returnat în {currency}."
   context-currency-change-committed: "Moneda acestui crupier a fost schimbată după ce rezultatul tău la {game} fusese deja stabilit, așa că plata s-a făcut în {currency}."

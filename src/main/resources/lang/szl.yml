@@ -89,6 +89,7 @@ payout:
   lost: "&c&lPrzegranŏ!"
   delivered: "&e{context}\n&aWypłata: {amount}"
   context-disconnected: "Twoje połōnczynie sie przerwało w czasie trwajōncyj partyje (szpil: {game}). Partyjŏ sie skōńczyła, jak niy było cie online."
+  context-left-mid-game: "Ôpuściōno trwajōncõ partyjõ (szpil: {game}) przed jeji kōńcym, tōż była rozliczōnŏ za ciebie."
   context-server-restart: "Serwer sie zrestartowoł, kej twōj zakład (szpil: {game}) jeszcze czekoł na wynik, tōż zakład zwrōcōno."
   context-currency-change: "Walutã tego krupiera zmiyniōno, kej twōj zakład (szpil: {game}) jeszcze trwoł, tōż zakład zwrōcōno w walucie {currency}."
   context-currency-change-committed: "Walutã tego krupiera zmiyniōno, kej twōj wynik (szpil: {game}) już bōł postanowiōny, tōż wypłata poszła w walucie {currency}."

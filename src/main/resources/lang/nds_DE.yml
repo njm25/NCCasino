@@ -89,6 +89,7 @@ payout:
   lost: "&c&lDu hest verloren!"
   delivered: "&e{context}\n&aUtbetahlung: {amount}"
   context-disconnected: "Dien Verbinnen is in en lopend Speel (Speel: {game}) afreten. Dat Speel is to Enn speelt worrn, as du nich online weerst."
+  context-left-mid-game: "Du hest en lopend Speel (Speel: {game}) verlaten, ehr dat to Enn weer, dorüm is dat för di afreekt worrn."
   context-server-restart: "De Server is nee start worrn, as dien Insatz (Speel: {game}) noch op en Resultat töövt hett, dorüm is he di trüchbetahlt worrn."
   context-currency-change: "De Geldsoort vun dissen Croupier is ännert worrn, as dien Insatz (Speel: {game}) noch in't Speel weer, dorüm is he di in de ole Geldsoort trüchbetahlt worrn: {currency}."
   context-currency-change-committed: "De Geldsoort vun dissen Croupier is ännert worrn, as dien Resultat (Speel: {game}) al fastleeg, dorüm is di in de ole Geldsoort utbetahlt worrn: {currency}."

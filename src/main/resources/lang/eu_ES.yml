@@ -89,6 +89,7 @@ payout:
   lost: "&c&lGaldu duzu!"
   delivered: "&e{context}\n&aOrdainketa: {amount}"
   context-disconnected: "Partida aktibo batean ({game}) deskonektatu zara. Konektatu gabe zeundela amaitu da partida."
+  context-left-mid-game: "Partida aktibo bat ({game}) amaitu aurretik utzi duzu; beraz, zure ordez kitatu da."
   context-server-restart: "Zerbitzaria berrabiarazi da zure apustua ({game}) emaitzaren zain zegoela; beraz, itzuli egin zaizu."
   context-currency-change: "Krupier honen dibisa aldatu da zure apustua ({game}) oraindik jokoan zegoela; beraz, {currency} dibisan itzuli egin zaizu."
   context-currency-change-committed: "Krupier honen dibisa aldatu da zure emaitza ({game}) erabakita zegoenean; beraz, {currency} dibisan ordaindu zaizu."

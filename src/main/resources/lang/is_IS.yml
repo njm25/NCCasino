@@ -89,6 +89,7 @@ payout:
   lost: "&c&lÞú tapaðir!"
   delivered: "&e{context}\n&aÚtborgun: {amount}"
   context-disconnected: "Tengingin rofnaði í virkum leik ({game}). Leiknum lauk á meðan tengingin var rofin."
+  context-left-mid-game: "Þú yfirgafst virkan leik ({game}) áður en honum lauk og því var hann gerður upp fyrir þig."
   context-server-restart: "Þjónninn endurræsti sig á meðan veðmálið þitt ({game}) beið enn niðurstöðu og því var það endurgreitt."
   context-currency-change: "Skipt var um gjaldmiðil hjá þessum gjafara á meðan veðmálið þitt ({game}) var enn í gangi og því var það endurgreitt í gamla gjaldmiðlinum ({currency})."
   context-currency-change-committed: "Skipt var um gjaldmiðil hjá þessum gjafara eftir að niðurstaða þín ({game}) lá þegar fyrir og því var greitt út í gamla gjaldmiðlinum ({currency})."

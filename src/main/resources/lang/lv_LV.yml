@@ -89,6 +89,7 @@ payout:
   lost: "&c&lZaudējums!"
   delivered: "&e{context}\n&aIzmaksa: {amount}"
   context-disconnected: "Savienojums pārtrūka aktīvas spēles laikā ({game}). Spēle beidzās, kamēr tevis nebija."
+  context-left-mid-game: "Tu pameti aktīvu spēli ({game}), pirms tā beidzās, tāpēc par to tika norēķināts tavā vietā."
   context-server-restart: "Serveris tika restartēts, kamēr tava likme ({game}) vēl gaidīja rezultātu, tāpēc tā tika atmaksāta."
   context-currency-change: "Šī dīlera valūta tika mainīta, kamēr tava likme ({game}) vēl bija spēlē, tāpēc tā tika atmaksāta vecajā valūtā: {currency}."
   context-currency-change-committed: "Šī dīlera valūta tika mainīta, kad tavs rezultāts ({game}) jau bija noteikts, tāpēc tev tika izmaksāts vecajā valūtā: {currency}."

@@ -89,6 +89,7 @@ payout:
   lost: "&c&lلقد خسرت!"
   delivered: "&e{context}\n&aالدفعة: {amount}"
   context-disconnected: "انقطع اتصالك أثناء لعبة {game} جارية. انتهت اللعبة وأنت غير متصل."
+  context-left-mid-game: "غادرت لعبة {game} جارية قبل أن تنتهي، لذا تمت تسويتها نيابة عنك."
   context-server-restart: "أعيد تشغيل الخادم بينما كان رهانك في {game} ينتظر النتيجة، لذا تمت إعادته إليك."
   context-currency-change: "تم تغيير عملة هذا الموزع بينما كان رهانك في {game} لا يزال قيد اللعب، لذا أعيد إليك بعملة {currency}."
   context-currency-change-committed: "تم تغيير عملة هذا الموزع بعد أن تحددت نتيجتك في {game}، لذا تم الدفع لك بعملة {currency}."

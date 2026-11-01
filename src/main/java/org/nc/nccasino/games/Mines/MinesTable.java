@@ -2040,14 +2040,14 @@ public class MinesTable extends DealerInventory implements TerminableSession {
                 refundAllBets(player);
             } else if (action == TerminationAction.CASH_OUT
                 && phase == GameTerminationPolicy.MinesPhase.PLAYING) {
-                resolveMidGameDisconnect(terminatedPlayerId);
+                resolveMidGameDisconnect(terminatedPlayerId, reason);
             }
             if (phase == GameTerminationPolicy.MinesPhase.GAME_OVER_DEPOSIT_PENDING
                 && action == TerminationAction.CASH_OUT) {
                 // cashOut() committed the amount, but its deposit is still
                 // delayed. Persist it before this path cancels the task and
                 // clears betStack.
-                resolveMidGameDisconnect(terminatedPlayerId);
+                resolveMidGameDisconnect(terminatedPlayerId, reason);
             }
             // GAME_OVER otherwise: already resolved through normal play —
             // either a win was already paid, a mine was hit and nothing is
@@ -2113,7 +2113,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
         }
     }
 
-    private void resolveMidGameDisconnect(UUID terminatedPlayerId) {
+    private void resolveMidGameDisconnect(UUID terminatedPlayerId, ExitReason reason) {
         double totalBet = 0;
         for (double t : betStack) {
             totalBet += t;
@@ -2133,7 +2133,7 @@ public class MinesTable extends DealerInventory implements TerminableSession {
             currencyMaterial != null ? currencyMaterial.name() : null,
             currencyName,
             winnings,
-            PayoutMessages.disconnectedMidGameContext("Mines")
+            PayoutMessages.endedMidGameContext(reason, "Mines")
         );
 
         boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);

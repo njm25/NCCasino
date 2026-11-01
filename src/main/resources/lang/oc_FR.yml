@@ -89,6 +89,7 @@ payout:
   lost: "&c&lAvètz perdut!"
   delivered: "&e{context}\n&aPagament: {amount}"
   context-disconnected: "Vòstra connexion s'es copada pendent una partida en cors (jòc: {game}). La partida s'es acabada pendent que èretz fòra linha."
+  context-left-mid-game: "Avètz quitat una partida en cors (jòc: {game}) abans que s'acabèsse, doncas es estada reglada per vos."
   context-server-restart: "Lo servidor s'es reaviat pendent que vòstra escomesa (jòc: {game}) esperava encara son resultat, doncas es estada remborsada."
   context-currency-change: "La moneda d'aqueste cropièr es estada cambiada pendent que vòstra escomesa (jòc: {game}) èra encara en jòc, doncas es estada remborsada en {currency}."
   context-currency-change-committed: "La moneda d'aqueste cropièr es estada cambiada aprèp que vòstre resultat (jòc: {game}) èra ja decidit, doncas lo pagament es estat fach en {currency}."

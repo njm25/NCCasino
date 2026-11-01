@@ -4117,9 +4117,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         TerminationAction action = GameTerminationPolicy.slots(reason, phase);
 
         if (action == TerminationAction.QUEUE_KNOWN_PAYOUT) {
-            String context = reason == ExitReason.PLUGIN_DISABLE
-                ? PayoutMessages.committedResultContext("Slots")
-                : PayoutMessages.disconnectedMidGameContext("Slots");
+            String context = PayoutMessages.endedMidGameContext(reason, "Slots");
             // The result stands and the payout is preserved, so the dealer's
             // books close here too, for the real amount. Idempotent: if the
             // round had already settled normally, there is no open

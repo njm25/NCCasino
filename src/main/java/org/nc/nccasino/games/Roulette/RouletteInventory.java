@@ -2099,9 +2099,7 @@ private void fillDecorativeSlots(int[] slots, Material material) {
             currencyMaterial != null ? currencyMaterial.name() : null,
             currencyName,
             amount,
-            reason == ExitReason.PLUGIN_DISABLE
-                ? PayoutMessages.committedResultContext("Roulette")
-                : PayoutMessages.disconnectedMidGameContext("Roulette")
+            PayoutMessages.endedMidGameContext(reason, "Roulette")
         );
         boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);
         if (!persisted) {

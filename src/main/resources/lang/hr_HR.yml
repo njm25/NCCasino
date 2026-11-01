@@ -89,6 +89,7 @@ payout:
   lost: "&c&lGubitak!"
   delivered: "&e{context}\n&aIsplata: {amount}"
   context-disconnected: "Veza ti je prekinuta tijekom aktivne igre ({game}). Igra je završila dok te nije bilo."
+  context-left-mid-game: "Napustio si aktivnu igru ({game}) prije nego što je završila, pa je obračunata umjesto tebe."
   context-server-restart: "Poslužitelj se ponovno pokrenuo dok je tvoja oklada ({game}) još čekala ishod, pa je vraćena."
   context-currency-change: "Valuta ovog djelitelja promijenjena je dok je tvoja oklada ({game}) još bila u igri, pa je vraćena u staroj valuti: {currency}."
   context-currency-change-committed: "Valuta ovog djelitelja promijenjena je nakon što je tvoj rezultat ({game}) već bio određen, pa je isplata izvršena u staroj valuti: {currency}."

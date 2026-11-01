@@ -89,6 +89,7 @@ payout:
   lost: "&c&lTlift!"
   delivered: "&e{context}\n&aĦlas: {amount}"
   context-disconnected: "Il-konnessjoni tiegħek inqatgħet waqt logħba attiva ta' {game}. Il-logħba ntemmet waqt li kont offline."
+  context-left-mid-game: "Ħallejt logħba attiva ta' {game} qabel ma spiċċat, għalhekk ġiet issaldata għalik."
   context-server-restart: "Is-server reġa' tela' waqt li l-imħatra tiegħek fil-logħba {game} kienet għadha tistenna r-riżultat, għalhekk ingħatat lura bħala rifużjoni."
   context-currency-change: "Il-munita ta' dan id-dealer inbidlet waqt li l-imħatra tiegħek fil-logħba {game} kienet għadha għaddejja, għalhekk ingħatat lura bħala rifużjoni fil-munita: {currency}."
   context-currency-change-committed: "Il-munita ta' dan id-dealer inbidlet wara li r-riżultat tiegħek fil-logħba {game} kien diġà ġie deċiż, għalhekk tħallast fil-munita: {currency}."

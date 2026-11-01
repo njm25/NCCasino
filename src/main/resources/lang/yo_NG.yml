@@ -89,6 +89,7 @@ payout:
   lost: "&c&lO pàdánù!"
   delivered: "&e{context}\n&aÌsanwó: {amount}"
   context-disconnected: "Ìsopọ̀ rẹ já nígbà tí eré kan ń lọ lọ́wọ́ (eré: {game}). Eré náà parí nígbà tí o kò sí lórí ayélujára."
+  context-left-mid-game: "O kúrò nínú eré kan tó ń lọ lọ́wọ́ (eré: {game}) kí ó tó parí, nítorí náà a parí rẹ̀ fún ọ."
   context-server-restart: "Sáfà tún bẹ̀rẹ̀ nígbà tí tẹ́tẹ́ rẹ (eré: {game}) ṣì ń dúró de àbájáde rẹ̀, nítorí náà a dá a padà fún ọ."
   context-currency-change: "Wọ́n yí owó olùpín yìí padà nígbà tí tẹ́tẹ́ rẹ (eré: {game}) ṣì ń lọ lọ́wọ́, nítorí náà a dá a padà fún ọ ní {currency}."
   context-currency-change-committed: "Wọ́n yí owó olùpín yìí padà lẹ́yìn tí wọ́n ti pinnu àbájáde rẹ (eré: {game}), nítorí náà a sanwó fún ọ ní {currency}."

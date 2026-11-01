@@ -1032,7 +1032,7 @@ public class DragonClient extends Client implements TerminableSession {
             }
             break;
         case CASH_OUT:
-            resolveMidGameDisconnect(terminatedPlayerId);
+            resolveMidGameDisconnect(terminatedPlayerId, reason);
             break;
         case NO_ACTION:
         case FORFEIT:
@@ -1069,7 +1069,7 @@ public class DragonClient extends Client implements TerminableSession {
      * this runs isn't reliably knowable, so risking a lost payout for
      * slightly faster delivery isn't an acceptable trade.
      */
-    private void resolveMidGameDisconnect(UUID terminatedPlayerId) {
+    private void resolveMidGameDisconnect(UUID terminatedPlayerId, ExitReason reason) {
         if (Boolean.TRUE.equals(pendingMoveSafe)) {
             floorsCleared++;
         }
@@ -1091,7 +1091,7 @@ public class DragonClient extends Client implements TerminableSession {
             currencyMaterial != null ? currencyMaterial.name() : null,
             currencyName,
             winnings,
-            PayoutMessages.disconnectedMidGameContext("Dragon Descent")
+            PayoutMessages.endedMidGameContext(reason, "Dragon Descent")
         );
 
         boolean persisted = plugin.getPendingPayoutStore().addPendingPayout(payout);

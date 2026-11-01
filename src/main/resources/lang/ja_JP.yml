@@ -89,6 +89,7 @@ payout:
   lost: "&c&lあなたの負け！"
   delivered: "&e{context}\n&a支払い：{amount}"
   context-disconnected: "ゲーム（{game}）のプレイ中に接続が切れました。オフラインの間にゲームは終了しました。"
+  context-left-mid-game: "ゲーム（{game}）が終わる前に離れたため、代わりに精算しました。"
   context-server-restart: "ゲーム（{game}）のベットが決着待ちの間にサーバーが再起動したため、ベットは返金されました。"
   context-currency-change: "ゲーム（{game}）のベットが進行中にこのディーラーの通貨が変更されたため、ベットは {currency} で返金されました。"
   context-currency-change-committed: "ゲーム（{game}）の結果が確定した後にこのディーラーの通貨が変更されたため、{currency} で支払われました。"

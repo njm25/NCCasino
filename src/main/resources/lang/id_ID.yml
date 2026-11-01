@@ -89,6 +89,7 @@ payout:
   lost: "&c&lKamu kalah!"
   delivered: "&e{context}\n&aPembayaran: {amount}"
   context-disconnected: "Kamu terputus saat permainan {game} sedang berlangsung. Permainan selesai saat kamu offline."
+  context-left-mid-game: "Kamu keluar dari permainan {game} yang sedang berlangsung sebelum selesai, jadi permainan itu diselesaikan untukmu."
   context-server-restart: "Server dimulai ulang saat taruhan {game} milikmu masih menunggu hasil, jadi taruhan itu telah dikembalikan."
   context-currency-change: "Mata uang bandar ini diganti saat taruhan {game} milikmu masih berjalan, jadi taruhan itu telah dikembalikan dalam {currency}."
   context-currency-change-committed: "Mata uang bandar ini diganti setelah hasil {game} milikmu sudah ditentukan, jadi kamu telah dibayar dalam {currency}."

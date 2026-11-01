@@ -89,6 +89,7 @@ payout:
   lost: "&c&lProhra!"
   delivered: "&e{context}\n&aVýplata: {amount}"
   context-disconnected: "Během probíhající hry {game} došlo k odpojení. Hra skončila během tvé nepřítomnosti."
+  context-left-mid-game: "Opustil jsi probíhající hru {game} dřív, než skončila, proto byla vyúčtována za tebe."
   context-server-restart: "Server se restartoval, zatímco tvoje sázka ve hře {game} ještě čekala na výsledek, proto byla vrácena."
   context-currency-change: "Měna tohoto krupiéra byla změněna, zatímco tvoje sázka ve hře {game} ještě nebyla vyhodnocena, proto ti byla vrácena v měně {currency}."
   context-currency-change-committed: "Měna tohoto krupiéra byla změněna, když už byl tvůj výsledek ve hře {game} určen, proto ti bylo vyplaceno v měně {currency}."

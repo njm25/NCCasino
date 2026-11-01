@@ -89,6 +89,7 @@ payout:
   lost: "&c&lBạn thua!"
   delivered: "&e{context}\n&aSố tiền trả: {amount}"
   context-disconnected: "Bạn đã mất kết nối khi đang chơi {game}. Ván đã kết thúc trong lúc bạn ngoại tuyến."
+  context-left-mid-game: "Bạn đã rời ván {game} đang diễn ra trước khi kết thúc, nên ván đó đã được thanh toán thay bạn."
   context-server-restart: "Máy chủ đã khởi động lại khi cược {game} của bạn còn đang chờ kết quả, nên cược đã được hoàn lại."
   context-currency-change: "Tiền tệ của người chia bài này đã bị đổi khi cược {game} của bạn vẫn đang diễn ra, nên cược đã được hoàn lại bằng {currency}."
   context-currency-change-committed: "Tiền tệ của người chia bài này đã bị đổi sau khi kết quả {game} của bạn đã được xác định, nên bạn đã được trả bằng {currency}."

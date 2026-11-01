@@ -89,6 +89,7 @@ payout:
   lost: "&c&lYou lose!"
   delivered: "&e{context}\n&aPayout: {amount}"
   context-disconnected: "You disconnected during an active {game} game. The game finished while you were offline."
+  context-left-mid-game: "You left an active {game} game before it finished, so it was settled for you."
   context-server-restart: "The server restarted while your {game} bet was still awaiting resolution, so it has been refunded."
   context-currency-change: "This dealer's currency was changed while your {game} bet was still in play, so it has been refunded in {currency}."
   context-currency-change-committed: "This dealer's currency was changed after your {game} result had already been determined, so you were paid in {currency}."

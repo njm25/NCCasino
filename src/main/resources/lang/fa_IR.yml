@@ -89,6 +89,7 @@ payout:
   lost: "&c&lباختید!"
   delivered: "&e{context}\n&aپرداخت: {amount}"
   context-disconnected: "در حین یک بازی {game} در جریان، اتصال شما قطع شد. بازی وقتی آفلاین بودید تمام شد."
+  context-left-mid-game: "پیش از پایان یک بازی {game} در جریان از آن خارج شدید، بنابراین از طرف شما تسویه شد."
   context-server-restart: "سرور در حالی ری‌استارت شد که شرط {game} شما هنوز منتظر نتیجه بود، بنابراین بازپرداخت شد."
   context-currency-change: "ارز این دیلر در حالی تغییر کرد که شرط {game} شما هنوز در جریان بود، بنابراین با ارز {currency} بازپرداخت شد."
   context-currency-change-committed: "ارز این دیلر پس از آنکه نتیجه شما در {game} مشخص شده بود تغییر کرد، بنابراین با ارز {currency} به شما پرداخت شد."

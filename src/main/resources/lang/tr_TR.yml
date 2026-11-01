@@ -89,6 +89,7 @@ payout:
   lost: "&c&lKaybettin!"
   delivered: "&e{context}\n&aÖdeme: {amount}"
   context-disconnected: "Devam eden bir {game} oyunu sırasında bağlantın koptu. Sen çevrimdışıyken oyun sona erdi."
+  context-left-mid-game: "Devam eden bir {game} oyunundan bitmeden ayrıldın, bu yüzden senin yerine sonuçlandırıldı."
   context-server-restart: "{game} oyunundaki bahsin henüz sonuçlanmamışken sunucu yeniden başladı, bu yüzden bahsin iade edildi."
   context-currency-change: "Bu krupiyenin para birimi, {game} oyunundaki bahsin hâlâ oyundayken değiştirildi, bu yüzden bahsin {currency} para biriminde iade edildi."
   context-currency-change-committed: "Bu krupiyenin para birimi, {game} oyunundaki sonucun belirlendikten sonra değiştirildi, bu yüzden ödemen {currency} para biriminde yapıldı."

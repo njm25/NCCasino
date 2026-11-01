@@ -89,6 +89,7 @@ payout:
   lost: "&c&l你輸了！"
   delivered: "&e{context}\n&a派彩：{amount}"
   context-disconnected: "你在進行中的 {game} 遊戲裡斷線了。你離線期間遊戲已結束。"
+  context-left-mid-game: "你在 {game} 遊戲結束前離開了，因此已代你結算。"
   context-server-restart: "伺服器重新啟動時，你在 {game} 的下注仍在等待結果，因此該筆下注已退還。"
   context-currency-change: "你在 {game} 的下注仍在進行中時，此荷官的貨幣已被變更，因此該筆下注已以 {currency} 退還。"
   context-currency-change-committed: "此荷官的貨幣在你的 {game} 結果確定後被變更，因此已以 {currency} 向你支付。"

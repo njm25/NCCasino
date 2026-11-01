@@ -89,6 +89,7 @@ payout:
   lost: "&c&lJy verloor!"
   delivered: "&e{context}\n&aUitbetaling: {amount}"
   context-disconnected: "Jou verbinding is verbreek tydens 'n aktiewe spel ({game}). Die spel het geëindig terwyl jy weg was."
+  context-left-mid-game: "Jy het 'n aktiewe spel ({game}) verlaat voordat dit klaar was, dus is dit vir jou afgehandel."
   context-server-restart: "Die bediener het herbegin terwyl jou weddenskap ({game}) nog op 'n uitslag gewag het, dus is dit terugbetaal."
   context-currency-change: "Die geldeenheid van hierdie kroepier is verander terwyl jou weddenskap ({game}) nog in spel was, dus is dit in {currency} terugbetaal."
   context-currency-change-committed: "Die geldeenheid van hierdie kroepier is verander nadat jou uitslag ({game}) reeds bepaal is, dus is jy in {currency} uitbetaal."

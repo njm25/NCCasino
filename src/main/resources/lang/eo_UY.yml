@@ -89,6 +89,7 @@ payout:
   lost: "&c&lVi perdis!"
   delivered: "&e{context}\n&aElpago: {amount}"
   context-disconnected: "Vi malkonektiĝis dum aktiva ludo ({game}). La ludo finiĝis, dum vi estis eksterrete."
+  context-left-mid-game: "Vi forlasis aktivan ludon ({game}) antaŭ ol ĝi finiĝis, do ĝi estis kvitigita por vi."
   context-server-restart: "La servilo rekomenciĝis, dum via veto ({game}) ankoraŭ atendis rezulton, do ĝi estis repagita."
   context-currency-change: "La valuto de ĉi tiu krupiero estis ŝanĝita, dum via veto ({game}) ankoraŭ estis en ludo, do ĝi estis repagita en {currency}."
   context-currency-change-committed: "La valuto de ĉi tiu krupiero estis ŝanĝita, post kiam via rezulto ({game}) jam estis decidita, do vi estis pagita en {currency}."

@@ -89,6 +89,7 @@ payout:
   lost: "&c&lהפסדת!"
   delivered: "&e{context}\n&aתשלום: {amount}"
   context-disconnected: "החיבור שלך התנתק במהלך משחק {game} פעיל. המשחק הסתיים בזמן שלא היית מחובר."
+  context-left-mid-game: "יצאת ממשחק {game} פעיל לפני שהסתיים, ולכן הוא הוסדר עבורך."
   context-server-restart: "השרת הופעל מחדש בזמן שההימור שלך ב{game} עדיין המתין להכרעה, ולכן הוא הוחזר."
   context-currency-change: "המטבע של הדילר הזה הוחלף בזמן שההימור שלך ב{game} עדיין היה במשחק, ולכן הוא הוחזר במטבע {currency}."
   context-currency-change-committed: "המטבע של הדילר הזה הוחלף אחרי שהתוצאה שלך ב{game} כבר נקבעה, ולכן שולם לך במטבע {currency}."

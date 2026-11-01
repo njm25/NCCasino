@@ -89,6 +89,7 @@ payout:
   lost: "&c&lHai perso!"
   delivered: "&e{context}\n&aPagamento: {amount}"
   context-disconnected: "La connessione si è interrotta durante una partita di {game} in corso. La partita si è conclusa mentre eri offline."
+  context-left-mid-game: "Hai lasciato una partita di {game} in corso prima che finisse, quindi è stata saldata al posto tuo."
   context-server-restart: "Il server si è riavviato mentre la tua puntata nel gioco {game} era ancora in attesa di esito, quindi ti è stata rimborsata."
   context-currency-change: "La valuta di questo croupier è stata cambiata mentre la tua puntata nel gioco {game} era ancora in corso, quindi ti è stata rimborsata nella valuta {currency}."
   context-currency-change-committed: "La valuta di questo croupier è stata cambiata quando il tuo risultato nel gioco {game} era già stato deciso, quindi il pagamento è avvenuto nella valuta {currency}."

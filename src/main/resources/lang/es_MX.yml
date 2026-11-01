@@ -89,6 +89,7 @@ payout:
   lost: "&c&l¡Perdiste!"
   delivered: "&e{context}\n&aPago: {amount}"
   context-disconnected: "Te desconectaste durante una partida activa de {game}. La partida terminó mientras no tenías conexión."
+  context-left-mid-game: "Saliste de una partida activa de {game} antes de que terminara, así que se liquidó por ti."
   context-server-restart: "El servidor se reinició mientras tu apuesta en {game} seguía esperando resultado, así que se te reembolsó."
   context-currency-change: "Se cambió la moneda de este crupier mientras tu apuesta en {game} seguía en juego, así que se te reembolsó en {currency}."
   context-currency-change-committed: "Se cambió la moneda de este crupier cuando tu resultado en {game} ya estaba decidido, así que se te pagó en {currency}."

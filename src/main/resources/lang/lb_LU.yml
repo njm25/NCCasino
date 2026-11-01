@@ -89,6 +89,7 @@ payout:
   lost: "&c&lDu hues verluer!"
   delivered: "&e{context}\n&aAuszuelung: {amount}"
   context-disconnected: "Du bass während engem lafende Spill (Spill: {game}) getrennt ginn. D'Spill ass fäerdeg gespillt ginn, während s du offline waars."
+  context-left-mid-game: "Du hues e lafend Spill (Spill: {game}) verlooss, ier et fäerdeg war, dofir gouf et fir dech ofgerechent."
   context-server-restart: "De Server ass nei gestart ginn, während däin Asaz (Spill: {game}) nach op säi Resultat gewaart huet, dofir gouf en dir zeréckbezuelt."
   context-currency-change: "D'Wärung vun dësem Croupier gouf geännert, während däin Asaz (Spill: {game}) nach am Spill war, dofir gouf en dir an der aler Wärung zeréckbezuelt: {currency}."
   context-currency-change-committed: "D'Wärung vun dësem Croupier gouf geännert, nodeems däi Resultat (Spill: {game}) scho feststoung, dofir goufs du an der aler Wärung ausbezuelt: {currency}."

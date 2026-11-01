@@ -89,6 +89,7 @@ payout:
   lost: "&c&lKaotus!"
   delivered: "&e{context}\n&aVäljamakse: {amount}"
   context-disconnected: "Ühendus katkes aktiivse mängu ajal ({game}). Mäng lõppes sinu äraolekul."
+  context-left-mid-game: "Lahkusid aktiivsest mängust ({game}) enne selle lõppu, seega arveldati see sinu eest."
   context-server-restart: "Server taaskäivitus, kui sinu panus ({game}) ootas veel tulemust, seega see tagastati."
   context-currency-change: "Selle diileri valuutat muudeti, kui sinu panus ({game}) oli veel mängus, seega see tagastati valuutas {currency}."
   context-currency-change-committed: "Selle diileri valuutat muudeti, kui sinu tulemus ({game}) oli juba selgunud, seega maksti sulle välja valuutas {currency}."

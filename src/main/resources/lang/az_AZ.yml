@@ -89,6 +89,7 @@ payout:
   lost: "&c&lUduzdunuz!"
   delivered: "&e{context}\n&aÖdəniş: {amount}"
   context-disconnected: "Aktiv {game} oyunu zamanı bağlantınız kəsildi. Siz oflayn olarkən oyun başa çatdı."
+  context-left-mid-game: "Aktiv {game} oyunu bitməmiş onu tərk etdiniz, ona görə oyun sizin əvəzinizə yekunlaşdırıldı."
   context-server-restart: "{game} oyunundakı mərciniz hələ nəticə gözləyərkən server yenidən başladı, ona görə mərciniz geri qaytarıldı."
   context-currency-change: "{game} oyunundakı mərciniz hələ davam edərkən bu dilerin valyutası dəyişdirildi, ona görə mərciniz {currency} ilə geri qaytarıldı."
   context-currency-change-committed: "{game} oyunundakı nəticəniz artıq müəyyən olunduqdan sonra bu dilerin valyutası dəyişdirildi, ona görə sizə {currency} ilə ödəniş edildi."

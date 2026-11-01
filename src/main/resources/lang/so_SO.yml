@@ -89,6 +89,7 @@ payout:
   lost: "&c&lWaad khasaartay!"
   delivered: "&e{context}\n&aBixinta: {amount}"
   context-disconnected: "Xiriirkaagu wuu go'ay intii ciyaar socotay (ciyaar: {game}). Ciyaartu way dhammaatay intii aadan khadka ku jirin."
+  context-left-mid-game: "Waxaad ka baxday ciyaar socotay (ciyaar: {game}) ka hor intaanay dhammaan, sidaas darteed adiga ayaa laguu xisaabiyay."
   context-server-restart: "Seerfarku dib ayuu u bilaabmay intii sharadkaagu (ciyaar: {game}) weli sugayay natiijadiisa, sidaas darteed waa laguu soo celiyay."
   context-currency-change: "Lacagta qaybiyahan waa la beddelay intii sharadkaagu (ciyaar: {game}) weli socday, sidaas darteed waa laguu soo celiyay. Lacagta: {currency}."
   context-currency-change-committed: "Lacagta qaybiyahan waa la beddelay kadib markii natiijadaada (ciyaar: {game}) horey loo go'aamiyay, sidaas darteed waa laguu bixiyay. Lacagta: {currency}."

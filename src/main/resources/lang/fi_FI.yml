@@ -89,6 +89,7 @@ payout:
   lost: "&c&lHävisit!"
   delivered: "&e{context}\n&aHyvitetty: {amount}"
   context-disconnected: "Yhteytesi katkesi kesken käynnissä olevan pelin {game}. Peli päättyi, kun olit poissa."
+  context-left-mid-game: "Poistuit käynnissä olevasta pelistä {game} ennen kuin se päättyi, joten se tilitettiin puolestasi."
   context-server-restart: "Palvelin käynnistyi uudelleen, kun panoksesi pelissä {game} odotti vielä ratkaisua, joten se on palautettu."
   context-currency-change: "Tämän jakajan valuutta vaihdettiin, kun panoksesi pelissä {game} oli vielä kesken, joten se on palautettu valuuttana {currency}."
   context-currency-change-committed: "Tämän jakajan valuutta vaihdettiin, kun tuloksesi pelissä {game} oli jo ratkennut, joten sinulle maksettiin valuuttana {currency}."

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.Test;
+import org.nc.nccasino.session.ExitReason;
 
 class PayoutMessagesTest {
 
@@ -56,6 +57,27 @@ class PayoutMessagesTest {
         assertEquals("payout.context-committed-result", restart.localizationKey(),
             "real restarts and reloads keep the restart message");
         assertNull(restart.currency());
+    }
+
+    @Test
+    void aGameEndedMidRoundNamesWhyItEnded() {
+        assertEquals("payout.context-left-mid-game", PayoutMessages.decodeContext(
+            PayoutMessages.endedMidGameContext(ExitReason.VOLUNTARY_INVENTORY_CLOSE, "Slots")).localizationKey(),
+            "closing the window while online is not a disconnect");
+        assertEquals("payout.context-disconnected", PayoutMessages.decodeContext(
+            PayoutMessages.endedMidGameContext(ExitReason.DISCONNECTED, "Slots")).localizationKey());
+        assertEquals("payout.context-committed-result", PayoutMessages.decodeContext(
+            PayoutMessages.endedMidGameContext(ExitReason.PLUGIN_DISABLE, "Mines")).localizationKey(),
+            "a restart or reload is not a disconnect");
+
+        String[] stored = new String[1];
+        PayoutMessages.duringCurrencyChange("Vault",
+            () -> stored[0] = PayoutMessages.endedMidGameContext(ExitReason.PLUGIN_DISABLE, "Dragon Descent"));
+        PayoutMessages.StoredContext context = PayoutMessages.decodeContext(stored[0]);
+        assertEquals("payout.context-currency-change-committed", context.localizationKey(),
+            "a currency change mid-round names the change, not a disconnect");
+        assertEquals("Dragon Descent", context.gameType());
+        assertEquals("Vault", context.currency());
     }
 
     @Test

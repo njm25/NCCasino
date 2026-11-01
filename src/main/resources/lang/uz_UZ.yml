@@ -89,6 +89,7 @@ payout:
   lost: "&c&lSiz yutqazdingiz!"
   delivered: "&e{context}\n&aToʻlov: {amount}"
   context-disconnected: "Faol oʻyin ({game}) vaqtida aloqangiz uzildi. Siz oflayn boʻlganingizda oʻyin tugadi."
+  context-left-mid-game: "Faol oʻyindan ({game}) u tugashidan oldin chiqdingiz, shuning uchun u siz uchun hisob-kitob qilindi."
   context-server-restart: "Stavkangiz ({game}) hali natija kutayotganda server qayta ishga tushdi, shuning uchun stavka qaytarildi."
   context-currency-change: "Stavkangiz ({game}) hali oʻyinda boʻlganida ushbu dilerning valyutasi oʻzgartirildi, shuning uchun stavka qaytarildi. Valyuta: {currency}."
   context-currency-change-committed: "Natijangiz ({game}) allaqachon aniqlangandan keyin ushbu dilerning valyutasi oʻzgartirildi, shuning uchun sizga toʻlov qilindi. Valyuta: {currency}."

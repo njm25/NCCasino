@@ -89,6 +89,7 @@ payout:
   lost: "&c&lDon vuoittáhallet!"
   delivered: "&e{context}\n&aMáksu: {amount}"
   context-disconnected: "Du oktavuohta botkanii doaimmalaš spealu áigge (speallu: {game}). Speallu nogai dalle go don ledjet olggobealde neahta."
+  context-left-mid-game: "Don guđđet doaimmalaš speallu (speallu: {game}) ovdal go dat nogai, nu ahte dat máksojuvvui du ovddas."
   context-server-restart: "Bálvá álggahuvvui ođđasit go du veađđu (speallu: {game}) ain vurddii bohtosa, nu ahte dat máksojuvvui ruovttoluotta."
   context-currency-change: "Dán juogadeaddji valuhtta molsojuvvui go du veađđu (speallu: {game}) ain lei spealus, nu ahte dat máksojuvvui ruovttoluotta. Valuhtta: {currency}."
   context-currency-change-committed: "Dán juogadeaddji valuhtta molsojuvvui maŋŋel go du boađus (speallu: {game}) lei juo mearriduvvon, nu ahte dutnje máksojuvvui. Valuhtta: {currency}."

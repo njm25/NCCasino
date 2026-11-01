@@ -89,6 +89,7 @@ payout:
   lost: "&c&lVous avez perdu !"
   delivered: "&e{context}\n&aPaiement : {amount}"
   context-disconnected: "Vous vous êtes déconnecté pendant une partie de {game} en cours. La partie s’est terminée pendant votre absence."
+  context-left-mid-game: "Vous avez quitté une partie de {game} en cours avant sa fin ; elle a donc été réglée pour vous."
   context-server-restart: "Le serveur a redémarré alors que votre pari de {game} attendait encore son résultat ; il a donc été remboursé."
   context-currency-change: "La monnaie de ce croupier a été changée alors que votre pari de {game} était encore en jeu ; il a donc été remboursé en {currency}."
   context-currency-change-committed: "La monnaie de ce croupier a été changée alors que votre résultat de {game} était déjà déterminé ; le paiement a donc été effectué en {currency}."

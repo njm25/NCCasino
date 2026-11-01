@@ -2,6 +2,7 @@ package org.nc.nccasino.payout;
 
 import org.nc.nccasino.currency.CurrencyMode;
 import org.nc.nccasino.currency.MoneyHelper;
+import org.nc.nccasino.session.ExitReason;
 
 /**
  * Centralizes player-facing pending-payout/result text in one place so it
@@ -43,6 +44,31 @@ public final class PayoutMessages {
      */
     public static String disconnectedMidGameContext(String gameType) {
         return encodeContext("disconnected", gameType);
+    }
+
+    /**
+     * The context line stored when a player who is still online closed a
+     * game before its already-decided result was paid, e.g. "You left your
+     * Slots game before it finished, so it was settled for you."
+     */
+    public static String leftMidGameContext(String gameType) {
+        return encodeContext("left-mid-game", gameType);
+    }
+
+    /**
+     * The context for a decided result paid out because the session ended
+     * for {@code reason}: a shutdown, reload or currency change (plugin
+     * disable) keeps the committed-result wording, an online close says the
+     * player left, and only a real disconnect says they disconnected.
+     */
+    public static String endedMidGameContext(ExitReason reason, String gameType) {
+        if (reason == ExitReason.PLUGIN_DISABLE) {
+            return committedResultContext(gameType);
+        }
+        if (reason == ExitReason.VOLUNTARY_INVENTORY_CLOSE) {
+            return leftMidGameContext(gameType);
+        }
+        return disconnectedMidGameContext(gameType);
     }
 
     /**
@@ -92,6 +118,7 @@ public final class PayoutMessages {
         String currency = parts.length == 3 ? parts[2] : null;
         String localizationKey = switch (parts[0]) {
             case "disconnected" -> "payout.context-disconnected";
+            case "left-mid-game" -> "payout.context-left-mid-game";
             case "server-restart" -> "payout.context-server-restart";
             case "committed-result" -> "payout.context-committed-result";
             case "currency-change" -> currency == null ? null : "payout.context-currency-change";

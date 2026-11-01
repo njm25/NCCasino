@@ -89,6 +89,7 @@ payout:
   lost: "&c&lPralaimėjimas!"
   delivered: "&e{context}\n&aIšmoka: {amount}"
   context-disconnected: "Ryšys nutrūko per aktyvų žaidimą ({game}). Žaidimas baigėsi, kol tavęs nebuvo."
+  context-left-mid-game: "Palikai aktyvų žaidimą ({game}) jam nepasibaigus, todėl jis buvo užbaigtas už tave."
   context-server-restart: "Serveris buvo paleistas iš naujo, kol tavo statymas ({game}) dar laukė rezultato, todėl jis grąžintas."
   context-currency-change: "Šio dalytojo valiuta buvo pakeista, kol tavo statymas ({game}) dar buvo žaidžiamas, todėl jis grąžintas senąja valiuta: {currency}."
   context-currency-change-committed: "Šio dalytojo valiuta buvo pakeista, kai tavo rezultatas ({game}) jau buvo nulemtas, todėl tau išmokėta senąja valiuta: {currency}."

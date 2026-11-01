@@ -89,6 +89,7 @@ payout:
   lost: "&c&lDu förlorade!"
   delivered: "&e{context}\n&aUtbetalning: {amount}"
   context-disconnected: "Du kopplades från under en pågående omgång {game}. Spelet avslutades medan du var offline."
+  context-left-mid-game: "Du lämnade en pågående omgång {game} innan den var klar, så den gjordes upp åt dig."
   context-server-restart: "Servern startades om medan din insats i {game} fortfarande väntade på avgörande, så den har återbetalats."
   context-currency-change: "Den här croupierns valuta ändrades medan din insats i {game} fortfarande var i spel, så den har återbetalats i {currency}."
   context-currency-change-committed: "Den här croupierns valuta ändrades efter att ditt resultat i {game} redan var avgjort, så du har fått betalt i {currency}."

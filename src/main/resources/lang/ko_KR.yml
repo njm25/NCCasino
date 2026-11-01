@@ -89,6 +89,7 @@ payout:
   lost: "&c&l패배했습니다!"
   delivered: "&e{context}\n&a지급액: {amount}"
   context-disconnected: "진행 중이던 {game} 게임 도중 접속이 끊겼습니다. 오프라인 상태인 동안 게임이 끝났습니다."
+  context-left-mid-game: "진행 중이던 {game} 게임이 끝나기 전에 나가서, 대신 정산되었습니다."
   context-server-restart: "{game} 게임의 베팅이 결과를 기다리는 중에 서버가 재시작되어, 베팅이 환불되었습니다."
   context-currency-change: "{game} 게임의 베팅이 진행 중일 때 이 딜러의 화폐가 변경되어, 베팅이 {currency} 화폐로 환불되었습니다."
   context-currency-change-committed: "{game} 게임의 결과가 이미 정해진 뒤 이 딜러의 화폐가 변경되어, {currency} 화폐로 지급되었습니다."

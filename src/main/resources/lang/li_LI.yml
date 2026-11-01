@@ -89,6 +89,7 @@ payout:
   lost: "&c&lDoe höbs verlore!"
   delivered: "&e{context}\n&aOetbetaoling: {amount}"
   context-disconnected: "Dien verbinding is verbraoke tiedens e loupend spel (spel: {game}). 't Spel is aafgemaak wiels doe offline waors."
+  context-left-mid-game: "Doe höbs e loupend spel (spel: {game}) verlaote veurdet 't klaor waor, dus is 't veur dich aafgerekend."
   context-server-restart: "De server is opnuuj gestart wiels dien inzèt (spel: {game}) nog op 'n oetslaag waachde, dus dae is trökbetaold."
   context-currency-change: "De valuta van dees dealer is verangerd wiels dien inzèt (spel: {game}) nog in 't spel waor, dus dae is trökbetaold in de aw valuta: {currency}."
   context-currency-change-committed: "De valuta van dees dealer is verangerd nao datste oetslaag (spel: {game}) al vasstoond, dus biste oetbetaold in de aw valuta: {currency}."

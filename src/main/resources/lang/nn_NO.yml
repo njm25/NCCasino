@@ -89,6 +89,7 @@ payout:
   lost: "&c&lDu tapte!"
   delivered: "&e{context}\n&aUtbetaling: {amount}"
   context-disconnected: "Sambandet ditt vart brote under eit pågåande spel i {game}. Spelet vart fullført medan du var fråkopla."
+  context-left-mid-game: "Du forlét eit pågåande spel i {game} før det var ferdig, så det vart gjort opp for deg."
   context-server-restart: "Serveren starta på nytt medan innsatsen din i {game} framleis venta på eit resultat, så han er refundert."
   context-currency-change: "Valutaen til denne dealeren vart endra medan innsatsen din i {game} framleis var i spel, så han er refundert i {currency}."
   context-currency-change-committed: "Valutaen til denne dealeren vart endra etter at resultatet ditt i {game} alt var avgjort, så du har fått utbetalt i {currency}."

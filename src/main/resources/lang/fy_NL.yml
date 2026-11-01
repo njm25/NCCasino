@@ -89,6 +89,7 @@ payout:
   lost: "&c&lJo hawwe ferlern!"
   delivered: "&e{context}\n&aÚtbetelling: {amount}"
   context-disconnected: "Jo ferbining waard ferbrutsen yn in rinnend spul (spul: {game}). It spul is ôfmakke wylst jo offline wiene."
+  context-left-mid-game: "Jo hawwe in rinnend spul (spul: {game}) ferlitten foardat it ôfrûn wie, dêrom is it foar jo ôfrekkene."
   context-server-restart: "De server is opnij start wylst jo ynset (spul: {game}) noch op in útslach wachte, dêrom is dy weromjûn."
   context-currency-change: "De faluta fan dizze dealer is wizige wylst jo ynset (spul: {game}) noch rûn, dêrom is dy weromjûn yn {currency}."
   context-currency-change-committed: "De faluta fan dizze dealer is wizige neidat jo útslach (spul: {game}) al fêststie, dêrom binne jo útbetelle yn {currency}."

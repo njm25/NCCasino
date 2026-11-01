@@ -89,6 +89,7 @@ payout:
   lost: "&c&lKollys!"
   delivered: "&e{context}\n&aTal: {amount}"
   context-disconnected: "Hwi a dhiskevrennas dres gwari bew (gwari: {game}). An gwari a worfennas ha hwi dhywar-linen."
+  context-left-mid-game: "Hwi a asas gwari bew (gwari: {game}) kyns y worfenna, ytho y feu tylys ragowgh."
   context-server-restart: "An servyer a dhastalleth ha'gas gweystel (gwari: {game}) hwath ow kortos y sewyans, ytho y feu attelys."
   context-currency-change: "An mona a'n kroupyer ma a veu chanjys ha'gas gweystel (gwari: {game}) hwath yn gwari, ytho y feu attelys y'n mona koth: {currency}."
   context-currency-change-committed: "An mona a'n kroupyer ma a veu chanjys wosa bos ervirys agas sewyans (gwari: {game}) seulabrys, ytho y feu tylys dhywgh y'n mona koth: {currency}."

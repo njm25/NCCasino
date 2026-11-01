@@ -89,6 +89,7 @@ payout:
   lost: "&c&lPerdidisti!"
   delivered: "&e{context}\n&aSolutio: {amount}"
   context-disconnected: "Conexus tuus interruptus est dum ludus agebatur (ludus: {game}). Ludus finitus est dum aberas."
+  context-left-mid-game: "Ludum agentem (ludus: {game}) reliquisti antequam finiretur, itaque pro te solutus est."
   context-server-restart: "Servitor iterum incepit dum pignus tuum (ludus: {game}) adhuc exitum exspectabat, itaque tibi redditum est."
   context-currency-change: "Moneta huius dispensatoris mutata est dum pignus tuum (ludus: {game}) adhuc in ludo erat, itaque tibi redditum est moneta vetere: {currency}."
   context-currency-change-committed: "Moneta huius dispensatoris mutata est postquam exitus tuus (ludus: {game}) iam constitutus erat, itaque tibi solutum est moneta vetere: {currency}."
