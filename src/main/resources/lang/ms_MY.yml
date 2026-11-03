@@ -489,7 +489,7 @@ slots:
   paytable-card-row: "&fUrutan {run} &8• &a{multiplier}× &8• &e{amount}"
   paytable-card-no-runs: "&8Tiada urutan simbol ini yang muat pada {columns} gelendong."
   guide-volatility-title: "&bGelendong dan Volatiliti"
-  guide-volatility-tradeoff: "&7Lebih banyak gelendong menukar kemenangan kecil yang kerap daripada urutan pendek kepada jackpot besar yang jarang daripada urutan panjang."
+  guide-volatility-tradeoff: "&7Lebih banyak gelendong menukar kemenangan kecil yang kerap kepada jackpot besar yang jarang."
   guide-volatility-normalized: "&7Walau apa pun, jadual bayaran dilaraskan supaya pulangannya &a{rtp}&7."
   guide-volatility-height: "&7Ketinggian menukar bentuk garisan bayaran, bukan bayaran sesuatu urutan."
   rail-exit: "&fMenutup Permainan"

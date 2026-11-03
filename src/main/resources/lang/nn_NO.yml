@@ -313,7 +313,7 @@ game-options:
   created: "&aDealer med speltypen &e{game}&a er oppretta!"
   created-at: "&aDealer med speltypen &e{game}&a er oppretta ved x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aDealeren er oppretta!"
-  reset-confirmation: "Tilbakestille konfigurasjonen til standard?"
+  reset-confirmation: "Tilbakestille til standard?"
 
 slots:
   title: "Spelautomat"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cFann ikkje datafila for dealerar!"
   location-not-found: "&cKunne ikkje hente posisjonen til dealeren."
   world-not-found: "&cVerda «{world}» finst ikkje."
-  reset-confirmation: "Tilbakestille konfigurasjonen til standard?"
+  reset-confirmation: "Tilbakestille til standard?"
   save-failed: "&cKunne ikkje lagre dealerdata: {error}"
   dealer-changed: "&aDealer endra."
   dealer-changed-detailed: "&aDealer endra til &e{mob}&a."

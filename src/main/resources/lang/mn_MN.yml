@@ -313,7 +313,7 @@ game-options:
   created: "&aТоглоомын төрөл нь &e{game}&a болох дилерийг амжилттай үүсгэлээ!"
   created-at: "&aТоглоомын төрөл нь &e{game}&a болох дилерийг x: &e{x}&a y: &e{y}&a z: &e{z}&a байршилд амжилттай үүсгэлээ."
   created-minimal: "&aДилерийг амжилттай үүсгэлээ!"
-  reset-confirmation: "Тохиргоог анхдагч төлөвт буцаах уу?"
+  reset-confirmation: "Тохиргоог анхдагч болгох уу?"
 
 slots:
   title: "Слот"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cДилерийн өгөгдлийн файл олдсонгүй!"
   location-not-found: "&cДилерийн байршлыг авч чадсангүй."
   world-not-found: "&c«{world}» ертөнц байхгүй байна."
-  reset-confirmation: "Тохиргоог анхдагч төлөвт буцаах уу?"
+  reset-confirmation: "Тохиргоог анхдагч болгох уу?"
   save-failed: "&cДилерийн өгөгдлийг хадгалж чадсангүй: {error}"
   dealer-changed: "&aДилерийг солилоо."
   dealer-changed-detailed: "&aДилерийг солилоо: &e{mob}&a."

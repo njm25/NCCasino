@@ -1091,7 +1091,7 @@ blackjack-settings:
   max-hands-desc: "&7ຈຳນວນມືສູງສຸດທີ່ຜູ້ຫຼິ້ນຖືໄດ້ເມື່ອແຍກ"
   toggle-split-matching: "ກົດການແຍກ"
   split-matching-desc-1: "&7ອັນດັບດຽວກັນ: ແຍກໄດ້ສະເພາະອັນດັບທີ່ຄືກັນ (K-K)"
-  split-matching-desc-2: "&7ຄ່າດຽວກັນ: ແຍກໄພ່ສອງໃບໃດກໍໄດ້ທີ່ມີຄ່າ 10 (K-Q)"
+  split-matching-desc-2: "&7ຄ່າດຽວກັນ: ໄພ່ຄ່າ 10 ສອງໃບໃດໆ ກໍແຍກໄດ້ເຊັ່ນກັນ (K-Q)"
   match-same-rank: "ອັນດັບດຽວກັນ"
   match-same-value: "ຄ່າດຽວກັນ"
   max-hands-unbounded: "ບໍ່ຈຳກັດ"
