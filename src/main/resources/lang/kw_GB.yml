@@ -367,7 +367,7 @@ slots:
   spin-lore-right-click-demo: "&7Klyck dyghow rag troyllyans diskwedhes"
   spin-active: "&e&lTroyllyans -- ow mos yn-rag"
   spin-active-lore: "&7Klyckyewgh rag gorfenna an troyllyans ma lemmyn."
-  last-result-not-yet-spun: "&7Sewyans diwettha: &fna veu troyllys hwath"
+  last-result-not-yet-spun: "&7Sewyans diwettha: &fny veu troyllys hwath"
   last-result-no-win: "&7Sewyans diwettha: &cheb wayn"
   last-result-won: "&7Sewyans diwettha: &agwaynys ({amount})"
   auto-spin-title-stopped: "&bTroyllyans awtomatek"

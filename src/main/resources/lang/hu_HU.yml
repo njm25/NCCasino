@@ -313,7 +313,7 @@ game-options:
   created: "&aAz osztó létrejött, játéktípus: &e{game}&a!"
   created-at: "&aAz osztó létrejött, játéktípus: &e{game}&a, helye: x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aAz osztó sikeresen létrejött!"
-  reset-confirmation: "Visszaállítod az alapértelmezett beállításokat?"
+  reset-confirmation: "Alapbeállítások visszaállítása?"
 
 slots:
   title: "Nyerőgép"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cAz osztók adatfájlja nem található!"
   location-not-found: "&cNem sikerült lekérni az osztó helyét."
   world-not-found: "&cA világ nem létezik: '{world}'."
-  reset-confirmation: "Visszaállítod az alapértelmezett beállításokat?"
+  reset-confirmation: "Alapbeállítások visszaállítása?"
   save-failed: "&cNem sikerült menteni az osztó adatait: {error}"
   dealer-changed: "&aAz osztó megváltozott."
   dealer-changed-detailed: "&aAz osztó lecserélve erre: &e{mob}&a."
@@ -1174,7 +1174,7 @@ admin:
   bind-citizens-npc: "Hozzákötés Citizens NPC-hez"
   rebind-citizens-npc: "Újrakötés Citizens NPC-hez"
   bind-citizens-npc-lore: "&7Kattints jobb gombbal egy NPC-re, hogy ez legyen az osztó."
-  citizens-bind-prompt: "&eKattints jobb gombbal arra a Citizens NPC-re, amely ezt az osztót vezeti. &7(30 másodperc)"
+  citizens-bind-prompt: "&eKattints jobb gombbal arra a Citizens NPC-re, amelyik ezt az osztót vezesse. &7(30 másodperc)"
   citizens-bind-timeout: "&cA hozzákötés megszakadt - időben nem kattintottál NPC-re."
   citizens-bind-failed: "&cEz az NPC nem lehet osztó."
   citizens-bind-occupied: "&cEz az NPC már ezt az osztót vezeti: '&e{dealer}&c'."

@@ -34,7 +34,7 @@ preferences:
     server-default: "Rhagosodiad y gweinydd"
     explicit: "Eich dewis chi"
     client: "Iaith y Gêm"
-    client-applied: "&7Gosodwyd iaith y casino i gyd-fynd â'ch gêm: &f{language}&7. Newidiwch hi yn Dewisiadau > Iaith."
+    client-applied: "&7Gosodwyd iaith y casino i gyd-fynd â'ch gêm: &f{language}&7. Newidiwch hi yn y ddewislen Dewisiadau > Iaith."
   overflow:
     title: "&eEnillion Heb Le"
     bank: "&aCadw i Mi"

@@ -101,7 +101,7 @@ payout:
   bank-cleared: "&aGordetako irabazi guztiak jaso dituzu."
   bank-empty: "&7Ez duzu gordetako irabazirik zain."
   bank-still-blocked: "&6Irabaziak inbentarioan lekuaren zain daude oraindik: {amount}. Egin lekua, eta erabili &e/ncc claim&6 jasotzeko."
-  wager-blocked: "&cBerriro jokatu aurretik, egin lekua gordetako elementuentzat: {amount}."
+  wager-blocked: "&cBerriro jokatu aurretik, egin lekua gordetako elementuetarako: {amount}."
 
 cards:
   name: "{rank} ({suit})"
