@@ -227,7 +227,7 @@ baccarat:
   player-pair-odds: "Par do jogador - 11:1"
   player-win-odds: "Vitória do jogador - 1:1"
   tie-odds: "Empate - 8:1"
-  banker-win-odds: "Vitória da banca - 0.95:1"
+  banker-win-odds: "Vitória da banca - 0,95:1"
   banker-pair-odds: "Par da banca - 11:1"
   click-leave-chair: "&7&oClique para sair da cadeira"
   open-seat: "&oAssento livre"

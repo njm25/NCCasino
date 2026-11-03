@@ -489,7 +489,7 @@ slots:
   paytable-card-row: "&f{run} de seguida &8• &a{multiplier}× &8• &e{amount}"
   paytable-card-no-runs: "&8Cap de seguida d'aqueste simbòl pòt pas cabre suls rotlèus ({columns})."
   guide-volatility-title: "&bRotlèus e volatilitat"
-  guide-volatility-tradeoff: "&7Mai de rotlèus escambian los pichons ganhs frequents de las seguidas cortas contra de gròs lòts mai grands e rars de las seguidas longas."
+  guide-volatility-tradeoff: "&7Mai de rotlèus escambian los pichons ganhs frequents de las seguidas cortas contra de gròs lòts rars de las seguidas longas."
   guide-volatility-normalized: "&7D'un biais o de l'autre, la taula dels pagaments es equilibrada a l'entorn d'un retorn de: &a{rtp}&7."
   guide-volatility-height: "&7La nautor cambia la forma de las linhas, jamai lo pagament d'una seguida."
   rail-exit: "&fBarrar lo jòc"

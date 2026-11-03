@@ -808,7 +808,7 @@ blackjack:
   wager-guidance-hint: "&e&oEscolle unha aposta"
   click-to-add-wager: "&aFai clic para engadir {amount}"
   hand-wager-lore: "Aposta actual: {amount}"
-  wager-per-hand-title: "Aposta: {amount} por man (mans: {count})"
+  wager-per-hand-title: "Aposta: {amount} por man (×{count})"
   current-wagers-title: "Apostas actuais"
   wager-hand-line: "Man {number}: {amount}"
   currently-selected: "&aSeleccionado agora"

@@ -935,7 +935,7 @@ jockey-options:
 mob-selection:
   giant: "Gigas"
   illusioner: "Praestigiator"
-  title: "Optiones creaturae dispensatoris"
+  title: "Optiones creaturae"
   data-file-not-found: "&cTabularium datorum dispensatorum non inventum!"
   location-not-found: "&cLocus dispensatoris inveniri non potuit."
   world-not-found: "&cMundus «{world}» non exstat."
