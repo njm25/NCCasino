@@ -40,7 +40,7 @@ preferences:
     bank: "&aGiữ lại cho tôi"
     drop: "&eThả xuống gần bạn"
     bank-explained: "&7Giữ lại: được giữ an toàn cho đến khi bạn dọn chỗ trống."
-    drop-explained: "&7Thả: được thả xuống đất gần bạn trong giới hạn của máy chủ, phần còn lại được giữ an toàn."
+    drop-explained: "&7Thả: thả gần bạn đến giới hạn máy chủ, phần dư được giữ lại."
     server-controlled: "&8Máy chủ đang đặt mục này cho mọi người. Lựa chọn của bạn vẫn được lưu."
     server-controlled-notice: "&7Hiện máy chủ đang đặt mục này cho mọi người. Lựa chọn của bạn vẫn được lưu và sẽ áp dụng lại khi máy chủ cho phép."
 
@@ -491,7 +491,7 @@ slots:
   guide-volatility-title: "&bCuộn và độ biến động"
   guide-volatility-tradeoff: "&7Càng nhiều cuộn, các lần thắng nhỏ thường gặp từ dãy ngắn càng giảm để đổi lấy những giải độc đắc lớn, hiếm gặp từ dãy dài."
   guide-volatility-normalized: "&7Dù thế nào, bảng trả thưởng cũng được cân chỉnh quanh tỷ lệ hoàn trả &a{rtp}&7."
-  guide-volatility-height: "&7Chiều cao thay đổi hình dạng dòng thưởng, không bao giờ thay đổi tiền thưởng của một dãy."
+  guide-volatility-height: "&7Chiều cao đổi hình dòng thưởng, không đổi tiền thưởng của dãy."
   rail-exit: "&fĐóng trò chơi"
   rail-exit-what: "&7Cánh cửa bên dưới sẽ đóng máy này."
   rail-exit-session: "&7Việc đó kết thúc phiên chơi của bạn tại đây; những gì đã thắng vẫn được trả."
@@ -935,7 +935,7 @@ jockey-options:
 mob-selection:
   giant: "Người khổng lồ"
   illusioner: "Pháp sư ảo ảnh"
-  title: "Cài đặt sinh vật làm người chia bài"
+  title: "Cài đặt sinh vật người chia bài"
   data-file-not-found: "&cKhông tìm thấy tệp dữ liệu người chia bài!"
   location-not-found: "&cKhông thể lấy vị trí của người chia bài."
   world-not-found: "&cThế giới '{world}' không tồn tại."
