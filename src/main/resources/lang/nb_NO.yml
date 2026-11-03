@@ -520,7 +520,7 @@ slots:
   rail-paylines-current: "&7Aktive linjer: &a{lines}"
   rail-paylines-cost: "&7Hver aktiv linje satses på for seg, så flere linjer koster mer."
   rail-paylines-feedback: "&7Et grønt blink markerer en linje du har lagt til; et svart blink en linje du har fjernet."
-  rail-paylines-controls: "&7Venstreklikk på knappen nedenfor for å legge til en linje, høyreklikk for å fjerne en."
+  rail-paylines-controls: "&7Venstreklikk nedenfor for flere linjer, høyreklikk for færre."
   rail-height: "&fHøyde"
   rail-height-current: "&7Høyde: &a{rows} rader"
   rail-height-effect: "&7Høyden bestemmer det synlige vinduet og hvilke gevinstlinjeformer som finnes."
@@ -935,7 +935,7 @@ jockey-options:
 mob-selection:
   giant: "Kjempe"
   illusioner: "Illusjonist"
-  title: "Innstillinger for dealerens skapning"
+  title: "Dealerens skapning"
   data-file-not-found: "&cFant ikke datafilen for dealere!"
   location-not-found: "&cKunne ikke hente dealerens posisjon."
   world-not-found: "&cVerdenen '{world}' finnes ikke."

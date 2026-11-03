@@ -576,7 +576,7 @@ slots:
   prompt-unavailable: "&cInput via chatten er ikke tilgængeligt lige nu."
 
 slots-settings:
-  title: "Indstillinger for spilleautomat ({dealer})"
+  title: "Automatindstillinger ({dealer})"
   house-edge: "&bHusets fordel"
   house-edge-current: "&7Nuværende: &e{edge} &7(tilbagebetaler &a{rtp}&7)"
   house-edge-hint: "&7Klik, og skriv så en vilkårlig procentsats fra {min} til {max} i chatten."
@@ -603,7 +603,7 @@ slots-settings:
   variance-hit-rate: "&7Chance for, at en aktiv linje giver gevinst: &e{chance}"
   variance-top-line: "&7Største multiplikator for en stribe i fuld bredde: &e{multiplier}x"
   variance-max-exposure: "&7Maksimal udbetaling ved indsats 1 på {lines} standardlinjer: &e{amount}"
-  variance-tradeoff: "&7Højere volatilitet betyder, at linjerne giver gevinst sjældnere, men jackpots på lange striber bliver meget større."
+  variance-tradeoff: "&7Højere volatilitet: linjer vinder sjældnere, men lange striber giver langt større jackpots."
   variance-same-rtp: "&7Alle volatilitetsniveauer har den samme konfigurerede tilbagebetaling: &a{rtp}"
   variance-hint: "&7Venstre-/højreklik for at skifte dealerens risikoniveau."
   variance-updated: "&aSpilleautomatens volatilitet er sat til {variance}."
@@ -935,7 +935,7 @@ jockey-options:
 mob-selection:
   giant: "Kæmpe"
   illusioner: "Illusionist"
-  title: "Indstillinger for dealerens væsen"
+  title: "Indstillinger for dealervæsen"
   data-file-not-found: "&cDealernes datafil blev ikke fundet!"
   location-not-found: "&cKunne ikke hente dealerens placering."
   world-not-found: "&cVerdenen '{world}' findes ikke."
