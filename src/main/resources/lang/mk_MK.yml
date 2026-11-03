@@ -313,7 +313,7 @@ game-options:
   created: "&aДилер со тип на игра &e{game}&a е успешно создаден!"
   created-at: "&aДилер со тип на игра &e{game}&a е успешно создаден на x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aДилерот е успешно создаден!"
-  reset-confirmation: "Да се вратат стандардните вредности на конфигурацијата?"
+  reset-confirmation: "Вратете стандардни поставки?"
 
 slots:
   title: "Слот-машина"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cДатотеката со податоци за дилерите не е пронајдена!"
   location-not-found: "&cЛокацијата на дилерот не можеше да се добие."
   world-not-found: "&cСветот „{world}“ не постои."
-  reset-confirmation: "Да се вратат стандардните вредности на конфигурацијата?"
+  reset-confirmation: "Вратете стандардни поставки?"
   save-failed: "&cПодатоците за дилерот не можеа да се зачуваат: {error}"
   dealer-changed: "&aДилерот е променет."
   dealer-changed-detailed: "&aДилерот е променет во &e{mob}&a."
@@ -1177,8 +1177,8 @@ admin:
   citizens-bind-prompt: "&eДесен клик на Citizens NPC-то што ќе го води овој дилер. &7(30 секунди)"
   citizens-bind-timeout: "&cПоврзувањето е откажано - ниеден NPC не беше кликнат навреме."
   citizens-bind-failed: "&cТој NPC не може да биде дилер."
-  citizens-bind-occupied: "&cТој NPC веќе го води дилерот '&e{dealer}&c'."
-  citizens-bind-success: "&aДилерот '&e{dealer}&a' сега работи на NPC '&e{npc}&a'."
+  citizens-bind-occupied: "&cТој NPC веќе го води дилерот „&e{dealer}&c“."
+  citizens-bind-success: "&aДилерот „&e{dealer}&a“ сега работи на NPC „&e{npc}&a“."
   timer-lore: "&7Тајмер: &a{value}"
   stand-17-lore: "&7Веројатност за застанување на 17: &a{value}%"
   decks-lore: "&7Број шпилови: &a{value}"

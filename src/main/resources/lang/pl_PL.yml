@@ -34,7 +34,7 @@ preferences:
     server-default: "Zgodny z serwerem"
     explicit: "Wybrany"
     client: "Język gry"
-    client-applied: "&7Język kasyna ustawiono na &f{language}&7 zgodnie z twoją grą. Zmień go w Preferencje > Język."
+    client-applied: "&7Język kasyna ustawiono na &f{language}&7 zgodnie z twoją grą. Możesz go zmienić w menu Preferencje > Język."
   overflow:
     title: "&eWygrane, które się nie mieszczą"
     bank: "&aPrzechowaj dla mnie"
