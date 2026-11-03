@@ -407,7 +407,7 @@ slots:
   music-playing: "&d♫"
   guide-seeds-title: "&bOm Frø"
   guide-seeds-never-pays: "&7Frø gir aldri gevinst, same kor lang serien er."
-  guide-seeds-ends-run: "&7Frø avbryt straks kvar serie det dukkar opp i."
+  guide-seeds-ends-run: "&7Frø avbryt straks kvar serie dei dukkar opp i."
   guide-machine-title: "&bDenne automaten"
   guide-machine-reels: "&7Hjul: &a{columns}"
   guide-machine-height: "&7Høgd: &a{rows}"

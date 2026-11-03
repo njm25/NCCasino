@@ -1086,7 +1086,7 @@ blackjack-settings:
   insurance-timeout-desc: "&7Sekondes wat spelers het om te besluit voordat dit outomaties Nee word."
   edit-turn-timer-timeout: "Wysig tydlimiet vir aksies"
   turn-timer-timeout-desc-1: "&7Sekondes wat 'n speler het om te speel voordat die hand outomaties staan."
-  turn-timer-timeout-desc-2: "&7Ook die tyd voordat die beurt van 'n speler wat die kieslys toegemaak het of wie se verbinding verbreek is, afgehandel word; die inset op daardie sitplek bly in die spel tot by die uitslag."
+  turn-timer-timeout-desc-2: "&7Ook die tyd voordat die beurt van 'n speler wat die kieslys toegemaak of ontkoppel het, afgehandel word; die inset bly tot die uitslag in spel."
   edit-max-hands: "Wysig maksimum hande"
   max-hands-desc: "&7Die maksimum aantal hande wat een speler op een slag deur verdeling kan hê."
   toggle-split-matching: "Verdeelreël"
