@@ -89,7 +89,7 @@ payout:
   lost: "&c&lDon vuoittáhallet!"
   delivered: "&e{context}\n&aMáksu: {amount}"
   context-disconnected: "Du oktavuohta botkanii doaimmalaš spealu áigge (speallu: {game}). Speallu nogai dalle go don ledjet olggobealde neahta."
-  context-left-mid-game: "Don guđđet doaimmalaš speallu (speallu: {game}) ovdal go dat nogai, nu ahte dat máksojuvvui du ovddas."
+  context-left-mid-game: "Don guđđet doaimmalaš spealu (speallu: {game}) ovdal go dat nogai, nu ahte dat čielggaduvvui du ovddas."
   context-server-restart: "Bálvá álggahuvvui ođđasit go du veađđu (speallu: {game}) ain vurddii bohtosa, nu ahte dat máksojuvvui ruovttoluotta."
   context-currency-change: "Dán juogadeaddji valuhtta molsojuvvui go du veađđu (speallu: {game}) ain lei spealus, nu ahte dat máksojuvvui ruovttoluotta. Valuhtta: {currency}."
   context-currency-change-committed: "Dán juogadeaddji valuhtta molsojuvvui maŋŋel go du boađus (speallu: {game}) lei juo mearriduvvon, nu ahte dutnje máksojuvvui. Valuhtta: {currency}."
@@ -101,7 +101,7 @@ payout:
   bank-cleared: "&aBuot du vurkejuvvon vuoitu lea viežžojuvvon."
   bank-empty: "&7Dus ii leat vurkejuvvon vuoitu mii vuordá."
   bank-still-blocked: "&6Vuoitu ain vuordá saji du dávverlisttus: {amount}. Daga saji, ja geavat de &e/ncc claim&6 viežžat daid."
-  wager-blocked: "&cDaga saji vurkejuvvon dávviriidda ovdal go speallat fas: {amount}."
+  wager-blocked: "&cDaga saji vurkejuvvon dávviriidda ovdal go spealat fas: {amount}."
 
 cards:
   name: "{rank} ({suit})"
@@ -278,7 +278,7 @@ dragon-descent:
   rebet-placed: "&dVeađđu ođđasit biddjon: {amount}."
 
 test-game:
-  title: "Veađđospeallu guovtti speallejeaddjái"
+  title: "Veađđospeallu 2 speallejeaddjái"
   seat-one-open: "Sadji 1 (coahkkal čohkkánit)"
   seat-one-occupied: "Sadji 1 lea váldon"
   seat-two-open: "Sadji 2 (coahkkal čohkkánit)"
@@ -576,7 +576,7 @@ slots:
   prompt-unavailable: "&cČáttas čállin ii leat dál olámuttos."
 
 slots-settings:
-  title: "Spealloautomáhta heivehusat ({dealer})"
+  title: "Automáhta heivehusat ({dealer})"
   house-edge: "&bKasiinno ovdamunni"
   house-edge-current: "&7Dál: &e{edge} &7(máksu: &a{rtp}&7)"
   house-edge-hint: "&7Coahkkal, ja čále de proseantta {min} gitta {max} čáttas."
@@ -1125,7 +1125,7 @@ admin:
   vault-missing: "&cVault ii gávdnon. Sajáiduhte Vault geavahit dan NCCasinoin."
   economy-missing: "&cIi leat ekonomiijalasáhus. Sajáiduhte ekonomiijalasáhusa geavahit Vault."
   currency-mode-switched: "&eValuhttavuohki molsojuvvon: &a{mode}&e."
-  currency-change-players: "&eSpeallejeaddjit gaskkas speallu dán juogadeaddji luhtte: &a{count}&e. Jus don dohkkehat, sin spealut nohket dál ja máksojuvvojit boares valuhtas, &a{currency}&e: vuoittut máksojuvvojit, rabas veađut máksojuvvojit ruovttoluotta. Dasto valuhtta molsašuvvá."
+  currency-change-players: "&eSpeallejeaddjit gaskkas speallu dán juogadeaddji luhtte: &a{count}&e. Jos don dohkkehat, sin spealut nohket dál ja máksojuvvojit boares valuhtas, &a{currency}&e: vuoittut máksojuvvojit, rabas veađut máksojuvvojit ruovttoluotta. Dasto valuhtta molsašuvvá."
   currency-change-confirm-title: "Máksit ja molsut valuhta?"
   prompt-chip-size: "&aČále mearkka ođđa árvvu čáttas."
   prompt-chip-index: "&aČále ođđa árvvu mearkii #{index} čáttas."
@@ -1175,10 +1175,10 @@ admin:
   rebind-citizens-npc: "Čatna ođđasit Citizens-NPC:ii"
   bind-citizens-npc-lore: "&7Coahkkal olgeš boaluin NPC:ii, vai dat šaddá dán juogadeaddjin."
   citizens-bind-prompt: "&eCoahkkal olgeš boaluin dan Citizens-NPC:ii mii galgá stivret dán juogadeaddji. &7(30 sekundda)"
-  citizens-bind-timeout: "&cČatnan šluhttejuvvui - ii oktage NPC coahkkaluvvon áigái."
+  citizens-bind-timeout: "&cČatnan gaskkalduhttojuvvui - ii oktage NPC coahkkaluvvon áiggis."
   citizens-bind-failed: "&cDat NPC ii sáhte leat juogadeaddji."
-  citizens-bind-occupied: "&cDat NPC stivre juo juogadeaddji '&e{dealer}&c'."
-  citizens-bind-success: "&aJuogadeaddji '&e{dealer}&a' doaibmá dál NPC:s '&e{npc}&a'."
+  citizens-bind-occupied: "&cDat NPC stivre juo juogadeaddji «&e{dealer}&c»."
+  citizens-bind-success: "&aJuogadeaddji «&e{dealer}&a» doaibmá dál NPC:s «&e{npc}&a»."
   timer-lore: "&7Áigemihttár: &a{value}"
   stand-17-lore: "&7Vejolašvuohta bisánit 17:s: &a{value}%"
   decks-lore: "&7Kortaspealuid lohku: &a{value}"

@@ -40,7 +40,7 @@ preferences:
     bank: "&aMirit anezho evidon"
     drop: "&eLezel da gouezhañ e-kichen"
     bank-explained: "&7Mirout: miret diarvar betek ma vo lec'h ganeoc'h."
-    drop-explained: "&7Lezel da gouezhañ: lezet da gouezhañ e-kichen betek ar vevenn lakaet gant ar servijer, an nemorant miret diarvar."
+    drop-explained: "&7Lezel da gouezhañ: e-kichen betek bevenn ar servijer, an nemorant miret diarvar."
     server-controlled: "&8Ar servijer a laka an arventenn-mañ evit an holl. Ho tibab deoc'h-c'hwi a zo miret."
     server-controlled-notice: "&7Ar servijer a laka an arventenn-mañ evit an holl bremañ. Ho tibab deoc'h-c'hwi a zo miret hag e teuio en-dro pa aotreo ar servijer anezhañ en-dro."
 
@@ -92,7 +92,7 @@ payout:
   context-left-mid-game: "Kuitaet hoc'h eus ur c'hoari war ober (c'hoari: {game}) a-raok ma oa echu, setu eo bet peurechuet evidoc'h."
   context-server-restart: "Adloc'het eo bet ar servijer pa oa c'hoazh ho klaoustre (c'hoari: {game}) o c'hortoz e zisoc'h, setu eo bet dasroet deoc'h."
   context-currency-change: "Cheñchet eo bet moneiz ar c'hroupier-mañ pa oa c'hoazh ho klaoustre (c'hoari: {game}) o c'hortoz e zisoc'h, setu eo bet dasroet deoc'h e {currency}."
-  context-currency-change-committed: "Cheñchet eo bet moneiz ar c'hroupier-mañ goude ma oa bet divizet ho disoc'h (c'hoari: {game}) dija, setu oc'h bet paeet e {currency}."
+  context-currency-change-committed: "Cheñchet eo bet moneiz ar c'hroupier-mañ goude ma oa bet divizet ho tisoc'h (c'hoari: {game}) dija, setu oc'h bet paeet e {currency}."
   context-committed-result: "Adloc'het eo bet ar servijer goude ma oa bet divizet ho tisoc'h (c'hoari: {game}). Miret eo bet ho tisoc'h."
   retry-one: "&6Ur paeamant a zo o c'hortoz ha n'eus ket bet gallet e zegas c'hoazh. Klasket e vo en-dro ent emgefre."
   retry-many: "&6Paeamantoù o c'hortoz n'eus ket bet gallet o degas c'hoazh: {count}. Klasket e vint en-dro ent emgefre."
@@ -169,7 +169,7 @@ coin-flip:
   pick-right: "&oDehou"
   click-pick: "&8Klikit evit kadarnaat ho tibab."
   awaiting-wager: "&f&oKasit ur c'hlaoustre evit kregiñ"
-  awaiting-wager-lore: "&7&oNeuze dibabit ho tu gant fur"
+  awaiting-wager-lore: "&7&oNeuze dibabit ho tu ent fur"
 
 rock-paper-scissors:
   title: "Maen Paper Kizell"
@@ -278,7 +278,7 @@ dragon-descent:
   rebet-placed: "&dAdklaoustre lakaet: {amount}."
 
 test-game:
-  title: "C'hoari klaoustre evit daou c'hoarier"
+  title: "C'hoari klaoustre 2 c'hoarier"
   seat-one-open: "Plas 1 (klikit evit azezañ)"
   seat-one-occupied: "Plas 1 tapet"
   seat-two-open: "Plas 2 (klikit evit azezañ)"
@@ -456,7 +456,7 @@ slots:
   auto-any-win-hint: "&7Klikit evit enaouiñ pe lazhañ."
   auto-big-win: "&eLiesaer ar gounid bras"
   auto-big-win-current: "&7Ehanañ pa vez tizhet: &a{multiplier}× ar c'hlaoustre en holl"
-  auto-big-win-description: "&7Ehanañ a ra an troiadennoù emgefre pa zasro un droiadenn d'an nebeutañ al liesaer-mañ eus he c'hlaoustre en holl."
+  auto-big-win-description: "&7Ehanañ a ra pa zasro un droiadenn d'an nebeutañ al liesaer-mañ eus he c'hlaoustre."
   auto-big-win-hint: "&7Klikit evit termeniñ ul liesaer er flap."
   auto-big-win-set: "&aAn troiadennoù emgefre a ehano pa zasro un droiadenn d'an nebeutañ {multiplier}× ar c'hlaoustre en holl."
   auto-big-win-off-set: "&aLazhet eo an ehanañ gant ur gounid bras bremañ."
@@ -468,7 +468,7 @@ slots:
   auto-profit-target-off-set: "&aLazhet eo ar pal gounid bremañ."
   auto-loss-limit: "&eBevenn koll"
   auto-loss-limit-current: "&7Ehanañ pa vez tizhet: &c{amount} a goll"
-  auto-loss-limit-description: "&7Ehanañ a ra an troiadennoù emgefre a-raok ma c'hallfe ar c'holl abaoe m'int bet loc'het mont pelloc'h eget ar sammad-mañ."
+  auto-loss-limit-description: "&7Ehanañ a ra an troiadennoù emgefre a-raok koll muioc'h eget kement-se abaoe al loc'hañ."
   auto-loss-limit-hint: "&7Klikit evit termeniñ ur sammad er flap."
   auto-loss-limit-set: "&aAn troiadennoù emgefre a ehano a-raok ma vo kollet muioc'h eget {amount} abaoe m'int bet loc'het."
   auto-loss-limit-off-set: "&aLazhet eo ar vevenn koll bremañ."
@@ -501,7 +501,7 @@ slots:
   rail-wager-controls: "&7Klik kleiz dindan evit ur jeton brasoc'h, klik dehou evit ur jeton bihanoc'h."
   rail-reels: "&fRodelloù"
   rail-reels-current: "&7Rodelloù: &a{columns}"
-  rail-reels-tradeoff: "&7Gant nebeutoc'h a rodelloù e vez gounezet sammadoù bihan alies; gant muioc'h e vez paeet muioc'h, met roueztoc'h."
+  rail-reels-tradeoff: "&7Nebeutoc'h a rodelloù: gounidoù bihan aliesoc'h; muioc'h: gounidoù brasoc'h, met roueztoc'h."
   rail-reels-controls: "&7Klik kleiz dindan evit ouzhpennañ ur rodell, klik dehou evit lemel unan."
   rail-paytable: "&fLenn taolenn ar paeamantoù"
   rail-paytable-run: "&7Steudad: arouezioù heñvel an eil war-lerc'h egile adalek ar rodell gleizañ."
@@ -576,7 +576,7 @@ slots:
   prompt-unavailable: "&cN'haller ket skrivañ er flap bremañ."
 
 slots-settings:
-  title: "Arventennoù an ardivink c'hoari ({dealer})"
+  title: "Arventennoù ardivink ({dealer})"
   house-edge: "&bAvantaj an ti"
   house-edge-current: "&7Bremañ: &e{edge} &7(distro: &a{rtp}&7)"
   house-edge-hint: "&7Klikit, ha neuze skrivit un dregantad etre {min} ha {max} er flap."
@@ -840,7 +840,7 @@ blackjack:
   shoe-exhausted-refunded: "&eGoullo eo boest ar c'hartennoù e-kreiz ar rondenn -- dasroet: {amount}."
   start-transition-failed-refunded: "&eN'eus ket bet gallet kregiñ gant ar rondenn -- dasroet: {amount}."
   table-reset-refunded: "&eAdderaouet eo bet an daol gant ur merour -- dasroet: {amount}."
-  round-error-refunded: "&eUn dra bennak a zo aet a-dreuz e-kreiz ar c'hrogad -- dasroet: {amount}."
+  round-error-refunded: "&eUn dra bennak a zo aet a-dreuz e-kreiz ar rondenn -- dasroet: {amount}."
 
 dragon-settings:
   title: "Arventennoù Diskenn an Aerouant ({dealer})"
@@ -1091,7 +1091,7 @@ blackjack-settings:
   max-hands-desc: "&7An niver brasañ a zornioù a c'hall ur c'hoarier derc'hel war un dro dre rannañ."
   toggle-split-matching: "Reolenn klotañ evit rannañ"
   split-matching-desc-1: "&7Memes renk: renkoù heñvel hepken a c'hall bezañ rannet (Roue-Roue)."
-  split-matching-desc-2: "&7Memes talvoud: n'eus forzh peseurt div gartenn a dalvez 10 a c'hall bezañ rannet ivez (Roue-Rouanez)."
+  split-matching-desc-2: "&7Memes talvoud: rannañ ivez div gartenn a dalvez 10 (Roue-Rouanez)."
   match-same-rank: "Memes renk"
   match-same-value: "Memes talvoud"
   max-hands-unbounded: "Divevenn"
@@ -1177,8 +1177,8 @@ admin:
   citizens-bind-prompt: "&eKlikit a-zehou war an NPC Citizens a renno ar c'hroupier-mañ. &7(30 eilenn)"
   citizens-bind-timeout: "&cNullet eo al liammañ - n'eus bet kliket NPC ebet a-dermen."
   citizens-bind-failed: "&cAn NPC-se ne c'hall ket bezañ ur c'hroupier."
-  citizens-bind-occupied: "&cAn NPC-se a ren dija ar c'hroupier '&e{dealer}&c'."
-  citizens-bind-success: "&aAr c'hroupier '&e{dealer}&a' a ya en-dro bremañ war an NPC '&e{npc}&a'."
+  citizens-bind-occupied: "&cAn NPC-se a ren dija ar c'hroupier «&e{dealer}&c»."
+  citizens-bind-success: "&aAr c'hroupier «&e{dealer}&a» a ya en-dro bremañ war an NPC «&e{npc}&a»."
   timer-lore: "&7Amzerier: &a{value}"
   stand-17-lore: "&7Chañs chom war 17: &a{value}%"
   decks-lore: "&7Niver a vandennoù: &a{value}"
