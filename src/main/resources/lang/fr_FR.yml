@@ -1104,7 +1104,7 @@ blackjack-settings:
   invalid-max-hands: "Saisissez -1 pour illimité ou un entier de 2 ou plus."
   insurance-updated: "&eAssurance : {value}"
   splitting-updated: "&eSéparation : {value}"
-  split-matching-updated: "&eRègle de correspondance : &e{value}"
+  split-matching-updated: "&eRègle de correspondance pour séparer : &e{value}"
   toggle-double-after-split: "Activer/désactiver doubler après séparation"
   toggle-aces-hit: "Activer/désactiver tirer sur as séparés"
   toggle-aces-double: "Activer/désactiver doubler sur as séparés"

@@ -1104,7 +1104,7 @@ blackjack-settings:
   invalid-max-hands: "Introduce -1 para ilimitado o un número entero de 2 o más."
   insurance-updated: "&eSeguro: {value}"
   splitting-updated: "&eDivisión: {value}"
-  split-matching-updated: "&eRegla de emparejamiento: &e{value}"
+  split-matching-updated: "&eRegla de emparejamiento para dividir: &e{value}"
   toggle-double-after-split: "Activar/desactivar doblar tras dividir"
   toggle-aces-hit: "Activar/desactivar pedir carta en ases divididos"
   toggle-aces-double: "Activar/desactivar doblar en ases divididos"
