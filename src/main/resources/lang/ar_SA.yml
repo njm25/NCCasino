@@ -566,7 +566,7 @@ slots:
   prompt-deadline: "&7أمامك {seconds} ثانية للإجابة."
   prompt-cancel-hint: "&7اكتب {cancel} في الدردشة للإلغاء."
   prompt-another-game-warning: "&7فتح لعبة أخرى يلغي جلسة السلوت هذه ويغلقها."
-  prompt-retry: "&7حاول مجددا في الدردشة -- متبق {seconds} ثانية."
+  prompt-retry: "&7حاول مجددا في الدردشة -- الوقت المتبقي: {seconds} ثانية."
   prompt-cancelled: "&7تم الإلغاء."
   prompt-timed-out: "&cلم تجب في الوقت المحدد، لذا أغلقت ماكينة السلوت."
   prompt-another-game-cancelled: "&eفتحت لعبة أخرى، لذا ألغي طلب السلوت وأغلقت تلك الماكينة."

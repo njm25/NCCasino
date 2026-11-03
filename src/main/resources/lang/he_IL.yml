@@ -32,7 +32,7 @@ preferences:
     mode: "&7מצב: {mode}"
     effective: "&7השפה בשימוש: &f{language}"
     server-default: "ברירת המחדל של השרת"
-    explicit: "נבחרה"
+    explicit: "שפה שנבחרה"
     client: "שפת המשחק"
     client-applied: "&7שפת הקזינו הוגדרה ל&f{language}&7 כדי להתאים למשחק שלך. אפשר לשנות אותה בהעדפות > שפה."
   overflow:
@@ -421,7 +421,7 @@ slots:
   variance-low: "נמוכה"
   variance-balanced: "מאוזנת"
   variance-high: "גבוהה"
-  variance-high_roller: "למהמרים גדולים"
+  variance-high_roller: "מהמרים גדולים"
   spin-speed-slow: "איטית"
   spin-speed-normal: "רגילה"
   spin-speed-fast: "מהירה"

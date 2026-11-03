@@ -1083,7 +1083,7 @@ blackjack-settings:
   insurance-desc-2: "&7Bedeli bahsinin yarısıdır. Krupiyenin kapalı kartı 10 puanlık bir kartsa (blackjack) 2:1 öder."
   toggle-splitting: "Bölmeyi Aç/Kapat"
   edit-insurance-timeout: "Sigorta Karar Süresini Düzenle"
-  insurance-timeout-desc: "&7Oyuncuların karar vermek için kaç saniyesi olduğu; süre dolunca otomatik olarak Hayır seçilir."
+  insurance-timeout-desc: "&7Oyuncuların otomatik Hayır seçilmeden önceki karar süresi (sn)."
   edit-turn-timer-timeout: "Hamle Süresini Düzenle"
   turn-timer-timeout-desc-1: "&7Oyuncunun otomatik durmadan önceki hamle süresi (sn)."
   turn-timer-timeout-desc-2: "&7Menüyü kapatan ya da bağlantısı kopan bir oyuncunun sırası da bu süre dolunca sonuçlanır; bahsi olduğu gibi tur sonucuna kadar oyunda kalır."
