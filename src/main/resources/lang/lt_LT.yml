@@ -1086,7 +1086,7 @@ blackjack-settings:
   insurance-timeout-desc: "&7Sekundės, per kurias žaidėjai turi apsispręsti, kol nebus automatiškai pasirinkta „Ne“."
   edit-turn-timer-timeout: "Keisti veiksmo laiką"
   turn-timer-timeout-desc-1: "&7Sekundės veiksmui, kol nebus automatiškai pasirinkta „Sustoti“."
-  turn-timer-timeout-desc-2: "&7Tai ir laukimo laikas, kol išsprendžiamas ėjimas, kai žaidėjas uždaro meniu arba atsijungia; statymas toje vietoje tada lieka žaidime iki rezultato."
+  turn-timer-timeout-desc-2: "&7Tiek pat laukiama, kai žaidėjas uždaro meniu ar atsijungia: tada ėjimas baigiamas, o statymas lieka iki rezultato."
   edit-max-hands: "Keisti didžiausią rankų skaičių"
   max-hands-desc: "&7Daugiausia vieno žaidėjo rankų vienu metu po skaidymo."
   toggle-split-matching: "Skaidymo atitikimo taisyklė"

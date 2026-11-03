@@ -34,7 +34,7 @@ preferences:
     server-default: "Zadano na serveru"
     explicit: "Tvoj odabir"
     client: "Jezik igre"
-    client-applied: "&7Jezik kazina postavljen je na &f{language}&7 u skladu s tvojom igrom. Promijeni ga u Lične postavke > Jezik."
+    client-applied: "&7Jezik kazina postavljen je na &f{language}&7 u skladu s jezikom tvoje igre. Promijeni ga u meniju Lične postavke > Jezik."
   overflow:
     title: "&eDobici koji ne stanu"
     bank: "&aČuvaj ih za mene"

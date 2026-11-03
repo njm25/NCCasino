@@ -972,7 +972,7 @@ complex-variant:
   body-color-changed: "Boja tijela je promijenjena"
   pattern-color-changed: "Boja uzorka je promijenjena"
   changed: "&a{change}."
-  changed-detailed: "&a{change} u &e{value}&a."
+  changed-detailed: "&a{change} u: &e{value}&a."
 
 mines-settings:
   title: "Postavke igre Mine ({dealer})"
@@ -1083,9 +1083,9 @@ blackjack-settings:
   insurance-desc-2: "&7Stoji pola tvog uloga. Isplaćuje 2:1 ako skrivena karta djelitelja vrijedi 10 (blackjack)."
   toggle-splitting: "Uključi/isključi dijeljenje"
   edit-insurance-timeout: "Uredi vrijeme za osiguranje"
-  insurance-timeout-desc: "&7Vrijeme (u sekundama) koje igrači imaju za odluku prije nego što se automatski odabere „Ne”."
+  insurance-timeout-desc: "&7Broj sekundi za odluku prije automatskog odabira „Ne”."
   edit-turn-timer-timeout: "Uredi vrijeme za radnju"
-  turn-timer-timeout-desc-1: "&7Broj sekundi za radnju prije automatskog „Stani”."
+  turn-timer-timeout-desc-1: "&7Broj sekundi za radnju prije automatskog odabira „Stani”."
   turn-timer-timeout-desc-2: "&7To je i vrijeme čekanja prije nego što se riješi potez igrača koji je zatvorio izbornik ili prekinuo vezu; njegovo mjesto tada nastavlja bez promjene do ishoda."
   edit-max-hands: "Uredi najveći broj ruku"
   max-hands-desc: "&7Najveći broj ruku koje jedan igrač može imati istodobno dijeljenjem."

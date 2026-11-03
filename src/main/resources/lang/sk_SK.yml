@@ -34,7 +34,7 @@ preferences:
     server-default: "Predvolený serverom"
     explicit: "Vlastná voľba"
     client: "Jazyk hry"
-    client-applied: "&7Jazyk kasína bol nastavený na &f{language}&7 podľa tvojej hry. Zmeniť ho môžeš v Predvoľby > Jazyk."
+    client-applied: "&7Jazyk kasína bol nastavený na &f{language}&7 podľa tvojej hry. Zmeniť ho môžeš v menu Predvoľby > Jazyk."
   overflow:
     title: "&eVýhry, ktoré sa nezmestia"
     bank: "&aUschovať pre mňa"
@@ -489,7 +489,7 @@ slots:
   paytable-card-row: "&f{run} v rade &8• &a{multiplier}× &8• &e{amount}"
   paytable-card-no-runs: "&8Pri počte valcov {columns} sa žiadny rad tohto symbolu nezmestí."
   guide-volatility-title: "&bValce a volatilita"
-  guide-volatility-tradeoff: "&7Viac valcov znamená menej malých častých výhier z krátkych radov, ale väčšie a zriedkavé jackpoty z dlhých radov."
+  guide-volatility-tradeoff: "&7Viac valcov: menej malých častých výhier, zato väčšie a zriedkavé jackpoty z dlhých radov."
   guide-volatility-normalized: "&7V každom prípade je výherná tabuľka nastavená okolo návratnosti &a{rtp}&7."
   guide-volatility-height: "&7Výška mení tvary výherných línií, nikdy nie výplatu za rad."
   rail-exit: "&fZatvorenie hry"

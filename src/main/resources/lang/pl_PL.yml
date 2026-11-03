@@ -462,7 +462,7 @@ slots:
   auto-big-win-off-set: "&aZatrzymywanie przy dużej wygranej jest wyłączone."
   auto-profit-target: "&eCel zysku"
   auto-profit-target-current: "&7Zatrzymanie przy zysku: &a{amount}"
-  auto-profit-target-description: "&7Zatrzymuje automatyczne obroty, gdy zysk od ich uruchomienia osiągnie tę kwotę."
+  auto-profit-target-description: "&7Zatrzymuje obroty, gdy zysk od ich uruchomienia osiągnie tę kwotę."
   auto-profit-target-hint: "&7Kliknij, aby ustawić kwotę na czacie."
   auto-profit-target-set: "&aAutomatyczne obroty zatrzymają się, gdy zysk od ich uruchomienia osiągnie {amount}."
   auto-profit-target-off-set: "&aCel zysku jest wyłączony."

@@ -313,7 +313,7 @@ game-options:
   created: "&aДелилац са врстом игре &e{game}&a је успешно направљен!"
   created-at: "&aДелилац са врстом игре &e{game}&a је успешно направљен на координатама x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aДелилац је успешно направљен!"
-  reset-confirmation: "Вратити подразумевану конфигурацију?"
+  reset-confirmation: "Ресетовати конфигурацију?"
 
 slots:
   title: "Слот машина"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cДатотека са подацима делилаца није пронађена!"
   location-not-found: "&cЛокацију делиоца није могуће преузети."
   world-not-found: "&cСвет „{world}“ не постоји."
-  reset-confirmation: "Вратити подразумевану конфигурацију?"
+  reset-confirmation: "Ресетовати конфигурацију?"
   save-failed: "&cПодаци делиоца нису могли да буду сачувани: {error}"
   dealer-changed: "&aДелилац је промењен."
   dealer-changed-detailed: "&aДелилац је промењен у: &e{mob}&a."
