@@ -285,7 +285,7 @@ test-game:
   seat-two-occupied: "Tha cuideigin ann an àite 2"
   state-lobby: "Staid a' gheama: LOBAIDH"
   waiting-accept: "A' feitheamh ri àite 2 gabhail ris a' gheall..."
-  round-finished: "Tha a' chuairt seachad. Briog air “Ath-shuidhich an geama” gus tòiseachadh a-rithist."
+  round-finished: "Tha a' chuairt seachad. Briog air “Ath-shuidhich an geama”."
   unknown-state: "Staid neo-aithnichte!"
   accept-bet: "Gabh ris a' gheall: {amount}"
   reset: "Ath-shuidhich an geama"
