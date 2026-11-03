@@ -36,7 +36,7 @@ preferences:
     client: "لغة اللعبة"
     client-applied: "&7تم ضبط لغة الكازينو على &f{language}&7 لتطابق لغة لعبتك. يمكنك تغييرها من التفضيلات > اللغة."
   overflow:
-    title: "&eالأرباح التي لا تتسع لها حقيبتك"
+    title: "&eالأرباح التي لا يتسع لها مخزونك"
     bank: "&aاحتفظ بها لي"
     drop: "&eأسقطها بالقرب مني"
     bank-explained: "&7الاحتفاظ: تبقى محفوظة بأمان حتى تفرغ مساحة."
@@ -104,7 +104,7 @@ payout:
   wager-blocked: "&cأفرغ مساحة لـ {amount} من العناصر المحفوظة قبل اللعب مجددا."
 
 cards:
-  name: "ورقة {rank} {suit}"
+  name: "ورقة {rank} من {suit}"
   ranks:
     two: "اثنان"
     three: "ثلاثة"
@@ -852,11 +852,11 @@ dragon-settings:
   floors: "الطوابق"
   invalid-option: "&cتم اختيار خيار غير صالح."
   invalid-settings-option: "&cتم اختيار خيار غير صالح في إعدادات هبوط التنين."
-  prompt-setting: "&aاكتب في الدردشة العدد الافتراضي الجديد لـ {setting}."
-  prompt-setting-detailed: "&aاكتب في الدردشة عددا افتراضيا جديدا لـ {setting} بين {min} و{max}."
+  prompt-setting: "&aاكتب في الدردشة عدد {setting} الافتراضي الجديد."
+  prompt-setting-detailed: "&aاكتب في الدردشة عدد {setting} الافتراضي الجديد بين {min} و{max}."
   vines-less-columns: "يجب أن يكون عدد النباتات المتسلقة أقل من عدد الأعمدة ({columns})."
   columns-updated: "&aتم تحديث أعمدة هبوط التنين."
-  vines-updated: "&aتم تحديث نباتات هبوط التنين."
+  vines-updated: "&aتم تحديث النباتات المتسلقة في هبوط التنين."
   floors-updated: "&aتم تحديث طوابق هبوط التنين."
   updated-detailed: "تغير {setting} إلى {value}."
 
