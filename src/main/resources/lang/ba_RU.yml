@@ -313,7 +313,7 @@ game-options:
   created: "&aУйын төрө &e{game}&a булған дилер уңышлы булдырылды!"
   created-at: "&aУйын төрө &e{game}&a булған дилер уңышлы булдырылды, урыны x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aДилер уңышлы булдырылды!"
-  reset-confirmation: "Конфигурацияны килешеү буйынса хәлгә ҡайтарырғамы?"
+  reset-confirmation: "Көйләүҙәрҙе ҡайтарырғамы?"
 
 slots:
   title: "Слот-машина"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cДилерҙар мәғлүмәт файлы табылманы!"
   location-not-found: "&cДилерҙың урынын асыҡлап булманы."
   world-not-found: "&c«{world}» донъяһы юҡ."
-  reset-confirmation: "Конфигурацияны килешеү буйынса хәлгә ҡайтарырғамы?"
+  reset-confirmation: "Көйләүҙәрҙе ҡайтарырғамы?"
   save-failed: "&cДилер мәғлүмәтен һаҡлап булманы: {error}"
   dealer-changed: "&aДилер алмаштырылды."
   dealer-changed-detailed: "&aДилер алмаштырылды: &e{mob}&a."

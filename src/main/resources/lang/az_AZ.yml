@@ -313,7 +313,7 @@ game-options:
   created: "&aOyun növü &e{game}&a olan diler uğurla yaradıldı!"
   created-at: "&aOyun növü &e{game}&a olan diler uğurla yaradıldı, mövqe x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aDiler uğurla yaradıldı!"
-  reset-confirmation: "Konfiqurasiya standart vəziyyətə qaytarılsın?"
+  reset-confirmation: "Standart vəziyyətə qaytarılsın?"
 
 slots:
   title: "Slot maşını"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cDiler məlumat faylı tapılmadı!"
   location-not-found: "&cDilerin yerini müəyyən etmək mümkün olmadı."
   world-not-found: "&c“{world}” adlı dünya mövcud deyil."
-  reset-confirmation: "Konfiqurasiya standart vəziyyətə qaytarılsın?"
+  reset-confirmation: "Standart vəziyyətə qaytarılsın?"
   save-failed: "&cDiler məlumatlarını saxlamaq mümkün olmadı: {error}"
   dealer-changed: "&aDiler dəyişdirildi."
   dealer-changed-detailed: "&aDiler dəyişdirildi: &e{mob}&a."

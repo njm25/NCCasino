@@ -313,7 +313,7 @@ game-options:
   created: "&aPengendali dengan jenis permainan &e{game}&a berjaya dicipta!"
   created-at: "&aPengendali dengan jenis permainan &e{game}&a berjaya dicipta di x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aPengendali berjaya dicipta!"
-  reset-confirmation: "Set semula konfigurasi kepada lalai?"
+  reset-confirmation: "Set semula konfigurasi?"
 
 slots:
   title: "Mesin Slot"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cFail data pengendali tidak ditemui!"
   location-not-found: "&cGagal mendapatkan lokasi pengendali."
   world-not-found: "&cDunia '{world}' tidak wujud."
-  reset-confirmation: "Set semula konfigurasi kepada lalai?"
+  reset-confirmation: "Set semula konfigurasi?"
   save-failed: "&cGagal menyimpan data pengendali: {error}"
   dealer-changed: "&aPengendali ditukar."
   dealer-changed-detailed: "&aPengendali ditukar kepada &e{mob}&a."

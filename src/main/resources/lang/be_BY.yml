@@ -313,7 +313,7 @@ game-options:
   created: "&aКрупье з тыпам гульні &e{game}&a паспяхова створаны!"
   created-at: "&aКрупье з тыпам гульні &e{game}&a паспяхова створаны ў пункце x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aКрупье паспяхова створаны!"
-  reset-confirmation: "Скінуць канфігурацыю да стандартнай?"
+  reset-confirmation: "Скінуць канфігурацыю?"
 
 slots:
   title: "Слоты"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cФайл даных крупье не знойдзены!"
   location-not-found: "&cНе ўдалося атрымаць месцазнаходжанне крупье."
   world-not-found: "&cСвету «{world}» не існуе."
-  reset-confirmation: "Скінуць канфігурацыю да стандартнай?"
+  reset-confirmation: "Скінуць канфігурацыю?"
   save-failed: "&cНе ўдалося захаваць даныя крупье: {error}"
   dealer-changed: "&aКрупье зменены."
   dealer-changed-detailed: "&aКрупье зменены на &e{mob}&a."

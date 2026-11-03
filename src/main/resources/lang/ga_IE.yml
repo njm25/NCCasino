@@ -313,7 +313,7 @@ game-options:
   created: "&aCruthaíodh déileálaí le cineál cluiche &e{game}&a go rathúil!"
   created-at: "&aCruthaíodh déileálaí le cineál cluiche &e{game}&a go rathúil ag x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aCruthaíodh an déileálaí go rathúil!"
-  reset-confirmation: "Athshocraigh an chumraíocht go dtí an réamhshocrú?"
+  reset-confirmation: "Athshocraigh an chumraíocht?"
 
 slots:
   title: "Sliotáin"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cNíor aimsíodh comhad sonraí na ndéileálaithe!"
   location-not-found: "&cNíorbh fhéidir suíomh an déileálaí a fháil."
   world-not-found: "&cNíl an domhan “{world}” ann."
-  reset-confirmation: "Athshocraigh an chumraíocht go dtí an réamhshocrú?"
+  reset-confirmation: "Athshocraigh an chumraíocht?"
   save-failed: "&cNíorbh fhéidir sonraí an déileálaí a shábháil: {error}"
   dealer-changed: "&aAthraíodh an déileálaí."
   dealer-changed-detailed: "&aAthraíodh an déileálaí: &e{mob}&a."

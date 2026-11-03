@@ -313,7 +313,7 @@ game-options:
   created: "&aДилер с типом игры &e{game}&a успешно создан!"
   created-at: "&aДилер с типом игры &e{game}&a успешно создан в точке x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aДилер успешно создан!"
-  reset-confirmation: "Сбросить настройки до значений по умолчанию?"
+  reset-confirmation: "Сбросить настройки?"
 
 slots:
   title: "Слоты"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cФайл данных дилеров не найден!"
   location-not-found: "&cНе удалось получить позицию дилера."
   world-not-found: "&cМира '{world}' не существует."
-  reset-confirmation: "Сбросить настройки до значений по умолчанию?"
+  reset-confirmation: "Сбросить настройки?"
   save-failed: "&cНе удалось сохранить данные дилера: {error}"
   dealer-changed: "&aДилер изменён."
   dealer-changed-detailed: "&aДилер изменён: &e{mob}&a."

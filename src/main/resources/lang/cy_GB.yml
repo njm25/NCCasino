@@ -313,7 +313,7 @@ game-options:
   created: "&aCrëwyd deliwr gyda'r math o gêm &e{game}&a yn llwyddiannus!"
   created-at: "&aCrëwyd deliwr gyda'r math o gêm &e{game}&a yn llwyddiannus yn x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aCrëwyd deliwr yn llwyddiannus!"
-  reset-confirmation: "Ailosod y ffurfweddiad i'r rhagosodiad?"
+  reset-confirmation: "Ailosod y ffurfweddiad?"
 
 slots:
   title: "Slotiau"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cHeb ddod o hyd i ffeil ddata'r delwyr!"
   location-not-found: "&cMethwyd â chanfod lleoliad y deliwr."
   world-not-found: "&cNid yw'r byd “{world}” yn bodoli."
-  reset-confirmation: "Ailosod y ffurfweddiad i'r rhagosodiad?"
+  reset-confirmation: "Ailosod y ffurfweddiad?"
   save-failed: "&cMethwyd â chadw data'r deliwr: {error}"
   dealer-changed: "&aNewidiwyd y deliwr."
   dealer-changed-detailed: "&aNewidiwyd y deliwr: &e{mob}&a."

@@ -313,7 +313,7 @@ game-options:
   created: "&aKroepier met speltipe &e{game}&a suksesvol geskep!"
   created-at: "&aKroepier met speltipe &e{game}&a suksesvol geskep by x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aKroepier suksesvol geskep!"
-  reset-confirmation: "Stel konfigurasie terug na verstek?"
+  reset-confirmation: "Stel konfigurasie terug?"
 
 slots:
   title: "Slotmasjien"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cDie kroepiers se datalêer is nie gevind nie!"
   location-not-found: "&cKon nie die kroepier se ligging kry nie."
   world-not-found: "&cWêreld “{world}” bestaan nie."
-  reset-confirmation: "Stel konfigurasie terug na verstek?"
+  reset-confirmation: "Stel konfigurasie terug?"
   save-failed: "&cKon nie kroepierdata stoor nie: {error}"
   dealer-changed: "&aKroepier verander."
   dealer-changed-detailed: "&aKroepier verander na &e{mob}&a."

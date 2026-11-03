@@ -313,7 +313,7 @@ game-options:
   created: "&aKrupiér s typom hry &e{game}&a bol úspešne vytvorený!"
   created-at: "&aKrupiér s typom hry &e{game}&a bol úspešne vytvorený na súradniciach x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aKrupiér bol úspešne vytvorený!"
-  reset-confirmation: "Obnoviť predvolenú konfiguráciu?"
+  reset-confirmation: "Obnoviť konfiguráciu?"
 
 slots:
   title: "Výherný automat"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cSúbor s údajmi krupiérov sa nenašiel!"
   location-not-found: "&cPolohu krupiéra sa nepodarilo získať."
   world-not-found: "&cSvet „{world}“ neexistuje."
-  reset-confirmation: "Obnoviť predvolenú konfiguráciu?"
+  reset-confirmation: "Obnoviť konfiguráciu?"
   save-failed: "&cÚdaje krupiéra sa nepodarilo uložiť: {error}"
   dealer-changed: "&aKrupiér zmenený."
   dealer-changed-detailed: "&aKrupiér zmenený na: &e{mob}&a."

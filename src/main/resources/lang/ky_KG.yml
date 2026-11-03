@@ -313,7 +313,7 @@ game-options:
   created: "&aОюн түрү &e{game}&a болгон дилер ийгиликтүү түзүлдү!"
   created-at: "&aОюн түрү &e{game}&a болгон дилер ийгиликтүү түзүлдү, орду x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aДилер ийгиликтүү түзүлдү!"
-  reset-confirmation: "Конфигурацияны демейки абалга кайтарасызбы?"
+  reset-confirmation: "Демейки абалга кайтарасызбы?"
 
 slots:
   title: "Слот машинасы"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cДилерлердин маалымат файлы табылган жок!"
   location-not-found: "&cДилердин жайгашкан жерин аныктоо мүмкүн болбоду."
   world-not-found: "&c«{world}» деген дүйнө жок."
-  reset-confirmation: "Конфигурацияны демейки абалга кайтарасызбы?"
+  reset-confirmation: "Демейки абалга кайтарасызбы?"
   save-failed: "&cДилердин маалыматтарын сактоо мүмкүн болбоду: {error}"
   dealer-changed: "&aДилер алмаштырылды."
   dealer-changed-detailed: "&aДилер алмаштырылды: &e{mob}&a."

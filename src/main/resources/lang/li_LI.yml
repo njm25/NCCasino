@@ -313,7 +313,7 @@ game-options:
   created: "&aDealer mèt speltype &e{game}&a is gemaak!"
   created-at: "&aDealer mèt speltype &e{game}&a is gemaak bie x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aDealer is gemaak!"
-  reset-confirmation: "Configuratie trökzètte nao standaard?"
+  reset-confirmation: "Configuratie trökzètte?"
 
 slots:
   title: "Gokkas"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cGegaevesbestand van de dealers neet gevónde!"
   location-not-found: "&cDe plaats van de dealer kós neet opgehaold waere."
   world-not-found: "&cDe wereld „{world}” besteit neet."
-  reset-confirmation: "Configuratie trökzètte nao standaard?"
+  reset-confirmation: "Configuratie trökzètte?"
   save-failed: "&cDe gegaeves van de dealer kóste neet bewaord waere: {error}"
   dealer-changed: "&aDealer verangerd."
   dealer-changed-detailed: "&aDealer verangerd in: &e{mob}&a."

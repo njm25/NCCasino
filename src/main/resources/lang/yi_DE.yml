@@ -313,7 +313,7 @@ game-options:
   created: "&aאַ דילער מיטן שפּיל־טיפּ &e{game}&a איז מצליחדיק געשאַפֿן!"
   created-at: "&aאַ דילער מיטן שפּיל־טיפּ &e{game}&a איז מצליחדיק געשאַפֿן בײַ x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aדער דילער איז מצליחדיק געשאַפֿן!"
-  reset-confirmation: "צוריקשטעלן די קאָנפֿיגוראַציע אויפֿן סטאַנדאַרט?"
+  reset-confirmation: "צוריקשטעלן די קאָנפֿיגוראַציע?"
 
 slots:
   title: "שפּיל־אויטאָמאַטן"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cדי דאַטן־טעקע פֿון די דילערס איז נישט געפֿונען!"
   location-not-found: "&cמע האָט נישט געקענט באַקומען דעם דילערס אָרט."
   world-not-found: "&cדי װעלט '{world}' עקזיסטירט נישט."
-  reset-confirmation: "צוריקשטעלן די קאָנפֿיגוראַציע אויפֿן סטאַנדאַרט?"
+  reset-confirmation: "צוריקשטעלן די קאָנפֿיגוראַציע?"
   save-failed: "&cמע האָט נישט געקענט אָפּהיטן די דילער־דאַטן: {error}"
   dealer-changed: "&aדער דילער איז געביטן."
   dealer-changed-detailed: "&aדער דילער איז געביטן אויף &e{mob}&a."

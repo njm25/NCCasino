@@ -313,7 +313,7 @@ game-options:
   created: "&aUa hana ʻia ka mea hoʻokele me ke ʻano pāʻani: &e{game}&a!"
   created-at: "&aUa hana ʻia ka mea hoʻokele me ke ʻano pāʻani &e{game}&a ma x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aUa hana ʻia ka mea hoʻokele!"
-  reset-confirmation: "E hoʻihoʻi i ka hoʻonohonoho maʻamau?"
+  reset-confirmation: "E hoʻihoʻi i ka hoʻonohonoho?"
 
 slots:
   title: "Mīkini Pili"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cʻAʻole i loaʻa ka faila ʻikepili o nā mea hoʻokele!"
   location-not-found: "&cʻAʻole hiki ke loaʻa ka wahi o ka mea hoʻokele."
   world-not-found: "&cʻAʻole i loaʻa ka honua “{world}”."
-  reset-confirmation: "E hoʻihoʻi i ka hoʻonohonoho maʻamau?"
+  reset-confirmation: "E hoʻihoʻi i ka hoʻonohonoho?"
   save-failed: "&cʻAʻole hiki ke mālama i ka ʻikepili o ka mea hoʻokele: {error}"
   dealer-changed: "&aUa hoʻololi ʻia ka mea hoʻokele."
   dealer-changed-detailed: "&aUa hoʻololi ʻia ka mea hoʻokele i: &e{mob}&a."

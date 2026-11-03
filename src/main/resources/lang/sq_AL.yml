@@ -313,7 +313,7 @@ game-options:
   created: "&aKrupieri me llojin e lojës &e{game}&a u krijua me sukses!"
   created-at: "&aKrupieri me llojin e lojës &e{game}&a u krijua me sukses në x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aKrupieri u krijua me sukses!"
-  reset-confirmation: "Të rivendoset konfigurimi në vlerat standarde?"
+  reset-confirmation: "Të rivendoset konfigurimi?"
 
 slots:
   title: "Makina slot"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cSkedari i të dhënave të krupierëve nuk u gjet!"
   location-not-found: "&cVendndodhja e krupierit nuk u mor dot."
   world-not-found: "&cBota „{world}” nuk ekziston."
-  reset-confirmation: "Të rivendoset konfigurimi në vlerat standarde?"
+  reset-confirmation: "Të rivendoset konfigurimi?"
   save-failed: "&cTë dhënat e krupierit nuk u ruajtën dot: {error}"
   dealer-changed: "&aKrupieri u ndryshua."
   dealer-changed-detailed: "&aKrupieri u ndryshua në &e{mob}&a."

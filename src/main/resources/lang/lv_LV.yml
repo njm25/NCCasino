@@ -313,7 +313,7 @@ game-options:
   created: "&aDīleris ar spēles veidu &e{game}&a veiksmīgi izveidots!"
   created-at: "&aDīleris ar spēles veidu &e{game}&a veiksmīgi izveidots koordinātās x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aDīleris veiksmīgi izveidots!"
-  reset-confirmation: "Atjaunot noklusējuma konfigurāciju?"
+  reset-confirmation: "Atjaunot konfigurāciju?"
 
 slots:
   title: "Spēļu automāts"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cDīleru datu fails nav atrasts!"
   location-not-found: "&cNeizdevās iegūt dīlera atrašanās vietu."
   world-not-found: "&cPasaule „{world}“ neeksistē."
-  reset-confirmation: "Atjaunot noklusējuma konfigurāciju?"
+  reset-confirmation: "Atjaunot konfigurāciju?"
   save-failed: "&cNeizdevās saglabāt dīlera datus: {error}"
   dealer-changed: "&aDīleris nomainīts."
   dealer-changed-detailed: "&aDīleris nomainīts. Jaunais radījums: &e{mob}&a."

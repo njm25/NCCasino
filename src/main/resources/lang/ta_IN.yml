@@ -313,7 +313,7 @@ game-options:
   created: "&aவிளையாட்டு வகை: &e{game}&a — டீலர் வெற்றிகரமாக உருவாக்கப்பட்டார்!"
   created-at: "&aவிளையாட்டு வகை: &e{game}&a — டீலர் வெற்றிகரமாக உருவாக்கப்பட்டார், இடம் x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aடீலர் வெற்றிகரமாக உருவாக்கப்பட்டார்!"
-  reset-confirmation: "அமைப்புகளை இயல்புநிலைக்கு மீட்டமைக்கவா?"
+  reset-confirmation: "அமைப்புகளை மீட்டமைக்கவா?"
 
 slots:
   title: "ஸ்லாட்ஸ்"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cடீலர்களின் தரவுக் கோப்பு கிடைக்கவில்லை!"
   location-not-found: "&cடீலரின் இருப்பிடத்தைப் பெற முடியவில்லை."
   world-not-found: "&c“{world}” என்ற உலகம் இல்லை."
-  reset-confirmation: "அமைப்புகளை இயல்புநிலைக்கு மீட்டமைக்கவா?"
+  reset-confirmation: "அமைப்புகளை மீட்டமைக்கவா?"
   save-failed: "&cடீலர் தரவைச் சேமிக்க முடியவில்லை: {error}"
   dealer-changed: "&aடீலர் மாற்றப்பட்டார்."
   dealer-changed-detailed: "&aடீலர் மாற்றப்பட்டார்: &e{mob}&a."

@@ -313,7 +313,7 @@ game-options:
   created: "&aԴիլերը &e{game}&a խաղի տեսակով հաջողությամբ ստեղծվեց։"
   created-at: "&aԴիլերը &e{game}&a խաղի տեսակով հաջողությամբ ստեղծվեց x: &e{x}&a y: &e{y}&a z: &e{z}&a կոորդինատներում։"
   created-minimal: "&aԴիլերը հաջողությամբ ստեղծվեց։"
-  reset-confirmation: "Վերականգնե՞լ լռելյայն կազմաձևումը։"
+  reset-confirmation: "Վերականգնե՞լ կազմաձևումը։"
 
 slots:
   title: "Սլոթեր"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cԴիլերների տվյալների ֆայլը չի գտնվել։"
   location-not-found: "&cՀնարավոր չեղավ ստանալ դիլերի գտնվելու վայրը։"
   world-not-found: "&c«{world}» աշխարհը գոյություն չունի։"
-  reset-confirmation: "Վերականգնե՞լ լռելյայն կազմաձևումը։"
+  reset-confirmation: "Վերականգնե՞լ կազմաձևումը։"
   save-failed: "&cՀնարավոր չեղավ պահել դիլերի տվյալները՝ {error}"
   dealer-changed: "&aԴիլերը փոխվեց։"
   dealer-changed-detailed: "&aԴիլերը փոխվեց՝ &e{mob}&a։"

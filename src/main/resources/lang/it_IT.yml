@@ -313,7 +313,7 @@ game-options:
   created: "&aCroupier con tipo di gioco &e{game}&a creato!"
   created-at: "&aCroupier con tipo di gioco &e{game}&a creato alle coordinate x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aCroupier creato!"
-  reset-confirmation: "Ripristinare la configurazione predefinita?"
+  reset-confirmation: "Ripristinare la configurazione?"
 
 slots:
   title: "Slot"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cFile dati dei croupier non trovato!"
   location-not-found: "&cImpossibile recuperare la posizione del croupier."
   world-not-found: "&cIl mondo '{world}' non esiste."
-  reset-confirmation: "Ripristinare la configurazione predefinita?"
+  reset-confirmation: "Ripristinare la configurazione?"
   save-failed: "&cImpossibile salvare i dati del croupier: {error}"
   dealer-changed: "&aCroupier cambiato."
   dealer-changed-detailed: "&aCroupier cambiato in &e{mob}&a."

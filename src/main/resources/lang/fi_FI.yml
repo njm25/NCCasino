@@ -313,7 +313,7 @@ game-options:
   created: "&aJakaja (pelityyppi: &e{game}&a) luotiin onnistuneesti!"
   created-at: "&aJakaja (pelityyppi: &e{game}&a) luotiin onnistuneesti kohtaan x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aJakaja luotiin onnistuneesti!"
-  reset-confirmation: "Palautetaanko asetukset oletuksiin?"
+  reset-confirmation: "Palautetaanko asetukset?"
 
 slots:
   title: "Kolikkopeli"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cJakajien datatiedostoa ei löytynyt!"
   location-not-found: "&cJakajan sijainnin hakeminen epäonnistui."
   world-not-found: "&cMaailmaa '{world}' ei ole olemassa."
-  reset-confirmation: "Palautetaanko asetukset oletuksiin?"
+  reset-confirmation: "Palautetaanko asetukset?"
   save-failed: "&cJakajan tietojen tallentaminen epäonnistui: {error}"
   dealer-changed: "&aJakaja vaihdettu."
   dealer-changed-detailed: "&aJakaja vaihdettu: &e{mob}&a."

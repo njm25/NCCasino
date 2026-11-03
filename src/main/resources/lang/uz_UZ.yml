@@ -313,7 +313,7 @@ game-options:
   created: "&a&e{game}&a oʻyin turidagi diler muvaffaqiyatli yaratildi!"
   created-at: "&a&e{game}&a oʻyin turidagi diler x: &e{x}&a y: &e{y}&a z: &e{z}&a koordinatalarida muvaffaqiyatli yaratildi."
   created-minimal: "&aDiler muvaffaqiyatli yaratildi!"
-  reset-confirmation: "Konfiguratsiyani standart holatga qaytarasizmi?"
+  reset-confirmation: "Standart holatga qaytarasizmi?"
 
 slots:
   title: "Slotlar"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cDilerlar maʼlumotlari fayli topilmadi!"
   location-not-found: "&cDiler joylashuvini aniqlab boʻlmadi."
   world-not-found: "&c«{world}» dunyosi mavjud emas."
-  reset-confirmation: "Konfiguratsiyani standart holatga qaytarasizmi?"
+  reset-confirmation: "Standart holatga qaytarasizmi?"
   save-failed: "&cDiler maʼlumotlarini saqlab boʻlmadi: {error}"
   dealer-changed: "&aDiler almashtirildi."
   dealer-changed-detailed: "&aDiler almashtirildi: &e{mob}&a."

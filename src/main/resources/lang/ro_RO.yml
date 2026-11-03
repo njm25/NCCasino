@@ -313,7 +313,7 @@ game-options:
   created: "&aCrupierul cu tipul de joc &e{game}&a a fost creat cu succes!"
   created-at: "&aCrupierul cu tipul de joc &e{game}&a a fost creat cu succes la x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aCrupierul a fost creat cu succes!"
-  reset-confirmation: "Resetezi configurația la valorile implicite?"
+  reset-confirmation: "Resetezi configurația?"
 
 slots:
   title: "Sloturi"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cFișierul de date al crupierilor nu a fost găsit!"
   location-not-found: "&cLocația crupierului nu a putut fi obținută."
   world-not-found: "&cLumea „{world}” nu există."
-  reset-confirmation: "Resetezi configurația la valorile implicite?"
+  reset-confirmation: "Resetezi configurația?"
   save-failed: "&cDatele crupierului nu au putut fi salvate: {error}"
   dealer-changed: "&aCrupierul a fost schimbat."
   dealer-changed-detailed: "&aCrupierul a fost schimbat în &e{mob}&a."

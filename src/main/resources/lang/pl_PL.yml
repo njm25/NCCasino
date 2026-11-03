@@ -313,7 +313,7 @@ game-options:
   created: "&aUtworzono krupiera z grą &e{game}&a!"
   created-at: "&aUtworzono krupiera z grą &e{game}&a na pozycji x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aUtworzono krupiera!"
-  reset-confirmation: "Przywrócić domyślną konfigurację?"
+  reset-confirmation: "Przywrócić konfigurację?"
 
 slots:
   title: "Sloty"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cNie znaleziono pliku danych krupierów!"
   location-not-found: "&cNie udało się pobrać położenia krupiera."
   world-not-found: "&cŚwiat „{world}” nie istnieje."
-  reset-confirmation: "Przywrócić domyślną konfigurację?"
+  reset-confirmation: "Przywrócić konfigurację?"
   save-failed: "&cNie udało się zapisać danych krupiera: {error}"
   dealer-changed: "&aZmieniono krupiera."
   dealer-changed-detailed: "&aZmieniono krupiera na: &e{mob}&a."

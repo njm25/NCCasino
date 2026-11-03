@@ -313,7 +313,7 @@ game-options:
   created: "&aCroupier med speltypen &e{game}&a har skapats!"
   created-at: "&aCroupier med speltypen &e{game}&a har skapats vid x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aCroupiern har skapats!"
-  reset-confirmation: "Återställa konfigurationen till standard?"
+  reset-confirmation: "Återställa konfigurationen?"
 
 slots:
   title: "Spelautomat"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cDatafilen för croupierer hittades inte!"
   location-not-found: "&cKunde inte hämta croupierns position."
   world-not-found: "&cVärlden '{world}' finns inte."
-  reset-confirmation: "Återställa konfigurationen till standard?"
+  reset-confirmation: "Återställa konfigurationen?"
   save-failed: "&cKunde inte spara croupierdata: {error}"
   dealer-changed: "&aCroupiern har ändrats."
   dealer-changed-detailed: "&aCroupiern ändrad till &e{mob}&a."

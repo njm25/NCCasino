@@ -313,7 +313,7 @@ game-options:
   created: "&aDealer met speltype &e{game}&a succesvol aangemaakt!"
   created-at: "&aDealer met speltype &e{game}&a succesvol aangemaakt op x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aDealer succesvol aangemaakt!"
-  reset-confirmation: "Configuratie terugzetten naar standaard?"
+  reset-confirmation: "Configuratie terugzetten?"
 
 slots:
   title: "Gokkast"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cDatabestand van de dealers niet gevonden!"
   location-not-found: "&cKon de locatie van de dealer niet ophalen."
   world-not-found: "&cWereld '{world}' bestaat niet."
-  reset-confirmation: "Configuratie terugzetten naar standaard?"
+  reset-confirmation: "Configuratie terugzetten?"
   save-failed: "&cOpslaan van dealergegevens mislukt: {error}"
   dealer-changed: "&aDealer gewijzigd."
   dealer-changed-detailed: "&aDealer gewijzigd in &e{mob}&a."

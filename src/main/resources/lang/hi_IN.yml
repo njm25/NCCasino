@@ -313,7 +313,7 @@ game-options:
   created: "&aगेम प्रकार &e{game}&a वाला डीलर सफलतापूर्वक बनाया गया!"
   created-at: "&aगेम प्रकार &e{game}&a वाला डीलर सफलतापूर्वक बनाया गया, स्थान x: &e{x}&a y: &e{y}&a z: &e{z}&a।"
   created-minimal: "&aडीलर सफलतापूर्वक बनाया गया!"
-  reset-confirmation: "कॉन्फ़िगरेशन को डिफ़ॉल्ट पर रीसेट करें?"
+  reset-confirmation: "कॉन्फ़िगरेशन रीसेट करें?"
 
 slots:
   title: "स्लॉट मशीन"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cडीलरों की डेटा फ़ाइल नहीं मिली!"
   location-not-found: "&cडीलर का स्थान नहीं मिल सका।"
   world-not-found: "&cदुनिया “{world}” मौजूद नहीं है।"
-  reset-confirmation: "कॉन्फ़िगरेशन को डिफ़ॉल्ट पर रीसेट करें?"
+  reset-confirmation: "कॉन्फ़िगरेशन रीसेट करें?"
   save-failed: "&cडीलर का डेटा सहेजा नहीं जा सका: {error}"
   dealer-changed: "&aडीलर बदला गया।"
   dealer-changed-detailed: "&aडीलर बदला गया: &e{mob}&a।"

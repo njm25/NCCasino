@@ -313,7 +313,7 @@ game-options:
   created: "&aDealer med spiltypen &e{game}&a er oprettet!"
   created-at: "&aDealer med spiltypen &e{game}&a er oprettet ved x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aDealeren er oprettet!"
-  reset-confirmation: "Nulstil konfigurationen til standard?"
+  reset-confirmation: "Nulstil konfigurationen?"
 
 slots:
   title: "Spilleautomat"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cDealernes datafil blev ikke fundet!"
   location-not-found: "&cKunne ikke hente dealerens placering."
   world-not-found: "&cVerdenen '{world}' findes ikke."
-  reset-confirmation: "Nulstil konfigurationen til standard?"
+  reset-confirmation: "Nulstil konfigurationen?"
   save-failed: "&cKunne ikke gemme dealerdata: {error}"
   dealer-changed: "&aDealer ændret."
   dealer-changed-detailed: "&aDealer ændret til &e{mob}&a."

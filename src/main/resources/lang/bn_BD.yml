@@ -313,7 +313,7 @@ game-options:
   created: "&aখেলার ধরন &e{game}&a সহ ডিলার সফলভাবে তৈরি হয়েছে!"
   created-at: "&aখেলার ধরন &e{game}&a সহ ডিলার সফলভাবে তৈরি হয়েছে, অবস্থান x: &e{x}&a y: &e{y}&a z: &e{z}&a।"
   created-minimal: "&aডিলার সফলভাবে তৈরি হয়েছে!"
-  reset-confirmation: "কনফিগারেশন ডিফল্টে রিসেট করবেন?"
+  reset-confirmation: "কনফিগারেশন রিসেট করবেন?"
 
 slots:
   title: "স্লট"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cডিলারদের ডেটা ফাইল পাওয়া যায়নি!"
   location-not-found: "&cডিলারের অবস্থান পাওয়া যায়নি।"
   world-not-found: "&c“{world}” নামে কোনো জগৎ নেই।"
-  reset-confirmation: "কনফিগারেশন ডিফল্টে রিসেট করবেন?"
+  reset-confirmation: "কনফিগারেশন রিসেট করবেন?"
   save-failed: "&cডিলারের ডেটা সংরক্ষণ করা যায়নি: {error}"
   dealer-changed: "&aডিলার বদলানো হয়েছে।"
   dealer-changed-detailed: "&aডিলার বদলানো হয়েছে: &e{mob}&a।"

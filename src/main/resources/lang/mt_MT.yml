@@ -313,7 +313,7 @@ game-options:
   created: "&aDealer bit-tip ta' logħba &e{game}&a inħoloq b'suċċess!"
   created-at: "&aDealer bit-tip ta' logħba &e{game}&a inħoloq b'suċċess f'x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aId-dealer inħoloq b'suċċess!"
-  reset-confirmation: "Tirrisettja l-konfigurazzjoni għad-default?"
+  reset-confirmation: "Tirrisettja l-konfigurazzjoni?"
 slots:
   title: "Slots"
   spin: "&a&lDawwar"
@@ -936,7 +936,7 @@ mob-selection:
   data-file-not-found: "&cIl-fajl tad-dejta tad-dealers ma nstabx!"
   location-not-found: "&cIl-post tad-dealer ma setax jinstab."
   world-not-found: "&cId-dinja '{world}' ma teżistix."
-  reset-confirmation: "Tirrisettja l-konfigurazzjoni għad-default?"
+  reset-confirmation: "Tirrisettja l-konfigurazzjoni?"
   save-failed: "&cId-dejta tad-dealer ma setgħetx tiġi salvata: {error}"
   dealer-changed: "&aId-dealer inbidel."
   dealer-changed-detailed: "&aId-dealer inbidel għal &e{mob}&a."

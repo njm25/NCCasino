@@ -313,7 +313,7 @@ game-options:
   created: "&aKrupiero kun la ludotipo &e{game}&a estis sukcese kreita!"
   created-at: "&aKrupiero kun la ludotipo &e{game}&a estis sukcese kreita ĉe x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aLa krupiero estis sukcese kreita!"
-  reset-confirmation: "Ĉu restarigi la agordojn al la defaŭltoj?"
+  reset-confirmation: "Ĉu restarigi la agordojn?"
 
 slots:
   title: "Ludaŭtomato"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cLa datumdosiero de la krupieroj ne troviĝis!"
   location-not-found: "&cNe eblis akiri la lokon de la krupiero."
   world-not-found: "&cLa mondo “{world}” ne ekzistas."
-  reset-confirmation: "Ĉu restarigi la agordojn al la defaŭltoj?"
+  reset-confirmation: "Ĉu restarigi la agordojn?"
   save-failed: "&cNe eblis konservi la datumojn de la krupiero: {error}"
   dealer-changed: "&aKrupiero ŝanĝita."
   dealer-changed-detailed: "&aKrupiero ŝanĝita al: &e{mob}&a."

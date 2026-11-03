@@ -313,7 +313,7 @@ game-options:
   created: "&aಆಟದ ಪ್ರಕಾರ &e{game}&a ಹೊಂದಿರುವ ಡೀಲರ್ ಅನ್ನು ರಚಿಸಲಾಗಿದೆ!"
   created-at: "&aಆಟದ ಪ್ರಕಾರ &e{game}&a ಹೊಂದಿರುವ ಡೀಲರ್ ಅನ್ನು ಈ ಸ್ಥಳದಲ್ಲಿ ರಚಿಸಲಾಗಿದೆ: x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aಡೀಲರ್ ಅನ್ನು ರಚಿಸಲಾಗಿದೆ!"
-  reset-confirmation: "ಡೀಫಾಲ್ಟ್ ಸಂಯೋಜನೆಗೆ ಮರುಹೊಂದಿಸಬೇಕೇ?"
+  reset-confirmation: "ಡೀಫಾಲ್ಟ್‌ಗೆ ಮರುಹೊಂದಿಸಬೇಕೇ?"
 
 slots:
   title: "ಸ್ಲಾಟ್ ಯಂತ್ರ"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cಡೀಲರ್ ದತ್ತಾಂಶ ಫೈಲ್ ಕಂಡುಬಂದಿಲ್ಲ!"
   location-not-found: "&cಡೀಲರ್‌ನ ಸ್ಥಳವನ್ನು ಪಡೆಯಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
   world-not-found: "&c“{world}” ಪ್ರಪಂಚ ಅಸ್ತಿತ್ವದಲ್ಲಿಲ್ಲ."
-  reset-confirmation: "ಡೀಫಾಲ್ಟ್ ಸಂಯೋಜನೆಗೆ ಮರುಹೊಂದಿಸಬೇಕೇ?"
+  reset-confirmation: "ಡೀಫಾಲ್ಟ್‌ಗೆ ಮರುಹೊಂದಿಸಬೇಕೇ?"
   save-failed: "&cಡೀಲರ್ ದತ್ತಾಂಶವನ್ನು ಉಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ: {error}"
   dealer-changed: "&aಡೀಲರ್ ಬದಲಾಗಿದೆ."
   dealer-changed-detailed: "&aಡೀಲರ್ ಅನ್ನು ಇದಕ್ಕೆ ಬದಲಾಯಿಸಲಾಗಿದೆ: &e{mob}&a."

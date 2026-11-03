@@ -313,7 +313,7 @@ game-options:
   created: "&aCrupiê de &e{game}&a criado com sucesso!"
   created-at: "&aCrupiê de &e{game}&a criado com sucesso em x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aCrupiê criado com sucesso!"
-  reset-confirmation: "Restaurar a configuração padrão?"
+  reset-confirmation: "Restaurar a configuração?"
 
 slots:
   title: "Caça-níqueis"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cArquivo de dados dos crupiês não encontrado!"
   location-not-found: "&cNão foi possível obter a localização do crupiê."
   world-not-found: "&cO mundo '{world}' não existe."
-  reset-confirmation: "Redefinir a configuração para o padrão?"
+  reset-confirmation: "Restaurar a configuração?"
   save-failed: "&cNão foi possível salvar os dados do crupiê: {error}"
   dealer-changed: "&aCriatura do crupiê alterada."
   dealer-changed-detailed: "&aCriatura do crupiê alterada para &e{mob}&a."

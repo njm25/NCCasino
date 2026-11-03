@@ -313,7 +313,7 @@ game-options:
   created: "&aCroupier mam Spilltyp &e{game}&a erfollegräich erstallt!"
   created-at: "&aCroupier mam Spilltyp &e{game}&a erfollegräich erstallt bei x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aCroupier erfollegräich erstallt!"
-  reset-confirmation: "Konfiguratioun op Standard zerécksetzen?"
+  reset-confirmation: "Konfiguratioun zerécksetzen?"
 
 slots:
   title: "Spillautomat"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cDatefichier vun de Croupieren net fonnt!"
   location-not-found: "&cD'Plaz vum Croupier konnt net ermëttelt ginn."
   world-not-found: "&cD'Welt „{world}“ gëtt et net."
-  reset-confirmation: "Konfiguratioun op Standard zerécksetzen?"
+  reset-confirmation: "Konfiguratioun zerécksetzen?"
   save-failed: "&cD'Date vum Croupier konnten net gespäichert ginn: {error}"
   dealer-changed: "&aCroupier geännert."
   dealer-changed-detailed: "&aCroupier geännert op: &e{mob}&a."

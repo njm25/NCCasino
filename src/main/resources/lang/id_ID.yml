@@ -313,7 +313,7 @@ game-options:
   created: "&aBandar dengan jenis permainan &e{game}&a berhasil dibuat!"
   created-at: "&aBandar dengan jenis permainan &e{game}&a berhasil dibuat di x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aBandar berhasil dibuat!"
-  reset-confirmation: "Kembalikan konfigurasi ke bawaan?"
+  reset-confirmation: "Kembalikan ke bawaan?"
 
 slots:
   title: "Slot"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cBerkas data bandar tidak ditemukan!"
   location-not-found: "&cGagal mengambil lokasi bandar."
   world-not-found: "&cDunia '{world}' tidak ada."
-  reset-confirmation: "Kembalikan konfigurasi ke bawaan?"
+  reset-confirmation: "Kembalikan ke bawaan?"
   save-failed: "&cGagal menyimpan data bandar: {error}"
   dealer-changed: "&aBandar diubah."
   dealer-changed-detailed: "&aBandar diubah menjadi &e{mob}&a."

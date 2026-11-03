@@ -313,7 +313,7 @@ game-options:
   created: "&aВӑйӑ тӗсӗ &e{game}&a пулнӑ дилера ӑнӑҫлӑ туса хунӑ!"
   created-at: "&aВӑйӑ тӗсӗ &e{game}&a пулнӑ дилера ӑнӑҫлӑ туса хунӑ, координатсем x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aДилера ӑнӑҫлӑ туса хунӑ!"
-  reset-confirmation: "Конфигурацие яланхи тӑрӑма тавӑрмалла-и?"
+  reset-confirmation: "Яланхи тӑрӑма тавӑрмалла-и?"
 
 slots:
   title: "Слот-автомат"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cДилерсен файлне тупман!"
   location-not-found: "&cДилер вырӑнне илме май пулмарӗ."
   world-not-found: "&c«{world}» тӗнче ҫук."
-  reset-confirmation: "Конфигурацие яланхи тӑрӑма тавӑрмалла-и?"
+  reset-confirmation: "Яланхи тӑрӑма тавӑрмалла-и?"
   save-failed: "&cДилер информацине упрама май пулмарӗ: {error}"
   dealer-changed: "&aДилера улӑштарнӑ."
   dealer-changed-detailed: "&aДилера улӑштарнӑ: &e{mob}&a."

@@ -313,7 +313,7 @@ game-options:
   created: "&aდილერი თამაშის ტიპით &e{game}&a წარმატებით შეიქმნა!"
   created-at: "&aდილერი თამაშის ტიპით &e{game}&a წარმატებით შეიქმნა კოორდინატებზე x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aდილერი წარმატებით შეიქმნა!"
-  reset-confirmation: "დავაბრუნოთ კონფიგურაცია ნაგულისხმევზე?"
+  reset-confirmation: "დავაბრუნოთ ნაგულისხმევზე?"
 
 slots:
   title: "სლოტები"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cდილერების მონაცემთა ფაილი ვერ მოიძებნა!"
   location-not-found: "&cდილერის მდებარეობის დადგენა ვერ მოხერხდა."
   world-not-found: "&cსამყარო „{world}“ არ არსებობს."
-  reset-confirmation: "დავაბრუნოთ კონფიგურაცია ნაგულისხმევზე?"
+  reset-confirmation: "დავაბრუნოთ ნაგულისხმევზე?"
   save-failed: "&cდილერის მონაცემების შენახვა ვერ მოხერხდა: {error}"
   dealer-changed: "&aდილერი შეიცვალა."
   dealer-changed-detailed: "&aდილერი შეიცვალა: &e{mob}&a."

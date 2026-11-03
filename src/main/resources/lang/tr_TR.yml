@@ -313,7 +313,7 @@ game-options:
   created: "&aOyun türü &e{game}&a olan krupiye başarıyla oluşturuldu!"
   created-at: "&aOyun türü &e{game}&a olan krupiye x: &e{x}&a y: &e{y}&a z: &e{z}&a konumunda başarıyla oluşturuldu."
   created-minimal: "&aKrupiye başarıyla oluşturuldu!"
-  reset-confirmation: "Ayarlar varsayılana sıfırlansın mı?"
+  reset-confirmation: "Ayarlar sıfırlansın mı?"
 
 slots:
   title: "Slot"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cKrupiye veri dosyası bulunamadı!"
   location-not-found: "&cKrupiyenin konumu alınamadı."
   world-not-found: "&c'{world}' adlı dünya yok."
-  reset-confirmation: "Ayarlar varsayılana sıfırlansın mı?"
+  reset-confirmation: "Ayarlar sıfırlansın mı?"
   save-failed: "&cKrupiye verileri kaydedilemedi: {error}"
   dealer-changed: "&aKrupiye değiştirildi."
   dealer-changed-detailed: "&aKrupiye değiştirildi: &e{mob}&a."

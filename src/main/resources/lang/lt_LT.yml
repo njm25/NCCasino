@@ -313,7 +313,7 @@ game-options:
   created: "&aDalytojas su žaidimo tipu &e{game}&a sėkmingai sukurtas!"
   created-at: "&aDalytojas su žaidimo tipu &e{game}&a sėkmingai sukurtas koordinatėse x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aDalytojas sėkmingai sukurtas!"
-  reset-confirmation: "Atkurti numatytąją konfigūraciją?"
+  reset-confirmation: "Atkurti konfigūraciją?"
 
 slots:
   title: "Lošimo automatas"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cDalytojų duomenų failas nerastas!"
   location-not-found: "&cNepavyko gauti dalytojo vietos."
   world-not-found: "&cPasaulio „{world}“ nėra."
-  reset-confirmation: "Atkurti numatytąją konfigūraciją?"
+  reset-confirmation: "Atkurti konfigūraciją?"
   save-failed: "&cNepavyko išsaugoti dalytojo duomenų: {error}"
   dealer-changed: "&aDalytojas pakeistas."
   dealer-changed-detailed: "&aDalytojas pakeistas į: &e{mob}&a."

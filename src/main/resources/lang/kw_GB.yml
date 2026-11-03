@@ -313,7 +313,7 @@ game-options:
   created: "&aKroupyer gans eghen gwari &e{game}&a gwrys yn sewen!"
   created-at: "&aKroupyer gans eghen gwari &e{game}&a gwrys yn sewen orth x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aKroupyer gwrys yn sewen!"
-  reset-confirmation: "Dastettya an settyansow dhe'n defowt?"
+  reset-confirmation: "Dastettya an settyansow?"
 
 slots:
   title: "Jynn-gwari"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cNy veu kevys restren data an kroupyers!"
   location-not-found: "&cNy allas le an kroupyer bos kevys."
   world-not-found: "&cNyns eus bys “{world}”."
-  reset-confirmation: "Dastettya an settyansow dhe'n defowt?"
+  reset-confirmation: "Dastettya an settyansow?"
   save-failed: "&cNy allas data an kroupyer bos gwithys: {error}"
   dealer-changed: "&aKroupyer chanjys."
   dealer-changed-detailed: "&aKroupyer chanjys dhe: &e{mob}&a."

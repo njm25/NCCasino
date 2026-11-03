@@ -313,7 +313,7 @@ game-options:
   created: "&aGjafari með leiktegundina &e{game}&a var búinn til!"
   created-at: "&aGjafari með leiktegundina &e{game}&a var búinn til á x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aGjafari var búinn til!"
-  reset-confirmation: "Endurstilla stillingar á sjálfgefin gildi?"
+  reset-confirmation: "Endurstilla stillingar?"
 
 slots:
   title: "Spilakassi"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cGagnaskrá gjafara fannst ekki!"
   location-not-found: "&cEkki tókst að sækja staðsetningu gjafarans."
   world-not-found: "&cHeimurinn „{world}“ er ekki til."
-  reset-confirmation: "Endurstilla stillingar á sjálfgefin gildi?"
+  reset-confirmation: "Endurstilla stillingar?"
   save-failed: "&cEkki tókst að vista gögn gjafarans: {error}"
   dealer-changed: "&aGjafara breytt."
   dealer-changed-detailed: "&aGjafara breytt: &e{mob}&a."

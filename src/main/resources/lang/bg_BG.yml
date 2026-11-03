@@ -313,7 +313,7 @@ game-options:
   created: "&aКрупие с тип игра &e{game}&a е създадено успешно!"
   created-at: "&aКрупие с тип игра &e{game}&a е създадено успешно на координати x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aКрупието е създадено успешно!"
-  reset-confirmation: "Да се възстанови ли конфигурацията по подразбиране?"
+  reset-confirmation: "Нулирай настройките?"
 
 slots:
   title: "Слот машина"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cФайлът с данни за крупиетата не е намерен!"
   location-not-found: "&cМестоположението на крупието не можа да бъде получено."
   world-not-found: "&cСветът „{world}“ не съществува."
-  reset-confirmation: "Да се възстанови ли конфигурацията по подразбиране?"
+  reset-confirmation: "Нулирай настройките?"
   save-failed: "&cДанните на крупието не можаха да бъдат запазени: {error}"
   dealer-changed: "&aКрупието е сменено."
   dealer-changed-detailed: "&aКрупието е сменено с: &e{mob}&a."

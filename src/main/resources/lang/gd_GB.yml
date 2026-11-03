@@ -313,7 +313,7 @@ game-options:
   created: "&aChaidh roinneadair le seòrsa geama &e{game}&a a chruthachadh!"
   created-at: "&aChaidh roinneadair le seòrsa geama &e{game}&a a chruthachadh aig x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aChaidh an roinneadair a chruthachadh!"
-  reset-confirmation: "A bheil thu airson an rèiteachadh ath-shuidheachadh gu na bun-roghainnean?"
+  reset-confirmation: "Ath-shuidhich an rèiteachadh?"
 
 slots:
   title: "Inneal-slot"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cCha deach faidhle dàta nan roinneadairean a lorg!"
   location-not-found: "&cCha b' urrainnear àite an roinneadair fhaighinn."
   world-not-found: "&cChan eil saoghal “{world}” ann."
-  reset-confirmation: "A bheil thu airson an rèiteachadh ath-shuidheachadh gu na bun-roghainnean?"
+  reset-confirmation: "Ath-shuidhich an rèiteachadh?"
   save-failed: "&cCha b' urrainnear dàta an roinneadair a shàbhaladh: {error}"
   dealer-changed: "&aChaidh an roinneadair atharrachadh."
   dealer-changed-detailed: "&aChaidh an roinneadair atharrachadh gu: &e{mob}&a."

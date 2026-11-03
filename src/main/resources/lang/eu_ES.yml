@@ -313,7 +313,7 @@ game-options:
   created: "&aKrupierra ondo sortu da, joko mota: &e{game}&a!"
   created-at: "&aKrupierra ondo sortu da, joko mota: &e{game}&a, kokapena x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aKrupierra ondo sortu da!"
-  reset-confirmation: "Berrezarri konfigurazio lehenetsia?"
+  reset-confirmation: "Berrezarri konfigurazioa?"
 
 slots:
   title: "Txanpon-makina"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cEz da krupierren datu-fitxategia aurkitu!"
   location-not-found: "&cEzin izan da krupierraren kokapena lortu."
   world-not-found: "&cEz dago «{world}» izeneko mundurik."
-  reset-confirmation: "Berrezarri konfigurazio lehenetsia?"
+  reset-confirmation: "Berrezarri konfigurazioa?"
   save-failed: "&cEzin izan dira krupierraren datuak gorde: {error}"
   dealer-changed: "&aKrupierra aldatu da."
   dealer-changed-detailed: "&aKrupierra aldatu da: &e{mob}&a."

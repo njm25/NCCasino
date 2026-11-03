@@ -313,7 +313,7 @@ game-options:
   created: "&aKrouet eo bet ur c'hroupier evit ar c'hoari &e{game}&a!"
   created-at: "&aKrouet eo bet ur c'hroupier evit ar c'hoari &e{game}&a e x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aKrouet eo bet ar c'hroupier!"
-  reset-confirmation: "Adlakaat an arventennoù dre ziouer?"
+  reset-confirmation: "Adlakaat an arventennoù?"
 
 slots:
   title: "Ardivink c'hoari"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cN'eo ket bet kavet restr roadennoù ar groupierien!"
   location-not-found: "&cN'eus ket bet gallet kavout lec'h ar c'hroupier."
   world-not-found: "&cN'eus ket eus ar bed «{world}»."
-  reset-confirmation: "Adlakaat an arventennoù dre ziouer?"
+  reset-confirmation: "Adlakaat an arventennoù?"
   save-failed: "&cN'eus ket bet gallet enrollañ roadennoù ar c'hroupier: {error}"
   dealer-changed: "&aKroupier cheñchet."
   dealer-changed-detailed: "&aKroupier cheñchet da: &e{mob}&a."

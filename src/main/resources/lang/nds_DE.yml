@@ -313,7 +313,7 @@ game-options:
   created: "&aCroupier mit Speelart &e{game}&a is maakt worrn!"
   created-at: "&aCroupier mit Speelart &e{game}&a is maakt worrn bi x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aCroupier is maakt worrn!"
-  reset-confirmation: "Konfiguratschoon op Standard trüchsetten?"
+  reset-confirmation: "Konfiguratschoon trüchsetten?"
 
 slots:
   title: "Speelautomaat"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cDatendatei vun de Croupiers nich funnen!"
   location-not-found: "&cDe Steed vun'n Croupier kunn nich funnen warrn."
   world-not-found: "&cDe Welt „{world}“ gifft dat nich."
-  reset-confirmation: "Konfiguratschoon op Standard trüchsetten?"
+  reset-confirmation: "Konfiguratschoon trüchsetten?"
   save-failed: "&cDe Daten vun'n Croupier kunnen nich spiekert warrn: {error}"
   dealer-changed: "&aCroupier ännert."
   dealer-changed-detailed: "&aCroupier ännert na: &e{mob}&a."

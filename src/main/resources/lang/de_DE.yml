@@ -313,7 +313,7 @@ game-options:
   created: "&aDealer für &e{game}&a erfolgreich erstellt!"
   created-at: "&aDealer für &e{game}&a erfolgreich erstellt bei x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aDealer erfolgreich erstellt!"
-  reset-confirmation: "Konfiguration auf Standard zurücksetzen?"
+  reset-confirmation: "Konfiguration zurücksetzen?"
 
 slots:
   title: "Slots"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cDatendatei der Dealer wurde nicht gefunden!"
   location-not-found: "&cPosition des Dealers konnte nicht geladen werden."
   world-not-found: "&cDie Welt '{world}' existiert nicht."
-  reset-confirmation: "Konfiguration auf Standard zurücksetzen?"
+  reset-confirmation: "Konfiguration zurücksetzen?"
   save-failed: "&cDealerdaten konnten nicht gespeichert werden: {error}"
   dealer-changed: "&aDealer-Kreatur geändert."
   dealer-changed-detailed: "&aDealer-Kreatur zu &e{mob}&a geändert."

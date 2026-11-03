@@ -313,7 +313,7 @@ game-options:
   created: "&a¡Se creó el crupier con el tipo de juego &e{game}&a!"
   created-at: "&aSe creó el crupier con el tipo de juego &e{game}&a en x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&a¡Crupier creado!"
-  reset-confirmation: "¿Restablecer la configuración predeterminada?"
+  reset-confirmation: "¿Restablecer la configuración?"
 
 slots:
   title: "Tragamonedas"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&c¡No se encontró el archivo de datos de los crupieres!"
   location-not-found: "&cNo se pudo obtener la ubicación del crupier."
   world-not-found: "&cEl mundo '{world}' no existe."
-  reset-confirmation: "¿Restablecer la configuración predeterminada?"
+  reset-confirmation: "¿Restablecer la configuración?"
   save-failed: "&cNo se pudieron guardar los datos del crupier: {error}"
   dealer-changed: "&aCrupier cambiado."
   dealer-changed-detailed: "&aCrupier cambiado a &e{mob}&a."

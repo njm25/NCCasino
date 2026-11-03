@@ -313,7 +313,7 @@ game-options:
   created: "&aCropièr amb lo tipe de jòc &e{game}&a creat!"
   created-at: "&aCropièr amb lo tipe de jòc &e{game}&a creat a x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aCropièr creat!"
-  reset-confirmation: "Reïnicializar la configuracion per defaut?"
+  reset-confirmation: "Reïnicializar la configuracion?"
 
 slots:
   title: "Maquina a sòus"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cFichièr de donadas dels cropièrs pas trobat!"
   location-not-found: "&cImpossible d'obténer la posicion del cropièr."
   world-not-found: "&cLo mond «{world}» existís pas."
-  reset-confirmation: "Reïnicializar la configuracion per defaut?"
+  reset-confirmation: "Reïnicializar la configuracion?"
   save-failed: "&cImpossible d'enregistrar las donadas del cropièr: {error}"
   dealer-changed: "&aCropièr cambiat."
   dealer-changed-detailed: "&aCropièr cambiat per: &e{mob}&a."

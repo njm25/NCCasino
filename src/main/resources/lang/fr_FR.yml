@@ -313,7 +313,7 @@ game-options:
   created: "&aCroupier de &e{game}&a créé avec succès !"
   created-at: "&aCroupier de &e{game}&a créé avec succès en x : &e{x}&a y : &e{y}&a z : &e{z}&a."
   created-minimal: "&aCroupier créé avec succès !"
-  reset-confirmation: "Rétablir la configuration par défaut ?"
+  reset-confirmation: "Rétablir la configuration ?"
 
 slots:
   title: "Machine à sous"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cFichier de données des croupiers introuvable !"
   location-not-found: "&cImpossible de récupérer la position du croupier."
   world-not-found: "&cLe monde '{world}' n'existe pas."
-  reset-confirmation: "Rétablir la configuration par défaut ?"
+  reset-confirmation: "Rétablir la configuration ?"
   save-failed: "&cImpossible d'enregistrer les données du croupier : {error}"
   dealer-changed: "&aCréature du croupier modifiée."
   dealer-changed-detailed: "&aCréature du croupier remplacée par &e{mob}&a."
