@@ -1091,7 +1091,7 @@ blackjack-settings:
   max-hands-desc: "&7Nojwiynkszŏ wielość rynek, kere grŏcz może mieć przi dzielyniu."
   toggle-split-matching: "Zasada dzielyniŏ"
   split-matching-desc-1: "&7Ta sama ranga: idzie dzielić ino take same rangi (K-K)."
-  split-matching-desc-2: "&7Ta sama wertość: idzie tyż dzielić dwie dowolne karty za 10 (K-Q)."
+  split-matching-desc-2: "&7Ta sama wertość: idzie tyż dzielić dwie dowolne karty za 10 (K-D)."
   match-same-rank: "Ta sama ranga"
   match-same-value: "Ta sama wertość"
   max-hands-unbounded: "Bez limitu"

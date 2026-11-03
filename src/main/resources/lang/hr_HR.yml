@@ -1091,7 +1091,7 @@ blackjack-settings:
   max-hands-desc: "&7Najveći broj ruku koje jedan igrač može imati istodobno dijeljenjem."
   toggle-split-matching: "Pravilo podudaranja pri dijeljenju"
   split-matching-desc-1: "&7Isti rang: dijele se samo karte istog ranga (K-K)."
-  split-matching-desc-2: "&7Ista vrijednost: dijele se i bilo koje dvije karte vrijednosti 10 (K-Q)."
+  split-matching-desc-2: "&7Ista vrijednost: dijele se i bilo koje dvije karte vrijednosti 10 (K-D)."
   match-same-rank: "Isti rang"
   match-same-value: "Ista vrijednost"
   max-hands-unbounded: "Neograničeno"

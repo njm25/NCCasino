@@ -1091,7 +1091,7 @@ blackjack-settings:
   max-hands-desc: "&7Lielākais roku skaits, kas vienam spēlētājam vienlaikus var būt sadalīšanas dēļ."
   toggle-split-matching: "Sadalīšanas atbilstības noteikums"
   split-matching-desc-1: "&7Vienāds rangs: sadala tikai vienāda ranga kārtis (K-K)."
-  split-matching-desc-2: "&7Vienāda vērtība: sadala arī jebkuras divas kārtis ar vērtību 10 (K-Q)."
+  split-matching-desc-2: "&7Vienāda vērtība: sadala arī jebkuras divas kārtis ar vērtību 10 (K-D)."
   match-same-rank: "Vienāds rangs"
   match-same-value: "Vienāda vērtība"
   max-hands-unbounded: "Bez ierobežojuma"

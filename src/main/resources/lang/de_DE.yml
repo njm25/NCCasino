@@ -1091,7 +1091,7 @@ blackjack-settings:
   max-hands-desc: "&7Maximale Anzahl Hände, die ein Spieler gleichzeitig durch Teilen halten kann."
   toggle-split-matching: "Teilen-Regel"
   split-matching-desc-1: "&7Gleicher Rang: nur identische Ränge werden geteilt (K-K)."
-  split-matching-desc-2: "&7Gleicher Wert: auch beliebige zwei Karten mit 10er-Wert werden geteilt (K-Q)."
+  split-matching-desc-2: "&7Gleicher Wert: auch beliebige zwei Karten mit 10er-Wert werden geteilt (K-D)."
   match-same-rank: "Gleicher Rang"
   match-same-value: "Gleicher Wert"
   max-hands-unbounded: "Unbegrenzt"

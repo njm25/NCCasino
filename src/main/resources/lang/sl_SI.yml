@@ -1091,7 +1091,7 @@ blackjack-settings:
   max-hands-desc: "&7Največje število rok, ki jih lahko ima en igralec hkrati z delitvijo."
   toggle-split-matching: "Pravilo ujemanja pri delitvi"
   split-matching-desc-1: "&7Enak rang: delijo se le karte enakega ranga (K-K)."
-  split-matching-desc-2: "&7Enaka vrednost: delita se tudi kateri koli dve karti z vrednostjo 10 (K-Q)."
+  split-matching-desc-2: "&7Enaka vrednost: delita se tudi kateri koli dve karti z vrednostjo 10 (K-D)."
   match-same-rank: "Enak rang"
   match-same-value: "Enaka vrednost"
   max-hands-unbounded: "Neomejeno"

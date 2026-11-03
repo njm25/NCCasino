@@ -1091,7 +1091,7 @@ blackjack-settings:
   max-hands-desc: "&7Daugiausia vieno žaidėjo rankų vienu metu po skaidymo."
   toggle-split-matching: "Skaidymo atitikimo taisyklė"
   split-matching-desc-1: "&7Tas pats rangas: skaidomos tik vienodo rango kortos (K-K)."
-  split-matching-desc-2: "&7Ta pati vertė: skaidomos ir bet kurios dvi 10 vertės kortos (K-Q)."
+  split-matching-desc-2: "&7Ta pati vertė: skaidomos ir bet kurios dvi 10 vertės kortos (K-D)."
   match-same-rank: "Tas pats rangas"
   match-same-value: "Ta pati vertė"
   max-hands-unbounded: "Neribota"

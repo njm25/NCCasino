@@ -603,7 +603,7 @@ slots-settings:
   variance-hit-rate: "&7احتمال پرداخت هر خط: &e{chance}"
   variance-top-line: "&7بزرگ‌ترین خط تمام‌عرض: &e{multiplier}×"
   variance-max-exposure: "&7حداکثر بازگشت با شرط 1 روی {lines} خط پیش‌فرض: &e{amount}"
-  variance-tradeoff: "&7نوسان بالاتر یعنی خط‌ها کمتر می‌برند، اما جکپات‌های بلندمدت بسیار بزرگ‌ترند."
+  variance-tradeoff: "&7نوسان بالاتر یعنی خط‌ها کمتر می‌برند، اما جکپات‌های توالی بلند بسیار بزرگ‌ترند."
   variance-same-rtp: "&7همه‌ی سطح‌های نوسان همان بازگشت تنظیم‌شده را حفظ می‌کنند: &a{rtp}"
   variance-hint: "&7با کلیک چپ یا راست بین سطح‌های ریسک دیلر جابه‌جا شوید."
   variance-updated: "&aنوسان اسلات روی {variance} تنظیم شد."
