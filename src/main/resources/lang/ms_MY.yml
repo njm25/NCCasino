@@ -479,7 +479,7 @@ slots:
   auto-stop-big-win: "&ePutaran Automatik dihentikan: itu kemenangan besar."
   auto-stop-profit-target-reached: "&ePutaran Automatik dihentikan: sasaran keuntungan telah dicapai."
   auto-stop-loss-limit-reached: "&ePutaran Automatik dihentikan: had kerugian telah dicapai."
-  auto-stop-settlement-failed: "&cPutaran Automatik dihentikan: bayaran tidak dapat dihantar."
+  auto-stop-settlement-failed: "&cPutaran Automatik dihentikan: bayaran tidak dapat diselesaikan."
   auto-stop-spin-rejected: "&cPutaran Automatik dihentikan: putaran seterusnya tidak dapat dibuat."
   paytable-legend: "&bPetunjuk"
   paytable-legend-run: "&7Urutan: bilangan simbol sepadan berturut-turut, dikira dari gelendong kiri."

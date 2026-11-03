@@ -9,7 +9,7 @@ common:
   click-choose: "&8ಆಯ್ಕೆಮಾಡಲು ಕ್ಲಿಕ್ ಮಾಡಿ."
   click-skip: "ಬಿಟ್ಟುಬಿಡಲು ಕ್ಲಿಕ್ ಮಾಡಿ"
   exit: "&cನಿರ್ಗಮಿಸಿ"
-  return-player-menu: "&dಆಟಗಾರರ ಮೆನುಗೆ ಹಿಂತಿರುಗಿ"
+  return-player-menu: "&dಆಟಗಾರರ ಮೆನುವಿಗೆ ಹಿಂತಿರುಗಿ"
   return-preferences: "&dಆದ್ಯತೆಗಳಿಗೆ ಹಿಂತಿರುಗಿ"
 
   return-to: "ಹಿಂತಿರುಗಿ: {menu}"
@@ -299,7 +299,7 @@ test-game:
 game-options:
   select-title: "ಆಟದ ಪ್ರಕಾರವನ್ನು ಆಯ್ಕೆಮಾಡಿ"
   edit-title: "ಆಟದ ಪ್ರಕಾರವನ್ನು ಸಂಪಾದಿಸಿ"
-  return-admin: "ನಿರ್ವಾಹಕ ಮೆನುಗೆ ಹಿಂತಿರುಗಿ ({dealer})"
+  return-admin: "ನಿರ್ವಾಹಕ ಮೆನುವಿಗೆ ಹಿಂತಿರುಗಿ ({dealer})"
   exit: "ನಿರ್ಗಮಿಸಿ"
   blackjack: "Blackjack"
   roulette: "ರೂಲೆಟ್"

@@ -313,7 +313,7 @@ game-options:
   created: "&aMgawaji wa aina ya mchezo &e{game}&a ameundwa kwa mafanikio!"
   created-at: "&aMgawaji wa aina ya mchezo &e{game}&a ameundwa kwa mafanikio mahali x: &e{x}&a y: &e{y}&a z: &e{z}&a."
   created-minimal: "&aMgawaji ameundwa kwa mafanikio!"
-  reset-confirmation: "Ungependa kurejesha usanidi kwenye chaguo-msingi?"
+  reset-confirmation: "Rejesha usanidi chaguo-msingi?"
 
 slots:
   title: "Sloti"
@@ -939,7 +939,7 @@ mob-selection:
   data-file-not-found: "&cFaili ya data ya wagawaji haikupatikana!"
   location-not-found: "&cImeshindikana kupata mahali pa mgawaji."
   world-not-found: "&cUlimwengu “{world}” haupo."
-  reset-confirmation: "Ungependa kurejesha usanidi kwenye chaguo-msingi?"
+  reset-confirmation: "Rejesha usanidi chaguo-msingi?"
   save-failed: "&cImeshindikana kuhifadhi data ya mgawaji: {error}"
   dealer-changed: "&aMgawaji amebadilishwa."
   dealer-changed-detailed: "&aMgawaji amebadilishwa: &e{mob}&a."
