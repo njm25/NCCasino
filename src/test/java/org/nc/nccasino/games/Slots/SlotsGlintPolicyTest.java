@@ -53,7 +53,7 @@ class SlotsGlintPolicyTest {
         // matched hypothetical Demo winning symbol) intentionally have no
         // entry in SlotsControlPresentation.Role at all -- their material is
         // whichever SlotsSymbol matched, not a fixed control material (see
-        // SlotsMachine.highlightLine). So among the *fixed-material* roles
+        // SlotsMachine.paintWinGlow). So among the *fixed-material* roles
         // catalogued here, exactly one may glint: a ready real Spin.
         long approvedCount = 0;
         for (SlotsControlPresentation.Role role : SlotsControlPresentation.Role.values()) {

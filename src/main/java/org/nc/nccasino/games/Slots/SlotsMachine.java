@@ -196,6 +196,19 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     private int[] reelScrollPosition;
     /** Whether {@link #reelDisplay}'s current contents came from a Demo Spin -- drives the idle repaint's demo lore. */
     private boolean lastGridIsDemo = false;
+    /**
+     * The win glow on the result currently in {@link #reelDisplay}, repainted
+     * on every Game View canvas redraw so a modal visit never silently drops
+     * it. Cleared when a spin starts and whenever the geometry or line count
+     * changes; see {@link SlotsWinGlow#matches}.
+     */
+    private SlotsWinGlow displayedWin = SlotsWinGlow.NONE;
+    /**
+     * The glow of the last paid result, kept apart from {@link #displayedWin}
+     * so returning to Game View after a Demo Spin (which restores the paid
+     * grid, see {@link #restorePlayCanvas}) restores its glow too.
+     */
+    private SlotsWinGlow lastPaidWin = SlotsWinGlow.NONE;
     /** The Spin lever's Last Result lore's count-up lifecycle -- see {@link SlotsWinMeterAnimation}. */
     private final SlotsWinMeterAnimation lastWinState = new SlotsWinMeterAnimation();
     /**
@@ -614,6 +627,12 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
                 int columns = config.columns();
                 for (int col = 0; col < columns; col++) {
                     paintReel(col);
+                }
+                if (displayedWin.matches(columns, config.visibleRows(), config.activeLines())
+                    && displayedWin.demo() == lastGridIsDemo) {
+                    paintWinGlow(displayedWin);
+                } else {
+                    displayedWin = SlotsWinGlow.NONE;
                 }
             }
         }
@@ -1433,11 +1452,23 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
                 }
                 meta.setLore(loreList);
             }
-            meta.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
-            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+            applyGlow(meta);
             item.setItemMeta(meta);
         }
         getInventory().setItem(slot, item);
+    }
+
+    /**
+     * The enchantment glint without a fake enchantment, as Blackjack does;
+     * falls back to a hidden LURE where the glint override is missing.
+     */
+    private static void applyGlow(ItemMeta meta) {
+        try {
+            meta.setEnchantmentGlintOverride(Boolean.TRUE);
+        } catch (Throwable unsupported) {
+            meta.addEnchant(org.bukkit.enchantments.Enchantment.LURE, 1, true);
+            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+        }
     }
 
     private void dimSlot(int slot) {
@@ -1758,6 +1789,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
     private void restorePlayCanvas() {
         SlotsOutcome last = controller.currentOutcome();
         lastGridIsDemo = false;
+        displayedWin = lastPaidWin;
         if (last != null && last.columns() == config.columns() && last.rows() == config.visibleRows()) {
             SlotsSymbol[][] grid = new SlotsSymbol[last.columns()][last.rows()];
             for (int col = 0; col < last.columns(); col++) {
@@ -1768,6 +1800,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             reelDisplay = grid;
         } else {
             reelDisplay = neutralGrid(config.columns(), config.visibleRows());
+            displayedWin = SlotsWinGlow.NONE;
         }
     }
 
@@ -1825,6 +1858,9 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         // before this input's own feedback renders, so two different lines'
         // colored paths can never blend together.
         supersedeLineFlash();
+        // The shown wins were paid on the old line count; a glow repainted
+        // over the new one would claim lines that are no longer in play.
+        clearWinGlow();
         int max = SlotsPaylineCatalog.lineCount(config.visibleRows());
         int oldLines = config.activeLines();
         int next = Math.floorMod((oldLines - 1) + direction, max) + 1;
@@ -2060,6 +2096,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         reelDisplay = neutralGrid(config.columns(), config.visibleRows());
         reelScrollPosition = new int[config.columns()];
         lastGridIsDemo = false;
+        clearWinGlow();
         revalidateDenomination();
     }
 
@@ -2307,10 +2344,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
                     if (tick >= plan.revealStartTick()) {
                         long sinceReveal = tick - plan.revealStartTick();
                         if (sinceReveal == 0) {
-                            paintOutcomeGrid(outcome, true);
-                            for (SlotsMath.CatalogLineResult win : winners) {
-                                highlightLine(win, outcome, true);
-                            }
+                            showWinGlow(outcome, winners, true);
                             playResultCue(hypotheticalPayout);
                         }
                         if (sinceReveal >= DEMO_FINALE_HOLD_TICKS) {
@@ -2371,10 +2405,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             return;
         }
         List<SlotsMath.CatalogLineResult> winners = winningLines(outcome);
-        paintOutcomeGrid(outcome, false);
-        for (SlotsMath.CatalogLineResult win : winners) {
-            highlightLine(win, outcome, false);
-        }
+        showWinGlow(outcome, winners, false);
         if (!winners.isEmpty()) {
             playResultCue(controller.pendingPayoutAmount());
         }
@@ -2399,10 +2430,7 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
             return;
         }
         List<SlotsMath.CatalogLineResult> winners = winningLines(demoOutcome);
-        paintOutcomeGrid(demoOutcome, true);
-        for (SlotsMath.CatalogLineResult win : winners) {
-            highlightLine(win, demoOutcome, true);
-        }
+        showWinGlow(demoOutcome, winners, true);
         playResultCue(demoHypotheticalPayout);
         finishDemoSpin(myGeneration, demoHypotheticalBet, demoHypotheticalPayout);
     }
@@ -3264,17 +3292,13 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
                             if (sinceReveal >= revealIndex[0] * perLine) {
                                 SlotsMath.CatalogLineResult win = winners.get(revealIndex[0]);
                                 revealIndex[0]++;
-                                paintOutcomeGrid(outcome, false);
-                                highlightLine(win, outcome, false);
+                                showWinGlow(outcome, List.of(win), false);
                                 playLineReveal(revealIndex[0], winners.size());
                             }
                         } else {
                             long finaleStart = winners.size() * perLine;
                             if (sinceReveal == finaleStart) {
-                                paintOutcomeGrid(outcome, false);
-                                for (SlotsMath.CatalogLineResult win : winners) {
-                                    highlightLine(win, outcome, false);
-                                }
+                                showWinGlow(outcome, winners, false);
                                 playResultCue(controller.pendingPayoutAmount());
                             }
                             if (sinceReveal >= finaleStart + SlotsTiming.ALL_LINES_FINALE_TICKS) {
@@ -3326,6 +3350,10 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         int columns, int rows, boolean demo, SlotsReelStrip[] strips, SlotsReelPlan plan, int[] committedStops) {
 
         lastGridIsDemo = demo;
+        displayedWin = SlotsWinGlow.NONE;
+        if (!demo) {
+            lastPaidWin = SlotsWinGlow.NONE;
+        }
         reelDisplay = new SlotsSymbol[columns][rows];
         reelScrollPosition = new int[columns];
         for (int col = 0; col < columns; col++) {
@@ -3402,48 +3430,90 @@ public class SlotsMachine extends DealerInventory implements TerminableSession {
         }
     }
 
-    private void paintOutcomeGrid(SlotsOutcome outcome, boolean demo) {
+    /**
+     * Paints {@code outcome}'s grid with {@code winners} lit, and makes it the
+     * remembered on-screen result: {@link #reelDisplay} takes the outcome's
+     * symbols (a fast-forward can land here with a mid-spin display) and
+     * {@link #displayedWin} the glow, so any later canvas repaint shows the
+     * same thing. A paid result's glow is also kept as {@link #lastPaidWin}.
+     */
+    private void showWinGlow(SlotsOutcome outcome, List<SlotsMath.CatalogLineResult> winners, boolean demo) {
         int columns = outcome.columns();
         int rows = outcome.rows();
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < columns; col++) {
-                SlotsSymbol symbol = outcome.symbolAt(row, col);
+        SlotsSymbol[][] grid = new SlotsSymbol[columns][rows];
+        for (int col = 0; col < columns; col++) {
+            for (int row = 0; row < rows; row++) {
+                grid[col][row] = outcome.symbolAt(row, col);
+            }
+        }
+        reelDisplay = grid;
+        lastGridIsDemo = demo;
+        SlotsWinGlow glow = SlotsWinGlow.of(columns, rows, config.activeLines(), demo, winners);
+        displayedWin = glow;
+        if (!demo) {
+            lastPaidWin = glow;
+        }
+        for (int col = 0; col < columns; col++) {
+            for (int row = 0; row < rows; row++) {
+                paintCell(columns, rows, demo, col, row, grid[col][row]);
+            }
+        }
+        paintWinGlow(glow);
+    }
+
+    /** Forgets the shown and last paid win glow -- the result they describe no longer applies. */
+    private void clearWinGlow() {
+        displayedWin = SlotsWinGlow.NONE;
+        lastPaidWin = SlotsWinGlow.NONE;
+    }
+
+    /**
+     * Paints {@code glow} over the grid already in {@link #reelDisplay}: each
+     * matched cell glints with a gold name and one lore line per winning line
+     * through it, and every other cell is dimmed behind grey glass so the win
+     * reads at a glance. A losing result has no glow and dims nothing.
+     */
+    private void paintWinGlow(SlotsWinGlow glow) {
+        if (glow.isEmpty()) {
+            return;
+        }
+        int columns = glow.columns();
+        int rows = glow.rows();
+        boolean demo = glow.demo();
+        for (int col = 0; col < columns; col++) {
+            for (int row = 0; row < rows; row++) {
                 int slot = SlotsGeometry.gridSlot(columns, rows, row, col);
-                if (demo) {
-                    addItemAndLore(symbol.material(), 1, text(symbolKey(symbol)),
-                        ChatColor.WHITE, ChatColor.YELLOW, slot, text("slots.demo-cell-note"));
-                } else {
-                    addItemAndLore(symbol.material(), 1, text(symbolKey(symbol)), ChatColor.WHITE, slot);
+                SlotsSymbol symbol = reelDisplay[col][row];
+                if (symbol == null) {
+                    continue;
                 }
+                List<SlotsMath.CatalogLineResult> wins = glow.winsBySlot().get(slot);
+                if (wins == null) {
+                    paintDimmedCell(slot, symbol, demo);
+                    continue;
+                }
+                List<String> lore = new ArrayList<>();
+                for (SlotsMath.CatalogLineResult win : wins) {
+                    lore.add(text("slots.win-line-lore",
+                        "run", win.runLength(),
+                        "multiplier", formatMultiplier(win.multiplier())));
+                }
+                if (SlotsCellPresentation.of(symbol, demo).isDemoLabelled()) {
+                    lore.add(text("slots.demo-cell-note"));
+                }
+                setGlowingItem(slot, symbol.material(),
+                    ChatColor.GOLD + text(symbolKey(symbol)), lore.toArray(new String[0]));
             }
         }
     }
 
-    /** Lights only the cells that actually matched -- the run, not the whole line. */
-    private void highlightLine(SlotsMath.CatalogLineResult win, SlotsOutcome outcome, boolean demo) {
-        int columns = outcome.columns();
-        int rows = outcome.rows();
-        int[] path = win.line().rows();
-        boolean demoLabelled = SlotsCellPresentation.of(win.symbol(), demo).isDemoLabelled();
-        for (int col = 0; col < win.runLength(); col++) {
-            if (demoLabelled) {
-                setGlowingItem(
-                    SlotsGeometry.gridSlot(columns, rows, path[col], col),
-                    win.symbol().material(),
-                    ChatColor.GOLD + text(symbolKey(win.symbol())),
-                    text("slots.win-line-lore",
-                        "run", win.runLength(),
-                        "multiplier", formatMultiplier(win.multiplier())),
-                    text("slots.demo-cell-note"));
-                continue;
-            }
-            setGlowingItem(
-                SlotsGeometry.gridSlot(columns, rows, path[col], col),
-                win.symbol().material(),
-                ChatColor.GOLD + text(symbolKey(win.symbol())),
-                text("slots.win-line-lore",
-                    "run", win.runLength(),
-                    "multiplier", formatMultiplier(win.multiplier())));
+    private void paintDimmedCell(int slot, SlotsSymbol symbol, boolean demo) {
+        Material material = SlotsControlPresentation.Role.DIMMED_CELL.material();
+        if (SlotsCellPresentation.of(symbol, demo).isDemoLabelled()) {
+            addItemAndLore(material, 1, text(symbolKey(symbol)),
+                ChatColor.DARK_GRAY, ChatColor.YELLOW, slot, text("slots.demo-cell-note"));
+        } else {
+            addItemAndLore(material, 1, text(symbolKey(symbol)), ChatColor.DARK_GRAY, slot);
         }
     }
 

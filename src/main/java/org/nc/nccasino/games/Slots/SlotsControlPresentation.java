@@ -17,7 +17,7 @@ import org.bukkit.Material;
  * (here, {@link Role#SPIN_READY}), and a matched paid or matched hypothetical
  * Demo winning symbol -- the latter two are deliberately absent from this
  * catalog, because their material is whichever {@link SlotsSymbol} matched,
- * not a fixed control material; see {@code SlotsMachine.highlightLine}. Every
+ * not a fixed control material; see {@code SlotsMachine.paintWinGlow}. Every
  * role listed here must render without any inherent glint, and none of them
  * may ever be passed to {@code setGlowingItem}.
  */
@@ -43,6 +43,12 @@ public final class SlotsControlPresentation {
          */
         BACK_TO_GAME(Material.MAGENTA_GLAZED_TERRACOTTA, false),
         NEUTRAL_CELL(Material.WHITE_STAINED_GLASS_PANE, false),
+        /**
+         * A reel cell that did not match while a winning result is shown: the
+         * symbol is set back behind grey glass (its name stays on hover) so the
+         * glinting winners stand out. Never used on a losing result.
+         */
+        DIMMED_CELL(Material.GRAY_STAINED_GLASS_PANE, false),
         HEIGHT_CONTROL(Material.PINK_STAINED_GLASS_PANE, false),
         REELS_CONTROL(Material.BROWN_STAINED_GLASS_PANE, false),
         PAYLINES_CONTROL(Material.GREEN_STAINED_GLASS_PANE, false),

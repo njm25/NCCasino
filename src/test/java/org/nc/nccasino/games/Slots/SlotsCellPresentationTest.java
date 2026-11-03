@@ -47,7 +47,7 @@ class SlotsCellPresentationTest {
 
     @Test
     void matchedHypotheticalDemoWinningCellsRemainDemoLabelled() {
-        // The exact scenario highlightLine() must preserve: a matched
+        // The exact scenario paintWinGlow() must preserve: a matched
         // winning symbol during a demo is still DEMO, not PAID -- glint for
         // the win and the demo disclaimer are not mutually exclusive.
         for (SlotsSymbol winner : SlotsSymbol.payingSymbols()) {
