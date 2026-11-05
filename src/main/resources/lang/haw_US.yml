@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7I kēia manawa: {value}"
-  click-toggle: "&8Kaomi e hoʻā a hoʻopio paha."
+  click-toggle: "&8Kaomi e neʻe i ka waiwai aʻe."
   click-cycle: "&8Kaomi e neʻe i ka waiwai aʻe."
   click-choose: "&8Kaomi e koho."
   click-skip: "KAOMI E LELE"
@@ -265,7 +265,7 @@ dragon-descent:
   safe: "&aPalekana!"
   unsafe: "&cPōʻino!"
   start: "&aHoʻomaka"
-  sweep: "&cKahili ke kelekona i nā mea a pau!"
+  sweep: "&cKāhili ke kelekona i nā mea a pau!"
   got-you: "&4Ua hopu ke kelekona iā ʻoe!"
   invalid-action: "&cHana kūpono ʻole."
   invalid-action-capitalized: "&cHana Kūpono ʻOle."

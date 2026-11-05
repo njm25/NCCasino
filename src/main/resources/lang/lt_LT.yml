@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Dabar: {value}"
-  click-toggle: "&8Spustelėk, kad įjungtum arba išjungtum."
+  click-toggle: "&8Spustelėk, kad perjungtum."
   click-cycle: "&8Spustelėk, kad pakeistum."
   click-choose: "&8Spustelėk, kad pasirinktum."
   click-skip: "SPUSTELĖK, KAD PRALEISTUM"
@@ -34,7 +34,7 @@ preferences:
     server-default: "Numatytoji serverio kalba"
     explicit: "Tavo pasirinkimas"
     client: "Žaidimo kalba"
-    client-applied: "&7Kazino kalba nustatyta į &f{language}&7 pagal tavo žaidimą. Pakeisk ją: Asmeniniai nustatymai > Kalba."
+    client-applied: "&7Kazino kalba nustatyta pagal tavo žaidimą: &f{language}&7. Pakeisk ją: Asmeniniai nustatymai > Kalba."
   overflow:
     title: "&eNetelpantys laimėjimai"
     bank: "&aSaugoti juos man"
@@ -67,7 +67,7 @@ errors:
   invalid-language-option: "&cNetinkama kalbos meniu parinktis."
   invalid-player-menu-option: "&cNetinkama žaidėjo meniu parinktis."
   no-return-target: "&cNenustatyta, kur grįžti."
-  currency-unavailable: "&cValiuta nenustatyta, todėl laimėjimų nepavyko priskirti."
+  currency-unavailable: "&cValiuta nenustatyta, todėl laimėjimų nepavyko išmokėti."
 
 betting:
   place-bet: "Spustelėk čia, kad statytum"

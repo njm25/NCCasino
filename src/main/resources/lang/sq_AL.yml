@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Aktualisht: {value}"
-  click-toggle: "&8Klikoni për ta aktivizuar ose çaktivizuar."
+  click-toggle: "&8Klikoni për opsionin tjetër."
   click-cycle: "&8Klikoni për opsionin tjetër."
   click-choose: "&8Klikoni për të zgjedhur."
   click-skip: "KLIKONI PËR TË KAPËRCYER"

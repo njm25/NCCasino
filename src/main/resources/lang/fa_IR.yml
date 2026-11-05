@@ -50,7 +50,7 @@ language-menu:
   default-description: "&7پیروی از تنظیم سرور: &f{language}"
   use-client: "&eهماهنگ با زبان بازی من"
   client-description: "&7پیروی از زبان ماینکرفت شما: &f{language}"
-  client-unavailable: "&7فعلا زبان سرور استفاده می‌شود: &f{language}"
+  client-unavailable: "&7فعلا از زبان سرور استفاده می‌شود: &f{language}"
   selected: "&aانتخاب‌شده"
   select: "&8برای انتخاب کلیک کنید."
 

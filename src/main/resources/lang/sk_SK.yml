@@ -34,7 +34,7 @@ preferences:
     server-default: "Predvolený serverom"
     explicit: "Vlastná voľba"
     client: "Jazyk hry"
-    client-applied: "&7Jazyk kasína bol nastavený na &f{language}&7 podľa tvojej hry. Zmeniť ho môžeš v menu Predvoľby > Jazyk."
+    client-applied: "&7Jazyk kasína bol nastavený podľa tvojej hry: &f{language}&7. Zmeniť ho môžeš v menu Predvoľby > Jazyk."
   overflow:
     title: "&eVýhry, ktoré sa nezmestia"
     bank: "&aUschovať pre mňa"

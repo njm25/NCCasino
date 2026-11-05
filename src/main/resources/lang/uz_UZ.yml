@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Joriy: {value}"
-  click-toggle: "&8Yoqish yoki oʻchirish uchun bosing."
+  click-toggle: "&8Almashtirish uchun bosing."
   click-cycle: "&8Keyingi variantga oʻtish uchun bosing."
   click-choose: "&8Tanlash uchun bosing."
   click-skip: "OʻTKAZIB YUBORISH UCHUN BOSING"

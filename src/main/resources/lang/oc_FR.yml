@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Actual: {value}"
-  click-toggle: "&8Clicatz per activar o desactivar."
+  click-toggle: "&8Clicatz per cambiar."
   click-cycle: "&8Clicatz per passar a la valor seguenta."
   click-choose: "&8Clicatz per causir."
   click-skip: "CLICATZ PER PASSAR"
@@ -157,7 +157,7 @@ coin-flip:
   mode-current: "&oMòde actual: {mode}"
   mode-switch: "&oCambiar de mòde: {mode}"
   mode-switch-denied: "&cAcabatz aquesta ronda abans de cambiar de mòde."
-  mode-switch-cashout-notice: "&eVòstres ganhs vos seràn pagats automaticament: &a{amount}"
+  mode-switch-cashout-notice: "&eVos serà pagat automaticament: &a{amount}"
   cash-out: "&oRecuperar los ganhs"
   cash-out-lore: "&oClicatz per recuperar los ganhs: &o&a{amount}"
   chain-win: "&aAvètz ganhat! Seria: {streak}. Pòt actual: &e{amount}&a. Recuperatz los ganhs o tornatz virar la pèça."
@@ -207,7 +207,7 @@ rock-paper-scissors:
   the-dealer: "&oLo cropièr"
   mode-current: "&oMòde actual: {mode}"
   mode-switch: "&oCambiar de mòde: {mode}"
-  mode-switch-cashout-notice: "&eVòstres ganhs vos seràn pagats automaticament: &a{amount}"
+  mode-switch-cashout-notice: "&eVos serà pagat automaticament: &a{amount}"
   mode-switch-denied: "&cAcabatz aquesta ronda abans de cambiar de mòde."
   cash-out: "&oRecuperar los ganhs"
   cash-out-lore: "&oClicatz per recuperar los ganhs: &o&a{amount}"

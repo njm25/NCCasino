@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Noverande: {value}"
-  click-toggle: "&8Klikk for å slå av/på."
+  click-toggle: "&8Klikk for å byte."
   click-cycle: "&8Klikk for å bla gjennom vala."
   click-choose: "&8Klikk for å velje."
   click-skip: "KLIKK FOR Å HOPPE OVER"

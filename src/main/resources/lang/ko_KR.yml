@@ -99,7 +99,7 @@ payout:
   bank-reminder: "&6인벤토리 공간을 기다리는 당첨금이 아직 있습니다: {amount}. 공간을 비운 뒤 &e/ncc claim&6 명령어로 받으세요."
   bank-claimed: "&a보관 중인 당첨금 {amount} 수령 완료."
   bank-cleared: "&a보관 중인 당첨금을 모두 수령했습니다."
-  bank-empty: "&7대기 중인 보관 당첨금이 없습니다."
+  bank-empty: "&7보관 중인 당첨금이 없습니다."
   bank-still-blocked: "&6당첨금이 아직 인벤토리 공간을 기다리고 있습니다: {amount}. 공간을 비운 뒤 &e/ncc claim&6 명령어로 받으세요."
   wager-blocked: "&c다시 플레이하기 전에 보관 중인 아이템을 받을 공간을 비우세요: {amount}."
 

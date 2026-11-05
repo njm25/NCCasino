@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Uneko balioa: {value}"
-  click-toggle: "&8Egin klik aktibatzeko edo desaktibatzeko."
+  click-toggle: "&8Egin klik aldatzeko."
   click-cycle: "&8Egin klik hurrengo aukerara pasatzeko."
   click-choose: "&8Egin klik aukeratzeko."
   click-skip: "EGIN KLIK SALTATZEKO"

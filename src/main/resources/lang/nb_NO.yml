@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Nåværende: {value}"
-  click-toggle: "&8Klikk for å slå av/på."
+  click-toggle: "&8Klikk for å bytte."
   click-cycle: "&8Klikk for å bla gjennom valgene."
   click-choose: "&8Klikk for å velge."
   click-skip: "KLIKK FOR Å HOPPE OVER"
@@ -142,7 +142,7 @@ coin-flip:
   accept-bet: "&oGodta innsatsen"
   click-accept-bet: "&oKlikk for å godta innsatsen"
   current: "&oNåværende: &o&a{amount}"
-  click-cancel-bet: "&oKlikk for å avbryte innsatsen"
+  click-cancel-bet: "&oKlikk for å angre innsatsen"
   seat-unavailable: "&7&oPlassen er ikke åpen ennå"
   sit-other-chair: "&oSett deg på den andre stolen"
   player-two-turn: "&oTuren til spiller 2"
@@ -185,7 +185,7 @@ rock-paper-scissors:
   accept-bet: "&oGodta innsatsen"
   click-accept-bet: "&oKlikk for å godta innsatsen"
   current: "&oNåværende: &o&a{amount}"
-  click-cancel-bet: "&oKlikk for å avbryte innsatsen"
+  click-cancel-bet: "&oKlikk for å angre innsatsen"
   seat-unavailable: "&7&oPlassen er ikke åpen ennå"
   sit-other-chair: "&oSett deg på den andre stolen"
   player-two-turn: "&oTuren til spiller 2"

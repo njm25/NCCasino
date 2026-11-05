@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Praegu: {value}"
-  click-toggle: "&8Klõpsa sisse- või väljalülitamiseks."
+  click-toggle: "&8Klõpsa muutmiseks."
   click-cycle: "&8Klõpsa muutmiseks."
   click-choose: "&8Klõpsa valimiseks."
   click-skip: "KLÕPSA VAHELEJÄTMISEKS"

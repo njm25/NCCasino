@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Semasa: {value}"
-  click-toggle: "&8Klik untuk hidupkan atau matikan."
+  click-toggle: "&8Klik untuk tukar."
   click-cycle: "&8Klik untuk tukar."
   click-choose: "&8Klik untuk pilih."
   click-skip: "KLIK UNTUK LANGKAU"
@@ -257,7 +257,7 @@ dragon-descent:
   vines-per-floor: "Tumbuhan Menjalar (Tempat Selamat setiap Tingkat)"
   floors: "Tingkat"
   title: "Turun ke Sarang Naga"
-  dragon-name: "Drungus Si Naga"
+  dragon-name: "Drungus Sang Naga"
   begin: "Mulakan Perjalanan Turun Anda?"
   cash-out: "&e&oTunaikan"
   cashout-value: "&7&oNilai Tunai: &a{amount}"

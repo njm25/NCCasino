@@ -49,7 +49,7 @@ language-menu:
   use-server-default: "&eSunucu Varsayılanını Kullan"
   default-description: "&7Sunucu ayarına uy: &f{language}"
   use-client: "&eOyunumun diline uy"
-  client-description: "&7Minecraft dilini izle: &f{language}"
+  client-description: "&7Minecraft diline uy: &f{language}"
   client-unavailable: "&7Şimdilik sunucunun dili kullanılıyor: &f{language}"
   selected: "&aSeçili"
   select: "&8Seçmek için tıkla."

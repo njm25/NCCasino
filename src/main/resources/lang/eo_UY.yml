@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Nuna: {value}"
-  click-toggle: "&8Klaku por ŝalti aŭ malŝalti."
+  click-toggle: "&8Klaku por iri al la sekva elekto."
   click-cycle: "&8Klaku por iri al la sekva elekto."
   click-choose: "&8Klaku por elekti."
   click-skip: "KLAKU POR PRETERSALTI"

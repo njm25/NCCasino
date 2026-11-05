@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Núverandi: {value}"
-  click-toggle: "&8Smelltu til að kveikja eða slökkva."
+  click-toggle: "&8Smelltu til að fara í næsta val."
   click-cycle: "&8Smelltu til að fara í næsta val."
   click-choose: "&8Smelltu til að velja."
   click-skip: "SMELLTU TIL AÐ SLEPPA"

@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Nunc: {value}"
-  click-toggle: "&8Preme ut accendas aut exstinguas."
+  click-toggle: "&8Preme ut ad valorem sequentem transeas."
   click-cycle: "&8Preme ut ad valorem sequentem transeas."
   click-choose: "&8Preme ut eligas."
   click-skip: "PREME UT PRAETEREAS"
@@ -157,7 +157,7 @@ coin-flip:
   mode-current: "&oModus nunc: {mode}"
   mode-switch: "&oMuta modum: {mode}"
   mode-switch-denied: "&cHunc circuitum fini antequam modum mutes."
-  mode-switch-cashout-notice: "&eLucra tua tibi sponte solventur: &a{amount}"
+  mode-switch-cashout-notice: "&eTibi sponte solvetur: &a{amount}"
   cash-out: "&oLucra cape"
   cash-out-lore: "&oPreme ut lucra capias: &o&a{amount}"
   chain-win: "&aVicisti! Victoriae continuae: {streak}. Acervus nunc: &e{amount}&a. Lucra cape aut nummum iterum iace."
@@ -207,7 +207,7 @@ rock-paper-scissors:
   the-dealer: "&oDispensator"
   mode-current: "&oModus nunc: {mode}"
   mode-switch: "&oMuta modum: {mode}"
-  mode-switch-cashout-notice: "&eLucra tua tibi sponte solventur: &a{amount}"
+  mode-switch-cashout-notice: "&eTibi sponte solvetur: &a{amount}"
   mode-switch-denied: "&cHunc circuitum fini antequam modum mutes."
   cash-out: "&oLucra cape"
   cash-out-lore: "&oPreme ut lucra capias: &o&a{amount}"

@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Aktueel: {value}"
-  click-toggle: "&8Klik om oan of út te setten."
+  click-toggle: "&8Klik om nei de folgjende wearde te gean."
   click-cycle: "&8Klik om nei de folgjende wearde te gean."
   click-choose: "&8Klik om te kiezen."
   click-skip: "KLIK OM OER TE SLAAN"

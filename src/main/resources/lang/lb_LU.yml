@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Aktuell: {value}"
-  click-toggle: "&8Klick fir un- oder auszeschalten."
+  click-toggle: "&8Klick fir op den nächste Wäert ze wiesselen."
   click-cycle: "&8Klick fir op den nächste Wäert ze wiesselen."
   click-choose: "&8Klick fir ze wielen."
   click-skip: "KLICK FIR Z'IWWERSPRANGEN"
@@ -131,7 +131,7 @@ game:
 coin-flip:
   title: "Kapp oder Zuel"
   click-sit: "&f&oKlick hei fir dech ze sëtzen"
-  leave: "&f&oOpstoen"
+  leave: "&f&oVerloossen"
   already-seated: "Du sëtz schonn."
   invalid-action: "&cOngëlteg Aktioun."
   no-bet: "&cKeen Asaz gesat."
@@ -156,7 +156,7 @@ coin-flip:
   the-dealer: "&oDe Croupier"
   mode-current: "&oAktuelle Modus: {mode}"
   mode-switch: "&oModus wiesselen op: {mode}"
-  mode-switch-denied: "&cMaach dës Ronn fäerdeg, ier s du de Modus wiesels."
+  mode-switch-denied: "&cMaach dës Ronn fäerdeg, ier s du de Modus wiessels."
   mode-switch-cashout-notice: "&eDäi Gewënn gëtt dir dann automatesch ausbezuelt: &a{amount}"
   cash-out: "&oGewënn huelen"
   cash-out-lore: "&oKlick fir de Gewënn ze huelen: &o&a{amount}"
@@ -174,7 +174,7 @@ coin-flip:
 rock-paper-scissors:
   title: "Steen, Pabeier, Schéier"
   click-sit: "&f&oKlick hei fir dech ze sëtzen"
-  leave: "&f&oOpstoen"
+  leave: "&f&oVerloossen"
   already-seated: "Du sëtz schonn."
   invalid-action: "&cOngëlteg Aktioun."
   no-bet: "&cKeen Asaz gesat."
@@ -208,7 +208,7 @@ rock-paper-scissors:
   mode-current: "&oAktuelle Modus: {mode}"
   mode-switch: "&oModus wiesselen op: {mode}"
   mode-switch-cashout-notice: "&eDäi Gewënn gëtt dir dann automatesch ausbezuelt: &a{amount}"
-  mode-switch-denied: "&cMaach dës Ronn fäerdeg, ier s du de Modus wiesels."
+  mode-switch-denied: "&cMaach dës Ronn fäerdeg, ier s du de Modus wiessels."
   cash-out: "&oGewënn huelen"
   cash-out-lore: "&oKlick fir de Gewënn ze huelen: &o&a{amount}"
   chain-win: "&aDu hues gewonnen! Serie: {streak}. Aktuelle Pot: &e{amount}&a. Huel däi Gewënn oder wiel nach eng Kéier."

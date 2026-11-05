@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Kwa sasa: {value}"
-  click-toggle: "&8Bofya ili kuwasha au kuzima."
+  click-toggle: "&8Bofya ili kwenda kwenye chaguo linalofuata."
   click-cycle: "&8Bofya ili kwenda kwenye chaguo linalofuata."
   click-choose: "&8Bofya ili kuchagua."
   click-skip: "BOFYA ILI KURUKA"

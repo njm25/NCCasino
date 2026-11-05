@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Dál: {value}"
-  click-toggle: "&8Coahkkal vai biddjo alde dahje eret."
+  click-toggle: "&8Coahkkal vai boahtá čuovvovaš árvu."
   click-cycle: "&8Coahkkal vai boahtá čuovvovaš árvu."
   click-choose: "&8Coahkkal válljet."
   click-skip: "COAHKKAL GAHPPIHIT"
@@ -256,7 +256,7 @@ dragon-descent:
   columns: "Spálttat"
   vines-per-floor: "Goarggŋunšattut (oadjebas sajit juohke gearddis)"
   floors: "Gearddit"
-  title: "Draka vulosmanni"
+  title: "Draka vulosmannan"
   dragon-name: "Drungus Draka"
   begin: "Álggat vulosmannama?"
   cash-out: "&e&oVáldde vuittuid"
@@ -307,7 +307,7 @@ game-options:
   baccarat: "Baccarat"
   coin-flip: "Ruhtašlivgen"
   rock-paper-scissors: "Geađgi, bábir, skierut"
-  dragon-descent: "Draka vulosmanni"
+  dragon-descent: "Draka vulosmannan"
   slots: "Spealloautomáhtta"
   test-game: "Geahččalanspeallu"
   created: "&aJuogadeaddji speallošlájain &e{game}&a lea ráhkaduvvon!"

@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Reatha: {value}"
-  click-toggle: "&8Cliceáil chun é a chur air nó as."
+  click-toggle: "&8Cliceáil chun dul chuig an gcéad rogha eile."
   click-cycle: "&8Cliceáil chun dul chuig an gcéad rogha eile."
   click-choose: "&8Cliceáil chun roghnú."
   click-skip: "CLICEÁIL CHUN SCIPEÁIL"

@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Trenutačno: {value}"
-  click-toggle: "&8Klikni za uključivanje ili isključivanje."
+  click-toggle: "&8Klikni za promjenu."
   click-cycle: "&8Klikni za sljedeću mogućnost."
   click-choose: "&8Klikni za odabir."
   click-skip: "KLIKNI ZA PRESKAKANJE"
@@ -34,7 +34,7 @@ preferences:
     server-default: "Zadano na poslužitelju"
     explicit: "Tvoj odabir"
     client: "Jezik igre"
-    client-applied: "&7Jezik kasina postavljen je na &f{language}&7 prema tvojoj igri. Promijeni ga u Preferencije > Jezik."
+    client-applied: "&7Jezik kasina postavljen je na &f{language}&7 prema tvojoj igri. Promijeni ga u izborniku Preferencije > Jezik."
   overflow:
     title: "&eDobici koji ne stanu"
     bank: "&aČuvaj ih za mene"

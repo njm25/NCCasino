@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Saat ini: {value}"
-  click-toggle: "&8Klik untuk mengaktifkan/menonaktifkan."
+  click-toggle: "&8Klik untuk beralih ke opsi berikutnya."
   click-cycle: "&8Klik untuk beralih ke opsi berikutnya."
   click-choose: "&8Klik untuk memilih."
   click-skip: "KLIK UNTUK MELEWATI"
@@ -157,7 +157,7 @@ coin-flip:
   mode-current: "&oMode Saat Ini: {mode}"
   mode-switch: "&oGanti mode ke {mode}"
   mode-switch-denied: "&cSelesaikan ronde ini sebelum mengganti mode."
-  mode-switch-cashout-notice: "&eKemenanganmu akan otomatis dicairkan sebesar &a{amount}"
+  mode-switch-cashout-notice: "&eAkan otomatis dicairkan sebesar &a{amount}"
   cash-out: "&oCairkan"
   cash-out-lore: "&oKlik untuk mencairkan: &o&a{amount}"
   chain-win: "&aKamu menang! Kemenangan beruntun: {streak}. Pot saat ini: &e{amount}&a. Cairkan atau lempar lagi."
@@ -207,7 +207,7 @@ rock-paper-scissors:
   the-dealer: "&oBandar"
   mode-current: "&oMode Saat Ini: {mode}"
   mode-switch: "&oGanti mode ke {mode}"
-  mode-switch-cashout-notice: "&eKemenanganmu akan otomatis dicairkan sebesar &a{amount}"
+  mode-switch-cashout-notice: "&eAkan otomatis dicairkan sebesar &a{amount}"
   mode-switch-denied: "&cSelesaikan ronde ini sebelum mengganti mode."
   cash-out: "&oCairkan"
   cash-out-lore: "&oKlik untuk mencairkan: &o&a{amount}"

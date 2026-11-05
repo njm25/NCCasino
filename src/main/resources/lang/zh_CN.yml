@@ -101,7 +101,7 @@ payout:
   bank-cleared: "&a你存放的奖金已全部领取。"
   bank-empty: "&7你没有等待领取的奖金。"
   bank-still-blocked: "&6还有{amount} 奖金在等待背包空间。腾出空间后，使用&e/ncc claim&6领取。"
-  wager-blocked: "&c请先为{amount} 存放的物品腾出空间，然后再继续游戏。"
+  wager-blocked: "&c请先为{amount} 件存放的物品腾出空间，然后再继续游戏。"
 
 cards:
   name: "{rank}（{suit}）"
@@ -245,9 +245,9 @@ baccarat:
   last-bet-undone: "&d已撤销上一次下注。"
   insufficient-currency: "&c货币不足，无法下注。"
   dealer-cannot-cover: "&c本桌目前无法承担这么大的奖金。请稍后再试，或减少下注。"
-  your-bet: "你的下注：{amount}"
+  your-bet: "你的赌注：{amount}"
   rebet-disabled: "&c重复下注已关闭。"
-  rebet-insufficient: "&c不足以重复下注。重复下注已关闭。"
+  rebet-insufficient: "&c货币不足以重复下注。重复下注已关闭。"
   bets-closed-place: "&c下注已截止，无法下注。"
   bets-closed-undo: "&c下注已截止，无法撤销。"
   already-seated: "&e你已经入座了。"

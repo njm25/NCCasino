@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Hiện tại: {value}"
-  click-toggle: "&8Nhấp để bật/tắt."
+  click-toggle: "&8Nhấp để đổi."
   click-cycle: "&8Nhấp để chuyển sang lựa chọn kế tiếp."
   click-choose: "&8Nhấp để chọn."
   click-skip: "NHẤP ĐỂ BỎ QUA"

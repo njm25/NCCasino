@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Teroz: {value}"
-  click-toggle: "&8Kliknij, coby załōnczyć abo wyłōnczyć."
+  click-toggle: "&8Kliknij, coby przełōnczyć."
   click-cycle: "&8Kliknij, coby przejść do dalszyj wertości."
   click-choose: "&8Kliknij, coby wybrać."
   click-skip: "KLIKNIJ, COBY PRZESKOCZYĆ"

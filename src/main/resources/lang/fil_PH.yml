@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Kasalukuyan: {value}"
-  click-toggle: "&8I-click para i-on o i-off."
+  click-toggle: "&8I-click para magpalit."
   click-cycle: "&8I-click para magpalit."
   click-choose: "&8I-click para pumili."
   click-skip: "I-CLICK PARA LAKTAWAN"
@@ -157,7 +157,7 @@ coin-flip:
   mode-current: "&oKasalukuyang Mode: {mode}"
   mode-switch: "&oPalitan ang mode sa {mode}"
   mode-switch-denied: "&cTapusin muna ang round na ito bago magpalit ng mode."
-  mode-switch-cashout-notice: "&eAwtomatikong makukuha ang panalo mo: &a{amount}"
+  mode-switch-cashout-notice: "&eAwtomatikong makukuha mo: &a{amount}"
   cash-out: "&oKunin ang Panalo"
   cash-out-lore: "&oI-click para kunin: &o&a{amount}"
   chain-win: "&aPanalo ka! Sunod-sunod: {streak}. Kasalukuyang pot: &e{amount}&a. Kunin ang panalo o maghagis ulit."
@@ -207,7 +207,7 @@ rock-paper-scissors:
   the-dealer: "&oAng Dealer"
   mode-current: "&oKasalukuyang Mode: {mode}"
   mode-switch: "&oPalitan ang mode sa {mode}"
-  mode-switch-cashout-notice: "&eAwtomatikong makukuha ang panalo mo: &a{amount}"
+  mode-switch-cashout-notice: "&eAwtomatikong makukuha mo: &a{amount}"
   mode-switch-denied: "&cTapusin muna ang round na ito bago magpalit ng mode."
   cash-out: "&oKunin ang Panalo"
   cash-out-lore: "&oI-click para kunin: &o&a{amount}"

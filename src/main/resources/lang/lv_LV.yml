@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Pašlaik: {value}"
-  click-toggle: "&8Noklikšķini, lai ieslēgtu vai izslēgtu."
+  click-toggle: "&8Noklikšķini, lai pārslēgtu."
   click-cycle: "&8Noklikšķini, lai mainītu."
   click-choose: "&8Noklikšķini, lai izvēlētos."
   click-skip: "NOKLIKŠĶINI, LAI IZLAISTU"
@@ -34,7 +34,7 @@ preferences:
     server-default: "Servera noklusējuma valoda"
     explicit: "Tava izvēle"
     client: "Spēles valoda"
-    client-applied: "&7Kazino valoda iestatīta uz &f{language}&7 atbilstoši tavai spēlei. Maini to: Personīgie iestatījumi > Valoda."
+    client-applied: "&7Kazino valoda iestatīta atbilstoši tavai spēlei: &f{language}&7. Maini to: Personīgie iestatījumi > Valoda."
   overflow:
     title: "&eLaimesti, kas neietilpst inventārā"
     bank: "&aGlabāt drošībā"

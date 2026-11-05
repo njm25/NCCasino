@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Núverandi: {value}"
-  click-toggle: "&8Trýst fyri at tendra ella sløkkja."
+  click-toggle: "&8Trýst fyri at fara til næsta virði."
   click-cycle: "&8Trýst fyri at fara til næsta virði."
   click-choose: "&8Trýst fyri at velja."
   click-skip: "TRÝST FYRI AT LOYPA UM"

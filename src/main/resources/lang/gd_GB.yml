@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7An-dràsta: {value}"
-  click-toggle: "&8Briog gus a chur air no dheth."
+  click-toggle: "&8Briog gus an ath luach a thaghadh."
   click-cycle: "&8Briog gus an ath luach a thaghadh."
   click-choose: "&8Briog gus taghadh."
   click-skip: "BRIOG GUS A LEUM SEACHAD"

@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7मौजूदा: {value}"
-  click-toggle: "&8चालू/बंद करने के लिए क्लिक करें।"
+  click-toggle: "&8बदलने के लिए क्लिक करें।"
   click-cycle: "&8अगला विकल्प चुनने के लिए क्लिक करें।"
   click-choose: "&8चुनने के लिए क्लिक करें।"
   click-skip: "छोड़ने के लिए क्लिक करें"
@@ -32,7 +32,7 @@ preferences:
     mode: "&7मोड: {mode}"
     effective: "&7इस्तेमाल हो रही भाषा: &f{language}"
     server-default: "सर्वर की डिफ़ॉल्ट भाषा"
-    explicit: "आपकी चुनी हुई"
+    explicit: "आपकी चुनी हुई भाषा"
     client: "गेम की भाषा"
     client-applied: "&7आपके गेम से मेल खाने के लिए कैसीनो की भाषा &f{language}&7 कर दी गई है। इसे प्राथमिकताएँ > भाषा में बदलें।"
   overflow:

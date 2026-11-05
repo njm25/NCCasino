@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7ປັດຈຸບັນ: {value}"
-  click-toggle: "&8ຄລິກເພື່ອເປີດ ຫຼື ປິດ"
+  click-toggle: "&8ຄລິກເພື່ອສະຫຼັບ"
   click-cycle: "&8ຄລິກເພື່ອໄປຫາຄ່າຕໍ່ໄປ"
   click-choose: "&8ຄລິກເພື່ອເລືອກ"
   click-skip: "ຄລິກເພື່ອຂ້າມ"

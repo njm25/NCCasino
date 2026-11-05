@@ -101,7 +101,7 @@ payout:
   bank-cleared: "&a你的暫存獎金已全部領取。"
   bank-empty: "&7你沒有等待領取的暫存獎金。"
   bank-still-blocked: "&6仍有 {amount} 的獎金在等待物品欄空間。騰出空間後，使用 &e/ncc claim&6 領取。"
-  wager-blocked: "&c再次遊玩前，請先為 {amount} 的暫存物品騰出空間。"
+  wager-blocked: "&c再次遊玩前，請先為 {amount} 件暫存物品騰出空間。"
 
 cards:
   name: "{rank}（{suit}）"

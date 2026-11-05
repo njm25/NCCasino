@@ -4,7 +4,7 @@ _meta:
 
 common:
   current: "&7Trenutno: {value}"
-  click-toggle: "&8Klikni za vklop ali izklop."
+  click-toggle: "&8Klikni za preklop."
   click-cycle: "&8Klikni za naslednjo možnost."
   click-choose: "&8Klikni za izbiro."
   click-skip: "KLIKNI ZA PRESKOK"
@@ -34,7 +34,7 @@ preferences:
     server-default: "Privzeto na strežniku"
     explicit: "Tvoja izbira"
     client: "Jezik igre"
-    client-applied: "&7Jezik igralnice je nastavljen na &f{language}&7, da se ujema s tvojo igro. Spremeniš ga lahko v meniju Osebne nastavitve > Jezik."
+    client-applied: "&7Jezik igralnice je nastavljen tako, da se ujema s tvojo igro: &f{language}&7. Spremeniš ga lahko v meniju Osebne nastavitve > Jezik."
   overflow:
     title: "&eDobitki, ki ne gredo v inventar"
     bank: "&aShrani jih zame"

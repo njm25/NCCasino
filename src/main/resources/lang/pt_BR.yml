@@ -78,7 +78,7 @@ betting:
   select-wager: "&cSelecione primeiro um valor de aposta."
   insufficient-funds: "&cVocê não tem moeda suficiente para essa aposta."
   nothing-to-undo: "&cNão há apostas para desfazer."
-  inventory-full: "&cSem espaço para {amount}; o valor será deixado por perto."
+  inventory-full: "&cSem espaço para {amount}; os itens serão largados por perto."
   all-in: "Apostar tudo"
   all-in-amount: "Apostar tudo ({amount})"
   wager: "Aposta: {amount}"
